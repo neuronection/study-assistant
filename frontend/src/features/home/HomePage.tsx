@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorBanner } from '@/components/ui/error-banner'
 import { useRequiredCourse } from '@/components/workspace/CoursePicker'
+import { useWizardStore } from '@/features/onboarding/wizardStore'
 import {
   createChatSession,
   createSampleCourse,
@@ -340,6 +341,7 @@ export function HomePage() {
   const overview = useQuery({ queryKey: ['overview'], queryFn: getOverview })
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
   const materials = useQuery({ queryKey: ['materials', null], queryFn: () => listMaterials() })
+  const openWizard = useWizardStore((state) => state.openWizard)
   const [goalEdit, setGoalEdit] = useState<number | null>(null)
 
   const sample = useMutation({
@@ -451,16 +453,26 @@ export function HomePage() {
           <ExamCard />
           <NextBestActions />
           {(courses.data ?? []).length === 0 && (materials.data ?? []).length === 0 ? (
-            <div className="border-border mt-3 rounded-lg border border-dashed p-4 text-center">
+            <div className="border-border mt-3 space-y-2 rounded-lg border border-dashed p-4 text-center">
               <p className="text-muted-foreground mb-2 text-xs">{t('today.onboardingHint')}</p>
-              <Button size="sm" disabled={sample.isPending} onClick={() => sample.mutate()}>
-                {sample.isPending ? (
-                  <Loader2 className="animate-spin" aria-hidden />
-                ) : (
-                  <BookOpen aria-hidden />
-                )}
-                {t('today.createSample')}
-              </Button>
+              <div className="flex justify-center gap-2">
+                <Button size="sm" disabled={sample.isPending} onClick={() => openWizard()}>
+                  {t('onboarding.runWizard')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={sample.isPending}
+                  onClick={() => sample.mutate()}
+                >
+                  {sample.isPending ? (
+                    <Loader2 className="animate-spin" aria-hidden />
+                  ) : (
+                    <BookOpen aria-hidden />
+                  )}
+                  {t('today.createSample')}
+                </Button>
+              </div>
             </div>
           ) : null}
         </CardContent>

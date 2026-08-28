@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from ..domain.models import Course, Material
+from ..domain.models import AiModel, Course, DefaultTaskAssignment, Material, Provider
 from ..pipelines.chunking import chunk_markdown
 from ..pipelines.ingest import _store_extraction
 from ..services.materials import detect_kind
@@ -63,6 +63,29 @@ SAMPLE_MATERIALS: list[tuple[str, str]] = [
         ),
     ),
 ]
+
+
+@router.get("/state")
+def get_onboarding_state(session: Session = Depends(get_session)) -> dict[str, Any]:
+    has_provider = session.query(Provider.id).first() is not None
+    has_enabled_model = (
+        session.query(AiModel.id).filter(AiModel.enabled.is_(True)).first() is not None
+    )
+    defaults_set = [
+        row.requires
+        for row in session.query(DefaultTaskAssignment)
+        .filter(DefaultTaskAssignment.model_id.isnot(None))
+        .all()
+    ]
+    has_course = session.query(Course.id).first() is not None
+    has_material = session.query(Material.id).first() is not None
+    return {
+        "has_provider": has_provider,
+        "has_enabled_model": has_enabled_model,
+        "defaults_set": sorted(defaults_set),
+        "has_course": has_course,
+        "has_material": has_material,
+    }
 
 
 @router.post("/sample", status_code=201)

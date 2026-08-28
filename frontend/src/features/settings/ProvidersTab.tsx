@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Pencil, Plus, Trash2, Zap } from 'lucide-react'
+import { Loader2, Pencil, Plus, Sparkles, Trash2, Zap } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { deleteProvider, listProviders, testProvider, type Provider } from '@/lib/api'
+import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { cn } from '@/lib/utils'
 import { ProviderFormDialog } from './ProviderFormDialog'
@@ -13,6 +14,7 @@ import { ProviderFormDialog } from './ProviderFormDialog'
 export function ProvidersTab() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const openWizard = useWizardStore((state) => state.openWizard)
   const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
   const [form, setForm] = useState<{ provider: Provider | null } | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -111,9 +113,13 @@ export function ProvidersTab() {
         </Card>
       ))}
       {providers.data && providers.data.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">
-          {t('settings.noProviders')}
-        </p>
+        <div className="space-y-2 py-8 text-center">
+          <p className="text-muted-foreground text-sm">{t('settings.noProviders')}</p>
+          <Button variant="outline" size="sm" onClick={() => openWizard()}>
+            <Sparkles aria-hidden />
+            {t('onboarding.runWizard')}
+          </Button>
+        </div>
       ) : null}
       {form ? (
         <ProviderFormDialog provider={form.provider} onClose={() => setForm(null)} />

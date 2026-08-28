@@ -3294,6 +3294,19 @@ export async function importQpkg(
   return json<ImportResult>(response)
 }
 
+export interface OnboardingState {
+  has_provider: boolean
+  has_enabled_model: boolean
+  defaults_set: string[]
+  has_course: boolean
+  has_material: boolean
+}
+
+export async function getOnboardingState(): Promise<OnboardingState> {
+  const response = await apiFetch('/api/v1/onboarding/state')
+  return json<OnboardingState>(response)
+}
+
 export async function createSampleCourse(): Promise<{
   course_id: number
   materials: number

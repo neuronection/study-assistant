@@ -18,6 +18,26 @@ frontend with hot reload at `http://localhost:5173`, and `pnpm app` opens the de
 window (pywebview) — currently not recommended, see the known-issues note in
 `docs/STATUS.md`.
 
+## First-run wizard
+
+On a fresh install (no AI provider and no course yet) a setup wizard opens
+automatically. It walks you through the same steps described below, in order:
+
+1. **AI provider** — pick a preset, name it, paste the API key (straight into your
+   OS keyring). A successful create moves on by itself.
+2. **Models** — enable the models the provider discovered; *Enable all* takes one
+   click.
+3. **Default models** — one default per capability (text / vision / embeddings /
+   audio); optional, editable later in Settings → Tasks.
+4. **First course** — create your own, or load the ready-made *Calculus I (sample)*
+   course.
+5. **First materials** — drop PDFs/slides/Markdown onto the course; extraction and
+   indexing continue in the background.
+
+Every step can be skipped, and the wizard is never forced on you again — but you
+can re-run it any time via **Run setup wizard** on the Home onboarding card or in
+the empty state of Settings → Providers.
+
 ## Connect an AI provider (required for AI features)
 
 1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —

@@ -30,6 +30,7 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { Popover } from '@/components/ui/popover'
 import { ChatPanel } from '@/features/chat/ChatPanel'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
+import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import { listCourses, listProfiles, setActiveProfile, type ChatSession, type Course } from '@/lib/api'
 import { useChatStore } from '@/lib/chat-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
@@ -550,6 +551,7 @@ export function AppShell() {
           onClose={() => setProfilesOpen(false)}
         />
       ) : null}
+      <OnboardingWizard />
     </div>
   )
 }
