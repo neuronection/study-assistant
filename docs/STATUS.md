@@ -321,6 +321,19 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **fix(shell): white window on WebKitGTK systems whose EGL/DMABUF
+  renderer aborts (`Could not create default EGL display: EGL_BAD_PARAMETER`,
+  seen on the user's Mint 22 laptop with the rc.6 `.deb`).** WebKitGTK's GPU
+  compositing path dies on some driver stacks and the webview stays blank — no
+  Python-side error. The desktop shell now sets
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` + `WEBKIT_DISABLE_COMPOSITING_MODE=1`
+  (software rasterizer, the Tauri/wry-style safe default) before pywebview
+  starts, with `SA_WEBKIT_GPU=1` as the opt-back-in escape hatch. Covers dev
+  and frozen desktop mode on all platforms (vars are WebKitGTK-only, inert
+  elsewhere); `web` browser mode unaffected. New
+  `test_webkit_compat_env.py`; launch-verified locally (15 s survival, SPA
+  serving). This closes the rc.6 install-test finding.
+
 - 2026-08-29 — **fix(packaging): `.deb` crashed at launch on Mint 22 —
   `libgudev-1.0.so.0: undefined symbol: g_once_init_enter_pointer` →
   WebKitGTK dlopen failed → pywebview GTK import died.** PyInstaller collects

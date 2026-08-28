@@ -192,6 +192,12 @@ a single portable file.
 
 ## Notes
 
+- **Desktop shell disables WebKitGTK GPU compositing by default** — the frozen app
+  (and dev desktop mode) sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` +
+  `WEBKIT_DISABLE_COMPOSITING_MODE=1` before starting pywebview, because on some
+  driver stacks WebKitGTK's EGL/DMABUF renderer aborts
+  (`Could not create default EGL display: EGL_BAD_PARAMETER`) and leaves a white
+  window. Opt back into GPU compositing with `SA_WEBKIT_GPU=1`.
 - The app finds its bundled SPA under `sys._MEIPASS/frontend/dist` when frozen; it
   never writes user data into the install location. Data dirs are platform-aware:
   Linux `~/.local/share/StudyAssistant` (or `$XDG_DATA_HOME`), Windows

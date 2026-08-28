@@ -215,8 +215,19 @@ def run_browser() -> None:
     )
 
 
+def apply_webkit_compat_env(
+    environ: MutableMapping[str, str] | None = None,
+) -> MutableMapping[str, str]:
+    env: MutableMapping[str, str] = os.environ if environ is None else environ
+    if env.get("SA_WEBKIT_GPU") != "1":
+        env["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
+        env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+    return env
+
+
 def run() -> None:
     sanitize_environment()
+    apply_webkit_compat_env()
     settings = get_settings()
     app = create_app(settings)
     port = find_free_port()
