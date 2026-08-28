@@ -321,6 +321,27 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **fix(packaging): `.deb` crashed at launch on Mint 22 —
+  `libgudev-1.0.so.0: undefined symbol: g_once_init_enter_pointer` →
+  WebKitGTK dlopen failed → pywebview GTK import died.** PyInstaller collects
+  the builder's whole GTK stack into the onedir tree; the jammy-built deb
+  therefore shipped **glib 2.72** bundled, which shadows the target's system
+  glib (bootloader prepends `_internal` to `LD_LIBRARY_PATH`) — while system
+  WebKitGTK pulls in system libgudev built against glib ≥ 2.80, whose symbols
+  the shadowing glib lacks. (The earlier noble-built debs only appeared healthy
+  because builder glib 2.80 ≈ Mint 22's system glib.) Fix: the deb stage now
+  **strips the GLib core** (`libglib-2.0`, `libgobject-2.0`, `libgio-2.0`,
+  `libgmodule-2.0`, `libgirepository-1.0`) so the system copies always win,
+  with `Depends` extended to `libglib2.0-0, libgirepository-1.0-1`; the
+  AppImage keeps its bundle (self-contained and internally consistent).
+  Verified end to end on Mint 22.3: stripped stage survives a 15 s desktop
+  launch (window + SPA serving) with glib resolving to `/lib`. CI gap closed:
+  the release `linux` job now also runs a **desktop-launch smoke under xvfb**
+  (30 s survival on the stripped deb stage, `WEBKIT_DISABLE_COMPOSITING_MODE=1`)
+  — the old `web`-mode smoke never exercised the pywebview import path.
+  `test_packaging_assets` pins the strip step, the Depends names and the xvfb
+  smoke so this cannot silently regress.
+
 - 2026-08-28 — **fix(storage): `database is locked` killed backup restore under
   concurrent DB access (CI test-job failure).** Three compounding issues: backup
   archives are deliberately rollback-journal (`DELETE`) DBs for portability, so

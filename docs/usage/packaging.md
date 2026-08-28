@@ -6,7 +6,7 @@ CI (and reproducible locally):
 | Format | Target | Self-contained? |
 |---|---|---|
 | `StudyAssistant-<ver>-windows-x64.exe` | Windows 10/11 | Yes (one-file; uses the system WebView2 runtime) |
-| `studyassistant-<ver>_amd64.deb` | Debian 12 / Ubuntu 22.04+ / Mint 21+ (glibc ≥ 2.35) | Mostly (needs `libgtk-3-0` + `libwebkit2gtk-4.1-0`, declared as deps) |
+| `studyassistant-<ver>_amd64.deb` | Debian 12 / Ubuntu 22.04+ / Mint 21+ (glibc ≥ 2.35) | Mostly (system GTK/WebKit/GLib via `Depends`; the GLib stack is stripped from the bundle so the system copies always win) |
 | `StudyAssistant-<ver>-x86_64.AppImage` | Any x86_64 Linux with glibc ≥ 2.35 | Yes (bundles WebKitGTK) |
 
 macOS artifacts are not produced yet (the PyInstaller spec has a macOS branch, but
@@ -25,7 +25,8 @@ git tag v0.1.0 && git push origin v0.1.0
 
 1. Runs the full test gate (backend ruff/mypy/pytest + frontend lint/typecheck/test/build).
 2. On `ubuntu-22.04`: builds the onedir bundle, the `.deb`, and the `.AppImage`, and
-   smoke-tests the bundle in headless web mode (`/api/v1/health`) — on the oldest
+   smoke-tests the bundle in headless web mode (`/api/v1/health`) plus a real desktop
+   launch of the stripped deb stage under `xvfb` (survives 30 s = pass) — on the oldest
    supported glibc (2.35), so artifacts run everywhere newer (build-old, run-new).
    The job pins the interpreter to the distro Python 3.12 (deadsnakes) via
    `UV_PYTHON=3.12`, `UV_PYTHON_DOWNLOADS=never`, `UV_PYTHON_PREFERENCE=only-system`:
@@ -175,8 +176,15 @@ a single portable file.
   `gi.repository.*` hiddenimports keep the GI stack intact; PyInstaller's own
   namespace hooks no-op in wheel-only build environments.
 - The `.deb` installs to `/usr/lib/studyassistant` with a `/usr/bin/studyassistant`
-  launcher, a `.desktop` file, and an icon. Target systems need WebKitGTK 4.1
-  (installed automatically via `Depends`).
+  launcher, a `.desktop` file, and an icon. Target systems need GTK3, WebKitGTK 4.1
+  and the GLib runtime (`Depends: libgtk-3-0, libwebkit2gtk-4.1-0, libglib2.0-0,
+  libgirepository-1.0-1`). PyInstaller collects the builder's whole GTK stack into
+  the onedir tree; the deb stage **strips the GLib core** (`libglib-2.0`,
+  `libgobject-2.0`, `libgio-2.0`, `libgmodule-2.0`, `libgirepository-1.0`) so the
+  system copies always win — a bundled stale glib shadows the system one (PyInstaller
+  prepends `_internal` to `LD_LIBRARY_PATH`) and then system libraries built against
+  a newer glib fail to load (Mint 22: `libgudev … undefined symbol:
+  g_once_init_enter_pointer` → WebKitGTK dlopen fails at launch).
 - The `.AppImage` is fully self-contained: `build-linux.sh` copies the ldd closure
   of every bundled `.so` plus WebKitGTK/GTK (which are only dlopened, so they are
   seeded explicitly), gdk-pixbuf loaders with a rebuilt cache, and an `AppRun` that

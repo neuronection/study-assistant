@@ -50,6 +50,12 @@ if [[ "$TARGET" == "deb" || "$TARGET" == "all" ]]; then
     "$STAGE/DEBIAN"
   install_bundle "$STAGE/usr/lib/$APP"
 
+  echo "==> Stripping bundled GLib stack from deb stage (system copies must win)"
+  find "$STAGE/usr/lib/$APP" -type f \( \
+    -name 'libglib-2.0.so.0*' -o -name 'libgobject-2.0.so.0*' -o \
+    -name 'libgio-2.0.so.0*' -o -name 'libgmodule-2.0.so.0*' -o \
+    -name 'libgirepository-1.0.so.1*' \) -delete
+
   cat > "$STAGE/usr/bin/$APP" <<EOF
 #!/usr/bin/env bash
 exec /usr/lib/$APP/$APP "\$@"
@@ -78,7 +84,7 @@ Section: education
 Priority: optional
 Architecture: amd64
 Maintainer: StudyAssistant <dev@studyassistant.local>
-Depends: libgtk-3-0, libwebkit2gtk-4.1-0
+Depends: libgtk-3-0, libwebkit2gtk-4.1-0, libglib2.0-0, libgirepository-1.0-1
 Description: AI-powered, local-first desktop study workbench
  Math-first study workbench for upload, outline, quiz, tutor, notes and
  flashcards. Runs fully offline except optional cloud OCR/LLM calls.

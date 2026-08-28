@@ -48,7 +48,15 @@ def test_build_script_syntax_and_targets() -> None:
     result = subprocess.run([bash, "-n", str(script)], capture_output=True)
     assert result.returncode == 0, result.stderr.decode()
     source = script.read_text(encoding="utf-8")
-    for needle in ("dpkg-deb", "appimagetool", "libwebkit2gtk-4.1", "pyinstaller"):
+    for needle in (
+        "dpkg-deb",
+        "appimagetool",
+        "libwebkit2gtk-4.1",
+        "pyinstaller",
+        "libglib2.0-0",
+        "libgirepository-1.0-1",
+        "Stripping bundled GLib stack",
+    ):
         assert needle in source, f"build script missing {needle}"
 
 
@@ -68,6 +76,8 @@ def test_release_workflow_covers_tag_and_artifacts() -> None:
         "*.AppImage",
         "-windows-x64.exe",
         "generate_release_notes",
+        "xvfb-run",
+        "WEBKIT_DISABLE_COMPOSITING_MODE",
     ):
         assert needle in workflow, f"release workflow missing {needle}"
 
