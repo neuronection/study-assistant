@@ -6,7 +6,7 @@ CI (and reproducible locally):
 | Format | Target | Self-contained? |
 |---|---|---|
 | `StudyAssistant-<ver>-windows-x64.exe` | Windows 10/11 | Yes (one-file; uses the system WebView2 runtime) |
-| `studyassistant-<ver>_amd64.deb` | Debian 13 / Ubuntu 24.04+ / Mint 22+ | Mostly (needs `libgtk-3-0t64` + `libwebkit2gtk-4.1-0t64`, declared as deps) |
+| `studyassistant-<ver>_amd64.deb` | Debian 13 / Ubuntu 24.04+ / Mint 22+ | Mostly (needs `libgtk-3-0` + `libwebkit2gtk-4.1-0`, declared as deps) |
 | `StudyAssistant-<ver>-x86_64.AppImage` | Any recent x86_64 Linux | Yes (bundles WebKitGTK) |
 
 macOS artifacts are not produced yet (the PyInstaller spec has a macOS branch, but

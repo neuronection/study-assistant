@@ -319,6 +319,16 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-28 — **fix(ci): release `linux` job could not install WebKitGTK —
+  `libwebkit2gtk-4.1-0t64` does not exist.** Ubuntu noble's t64 time_t rename
+  hit GTK3 (`libgtk-3-0t64`) but **not** webkit2gtk, whose runtime package on
+  24.04 is plain `libwebkit2gtk-4.1-0`; the CI step had copied the t64 suffix
+  across, so `apt-get install` failed with "Unable to locate package" on the
+  first tag build. Workflow now installs the real name (`libwebkit2gtk-4.1-0`,
+  `gir1.2-webkit2-4.1` verified on noble); `packaging/build-linux.sh` deb
+  `Depends` was already correct and is unchanged. Fixed the same wrong name in
+  the packaging doc's artifact table.
+
 - 2026-08-28 — **fix(release): `scripts/version_manager.py` refused to release when
   only the version file was dirty.** The `run()` helper `.strip()`ed porcelain
   output, eating the leading status space, so `line[3:]` chopped a real path
