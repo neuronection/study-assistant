@@ -12,8 +12,6 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    env:
-      SA_DATA_DIR: ${{ runner.temp }}/sa-data
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -23,7 +21,11 @@ jobs:
       - run: uv run --directory backend ruff check .
       - run: uv run --directory backend mypy .
       - run: uv run --directory backend pytest
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
       - run: uv run --directory backend alembic upgrade head
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
 
   frontend:
     runs-on: ubuntu-latest

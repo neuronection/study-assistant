@@ -12,8 +12,6 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      SA_DATA_DIR: ${{ runner.temp }}/sa-data
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -35,13 +33,15 @@ jobs:
       - run: uv run --directory backend ruff check .
       - run: uv run --directory backend mypy .
       - run: uv run --directory backend pytest
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
       - run: uv run --directory backend alembic upgrade head
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
 
   linux:
     needs: test
     runs-on: ubuntu-24.04
-    env:
-      SA_DATA_DIR: ${{ runner.temp }}/sa-data
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -80,6 +80,7 @@ jobs:
             packaging/build-linux.sh all
       - name: Smoke test (headless web mode)
         env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
           SA_PORT: "8975"
         run: |
           backend/dist/studyassistant/studyassistant web &
@@ -100,8 +101,6 @@ jobs:
   windows:
     needs: test
     runs-on: windows-latest
-    env:
-      SA_DATA_DIR: ${{ runner.temp }}\sa-data
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -133,6 +132,8 @@ jobs:
           SA_ONEFILE: "1"
         run: uv run --directory backend pyinstaller --clean --noconfirm ../packaging/studyassistant.spec
       - name: Smoke test (headless web mode)
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}\sa-data
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "backend/dist/StudyAssistant.exe" -ArgumentList "web" -PassThru -NoNewWindow
