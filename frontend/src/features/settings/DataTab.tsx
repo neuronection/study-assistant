@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { DatabaseBackup, Download, Loader2, ShieldCheck, Trash2, Upload } from 'lucide-react'
+import { DatabaseBackup, Download, FolderCog, Loader2, ShieldCheck, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorBanner } from '@/components/ui/error-banner'
 import { TrashCard } from './TrashCard'
+import { WorkingDirEditor } from './WorkingDirEditor'
 import {
   backupExportUrl,
   createBackupNow,
@@ -109,6 +110,18 @@ export function DataTab() {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <FolderCog className="size-4" aria-hidden />
+            {t('settings.workingDirTitle')}
+          </CardTitle>
+          <CardDescription>{t('settings.workingDirHint')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WorkingDirEditor />
+        </CardContent>
+      </Card>
       <TrashCard />
       <Card>
         <CardHeader>

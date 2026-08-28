@@ -3307,6 +3307,51 @@ export async function getOnboardingState(): Promise<OnboardingState> {
   return json<OnboardingState>(response)
 }
 
+export interface WorkingDirInfo {
+  path: string
+  default_path: string
+  custom: boolean
+  restart_pending: boolean
+}
+
+export interface WorkingDirValidation {
+  valid: boolean
+  reason: string | null
+  exists: boolean
+  empty: boolean
+  has_app_db: boolean
+}
+
+export async function getWorkingDir(): Promise<WorkingDirInfo> {
+  const response = await apiFetch('/api/v1/config/working-dir')
+  return json<WorkingDirInfo>(response)
+}
+
+export async function validateWorkingDir(path: string): Promise<WorkingDirValidation> {
+  const response = await apiFetch('/api/v1/config/working-dir/validate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  })
+  return json<WorkingDirValidation>(response)
+}
+
+export async function setWorkingDir(
+  path: string
+): Promise<{ path: string; restart_required: boolean }> {
+  const response = await apiFetch('/api/v1/config/working-dir', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  })
+  return json<{ path: string; restart_required: boolean }>(response)
+}
+
+export async function resetWorkingDir(): Promise<{ restart_required: boolean }> {
+  const response = await apiFetch('/api/v1/config/working-dir', { method: 'DELETE' })
+  return json<{ restart_required: boolean }>(response)
+}
+
 export async function createSampleCourse(): Promise<{
   course_id: number
   materials: number

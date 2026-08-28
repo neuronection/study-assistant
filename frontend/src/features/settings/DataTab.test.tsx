@@ -9,6 +9,7 @@ const updateBackupSettings = vi.fn()
 const createBackupNow = vi.fn()
 const deleteBackup = vi.fn()
 const restoreBackupByName = vi.fn()
+const getWorkingDir = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -19,6 +20,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     createBackupNow: () => createBackupNow(),
     deleteBackup: (name: string) => deleteBackup(name),
     restoreBackupByName: (name: string) => restoreBackupByName(name),
+    getWorkingDir: () => getWorkingDir(),
   }
 })
 
@@ -52,7 +54,14 @@ describe('DataTab automatic backups', () => {
     createBackupNow.mockReset()
     deleteBackup.mockReset()
     restoreBackupByName.mockReset()
+    getWorkingDir.mockReset()
     getBackupStatus.mockResolvedValue(STATUS)
+    getWorkingDir.mockResolvedValue({
+      path: '/data',
+      default_path: '/data',
+      custom: false,
+      restart_pending: false,
+    })
   })
 
   test('renders status, settings fields and the backup list', async () => {

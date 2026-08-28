@@ -23,15 +23,18 @@ window (pywebview) — currently not recommended, see the known-issues note in
 On a fresh install (no AI provider and no course yet) a setup wizard opens
 automatically. It walks you through the same steps described below, in order:
 
-1. **AI provider** — pick a preset, name it, paste the API key (straight into your
+1. **Working directory** — where your database, files and backups live. The default
+   is fine for most people; change it only if you want your data elsewhere (e.g. a
+   synced folder). A change applies the next time you start the app.
+2. **AI provider** — pick a preset, name it, paste the API key (straight into your
    OS keyring). A successful create moves on by itself.
-2. **Models** — enable the models the provider discovered; *Enable all* takes one
+3. **Models** — enable the models the provider discovered; *Enable all* takes one
    click.
-3. **Default models** — one default per capability (text / vision / embeddings /
+4. **Default models** — one default per capability (text / vision / embeddings /
    audio); optional, editable later in Settings → Tasks.
-4. **First course** — create your own, or load the ready-made *Calculus I (sample)*
+5. **First course** — create your own, or load the ready-made *Calculus I (sample)*
    course.
-5. **First materials** — drop PDFs/slides/Markdown onto the course; extraction and
+6. **First materials** — drop PDFs/slides/Markdown onto the course; extraction and
    indexing continue in the background.
 
 Every step can be skipped, and the wizard is never forced on you again — but you
@@ -98,6 +101,20 @@ Everything is stored locally under `~/.local/share/StudyAssistant/` (or your
 platform's equivalent): `app.db` (SQLite), `blobs/` (original files, content-addressed),
 `cache/`, `backups/` (automatic backups land here — see [backup.md](backup.md)).
 Delete the folder to reset the app — or use the built-in flag:
+
+### Changing the working directory
+
+The working directory is visible and changeable in **Settings → Data → Working
+directory** (and in the setup wizard). Rules:
+
+- The new folder must be **empty** or an **existing Study Assistant data folder**
+  (contains `app.db`). To move existing data: download a backup first, switch,
+  restart, then restore the backup into the new location.
+- The change is stored in a small pointer file in your platform config dir
+  (`~/.config/StudyAssistant/working-dir.txt` on Linux) and **applies on the next
+  app start** — Settings shows a banner while a change is pending, with Undo.
+- The `SA_DATA_DIR` environment variable (or `backend/.env`) always wins over the
+  UI setting — it stays the power-user escape hatch.
 
 ```bash
 pnpm dev --reset                # prompt before wiping db + blobs + cache + thumbnails + inbox

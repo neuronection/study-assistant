@@ -6,6 +6,7 @@ import { OnboardingWizard } from './OnboardingWizard'
 import { useWizardStore } from './wizardStore'
 
 const getOnboardingState = vi.fn()
+const getWorkingDir = vi.fn()
 const listPresets = vi.fn()
 const createProvider = vi.fn()
 const listModels = vi.fn()
@@ -22,6 +23,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     getOnboardingState: () => getOnboardingState(),
+    getWorkingDir: () => getWorkingDir(),
     listPresets: () => listPresets(),
     createProvider: (body: unknown) => createProvider(body),
     listModels: () => listModels(),
@@ -46,6 +48,13 @@ const FRESH_STATE = {
   defaults_set: [],
   has_course: false,
   has_material: false,
+}
+
+const WORKING_DIR = {
+  path: '/data',
+  default_path: '/data',
+  custom: false,
+  restart_pending: false,
 }
 
 const PROVIDER_STATE = { ...FRESH_STATE, has_provider: true }
@@ -76,6 +85,7 @@ describe('OnboardingWizard', () => {
     window.localStorage.clear()
     useWizardStore.setState({ open: false })
     getOnboardingState.mockResolvedValue(FRESH_STATE)
+    getWorkingDir.mockResolvedValue(WORKING_DIR)
     listPresets.mockResolvedValue({
       google: { name: 'Google', type: 'google', base_url: '' },
     })
@@ -129,6 +139,8 @@ describe('OnboardingWizard', () => {
     createProvider.mockResolvedValue({ id: 3, name: 'Google' })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
+    expect(await screen.findByText('Where should your data live?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
     fireEvent.change(await screen.findByLabelText('Name', { selector: 'input' }), {
       target: { value: 'Google' },
     })
@@ -151,15 +163,15 @@ describe('OnboardingWizard', () => {
     await waitFor(() => expect(getOnboardingState).toHaveBeenCalled())
     act(() => useWizardStore.getState().openWizard())
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
+    expect(await screen.findByText('Where should your data live?')).toBeInTheDocument()
 
-    for (let i = 0; i < 3; i++) {
-      fireEvent.click(await screen.findByRole('button', { name: 'Next' }))
-      await waitFor(() =>
-        expect(
-          screen.queryByRole('button', { name: 'Add provider' })
-        ).not.toBeInTheDocument()
-      )
-    }
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Connect an AI provider')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Choose your models')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Pick default models')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
     expect(await screen.findByText('Create your first course')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Course name'), {

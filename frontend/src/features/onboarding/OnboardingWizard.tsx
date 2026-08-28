@@ -1,6 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { BookOpen, Bot, Check, FolderUp, PartyPopper, Sparkles, X } from 'lucide-react'
+import {
+  BookOpen,
+  Bot,
+  Check,
+  FolderCog,
+  FolderUp,
+  PartyPopper,
+  Sparkles,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -14,12 +23,14 @@ import { DoneStep } from './steps/DoneStep'
 import { FilesStep } from './steps/FilesStep'
 import { ModelsStep } from './steps/ModelsStep'
 import { ProviderStep } from './steps/ProviderStep'
+import { WorkingDirStep } from './steps/WorkingDirStep'
 import { useWizardStore } from './wizardStore'
 
 const DONE_KEY = 'ca-onboarding-done'
 
 const STEP_KEYS = [
   'welcome',
+  'workingDir',
   'provider',
   'models',
   'defaults',
@@ -28,7 +39,16 @@ const STEP_KEYS = [
   'done',
 ] as const
 
-const STEP_ICONS = [Sparkles, Bot, Check, Check, BookOpen, FolderUp, PartyPopper]
+const STEP_ICONS = [
+  Sparkles,
+  FolderCog,
+  Bot,
+  Check,
+  Check,
+  BookOpen,
+  FolderUp,
+  PartyPopper,
+]
 
 function readDismissed(): boolean {
   try {
@@ -76,7 +96,7 @@ export function OnboardingWizard() {
     return null
   }
 
-  const lastStep = 6
+  const lastStep = 7
   const finish = (target: 'home' | 'course') => {
     markDismissed()
     setDismissed(true)
@@ -142,6 +162,7 @@ export function OnboardingWizard() {
               <p className="text-muted-foreground text-sm">{t('onboarding.welcomeBody')}</p>
               <ul className="space-y-2">
                 {[
+                  { icon: FolderCog, label: t('onboarding.welcomeDir') },
                   { icon: Bot, label: t('onboarding.welcomeAi') },
                   { icon: BookOpen, label: t('onboarding.welcomeCourse') },
                   { icon: FolderUp, label: t('onboarding.welcomeFiles') },
@@ -154,14 +175,15 @@ export function OnboardingWizard() {
               </ul>
             </div>
           ) : null}
-          {step === 1 ? (
+          {step === 1 ? <WorkingDirStep /> : null}
+          {step === 2 ? (
             <ProviderStep hasProvider={state.data?.has_provider === true} onDone={advance} />
           ) : null}
-          {step === 2 ? <ModelsStep /> : null}
-          {step === 3 ? <DefaultsStep /> : null}
-          {step === 4 ? <CourseStep course={course} onCourse={setCourse} /> : null}
-          {step === 5 ? <FilesStep course={course} /> : null}
-          {step === 6 ? <DoneStep course={course} onFinish={finish} /> : null}
+          {step === 3 ? <ModelsStep /> : null}
+          {step === 4 ? <DefaultsStep /> : null}
+          {step === 5 ? <CourseStep course={course} onCourse={setCourse} /> : null}
+          {step === 6 ? <FilesStep course={course} /> : null}
+          {step === 7 ? <DoneStep course={course} onFinish={finish} /> : null}
         </div>
         {step < lastStep ? (
           <div className="border-border flex items-center gap-2 border-t px-5 py-3">

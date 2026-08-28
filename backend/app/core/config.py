@@ -6,6 +6,8 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .working_dir import read_override
+
 APP_DIR_NAME = "StudyAssistant"
 LEGACY_APP_DIR_NAME = "CourseAssistant"
 
@@ -21,12 +23,36 @@ def _platform_base() -> Path:
     return base
 
 
+def _platform_config_base() -> Path:
+    if sys.platform == "win32":
+        appdata = environ.get("APPDATA")
+        return Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support"
+    xdg = environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".config"
+    return base
+
+
 def default_data_dir() -> Path:
     data_dir = _platform_base() / APP_DIR_NAME
     legacy = data_dir.with_name(LEGACY_APP_DIR_NAME)
     if legacy.is_dir() and not data_dir.exists():
         legacy.rename(data_dir)
     return data_dir
+
+
+def default_config_dir() -> Path:
+    return _platform_config_base() / APP_DIR_NAME
+
+
+def _resolve_data_dir() -> Path:
+    configured = environ.get("SA_CONFIG_DIR")
+    config_dir = Path(configured) if configured else default_config_dir()
+    override = read_override(config_dir)
+    if override is not None:
+        return override
+    return default_data_dir()
 
 
 class Settings(BaseSettings):
@@ -37,7 +63,8 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = False
     log_level: str = "INFO"
-    data_dir: Path = Field(default_factory=default_data_dir)
+    config_dir: Path = Field(default_factory=default_config_dir)
+    data_dir: Path = Field(default_factory=_resolve_data_dir)
     spa_dist: Path | None = None
     source_scan_interval_sec: int = Field(default=300, ge=15)
     auto_backup: bool = True

@@ -6,6 +6,7 @@ from . import (
     analytics,
     backup,
     chat,
+    config,
     courses,
     exercises,
     flashcards,
@@ -40,6 +41,7 @@ api_router.include_router(flashcards.router)
 api_router.include_router(analytics.router)
 api_router.include_router(backup.router)
 api_router.include_router(profiles.router)
+api_router.include_router(config.router)
 api_router.include_router(sources.router)
 api_router.include_router(fs.router)
 api_router.include_router(skills.router)
