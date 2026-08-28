@@ -195,15 +195,16 @@ a single portable file.
 - **Desktop shell picks the WebKitGTK render path at runtime** — before pywebview
   starts, a ~50 ms ctypes probe (`eglGetDisplay` + `eglInitialize`) decides: EGL
   healthy → GPU/DMABUF compositing stays on (accelerated drawing, battery-friendly);
-  probe fails → `WEBKIT_DISABLE_DMABUF_RENDERER=1` +
-  `WEBKIT_DISABLE_COMPOSITING_MODE=1` are set (software rasterizer) before the
-  window opens. The probe can pass while WebKit's DMABUF/GBM path still fails, and
-  on some stacks the disable vars don't prevent a dead GPU process — so a
+  probe fails → **software-GL mode**: `LIBGL_ALWAYS_SOFTWARE=1` (Mesa llvmpipe) plus
+  the WebKit disable-vars (honored by older 2.3x/2.40, harmless no-ops elsewhere) —
+  the GPU process gets a working software EGL and the full pipeline renders.
+  The probe can pass while WebKit's DMABUF/GBM path still fails, and on some 2.4x
+  stacks the disable-vars alone don't stop the aborting GPU process — so a
   **painted-frame sentinel** is the ground truth in *every* mode: after the SPA's
   first rendered frame it fires a double-`requestAnimationFrame` beacon to `POST
   /api/v1/shell/rendered` (rAF never fires when the compositor is dead). No beacon
-  within 10 s → bounded fallback ladder: relaunch once in software mode; still no
-  beacon → relaunch into `web` browser mode (system browser, always renders).
+  within 10 s → bounded fallback ladder: relaunch once in software-GL mode; still
+  no beacon → relaunch into `web` browser mode (system browser, always renders).
   Startup logs `webkit_render_mode` so remote diagnosis reads the chosen path.
   `SA_WEBKIT_GPU=1` forces the GPU path with no probe and no sentinel
   (expert/debug).

@@ -13,6 +13,7 @@ from app.shell import _plan_fallback, _relaunch_argv, _watch_renderer, apply_web
 def test_compat_env_software_when_probe_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: False)
     env = apply_webkit_compat_env({})
+    assert env["LIBGL_ALWAYS_SOFTWARE"] == "1"
     assert env["WEBKIT_DISABLE_DMABUF_RENDERER"] == "1"
     assert env["WEBKIT_DISABLE_COMPOSITING_MODE"] == "1"
 
@@ -20,6 +21,7 @@ def test_compat_env_software_when_probe_fails(monkeypatch: pytest.MonkeyPatch) -
 def test_compat_env_gpu_when_probe_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: True)
     env = apply_webkit_compat_env({})
+    assert "LIBGL_ALWAYS_SOFTWARE" not in env
     assert "WEBKIT_DISABLE_DMABUF_RENDERER" not in env
     assert "WEBKIT_DISABLE_COMPOSITING_MODE" not in env
 
@@ -27,13 +29,13 @@ def test_compat_env_gpu_when_probe_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_compat_env_gpu_forced_overrides_probe(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: False)
     env = apply_webkit_compat_env({"SA_WEBKIT_GPU": "1"})
-    assert "WEBKIT_DISABLE_DMABUF_RENDERER" not in env
+    assert "LIBGL_ALWAYS_SOFTWARE" not in env
 
 
 def test_compat_env_soft_fallback_marker_forces_software(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: True)
     env = apply_webkit_compat_env({"SA_WEBKIT_SOFT_FALLBACK": "1"})
-    assert env["WEBKIT_DISABLE_DMABUF_RENDERER"] == "1"
+    assert env["LIBGL_ALWAYS_SOFTWARE"] == "1"
 
 
 def test_compat_env_skips_probe_off_linux(monkeypatch: pytest.MonkeyPatch) -> None:

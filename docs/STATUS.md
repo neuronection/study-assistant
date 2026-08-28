@@ -321,6 +321,18 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **fix(shell): the laptop experiment proved `WEBKIT_DISABLE_*` are
+  no-ops on its webkit — the software rung now uses `LIBGL_ALWAYS_SOFTWARE`
+  (Mesa llvmpipe software GL) instead.** User's forced-env test on the broken
+  machine: both disable vars set externally → GPU process STILL aborted
+  (`EGL_BAD_PARAMETER`) and the page never loaded; the rc.10 ladder then worked
+  exactly as built — software relaunch (dead again) → browser mode rendered
+  fully, beacon `POST /shell/rendered` 204 confirming a painted frame. Since a
+  2.4x GPU process needs *working EGL* (which llvmpipe provides without
+  hardware), the software rung sets `LIBGL_ALWAYS_SOFTWARE=1` alongside the
+  disable-vars (kept for 2.3x/2.40 honor them; no-ops elsewhere). Ladder is now
+  GPU → software-GL → browser. Unit tests updated (23 in the shell suite).
+
 - 2026-08-29 — **fix(shell): rc.9 still white on the broken-EGL laptop — the
   sentinel disarmed in software mode, but software rendering was never proven on
   a broken stack.** The laptop's log (zero HTTP requests, no relaunch) fits the

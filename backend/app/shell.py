@@ -241,6 +241,12 @@ def _egl_probe() -> bool:
         return False
 
 
+def _software_render_env(env: MutableMapping[str, str]) -> None:
+    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
+    env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+
+
 def apply_webkit_compat_env(
     environ: MutableMapping[str, str] | None = None,
 ) -> MutableMapping[str, str]:
@@ -249,8 +255,7 @@ def apply_webkit_compat_env(
         return env
     if env.get("SA_WEBKIT_SOFT_FALLBACK") != "1" and _egl_probe():
         return env
-    env["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
-    env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+    _software_render_env(env)
     return env
 
 
