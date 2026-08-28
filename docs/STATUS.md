@@ -321,6 +321,26 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **feat(shell): WebKitGTK render path is now chosen at runtime —
+  GPU/DMABUF by default, software only where EGL is actually broken**
+  (replaces rc.7's unconditional software default, which the user rejected for
+  drawing performance + battery). `apply_webkit_compat_env` first runs a ~50 ms
+  ctypes EGL probe (`eglGetDisplay`/`eglInitialize` on `libEGL.so.1`): healthy →
+  leave GPU compositing on; failing (the user's laptop:
+  `Could not create default EGL display: EGL_BAD_PARAMETER`) → set
+  `WEBKIT_DISABLE_DMABUF_RENDERER/COMPOSITING_MODE=1` before the window opens
+  (since WebKitGTK ≥ 2.42 DMABUF is the only accelerated path, disabling it is
+  software, so it must not be the default where GPU works). A launch sentinel
+  covers the probe-blind spot: in GPU mode a middleware marks the first request
+  the embedded server receives; if none arrives within 8 s the renderer died
+  white and the app `os.execv`-relaunches itself once in software mode
+  (`SA_WEBKIT_SOFT_FALLBACK=1` marker, cancel event on normal window close — no
+  loops, no false fires on quick close). `SA_WEBKIT_GPU=1` = expert force-GPU
+  (skips probe and sentinel). Verified live on Mint 22.3: probe passes → GPU
+  mode renders (SPA serving); marker-forced software mode renders; 11 new unit
+  tests cover the decision matrix, relaunch argv (frozen/dev) and sentinel
+  paths.
+
 - 2026-08-29 — **fix(shell): white window on WebKitGTK systems whose EGL/DMABUF
   renderer aborts (`Could not create default EGL display: EGL_BAD_PARAMETER`,
   seen on the user's Mint 22 laptop with the rc.6 `.deb`).** WebKitGTK's GPU

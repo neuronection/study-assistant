@@ -1,17 +1,26 @@
+import ctypes
 import json
 import os
 import socket
+import sys
 import threading
+import time
 import webbrowser
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 from pathlib import Path
 from typing import Any, TypedDict
 
+import structlog
 import uvicorn
 import webview
+from fastapi import FastAPI, Request
 
 from .core.config import get_settings
 from .main import create_app
+
+logger = structlog.get_logger(__name__)
+
+_RENDERED_SENTINEL_SEC = 8.0
 
 _SNAP_POLLUTED_VARS = (
     "LD_LIBRARY_PATH",
@@ -215,14 +224,60 @@ def run_browser() -> None:
     )
 
 
+def _egl_probe() -> bool:
+    try:
+        egl = ctypes.CDLL("libEGL.so.1")
+        egl.eglGetDisplay.restype = ctypes.c_void_p
+        egl.eglGetDisplay.argtypes = [ctypes.c_void_p]
+        display = egl.eglGetDisplay(ctypes.c_void_p(0))
+        if not display:
+            return False
+        egl.eglInitialize.restype = ctypes.c_uint32
+        egl.eglInitialize.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+        initialized = egl.eglInitialize(display, None, None)
+        egl.eglTerminate(display)
+        return bool(initialized)
+    except Exception:
+        return False
+
+
 def apply_webkit_compat_env(
     environ: MutableMapping[str, str] | None = None,
 ) -> MutableMapping[str, str]:
     env: MutableMapping[str, str] = os.environ if environ is None else environ
-    if env.get("SA_WEBKIT_GPU") != "1":
-        env["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
-        env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+    if sys.platform != "linux" or env.get("SA_WEBKIT_GPU") == "1":
+        return env
+    if env.get("SA_WEBKIT_SOFT_FALLBACK") != "1" and _egl_probe():
+        return env
+    env["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
+    env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
     return env
+
+
+def _relaunch_argv() -> list[str]:
+    if getattr(sys, "frozen", False):
+        return [sys.executable, *sys.argv[1:]]
+    return [sys.executable, "-m", "studyassistant", *sys.argv[1:]]
+
+
+def _relaunch_self() -> None:
+    os.environ["SA_WEBKIT_SOFT_FALLBACK"] = "1"
+    argv = _relaunch_argv()
+    logger.warning("webkit_renderer_dead_relaunching_software", argv=argv)
+    os.execv(argv[0], argv)
+
+
+def _watch_renderer(
+    app: FastAPI, cancel: threading.Event, timeout_sec: float, relaunch: Callable[[], None]
+) -> None:
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        if getattr(app.state, "spa_loaded", False) or cancel.is_set():
+            return
+        time.sleep(0.25)
+    if cancel.is_set() or getattr(app.state, "spa_loaded", False):
+        return
+    relaunch()
 
 
 def run() -> None:
@@ -231,11 +286,28 @@ def run() -> None:
     settings = get_settings()
     app = create_app(settings)
     port = find_free_port()
+
+    @app.middleware("http")
+    async def _mark_spa_loaded(request: Request, call_next: Callable[..., Any]) -> Any:
+        response = await call_next(request)
+        app.state.spa_loaded = True
+        return response
+
     server = uvicorn.Server(
         uvicorn.Config(app, host=settings.host, port=port, log_level=settings.log_level.lower())
     )
     thread = threading.Thread(target=server.run, name="uvicorn", daemon=True)
     thread.start()
+    sentinel_cancel = threading.Event()
+    gpu_forced = os.environ.get("SA_WEBKIT_GPU") == "1"
+    software_active = os.environ.get("WEBKIT_DISABLE_DMABUF_RENDERER") == "1"
+    if sys.platform == "linux" and not gpu_forced and not software_active:
+        threading.Thread(
+            target=_watch_renderer,
+            args=(app, sentinel_cancel, _RENDERED_SENTINEL_SEC, _relaunch_self),
+            name="webkit-sentinel",
+            daemon=True,
+        ).start()
     state = load_window_state(settings.data_dir, webview.screens)
     created = webview.create_window(
         settings.app_name,
@@ -266,5 +338,6 @@ def run() -> None:
 
     window.events.closed += persist_window_state
     webview.start(private_mode=False, debug=settings.debug)
+    sentinel_cancel.set()
     server.should_exit = True
     thread.join(timeout=5)
