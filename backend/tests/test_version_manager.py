@@ -53,7 +53,36 @@ def test_cli_show_prints_repo_version() -> None:
         ["python3", str(SCRIPT), "show"], capture_output=True, text=True, cwd=REPO_ROOT
     )
     assert result.returncode == 0
-    assert result.stdout.strip() == "0.1.0"
+    assert result.stdout.strip() == vm.current_version()
+
+
+def _git(repo: Path, *args: str) -> str:
+    result = subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    return result.stdout
+
+
+def test_release_commits_dirty_version_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    _git(repo, "config", "commit.gpgsign", "false")
+    version_file = repo / "backend" / "app" / "__init__.py"
+    version_file.parent.mkdir(parents=True)
+    version_file.write_text('__version__ = "0.1.1"\n', encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "init")
+    version_file.write_text('__version__ = "0.1.2"\n', encoding="utf-8")
+    monkeypatch.setattr(vm, "ROOT", repo)
+    monkeypatch.setattr(vm, "VERSION_FILE", version_file)
+    vm.git_release("0.1.2", push=False)
+    assert _git(repo, "log", "-1", "--pretty=%s").strip() == "chore(release): 0.1.2"
+    assert _git(repo, "tag").split() == ["v0.1.2"]
+    assert _git(repo, "status", "--porcelain") == ""
 
 
 def test_set_rejects_invalid_version_untouched(

@@ -319,6 +319,16 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-28 — **fix(release): `scripts/version_manager.py` refused to release when
+  only the version file was dirty.** The `run()` helper `.strip()`ed porcelain
+  output, eating the leading status space, so `line[3:]` chopped a real path
+  character (`ackend/app/__init__.py`) and the dirty-file guard aborted. `run()`
+  gained a `strip` flag and the porcelain parse now uses raw output. Regression
+  test spins up a throwaway git repo and drives `git_release` end to end;
+  `test_cli_show_prints_repo_version` now compares against the parsed source
+  version instead of pinning `0.1.0` (which broke on every bump). Released
+  **v0.1.1** via `bump patch --push`.
+
 - 2026-08-28 — **feat!: product renamed CourseAssistant → Study Assistant
   (user decision; joins the Health-Assistant / Career-Assistant family).**
   Python package `backend/courseassistant` → `backend/studyassistant`

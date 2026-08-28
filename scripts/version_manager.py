@@ -64,19 +64,23 @@ def set_version(new_version: str) -> None:
     VERSION_FILE.write_text(updated, encoding="utf-8")
 
 
-def run(args: list[str], check: bool = True) -> str:
+def run(args: list[str], check: bool = True, strip: bool = True) -> str:
     result = subprocess.run(args, capture_output=True, text=True, cwd=ROOT)
     if check and result.returncode != 0:
         raise RuntimeError(
             f"Command {' '.join(args)} failed (exit {result.returncode}): {result.stderr.strip()}"
         )
-    return result.stdout.strip()
+    return result.stdout.strip() if strip else result.stdout
 
 
 def git_release(version: str, push: bool) -> None:
     run(["git", "rev-parse", "--is-inside-work-tree"])
     rel_version_file = VERSION_FILE.relative_to(ROOT).as_posix()
-    dirty = [line[3:] for line in run(["git", "status", "--porcelain"]).splitlines() if line.strip()]
+    dirty = [
+        line[3:]
+        for line in run(["git", "status", "--porcelain"], strip=False).splitlines()
+        if line.strip()
+    ]
     unexpected = [p for p in dirty if p != rel_version_file]
     if unexpected:
         sys.exit(
