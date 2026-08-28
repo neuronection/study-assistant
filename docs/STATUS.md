@@ -4661,6 +4661,15 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   ~10 worst handwriting photos into `backend/tests/fixtures/golden/{pages,handwriting}/`
   per its README (ADR-019: real scans, not synthetic). OCR golden evals (plan 04
   thresholds) are the last open Phase-1 item once fixtures land.
+- **Flaky tests under parallel workers (observed 2026-08-28, twice)**: timing
+  races in the async chat/job area — `test_select_hidden_subtree_restores_later_turns`
+  (`tests/test_chat_branches.py`, `wait_until` 5 s deadline) and
+  `test_failed_turn_emits_turn_error_and_fails_job` (`tests/test_chat_turn_error.py`,
+  job row still `running` when asserted `failed` right after the WS `turn_error`
+  event). Both pass reliably in isolation and file-runs; both race a DB commit
+  against a polled/asserted observable. Fix properly: poll the DB (or wait on
+  the runner's completion signal) instead of asserting immediately after the
+  event, and/or extend the wait deadline.
 - pnpm was bootstrapped via corepack on this machine; CI uses `pnpm/action-setup@v4`.
 - Playwright e2e smoke is not scaffolded yet (not part of Phase 0 CI per roadmap; comes
   with first user flows).
