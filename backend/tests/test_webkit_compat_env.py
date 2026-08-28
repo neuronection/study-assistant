@@ -7,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 
 import app.shell as shell
-from app.shell import _relaunch_argv, _watch_renderer, apply_webkit_compat_env
+from app.shell import _plan_fallback, _relaunch_argv, _watch_renderer, apply_webkit_compat_env
 
 
 def test_compat_env_software_when_probe_fails(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -46,15 +46,39 @@ def test_compat_env_skips_probe_off_linux(monkeypatch: pytest.MonkeyPatch) -> No
 def test_relaunch_argv_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "executable", "/usr/lib/studyassistant/studyassistant")
-    monkeypatch.setattr(sys, "argv", ["/usr/lib/studyassistant/studyassistant", "web"])
-    assert _relaunch_argv() == ["/usr/lib/studyassistant/studyassistant", "web"]
+    monkeypatch.setattr(sys, "argv", ["/usr/lib/studyassistant/studyassistant"])
+    assert _relaunch_argv("app") == ["/usr/lib/studyassistant/studyassistant", "app"]
 
 
-def test_relaunch_argv_dev(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_relaunch_argv_dev_replaces_mode_keeps_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delattr(sys, "frozen", raising=False)
     monkeypatch.setattr(sys, "executable", "/usr/bin/python3")
-    monkeypatch.setattr(sys, "argv", ["backend/studyassistant/__main__.py", "web"])
-    assert _relaunch_argv() == ["/usr/bin/python3", "-m", "studyassistant", "web"]
+    monkeypatch.setattr(
+        sys, "argv", ["backend/studyassistant/__main__.py", "web", "--flag"]
+    )
+    assert _relaunch_argv("app") == [
+        "/usr/bin/python3",
+        "-m",
+        "studyassistant",
+        "--flag",
+        "app",
+    ]
+
+
+def test_plan_fallback_first_step_software() -> None:
+    env: dict[str, str] = {}
+    mode, event = _plan_fallback(env)
+    assert mode == "app"
+    assert event == "webkit_renderer_dead_relaunching_software"
+    assert env["SA_WEBKIT_SOFT_FALLBACK"] == "1"
+
+
+def test_plan_fallback_second_step_browser() -> None:
+    env = {"SA_WEBKIT_SOFT_FALLBACK": "1"}
+    mode, event = _plan_fallback(env)
+    assert mode == "web"
+    assert event == "webkit_still_dead_relaunching_browser_mode"
+    assert env["SA_WEBKIT_BROWSER_FALLBACK"] == "1"
 
 
 def _app_with_state(**attrs: object) -> FastAPI:

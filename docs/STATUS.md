@@ -321,6 +321,21 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **fix(shell): rc.9 still white on the broken-EGL laptop — the
+  sentinel disarmed in software mode, but software rendering was never proven on
+  a broken stack.** The laptop's log (zero HTTP requests, no relaunch) fits the
+  sequence: probe fails → disable-vars set → webview white anyway (some 2.4x
+  stacks still spawn the aborting GPU process) → sentinel disarmed by the
+  `software_active` condition → stuck white. The sentinel is now armed in every
+  desktop mode and drives a bounded fallback ladder: GPU → software (one
+  relaunch, `SA_WEBKIT_SOFT_FALLBACK`) → **browser mode** (`web` — system
+  browser, always renders; `SA_WEBKIT_BROWSER_FALLBACK`), two relaunches max,
+  then no loops (browser mode has no sentinel). Startup now logs
+  `webkit_render_mode` (gpu/software/forced-gpu) so the chosen path is visible
+  in user logs. `_relaunch_argv` gained a mode parameter that replaces any
+  existing mode word but keeps flags; `_plan_fallback` is unit-tested for both
+  steps.
+
 - 2026-08-29 — **fix(shell): rc.8 still white-screened on the broken-EGL laptop —
   the sentinel's "SPA served = renderer alive" signal was wrong.** The rc.8 probe
   passed on that machine (plain `eglGetDisplay`/`eglInitialize` succeeds via

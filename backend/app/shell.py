@@ -254,16 +254,28 @@ def apply_webkit_compat_env(
     return env
 
 
-def _relaunch_argv() -> list[str]:
+_MODE_WORDS = {"app", "web", "mcp", "reset"}
+
+
+def _relaunch_argv(mode: str) -> list[str]:
+    extra = [arg for arg in sys.argv[1:] if arg not in _MODE_WORDS]
     if getattr(sys, "frozen", False):
-        return [sys.executable, *sys.argv[1:]]
-    return [sys.executable, "-m", "studyassistant", *sys.argv[1:]]
+        return [sys.executable, *extra, mode]
+    return [sys.executable, "-m", "studyassistant", *extra, mode]
+
+
+def _plan_fallback(env: MutableMapping[str, str]) -> tuple[str, str]:
+    if env.get("SA_WEBKIT_SOFT_FALLBACK") == "1":
+        env["SA_WEBKIT_BROWSER_FALLBACK"] = "1"
+        return "web", "webkit_still_dead_relaunching_browser_mode"
+    env["SA_WEBKIT_SOFT_FALLBACK"] = "1"
+    return "app", "webkit_renderer_dead_relaunching_software"
 
 
 def _relaunch_self() -> None:
-    os.environ["SA_WEBKIT_SOFT_FALLBACK"] = "1"
-    argv = _relaunch_argv()
-    logger.warning("webkit_renderer_dead_relaunching_software", argv=argv)
+    mode, event = _plan_fallback(os.environ)
+    argv = _relaunch_argv(mode)
+    logger.warning(event, argv=argv)
     os.execv(argv[0], argv)
 
 
@@ -293,8 +305,11 @@ def run() -> None:
     thread.start()
     sentinel_cancel = threading.Event()
     gpu_forced = os.environ.get("SA_WEBKIT_GPU") == "1"
-    software_active = os.environ.get("WEBKIT_DISABLE_DMABUF_RENDERER") == "1"
-    if sys.platform == "linux" and not gpu_forced and not software_active:
+    render_mode = "forced-gpu" if gpu_forced else (
+        "software" if os.environ.get("WEBKIT_DISABLE_DMABUF_RENDERER") == "1" else "gpu"
+    )
+    logger.info("webkit_render_mode", mode=render_mode)
+    if sys.platform == "linux" and not gpu_forced:
         threading.Thread(
             target=_watch_renderer,
             args=(app, sentinel_cancel, _RENDERED_SENTINEL_SEC, _relaunch_self),
