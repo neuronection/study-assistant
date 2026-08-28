@@ -321,6 +321,20 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **fix(shell): rc.8 still white-screened on the broken-EGL laptop —
+  the sentinel's "SPA served = renderer alive" signal was wrong.** The rc.8 probe
+  passed on that machine (plain `eglGetDisplay`/`eglInitialize` succeeds via
+  glvnd while WebKitGTK's DMABUF/GBM GPU process still aborts — the
+  probe-blind-spot class), and the page can *load and run JS* while the
+  compositor is dead, so request-based liveness never triggered the fallback.
+  The signal is now a **painted-frame beacon**: the SPA fires a
+  double-`requestAnimationFrame` `POST /api/v1/shell/rendered` after its first
+  rendered frame (rAF never fires when the compositor is dead, so white windows
+  can't fake liveness); the sentinel (10 s) relaunches once in software mode if
+  no beacon arrives. New endpoint in `api/health.py`, `RenderBeacon` in the SPA
+  root, per-load once-guard; backend 748 · frontend 837 tests green (endpoint
+  state test, beacon timing/once tests, sentinel matrix updated).
+
 - 2026-08-29 — **feat(shell): WebKitGTK render path is now chosen at runtime —
   GPU/DMABUF by default, software only where EGL is actually broken**
   (replaces rc.7's unconditional software default, which the user rejected for

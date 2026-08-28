@@ -85,3 +85,13 @@ def test_explicit_spa_dist_without_index_not_served(tmp_path: Path) -> None:
     app = create_app(settings)
     with TestClient(app) as client:
         assert client.get("/").json()["detail"].startswith("frontend not built")
+
+
+def test_shell_rendered_beacon_sets_state(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path, spa_dist=tmp_path / "missing-dist", log_level="WARNING")
+    app = create_app(settings)
+    assert getattr(app.state, "spa_rendered", False) is False
+    with TestClient(app) as client:
+        response = client.post("/api/v1/shell/rendered")
+    assert response.status_code == 204
+    assert app.state.spa_rendered is True

@@ -72,7 +72,7 @@ def test_watch_renderer_relaunches_when_page_never_loads() -> None:
 
 
 def test_watch_renderer_quiet_when_page_loaded() -> None:
-    app = _app_with_state(spa_loaded=True)
+    app = _app_with_state(spa_rendered=True)
     fired: list[bool] = []
     _watch_renderer(app, threading.Event(), 0.3, lambda: fired.append(True))
     assert fired == []
@@ -99,6 +99,6 @@ def test_watch_renderer_no_relaunch_loop_after_success() -> None:
     )
     thread.start()
     time.sleep(0.1)
-    app.state.spa_loaded = True
+    app.state.spa_rendered = True
     thread.join()
     assert marker.relaunched is False

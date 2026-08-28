@@ -197,11 +197,14 @@ a single portable file.
   healthy → GPU/DMABUF compositing stays on (accelerated drawing, battery-friendly);
   probe fails → `WEBKIT_DISABLE_DMABUF_RENDERER=1` +
   `WEBKIT_DISABLE_COMPOSITING_MODE=1` are set (software rasterizer) before the
-  window opens. A launch sentinel covers the rare probe-passes-but-renderer-dies
-  case: in GPU mode, if no request reaches the embedded server within 8 s of
-  startup, the app relaunches itself once in software mode
-  (`SA_WEBKIT_SOFT_FALLBACK=1` marker prevents loops). `SA_WEBKIT_GPU=1` forces
-  the GPU path with no probe and no sentinel (expert/debug).
+  window opens. The probe can pass while WebKit's DMABUF/GBM path still fails
+  (seen on X11 hybrid/NVIDIA stacks), so a **painted-frame sentinel** is the ground
+  truth: after the SPA's first rendered frame it fires a double-`requestAnimationFrame`
+  beacon to `POST /api/v1/shell/rendered`; if no beacon arrives within 10 s, the
+  renderer never painted and the app relaunches itself once in software mode
+  (`SA_WEBKIT_SOFT_FALLBACK=1` marker prevents loops; rAF never fires when the
+  compositor is dead, so a white-but-loading page still triggers the fallback).
+  `SA_WEBKIT_GPU=1` forces the GPU path with no probe and no sentinel (expert/debug).
 - The app finds its bundled SPA under `sys._MEIPASS/frontend/dist` when frozen; it
   never writes user data into the install location. Data dirs are platform-aware:
   Linux `~/.local/share/StudyAssistant` (or `$XDG_DATA_HOME`), Windows

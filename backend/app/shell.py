@@ -13,14 +13,14 @@ from typing import Any, TypedDict
 import structlog
 import uvicorn
 import webview
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
 from .core.config import get_settings
 from .main import create_app
 
 logger = structlog.get_logger(__name__)
 
-_RENDERED_SENTINEL_SEC = 8.0
+_RENDERED_SENTINEL_SEC = 10.0
 
 _SNAP_POLLUTED_VARS = (
     "LD_LIBRARY_PATH",
@@ -272,10 +272,10 @@ def _watch_renderer(
 ) -> None:
     deadline = time.monotonic() + timeout_sec
     while time.monotonic() < deadline:
-        if getattr(app.state, "spa_loaded", False) or cancel.is_set():
+        if getattr(app.state, "spa_rendered", False) or cancel.is_set():
             return
         time.sleep(0.25)
-    if cancel.is_set() or getattr(app.state, "spa_loaded", False):
+    if cancel.is_set() or getattr(app.state, "spa_rendered", False):
         return
     relaunch()
 
@@ -286,13 +286,6 @@ def run() -> None:
     settings = get_settings()
     app = create_app(settings)
     port = find_free_port()
-
-    @app.middleware("http")
-    async def _mark_spa_loaded(request: Request, call_next: Callable[..., Any]) -> Any:
-        response = await call_next(request)
-        app.state.spa_loaded = True
-        return response
-
     server = uvicorn.Server(
         uvicorn.Config(app, host=settings.host, port=port, log_level=settings.log_level.lower())
     )
