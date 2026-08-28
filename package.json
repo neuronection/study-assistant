@@ -1,0 +1,13 @@
+{
+  "name": "studyassistant",
+  "private": true,
+  "scripts": {
+    "app": "bash scripts/app.sh",
+    "dev": "bash scripts/dev.sh",
+    "dev:backend": "uv run --directory backend uvicorn app.main:app --reload",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "verify:backend": "uv run --directory backend ruff check . && uv run --directory backend mypy . && uv run --directory backend pytest",
+    "verify:frontend": "pnpm --filter frontend verify",
+    "webapp": "bash scripts/webapp.sh"
+  }
+}

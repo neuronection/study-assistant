@@ -1,0 +1,174 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      SA_DATA_DIR: ${{ runner.temp }}/sa-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter frontend lint
+      - run: pnpm --filter frontend typecheck
+      - run: pnpm --filter frontend test
+      - run: pnpm --filter frontend build
+      - run: uv sync
+      - run: uv run --directory backend ruff check .
+      - run: uv run --directory backend mypy .
+      - run: uv run --directory backend pytest
+      - run: uv run --directory backend alembic upgrade head
+
+  linux:
+    needs: test
+    runs-on: ubuntu-24.04
+    env:
+      SA_DATA_DIR: ${{ runner.temp }}/sa-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install WebKitGTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0t64 libwebkit2gtk-4.1-0t64 gir1.2-webkit2-4.1 file
+      - run: uv sync
+      - name: Check tag matches app version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(uv run --directory backend python -c 'import app; print(app.__version__)')"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "tag v$tag does not match app version $version" >&2
+            exit 1
+          fi
+      - run: pnpm install --frozen-lockfile
+      - name: Download appimagetool
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool-x86_64.AppImage" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+      - name: Build deb + AppImage
+        run: |
+          APPIMAGETOOL="$RUNNER_TEMP/appimagetool-x86_64.AppImage" \
+            packaging/build-linux.sh all
+      - name: Smoke test (headless web mode)
+        env:
+          SA_PORT: "8975"
+        run: |
+          backend/dist/studyassistant/studyassistant web &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8975/api/v1/health | grep -q '"ok"'; then exit 0; fi
+            sleep 1
+          done
+          echo "health check timed out" >&2
+          exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            packaging/*.deb
+            packaging/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    env:
+      SA_DATA_DIR: ${{ runner.temp }}\sa-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: uv sync
+      - name: Check tag matches app version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version="$(uv run --directory backend python -c 'import app; print(app.__version__)')"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "tag v$tag does not match app version $version" >&2
+            exit 1
+          fi
+      - run: pnpm install --frozen-lockfile
+      - name: Build frontend
+        run: pnpm --filter frontend build
+      - name: PyInstaller onefile exe
+        env:
+          SA_ONEFILE: "1"
+        run: uv run --directory backend pyinstaller --clean --noconfirm ../packaging/studyassistant.spec
+      - name: Smoke test (headless web mode)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "backend/dist/StudyAssistant.exe" -ArgumentList "web" -PassThru -NoNewWindow
+          $ok = $false
+          foreach ($i in 1..90) {
+            Start-Sleep -Seconds 2
+            try {
+              $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/health" -TimeoutSec 2
+              if ($health.status -eq "ok") { $ok = $true; break }
+            } catch {}
+          }
+          taskkill /PID $p.Id /T /F 2>$null
+          if (-not $ok) { throw "health check timed out" }
+      - name: Rename artifact
+        shell: pwsh
+        run: |
+          $version = (uv run --directory backend python -c 'import app; print(app.__version__)').Trim()
+          Copy-Item "backend/dist/StudyAssistant.exe" "packaging/StudyAssistant-$version-windows-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-executable
+          path: packaging/StudyAssistant-*-windows-x64.exe
+          if-no-files-found: error
+
+  release:
+    needs: [linux, windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true

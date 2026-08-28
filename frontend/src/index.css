@@ -1,0 +1,125 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/600.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --surface: oklch(0.985 0.003 90);
+  --subtle: oklch(0.948 0.005 90);
+  --border: oklch(0.902 0.005 90);
+  --foreground: oklch(0.235 0.012 90);
+  --muted-foreground: oklch(0.5 0.012 90);
+  --primary: oklch(0.55 0.16 258);
+  --primary-foreground: oklch(0.985 0.003 90);
+  --success: oklch(0.62 0.15 152);
+  --warning: oklch(0.72 0.15 78);
+  --danger: oklch(0.58 0.19 27);
+  --ring: oklch(0.55 0.16 258);
+  --radius: 0.625rem;
+}
+
+.dark {
+  --surface: oklch(0.212 0.008 260);
+  --subtle: oklch(0.262 0.01 260);
+  --border: oklch(0.332 0.012 260);
+  --foreground: oklch(0.93 0.004 90);
+  --muted-foreground: oklch(0.7 0.012 90);
+  --primary: oklch(0.7 0.14 252);
+  --primary-foreground: oklch(0.16 0.01 260);
+  --success: oklch(0.71 0.14 152);
+  --warning: oklch(0.79 0.14 80);
+  --danger: oklch(0.66 0.17 27);
+  --ring: oklch(0.7 0.14 252);
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--surface);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media print {
+  aside,
+  [data-chat-panel],
+  button {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+  body {
+    background: white !important;
+  }
+}
+
+.markmap-foreign,
+.markmap-foreign * {
+  cursor: pointer;
+}
+
+@keyframes chat-dot-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.chat-dot {
+  animation: chat-dot-bounce 1.15s ease-in-out infinite;
+}
+
+@keyframes chat-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.chat-caret::after {
+  content: '▍';
+  animation: chat-caret-blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-dot,
+  .chat-caret::after {
+    animation: none;
+  }
+}
