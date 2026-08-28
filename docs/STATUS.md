@@ -321,6 +321,25 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-28 — **fix(storage): `database is locked` killed backup restore under
+  concurrent DB access (CI test-job failure).** Three compounding issues: backup
+  archives are deliberately rollback-journal (`DELETE`) DBs for portability, so
+  after a restore the next new connection must **convert** the file to WAL,
+  which needs a brief exclusive lock; `_set_pragmas` ran `PRAGMA
+  journal_mode=WAL` **before** setting `busy_timeout`, so the conversion raced
+  any concurrent lock-holder (the 5 s jobs-runner poller, whose live connection
+  `engine.dispose()` cannot revoke) with timeout 0 and failed instantly; and
+  `_apply_restore` wrote the restored file with `write_bytes`
+  (truncate-in-place), so a poller reading mid-overwrite saw a half-written DB
+  (`no such table: jobs`). Fixes: pragmas reordered with `busy_timeout=30000`
+  first, plus a bounded retry loop (10 × 0.25 s) around the WAL conversion —
+  verified empirically that `PRAGMA journal_mode=WAL` raises BUSY immediately
+  without honoring the busy handler; restore now writes `app.db.restore-tmp`
+  and swaps it in with `os.replace` (atomic). New `tests/test_storage_db.py`
+  pins all three behaviors (conversion succeeds against a write-locked
+  DELETE-mode DB, give-up path, fresh-connection pragma set). Backend 736
+  green.
+
 - 2026-08-28 — **fix(ci): `ci.yml` backend job still installed
   `libgirepository-2.0-dev`, so `uv sync` died building pygobject**
   (`Dependency 'gobject-introspection-1.0' is required but not found`) — the

@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -167,7 +168,12 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
         settings.db_path.with_name(settings.db_path.name + "-shm"),
     ):
         sidecar.unlink(missing_ok=True)
-    settings.db_path.write_bytes(database)
+    tmp_path = settings.db_path.with_name(settings.db_path.name + ".restore-tmp")
+    try:
+        tmp_path.write_bytes(database)
+        os.replace(tmp_path, settings.db_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
     for rel_path, blob_data in blobs.items():
         target = settings.blobs_dir / rel_path
         target.parent.mkdir(parents=True, exist_ok=True)
