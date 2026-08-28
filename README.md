@@ -1,5 +1,7 @@
 # Study Assistant
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+
 AI-powered, local-first desktop study workbench (Python backend + React SPA in a pywebview
 window). Math-first, subject-agnostic by design. Status: see `docs/STATUS.md`.
 
@@ -47,3 +49,7 @@ to 8000 (`SA_PORT` to override).
 pnpm verify:backend                       # ruff + mypy + pytest
 pnpm verify:frontend                      # eslint + tsc + vitest + build
 ```
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
