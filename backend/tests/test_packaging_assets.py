@@ -70,3 +70,12 @@ def test_release_workflow_covers_tag_and_artifacts() -> None:
         "generate_release_notes",
     ):
         assert needle in workflow, f"release workflow missing {needle}"
+
+
+def test_ci_workflow_installs_girepository_1_0_dev() -> None:
+    workflow = _read(".github/workflows/ci.yml")
+    assert "libgirepository1.0-dev" in workflow, "ci workflow missing libgirepository1.0-dev"
+    assert (
+        "libgirepository-2.0-dev" not in workflow
+    ), "ci workflow installs girepository-2.0; pygobject 3.50 needs gobject-introspection-1.0"
+    assert "uv sync --frozen" in workflow

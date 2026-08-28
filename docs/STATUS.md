@@ -321,6 +321,21 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-28 — **fix(ci): `ci.yml` backend job still installed
+  `libgirepository-2.0-dev`, so `uv sync` died building pygobject**
+  (`Dependency 'gobject-introspection-1.0' is required but not found`) — the
+  same failure 55c4379 fixed in `release.yml`, but in the CI workflow, which
+  the fix round missed. `libgirepository-2.0-dev` provides the **new**
+  `girepository-2.0` API; pygobject 3.50 (pinned `<3.51` for jammy) builds
+  against the old `gobject-introspection-1.0` pkg-config, provided by
+  `libgirepository1.0-dev` (exists on jammy and noble; verified on
+  packages.ubuntu.com). The pin moved pygobject 3.56.3 → 3.50.2 in the lock,
+  which invalidated setup-uv's built-wheel cache and exposed the latent wrong
+  dep on the `ubuntu-latest` (noble) runner. ci.yml now installs
+  `libgirepository1.0-dev` and uses `uv sync --frozen` like release.yml; new
+  `test_ci_workflow_installs_girepository_1_0_dev` pins the dep set so CI and
+  release workflows can't drift apart again.
+
 - 2026-08-28 — **fix(packaging): Linux `.deb`/`.AppImage` failed on clean Mint 21.x
   machines with `libm.so.6: version 'GLIBC_2.38' not found (required by …
   libpython3.12.so.1.0)`.** The release `linux` job built on `ubuntu-24.04`, where
