@@ -1,7 +1,20 @@
+import time
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+
+
+def wait_for_ingest(client: TestClient, material_id: int, timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        status = client.get(f"/api/v1/materials/{material_id}").json()["material"][
+            "status"
+        ]
+        if status == "ready":
+            return
+        time.sleep(0.05)
+    raise AssertionError("material never became ready")
 
 
 def make_course(client: TestClient, title: str) -> int:
@@ -109,6 +122,7 @@ def test_delete_cascades_subtree(client: TestClient, text_pdf: bytes) -> None:
     )
     assert upload_response.status_code == 200
     material_id = int(upload_response.json()["material"]["id"])
+    wait_for_ingest(client, material_id)
 
     response = client.delete(f"/api/v1/folders/{child['id']}")
     assert response.status_code == 204

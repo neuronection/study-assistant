@@ -5,10 +5,14 @@ from pathlib import Path
 from typing import Any
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway
 
 from app.core.config import Settings
+from app.domain.models import ChatSession
 from app.main import create_app
+from app.services.chat import ChatService
+from app.services.profiles import ensure_default_profile
 
 
 class Harness:
@@ -232,3 +236,34 @@ def test_branch_tree_endpoint_exposes_full_tree(tmp_path: Path) -> None:
         assert original_answer["parent_id"] == original_user_id
         assert nodes[original_user_id]["children"] == [original[1]["id"]]
         assert all(node["excerpt"] for node in nodes.values())
+
+
+def test_pending_message_chains_under_later_assistant_reply(
+    db_session: Session,
+) -> None:
+    profile = ensure_default_profile(db_session)
+    session_row = ChatSession(profile_id=profile.id, title="t")
+    db_session.add(session_row)
+    db_session.flush()
+    service = ChatService(db_session, ScriptedGateway([]), NoEmbedder())
+    root = service.add_message(session_row.id, "user", "q")
+    a1 = service.add_message(session_row.id, "assistant", "a1")
+    a1.parent_id = root.id
+    branched = service.branch_message(root, "branch q")
+    under = service.add_message(
+        session_row.id, "user", "under branch", parent_id=branched.id
+    )
+    a2 = service.add_message(session_row.id, "assistant", "a2-edited")
+    a2.parent_id = branched.id
+    branched.active_child_id = a2.id
+    db_session.flush()
+
+    service.chain_under_later_reply(under)
+
+    assert under.parent_id == a2.id
+
+    p = service.add_message(session_row.id, "user", "follow", parent_id=a1.id)
+    edited = service.branch_message(p, "follow edited")
+    db_session.flush()
+    service.chain_under_later_reply(edited)
+    assert edited.parent_id == a1.id

@@ -196,6 +196,15 @@ def create_app(
     app.state.describer = (
         describer if describer is not None else GatewayDescriber(app.state.gateway)
     )
+
+    def _chat_turn_group(job: Any) -> str | None:
+        if job.type != "chat_turn":
+            return None
+        chat_session_id = (job.payload or {}).get("chat_session_id")
+        if chat_session_id is None:
+            return None
+        return f"chat:{chat_session_id}"
+
     app.state.jobs = JobRunner(
         app.state.session_factory,
         app.state.bus,
@@ -208,6 +217,7 @@ def create_app(
                 app.state.gateway, app.state.embedder, app.state.bus
             ),
         },
+        group_key=_chat_turn_group,
     )
 
     app.include_router(api_router, prefix="/api/v1")

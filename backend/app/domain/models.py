@@ -274,7 +274,9 @@ class Material(Base):
     file_size: Mapped[int | None] = mapped_column(Integer)
 
     extractions: Mapped[list["Extraction"]] = relationship(
-        back_populates="material", order_by="Extraction.version"
+        back_populates="material",
+        order_by="Extraction.version",
+        passive_deletes=True,
     )
     drawings: Mapped[list["MaterialDrawing"]] = relationship(
         back_populates="material", cascade="all, delete-orphan"

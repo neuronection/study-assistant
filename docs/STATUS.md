@@ -319,6 +319,40 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-28 — **fix(chat+jobs): release-gate CI flake — send-during-edit-turn race
+  crashed the follow-up turn.** `test_select_hidden_subtree_restores_later_turns`
+  failed on CI ("no pending user message", job 3): `POST /chat/sessions/{id}/messages`
+  enqueued `chat_turn` **without** `user_message_id`, relying on a "last message is
+  user" heuristic — when the send landed after the edit job was enqueued but before
+  its handler claimed it, the edit's assistant reply committed first, the heuristic
+  saw an assistant tail, and the follow-up turn failed; the reply also hijacked the
+  active path (branched root's `active_child_id` overwritten). Three-part fix:
+  (1) send enqueues the explicit `user_message_id` like edit/regenerate;
+  (2) new `ChatService.chain_under_later_reply` — when the pending user message's
+  parent gained an assistant reply *after* the pending message was created, the
+  pending message chains under it, so a send typed mid-turn linearizes as
+  user → reply → follow-up → answer; (3) `JobRunner` gained an optional `group_key`
+  and skips claiming a job whose group (chat turns grouped per `chat_session_id`)
+  still has an earlier queued/running job — per-session turns now run strictly in
+  enqueue order (the FIFO the plan-40A turn lock intended; other job types stay
+  fully parallel). Tests: runner group-FIFO test + `chain_under_later_reply` unit
+  test; backend 722 green.
+
+- 2026-08-28 — **fix(materials): folder delete racing a still-running ingest job
+  crashed with `NOT NULL constraint failed: extractions.material_id`.**
+  `test_delete_cascades_subtree` deleted the folder while the upload's async ingest
+  job was mid-flight: `purge_material` bulk-deletes extraction rows before
+  `session.delete(material)`, but `Material.extractions` had default (non-passive)
+  cascade — the flush re-loaded children and any extraction committed by the ingest
+  job in between triggered SQLAlchemy's null-the-FK UPDATE against the non-nullable
+  column → `IntegrityError` → 500. Relationship now `passive_deletes=True`
+  (children are always purged explicitly; the DB FK, not the ORM, is the safety
+  net — a material deleted mid-ingest now fails its ingest job loudly instead of
+  corrupting the delete). The test now waits for the material to reach `ready`
+  before deleting, matching `test_materials_api`. Deeper hardening (cancel/
+  re-validate in-flight ingest jobs whose material disappears) deferred — see
+  Open issues.
+
 - 2026-08-28 — **fix(ci): release `linux` job could not install WebKitGTK —
   `libwebkit2gtk-4.1-0t64` does not exist.** Ubuntu noble's t64 time_t rename
   hit GTK3 (`libgtk-3-0t64`) but **not** webkit2gtk, whose runtime package on
@@ -4467,6 +4501,12 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
 
 ## Open issues
 
+- **Delete-during-ingest hardening (2026-08-28)**: deleting a material/folder/course
+  while its ingest (or postprocess) job is running no longer corrupts the delete
+  (`passive_deletes` fix), but the in-flight job still isn't cancelled or
+  re-validated — it fails on the FK (or posts to a replaced material). surfaced by
+  the v0.1.1 release-gate CI flake; proper fix = job-side stale check right before
+  commit + cancel-on-purge, worth a small dedicated round.
 - **JSXGraph uses `eval` internally (plan 34C, 2026-08-24)**: `jsxgraph`'s bundled
   JessieCode/math evaluation (`createFunction`/parser) calls `eval`/`new Function` on
   expression strings — library code, not ours, and reachable only via the `geo` block's

@@ -13,6 +13,7 @@ logger = structlog.get_logger(__name__)
 
 ProgressReporter = Callable[[int, str], None]
 JobHandler = Callable[[Session, Job, ProgressReporter], None]
+GroupKey = Callable[[Job], str | None]
 
 INTERRUPTED_ERROR = (
     "interrupted: the backend restarted before this job finished — please retry"
@@ -32,6 +33,7 @@ class JobRunner:
         poll_interval: float = 0.2,
         workers: int = 4,
         job_timeout_sec: float | None = None,
+        group_key: GroupKey | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._bus = bus
@@ -39,6 +41,7 @@ class JobRunner:
         self._poll_interval = poll_interval
         self._workers = max(1, workers)
         self._job_timeout_sec = job_timeout_sec
+        self._group_key = group_key
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
@@ -90,24 +93,53 @@ class JobRunner:
             session.commit()
             return int(cast(Any, result).rowcount or 0)
 
+    def _group_of(self, job: Job) -> str | None:
+        if self._group_key is None:
+            return None
+        try:
+            return self._group_key(job)
+        except Exception:
+            return None
+
+    def _blocked_by_group(self, session: Session, job: Job) -> bool:
+        group = self._group_of(job)
+        if group is None:
+            return False
+        earlier = session.scalars(
+            select(Job)
+            .where(
+                Job.status.in_(["queued", "running"]),
+                Job.id < job.id,
+                Job.type == job.type,
+            )
+            .order_by(Job.id)
+            .limit(100)
+        ).all()
+        return any(self._group_of(other) == group for other in earlier)
+
     def _claim_next(self) -> Job | None:
         with self._session_factory() as session:
-            job = session.scalars(
-                select(Job).where(Job.status == "queued").order_by(Job.id).limit(1)
-            ).first()
-            if job is None:
-                return None
-            claimed = session.execute(
-                update(Job)
-                .where(Job.id == job.id, Job.status == "queued")
-                .values(status="running", started_at=utcnow())
-            )
-            session.commit()
-            if not bool(cast(Any, claimed).rowcount):
-                return None
-            session.refresh(job)
-            session.expunge(job)
-            return job
+            candidates = session.scalars(
+                select(Job)
+                .where(Job.status == "queued")
+                .order_by(Job.id)
+                .limit(25)
+            ).all()
+            for job in candidates:
+                if self._blocked_by_group(session, job):
+                    continue
+                claimed = session.execute(
+                    update(Job)
+                    .where(Job.id == job.id, Job.status == "queued")
+                    .values(status="running", started_at=utcnow())
+                )
+                session.commit()
+                if not bool(cast(Any, claimed).rowcount):
+                    continue
+                session.refresh(job)
+                session.expunge(job)
+                return job
+            return None
 
     def _run(self) -> None:
         while not self._stop.is_set():

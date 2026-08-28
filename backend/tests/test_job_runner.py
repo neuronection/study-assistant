@@ -8,12 +8,16 @@ from sqlalchemy.orm import Session
 from alembic import command
 from app.core.events import EventBus
 from app.domain.models import Job
-from app.jobs.runner import JobError, JobHandler, JobRunner
+from app.jobs.runner import GroupKey, JobError, JobHandler, JobRunner
 from app.storage.db import make_engine, make_session_factory
 
 
 def make_runner(
-    tmp_path: Path, handler: JobHandler, workers: int = 1, job_timeout_sec: float | None = None
+    tmp_path: Path,
+    handler: JobHandler,
+    workers: int = 1,
+    job_timeout_sec: float | None = None,
+    group_key: GroupKey | None = None,
 ) -> tuple[JobRunner, EventBus]:
     db_path = tmp_path / "runner.db"
     config = Config("alembic.ini")
@@ -30,6 +34,7 @@ def make_runner(
             poll_interval=0.02,
             workers=workers,
             job_timeout_sec=job_timeout_sec,
+            group_key=group_key,
         ),
         bus,
     )
@@ -169,6 +174,36 @@ def test_runner_worker_pool_processes_jobs_concurrently(tmp_path: Path) -> None:
     finally:
         runner.stop()
     assert elapsed < 0.85  # 3 x 0.3s serial would be ~0.9s; pool runs them in parallel
+
+
+def test_runner_grouped_jobs_run_in_enqueue_order(tmp_path: Path) -> None:
+    events: list[str] = []
+
+    def handler(session: Session, job: Job, report: Any) -> None:
+        events.append(f"start:{job.id}")
+        time.sleep(0.25)
+        events.append(f"end:{job.id}")
+
+    def group(job: Job) -> str | None:
+        key = (job.payload or {}).get("k")
+        return str(key) if key is not None else None
+
+    runner, _bus = make_runner(tmp_path, handler, workers=3, group_key=group)
+    first = enqueue(runner, "noop", {"k": "s1"})
+    second = enqueue(runner, "noop", {"k": "s1"})
+    other = enqueue(runner, "noop", {"k": "s2"})
+    runner.start()
+    try:
+        wait_until(
+            lambda: all(
+                job_status(runner, job_id) == "done"
+                for job_id in (first, second, other)
+            )
+        )
+    finally:
+        runner.stop()
+    assert events.index(f"end:{first}") < events.index(f"start:{second}")
+    assert events.index(f"start:{other}") < events.index(f"end:{first}")
 
 
 def test_runner_timeout_marks_failed(tmp_path: Path) -> None:

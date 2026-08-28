@@ -318,6 +318,20 @@ class ChatService:
         if parent is not None:
             parent.active_child_id = target.id
 
+    def chain_under_later_reply(self, pending: ChatMessage) -> None:
+        if pending.parent_id is None:
+            return
+        parent = self._session.get(ChatMessage, pending.parent_id)
+        if parent is None or parent.active_child_id is None:
+            return
+        active = self._session.get(ChatMessage, parent.active_child_id)
+        if (
+            active is not None
+            and active.role == "assistant"
+            and active.id > pending.id
+        ):
+            pending.parent_id = active.id
+
     def _log_interaction(
         self,
         chat_session_id: int,

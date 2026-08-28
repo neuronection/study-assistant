@@ -693,7 +693,9 @@ def send_message(
             parent_id=service.active_tip(session_id),
         )
         job = JobRunner.enqueue(
-            session, "chat_turn", {"chat_session_id": session_id}
+            session,
+            "chat_turn",
+            {"chat_session_id": session_id, "user_message_id": user_message.id},
         )
     session.commit()
     request.app.state.jobs.wake()
@@ -849,6 +851,7 @@ def make_chat_turn_handler(gateway: Any, embedder: Any, bus: EventBus) -> JobHan
                 if not messages or messages[-1].role != "user":
                     raise JobError("no pending user message")
                 pending = messages[-1]
+            service.chain_under_later_reply(pending)
 
             def emit(event: dict[str, Any]) -> None:
                 bus.publish_threadsafe(f"chat:{chat_session.id}", event)
