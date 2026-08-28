@@ -321,6 +321,36 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-28 — **fix(packaging): Linux `.deb`/`.AppImage` failed on clean Mint 21.x
+  machines with `libm.so.6: version 'GLIBC_2.38' not found (required by …
+  libpython3.12.so.1.0)`.** The release `linux` job built on `ubuntu-24.04`, where
+  uv's interpreter discovery (`setup-uv` `python-version: "3.12"`) picked the
+  **distro Python 3.12** — Ubuntu 24.04's `libpython3.12.so.1.0` references
+  `__isoc23_*` and `fmod` at `GLIBC_2.38` (verified with `objdump -T`; the `fmod`
+  one is the libm error above), and PyInstaller bundles that libpython verbatim, so
+  every artifact inherited a glibc ≥ 2.38 floor (Mint 21.x = glibc 2.35 → crash at
+  launch; user's own Mint 22.3 = 2.39 → worked, which masked it). Fix: build on
+  **`ubuntu-22.04`** (glibc 2.35 floor, build-old/run-new) with the **deadsnakes
+  distro Python 3.12**, pinned fail-closed via job env `UV_PYTHON=3.12`,
+  `UV_PYTHON_DOWNLOADS=never`, `UV_PYTHON_PREFERENCE=only-system` (without
+  `UV_PYTHON` uv settles on `/usr/bin/python3` 3.10 and `uv sync` dies on
+  `requires-python`); apt line moved to jammy names (`libgtk-3-0`,
+  `libgirepository1.0-dev` — also in the `test` job, replacing
+  `libgirepository-2.0-dev`) and `uv sync --frozen`. **PyGObject pinned
+  `>=3.50,<3.51`** in `backend/pyproject.toml` (+ `uv lock`, only pygobject moves
+  3.56.3 → 3.50.2): 3.51.0 switched to girepository-2.0 and requires glib ≥ 2.80,
+  which jammy (glib 2.72) can't provide. Verified in an `ubuntu:22.04` container
+  reproducing the job end to end: `uv sync --frozen` + PyInstaller on deadsnakes
+  3.12.13, pygobject 3.50.2 against GI 1.72, **every bundled ELF ≤ GLIBC_2.35**
+  (and uv's managed python-build-standalone libpython measured at 2.17, so pbs was
+  never the offender), `/api/v1/health` smoke test green on glibc 2.35. Deb target
+  becomes Debian 12 / Ubuntu 22.04+ / Mint 21+ (docs table updated); local Linux
+  builds now need `libgirepository1.0-dev` (`docs/usage/packaging.md` prerequisites).
+  `test_release_workflow_covers_tag_and_artifacts` now asserts the runner, the
+  deadsnakes pin and the uv env guards so the floor can't silently drift back up;
+  if GitHub ever retires the `ubuntu-22.04` image, use `container: ubuntu:22.04`,
+  not a newer runner (documented in packaging.md known gaps).
+
 - 2026-08-28 — **feat(config): working directory setting — view + change the app
   data location from Settings and the setup wizard (plan 45, ADR-101).** The data
   directory (`app.db`, `blobs/`, `backups/`, `cache/`) was env-only (`SA_DATA_DIR`);

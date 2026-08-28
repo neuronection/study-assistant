@@ -56,7 +56,11 @@ def test_release_workflow_covers_tag_and_artifacts() -> None:
     workflow = _read(".github/workflows/release.yml")
     for needle in (
         'tags: ["v*"]',
-        "ubuntu-24.04",
+        "ubuntu-22.04",
+        "ppa:deadsnakes/ppa",
+        "UV_PYTHON_DOWNLOADS",
+        "UV_PYTHON_PREFERENCE",
+        "libgirepository1.0-dev",
         "windows-latest",
         "build-linux.sh",
         "SA_ONEFILE",

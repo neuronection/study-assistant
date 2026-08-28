@@ -6,8 +6,8 @@ CI (and reproducible locally):
 | Format | Target | Self-contained? |
 |---|---|---|
 | `StudyAssistant-<ver>-windows-x64.exe` | Windows 10/11 | Yes (one-file; uses the system WebView2 runtime) |
-| `studyassistant-<ver>_amd64.deb` | Debian 13 / Ubuntu 24.04+ / Mint 22+ | Mostly (needs `libgtk-3-0` + `libwebkit2gtk-4.1-0`, declared as deps) |
-| `StudyAssistant-<ver>-x86_64.AppImage` | Any recent x86_64 Linux | Yes (bundles WebKitGTK) |
+| `studyassistant-<ver>_amd64.deb` | Debian 12 / Ubuntu 22.04+ / Mint 21+ (glibc ≥ 2.35) | Mostly (needs `libgtk-3-0` + `libwebkit2gtk-4.1-0`, declared as deps) |
+| `StudyAssistant-<ver>-x86_64.AppImage` | Any x86_64 Linux with glibc ≥ 2.35 | Yes (bundles WebKitGTK) |
 
 macOS artifacts are not produced yet (the PyInstaller spec has a macOS branch, but
 there is no CI job and it has never been exercised).
@@ -24,8 +24,16 @@ git tag v0.1.0 && git push origin v0.1.0
 `.github/workflows/release.yml` then:
 
 1. Runs the full test gate (backend ruff/mypy/pytest + frontend lint/typecheck/test/build).
-2. On `ubuntu-24.04`: builds the onedir bundle, the `.deb`, and the `.AppImage`, and
-   smoke-tests the bundle in headless web mode (`/api/v1/health`).
+2. On `ubuntu-22.04`: builds the onedir bundle, the `.deb`, and the `.AppImage`, and
+   smoke-tests the bundle in headless web mode (`/api/v1/health`) — on the oldest
+   supported glibc (2.35), so artifacts run everywhere newer (build-old, run-new).
+   The job pins the interpreter to the distro Python 3.12 (deadsnakes) via
+   `UV_PYTHON=3.12`, `UV_PYTHON_DOWNLOADS=never`, `UV_PYTHON_PREFERENCE=only-system`:
+   without that, uv's discovery would pick the newest runner Python, and a libpython
+   built on a newer toolchain drags its glibc floor into the bundle (this is exactly
+   how the first releases ended up requiring GLIBC_2.38 from Ubuntu 24.04's
+   `libpython3.12`). PyGObject is pinned `<3.51` for the same reason — 3.51+ needs
+   glib ≥ 2.80, which Ubuntu 22.04 doesn't ship.
 3. On `windows-latest`: builds the one-file `.exe` and smoke-tests it the same way.
 4. Publishes a GitHub release (draft) with all three artifacts and generated notes.
 
@@ -86,10 +94,19 @@ hooks up and pulls a full system GTK stack into the bundle.
   macOS Gatekeeper would too (no macOS artifacts exist yet).
 - **No auto-update** — releases are manual downloads; no update channel
   configured.
-- **Linux artifacts are glibc-bound** — built on `ubuntu-24.04` (glibc 2.39), so
-  the `.deb` targets Ubuntu 24.04+/Mint 22+ and the `.AppImage` needs a glibc
-  ≥ 2.39 system; WebKitGTK itself is bundled in the AppImage, GL/driver stacks
-  are not.
+- **Linux artifacts are glibc-floor-bound by the build runner** — built on
+  `ubuntu-22.04` (glibc 2.35) with the distro Python 3.12, so the `.deb` and the
+  `.AppImage` need glibc ≥ 2.35 (Ubuntu 22.04+/Mint 21+/Debian 12+); WebKitGTK
+  itself is bundled in the AppImage, GL/driver stacks are not. Keep the build
+  runner the *oldest* supported distro — bumping it silently raises the floor
+  (uv + PyInstaller bundle whatever `libpython` the build environment provides).
+  If GitHub retires the `ubuntu-22.04` runner image, switch the job to a pinned
+  `container: ubuntu:22.04` instead of a newer image.
+- **PyGObject is pinned `>=3.50,<3.51`** — 3.51.0 switched to girepository-2.0
+  and requires glib ≥ 2.80 (Ubuntu 24.04+), which would force the Linux build
+  floor up to glibc 2.39. Revisit only together with the runner (both must move
+  at once), and update `docs/usage/packaging.md` + the workflow assertions in
+  `backend/tests/test_packaging_assets.py` in the same commit.
 - **Draft releases are manual** — the workflow creates a draft; publishing is a
   human step.
 - **Version bump is a manual command** — the workflow verifies tag/version
@@ -101,7 +118,12 @@ hooks up and pulls a full system GTK stack into the bundle.
 
 Prerequisites: `pnpm`, `uv`, `dpkg-deb`, and optionally `appimagetool` on `PATH`
 (download from https://github.com/AppImage/appimagetool/releases and make it
-executable, or point `APPIMAGETOOL=` at it).
+executable, or point `APPIMAGETOOL=` at it). Linux dependency setup also needs
+the GTK/GI build headers (PyGObject compiles from source, pinned `<3.51`):
+
+```bash
+sudo apt install -y libgirepository1.0-dev libcairo2-dev pkg-config
+```
 
 ```bash
 # from repo root
