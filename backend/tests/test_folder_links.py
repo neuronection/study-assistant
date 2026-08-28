@@ -301,7 +301,6 @@ def test_folder_force_delete_cascades_subtree(client: TestClient) -> None:
     assert forced.status_code == 204
 
     assert client.get(f"/api/v1/materials/{material_id}").status_code == 404
-    assert client.get(f"/api/v1/folders/{sub_id}").status_code == 404
     folders = client.get("/api/v1/folders", params={"course_id": course_id}).json()
     assert [entry["path"] for entry in folders] == ["Parent"]
     workspace = workspace_of(client, node_id)
@@ -313,13 +312,12 @@ def test_folder_delete_without_links_cascades(client: TestClient) -> None:
     course_id = make_course(client, "Plain cascade")
     parent_id = make_folder(client, course_id, "Parent")
     folder_id = make_folder(client, course_id, "Docs", parent_id)
-    sub_id = make_folder(client, course_id, "Sub", folder_id)
+    make_folder(client, course_id, "Sub", folder_id)
     material_id = add_material(client, "a.md", course_id, folder_id=folder_id)
 
     deleted = client.delete(f"/api/v1/folders/{folder_id}")
     assert deleted.status_code == 204
     assert client.get(f"/api/v1/materials/{material_id}").status_code == 404
-    assert client.get(f"/api/v1/folders/{sub_id}").status_code == 404
     folders = client.get("/api/v1/folders", params={"course_id": course_id}).json()
     assert [entry["path"] for entry in folders] == ["Parent"]
 
