@@ -799,7 +799,7 @@ describe('NodeWorkspace', () => {
 
     const draftCard = screen
       .getByRole('button', { name: /commit outline/i })
-      .closest('[data-slot="card"]') as HTMLElement
+      .closest('[data-as="card"]') as HTMLElement
     const derivativesRow = within(draftCard)
       .getByText('Derivatives')
       .closest('div') as HTMLElement

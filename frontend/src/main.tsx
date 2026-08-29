@@ -14,6 +14,7 @@ import { installGlobalErrorSurface } from '@/lib/boot-errors'
 import { initI18n } from '@/lib/i18n'
 
 import './index.css'
+import '@neuronection/assistant-ui/styles.css'
 
 installGlobalErrorSurface()
 

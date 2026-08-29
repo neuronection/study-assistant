@@ -12,6 +12,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  optimizeDeps: {
+    exclude: ['@neuronection/assistant-ui'],
+  },
   build: {
     rolldownOptions: {
       output: {
