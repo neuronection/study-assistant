@@ -1,6 +1,5 @@
 dev
-.opencode/*
-!.opencode/skills/
+.opencode
 
 __pycache__/
 *.py[cod]
