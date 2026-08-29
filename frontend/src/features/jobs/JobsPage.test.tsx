@@ -151,17 +151,17 @@ describe('JobsPage', () => {
   })
 
   test('delete on a row removes the record after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockDeleteOne.mockResolvedValue(undefined)
     renderPage()
     fireEvent.click(await screen.findByLabelText(/jobs\.deleteOne: lecture 3\.pdf/i))
+    fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteOne' }))
     await waitFor(() => expect(mockDeleteOne).toHaveBeenCalledWith(31))
   })
 
   test('row delete does nothing when the confirmation is dismissed', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     renderPage()
     fireEvent.click(await screen.findByLabelText(/jobs\.deleteOne: lecture 3\.pdf/i))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.cancel' }))
     expect(mockDeleteOne).not.toHaveBeenCalled()
   })
 
@@ -174,19 +174,18 @@ describe('JobsPage', () => {
   })
 
   test('bulk delete passes the active type filter through the menu', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockDeleteAllFailed.mockResolvedValue({ deleted: 1 })
     renderPage('/jobs?type=ingest')
     await screen.findByText('Lecture 3.pdf')
     fireEvent.click(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /jobs\.deleteAllFiltered/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteAllFiltered' }))
     await waitFor(() =>
       expect(mockDeleteAllFailed).toHaveBeenCalledWith({ types: ['ingest'] })
     )
   })
 
   test('stale menu entry deletes only stale rows', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockDeleteAllFailed.mockResolvedValue({ deleted: 1 })
     mockListJobs.mockResolvedValue([
       FAILED,
@@ -196,6 +195,7 @@ describe('JobsPage', () => {
     await screen.findAllByText('Lecture 3.pdf')
     fireEvent.click(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /jobs\.deleteStale/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteStale' }))
     await waitFor(() =>
       expect(mockDeleteAllFailed).toHaveBeenCalledWith({ staleOnly: true })
     )

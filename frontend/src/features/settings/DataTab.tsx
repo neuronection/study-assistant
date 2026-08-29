@@ -18,6 +18,7 @@ import {
   updateBackupSettings,
   type BackupSettingsInfo,
 } from '@/lib/api'
+import { useConfirm } from '@/lib/use-confirm'
 
 function formatSize(size: number): string {
   if (size >= 1024 * 1024 * 1024) {
@@ -36,6 +37,7 @@ export function DataTab() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [settingsDraft, setSettingsDraft] = useState<BackupSettingsInfo | null>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const status = useQuery({
     queryKey: ['backup-status'],
@@ -277,10 +279,17 @@ export function DataTab() {
                         size="sm"
                         disabled={restoreStored.isPending}
                         title={t('settings.backupRestoreThis')}
-                        onClick={() => {
-                          if (window.confirm(t('settings.backupRestoreConfirm', { name: entry.name }))) {
-                            restoreStored.mutate(entry.name)
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: t('settings.backupRestoreThis'),
+                            description: t('settings.backupRestoreConfirm', {
+                              name: entry.name,
+                            }),
+                            confirmLabel: t('settings.backupRestoreThis'),
+                            cancelLabel: t('common.cancel'),
+                            destructive: true,
+                          })
+                          if (ok) restoreStored.mutate(entry.name)
                         }}
                       >
                         {restoreStored.isPending && restoreStored.variables === entry.name ? (
@@ -361,6 +370,7 @@ export function DataTab() {
           <p className="text-muted-foreground text-[11px]">{t('settings.restoreWarning')}</p>
         </CardContent>
       </Card>
+      {confirmElement}
     </div>
   )
 }

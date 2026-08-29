@@ -164,12 +164,12 @@ describe('ActivityButton', () => {
   })
 
   test('delete on a failed row removes the record after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     mockDeleteOne.mockResolvedValue(undefined)
     renderButton()
     fireEvent.click(await screen.findByRole('button', { name: 'jobs.title' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(await within(dialog).findByLabelText(/jobs\.deleteOne: lecture 3/i))
+    fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteOne' }))
     await waitFor(() => expect(mockDeleteOne).toHaveBeenCalledWith(11))
   })
 

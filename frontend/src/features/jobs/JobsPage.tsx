@@ -29,6 +29,7 @@ import {
 } from '@/lib/api'
 
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/use-confirm'
 
 const STATUS_TABS = ['failed', 'running', 'queued', 'done'] as const
 type StatusTab = 'all' | (typeof STATUS_TABS)[number]
@@ -200,6 +201,7 @@ export function JobsPage() {
   const [submitted, setSubmitted] = useState('')
   const [retryError, setRetryError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const jobs = useQuery({
     queryKey: ['jobs-list', statusTab],
@@ -282,11 +284,20 @@ export function JobsPage() {
       icon: Trash2,
       danger: true,
       disabled: deleteAllFailed.isPending || failedInScope.length === 0,
-      onSelect: () => {
+      onSelect: async () => {
         const count = failedInScope.length
-        if (window.confirm(t('jobs.confirmDeleteFailed', { count }))) {
-          deleteAllFailed.mutate(search.type ? { types: [search.type] } : undefined)
-        }
+        const ok = await confirm({
+          title: search.type
+            ? t('jobs.deleteAllFiltered', { type: search.type })
+            : t('jobs.deleteAllPlain'),
+          description: t('jobs.confirmDeleteFailed', { count }),
+          confirmLabel: search.type
+            ? t('jobs.deleteAllFiltered', { type: search.type })
+            : t('jobs.deleteAllPlain'),
+          cancelLabel: t('common.cancel'),
+          destructive: true,
+        })
+        if (ok) deleteAllFailed.mutate(search.type ? { types: [search.type] } : undefined)
       },
     },
     {
@@ -295,14 +306,15 @@ export function JobsPage() {
       icon: Trash2,
       danger: true,
       disabled: deleteAllFailed.isPending || staleCount === 0,
-      onSelect: () => {
-        if (
-          window.confirm(
-            t('jobs.confirmDeleteStale', { count: staleCount })
-          )
-        ) {
-          deleteAllFailed.mutate({ staleOnly: true })
-        }
+      onSelect: async () => {
+        const ok = await confirm({
+          title: t('jobs.deleteStale', { count: staleCount }),
+          description: t('jobs.confirmDeleteStale', { count: staleCount }),
+          confirmLabel: t('jobs.deleteStale', { count: staleCount }),
+          cancelLabel: t('common.cancel'),
+          destructive: true,
+        })
+        if (ok) deleteAllFailed.mutate({ staleOnly: true })
       },
     },
   ]
@@ -440,10 +452,15 @@ export function JobsPage() {
               key={job.id}
               job={job}
               onRetry={(id) => retryOne.mutate(id)}
-              onDelete={(id) => {
-                if (window.confirm(t('jobs.confirmDeleteOne'))) {
-                  deleteOne.mutate(id)
-                }
+              onDelete={async (id) => {
+                const ok = await confirm({
+                  title: t('jobs.deleteOne'),
+                  description: t('jobs.confirmDeleteOne'),
+                  confirmLabel: t('jobs.deleteOne'),
+                  cancelLabel: t('common.cancel'),
+                  destructive: true,
+                })
+                if (ok) deleteOne.mutate(id)
               }}
             />
           ))}
@@ -454,6 +471,7 @@ export function JobsPage() {
         <CircleAlert className="size-3" aria-hidden />
         {t('jobs.autoRefreshHint')}
       </p>
+      {confirmElement}
     </div>
   )
 }

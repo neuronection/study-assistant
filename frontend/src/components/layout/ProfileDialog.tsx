@@ -8,6 +8,7 @@ import { createProfile, deleteProfile, type ProfileInfo } from '@/lib/api'
 
 import { cn } from '@/lib/utils'
 import { useCloseFloatings } from '@/lib/ui-overlays'
+import { useConfirm } from '@/lib/use-confirm'
 
 function ProfileAvatar({ profile }: { profile: ProfileInfo }) {
   const letter = (profile.name.trim()[0] ?? '?').toUpperCase()
@@ -43,6 +44,7 @@ export function ProfileDialog({
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const create = useMutation({
     mutationFn: () => createProfile(name.trim()),
@@ -118,10 +120,15 @@ export function ProfileDialog({
                     className="text-muted-foreground hidden shrink-0 group-hover:block hover:text-danger"
                     title={t('common.remove')}
                     disabled={remove.isPending}
-                    onClick={() => {
-                      if (window.confirm(t('profiles.confirmDelete'))) {
-                        remove.mutate(profile.id)
-                      }
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: t('common.remove'),
+                        description: t('profiles.confirmDelete'),
+                        confirmLabel: t('common.remove'),
+                        cancelLabel: t('common.cancel'),
+                        destructive: true,
+                      })
+                      if (ok) remove.mutate(profile.id)
                     }}
                   >
                     <Trash2 className="size-3.5" aria-hidden />
@@ -189,6 +196,7 @@ export function ProfileDialog({
         )}
         {error ? <p className="text-danger mt-2 text-xs">{error}</p> : null}
       </div>
+      {confirmElement}
     </div>
   )
 }

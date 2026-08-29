@@ -60,6 +60,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PopoverMenu } from '@/components/ui/popover-menu'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/use-confirm'
 
 export interface MarkdownEditorApi {
   insertDrawing: (id: number) => void
@@ -122,6 +123,7 @@ export function MarkdownEditor({
   const [ocrOn, setOcrOn] = useState(true)
   const [savingCanvas, setSavingCanvas] = useState(false)
   const [canvasError, setCanvasError] = useState<string | null>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const handleDrawingAction = useRef<DrawingActionHandler>(
     (id: number, action: DrawingAction) => {
@@ -556,10 +558,15 @@ lastEmitted.current = value
                       label: t('notes.deleteDrawing'),
                       icon: Trash2,
                       danger: true,
-                      onSelect: () => {
-                        if (window.confirm(t('notes.confirmDeleteDrawing'))) {
-                          handleDrawingAction.current(drawing.id, 'delete')
-                        }
+                      onSelect: async () => {
+                        const ok = await confirm({
+                          title: t('notes.deleteDrawing'),
+                          description: t('notes.confirmDeleteDrawing'),
+                          confirmLabel: t('notes.deleteDrawing'),
+                          cancelLabel: t('common.cancel'),
+                          destructive: true,
+                        })
+                        if (ok) handleDrawingAction.current(drawing.id, 'delete')
                       },
                     },
                   ]}
@@ -658,6 +665,7 @@ lastEmitted.current = value
             document.body
           )
         : null}
+      {confirmElement}
     </div>
   )
 }

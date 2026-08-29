@@ -64,6 +64,7 @@ import { SplitStudyPane } from '@/features/library/SplitStudyPane'
 import { MaterialDetailDrawer } from '@/features/library/MaterialDetailDrawer'
 import { useCurrentOrigin } from '@/lib/origin'
 import { fuzzyFilter } from '@/lib/fuzzy'
+import { useConfirm } from '@/lib/use-confirm'
 import {
   addNode,
   addNodeConcept,
@@ -1494,6 +1495,7 @@ function NotesTab({
   const [undoItem, setUndoItem] = useState<number | null>(null)
   const [moveOpen, setMoveOpen] = useState(false)
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number } | null>(null)
+  const [confirm, confirmElement] = useConfirm()
   const pageSize = 50
 
   useEffect(() => {
@@ -1584,12 +1586,19 @@ function NotesTab({
     },
   })
 
-  const deleteSelectedNotes = () => {
+  const deleteSelectedNotes = async () => {
     const noteIds = [...liveSelection.current].map((key) => Number(key))
     if (noteIds.length === 0) {
       return
     }
-    if (!window.confirm(t('notes.confirmDeleteSelection', { count: noteIds.length }))) {
+    const ok = await confirm({
+      title: t('workspace.deleteSelection'),
+      description: t('notes.confirmDeleteSelection', { count: noteIds.length }),
+      confirmLabel: t('workspace.deleteSelection'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    })
+    if (!ok) {
       return
     }
     for (const noteId of noteIds) {
@@ -1650,11 +1659,16 @@ function NotesTab({
         key: 'delete',
         label: t('notes.delete'),
         danger: true,
-        onSelect: () => {
+        onSelect: async () => {
           const note = flatNotes.find((entry) => entry.id === item.noteId)
-          if (window.confirm(t('notes.confirmDelete', { title: note?.title ?? '' }))) {
-            remove.mutate(item.noteId)
-          }
+          const ok = await confirm({
+            title: t('notes.delete'),
+            description: t('notes.confirmDelete', { title: note?.title ?? '' }),
+            confirmLabel: t('notes.delete'),
+            cancelLabel: t('common.cancel'),
+            destructive: true,
+          })
+          if (ok) remove.mutate(item.noteId)
         },
       })
     }
@@ -1837,6 +1851,7 @@ function NotesTab({
           onClose={() => setPaneMenu(null)}
         />
       ) : null}
+      {confirmElement}
     </MarqueeSurface>
   )
 }

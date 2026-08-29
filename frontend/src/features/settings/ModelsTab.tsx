@@ -13,6 +13,7 @@ import {
   type Provider,
 } from '@/lib/api'
 
+import { useConfirm } from '@/lib/use-confirm'
 import { cn } from '@/lib/utils'
 import { AddModelDialog } from './AddModelDialog'
 import { EditModelDialog } from './EditModelDialog'
@@ -34,6 +35,7 @@ function ModelRow({
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const [confirm, confirmElement] = useConfirm()
   const remove = useMutation({
     mutationFn: () => deleteModel(model.id),
     onSuccess: async () => {
@@ -75,10 +77,15 @@ function ModelRow({
         className="size-7 shrink-0"
         title={t('settings.deleteModel')}
         disabled={remove.isPending}
-        onClick={() => {
-          if (window.confirm(t('settings.confirmDeleteModel'))) {
-            remove.mutate()
-          }
+        onClick={async () => {
+          const ok = await confirm({
+            title: t('settings.deleteModel'),
+            description: t('settings.confirmDeleteModel'),
+            confirmLabel: t('settings.deleteModel'),
+            cancelLabel: t('common.cancel'),
+            destructive: true,
+          })
+          if (ok) remove.mutate()
         }}
       >
         {remove.isPending ? (
@@ -87,6 +94,7 @@ function ModelRow({
           <Trash2 className="size-3.5" aria-hidden />
         )}
       </Button>
+      {confirmElement}
     </div>
   )
 }

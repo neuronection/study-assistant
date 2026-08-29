@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SearchInput } from '@/components/ui/SearchInput'
 import { createModel, listRemoteModels, type AiModel, type Provider } from '@/lib/api'
 import { fuzzyFilter, fuzzyScore } from '@/lib/fuzzy'
+import { useConfirm } from '@/lib/use-confirm'
 
 import { MODEL_CAPS } from './EditModelDialog'
 import { ProviderFormDialog } from './ProviderFormDialog'
@@ -64,6 +65,7 @@ export function AddModelDialog({
   useCloseFloatings()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const [confirm, confirmElement] = useConfirm()
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [addedNote, setAddedNote] = useState<string | null>(null)
@@ -154,9 +156,17 @@ export function AddModelDialog({
     onError: (err: Error) => setError(err.message),
   })
 
-  const addAllMatches = () => {
-    if (matches.length > 20 && !window.confirm(t('settings.confirmAddAll', { count: matches.length }))) {
-      return
+  const addAllMatches = async () => {
+    if (matches.length > 20) {
+      const ok = await confirm({
+        title: t('settings.addAll', { count: matches.length }),
+        description: t('settings.confirmAddAll', { count: matches.length }),
+        confirmLabel: t('settings.addAll', { count: matches.length }),
+        cancelLabel: t('common.cancel'),
+      })
+      if (!ok) {
+        return
+      }
     }
     addAll.mutate(
       matches.map((model) => ({ external_id: model.external_id, caps: model.caps }))
@@ -393,6 +403,7 @@ export function AddModelDialog({
           onClose={() => setEditProviderOpen(false)}
         />
       ) : null}
+      {confirmElement}
     </div>
   )
 }

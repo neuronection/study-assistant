@@ -20,6 +20,7 @@ import { ImportDialog } from '@/features/quiz/ImportDialog'
 import { ReviewQueue } from '@/features/flashcards/ReviewQueue'
 import { useCurrentOrigin } from '@/lib/origin'
 import { useSelection } from '@/lib/useSelection'
+import { useConfirm } from '@/lib/use-confirm'
 import {
   ankiExportUrl,
   deleteExercise,
@@ -111,6 +112,7 @@ export function PracticeTab({
   const [showCardsGenerate, setShowCardsGenerate] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const quizzes = useQuery({
     queryKey: ['quizzes', 'node', currentId],
@@ -236,7 +238,7 @@ export function PracticeTab({
     [selection.selected]
   )
 
-  const deleteSelected = () => {
+  const deleteSelected = async () => {
     const total = selectedQuizIds.length + selectedExerciseIds.length
     if (total === 0) {
       return
@@ -250,7 +252,14 @@ export function PracticeTab({
         : selectedQuizIds.length > 0
           ? t('quiz.confirmDeleteSelection', { count: selectedQuizIds.length })
           : t('exercises.confirmDeleteSelection', { count: selectedExerciseIds.length })
-    if (!window.confirm(message)) {
+    const ok = await confirm({
+      title: t('workspace.deleteSelection'),
+      description: message,
+      confirmLabel: t('workspace.deleteSelection'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    })
+    if (!ok) {
       return
     }
     for (const quizId of selectedQuizIds) {
@@ -386,11 +395,16 @@ export function PracticeTab({
           key: 'delete',
           label: t('quiz.delete'),
           danger: true,
-          onSelect: () => {
+          onSelect: async () => {
             const quiz = (quizzes.data ?? []).find((entry) => entry.id === quizId)
-            if (window.confirm(t('quiz.confirmDelete', { title: quiz?.title ?? '' }))) {
-              deleteQuizMutation.mutate(quizId)
-            }
+            const ok = await confirm({
+              title: t('quiz.delete'),
+              description: t('quiz.confirmDelete', { title: quiz?.title ?? '' }),
+              confirmLabel: t('quiz.delete'),
+              cancelLabel: t('common.cancel'),
+              destructive: true,
+            })
+            if (ok) deleteQuizMutation.mutate(quizId)
           },
         },
       ]
@@ -431,17 +445,18 @@ export function PracticeTab({
           key: 'delete',
           label: t('exercises.delete'),
           danger: true,
-          onSelect: () => {
+          onSelect: async () => {
             const exercise = (exercises.data ?? []).find(
               (entry) => entry.id === exerciseId
             )
-            if (
-              window.confirm(
-                t('exercises.confirmDelete', { title: exercise?.title ?? '' })
-              )
-            ) {
-              deleteExerciseMutation.mutate(exerciseId)
-            }
+            const ok = await confirm({
+              title: t('exercises.delete'),
+              description: t('exercises.confirmDelete', { title: exercise?.title ?? '' }),
+              confirmLabel: t('exercises.delete'),
+              cancelLabel: t('common.cancel'),
+              destructive: true,
+            })
+            if (ok) deleteExerciseMutation.mutate(exerciseId)
           },
         },
       ]
@@ -667,6 +682,7 @@ export function PracticeTab({
           onSuccess={() => setShowCardsGenerate(false)}
         />
       ) : null}
+      {confirmElement}
     </div>
   )
 }

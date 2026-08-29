@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { DataTab } from './DataTab'
@@ -105,14 +105,14 @@ describe('DataTab automatic backups', () => {
   })
 
   test('restore from the list asks for confirmation and calls the endpoint', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     restoreBackupByName.mockResolvedValue({ status: 'restored', materials: 3 })
     renderTab()
     fireEvent.click(await screen.findByRole('button', { name: 'Restore' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Restore' }))
     await waitFor(() =>
       expect(restoreBackupByName).toHaveBeenCalledWith('auto-20260821-120000.zip')
     )
-    confirmSpy.mockRestore()
   })
 
   test('delete removes the backup row', async () => {

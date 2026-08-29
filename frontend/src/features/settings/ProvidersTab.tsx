@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { deleteProvider, listProviders, testProvider, type Provider } from '@/lib/api'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
+import { useConfirm } from '@/lib/use-confirm'
 import { cn } from '@/lib/utils'
 import { ProviderFormDialog } from './ProviderFormDialog'
 
@@ -18,6 +19,7 @@ export function ProvidersTab() {
   const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
   const [form, setForm] = useState<{ provider: Provider | null } | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['providers'] })
 
@@ -101,10 +103,15 @@ export function ProvidersTab() {
               variant="ghost"
               size="icon"
               title={t('settings.deleteProvider')}
-              onClick={() => {
-                if (window.confirm(t('settings.confirmDeleteProvider'))) {
-                  remove.mutate(provider.id)
-                }
+              onClick={async () => {
+                const ok = await confirm({
+                  title: t('settings.deleteProvider'),
+                  description: t('settings.confirmDeleteProvider'),
+                  confirmLabel: t('settings.deleteProvider'),
+                  cancelLabel: t('common.cancel'),
+                  destructive: true,
+                })
+                if (ok) remove.mutate(provider.id)
               }}
             >
               <Trash2 className="size-4" aria-hidden />
@@ -124,6 +131,7 @@ export function ProvidersTab() {
       {form ? (
         <ProviderFormDialog provider={form.provider} onClose={() => setForm(null)} />
       ) : null}
+      {confirmElement}
     </div>
   )
 }

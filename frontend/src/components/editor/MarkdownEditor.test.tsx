@@ -324,7 +324,6 @@ describe('MarkdownEditor', () => {
   })
 
   test('inline drawing menu delete removes the node and calls the adapter', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     let emitted = ''
     const adapter = {
       create: vi.fn(async () => null),
@@ -352,16 +351,15 @@ describe('MarkdownEditor', () => {
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
     fireEvent.click(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
     await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(3))
     await waitFor(() =>
       expect(proseRoot().querySelector('img[src="/api/v1/blobs/abc"]')).toBeNull()
     )
     await waitFor(() => expect(emitted).not.toContain('ca-drawing://3'))
-    confirm.mockRestore()
   })
 
   test('unreferenced drawing menu delete calls the adapter', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const adapter = {
       create: vi.fn(async () => null),
       update: vi.fn(async () => undefined),
@@ -387,12 +385,11 @@ describe('MarkdownEditor', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'More drawing actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
     await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(7))
-    confirm.mockRestore()
   })
 
   test('drawing delete asks for confirmation before removing', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const adapter = {
       create: vi.fn(async () => null),
       update: vi.fn(async () => undefined),
@@ -416,12 +413,11 @@ describe('MarkdownEditor', () => {
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
     fireEvent.click(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
-    await waitFor(() => expect(confirm).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
     expect(adapter.remove).not.toHaveBeenCalled()
     await waitFor(() =>
       expect(proseRoot().querySelector('img[src="/api/v1/blobs/abc"]')).not.toBeNull()
     )
-    confirm.mockRestore()
   })
 
   test('clicking away deselects the drawing and hides its menu', async () => {

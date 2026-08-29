@@ -900,7 +900,6 @@ describe('NodeWorkspace', () => {
     })
     updateNote.mockResolvedValue({})
     deleteNote.mockResolvedValue(undefined)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWorkspace('/courses/3/n/5?tab=notes')
     await screen.findByText('Chain rule note')
     const kebabs = screen.getAllByRole('button', { name: 'Actions' })
@@ -914,8 +913,8 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Actions' })[0])
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     expect(deleteNote).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(21))
-    confirmSpy.mockRestore()
   })
 
   test('practice tab deletes a quiz from the row menu', async () => {
@@ -924,13 +923,12 @@ describe('NodeWorkspace', () => {
       { id: 50, title: 'Node quiz', type: 'quiz', course_id: 3, node_id: 5, question_count: 4 },
     ])
     deleteQuiz.mockResolvedValue(undefined)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWorkspace('/courses/3/n/5?tab=practice')
     await screen.findByText('Node quiz')
     fireEvent.click(screen.getByRole('button', { name: 'Actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteQuiz).toHaveBeenCalledWith(50))
-    confirmSpy.mockRestore()
   })
 
   test('notes tab creates a note here and opens it in the drawer', async () => {
@@ -1886,7 +1884,6 @@ describe('NodeWorkspace', () => {
     })
     deleteNote.mockResolvedValue({ deleted_item_id: 90 })
     moveNote.mockResolvedValue(undefined)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWorkspace('/courses/3/n/5?tab=notes')
     await screen.findByText('Limits note')
 
@@ -1895,6 +1892,8 @@ describe('NodeWorkspace', () => {
 
     fireEvent.contextMenu(screen.getByText('Limits note'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(21))
     await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(22))
 
@@ -1906,7 +1905,6 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move' }))
     await waitFor(() => expect(moveNote).toHaveBeenCalledWith(21, 11))
     await waitFor(() => expect(moveNote).toHaveBeenCalledWith(22, 11))
-    confirmSpy.mockRestore()
   })
 
   test('notes tab marquee drag selects the intersecting notes without a count bar', async () => {
@@ -2066,7 +2064,6 @@ describe('NodeWorkspace', () => {
     ])
     moveQuiz.mockResolvedValue(undefined)
     deleteExercise.mockResolvedValue({ deleted_item_id: 91 })
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWorkspace('/courses/3/n/5?tab=practice')
     await screen.findByText('Node quiz')
 
@@ -2078,8 +2075,9 @@ describe('NodeWorkspace', () => {
 
     fireEvent.mouseDown(screen.getByText('Drill'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteExercise).toHaveBeenCalledWith(60))
-    confirmSpy.mockRestore()
   })
 
   test('settings tab appears at the course root only and deep-links to course details', async () => {

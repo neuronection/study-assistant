@@ -58,6 +58,7 @@ import {
   parseDragPayload,
 } from '@/lib/dragPayload'
 import { useCurrentOrigin } from '@/lib/origin'
+import { useConfirm } from '@/lib/use-confirm'
 import { cn } from '@/lib/utils'
 import { isKeyboardClick, useSelection } from '@/lib/useSelection'
 import { useWorkspaceStore } from '@/lib/workspace-store'
@@ -134,6 +135,7 @@ export function LibraryPage() {
   const [linkState, setLinkState] = useState<LinkState | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState('')
+  const [confirm, confirmElement] = useConfirm()
 
   useEffect(() => {
     const id = setTimeout(() => setSubmittedQuery(searchQuery.trim()), 250)
@@ -606,12 +608,19 @@ export function LibraryPage() {
     }
   }
 
-  const deleteSelection = () => {
+  const deleteSelection = async () => {
     const { folderIds, materialIds } = liveSelectedIds()
     if (folderIds.length === 0 && materialIds.length === 0) {
       return
     }
-    if (!window.confirm(t('library.confirmDeleteSelection'))) {
+    const ok = await confirm({
+      title: t('common.remove'),
+      description: t('library.confirmDeleteSelection'),
+      confirmLabel: t('common.remove'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    })
+    if (!ok) {
       return
     }
     for (const id of materialIds) {
@@ -695,7 +704,7 @@ export function LibraryPage() {
         void pasteInto(folderId)
       } else if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) {
         event.preventDefault()
-        deleteSelection()
+        void deleteSelection()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -811,10 +820,15 @@ export function LibraryPage() {
           key: 'unlink',
           label: t('library.unlinkFolder'),
           danger: true,
-          onSelect: () => {
-            if (window.confirm(t('library.confirmUnlink'))) {
-              unlinkMutation.mutate(entry.id)
-            }
+          onSelect: async () => {
+            const ok = await confirm({
+              title: t('library.unlinkFolder'),
+              description: t('library.confirmUnlink'),
+              confirmLabel: t('library.unlinkFolder'),
+              cancelLabel: t('common.cancel'),
+              destructive: true,
+            })
+            if (ok) unlinkMutation.mutate(entry.id)
           },
         },
       ]
@@ -957,10 +971,15 @@ export function LibraryPage() {
         key: 'delete',
         label: t('library.deleteMaterial'),
         danger: true,
-        onSelect: () => {
-          if (window.confirm(t('library.confirmDeleteMaterial'))) {
-            deleteMaterialMutation.mutate(id)
-          }
+        onSelect: async () => {
+          const ok = await confirm({
+            title: t('library.deleteMaterial'),
+            description: t('library.confirmDeleteMaterial'),
+            confirmLabel: t('library.deleteMaterial'),
+            cancelLabel: t('common.cancel'),
+            destructive: true,
+          })
+          if (ok) deleteMaterialMutation.mutate(id)
         },
       }
     )
@@ -1836,6 +1855,7 @@ className={cn(
           onCancel={() => setFolderDeleteTarget(null)}
         />
       ) : null}
+      {confirmElement}
     </WorkspaceGate>
   )
 }

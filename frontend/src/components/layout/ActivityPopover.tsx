@@ -15,6 +15,7 @@ import {
 } from '@/lib/api'
 
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/use-confirm'
 
 function relativeTime(iso: string | null): string {
   if (iso === null) {
@@ -144,6 +145,7 @@ export function ActivityButton() {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const [retryError, setRetryError] = useState<string | null>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   useEffect(() => {
     if (!open) {
@@ -310,10 +312,15 @@ export function ActivityButton() {
                       title={t('jobs.deleteAllPlain')}
                       aria-label={t('jobs.deleteAllPlain')}
                       className="focus-visible:outline-ring hover:bg-danger/15 text-muted-foreground hover:text-danger flex size-6 shrink-0 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 disabled:opacity-50"
-                      onClick={() => {
-                        if (window.confirm(t('jobs.confirmDeleteFailed', { count: failedCount }))) {
-                          deleteAllFailed.mutate(undefined)
-                        }
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: t('jobs.deleteAllPlain'),
+                          description: t('jobs.confirmDeleteFailed', { count: failedCount }),
+                          confirmLabel: t('jobs.deleteAllPlain'),
+                          cancelLabel: t('common.cancel'),
+                          destructive: true,
+                        })
+                        if (ok) deleteAllFailed.mutate(undefined)
                       }}
                     >
                       {deleteAllFailed.isPending ? (
@@ -330,10 +337,15 @@ export function ActivityButton() {
                       key={job.id}
                       job={job}
                       onRetry={() => retryOne.mutate(job.id)}
-                      onDelete={() => {
-                        if (window.confirm(t('jobs.confirmDeleteOne'))) {
-                          deleteOne.mutate(job.id)
-                        }
+                      onDelete={async () => {
+                        const ok = await confirm({
+                          title: t('jobs.deleteOne'),
+                          description: t('jobs.confirmDeleteOne'),
+                          confirmLabel: t('jobs.deleteOne'),
+                          cancelLabel: t('common.cancel'),
+                          destructive: true,
+                        })
+                        if (ok) deleteOne.mutate(job.id)
                       }}
                     />
                   ))}
@@ -342,10 +354,15 @@ export function ActivityButton() {
                   <button
                     type="button"
                     disabled={deleteAllFailed.isPending}
-                    onClick={() => {
-                      if (window.confirm(t('jobs.confirmDeleteStale', { count: staleCount }))) {
-                        deleteAllFailed.mutate({ staleOnly: true })
-                      }
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: t('jobs.deleteStale', { count: staleCount }),
+                        description: t('jobs.confirmDeleteStale', { count: staleCount }),
+                        confirmLabel: t('jobs.deleteStale', { count: staleCount }),
+                        cancelLabel: t('common.cancel'),
+                        destructive: true,
+                      })
+                      if (ok) deleteAllFailed.mutate({ staleOnly: true })
                     }}
                     className="focus-visible:outline-ring hover:bg-danger/15 text-danger/90 mx-2 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 disabled:opacity-50"
                   >
@@ -398,6 +415,7 @@ export function ActivityButton() {
           </div>
         </div>
       ) : null}
+      {confirmElement}
     </div>
   )
 }

@@ -16,6 +16,7 @@ import {
   listCourses,
   type CourseBundlePreview,
 } from '@/lib/api'
+import { useConfirm } from '@/lib/use-confirm'
 
 export function CoursesPage() {
   const { t } = useTranslation()
@@ -30,6 +31,7 @@ export function CoursesPage() {
   const [importFile, setImportFile] = useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const importInput = useRef<HTMLInputElement>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   const normalizedQuery = searchQuery.trim()
   const visibleCourses = useMemo(() => {
@@ -262,10 +264,15 @@ export function CoursesPage() {
                   variant="ghost"
                   size="icon"
                   title={t('courses.delete')}
-                  onClick={() => {
-                    if (window.confirm(t('courses.confirmDelete'))) {
-                      remove.mutate(course.id)
-                    }
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: t('courses.delete'),
+                      description: t('courses.confirmDelete'),
+                      confirmLabel: t('courses.delete'),
+                      cancelLabel: t('common.cancel'),
+                      destructive: true,
+                    })
+                    if (ok) remove.mutate(course.id)
                   }}
                 >
                   <Trash2 className="size-4" aria-hidden />
@@ -286,6 +293,7 @@ export function CoursesPage() {
       {courses.data && courses.data.length > 0 && visibleCourses.length === 0 ? (
         <p className="text-muted-foreground py-16 text-center text-sm">{t('courses.noMatch')}</p>
       ) : null}
+      {confirmElement}
     </div>
   )
 }

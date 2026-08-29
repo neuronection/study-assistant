@@ -7,7 +7,7 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 
 import { SettingsPage } from './SettingsPage'
@@ -533,10 +533,10 @@ describe('SettingsPage', () => {
     ])
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     fireEvent.click(await screen.findByRole('button', { name: /delete model/i }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete model' }))
     await waitFor(() => expect(deleteModel).toHaveBeenCalledWith(11))
-    confirmSpy.mockRestore()
   })
 
   test('add-model dialog fuzzy-searches and loads more on scroll', async () => {

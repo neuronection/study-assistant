@@ -7,6 +7,7 @@ import type {
 } from '@/components/editor/DrawingImage'
 import { PopoverMenu } from '@/components/ui/popover-menu'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/use-confirm'
 
 export function DrawingBlock({
   drawingId,
@@ -22,6 +23,7 @@ export function DrawingBlock({
   selected?: boolean
 }) {
   const { t } = useTranslation()
+  const [confirm, confirmElement] = useConfirm()
   return (
     <div className="space-y-1">
       {meta?.png_sha ? (
@@ -86,10 +88,15 @@ export function DrawingBlock({
                 label: t('notes.deleteDrawing'),
                 icon: Trash2,
                 danger: true,
-                onSelect: () => {
-                  if (window.confirm(t('notes.confirmDeleteDrawing'))) {
-                    onAction(drawingId, 'delete')
-                  }
+                onSelect: async () => {
+                  const ok = await confirm({
+                    title: t('notes.deleteDrawing'),
+                    description: t('notes.confirmDeleteDrawing'),
+                    confirmLabel: t('notes.deleteDrawing'),
+                    cancelLabel: t('common.cancel'),
+                    destructive: true,
+                  })
+                  if (ok) onAction(drawingId, 'delete')
                 },
               },
             ]}
@@ -112,6 +119,7 @@ export function DrawingBlock({
           </pre>
         </details>
       ) : null}
+      {confirmElement}
     </div>
   )
 }

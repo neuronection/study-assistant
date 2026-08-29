@@ -41,6 +41,7 @@ import {
 import { fuzzyFilter } from '@/lib/fuzzy'
 import { ITEM_MIME, parseDragPayload } from '@/lib/dragPayload'
 import { useCurrentOrigin } from '@/lib/origin'
+import { useConfirm } from '@/lib/use-confirm'
 import { cn } from '@/lib/utils'
 
 const VIRTUALIZE_THRESHOLD = 40
@@ -434,6 +435,7 @@ export function NodeTreeSidebar({
   const [undoToken, setUndoToken] = useState<string | null>(null)
   const undoTimer = useRef<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const [confirm, confirmElement] = useConfirm()
 
   useEffect(() => {
     return () => {
@@ -684,10 +686,15 @@ export function NodeTreeSidebar({
           key: 'delete',
           label: t('courses.deleteNode'),
           danger: true,
-          onSelect: () => {
-            if (window.confirm(t('courses.confirmDeleteNode'))) {
-              remove.mutate(node.id)
-            }
+          onSelect: async () => {
+            const ok = await confirm({
+              title: t('courses.deleteNode'),
+              description: t('courses.confirmDeleteNode'),
+              confirmLabel: t('courses.deleteNode'),
+              cancelLabel: t('common.cancel'),
+              destructive: true,
+            })
+            if (ok) remove.mutate(node.id)
           },
         }
       )
@@ -1164,6 +1171,7 @@ export function NodeTreeSidebar({
           </div>
         </div>
       ) : null}
+      {confirmElement}
     </aside>
   )
 }

@@ -13,6 +13,7 @@ import { NoteComposeDialog } from '@/features/ai/NoteComposeDialog'
 import { useEntityActionHandlers } from '@/features/ai/useEntityActionHandlers'
 import { addNode, createChatSession, editExtraction } from '@/lib/api'
 import { useCurrentOrigin } from '@/lib/origin'
+import { useConfirm } from '@/lib/use-confirm'
 import { MindmapEditDialog } from './mindmap/MindmapEditDialog'
 import { MindmapHistoryDialog } from './mindmap/MindmapHistoryDialog'
 import { addRootNode, parseMindmap, serialize, type MindmapNode } from './mindmap/mindmapTree'
@@ -51,6 +52,7 @@ export function MindmapViewer({
   const [editFocus, setEditFocus] = useState<string | null | undefined>(undefined)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirm, confirmElement] = useConfirm()
 
   const parsed = useMemo(() => parseMindmap(markdown), [markdown])
   const byLine = useMemo(() => {
@@ -116,15 +118,22 @@ export function MindmapViewer({
           setSelected(null)
         }
       },
-      removeNode: () => {
+      removeNode: async () => {
         if (!selected) return
-        if (window.confirm(t('entityMenu.removeConfirm'))) {
+        const ok = await confirm({
+          title: t('entityMenu.remove'),
+          description: t('entityMenu.removeConfirm'),
+          confirmLabel: t('entityMenu.remove'),
+          cancelLabel: t('common.cancel'),
+          destructive: true,
+        })
+        if (ok) {
           source.remove?.(selected)
           setSelected(null)
         }
       },
     }),
-    [sharedHandlers, source, selected, t]
+    [sharedHandlers, source, selected, t, confirm]
   )
 
   const groups = selected ? buildEntityActions(source, selected, handlers, t) : []
@@ -310,6 +319,7 @@ export function MindmapViewer({
           onClose={() => setHistoryOpen(false)}
         />
       ) : null}
+      {confirmElement}
     </div>
   )
 }

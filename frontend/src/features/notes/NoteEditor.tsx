@@ -34,6 +34,7 @@ import {
   updateDrawing,
   updateNote,
 } from '@/lib/api'
+import { useConfirm } from '@/lib/use-confirm'
 import { useDrawingOcrSync } from '@/lib/useDrawingOcrSync'
 
 import { NoteHistoryDialog } from './NoteHistoryDialog'
@@ -62,6 +63,7 @@ export function NoteEditor({
   const context = useFocusContext(note.data?.course_id ?? null, note.data?.node_id ?? null)
   const [draft, setDraft] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [confirm, confirmElement] = useConfirm()
   const editorApi = useRef<MarkdownEditorApi | null>(null)
 
   useEffect(() => {
@@ -381,10 +383,15 @@ export function NoteEditor({
                 icon: Trash2,
                 danger: true,
                 pending: remove.isPending,
-                onSelect: () => {
-                  if (window.confirm(t('notes.confirmDelete', { title: data.title }))) {
-                    remove.mutate()
-                  }
+                onSelect: async () => {
+                  const ok = await confirm({
+                    title: t('notes.delete'),
+                    description: t('notes.confirmDelete', { title: data.title }),
+                    confirmLabel: t('notes.delete'),
+                    cancelLabel: t('common.cancel'),
+                    destructive: true,
+                  })
+                  if (ok) remove.mutate()
                 },
               },
             ]}
@@ -541,6 +548,7 @@ export function NoteEditor({
           onClose={() => setShowHistory(false)}
         />
       ) : null}
+      {confirmElement}
     </FocusShell>
   )
 }

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/use-confirm'
 
 export type StrokeTool = 'pen' | 'eraser' | 'pan'
 
@@ -270,6 +271,7 @@ export function DrawCanvas({
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, zoom: 1 })
   const [size, setSize] = useState(DEFAULT_VIEWPORT)
   const [panning, setPanning] = useState(false)
+  const [confirm, confirmElement] = useConfirm()
   const strokesRef = useRef(strokes)
   strokesRef.current = strokes
   const viewRef = useRef(view)
@@ -587,8 +589,15 @@ export function DrawCanvas({
           aria-label={t('notes.clearCanvas')}
           disabled={strokes.length === 0}
           className="text-muted-foreground hover:text-foreground rounded p-1.5 disabled:opacity-40"
-          onClick={() => {
-            if (window.confirm(t('notes.confirmClearCanvas'))) {
+          onClick={async () => {
+            const ok = await confirm({
+              title: t('notes.clearCanvas'),
+              description: t('notes.confirmClearCanvas'),
+              confirmLabel: t('notes.clearCanvas'),
+              cancelLabel: t('common.cancel'),
+              destructive: true,
+            })
+            if (ok) {
               setRedoStack((stack) => [...stack, ...strokes])
               onChange([])
             }
@@ -767,6 +776,7 @@ export function DrawCanvas({
           </button>
         </div>
       </div>
+      {confirmElement}
     </div>
   )
 }

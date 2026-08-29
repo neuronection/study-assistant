@@ -678,7 +678,6 @@ describe('LibraryPage', () => {
   })
 
   test('material context menu renames and deletes', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renameMaterial.mockResolvedValue({ ...MATERIAL, title: 'Renamed' })
     deleteMaterial.mockResolvedValue(undefined)
     listCourses.mockResolvedValue(COURSES)
@@ -695,8 +694,8 @@ describe('LibraryPage', () => {
 
     fireEvent.contextMenu((await screen.findByText('chain-rule.pdf')).closest('button')!)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
-    confirmSpy.mockRestore()
   })
 
   test('right-click on an unselected file offers re-ingest without its name', async () => {
@@ -782,7 +781,6 @@ describe('LibraryPage', () => {
   })
 
   test('link node context menu rescans and unlinks', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     browseSource.mockResolvedValue({
       source_id: 77,
       label: 'My Lectures',
@@ -809,8 +807,8 @@ describe('LibraryPage', () => {
 
     fireEvent.contextMenu(tile)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Unlink' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlink' }))
     await waitFor(() => expect(unlinkFolder).toHaveBeenCalledWith(13))
-    confirmSpy.mockRestore()
   })
 
   test('dangling link shows missing target and relink dialog', async () => {
@@ -993,12 +991,12 @@ describe('LibraryPage', () => {
     listFolders.mockResolvedValue(FOLDERS)
     listMaterials.mockResolvedValue([MATERIAL])
     listSources.mockResolvedValue([])
-    window.confirm = vi.fn(() => true)
     renderAt('/library?course=3')
     expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
 
     fireEvent.mouseDown(screen.getByText('chain-rule.pdf'))
     fireEvent.keyDown(window, { key: 'Delete' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
 
     await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
   })

@@ -545,7 +545,6 @@ describe('NoteEditor', () => {
   test('delete button removes the note and calls onClose', async () => {
     const onClose = vi.fn()
     deleteNote.mockResolvedValue(undefined)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
@@ -554,14 +553,13 @@ describe('NoteEditor', () => {
     )
     fireEvent.click(await screen.findByRole('button', { name: 'More note actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(3))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
-    confirmSpy.mockRestore()
   })
 
   test('delete is cancelled when not confirmed', async () => {
     const onClose = vi.fn()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
@@ -570,9 +568,9 @@ describe('NoteEditor', () => {
     )
     fireEvent.click(await screen.findByRole('button', { name: 'More note actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
     expect(deleteNote).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 
   test('rare actions live in the overflow menu', async () => {

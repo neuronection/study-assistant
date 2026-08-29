@@ -135,12 +135,11 @@ describe('ChatSessionList', () => {
     listChatSessions.mockResolvedValue(SESSIONS)
     deleteChatSession.mockResolvedValue({ deleted_item_id: 4 })
     const onNewChat = vi.fn()
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderList({ onNewChat, activeSessionId: 4 })
     fireEvent.click(await screen.findByRole('button', { name: 'Actions for Chain rule chat' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete chat' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chat' }))
     await waitFor(() => expect(onNewChat).toHaveBeenCalledTimes(1))
-    confirmSpy.mockRestore()
   })
 
   test('renames a chat from its menu', async () => {
@@ -158,11 +157,10 @@ describe('ChatSessionList', () => {
   test('deletes a chat from its menu', async () => {
     listChatSessions.mockResolvedValue(SESSIONS)
     deleteChatSession.mockResolvedValue({ deleted_item_id: 4 })
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderList()
     fireEvent.click(await screen.findByRole('button', { name: 'Actions for Chain rule chat' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete chat' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chat' }))
     await waitFor(() => expect(deleteChatSession).toHaveBeenCalledWith(4))
-    confirmSpy.mockRestore()
   })
 })

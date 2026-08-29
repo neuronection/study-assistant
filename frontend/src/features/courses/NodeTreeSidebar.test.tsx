@@ -262,10 +262,9 @@ describe('NodeTreeSidebar', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
 
     fireEvent.contextMenu(screen.getByText('Derivatives'))
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     fireEvent.click(screen.getByRole('menuitem', { name: /delete node/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete node' }))
     await waitFor(() => expect(deleteNode).toHaveBeenCalledWith(4))
-    confirmSpy.mockRestore()
   })
 
   test('context menu on panel background targets the active node', async () => {
@@ -289,10 +288,9 @@ describe('NodeTreeSidebar', () => {
     await screen.findByText('Derivatives')
 
     fireEvent.contextMenu(screen.getByRole('tree'))
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     fireEvent.click(screen.getByRole('menuitem', { name: /delete node/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete node' }))
     await waitFor(() => expect(deleteNode).toHaveBeenCalledWith(4))
-    confirmSpy.mockRestore()
   })
 
   test('background context menu falls back to the course root without a current node', async () => {
@@ -472,10 +470,9 @@ describe('NodeTreeSidebar', () => {
     await screen.findByText('Derivatives')
 
     fireEvent.contextMenu(screen.getByText('Derivatives'))
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     fireEvent.click(screen.getByRole('menuitem', { name: /delete node/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete node' }))
     await waitFor(() => expect(deleteNode).toHaveBeenCalledWith(4))
-    confirmSpy.mockRestore()
 
     expect(await screen.findByText('Node deleted.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /undo/i }))

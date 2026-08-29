@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
@@ -102,16 +102,15 @@ describe('DrawCanvas', () => {
     expect(strokes).toEqual(initial)
   })
 
-  test('clear asks for confirmation', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  test('clear asks for confirmation', async () => {
     const initial: Stroke[] = [{ points: [[10, 10]], color: '#1a1a1a', width: 2 }]
     const onChange = vi.fn()
     render(<DrawCanvas strokes={initial} onChange={onChange} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
-    expect(confirmSpy).toHaveBeenCalled()
-    expect(onChange).toHaveBeenCalledWith([])
-    confirmSpy.mockRestore()
+    const dialog = await screen.findByRole('dialog', { name: 'Clear' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Clear' }))
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([]))
   })
 
   test('wheel over the canvas zooms and the bar reflects the percent', () => {

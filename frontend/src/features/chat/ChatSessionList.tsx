@@ -13,6 +13,7 @@ import { deleteChatSession, listChatSessions, renameChatSession, type ChatSessio
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { exportSessionAsMarkdown } from '@/features/chat/exportSessionMarkdown'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/lib/use-confirm'
 
 export function ChatSessionList({
   onSelect,
@@ -32,6 +33,7 @@ export function ChatSessionList({
   const activeSession = activeSessionId ?? urlSessionId
   const [query, setQuery] = useState('')
   const [renaming, setRenaming] = useState<{ id: number; title: string } | null>(null)
+  const [confirm, confirmElement] = useConfirm()
   const [deletedItemId, setDeletedItemId] = useState<number | null>(null)
 
   const sessions = useQuery({ queryKey: ['chat-sessions'], queryFn: () => listChatSessions() })
@@ -184,10 +186,16 @@ export function ChatSessionList({
                       label: t('chat.deleteSession'),
                       icon: Trash2,
                       danger: true,
-                      onSelect: () => {
-                        if (window.confirm(t('chat.confirmDeleteSession', { title: session.title || t('chat.newSession') }))) {
-                          remove.mutate(session.id)
-                        }
+                      onSelect: async () => {
+                        const ok = await confirm({
+                          title: t('chat.deleteSession'),
+                          description: t('chat.confirmDeleteSession', {
+                            title: session.title || t('chat.newSession'),
+                          }),
+                          confirmLabel: t('chat.deleteSession'),
+                          cancelLabel: t('common.cancel'),
+                        })
+                        if (ok) remove.mutate(session.id)
                       },
                     },
                   ]}
@@ -205,6 +213,7 @@ export function ChatSessionList({
           onConfirm={(title) => rename.mutate({ id: renaming.id, title })}
         />
       ) : null}
+      {confirmElement}
     </div>
   )
 }
