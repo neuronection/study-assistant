@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from ..ocr.imaging import ALLOWED_IMAGE_MAX_EDGE, DEFAULT_IMAGE_MAX_EDGE
 from ..services.profiles import create_profile, ensure_default_profile, list_profiles
 from .deps import get_session
 
@@ -23,15 +24,23 @@ class ProfileOut(BaseModel):
 
 class PreferencesOut(BaseModel):
     use_embeddings: bool = True
+    ocr_image_max_edge: int = DEFAULT_IMAGE_MAX_EDGE
 
 
 class PreferencesIn(BaseModel):
-    use_embeddings: bool
+    use_embeddings: bool | None = None
+    ocr_image_max_edge: int | None = None
 
 
 def _preferences(profile: Any) -> PreferencesOut:
     prefs = profile.preferences or {}
-    return PreferencesOut(use_embeddings=bool(prefs.get("use_embeddings", True)))
+    max_edge = prefs.get("ocr_image_max_edge", DEFAULT_IMAGE_MAX_EDGE)
+    if max_edge not in ALLOWED_IMAGE_MAX_EDGE:
+        max_edge = DEFAULT_IMAGE_MAX_EDGE
+    return PreferencesOut(
+        use_embeddings=bool(prefs.get("use_embeddings", True)),
+        ocr_image_max_edge=int(max_edge),
+    )
 
 
 @router.get("/preferences", response_model=PreferencesOut)
@@ -45,7 +54,16 @@ def update_preferences(
 ) -> PreferencesOut:
     profile = ensure_default_profile(session)
     prefs = dict(profile.preferences or {})
-    prefs["use_embeddings"] = body.use_embeddings
+    if body.use_embeddings is not None:
+        prefs["use_embeddings"] = body.use_embeddings
+    if body.ocr_image_max_edge is not None:
+        if body.ocr_image_max_edge not in ALLOWED_IMAGE_MAX_EDGE:
+            allowed = ", ".join(str(value) for value in sorted(ALLOWED_IMAGE_MAX_EDGE))
+            raise HTTPException(
+                status_code=422,
+                detail=f"ocr_image_max_edge must be one of: {allowed}",
+            )
+        prefs["ocr_image_max_edge"] = body.ocr_image_max_edge
     profile.preferences = prefs
     session.commit()
     return _preferences(profile)

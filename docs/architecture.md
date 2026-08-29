@@ -16,7 +16,7 @@ without touching app code.
 │      │               context resolver (AI context engine),           │
 │      │               backup (scheduler+retention), trash,            │
 │      │               course_bundle (ca-course/v1 export/import)      │
-│      ├─ pipelines/   ingest, postprocess (embed+describe), quizgen   │
+│      ├─ pipelines/   ingest, postprocess, drawing_ocr, quizgen       │
 │      │               compose (AI-composed material)                  │
 │      ├─ ai/          gateway (LangChain chat models behind LLMGateway),   │
 │      │              providers/tasks, chat_models, types,                  │
@@ -44,10 +44,10 @@ without touching app code.
 | `core/` | `Settings` (pydantic-settings, `SA_*` env), structlog logging, keyring secrets, in-process EventBus with threadsafe publish |
 | `domain/` | SQLAlchemy 2 models — single source of truth for Alembic autogen |
 | `services/` | Business logic over the models (see ai.md / features.md for behavior) |
-| `pipelines/` | Multi-step flows: ingest (PDF text / OCR / native), postprocess (embed + index cards), quizgen (blueprint → LLM → validate → repair) |
+| `pipelines/` | Multi-step flows: ingest (PDF text / OCR / native), postprocess (embed + index cards), drawing_ocr (background drawing transcription, ADR-102), quizgen (blueprint → LLM → validate → repair) |
 | `ai/` | Model layer — see [ai.md](ai.md) |
 | `math/` | Deterministic math trust layer — see [math-verification.md](math-verification.md) |
-| `ocr/` | `OcrEngine` interface; `GatewayOcr` routes page images through the `ocr` task (any assigned vision model) |
+| `ocr/` | `OcrEngine` interface; `GatewayOcr` routes page images through the `ocr` task (any assigned vision model); `imaging.py` caps the long edge and re-encodes payloads (WebP q85) before any vision call (ADR-102) |
 | `storage/` | Engine with WAL/foreign-key/busy-timeout pragmas + sqlite-vec extension load; content-addressed blob store; FTS sync; vector store |
 | `jobs/` | Claim-based worker **pool** over the `jobs` table (default 4 workers) — durable, crash-safe: failed jobs are recorded + **logged** (structlog `job_failed`), the worker pool continues, **`running` jobs left by a restart are reclaimed as `failed`/interrupted on startup**, and an optional per-job timeout (`job_timeout_sec`) is available; progress via EventBus → WS. **Retry surface (2026-08-27): `api/jobs.py` exposes `GET /jobs` (+`/summary`), `POST /jobs/{id}/retry` and `POST /jobs/retry-failed`; a failed job is retriable iff its type has a registered handler and isn't a chat turn — retry resets status→queued, clears error/stage, wakes the pool** |
 

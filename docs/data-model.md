@@ -95,6 +95,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   JSON (replayable vector strokes — the source of truth), png_sha (FK→blobs,
   content-addressed PNG render), view JSON (0046, ADR-098 — exported region,
   mirrors `note_drawings.view`), ocr_version, ocr_blocks JSON, ocr_markdown,
+  ocr_job_id (0047, ADR-102, mirrors `note_drawings.ocr_job_id`),
   created_at — mirrors `note_drawings`; drawings are referenced from the
   extraction markdown via `![drawing](ca-drawing://{id})`, and their OCR joins the
   material FTS + AI chunk context
@@ -196,7 +197,9 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   source of truth), png_sha → blobs (content-addressed render), view JSON
   (0046, ADR-098 — the exported region `{x, y, width, height}` in stroke
   coordinates, 1 PNG px = 1 logical px; lets re-editing restore 100% scale),
-  ocr_version, ocr_blocks/ocr_markdown (notes_ocr result, re-runnable)
+  ocr_version, ocr_blocks/ocr_markdown (notes_ocr result, re-runnable),
+  ocr_job_id (0047, ADR-102 — the in-flight background `drawing_ocr` job, or
+  null; serialized only while that job is queued/running)
 - **note_versions**: id, note_id (FK CASCADE), profile_id, title, tags, body
   JSON, cause (autosave-coalesced | manual | restore), created_at — pre-write
   snapshots taken coalesced (≥10 min apart or `force_version`; plan 22 B),
@@ -286,6 +289,10 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0047 (plan 46, ADR-102)**: `ocr_job_id` nullable Integer column added to
+  `note_drawings` and `material_drawings` — pointer to the in-flight background
+  `drawing_ocr` job (create/update/re-OCR save first and return; the job fills
+  the OCR fields and clears the pointer). Downgrade drops both columns.
 - **0045 (fuzzy search)**: `material_fts_trigram` — trigram-tokenized FTS5 mirror of
   `material_fts` for typo-tolerant search; backfilled from existing rows on upgrade,
   dropped on downgrade. Synced service-layer together with `material_fts` (no shape

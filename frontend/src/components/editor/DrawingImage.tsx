@@ -12,6 +12,7 @@ export interface DrawingMeta {
   strokes?: unknown[]
   view?: { x: number; y: number; width: number; height: number } | null
   ocr_version?: number
+  ocr_job_id?: number | null
 }
 
 export type DrawingAction = 'edit' | 'reocr' | 'copy' | 'delete'

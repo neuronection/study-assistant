@@ -17,8 +17,13 @@ from ..domain.models import (
     NoteVersion,
     utcnow,
 )
-from ..ocr.notes_ocr import NotesOcrEngine
-from ..services.drawings import md_to_blocks
+from ..services.drawings import (
+    blocks_md,
+    enqueue_drawing_ocr,
+    md_to_blocks,
+    note_search_text,
+    pending_ocr_job_id,
+)
 from ..services.profiles import ensure_default_profile
 from ..services.search import fuzzy_text_match
 from ..services.skills import SkillService
@@ -153,34 +158,6 @@ def _validate_drawing_blocks(session: Session, note: Note) -> None:
         )
 
 
-def _blocks_md(blocks: list[dict[str, Any]] | None) -> str:
-    if not blocks:
-        return ""
-    result = ""
-    for block in blocks:
-        if block.get("type") == "drawing":
-            part = f"![drawing](ca-drawing://{block['drawing_id']})"
-        elif block.get("md"):
-            part = str(block["md"])
-        else:
-            continue
-        if result == "":
-            result = part
-        elif not (result.endswith("\n") or part.startswith("\n")):
-            result += f"\n\n{part}"
-        else:
-            result += part
-    return result
-
-
-def _search_text(note: Note) -> str:
-    parts = [note.title, _blocks_md(note.body)]
-    for drawing in note.drawings:
-        if drawing.ocr_markdown:
-            parts.append(drawing.ocr_markdown)
-    return "\n".join(parts)
-
-
 def _note_out(note: Note) -> NoteOut:
     return NoteOut(
         id=note.id,
@@ -195,7 +172,7 @@ def _note_out(note: Note) -> NoteOut:
     )
 
 
-def _note_detail(note: Note) -> NoteDetail:
+def _note_detail(session: Session, note: Note) -> NoteDetail:
     return NoteDetail(
         **_note_out(note).model_dump(),
         body=note.body,
@@ -207,6 +184,7 @@ def _note_detail(note: Note) -> NoteDetail:
                 "view": drawing.view,
                 "ocr_version": drawing.ocr_version,
                 "ocr_markdown": drawing.ocr_markdown,
+                "ocr_job_id": pending_ocr_job_id(session, drawing),
                 "created_at": drawing.created_at.isoformat(),
             }
             for drawing in note.drawings
@@ -242,11 +220,11 @@ def create_note(
         body=md_to_blocks(body.body_md),
         tags=_normalize_tags(body.tags),
     )
-    note.search_text = _search_text(note)
+    note.search_text = note_search_text(note)
     session.add(note)
     session.flush()
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 @router.post("/compose", response_model=NoteDetail, status_code=201)
@@ -332,7 +310,7 @@ def compose_note(
         body=md_to_blocks(output),
         tags=[],
     )
-    note.search_text = _search_text(note)
+    note.search_text = note_search_text(note)
     session.add(note)
     session.flush()
     session.add(
@@ -348,7 +326,7 @@ def compose_note(
         )
     )
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 def _apply_cursor(
@@ -438,7 +416,7 @@ def list_note_tags(
 @router.get("/{note_id}", response_model=NoteDetail)
 def get_note(note_id: int, session: Session = Depends(get_session)) -> NoteDetail:
     profile = ensure_default_profile(session)
-    return _note_detail(_load_note(session, note_id, profile.id))
+    return _note_detail(session, _load_note(session, note_id, profile.id))
 
 
 def _utc_naive(value: datetime) -> datetime:
@@ -521,9 +499,9 @@ def update_note(
         note.pinned = body.pinned
     if body.tags is not None:
         note.tags = _normalize_tags(body.tags)
-    note.search_text = _search_text(note)
+    note.search_text = note_search_text(note)
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 class NoteMove(BaseModel):
@@ -543,7 +521,7 @@ def move_note(
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 class NoteVersionOut(BaseModel):
@@ -563,7 +541,7 @@ def _version_out(version: NoteVersion) -> NoteVersionOut:
         version_id=version.id,
         cause=version.cause,
         title=version.title,
-        chars=len(_blocks_md(version.body)),
+        chars=len(blocks_md(version.body)),
         created_at=version.created_at.isoformat(),
     )
 
@@ -596,7 +574,7 @@ def get_note_version(
     version = session.get(NoteVersion, version_id)
     if version is None or version.note_id != note_id:
         raise HTTPException(status_code=404, detail="version not found")
-    return NoteVersionDetail(**_version_out(version).model_dump(), body_md=_blocks_md(version.body))
+    return NoteVersionDetail(**_version_out(version).model_dump(), body_md=blocks_md(version.body))
 
 
 class NoteRestoreIn(BaseModel):
@@ -614,10 +592,10 @@ def restore_note_version(
         raise HTTPException(status_code=404, detail="version not found")
     _snapshot_note(session, note, "restore", force=True)
     note.body = version.body
-    note.search_text = _search_text(note)
+    note.search_text = note_search_text(note)
     note.updated_at = utcnow()
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 @router.delete("/{note_id}")
@@ -655,23 +633,15 @@ def _store_drawing(
         png_sha=stored.sha256,
         view=body.view.model_dump() if body.view is not None else None,
     )
-    ocr_error: str | None = None
-    if run_ocr:
-        engine = NotesOcrEngine(request.app.state.gateway)
-        try:
-            markdown = engine.transcribe(png, "image/png", session=session)
-            drawing.ocr_version = 1
-            drawing.ocr_blocks = [{"type": "text", "md": markdown}]
-            drawing.ocr_markdown = markdown
-        except (TaskUnassigned, ProviderError) as error:
-            ocr_error = str(error)
     session.add(drawing)
     session.flush()
-    note.search_text = _search_text(note)
+    if run_ocr:
+        drawing.ocr_job_id = enqueue_drawing_ocr(
+            session, kind="note", owner_id=note.id, drawing_id=drawing.id
+        )
+        session.flush()
+    note.search_text = note_search_text(note)
     session.flush()
-    if ocr_error is not None:
-        session.commit()
-        raise HTTPException(status_code=502, detail=ocr_error)
     return drawing
 
 
@@ -686,7 +656,7 @@ def add_drawing(
     note = _load_note(session, note_id, profile.id)
     _store_drawing(request, session, note, body, run_ocr=body.ocr)
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 @router.put("/{note_id}/drawings/{drawing_id}", response_model=NoteDetail)
@@ -710,35 +680,25 @@ def update_drawing(
     drawing.strokes = body.strokes
     drawing.png_sha = stored.sha256
     drawing.view = body.view.model_dump() if body.view is not None else None
-    ocr_error: str | None = None
     if body.ocr:
-        engine = NotesOcrEngine(request.app.state.gateway)
-        try:
-            markdown = engine.transcribe(png, "image/png", session=session)
-            drawing.ocr_version += 1
-            drawing.ocr_blocks = [{"type": "text", "md": markdown}]
-            drawing.ocr_markdown = markdown
-        except (TaskUnassigned, ProviderError) as error:
-            ocr_error = str(error)
+        drawing.ocr_job_id = enqueue_drawing_ocr(
+            session, kind="note", owner_id=note.id, drawing_id=drawing.id
+        )
     else:
         drawing.ocr_version = 0
         drawing.ocr_blocks = None
         drawing.ocr_markdown = None
-    note.search_text = _search_text(note)
+        drawing.ocr_job_id = None
+    note.search_text = note_search_text(note)
     note.updated_at = utcnow()
-    session.flush()
-    if ocr_error is not None:
-        session.commit()
-        raise HTTPException(status_code=502, detail=ocr_error)
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 @router.post("/{note_id}/drawings/{drawing_id}/reocr", response_model=NoteDetail)
 def reocr_drawing(
     note_id: int,
     drawing_id: int,
-    request: Request,
     session: Session = Depends(get_session),
 ) -> NoteDetail:
     profile = ensure_default_profile(session)
@@ -748,21 +708,14 @@ def reocr_drawing(
         raise HTTPException(status_code=404, detail="drawing not found")
     if drawing.png_sha is None:
         raise HTTPException(status_code=422, detail="drawing has no stored image")
-    png = request.app.state.blobs.get(drawing.png_sha)
-    if png is None:
-        raise HTTPException(status_code=422, detail="drawing image missing from store")
-    engine = NotesOcrEngine(request.app.state.gateway)
-    try:
-        markdown = engine.transcribe(png, "image/png", session=session)
-    except (TaskUnassigned, ProviderError) as error:
-        raise HTTPException(status_code=502, detail=str(error)) from error
-    drawing.ocr_version += 1
-    drawing.ocr_blocks = [{"type": "text", "md": markdown}]
-    drawing.ocr_markdown = markdown
-    note.search_text = _search_text(note)
+    if pending_ocr_job_id(session, drawing) is not None:
+        raise HTTPException(status_code=409, detail="drawing OCR already in progress")
+    drawing.ocr_job_id = enqueue_drawing_ocr(
+        session, kind="note", owner_id=note.id, drawing_id=drawing.id
+    )
     note.updated_at = utcnow()
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 @router.delete("/{note_id}/drawings/{drawing_id}", response_model=NoteDetail)
@@ -786,10 +739,10 @@ def delete_drawing(
     ]
     session.delete(drawing)
     session.flush()
-    note.search_text = _search_text(note)
+    note.search_text = note_search_text(note)
     note.updated_at = utcnow()
     session.commit()
-    return _note_detail(note)
+    return _note_detail(session, note)
 
 
 @router.post("/{note_id}/actions", response_model=ActionOut)
@@ -804,7 +757,7 @@ def run_note_action(
     instruction = NOTE_ACTIONS.get(body.action)
     if instruction is None:
         raise HTTPException(status_code=422, detail="unknown action")
-    content_parts = [_blocks_md(note.body)]
+    content_parts = [blocks_md(note.body)]
     for drawing in note.drawings:
         if drawing.ocr_markdown:
             content_parts.append(drawing.ocr_markdown)

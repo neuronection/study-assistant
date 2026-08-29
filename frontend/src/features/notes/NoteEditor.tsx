@@ -34,6 +34,7 @@ import {
   updateDrawing,
   updateNote,
 } from '@/lib/api'
+import { useDrawingOcrSync } from '@/lib/useDrawingOcrSync'
 
 import { NoteHistoryDialog } from './NoteHistoryDialog'
 import { noteBodyMd, useNoteAutosave } from './useNoteAutosave'
@@ -148,6 +149,10 @@ export function NoteEditor({
     }),
     [noteId, note.data, queryClient]
   )
+  useDrawingOcrSync(note.data?.drawings, () => {
+    void queryClient.invalidateQueries({ queryKey: ['note', noteId] })
+    void queryClient.invalidateQueries({ queryKey: ['notes'] })
+  })
   const exportMd = useMutation({
     mutationFn: async () => {
       const current = note.data

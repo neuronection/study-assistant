@@ -136,7 +136,7 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
             parts: list[str] = []
             for index, (image_data, mime) in enumerate(images):
                 try:
-                    result = ocr.ocr_image(image_data, mime)
+                    result = ocr.ocr_image(image_data, mime, session=session)
                 except TaskUnassigned as error:
                     raise JobError(str(error)) from error
                 parts.append(result.markdown)

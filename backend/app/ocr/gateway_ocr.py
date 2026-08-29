@@ -1,7 +1,10 @@
 import re
 
+from sqlalchemy.orm import Session
+
 from ..ai.gateway import ImagePart, LLMGateway, Message, TextPart
 from .base import OcrEngine, OcrPageResult
+from .imaging import ocr_image_max_edge, prepare_ocr_image
 
 OCR_TASK = "ocr"
 
@@ -29,7 +32,17 @@ class GatewayOcr(OcrEngine):
     def __init__(self, gateway: LLMGateway) -> None:
         self._gateway = gateway
 
-    def ocr_image(self, data: bytes, mime: str, *, context: str = "") -> OcrPageResult:
+    def ocr_image(
+        self,
+        data: bytes,
+        mime: str,
+        *,
+        context: str = "",
+        session: Session | None = None,
+    ) -> OcrPageResult:
+        payload, payload_mime = prepare_ocr_image(
+            data, mime, ocr_image_max_edge(session)
+        )
         prompt = f"Transcribe this page. {context}".strip() if context else "Transcribe this page."
         text = self._gateway.generate(
             OCR_TASK,
@@ -37,7 +50,10 @@ class GatewayOcr(OcrEngine):
                 Message(role="system", content=OCR_SYSTEM_PROMPT),
                 Message(
                     role="user",
-                    content=[TextPart(text=prompt), ImagePart(data=data, mime=mime)],
+                    content=[
+                        TextPart(text=prompt),
+                        ImagePart(data=payload, mime=payload_mime),
+                    ],
                 ),
             ],
         )

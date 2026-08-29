@@ -12,9 +12,12 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..domain.models import Extraction, Material, MaterialDrawing
 from ..jobs.runner import JobRunner
-from ..ocr.notes_ocr import NotesOcrEngine
 from ..services.courses import StructureService
-from ..services.drawings import strip_drawing_refs
+from ..services.drawings import (
+    enqueue_drawing_ocr,
+    pending_ocr_job_id,
+    strip_drawing_refs,
+)
 from ..services.materials import MaterialsService, purge_material
 from ..services.profiles import ensure_default_profile
 from .deps import content_disposition, get_session
@@ -85,7 +88,7 @@ def _to_out(material: Material) -> MaterialOut:
     )
 
 
-def _drawings_out(material: Material) -> list[DrawingOut]:
+def _drawings_out(session: Session, material: Material) -> list[DrawingOut]:
     return [
         DrawingOut(
             id=drawing.id,
@@ -94,13 +97,16 @@ def _drawings_out(material: Material) -> list[DrawingOut]:
             view=ViewBox(**drawing.view) if drawing.view else None,
             ocr_version=drawing.ocr_version,
             ocr_markdown=drawing.ocr_markdown,
+            ocr_job_id=pending_ocr_job_id(session, drawing),
             created_at=drawing.created_at,
         )
         for drawing in material.drawings
     ]
 
 
-def _material_detail(service: MaterialsService, material: Material) -> MaterialDetailOut:
+def _material_detail(
+    session: Session, service: MaterialsService, material: Material
+) -> MaterialDetailOut:
     extraction = service.latest_extraction(material.id)
     card = service.index_card(material.id)
     return MaterialDetailOut(
@@ -128,7 +134,7 @@ def _material_detail(service: MaterialsService, material: Material) -> MaterialD
             if card is not None
             else None
         ),
-        drawings=_drawings_out(material),
+        drawings=_drawings_out(session, material),
     )
 
 
@@ -186,7 +192,6 @@ def compose_material(
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
     profile = ensure_default_profile(session)
-    from ..ai.gateway import ProviderError
     from ..pipelines.compose import ComposeError, ComposeService
     from ..services.context import (
         ContextError,
@@ -364,7 +369,7 @@ def mindmap_edit(
     if extraction is None or not extraction.markdown.strip():
         raise HTTPException(status_code=422, detail="material has no extraction to edit")
 
-    from ..ai.gateway import Message, ProviderError, TaskUnassigned
+    from ..ai.gateway import Message
     from ..ai.skills import MINDMAP_EDIT_SYSTEM
 
     parts = [MINDMAP_EDIT_MODES.get(body.mode, "")]
@@ -582,7 +587,7 @@ def get_material(
     material = service.get(material_id, profile_id=profile.id)
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
-    return _material_detail(service, material)
+    return _material_detail(session, service, material)
 
 
 def _extraction_to_out(extraction: Any) -> ExtractionOut:
@@ -655,23 +660,15 @@ def _store_material_drawing(
         png_sha=stored.sha256,
         view=body.view.model_dump() if body.view is not None else None,
     )
-    ocr_error: str | None = None
-    if run_ocr:
-        engine = NotesOcrEngine(request.app.state.gateway)
-        try:
-            markdown = engine.transcribe(png, "image/png", session=session)
-            drawing.ocr_version = 1
-            drawing.ocr_blocks = [{"type": "text", "md": markdown}]
-            drawing.ocr_markdown = markdown
-        except (TaskUnassigned, ProviderError) as error:
-            ocr_error = str(error)
     session.add(drawing)
     session.flush()
+    if run_ocr:
+        drawing.ocr_job_id = enqueue_drawing_ocr(
+            session, kind="material", owner_id=material.id, drawing_id=drawing.id
+        )
+        session.flush()
     _refresh_material_fts(session, service, material)
     session.flush()
-    if ocr_error is not None:
-        session.commit()
-        raise HTTPException(status_code=502, detail=ocr_error)
     return drawing
 
 
@@ -689,7 +686,7 @@ def add_material_drawing(
         raise HTTPException(status_code=404, detail="material not found")
     _store_material_drawing(request, session, service, material, body, run_ocr=body.ocr)
     session.commit()
-    return _material_detail(service, material)
+    return _material_detail(session, service, material)
 
 
 @router.put("/{material_id}/drawings/{drawing_id}", response_model=MaterialDetailOut)
@@ -716,27 +713,18 @@ def update_material_drawing(
     drawing.strokes = body.strokes
     drawing.png_sha = stored.sha256
     drawing.view = body.view.model_dump() if body.view is not None else None
-    ocr_error: str | None = None
     if body.ocr:
-        engine = NotesOcrEngine(request.app.state.gateway)
-        try:
-            markdown = engine.transcribe(png, "image/png", session=session)
-            drawing.ocr_version += 1
-            drawing.ocr_blocks = [{"type": "text", "md": markdown}]
-            drawing.ocr_markdown = markdown
-        except (TaskUnassigned, ProviderError) as error:
-            ocr_error = str(error)
+        drawing.ocr_job_id = enqueue_drawing_ocr(
+            session, kind="material", owner_id=material.id, drawing_id=drawing.id
+        )
     else:
         drawing.ocr_version = 0
         drawing.ocr_blocks = None
         drawing.ocr_markdown = None
+        drawing.ocr_job_id = None
     _refresh_material_fts(session, service, material)
-    session.flush()
-    if ocr_error is not None:
-        session.commit()
-        raise HTTPException(status_code=502, detail=ocr_error)
     session.commit()
-    return _material_detail(service, material)
+    return _material_detail(session, service, material)
 
 
 @router.post("/{material_id}/drawings/{drawing_id}/reocr", response_model=MaterialDetailOut)
@@ -756,20 +744,13 @@ def reocr_material_drawing(
         raise HTTPException(status_code=404, detail="drawing not found")
     if drawing.png_sha is None:
         raise HTTPException(status_code=422, detail="drawing has no stored image")
-    png = request.app.state.blobs.get(drawing.png_sha)
-    if png is None:
-        raise HTTPException(status_code=422, detail="drawing image missing from store")
-    engine = NotesOcrEngine(request.app.state.gateway)
-    try:
-        markdown = engine.transcribe(png, "image/png", session=session)
-    except (TaskUnassigned, ProviderError) as error:
-        raise HTTPException(status_code=502, detail=str(error)) from error
-    drawing.ocr_version += 1
-    drawing.ocr_blocks = [{"type": "text", "md": markdown}]
-    drawing.ocr_markdown = markdown
-    _refresh_material_fts(session, service, material)
+    if pending_ocr_job_id(session, drawing) is not None:
+        raise HTTPException(status_code=409, detail="drawing OCR already in progress")
+    drawing.ocr_job_id = enqueue_drawing_ocr(
+        session, kind="material", owner_id=material.id, drawing_id=drawing.id
+    )
     session.commit()
-    return _material_detail(service, material)
+    return _material_detail(session, service, material)
 
 
 @router.delete("/{material_id}/drawings/{drawing_id}", response_model=MaterialDetailOut)
@@ -796,7 +777,7 @@ def delete_material_drawing(
     else:
         _refresh_material_fts(session, service, material)
     session.commit()
-    return _material_detail(service, material)
+    return _material_detail(session, service, material)
 
 
 @blobs_router.get("/{sha256}")

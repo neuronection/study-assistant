@@ -133,18 +133,22 @@ your cursor was**:
    the toolbar toggles the canvas to **fullscreen** for large sketches
    (Escape leaves fullscreen first).
 2. Press **Save drawing**. The drawing is inserted into the note as an
-   **inline image** at the cursor, right between your text — the saved PNG is
+   **inline image** at the cursor, right between your text — saving is
+   **instant**. The saved PNG is
    **cropped to your strokes** (plus a small margin), so empty canvas space is
    never stored. **Run OCR**
-   (on by default) extracts the handwritten text — any math in it comes back
+   (on by default) extracts the handwritten text in the background — the image
+   first shows a *Transcribing…* placeholder, and when it finishes, any math in
+   it comes back
    as LaTeX in a collapsible *OCR text* line under the image. Turn it off to
    save just the drawing with no text extraction.
 3. Click a drawing to focus it: it gets a highlight ring and its small **⋯
    menu** appears. **Edit drawing** reopens
    the canvas with your strokes loaded **at the same 100% scale as the saved
    image** (saving replaces the image — and reruns
-   OCR if the toggle is on; with it off, any old OCR text is cleared since it
-   no longer matches), **Run OCR again** re-extracts the text (each attempt is
+   OCR in the background if the toggle is on; with it off, any old OCR text is cleared since it
+   no longer matches), **Run OCR again** re-extracts the text in the background
+   (each attempt is
    versioned), **Copy OCR text** puts the extracted text on the clipboard, and
    **Delete drawing** (confirmed) removes the drawing — and its OCR text —
    from the note, dropping the image where it stood. Clicking elsewhere in the

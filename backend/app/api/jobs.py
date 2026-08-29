@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..domain.models import ChatSession, Job, Material
+from ..domain.models import ChatSession, Job, Material, Note
 from .deps import get_session
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -91,9 +91,38 @@ def _chat_session_id(payload: dict[str, Any] | None) -> int | None:
         return None
 
 
+def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
+    if not payload:
+        return None
+    value = payload.get("note_id")
+    if value is None:
+        return None
+    try:
+        note_id = int(value)
+    except (TypeError, ValueError):
+        return None
+    note = session.get(Note, note_id)
+    if note is None:
+        return None
+    return note.title
+
+
+def _note_id(payload: dict[str, Any] | None) -> int | None:
+    if not payload:
+        return None
+    value = payload.get("note_id")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[int]:
     material_ids: set[int] = set()
     chat_ids: set[int] = set()
+    note_ids: set[int] = set()
     for job in jobs:
         material_id = _material_id(job.payload)
         if material_id is not None:
@@ -101,6 +130,9 @@ def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[i
         chat_id = _chat_session_id(job.payload)
         if chat_id is not None:
             chat_ids.add(chat_id)
+        note_id = _note_id(job.payload)
+        if note_id is not None:
+            note_ids.add(note_id)
     stale: set[int] = set()
     if material_ids:
         found = set(
@@ -122,6 +154,14 @@ def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[i
             if (chat_id := _chat_session_id(job.payload)) is not None
             and chat_id not in found
         )
+    if note_ids:
+        found = set(session.scalars(select(Note.id).where(Note.id.in_(note_ids))))
+        stale.update(
+            job.id
+            for job in jobs
+            if (note_id := _note_id(job.payload)) is not None
+            and note_id not in found
+        )
     return stale
 
 
@@ -136,7 +176,7 @@ def _to_out(
         and job.type not in NON_RETRYABLE_TYPES
         and job.type in retriable_types
     )
-    label = _material_label(session, job.payload)
+    label = _material_label(session, job.payload) or _note_label(session, job.payload)
     stale = job.id in stale_ids if stale_ids else False
     return JobOut(
         id=job.id,

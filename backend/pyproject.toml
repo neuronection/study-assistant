@@ -24,6 +24,7 @@ dependencies = [
     "uvicorn[standard]>=0.34",
     "sqlite-vec>=0.1.9",
     "mcp>=1.7",
+    "pillow>=11",
 ]
 dynamic = ["version"]
 

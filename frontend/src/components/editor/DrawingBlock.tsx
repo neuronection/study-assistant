@@ -1,4 +1,4 @@
-import { Copy, MoreHorizontal, Pencil, RefreshCw, Trash2 } from 'lucide-react'
+import { Copy, Loader2, MoreHorizontal, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type {
@@ -95,6 +95,12 @@ export function DrawingBlock({
             ]}
           />
         </div>
+      ) : null}
+      {meta?.ocr_job_id && !meta?.ocr_markdown ? (
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <Loader2 className="size-3 animate-spin" aria-hidden />
+          {t('notes.ocrPending')}
+        </p>
       ) : null}
       {meta?.ocr_markdown ? (
         <details className="text-xs">

@@ -207,6 +207,7 @@ class DrawingOut(BaseModel):
     view: ViewBox | None = None
     ocr_version: int
     ocr_markdown: str | None
+    ocr_job_id: int | None = None
     created_at: datetime
 
 

@@ -25,6 +25,7 @@ from .core.logging import setup_logging
 from .core.profile_context import reset_active_profile, set_active_profile
 from .jobs.runner import JobRunner
 from .ocr.gateway_ocr import GatewayOcr
+from .pipelines.drawing_ocr import make_drawing_ocr_handler
 from .pipelines.ingest import make_ingest_handler
 from .pipelines.postprocess import make_postprocess_handler
 from .services.backup import (
@@ -216,6 +217,7 @@ def create_app(
             "chat_turn": make_chat_turn_handler(
                 app.state.gateway, app.state.embedder, app.state.bus
             ),
+            "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
         },
         group_key=_chat_turn_group,
     )

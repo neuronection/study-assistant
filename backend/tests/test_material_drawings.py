@@ -1,4 +1,5 @@
 import base64
+import time
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -105,6 +106,24 @@ def make_drawing(client: TestClient, material_id: int, ocr: bool = True) -> int:
     return int(response.json()["drawings"][-1]["id"])
 
 
+def wait_drawing_ocr(
+    client: TestClient, material_id: int, drawing_id: int, min_version: int = 1
+) -> dict[str, Any]:
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline:
+        detail: dict[str, Any] = client.get(f"/api/v1/materials/{material_id}").json()
+        drawings: list[dict[str, Any]] = detail["drawings"]
+        drawing = next((d for d in drawings if d["id"] == drawing_id), None)
+        if (
+            drawing is not None
+            and drawing["ocr_version"] >= min_version
+            and drawing["ocr_markdown"]
+        ):
+            return drawing
+        time.sleep(0.05)
+    raise AssertionError("drawing OCR did not finish")
+
+
 def test_material_drawing_created_with_ocr_and_searchable() -> None:
     client = make_client([OCR_MARKDOWN])
     with client:
@@ -116,8 +135,12 @@ def test_material_drawing_created_with_ocr_and_searchable() -> None:
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         drawing = detail["drawings"][0]
         assert drawing["id"] == drawing_id
-        assert drawing["ocr_version"] == 1
-        assert "2x" in drawing["ocr_markdown"]
+        assert drawing["ocr_version"] == 0
+        assert drawing["ocr_markdown"] is None
+
+        finished = wait_drawing_ocr(client, material_id, drawing_id)
+        assert "2x" in finished["ocr_markdown"]
+        assert finished["ocr_job_id"] is None
 
         hits = client.get("/api/v1/search", params={"q": "2x"}).json()["hits"]
         assert [hit["material_id"] for hit in hits] == [material_id]
@@ -145,8 +168,10 @@ def test_material_drawing_without_ocr_stored_cleanly_and_update_reruns() -> None
         )
         assert updated.status_code == 200, updated.text
         drawing = updated.json()["drawings"][0]
-        assert drawing["ocr_version"] == 1
-        assert "5x" in drawing["ocr_markdown"]
+        assert drawing["ocr_version"] == 0
+
+        finished = wait_drawing_ocr(client, material_id, drawing["id"], min_version=1)
+        assert "5x" in finished["ocr_markdown"]
 
         hits = client.get("/api/v1/search", params={"q": "5x"}).json()["hits"]
         assert [hit["material_id"] for hit in hits] == [material_id]
@@ -199,10 +224,12 @@ def test_material_drawing_reocr_bumps_version() -> None:
         course_id = client.post("/api/v1/courses", json={"title": "C"}).json()["id"]
         material_id = create_text_material(client, course_id)
         drawing_id = make_drawing(client, material_id)
-        reocr = client.post(f"/api/v1/materials/{material_id}/drawings/{drawing_id}/reocr")
+        wait_drawing_ocr(client, material_id, drawing_id, min_version=1)
+        reocr = client.post(
+            f"/api/v1/materials/{material_id}/drawings/{drawing_id}/reocr"
+        )
         assert reocr.status_code == 200, reocr.text
-        drawing = reocr.json()["drawings"][0]
-        assert drawing["ocr_version"] == 2
+        drawing = wait_drawing_ocr(client, material_id, drawing_id, min_version=2)
         assert "3x" in drawing["ocr_markdown"]
 
 

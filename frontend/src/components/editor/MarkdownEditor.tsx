@@ -500,6 +500,11 @@ lastEmitted.current = value
                   blocks={[{ type: 'text', md: drawing.ocr_markdown }] as Block[]}
                 />
               </div>
+            ) : drawing.ocr_job_id ? (
+              <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                <Loader2 className="size-3 animate-spin" aria-hidden />
+                {t('notes.ocrPending')}
+              </p>
             ) : (
               <p className="text-muted-foreground text-xs">{t('notes.notTranscribed')}</p>
             )}

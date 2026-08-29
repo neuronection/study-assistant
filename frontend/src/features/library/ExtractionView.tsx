@@ -18,6 +18,7 @@ import {
   reocrMaterialDrawing,
   updateMaterialDrawing,
 } from '@/lib/api'
+import { useDrawingOcrSync } from '@/lib/useDrawingOcrSync'
 import { MindmapViewer } from './MindmapViewer'
 
 export function ExtractionView({
@@ -79,6 +80,10 @@ export function ExtractionView({
     }),
     [materialId, data, queryClient]
   )
+  useDrawingOcrSync(data?.drawings, () => {
+    void queryClient.invalidateQueries({ queryKey: ['material', materialId] })
+    void queryClient.invalidateQueries({ queryKey: ['materials'] })
+  })
 
   const save = useMutation({
     mutationFn: () => editExtraction(materialId, draft),

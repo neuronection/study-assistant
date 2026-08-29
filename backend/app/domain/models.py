@@ -331,6 +331,7 @@ class MaterialDrawing(Base):
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
     ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
+    ocr_job_id: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     material: Mapped[Material] = relationship(back_populates="drawings")
@@ -741,6 +742,7 @@ class NoteDrawing(Base):
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
     ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
+    ocr_job_id: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     note: Mapped[Note] = relationship(back_populates="drawings")

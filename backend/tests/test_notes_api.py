@@ -1,12 +1,14 @@
 import base64
 import json
+import threading
+import time
 from datetime import UTC
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.ai.gateway import LLMGateway, Message, ResolvedModel
+from app.ai.gateway import LLMGateway, Message, ProviderError, ResolvedModel
 from app.core.config import Settings
 from app.main import create_app
 
@@ -59,14 +61,16 @@ class NoAI:
         return None
 
 
-def make_client(responses: list[str]) -> TestClient:
+def make_client(
+    responses: list[str], gateway: LLMGateway | None = None
+) -> TestClient:
     import tempfile
     from pathlib import Path
 
     tmp = Path(tempfile.mkdtemp(prefix="ca-notes-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
-        gateway=NotesGateway(responses),
+        gateway=gateway or NotesGateway(responses),
         embedder=NoAI(),  # type: ignore[arg-type]
         describer=NoAI(),  # type: ignore[arg-type]
     )
@@ -88,6 +92,43 @@ def create_note(client: TestClient, title: str = "Derivatives", body: str = "") 
     )
     assert created.status_code == 201, created.text
     return int(created.json()["id"])
+
+
+def wait_drawing_ocr(
+    client: TestClient, note_id: int, min_version: int = 1
+) -> dict[str, Any]:
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline:
+        detail: dict[str, Any] = client.get(f"/api/v1/notes/{note_id}").json()
+        drawing: dict[str, Any] = detail["drawings"][0]
+        if drawing["ocr_version"] >= min_version and drawing["ocr_markdown"]:
+            return drawing
+        time.sleep(0.05)
+    raise AssertionError("drawing OCR did not finish")
+
+
+def wait_failed_drawing_job(client: TestClient) -> dict[str, Any]:
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline:
+        jobs: list[dict[str, Any]] = client.get(
+            "/api/v1/jobs", params={"type": "drawing_ocr"}
+        ).json()
+        failed = [job for job in jobs if job["status"] == "failed"]
+        if failed:
+            return failed[0]
+        time.sleep(0.05)
+    raise AssertionError("drawing OCR job never failed")
+
+
+def add_drawing(client: TestClient, note_id: int, ocr: bool = True) -> Any:
+    return client.post(
+        f"/api/v1/notes/{note_id}/drawings",
+        json={
+            "strokes": [{"points": [[0, 0], [10, 10]], "width": 2}],
+            "png_base64": base64.b64encode(PNG_BYTES).decode(),
+            "ocr": ocr,
+        },
+    )
 
 
 def test_note_crud_and_search() -> None:
@@ -276,21 +317,116 @@ def test_note_versions_capped_at_50_and_cascade_on_delete() -> None:
         assert remaining == []
 
 
+def test_drawing_save_is_immediate_and_pending_state_serialized() -> None:
+    class BlockingGateway(NotesGateway):
+        def __init__(self, responses: list[str]) -> None:
+            super().__init__(responses)
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def generate(
+            self,
+            task: str,
+            messages: list[Message],
+            model: Any = None,
+            course_id: int | None = None,
+        ) -> str:
+            self.started.set()
+            if not self.release.wait(timeout=10.0):
+                raise AssertionError("gateway was never released")
+            return super().generate(task, messages, model=model, course_id=course_id)
+
+    gateway = BlockingGateway([OCR_MARKDOWN])
+    import tempfile
+    from pathlib import Path
+
+    tmp = Path(tempfile.mkdtemp(prefix="ca-block-"))
+    app = create_app(
+        Settings(data_dir=tmp, log_level="WARNING"),
+        gateway=gateway,
+        embedder=NoAI(),  # type: ignore[arg-type]
+        describer=NoAI(),  # type: ignore[arg-type]
+    )
+    client = TestClient(app)
+    with client:
+        note_id = create_note(client, "Pending")
+        added = add_drawing(client, note_id)
+        assert added.status_code == 201, added.text
+        drawing = added.json()["drawings"][0]
+        assert drawing["ocr_version"] == 0
+        assert drawing["ocr_markdown"] is None
+        assert gateway.started.wait(timeout=5.0), "OCR job never started"
+
+        detail = client.get(f"/api/v1/notes/{note_id}").json()
+        pending = detail["drawings"][0]
+        assert pending["ocr_markdown"] is None
+        assert pending["ocr_job_id"] == drawing["ocr_job_id"]
+        assert pending["ocr_job_id"] is not None
+
+        conflict = client.post(f"/api/v1/notes/{note_id}/drawings/{drawing['id']}/reocr")
+        assert conflict.status_code == 409
+
+        gateway.release.set()
+        finished = wait_drawing_ocr(client, note_id, 1)
+        assert "2x" in finished["ocr_markdown"]
+
+        settled = client.get(f"/api/v1/notes/{note_id}").json()["drawings"][0]
+        assert settled["ocr_job_id"] is None
+
+        reocr = client.post(f"/api/v1/notes/{note_id}/drawings/{drawing['id']}/reocr")
+        assert reocr.status_code == 200, reocr.text
+        assert reocr.json()["drawings"][0]["ocr_job_id"] is not None
+
+
+def test_drawing_ocr_failure_is_a_retriable_job_not_a_502() -> None:
+    class FailingGateway(NotesGateway):
+        def generate(
+            self,
+            task: str,
+            messages: list[Message],
+            model: Any = None,
+            course_id: int | None = None,
+        ) -> str:
+            resolved = ResolvedModel(
+                provider_id=1,
+                provider_type="openai_compatible",
+                base_url="http://localhost/v1",
+                external_id="m",
+                label="m",
+                caps=["text", "vision"],
+                api_key=None,
+            )
+            raise ProviderError(resolved, "vision provider down")
+
+    client = make_client([], gateway=FailingGateway([]))
+    with client:
+        note_id = create_note(client, "Fail")
+        added = add_drawing(client, note_id)
+        assert added.status_code == 201, added.text
+
+        job = wait_failed_drawing_job(client)
+        assert job["retriable"] is True
+        assert "vision provider down" in job["error"]
+
+        detail = client.get(f"/api/v1/notes/{note_id}").json()
+        drawing = detail["drawings"][0]
+        assert drawing["ocr_markdown"] is None
+        assert drawing["ocr_job_id"] is None
+
+
 def test_drawing_ocr_transcribes_and_is_searchable() -> None:
     client = make_client([OCR_MARKDOWN])
     with client:
         note_id = create_note(client, "Whiteboard")
-        added = client.post(
-            f"/api/v1/notes/{note_id}/drawings",
-            json={
-                "strokes": [{"points": [[0, 0], [10, 10]], "width": 2}],
-                "png_base64": base64.b64encode(PNG_BYTES).decode(),
-            },
-        )
+        added = add_drawing(client, note_id)
         assert added.status_code == 201, added.text
-        body = added.json()
-        assert body["drawings"][0]["ocr_version"] == 1
-        assert "2x" in body["drawings"][0]["ocr_markdown"]
+        drawing = added.json()["drawings"][0]
+        assert drawing["ocr_version"] == 0
+        assert drawing["ocr_markdown"] is None
+
+        finished = wait_drawing_ocr(client, note_id)
+        assert "2x" in finished["ocr_markdown"]
+        assert finished["ocr_job_id"] is None
 
         hits = client.get("/api/v1/notes", params={"q": "2x"})
         assert all(entry["tags"] == [] for entry in hits.json()["items"])
@@ -309,17 +445,12 @@ def test_reocr_bumps_version() -> None:
     client = make_client([OCR_MARKDOWN, "Second pass $3x$"])
     with client:
         note_id = create_note(client, "Board")
-        client.post(
-            f"/api/v1/notes/{note_id}/drawings",
-            json={
-                "strokes": [{"points": [[0, 0]], "width": 2}],
-                "png_base64": base64.b64encode(PNG_BYTES).decode(),
-            },
-        )
+        add_drawing(client, note_id)
+        wait_drawing_ocr(client, note_id, 1)
+
         reocr = client.post(f"/api/v1/notes/{note_id}/drawings/1/reocr")
-        assert reocr.status_code == 200
-        drawing = reocr.json()["drawings"][0]
-        assert drawing["ocr_version"] == 2
+        assert reocr.status_code == 200, reocr.text
+        drawing = wait_drawing_ocr(client, note_id, 2)
         assert "3x" in drawing["ocr_markdown"]
 
 
@@ -327,13 +458,9 @@ def test_update_drawing_replaces_strokes_and_reruns_ocr() -> None:
     client = make_client([OCR_MARKDOWN, "Edited pass $5x$"])
     with client:
         note_id = create_note(client, "Board")
-        client.post(
-            f"/api/v1/notes/{note_id}/drawings",
-            json={
-                "strokes": [{"points": [[0, 0]], "width": 2}],
-                "png_base64": base64.b64encode(PNG_BYTES).decode(),
-            },
-        )
+        add_drawing(client, note_id)
+        wait_drawing_ocr(client, note_id, 1)
+
         edited_png = PNG_BYTES + b"-edited"
         updated = client.put(
             f"/api/v1/notes/{note_id}/drawings/1",
@@ -346,10 +473,11 @@ def test_update_drawing_replaces_strokes_and_reruns_ocr() -> None:
         assert updated.status_code == 200, updated.text
         drawing = updated.json()["drawings"][0]
         assert drawing["png_sha"] != "old"
-        assert drawing["ocr_version"] == 2
-        assert "5x" in drawing["ocr_markdown"]
         assert drawing["strokes"][0]["width"] == 4
         assert drawing["strokes"][0]["points"] == [[1, 1], [9, 9]]
+
+        finished = wait_drawing_ocr(client, note_id, 2)
+        assert "5x" in finished["ocr_markdown"]
 
         hits = client.get("/api/v1/notes", params={"q": "5x"})
         assert [note["id"] for note in hits.json()["items"]] == [note_id]
@@ -359,13 +487,9 @@ def test_update_drawing_without_ocr_clears_stale_text() -> None:
     client = make_client([OCR_MARKDOWN])
     with client:
         note_id = create_note(client, "Board")
-        client.post(
-            f"/api/v1/notes/{note_id}/drawings",
-            json={
-                "strokes": [{"points": [[0, 0]], "width": 2}],
-                "png_base64": base64.b64encode(PNG_BYTES).decode(),
-            },
-        )
+        add_drawing(client, note_id)
+        wait_drawing_ocr(client, note_id, 1)
+
         updated = client.put(
             f"/api/v1/notes/{note_id}/drawings/1",
             json={
@@ -544,13 +668,9 @@ def test_delete_drawing_unreferenced_drawing_dropped_from_search() -> None:
     client = make_client([OCR_MARKDOWN])
     with client:
         note_id = create_note(client, "Scratch")
-        client.post(
-            f"/api/v1/notes/{note_id}/drawings",
-            json={
-                "strokes": [{"points": [[0, 0]], "width": 2}],
-                "png_base64": base64.b64encode(PNG_BYTES).decode(),
-            },
-        )
+        add_drawing(client, note_id)
+        wait_drawing_ocr(client, note_id, 1)
+
         before = client.get("/api/v1/notes", params={"q": "2x"}).json()["items"]
         assert [note["id"] for note in before] == [note_id]
 

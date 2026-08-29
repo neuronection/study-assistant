@@ -2500,6 +2500,7 @@ export interface NoteDrawingInfo {
   view?: { x: number; y: number; width: number; height: number } | null
   ocr_version: number
   ocr_markdown: string | null
+  ocr_job_id?: number | null
   created_at: string
 }
 
@@ -3209,6 +3210,7 @@ export async function deleteProfile(profileId: number): Promise<void> {
 
 export interface ProfilePreferences {
   use_embeddings: boolean
+  ocr_image_max_edge: number
 }
 
 export async function getProfilePreferences(): Promise<ProfilePreferences> {
@@ -3217,7 +3219,7 @@ export async function getProfilePreferences(): Promise<ProfilePreferences> {
 }
 
 export async function updateProfilePreferences(
-  preferences: ProfilePreferences
+  preferences: Partial<ProfilePreferences>
 ): Promise<ProfilePreferences> {
   const response = await apiFetch('/api/v1/profiles/preferences', {
     method: 'PUT',

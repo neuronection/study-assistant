@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import ImagePart, LLMGateway, Message, TextPart
 from ..ai.skills import NOTES_OCR_SYSTEM
 from ..services.skills import SkillService
+from .imaging import ocr_image_max_edge, prepare_ocr_image
 
 NOTES_OCR_TASK = "notes_ocr"
 NOTES_OCR_SKILL = "notes.transcribe"
@@ -22,6 +23,9 @@ class NotesOcrEngine:
         self._gateway = gateway
 
     def transcribe(self, data: bytes, mime: str, session: Session | None = None) -> str:
+        payload, payload_mime = prepare_ocr_image(
+            data, mime, ocr_image_max_edge(session)
+        )
         system = NOTES_OCR_SYSTEM
         if session is not None:
             skills = SkillService(session)
@@ -37,7 +41,7 @@ class NotesOcrEngine:
                     role="user",
                     content=[
                         TextPart(text="Transcribe this handwritten work."),
-                        ImagePart(data=data, mime=mime),
+                        ImagePart(data=payload, mime=payload_mime),
                     ],
                 ),
             ],

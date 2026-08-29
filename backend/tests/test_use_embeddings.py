@@ -8,14 +8,32 @@ from app.services.search import retrieve_chunks_hybrid
 
 
 def test_preferences_round_trip(client: TestClient) -> None:
-    assert client.get("/api/v1/profiles/preferences").json() == {"use_embeddings": True}
+    assert client.get("/api/v1/profiles/preferences").json() == {
+        "use_embeddings": True,
+        "ocr_image_max_edge": 1568,
+    }
     off = client.put(
         "/api/v1/profiles/preferences", json={"use_embeddings": False}
     )
     assert off.status_code == 200
-    assert off.json() == {"use_embeddings": False}
+    assert off.json() == {"use_embeddings": False, "ocr_image_max_edge": 1568}
     on = client.put("/api/v1/profiles/preferences", json={"use_embeddings": True})
-    assert on.json() == {"use_embeddings": True}
+    assert on.json() == {"use_embeddings": True, "ocr_image_max_edge": 1568}
+
+
+def test_ocr_image_max_edge_preference_round_trip(client: TestClient) -> None:
+    updated = client.put("/api/v1/profiles/preferences", json={"ocr_image_max_edge": 1024})
+    assert updated.status_code == 200
+    assert updated.json()["ocr_image_max_edge"] == 1024
+    assert client.get("/api/v1/profiles/preferences").json()["ocr_image_max_edge"] == 1024
+
+    disabled = client.put("/api/v1/profiles/preferences", json={"ocr_image_max_edge": 0})
+    assert disabled.status_code == 200
+    assert disabled.json()["ocr_image_max_edge"] == 0
+
+    rejected = client.put("/api/v1/profiles/preferences", json={"ocr_image_max_edge": 999})
+    assert rejected.status_code == 422
+    assert client.get("/api/v1/profiles/preferences").json()["ocr_image_max_edge"] == 0
 
 
 def test_chat_session_use_embeddings_round_trip(client: TestClient) -> None:

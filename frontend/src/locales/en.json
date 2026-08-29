@@ -569,7 +569,7 @@
       "data": "Data",
       "skills": "Skills",
       "developer": "Developer",
-      "search": "Search",
+      "search": "Search & OCR",
       "mcp": "MCP server"
     },
     "searchTitle": "Search",
@@ -739,7 +739,13 @@
     "backupRestoreThis": "Restore",
     "backupRestoreConfirm": "Restore backup \"{{name}}\"? Everything current will be replaced.",
     "backupDeleteThis": "Delete backup",
-    "backupNoneYet": "No automatic backups yet — they appear here after the first scheduled run, or use Back up now."
+    "backupNoneYet": "No automatic backups yet — they appear here after the first scheduled run, or use Back up now.",
+    "ocrImageTitle": "OCR image size",
+    "ocrImageDescription": "Images are downscaled and compressed before they are sent to vision models for OCR. Stored files keep their original quality.",
+    "ocrImageLabel": "Max long edge",
+    "ocrImageOff": "Off (send as-is)",
+    "ocrImagePx": "{{px}} px",
+    "ocrImageHint": "Smaller images use far fewer vision tokens. 1568 px matches the native resolution of most vision models and is a good default for handwriting and formulas."
   },
   "spike": {
     "title": "Rendering spike",
@@ -922,7 +928,8 @@
     "exportMd": "Export .md",
     "studyAlongside": "Study alongside",
     "confirmDeleteSelection_one": "Delete {{count}} note?",
-    "confirmDeleteSelection_other": "Delete {{count}} notes?"
+    "confirmDeleteSelection_other": "Delete {{count}} notes?",
+    "ocrPending": "Transcribing…"
   },
   "cards": {
     "title": "Flashcards",

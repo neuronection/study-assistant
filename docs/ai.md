@@ -254,6 +254,25 @@ The page-OCR prompt (`ocr.page` / `ocr` task) uses the same conditional rule
 ("if the page contains mathematics, render it as LaTeX") — neither prompt assumes
 the content is math.
 
+**OCR payload efficiency (plan 46, ADR-102)**: every image sent to a vision task
+passes through `app/ocr/imaging.prepare_ocr_image` at the engine boundary — the
+long edge is capped (profile preference `ocr_image_max_edge`: Off / 1024 /
+**1568 default** / 2048 px, edited in Settings → Search & OCR) with a LANCZOS
+downscale, then the image is re-encoded as flattened-RGB **WebP q85** (JPEG
+fallback). It applies uniformly to drawings, quiz-answer recognition, uploaded
+images and rasterized PDF pages; stored blobs keep their original quality, and a
+decode/encode failure passes the original bytes through.
+
+**Drawing OCR is a background job**: `POST/PUT …/drawings` and `…/reocr` save the
+drawing, enqueue a `drawing_ocr` job and return immediately (no more blocking on
+the vision model, no more 502s — failures are retriable jobs in the activity
+rail). The handler transcribes from the stored PNG, bumps `ocr_version`, refreshes
+note search text / material FTS and clears `ocr_job_id`; the UI shows a
+"Transcribing…" placeholder and picks the transcript up over the `jobs:{id}` WS
+topic. `ocr_job_id` is serialized only while its job is queued/running, so a
+crashed backend can never leave a stuck pending state, and re-OCR returns 409
+while a job is live.
+
 **Material drawings (plan 29, ADR-064)**: text/markdown materials carry drawings
 (`material_drawings`) referenced from the extraction markdown with
 `![drawing](ca-drawing://{id})`. Their OCR text joins the material's FTS and is
@@ -345,7 +364,7 @@ runs with sockets blocked (a conftest guard) so no test can touch the network.
 
 | Feature | Task | Flow |
 |---|---|---|
-| **OCR** | `ocr` | Scanned PDFs rasterized (150 dpi) per page, images directly → markdown with LaTeX/tables/Mermaid; failures mark the material `failed` with a clear message |
+| **OCR** | `ocr` | Scanned PDFs rasterized (150 dpi) per page, images directly → markdown with LaTeX/tables/Mermaid; every image is first preprocessed (long-edge cap + WebP q85 re-encode, `ocr_image_max_edge` preference — ADR-102); failures mark the material `failed` with a clear message |
 | **Index cards** | `description` | Post-ingest job fills summary/topics/key terms/difficulty; best-effort — never fails ingestion |
 | **Embeddings** | `embeddings` | Chunks embedded (batches of 32) into sqlite-vec; hybrid search fuses BM25 + cosine via RRF(k=60); FTS-only fallback when unassigned |
 | **Outline** | `outline` | Drafts a 2-level outline (policy, ADR-039) committed as depth-1/2 tree nodes + material allocation from index cards; server-side validation (ids exist/unique, counts clamped); **draft → review → commit** — never commits blindly |
@@ -354,7 +373,7 @@ runs with sockets blocked (a conftest guard) so no test can touch the network.
 | **Exgen** | `exgen` | Multi-step exercise generation: JSON draft → validators (every expected answer parses via the chain, numeric tolerances sane) → repair loop; refuses to persist an invalid exercise. Same pipeline powers **similar exercises** (isomorphic variant: same step structure, answers proven non-equivalent to the source) and **error-pattern drills** — patterns resolve from the course type's `error_patterns` taxonomy (plan 28/ADR-063), the prompt uses the course subject + pattern description/example (no hard-coded "calculus"). Context via the resolver |
 | **Pattern discovery** | `description` | Plan 28: `POST /exercises/drills/propose` digests the course's 30 most recent wrong answers + existing patterns → `pattern.discover` skill (contract-validated `{key, name, description, example}` proposals, max 5) → approve/dismiss HITL cards; approved rows become `error_patterns` (`source=discovered`). Detection of `sign_slip`/`dropped_factor` is deterministic (equivalence chain at grade time, no LLM) |
 | **Tutor** | `tutor` | 5-level hint ladder under the leak-guard contract; audited per hint. P5b reuses the same machinery per quiz question (practice attempts only; exam mode refuses help server-side) |
-| **Notes OCR** | `notes_ocr`* | Handwritten work (drawing canvas PNG) → extracts only the written text (LaTeX for any math present; plain text otherwise); no image descriptions. Strokes stay the source of truth, OCR is re-runnable per drawing with a version counter and can be skipped per save (toggle). Also powers quiz-answer recognition (C18): `/quiz/recognize` returns candidates — the student confirms, only confirmed LaTeX is graded |
+| **Notes OCR** | `notes_ocr`* | Handwritten work (drawing canvas PNG) → extracts only the written text (LaTeX for any math present; plain text otherwise); no image descriptions. Strokes stay the source of truth, OCR is re-runnable per drawing with a version counter and can be skipped per save (toggle). **Runs as a background `drawing_ocr` job** (ADR-102): saving a drawing returns immediately, the transcript appears when the job finishes; failures are retriable activity-rail jobs. Also powers quiz-answer recognition (C18): `/quiz/recognize` returns candidates — the student confirms, only confirmed LaTeX is graded |
 | **Flashcards** | `flashcards` | basic/cloze/reverse cards from notes (incl. OCR'd handwriting), material extractions, or the mistake notebook; validators (cloze deletion present, non-empty sides, duplicate fronts rejected) + repair loop; audited. Receives AI hints/notes as extra context (Phase 10) |
 | **Note actions** | `description` | P9: summarize/cleanup/explain/expand a note (text + drawings' OCR) under a max-words contract; audited as `note_action` |
 | **Note compose** | `description` | Post-1.0 (ADR-044): `POST /notes/compose` resolves the `ContextResolver` scope and writes a self-contained note via the `notes.compose` skill (max-words contract) — placed at the node, opened in the drawer; audited as `note_compose` |
