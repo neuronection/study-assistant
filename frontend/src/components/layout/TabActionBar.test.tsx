@@ -113,7 +113,7 @@ describe('TabActionBar', () => {
     const trigger = screen.getByRole('button', { name: /cheat sheet/i })
     expect(trigger).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: /open existing/i })).not.toBeInTheDocument()
-    fireEvent.click(trigger)
+    fireEvent.pointerDown(trigger)
     expect(screen.getByRole('menuitem', { name: /open existing/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /regenerate cheat sheet/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: /regenerate cheat sheet/i }))

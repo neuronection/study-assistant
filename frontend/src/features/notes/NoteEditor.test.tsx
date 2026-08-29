@@ -241,7 +241,7 @@ describe('NoteEditor', () => {
     renderEditor()
     await screen.findByRole('textbox', { name: 'Note title' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'AI actions' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'AI actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Summarize' }))
     const result = await screen.findByRole('textbox', {
       name: /edit before appending/i,
@@ -274,7 +274,7 @@ describe('NoteEditor', () => {
     renderEditor()
     await screen.findByRole('textbox', { name: 'Note title' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'AI actions' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'AI actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Explain' }))
     expect(
       await screen.findByRole('textbox', { name: /edit before appending/i })
@@ -551,7 +551,7 @@ describe('NoteEditor', () => {
         <NoteEditor noteId={3} onClose={onClose} />
       </QueryClientProvider>
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'More note actions' }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'More note actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(3))
@@ -566,7 +566,7 @@ describe('NoteEditor', () => {
         <NoteEditor noteId={3} onClose={onClose} />
       </QueryClientProvider>
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'More note actions' }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'More note actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
     expect(deleteNote).not.toHaveBeenCalled()
@@ -581,7 +581,7 @@ describe('NoteEditor', () => {
     expect(screen.queryByRole('button', { name: 'Export .md' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'History' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'More note actions' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More note actions' }))
     expect(await screen.findByRole('menuitem', { name: 'Print' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Export .md' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'History' })).toBeInTheDocument()

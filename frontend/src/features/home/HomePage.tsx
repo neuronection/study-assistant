@@ -9,7 +9,7 @@ import { useCurrentOrigin } from '@/lib/origin'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { useRequiredCourse } from '@/components/workspace/CoursePicker'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 import {

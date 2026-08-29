@@ -8,11 +8,12 @@ import { EntityItems, type EntityItemEntry } from '@/components/entity-list/Enti
 import { TabActionBar } from '@/components/layout/TabActionBar'
 import { Button } from '@/components/ui/button'
 import { type ContextMenuItem } from '@/components/ui/ContextMenu'
-import { ErrorBanner } from '@/components/ui/error-banner'
-import { RenameDialog } from '@/components/ui/RenameDialog'
+import { ErrorBanner } from '@/components/ErrorBanner'
+import { RenameDialog } from '@/components/RenameDialog'
 import { SelectionBar } from '@/components/ui/SelectionBar'
-import { UndoDeleteNotice } from '@/components/ui/UndoDeleteNotice'
-import { ViewToggle, useStoredView } from '@/components/ui/ViewToggle'
+import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
+import { ViewToggle } from '@/components/ui/ViewToggle'
+import { useStoredView } from '@/lib/useStoredView'
 import { GenerateDialog as AIGenerateDialog } from '@/features/ai/GenerateDialog'
 import { DrillsCard } from '@/features/exercises/DrillsCard'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
@@ -599,7 +600,11 @@ export function PracticeTab({
                 }}
               />
             )}
-            <SelectionBar count={selection.selected.size} onClear={() => selection.clear()}>
+            <SelectionBar
+            count={selection.selected.size}
+            countLabel={t('selection.count', { count: selection.selected.size })}
+            onClear={() => selection.clear()}
+          >
               <Button
                 variant="outline"
                 size="sm"

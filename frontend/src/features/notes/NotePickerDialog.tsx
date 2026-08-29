@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { CheckIndicator } from '@/components/ui/CheckIndicator'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { listNoteTags, listNotes, type NoteInfo } from '@/lib/api'
 import { fuzzyFilter } from '@/lib/fuzzy'

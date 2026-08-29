@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { Popover } from '@/components/ui/popover'
 import { updateCourse, updateNode } from '@/lib/api'
 import { cn } from '@/lib/utils'

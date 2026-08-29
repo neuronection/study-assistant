@@ -20,7 +20,7 @@ import {
 import { LazyMarkdownEditor } from '@/components/editor/LazyMarkdownEditor'
 import { MarkdownPreview } from '@/components/editor/MarkdownPreview'
 import { Button } from '@/components/ui/button'
-import { Popover } from '@/components/ui/popover'
+import { FloatingPanel } from './FloatingPanel'
 import { cn } from '@/lib/utils'
 
 import { EDITOR_PRESETS, type EditorPresetKey } from './editorPresets'
@@ -427,13 +427,11 @@ export function AiHelperPopover({
   )
 
   return (
-    <Popover
+    <FloatingPanel
       label={t('editor.ai.helper')}
       closeSignal={closeSignal}
       focusOnOpen={false}
       preserveFocus
-      resizable
-      movable
       minWidth={288}
       minHeight={200}
       panelClassName="w-[26rem]"
@@ -468,6 +466,6 @@ export function AiHelperPopover({
                 : renderIdleView()}
         </div>
       )}
-    </Popover>
+    </FloatingPanel>
   )
 }

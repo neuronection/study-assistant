@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { TabActionBar } from '@/components/layout/TabActionBar'
 import {
   assignCourseTask,

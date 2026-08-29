@@ -1,4 +1,4 @@
 packages:
   - frontend
 minimumReleaseAgeExclude:
-  - '@neuronection/assistant-ui@0.1.0'
+  - '@neuronection/assistant-ui@0.1.0 || 0.2.0'

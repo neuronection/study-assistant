@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
 import { StudyLauncherDialog } from './StudyLauncherDialog'
@@ -71,15 +72,15 @@ describe('StudyLauncherDialog', () => {
     }
   })
 
-  test('closes via the X button and the backdrop', () => {
+  test('closes via the X button and the backdrop', async () => {
     const onClose = vi.fn()
     renderLauncher(onClose)
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByText('Study this node'))
-    fireEvent.click(screen.getByText('Quiz').closest('div.fixed')!)
+    const user = userEvent.setup()
+    await user.click(document.querySelector('[data-as="modal-overlay"]')!)
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 

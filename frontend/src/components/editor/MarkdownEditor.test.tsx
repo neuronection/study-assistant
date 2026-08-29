@@ -313,12 +313,12 @@ describe('MarkdownEditor', () => {
     const menuButton = await screen.findByRole('button', { name: 'Drawing options' })
     expect(handle.className).toContain('ring-2')
 
-    fireEvent.click(menuButton)
+    fireEvent.pointerDown(menuButton)
     expect(await screen.findByRole('menu')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Run OCR again' }))
     await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith(3))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Drawing options' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Edit drawing' }))
     await screen.findByRole('dialog', { name: 'Handwriting canvas' })
   })
@@ -349,7 +349,7 @@ describe('MarkdownEditor', () => {
     })
 
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
-    fireEvent.click(await screen.findByRole('button', { name: 'Drawing options' }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
     await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(3))
@@ -383,7 +383,7 @@ describe('MarkdownEditor', () => {
         screen.getByRole('button', { name: 'More drawing actions' })
       ).toBeInTheDocument()
     )
-    fireEvent.click(screen.getByRole('button', { name: 'More drawing actions' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More drawing actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
     await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(7))
@@ -411,7 +411,7 @@ describe('MarkdownEditor', () => {
       return node as HTMLElement
     })
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
-    fireEvent.click(await screen.findByRole('button', { name: 'Drawing options' }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
     expect(adapter.remove).not.toHaveBeenCalled()
@@ -999,7 +999,7 @@ describe('MarkdownEditor', () => {
     })
 
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
-    fireEvent.click(await screen.findByRole('button', { name: 'Drawing options' }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit drawing' }))
     expect(await screen.findByText(/editing an existing drawing/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'stub-stroke' }))
@@ -1048,7 +1048,7 @@ describe('MarkdownEditor', () => {
       return node as HTMLElement
     })
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
-    fireEvent.click(await screen.findByRole('button', { name: 'Drawing options' }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit drawing' }))
     await screen.findByRole('dialog', { name: 'Handwriting canvas' })
     expect(screen.getByTestId('canvas-focus').dataset.focus).toBe(

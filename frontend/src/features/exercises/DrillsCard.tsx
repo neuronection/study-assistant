@@ -8,7 +8,7 @@ import { useCurrentOrigin } from '@/lib/origin'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { useRequiredCourse } from '@/components/workspace/CoursePicker'
 import { createPattern, drillPatterns, proposePatterns, startDrill, type DrillPattern, type PatternProposal } from '@/lib/api'
 

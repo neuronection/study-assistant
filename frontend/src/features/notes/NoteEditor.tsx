@@ -21,7 +21,7 @@ import { MarkdownEditor, type DrawingAdapter, type MarkdownEditorApi } from '@/c
 import { exportMarkdownWithDrawings } from '@/components/materials/exportMarkdown'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { PopoverMenu } from '@/components/ui/popover-menu'
 import {
   addDrawing,

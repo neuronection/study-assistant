@@ -120,7 +120,9 @@ export function EntityItems<T>({
                 <span className="flex w-full items-center justify-center gap-1">
                   <span className="line-clamp-2 text-xs">{item.title}</span>
                   {item.info ? (
-                    <InfoButton title={item.infoTitle}>{item.info}</InfoButton>
+                    <InfoButton title={item.infoTitle} label={t('common.info')}>
+                      {item.info}
+                    </InfoButton>
                   ) : null}
                 </span>
                 {item.meta ? (
@@ -185,7 +187,9 @@ export function EntityItems<T>({
                 {item.trailing}
               </button>
                 {item.info ? (
-                  <InfoButton title={item.infoTitle}>{item.info}</InfoButton>
+                  <InfoButton title={item.infoTitle} label={t('common.info')}>
+                      {item.info}
+                    </InfoButton>
                 ) : null}
                 {menuItems ? (
                   <span className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">

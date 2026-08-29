@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { FieldLabel } from '@/components/ui/FieldLabel'
 import { InfoButton } from '@/components/ui/InfoButton'
 import { CourseSelectField } from '@/components/workspace/CoursePicker'
@@ -475,7 +475,7 @@ export function GenerateDialog({
             </div>
           ) : task === 'practice' ? (
             <div className="space-y-3">
-              <FieldLabel info={t('generate.topicInfo')} infoTitle={t('generate.topicPlaceholder')}>
+              <FieldLabel info={t('generate.topicInfo')} infoTitle={t('generate.topicPlaceholder')} label={t('common.info')}>
                 {t('generate.topicLabel')}
               </FieldLabel>
               <input
@@ -485,7 +485,7 @@ export function GenerateDialog({
                 onChange={(event) => setTopic(event.target.value)}
               />
               <div className="space-y-2">
-                <FieldLabel info={t('generate.quizFormatInfo')} infoTitle={t('generate.quizFormatLabel')}>
+                <FieldLabel info={t('generate.quizFormatInfo')} infoTitle={t('generate.quizFormatLabel')} label={t('common.info')}>
                   {t('generate.quizFormatLabel')}
                 </FieldLabel>
                 <div className="flex flex-wrap gap-1.5">
@@ -511,7 +511,7 @@ export function GenerateDialog({
                         >
                           {t(`generate.questionType.${type}`)}
                         </button>
-                        <InfoButton title={t(`generate.questionType.${type}`)}>
+                        <InfoButton title={t(`generate.questionType.${type}`)} label={t('common.info')}>
                           {t(`generate.questionTypeInfo.${type}`)}
                         </InfoButton>
                       </span>
@@ -521,7 +521,7 @@ export function GenerateDialog({
               </div>
               <div className="flex gap-3">
                 <label className="flex flex-1 flex-col gap-1 text-xs">
-                  <FieldLabel info={t('generate.countInfo')} infoTitle={t('generate.countLabel')}>
+                  <FieldLabel info={t('generate.countInfo')} infoTitle={t('generate.countLabel')} label={t('common.info')}>
                     {t('generate.countLabel')}
                   </FieldLabel>
                   <select
@@ -537,7 +537,7 @@ export function GenerateDialog({
                   </select>
                 </label>
                 <label className="flex flex-1 flex-col gap-1 text-xs">
-                  <FieldLabel info={t('generate.shuffleInfo')} infoTitle={t('generate.shuffleLabel')}>
+                  <FieldLabel info={t('generate.shuffleInfo')} infoTitle={t('generate.shuffleLabel')} label={t('common.info')}>
                     {t('generate.shuffleLabel')}
                   </FieldLabel>
                   <button
@@ -556,7 +556,7 @@ export function GenerateDialog({
                 </label>
               </div>
               <div className="space-y-2">
-                <FieldLabel info={t('generate.exerciseFormatInfo')} infoTitle={t('generate.exerciseFormatLabel')}>
+                <FieldLabel info={t('generate.exerciseFormatInfo')} infoTitle={t('generate.exerciseFormatLabel')} label={t('common.info')}>
                   {t('generate.exerciseFormatLabel')}
                 </FieldLabel>
                 <div className="flex flex-wrap gap-1.5">
@@ -582,7 +582,7 @@ export function GenerateDialog({
                         >
                           {t(`generate.exerciseKind.${kind}`)}
                         </button>
-                        <InfoButton title={t(`generate.exerciseKind.${kind}`)}>
+                        <InfoButton title={t(`generate.exerciseKind.${kind}`)} label={t('common.info')}>
                           {t(`generate.exerciseKindInfo.${kind}`)}
                         </InfoButton>
                       </span>
@@ -592,7 +592,7 @@ export function GenerateDialog({
               </div>
               <div className="flex gap-3">
                 <label className="flex flex-1 flex-col gap-1 text-xs">
-                  <FieldLabel info={t('generate.stepCountInfo')} infoTitle={t('exercises.stepCountLabel')}>
+                  <FieldLabel info={t('generate.stepCountInfo')} infoTitle={t('exercises.stepCountLabel')} label={t('common.info')}>
                     {t('exercises.stepCountLabel')}
                   </FieldLabel>
                   <select
@@ -608,7 +608,7 @@ export function GenerateDialog({
                   </select>
                 </label>
                 <label className="flex flex-1 flex-col gap-1 text-xs">
-                  <FieldLabel info={t('generate.difficultyInfo')} infoTitle={t('generate.difficulty')}>
+                  <FieldLabel info={t('generate.difficultyInfo')} infoTitle={t('generate.difficulty')} label={t('common.info')}>
                     {t('generate.difficulty')}
                   </FieldLabel>
                   <select

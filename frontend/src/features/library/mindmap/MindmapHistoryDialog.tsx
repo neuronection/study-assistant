@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { editExtraction, getExtractionVersion, listExtractionVersions } from '@/lib/api'
 import { MindmapCanvas } from './MindmapCanvas'
 import { useCloseFloatings } from '@/lib/ui-overlays'

@@ -21,7 +21,7 @@ import { UploadButton } from '@/components/materials/UploadButton'
 import { UploadDropzone } from '@/components/materials/UploadDropzone'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { Button } from '@/components/ui/button'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { fuzzyFilter } from '@/lib/fuzzy'
 import {

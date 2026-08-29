@@ -8,6 +8,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
 import { NodeWorkspace } from './NodeWorkspace'
@@ -597,6 +598,7 @@ describe('NodeWorkspace', () => {
     primeDefaults()
     renderWorkspace('/courses/3/n/5')
     fireEvent.click(await screen.findByRole('button', { name: /study here/i }))
+    console.log('DIALOG?', document.querySelectorAll('[role="dialog"]').length, 'BODY_TAIL:', document.body.innerHTML.slice(-400))
     expect(await screen.findByText('Write a note')).toBeInTheDocument()
     expect(screen.getByText('Mindmap')).toBeInTheDocument()
     expect(screen.getByText('Quiz')).toBeInTheDocument()
@@ -605,12 +607,14 @@ describe('NodeWorkspace', () => {
   test('opening the study launcher closes an open tab-action popover', async () => {
     primeDefaults()
     renderWorkspace('/courses/3/n/5')
-    fireEvent.click(await screen.findByRole('button', { name: /cheat sheet/i }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: /cheat sheet/i }))
     expect(
       screen.getByRole('menuitem', { name: /generate cheat sheet/i })
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /study here/i }))
-    expect(await screen.findByText('Write a note')).toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /study here/i }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Write a note')).toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: /generate cheat sheet/i })
     ).not.toBeInTheDocument()
@@ -687,7 +691,7 @@ describe('NodeWorkspace', () => {
     })
     renderWorkspace('/courses/3/n/5')
     expect(await screen.findByRole('button', { name: /review 2026-08-21/i })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /cheat sheet/i }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: /cheat sheet/i }))
     expect(screen.getByRole('menuitem', { name: /open existing/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /regenerate cheat sheet/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: /open existing/i }))
@@ -697,7 +701,7 @@ describe('NodeWorkspace', () => {
   test('overview cheat-sheet menu offers generate and opens the cheat-sheet builder', async () => {
     primeDefaults()
     renderWorkspace('/courses/3/n/5')
-    fireEvent.click(await screen.findByRole('button', { name: /cheat sheet/i }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: /cheat sheet/i }))
     expect(screen.getByRole('menuitem', { name: /generate cheat sheet/i })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: /open existing/i })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: /generate cheat sheet/i }))
@@ -733,7 +737,7 @@ describe('NodeWorkspace', () => {
       drawings: [],
     })
     renderWorkspace('/courses/3/n/5')
-    fireEvent.click(await screen.findByRole('button', { name: /cheat sheet/i }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: /cheat sheet/i }))
     fireEvent.click(screen.getByRole('menuitem', { name: /generate cheat sheet/i }))
     const submit = await screen.findByRole('button', { name: /^compose$/i })
     fireEvent.click(submit)

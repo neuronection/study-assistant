@@ -8,12 +8,12 @@ import {
   FolderUp,
   PartyPopper,
   Sparkles,
-  X,
+  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui/button'
+import { Wizard, type WizardStep } from '@neuronection/assistant-ui'
 import { getOnboardingState } from '@/lib/api'
 import { useOverlayStore } from '@/lib/ui-overlays'
 
@@ -39,7 +39,7 @@ const STEP_KEYS = [
   'done',
 ] as const
 
-const STEP_ICONS = [
+const STEP_ICONS: LucideIcon[] = [
   Sparkles,
   FolderCog,
   Bot,
@@ -74,7 +74,6 @@ export function OnboardingWizard() {
   const closeWizard = useWizardStore((state) => state.closeWizard)
   const closeFloatings = useOverlayStore((state) => state.closeFloatings)
   const [dismissed, setDismissed] = useState(readDismissed)
-  const [step, setStep] = useState(0)
   const [course, setCourse] = useState<WizardCourse | null>(null)
   const state = useQuery({
     queryKey: ['onboarding-state'],
@@ -92,11 +91,6 @@ export function OnboardingWizard() {
     }
   }, [visible, closeFloatings])
 
-  if (!visible) {
-    return null
-  }
-
-  const lastStep = 7
   const finish = (target: 'home' | 'course') => {
     markDismissed()
     setDismissed(true)
@@ -106,58 +100,36 @@ export function OnboardingWizard() {
       void navigate({ to: '/courses/$courseId', params: { courseId: String(course.id) } })
     }
   }
-  const advance = () => setStep((current) => Math.min(current + 1, lastStep))
-  const back = () => setStep((current) => Math.max(current - 1, 0))
 
-  const StepIcon = STEP_ICONS[step]
+  if (!visible) {
+    return null
+  }
+
+  const steps: WizardStep[] = STEP_KEYS.map((key, index) => ({
+    id: key,
+    icon: STEP_ICONS[index],
+    subtitle: t(`onboarding.steps.${key}`),
+    title: t(`onboarding.${key}Title`),
+  }))
 
   return (
-    <div
-      className="bg-surface/80 fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('onboarding.title')}
-    >
-      <div className="bg-surface border-border flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border shadow-xl">
-        <div className="border-border flex items-center gap-3 border-b px-5 py-4">
-          <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
-            <StepIcon className="size-5" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{t('onboarding.title')}</p>
-            <p className="text-muted-foreground truncate text-xs">
-              {t(`onboarding.steps.${STEP_KEYS[step]}`)}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5" aria-hidden>
-            {Array.from({ length: lastStep + 1 }, (_, index) => (
-              <span
-                key={index}
-                className={
-                  index === step
-                    ? 'bg-primary size-2 rounded-full'
-                    : index < step
-                      ? 'bg-primary/50 size-2 rounded-full'
-                      : 'bg-border size-2 rounded-full'
-                }
-              />
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            title={t('onboarding.skipAll')}
-            aria-label={t('onboarding.skipAll')}
-            onClick={() => finish('home')}
-          >
-            <X className="size-4" aria-hidden />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <h2 className="mb-3 text-lg font-semibold">
-            {t(`onboarding.${STEP_KEYS[step]}Title`)}
-          </h2>
-          {step === 0 ? (
+    <Wizard
+      open={visible}
+      onOpenChange={(next) => {
+        if (!next) {
+          finish('home')
+        }
+      }}
+      title={t('onboarding.title')}
+      steps={steps}
+      backLabel={t('onboarding.back')}
+      skipLabel={t('onboarding.skip')}
+      nextLabel={t('onboarding.next')}
+      getStartedLabel={t('onboarding.getStarted')}
+      closeLabel={t('onboarding.skipAll')}
+      renderStep={(ctx) => {
+        if (ctx.id === 'welcome') {
+          return (
             <div className="space-y-3">
               <p className="text-muted-foreground text-sm">{t('onboarding.welcomeBody')}</p>
               <ul className="space-y-2">
@@ -174,32 +146,30 @@ export function OnboardingWizard() {
                 ))}
               </ul>
             </div>
-          ) : null}
-          {step === 1 ? <WorkingDirStep /> : null}
-          {step === 2 ? (
-            <ProviderStep hasProvider={state.data?.has_provider === true} onDone={advance} />
-          ) : null}
-          {step === 3 ? <ModelsStep /> : null}
-          {step === 4 ? <DefaultsStep /> : null}
-          {step === 5 ? <CourseStep course={course} onCourse={setCourse} /> : null}
-          {step === 6 ? <FilesStep course={course} /> : null}
-          {step === 7 ? <DoneStep course={course} onFinish={finish} /> : null}
-        </div>
-        {step < lastStep ? (
-          <div className="border-border flex items-center gap-2 border-t px-5 py-3">
-            <Button variant="ghost" size="sm" disabled={step === 0} onClick={back}>
-              {t('onboarding.back')}
-            </Button>
-            <div className="flex-1" />
-            <Button variant="ghost" size="sm" onClick={() => finish('home')}>
-              {t('onboarding.skip')}
-            </Button>
-            <Button size="sm" onClick={advance}>
-              {step === 0 ? t('onboarding.getStarted') : t('onboarding.next')}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-    </div>
+          )
+        }
+        if (ctx.id === 'workingDir') {
+          return <WorkingDirStep />
+        }
+        if (ctx.id === 'provider') {
+          return (
+            <ProviderStep hasProvider={state.data?.has_provider === true} onDone={ctx.next} />
+          )
+        }
+        if (ctx.id === 'models') {
+          return <ModelsStep />
+        }
+        if (ctx.id === 'defaults') {
+          return <DefaultsStep />
+        }
+        if (ctx.id === 'course') {
+          return <CourseStep course={course} onCourse={setCourse} />
+        }
+        if (ctx.id === 'files') {
+          return <FilesStep course={course} />
+        }
+        return <DoneStep course={course} onFinish={finish} />
+      }}
+    />
   )
 }

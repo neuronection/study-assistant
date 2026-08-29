@@ -15,7 +15,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { PopoverMenu, type PopoverMenuItem } from '@/components/ui/popover-menu'
 import { SearchInput } from '@/components/ui/SearchInput'
 import {

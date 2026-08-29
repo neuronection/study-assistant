@@ -177,7 +177,7 @@ describe('JobsPage', () => {
     mockDeleteAllFailed.mockResolvedValue({ deleted: 1 })
     renderPage('/jobs?type=ingest')
     await screen.findByText('Lecture 3.pdf')
-    fireEvent.click(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /jobs\.deleteAllFiltered/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteAllFiltered' }))
     await waitFor(() =>
@@ -193,7 +193,7 @@ describe('JobsPage', () => {
     ])
     renderPage('/jobs?status=failed')
     await screen.findAllByText('Lecture 3.pdf')
-    fireEvent.click(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /jobs\.deleteStale/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteStale' }))
     await waitFor(() =>
@@ -205,9 +205,10 @@ describe('JobsPage', () => {
     mockListJobs.mockResolvedValue([{ ...FAILED }])
     renderPage('/jobs?status=failed')
     await screen.findByText('Lecture 3.pdf')
-    fireEvent.click(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
-    expect(
-      screen.getByRole('menuitem', { name: /jobs\.deleteStale/ })
-    ).toBeDisabled()
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'jobs.deleteMenu' }))
+    expect(screen.getByRole('menuitem', { name: /jobs\.deleteStale/ })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    )
   })
 })

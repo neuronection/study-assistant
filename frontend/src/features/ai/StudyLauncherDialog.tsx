@@ -12,14 +12,18 @@ import {
   ScrollText,
   Sigma,
   StickyNote,
-  X,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from '@neuronection/assistant-ui'
 import type { ComposeKind } from '@/lib/api'
 import { GenerateDialog } from './GenerateDialog'
 import { NoteComposeDialog } from './NoteComposeDialog'
@@ -120,31 +124,13 @@ export function StudyLauncherDialog({
   ]
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose()
-        }
-      }}
-    >
-      <Card className="max-h-[85vh] w-full max-w-lg overflow-y-auto">
-        <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-          <div className="min-w-0">
-            <CardTitle className="text-base">{t('launcher.title')}</CardTitle>
-            <CardDescription>{t('launcher.hint')}</CardDescription>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            title={t('common.close')}
-            aria-label={t('common.close')}
-          >
-            <X aria-hidden />
-          </Button>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2">
+    <Modal open onOpenChange={(next) => !next && onClose()}>
+      <ModalContent size="lg" closeLabel={t('common.close')} aria-describedby="launcher-hint">
+        <ModalHeader>
+          <ModalTitle className="text-base">{t('launcher.title')}</ModalTitle>
+          <ModalDescription id="launcher-hint">{t('launcher.hint')}</ModalDescription>
+        </ModalHeader>
+        <div className="grid grid-cols-2 gap-2 px-6 pb-6">
           {actions.map(({ action: item, icon: Icon, label }) => (
             <button
               key={JSON.stringify(item)}
@@ -156,8 +142,8 @@ export function StudyLauncherDialog({
               <span className="truncate">{label}</span>
             </button>
           ))}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </ModalContent>
+    </Modal>
   )
 }

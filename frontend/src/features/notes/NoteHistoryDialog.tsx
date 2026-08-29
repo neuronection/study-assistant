@@ -7,7 +7,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import type { Block } from '@/components/blocks/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ErrorBanner } from '@/components/ui/error-banner'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { getNoteVersion, listNoteVersions, restoreNoteVersion } from '@/lib/api'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
