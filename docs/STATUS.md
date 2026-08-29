@@ -321,6 +321,15 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **brand assets canonicalized in `assets/` (org convention)** —
+  `assets/icon.svg` (the real 512 px app tile) is now the single source of
+  truth: `packaging/build-linux.sh` installs it into .deb/AppImage icon paths
+  (replacing the old 128 px "ƒ" placeholder `packaging/icon.svg`, which is
+  deleted — packaged releases get the actual logo), `frontend/public/icon.svg`
+  (served favicon) is a derived copy refreshed via `scripts/sync-brand.sh`,
+  README points at the canonical path, and `tests/test_packaging_assets.py`
+  guards the new location. Hub `public/logos/` snapshots now sync from the
+  canonical path too.
 - 2026-08-29 — **plan 46 (OCR payload efficiency + async drawing OCR, ADR-102)
   COMPLETE (user-requested)** — **every image sent to a vision task is now
   preprocessed at the OCR engine boundary** (`app/ocr/imaging.py`): LANCZOS

@@ -81,7 +81,7 @@ Keywords=study;notes;flashcards;quiz;tutor;
 StartupWMClass=$APP
 EOF
 
-  cp "$ROOT/packaging/icon.svg" "$STAGE/usr/share/icons/hicolor/scalable/apps/$APP.svg"
+  cp "$ROOT/assets/icon.svg" "$STAGE/usr/share/icons/hicolor/scalable/apps/$APP.svg"
 
   cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $APP
@@ -164,8 +164,8 @@ if [[ "$TARGET" == "appimage" || "$TARGET" == "all" ]]; then
       | sed "s|$EXTRA|@APPDIR@/usr/lib/sa-extra|g" > "$EXTRA/pixbuf/loaders.cache.in"
   fi
 
-  cp "$ROOT/packaging/icon.svg" "$APPDIR/usr/share/icons/hicolor/scalable/apps/$APP.svg"
-  cp "$ROOT/packaging/icon.svg" "$APPDIR/$APP.svg"
+  cp "$ROOT/assets/icon.svg" "$APPDIR/usr/share/icons/hicolor/scalable/apps/$APP.svg"
+  cp "$ROOT/assets/icon.svg" "$APPDIR/$APP.svg"
   cat > "$APPDIR/$APP.desktop" <<EOF
 [Desktop Entry]
 Type=Application

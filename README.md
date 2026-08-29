@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/icon.svg" width="120" height="120" alt="Study Assistant logo">
+<img src="assets/icon.svg" width="120" height="120" alt="Study Assistant logo">
 
 # Study Assistant
 ### Local-first, AI-powered study workbench

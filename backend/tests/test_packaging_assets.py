@@ -31,7 +31,7 @@ def test_spec_referenced_paths_exist() -> None:
     assert (REPO_ROOT / "backend" / "alembic" / "env.py").is_file()
     assert (REPO_ROOT / "backend" / "alembic" / "versions").is_dir()
     assert (PACKAGING / "runtime_hook.py").is_file()
-    assert (PACKAGING / "icon.svg").is_file()
+    assert (REPO_ROOT / "assets" / "icon.svg").is_file()
 
 
 def test_runtime_hook_handles_frozen_paths() -> None:
