@@ -178,13 +178,16 @@ a single portable file.
 - The `.deb` installs to `/usr/lib/studyassistant` with a `/usr/bin/studyassistant`
   launcher, a `.desktop` file, and an icon. Target systems need GTK3, WebKitGTK 4.1
   and the GLib runtime (`Depends: libgtk-3-0, libwebkit2gtk-4.1-0, libglib2.0-0,
-  libgirepository-1.0-1`). PyInstaller collects the builder's whole GTK stack into
-  the onedir tree; the deb stage **strips the GLib core** (`libglib-2.0`,
-  `libgobject-2.0`, `libgio-2.0`, `libgmodule-2.0`, `libgirepository-1.0`) so the
-  system copies always win — a bundled stale glib shadows the system one (PyInstaller
-  prepends `_internal` to `LD_LIBRARY_PATH`) and then system libraries built against
-  a newer glib fail to load (Mint 22: `libgudev … undefined symbol:
-  g_once_init_enter_pointer` → WebKitGTK dlopen fails at launch).
+  libgirepository-1.0-1`). PyInstaller collects the builder's whole GUI stack into
+  the onedir tree; the deb stage **strips it down to the Python world** (keep-list:
+  libpython/mupdf/ssl/crypto/sqlite/ffi/zlib-family/expat/gcc/readline) so that
+  **every GTK/WebKit/GLib/X11 library resolves to the system copy** — PyInstaller
+  prepends `_internal` to `LD_LIBRARY_PATH`, so any bundled builder-era GUI lib
+  shadows the target's newer one and breaks the system WebKit stack (seen twice:
+  jammy glib 2.72 → `libgudev … g_once_init_enter_pointer` crash, then jammy
+  epoxy/X11 → `Could not create default EGL display` even in software mode, while
+  dev mode on the same machine worked). `gio_modules` is removed too; the AppImage
+  keeps its full bundle (self-contained and internally consistent).
 - The `.AppImage` is fully self-contained: `build-linux.sh` copies the ldd closure
   of every bundled `.so` plus WebKitGTK/GTK (which are only dlopened, so they are
   seeded explicitly), gdk-pixbuf loaders with a rebuilt cache, and an `AppRun` that

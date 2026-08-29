@@ -321,6 +321,25 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-29 — **fix(packaging): deb white-screen root cause is the bundled
+  builder-era GUI stack, not the render mode — deb now bundles ONLY the Python
+  world.** Decisive user experiment on the laptop: with the disable-vars forced
+  externally the GPU process *still* aborted, and (new this round) **dev mode on
+  the same machine renders fine** — so the machine and its system WebKitGTK are
+  healthy and the frozen bundle is the variable. The deb's denylist strip
+  (glib core only) left jammy `libepoxy`/`libX11`/`libxcb`/`libcairo`/`libgtk-3`/
+  `gdk-pixbuf`+loaders/dconf/gvfs modules shadowing the system stack via
+  PyInstaller's `LD_LIBRARY_PATH`, breaking WebKit's EGL bootstrap even under
+  `LIBGL_ALWAYS_SOFTWARE` (verified: rc.11 still white in software mode). The deb
+  stage now strips by **keep-list**: only `libpython3*`, `libmupdf*`,
+  `libssl/crypto/sqlite/ffi/zlib-family/expat/gcc_s/readline/tinfo/ncursesw`
+  survive; every other root `lib*.so*` is deleted and `gio_modules/` removed, so
+  the frozen app resolves GTK/WebKit/GLib/X11 entirely from the system (the same
+  all-system stack dev mode uses). Verified locally: stage contains zero GUI
+  libs, `_gi`/`_cairo` resolve every GUI dep to `/lib`, staged app launches and
+  serves the SPA. Depends unchanged (gtk/webkit/glib/girepository guarantee the
+  system side). AppImage untouched (self-contained by design).
+
 - 2026-08-29 — **fix(shell): the laptop experiment proved `WEBKIT_DISABLE_*` are
   no-ops on its webkit — the software rung now uses `LIBGL_ALWAYS_SOFTWARE`
   (Mesa llvmpipe software GL) instead.** User's forced-env test on the broken

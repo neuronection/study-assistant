@@ -50,11 +50,17 @@ if [[ "$TARGET" == "deb" || "$TARGET" == "all" ]]; then
     "$STAGE/DEBIAN"
   install_bundle "$STAGE/usr/lib/$APP"
 
-  echo "==> Stripping bundled GLib stack from deb stage (system copies must win)"
-  find "$STAGE/usr/lib/$APP" -type f \( \
-    -name 'libglib-2.0.so.0*' -o -name 'libgobject-2.0.so.0*' -o \
-    -name 'libgio-2.0.so.0*' -o -name 'libgmodule-2.0.so.0*' -o \
-    -name 'libgirepository-1.0.so.1*' \) -delete
+  echo "==> Stripping bundled GUI stack from deb stage (system copies must win)"
+  INTERNAL="$STAGE/usr/lib/$APP/_internal"
+  if [[ -d "$INTERNAL" ]]; then
+    find "$INTERNAL" -maxdepth 1 -type f -name 'lib*.so*' \
+      ! -name 'libpython3*' ! -name 'libmupdf*' ! -name 'libmupdfcpp*' \
+      ! -name 'libssl*' ! -name 'libcrypto*' ! -name 'libsqlite3*' ! -name 'libffi*' \
+      ! -name 'libz.so*' ! -name 'libzstd*' ! -name 'liblzma*' ! -name 'libbz2*' \
+      ! -name 'libexpat*' ! -name 'libgcc_s*' ! -name 'libreadline*' \
+      ! -name 'libtinfo*' ! -name 'libncursesw*' -delete
+    rm -rf "$INTERNAL/gio_modules"
+  fi
 
   cat > "$STAGE/usr/bin/$APP" <<EOF
 #!/usr/bin/env bash

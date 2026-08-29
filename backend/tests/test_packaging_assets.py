@@ -55,7 +55,8 @@ def test_build_script_syntax_and_targets() -> None:
         "pyinstaller",
         "libglib2.0-0",
         "libgirepository-1.0-1",
-        "Stripping bundled GLib stack",
+        "Stripping bundled GUI stack",
+        "libpython3",
     ):
         assert needle in source, f"build script missing {needle}"
 
