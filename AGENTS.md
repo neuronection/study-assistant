@@ -47,6 +47,21 @@ write them first or in the same commit.
 | `backend/app/` | FastAPI, services, pipelines, ai, ocr, storage, jobs (layout in plans/02) |
 | `frontend/src/` | React app (features/, components/, lib/) |
 
+## Shared UI library (assistant-ui)
+
+`@neuronection/assistant-ui` is **our first-party family library** (repo +
+local sibling `../assistant-ui`), not a third-party package — see the
+`sa-assistant-ui` skill before creating any UI component. Core rules:
+
+- **Check the library first.** No local copies of library components —
+  the weekly drift-audit workflow flags regressions as issues.
+- `frontend/src/components/ui/*` are re-export shims (import path + exit
+  hatch). Never re-implement inside a shim; new adoptions add a shim.
+- If the library's API doesn't fit, **change the library** (two-app rule,
+  boundary rules, `scripts/verify-in-app.mjs` — details in the skill).
+- Styling via `--as-*` tokens and `data-as-*` only; app identity in
+  `frontend/src/theme.css`.
+
 ## Standing workflow
 
 Read `docs/STATUS.md` → confirm phase scope → read the relevant plan doc → implement →
