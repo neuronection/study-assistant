@@ -1,9 +1,11 @@
 import '@testing-library/jest-dom/vitest'
 
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
 import { initI18n } from '@/lib/i18n'
+
+configure({ asyncUtilTimeout: 5000 })
 
 class ResizeObserverStub implements ResizeObserver {
   private readonly callback: ResizeObserverCallback

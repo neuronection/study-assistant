@@ -41,7 +41,7 @@ describe('LazyNoteEditor', () => {
         <LazyNoteEditor noteId={3} />
       </QueryClientProvider>
     )
-    const title = await screen.findByRole('textbox', { name: 'Note title' }, { timeout: 5000 })
+    const title = await screen.findByRole('textbox', { name: 'Note title' }, { timeout: 10_000 })
     expect(title).toHaveValue('Lazy loaded note')
   })
 

@@ -74,9 +74,15 @@ def test_failed_turn_emits_turn_error_and_fails_job(
         wait_for_condition(lambda: any(e.get("type") == "turn_error" for e in events))
         db = app.state.session_factory()
         try:
+
+            def job_failed() -> bool:
+                db.expire_all()
+                job = db.get(Job, job_id)
+                return job is not None and job.status == "failed"
+
+            wait_for_condition(job_failed)
             job = db.get(Job, job_id)
             assert job is not None
-            assert job.status == "failed"
             assert "provider offline" in (job.error or "")
         finally:
             db.close()
