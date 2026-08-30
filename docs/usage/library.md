@@ -68,6 +68,11 @@ cards; entering one scopes everything to it.
 - **Folder uploads keep their structure** — the directory tree is recreated as
   real library folders, reusing folders that already exist; junk files like
   `.DS_Store` are skipped.
+- In the **desktop app** (Linux .deb/AppImage), *Upload folder…* opens the
+  system's **folder picker** instead of the browser dialog (the embedded
+  WebKitGTK view cannot pick directories). Everything else behaves the same:
+  the tree is recreated and files upload with the same rules. In a browser,
+  the regular directory picker is used.
 - Supported: text PDFs, scanned PDFs, images (PNG/JPG/WebP), Markdown, plain text.
 - Text PDFs are extracted locally (fast, free). Scanned PDFs and images go to the
   model assigned to the **OCR** task and come back as markdown with LaTeX math,

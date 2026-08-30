@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useRef } from 'react'
 
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
+import { pickFolder } from '@/components/materials/desktopFolder'
 import { Button } from '@/components/ui/button'
 import { PopoverMenu } from '@/components/ui/popover-menu'
 import { cn } from '@/lib/utils'
@@ -97,7 +98,7 @@ export function UploadButton({
               label: t('library.uploadAFolder'),
               icon: FolderUp,
               disabled: pending,
-              onSelect: () => folderInput.current?.click(),
+              onSelect: pickFolder(upload, folderInput),
             },
           ]}
         />

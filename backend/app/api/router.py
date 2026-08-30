@@ -8,6 +8,7 @@ from . import (
     chat,
     config,
     courses,
+    desktop,
     exercises,
     flashcards,
     folders,
@@ -44,6 +45,7 @@ api_router.include_router(profiles.router)
 api_router.include_router(config.router)
 api_router.include_router(sources.router)
 api_router.include_router(fs.router)
+api_router.include_router(desktop.router)
 api_router.include_router(skills.router)
 api_router.include_router(onboarding.router)
 api_router.include_router(ai_settings.router)

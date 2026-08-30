@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useRef } from 'react'
 
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
+import { pickFolder } from '@/components/materials/desktopFolder'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
 
 export function useCreateMaterialMenu({
@@ -47,7 +48,7 @@ export function useCreateMaterialMenu({
     {
       key: 'upload-folder',
       label: t('library.uploadFolderMenu'),
-      onSelect: () => folderInput.current?.click(),
+      onSelect: pickFolder(upload, folderInput),
     },
     ...append,
   ]

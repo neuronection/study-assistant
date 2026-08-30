@@ -11,6 +11,7 @@ function upload(): MaterialUploadController {
     currentName: null,
     errors: [],
     clearErrors: vi.fn(),
+    reportError: vi.fn(),
   }
 }
 

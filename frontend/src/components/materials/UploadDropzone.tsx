@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useRef, useState, type DragEvent } from 'react'
 
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
+import { pickFolder } from '@/components/materials/desktopFolder'
 import { collectDropFiles } from '@/components/materials/dropFiles'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { cn } from '@/lib/utils'
@@ -61,7 +62,7 @@ export function UploadDropzone({
     {
       key: 'folder',
       label: t('library.uploadFolderMenu'),
-      onSelect: () => folderInput.current?.click(),
+      onSelect: pickFolder(upload, folderInput),
     },
   ]
 
@@ -89,7 +90,7 @@ export function UploadDropzone({
       className={className}
       title={t('library.uploadAFolder')}
       disabled={upload.uploading}
-      onClick={() => folderInput.current?.click()}
+      onClick={pickFolder(upload, folderInput)}
     >
       <FolderUp className="size-3.5" aria-hidden />
       {t(labelKey)}

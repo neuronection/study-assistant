@@ -26,6 +26,7 @@ export interface MaterialUploadController {
   currentName: string | null
   errors: MaterialUploadError[]
   clearErrors: () => void
+  reportError: (error: MaterialUploadError) => void
 }
 
 const JUNK_FILE_NAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini'])
@@ -182,5 +183,9 @@ export function useMaterialUpload({
 
   const clearErrors = useCallback(() => setErrors([]), [])
 
-  return { uploadFiles, uploading, currentName, errors, clearErrors }
+  const reportError = useCallback((error: MaterialUploadError) => {
+    setErrors((current) => [...current, error])
+  }, [])
+
+  return { uploadFiles, uploading, currentName, errors, clearErrors, reportError }
 }

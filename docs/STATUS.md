@@ -247,7 +247,7 @@ contract builders now include those constraints) |
 | **Packaging & release (ADR-099)** | done (Linux verified locally; Windows pending first tag CI run) | `packaging/studyassistant.spec` (PyInstaller 6: SPA + alembic + sqlite-vec + per-platform pywebview backends; Linux `gi.overrides` + system typelibs `gi_typelibs` + glib schemas; `SA_ONEFILE`/`SA_CONSOLE`), `runtime_hook.py` (windowed logs, GI typelib/schema paths), `build-linux.sh` → `.deb` (system webkit deps) + self-contained `.AppImage` (ldd-closure bundling incl. WebKitGTK + pixbuf loaders); `.github/workflows/release.yml` tag `v*` → test gate → artifacts → draft GH release; Windows onefile `.exe` via the same spec. `default_data_dir` platform-aware (APPDATA / macOS App Support / XDG). See `docs/usage/packaging.md` |
 | Backend skeleton (FastAPI, config, keyring, health) | done | `create_app()` factory, `GET /api/v1/health` (db-checking), pydantic-settings (`CA_*` env), keyring wrapper, structlog, in-process EventBus |
 | Frontend skeleton (Vite, Tailwind, shadcn, i18n harness) | done | React 19 + TS strict, Tailwind 4 tokens, shadcn (button/card + components.json), react-i18next `en` catalog, `no-literal-string` lint rule, TanStack Router/Query, Zustand, framer-motion. **Bundle split (plan 17 G)**: note editor behind `React.lazy` (tiptap in a lazy chunk); vendor chunks `react-vendor`/`framer-motion`/`katex` via rolldown `codeSplitting.groups`; entry 697 kB min / 192 kB gzip (was 2,067/627) |
-| pywebview shell | done | `pnpm app` / `python -m studyassistant` opens the SPA in WebKitGTK — **user-verified on Linux Mint**, incl. env de-snapping (snap VS Code) and `private_mode=False` (localStorage). **Window geometry persisted** (2026-08-28): 1280×800 centered first run, then size/position/maximized restored from `<data_dir>/window-state.json` with work-area clamping + drift-free move tracking. **Browser-first pivot (see Open issues)**: `python -m studyassistant web` + `scripts/{webapp,dev,app}.sh` / `pnpm {webapp,dev,app}` are the launch paths; webapp mode serves the built SPA on `SA_PORT` (default 8000) and opens the default browser |
+| pywebview shell | done | `pnpm app` / `python -m studyassistant` opens the SPA in WebKitGTK — **user-verified on Linux Mint**, incl. env de-snapping (snap VS Code) and `private_mode=False` (localStorage). **Window geometry persisted** (2026-08-28): 1280×800 centered first run, then size/position/maximized restored from `<data_dir>/window-state.json` with work-area clamping + drift-free move tracking. **Native folder picker bridge** (2026-08-30): `js_api DesktopBridge.pick_folder` (GTK SELECT_FOLDER via `webview.FileDialog.FOLDER`) + root-contained `GET /desktop/folder|file` (see `api/desktop.py`) — *Upload folder…* works in WebKitGTK, which can't pick directories natively. **Browser-first pivot (see Open issues)**: `python -m studyassistant web` + `scripts/{webapp,dev,app}.sh` / `pnpm {webapp,dev,app}` are the launch paths; webapp mode serves the built SPA on `SA_PORT` (default 8000) and opens the default browser |
 | Design tokens & block renderers | done | Semantic palette (surface/subtle/border/primary/success/warning/danger, light+dark, OS-following theme), BlockRenderer for text(math)/math/diagram/chart/image/table/code/geo + unknown fallback |
 | Golden eval fixtures (scans + handwriting) | blocked | Dir `backend/tests/fixtures/golden/` + README conventions ready; **needs the author's real scans (~20 pages, ~10 handwriting)** — see Open issues |
 | WS plumbing | done | `/ws` endpoint (subscribe/unsubscribe/publish/ping) + frontend `WsClient`; tested both sides |
@@ -320,6 +320,37 @@ a backend node binding) |
 | Analytics/diagnostics (P7 first slice) | in progress | Migration 0010: concept_skill_stats, daily_rollups, item_stats, study_goals. `services/metrics.py` = single source of truth (doc 10 definitions): weakness matrix (concepts×skills, sample-size aware — <3 answers flagged not-enough-data), error-pattern profile (totals + 7d trend), speed–accuracy quadrants (fluent/rushing/effortful/struggling vs expected time), item analysis (p-correct, avg-time ratio, distractor selection; n≥20 + p outside [0.1,0.95] auto-flags question `review`), streak/daily-history/XP/level, due-card counts, recommendations engine (review > weak cells [conceptual→read, else drill] > strong-but-stale challenge; each with evidence numbers; exam attempts excluded from mastery). API: /analytics/overview, /diagnostics, /recommendations, /items, /goal (PUT), /materialize (writes rollup tables + question flags). Frontend: **Today screen** (streak, goal ring w/ editable daily goal, due reviews, next-best-action cards with evidence + one-tap actions, 90-day heatmap), **Scores page → 4 tabs** (History, Diagnostics w/ matrix heatmap + error tags + quadrants, Tips, Mistakes). Slice 2: **weak-area sessions (H4)** — quiz generate accepts topic+skill focus (FOCUS TOPIC / SKILL FOCUS directives in the quizgen prompt; topic-scoped retrieval; title carries topic); Today drill/challenge buttons generate a targeted quiz and jump straight in. **Backup/restore (I6)** — `GET /backup/export` = consistent sqlite snapshot (backup API, converted to rollback-journal so archives are portable) + all blobs + manifest (`ca-backup/v1`); `POST /backup/restore` validates zip+manifest+integrity+alembic history, replaces DB (WAL sidecars removed) + blobs, re-runs migrations, reseeds; Settings→Data tab. **Automatic backups (plan 22 C, 2026-08-21)**: BackupScheduler (startup + interval), post-write archive validation, 14+8 daily/weekly retention, optional sync-folder copy, boot integrity check w/ auto-recovery + quarantine, `GET /backup/status` · `PUT /backup/settings` · `POST /backup/create` · `POST /backup/{name}/restore` · `DELETE /backup/{name}`, Automatic-backups card in Settings→Data (ADR-047). **Print export (I16 first cut)** — print CSS (rail/buttons hidden) + Print on quiz rows. Pending: mastery rings/tree visualizations, rollups on quiz-finish |
 
 ## Changelog
+
+- 2026-08-30 — **test: suite headroom under load** — two contention flakes
+  surfaced while running both suites in parallel (release gate): the chat
+  turn-error test raced the by-design event-before-status ordering
+  (`turn_error` emits before the runner commits `failed` — it now polls the job
+  row with `expire_all`, like a real WS+polling consumer), and lazy-tiptap
+  tests exceeded testing-library's 1s default under CPU starvation (vitest
+  `testTimeout`/`hookTimeout` → 15s, `asyncUtilTimeout` → 5s setup-wide).
+  Backend 767 · frontend 803 green under concurrent full-suite load.
+
+- 2026-08-30 — **fix(desktop): folder upload works in the packaged Linux app** —
+  WebKitGTK has no directory-picker support for `<input webkitdirectory>` (its
+  file-chooser API exposes only filter/mime-types/select-multiple — no directory
+  flag), so *Upload folder…* was web-only: the GTK dialog opened in files-only
+  mode. The desktop shell now passes a pywebview **JS bridge**
+  (`app/shell.py` `DesktopBridge.pick_folder` → `webview.FileDialog.FOLDER` →
+  native GTK SELECT_FOLDER dialog) and a **desktop-gated API**
+  (`app/api/desktop.py`): `GET /desktop/folder?path=` lists files (rel paths
+  rooted at the picked folder name, size, mtime) and `GET /desktop/file?path=`
+  streams bytes — both only for **session-picked roots** tracked by
+  `DesktopFileAccess` on `app.state.desktop_files`, set **only by the app
+  shell** (web/mcp mode → 404; `..`/symlink escapes outside a picked root are
+  contained, non-followed symlink dirs aren't descended). Frontend
+  `components/materials/desktopFolder.ts`: when `window.pywebview` exists, the
+  three folder-upload affordances (`UploadDropzone`, `UploadButton`,
+  `createMaterialMenu`) pick via the bridge and stream files sequentially into
+  the existing `useMaterialUpload` pipeline (same folder-mapping, junk-filter,
+  naming semantics; `relativePath` = `<folder>/<…>` like `webkitRelativePath`);
+  browsers keep the native input untouched.
+  `MaterialUploadController.reportError` (new) surfaces pick/list/stream
+  failures in the existing error row. Backend 767 · frontend 803 tests green.
 
 - 2026-08-29 — **brand assets canonicalized in `assets/` (org convention)** —
   `assets/icon.svg` (the real 512 px app tile) is now the single source of

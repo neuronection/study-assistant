@@ -15,6 +15,7 @@ import uvicorn
 import webview
 from fastapi import FastAPI
 
+from .api.desktop import DesktopFileAccess
 from .core.config import get_settings
 from .main import create_app
 
@@ -297,11 +298,38 @@ def _watch_renderer(
     relaunch()
 
 
+class DesktopBridge:
+    def __init__(self, access: DesktopFileAccess) -> None:
+        self._access = access
+        self._window: webview.Window | None = None
+
+    def _bind(self, window: webview.Window) -> None:
+        self._window = window
+
+    def pick_folder(self) -> str | None:
+        window = self._window
+        if window is None:
+            return None
+        selected = window.create_file_dialog(webview.FileDialog.FOLDER)
+        if not selected:
+            return None
+        folder = selected[0]
+        try:
+            self._access.register_root(folder)
+        except OSError:
+            logger.warning("desktop_folder_register_failed", folder=folder)
+            return None
+        return folder
+
+
 def run() -> None:
     sanitize_environment()
     apply_webkit_compat_env()
     settings = get_settings()
     app = create_app(settings)
+    desktop_files = DesktopFileAccess()
+    app.state.desktop_files = desktop_files
+    bridge = DesktopBridge(desktop_files)
     port = find_free_port()
     server = uvicorn.Server(
         uvicorn.Config(app, host=settings.host, port=port, log_level=settings.log_level.lower())
@@ -330,10 +358,12 @@ def run() -> None:
         x=state.get("x"),
         y=state.get("y"),
         maximized=state.get("maximized", False),
+        js_api=bridge,
     )
     if created is None:
         raise RuntimeError("webview window creation failed")
     window = created
+    bridge._bind(window)
     tracker = WindowGeometryTracker(
         width=state["width"],
         height=state["height"],

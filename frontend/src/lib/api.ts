@@ -477,6 +477,27 @@ export async function listFsDirs(path?: string): Promise<FsDirs> {
   return json<FsDirs>(response)
 }
 
+export interface DesktopFileEntry {
+  path: string
+  rel: string
+  size: number
+  mtime: number
+}
+
+export interface DesktopFolderListing {
+  path: string
+  files: DesktopFileEntry[]
+}
+
+export async function listDesktopFolder(path: string): Promise<DesktopFolderListing> {
+  const response = await apiFetch(`/api/v1/desktop/folder?path=${encodeURIComponent(path)}`)
+  return json<DesktopFolderListing>(response)
+}
+
+export function desktopFileUrl(path: string): string {
+  return `/api/v1/desktop/file?path=${encodeURIComponent(path)}`
+}
+
 export async function getMaterial(id: number): Promise<MaterialDetail> {
   const response = await apiFetch(`/api/v1/materials/${id}`)
   return json<MaterialDetail>(response)
