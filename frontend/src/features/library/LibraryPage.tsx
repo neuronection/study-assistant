@@ -142,6 +142,14 @@ export function LibraryPage() {
     return () => clearTimeout(id)
   }, [searchQuery])
   const [job, setJob] = useState<JobProgress | null>(null)
+  const [uploadJobId, setUploadJobId] = useState<number | null>(null)
+  const jobHideTimer = useRef<number | null>(null)
+  const clearJobHideTimer = (): void => {
+    if (jobHideTimer.current !== null) {
+      clearTimeout(jobHideTimer.current)
+      jobHideTimer.current = null
+    }
+  }
   const [notice, setNotice] = useState<string | null>(null)
   const [folderDeleteTarget, setFolderDeleteTarget] = useState<{
     folder: Folder
@@ -267,13 +275,8 @@ export function LibraryPage() {
       }
       return jobs
     },
-    onSuccess: (results) => {
+    onSuccess: () => {
       refreshMaterials()
-      for (const result of results) {
-        if (result.job_id !== null) {
-          uploadJobId.current = null
-        }
-      }
     },
     onError: (error: Error) => setNotice(error.message),
   })
@@ -311,7 +314,8 @@ export function LibraryPage() {
     })
     if (state !== null) {
       if (state.jobId !== null) {
-        uploadJobId.current = state.jobId
+        clearJobHideTimer()
+        setUploadJobId(state.jobId)
         setJob({ progress: 0, stage: 'ingesting', status: 'queued' })
       }
       await refreshMaterials()
@@ -389,13 +393,13 @@ export function LibraryPage() {
     },
   })
 
-  const uploadJobId = useRef<number | null>(null)
   const upload = useMaterialUpload({
     courseId,
     getFolderId: () => folderId,
     onUploaded: async (result) => {
-      uploadJobId.current = result.job_id
       if (result.job_id !== null) {
+        clearJobHideTimer()
+        setUploadJobId(result.job_id)
         setJob({ progress: 0, stage: 'uploading', status: 'queued' })
       }
       await refreshMaterials()
@@ -404,25 +408,29 @@ export function LibraryPage() {
   const fileDrop = useFileDropMenu(upload)
 
 
+  useEffect(() => () => clearJobHideTimer(), [])
+
   useEffect(() => {
-    const jobId = uploadJobId.current
-    if (jobId === null || jobId === undefined) {
+    if (uploadJobId === null) {
       return
     }
-    const unsubscribe = getWsClient().subscribe(`jobs:${jobId}`, (payload) => {
+    const unsubscribe = getWsClient().subscribe(`jobs:${uploadJobId}`, (payload) => {
       const progress = payload as JobProgress
       setJob(progress)
       if (progress.status === 'done' || progress.status === 'failed') {
         void queryClient.invalidateQueries({ queryKey: ['materials'] })
         void queryClient.invalidateQueries({ queryKey: ['source-browse'] })
-        setTimeout(() => {
+        clearJobHideTimer()
+        jobHideTimer.current = window.setTimeout(() => {
           setJob(null)
-          uploadJobId.current = null
+          setUploadJobId(null)
         }, 1500)
       }
     })
-    return unsubscribe
-  }, [queryClient])
+    return () => {
+      unsubscribe()
+    }
+  }, [uploadJobId, queryClient])
 
 
   const childFolders = useMemo(

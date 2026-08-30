@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { LibraryPage } from './LibraryPage'
@@ -87,9 +87,17 @@ vi.mock('@/lib/api', async (importOriginal) => {
   }
 })
 
+const wsHandlers = new Map<string, (payload: unknown) => void>()
+const wsSubscribe = vi.fn((topic: string, handler: (payload: unknown) => void) => {
+  wsHandlers.set(topic, handler)
+  return () => {
+    wsHandlers.delete(topic)
+  }
+})
+
 vi.mock('@/lib/ws-client', () => ({
   getWsClient: () => ({
-    subscribe: vi.fn(() => () => undefined),
+    subscribe: wsSubscribe,
   }),
 }))
 
@@ -273,6 +281,40 @@ describe('LibraryPage', () => {
     expect(uploadMaterial.mock.calls[0][1]).toBe(3)
     expect(uploadMaterial.mock.calls[0][2]).toBe(11)
     await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(11))
+  })
+
+  test('upload banner tracks the ingest job over WS and clears after completion', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    uploadMaterial.mockResolvedValue({
+      material: MATERIAL,
+      job_id: 9,
+      deduped: false,
+    })
+    renderAt('/library?course=3&folder=11')
+    expect(await screen.findByRole('button', { name: 'New…' })).toBeEnabled()
+
+    fireEvent.change(screen.getAllByLabelText('Upload files')[0], {
+      target: { files: [new File(['data'], 'sheet.pdf', { type: 'application/pdf' })] },
+    })
+    await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(wsSubscribe).toHaveBeenCalledWith('jobs:9', expect.any(Function))
+    )
+    expect(wsHandlers.get('jobs:9')).toBeDefined()
+    expect(screen.getAllByText('0%').length).toBeGreaterThan(0)
+
+    act(() => wsHandlers.get('jobs:9')?.({ progress: 40, stage: 'ocr', status: 'running' }))
+    expect(screen.getAllByText('40%').length).toBeGreaterThan(0)
+
+    act(() => wsHandlers.get('jobs:9')?.({ progress: 100, stage: 'finalizing', status: 'done' }))
+    expect(screen.getAllByText('100%').length).toBeGreaterThan(0)
+    await waitFor(
+      () => expect(screen.queryByText('100%')).not.toBeInTheDocument(),
+      { timeout: 3000 }
+    )
   })
 
   test('pane menu upload entries trigger the file and folder pickers', async () => {

@@ -321,6 +321,18 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-30 — **fix(library): upload progress banner was dead — stuck at 0%
+  until page remount (user-reported in the desktop folder-upload flow)** — the
+  WS-subscription effect read the upload job id from a ref with `[queryClient]`
+  deps, so it evaluated once at mount (ref still null → never subscribed) and
+  no job event ever reached the banner; it cleared only on navigation
+  (state reset). `uploadJobId` is now state: every job (per uploaded file,
+  including the desktop folder flow) (re)subscribes `jobs:{id}`, a stale
+  1.5 s hide-timer can no longer clear a newer job's banner, unmount cleans
+  the timer, and the pointless reingest-ref writes are gone.
+  Regression test drives the banner 0→40→100% over the mocked WS and asserts
+  auto-clear. Backend 767 · frontend 804 tests green.
+
 - 2026-08-30 — **test: suite headroom under load** — two contention flakes
   surfaced while running both suites in parallel (release gate): the chat
   turn-error test raced the by-design event-before-status ordering
