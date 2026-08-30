@@ -13,6 +13,7 @@ import {
 } from '@/lib/api'
 
 import { cn } from '@/lib/utils'
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 
 const CONSEQUENCE: Record<string, string> = {
   embeddings: 'semantic search is off (FTS-only)',
@@ -58,6 +59,11 @@ export function TasksTab() {
   const assignable = (requires: string) =>
     enabledModels.filter((model) => model.caps.includes(requires))
 
+  const pickerOptions = (models: typeof enabledModels, emptyLabel: string): ComboboxOption[] => [
+    { value: '', label: emptyLabel },
+    ...models.map((model) => ({ value: String(model.id), label: model.label })),
+  ]
+
   const costByTask = new Map((costs.data?.per_task ?? []).map((entry) => [entry.task, entry]))
   const defaultByCap = new Map(
     (defaults.data ?? []).map((entry) => [entry.requires, entry])
@@ -92,11 +98,11 @@ export function TasksTab() {
                   {t('settings.defaultModelHint', { cap: capLabel })}
                 </p>
               </div>
-              <select
-                className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
-                value={entry?.model_id ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value
+              <Combobox
+                className="max-w-52"
+                options={pickerOptions(options, t('settings.unassigned'))}
+                value={entry?.model_id != null ? String(entry.model_id) : ''}
+                onChange={(value: string) => {
                   setError(null)
                   assignDefault.mutate(
                     {
@@ -107,20 +113,13 @@ export function TasksTab() {
                     { onError: (err: Error) => setError(err.message) }
                   )
                 }}
-                aria-label={t('settings.defaultModelLabel', { cap: capLabel })}
-              >
-                <option value="">{t('settings.unassigned')}</option>
-                {options.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
-                value={entry?.fallback_model_id ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value
+                label={t('settings.defaultModelLabel', { cap: capLabel })}
+              />
+              <Combobox
+                className="max-w-52"
+                options={pickerOptions(options, t('settings.unassigned'))}
+                value={entry?.fallback_model_id != null ? String(entry.fallback_model_id) : ''}
+                onChange={(value: string) => {
                   setError(null)
                   assignDefault.mutate(
                     {
@@ -131,15 +130,8 @@ export function TasksTab() {
                     { onError: (err: Error) => setError(err.message) }
                   )
                 }}
-                aria-label={`${t('settings.defaultModelLabel', { cap: capLabel })} — ${t('settings.defaultFallbackLabel')}`}
-              >
-                <option value="">{t('settings.unassigned')}</option>
-                {options.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
+                label={`${t('settings.defaultModelLabel', { cap: capLabel })} — ${t('settings.defaultFallbackLabel')}`}
+              />
             </div>
           )
         })}
@@ -207,11 +199,16 @@ export function TasksTab() {
               }}
               aria-label={t('settings.budgetLabel', { task: task.task })}
             />
-            <select
-              className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
-              value={task.model_id ?? ''}
-              onChange={(event) => {
-                const value = event.target.value
+            <Combobox
+              className="max-w-52"
+              options={pickerOptions(
+                assignable(task.requires),
+                task.default_model_label !== null
+                  ? t('settings.inheritDefault')
+                  : t('settings.unassigned')
+              )}
+              value={task.model_id != null ? String(task.model_id) : ''}
+              onChange={(value: string) => {
                 setError(null)
                 assign.mutate(
                   { task: task.task, modelId: value === '' ? null : Number(value) },
@@ -221,18 +218,8 @@ export function TasksTab() {
                   }
                 )
               }}
-            >
-              <option value="">
-                {task.default_model_label !== null
-                  ? t('settings.inheritDefault')
-                  : t('settings.unassigned')}
-              </option>
-              {assignable(task.requires).map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                </option>
-              ))}
-            </select>
+              label={t('settings.defaultModelLabel', { cap: task.requires })}
+            />
           </div>
         )
       })}

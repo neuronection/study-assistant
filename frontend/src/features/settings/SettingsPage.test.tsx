@@ -239,8 +239,8 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
     expect(await screen.findByText(/default models/i)).toBeInTheDocument()
-    expect(screen.getByText(/Default text model/)).toBeInTheDocument()
-    expect(await screen.findByText('— inherit default —')).toBeInTheDocument()
+    expect(screen.getAllByText(/Default text model/).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('combobox')).length).toBeGreaterThanOrEqual(5)
     expect(await screen.findByText(/Inherited — using gemini-2.5-flash/)).toBeInTheDocument()
   })
 
@@ -274,11 +274,10 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
     await screen.findByText('quizgen')
-    const geminiOptions = await screen.findAllByRole('option', { name: 'gemini-2.5-flash' })
-    fireEvent.change(
-      geminiOptions.at(-1)?.closest('select') as HTMLSelectElement,
-      { target: { value: '11' } }
-    )
+    const trigger = screen.getAllByRole('combobox').at(-1)!
+    fireEvent.click(trigger)
+    const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
+    fireEvent.click(option)
     await waitFor(() => expect(assignTask).toHaveBeenCalledWith('quizgen', 11))
   })
 
@@ -303,9 +302,10 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
     await screen.findByText(/default models/i)
-    const textPrimary = await screen.findByLabelText('Default text model')
-    await screen.findAllByRole('option', { name: 'gemini-2.5-flash' })
-    fireEvent.change(textPrimary, { target: { value: '11' } })
+    const textPrimary = screen.getByRole('combobox', { name: 'Default text model' })
+    fireEvent.click(textPrimary)
+    const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
+    fireEvent.click(option)
     await waitFor(() => expect(assignTaskDefault).toHaveBeenCalledWith('text', 11, null))
   })
 
