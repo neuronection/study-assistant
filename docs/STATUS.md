@@ -321,6 +321,33 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-30 — **feat(library): drop uploads directly (user feedback)** — the
+  drag-drop menu (files-vs-folder choice) is gone: dropping now uploads
+  immediately with structure auto-detected per item (paths preserved → tree
+  recreated; loose files → current location — `uploadFiles` already mapped
+  both). The now-unused `useFileDropMenu` hook is deleted; the overlay drops
+  straight into the mounted page's controller. Backend untouched · frontend
+  812 tests green (user-verified in the desktop shell).
+
+- 2026-08-30 — **fix(desktop): OS file/folder drags now work in the WebKitGTK
+  shell (user-reported; root cause proven experimentally)** — verified with a
+  forged XDND session on this machine (X11, WebKitGTK 2.52): WebKitGTK
+  delivers `dragenter/dragover/drop` but **never puts `Files` in
+  `dataTransfer.types`** — external drops arrive as `text/uri-list`+`text/html`
+  strings with `files`/`items` empty (browsers wrap drops in File objects),
+  so every `'Files' in types` check silently ignored OS drags. Fix: the
+  desktop path parses `file://` URIs from `text/uri-list`
+  (`parseFileUris`), registers them server-side via a new **desktop-gated
+  `POST /desktop/drops`** (`DesktopFileAccess.register_paths` — dropped
+  folders are registered as roots and walked with the rooted-rel grammar,
+  single files are allow-listed explicitly; non-existent paths skipped), and
+  the bytes stream through the existing `/desktop/file` endpoint into the
+  normal upload pipeline. `resolveDropItems` (dropFiles.ts) picks the browser
+  `File` path first and falls back to the URI flow when `window.pywebview`
+  exists; `isFileDrag` now also accepts `text/uri-list`; `hasFolder` means
+  "has directory segments" so single-file drops don't offer the folder option.
+  Backend 769 · frontend 815 tests green (user-verified in the desktop shell).
+
 - 2026-08-30 — **feat(library): window-wide file/folder drag overlay
   (user-requested)** — dragging files/folders anywhere over the app window now
   shows a full-window "Drop to upload" overlay naming the target; drop opens

@@ -87,6 +87,35 @@ def test_register_root_rejects_non_directory(tmp_path: Path) -> None:
         access.register_root(str(target))
 
 
+def test_register_drops_files_and_folder(client: TestClient, tmp_path: Path) -> None:
+    root = tmp_path / "dropdir"
+    (root / "sub").mkdir(parents=True)
+    (root / "sub" / "n.pdf").write_bytes(b"NN")
+    single = tmp_path / "solo.txt"
+    single.write_bytes(b"S")
+    _install(client, root)
+
+    response = client.post(
+        "/api/v1/desktop/drops",
+        json={"paths": [str(root), str(single), str(tmp_path / "missing.txt")]},
+    )
+    assert response.status_code == 200
+    files = {entry["rel"]: entry["path"] for entry in response.json()["files"]}
+    assert files["dropdir/sub/n.pdf"] == str((root / "sub" / "n.pdf").resolve())
+    assert files["solo.txt"] == str(single.resolve())
+
+    streamed = client.get("/api/v1/desktop/file", params={"path": str(single.resolve())})
+    assert streamed.status_code == 200
+    assert streamed.content == b"S"
+
+
+def test_drops_gated_without_desktop_access(client: TestClient) -> None:
+    assert isinstance(client.app, FastAPI)
+    assert not hasattr(client.app.state, "desktop_files")
+    response = client.post("/api/v1/desktop/drops", json={"paths": ["/tmp"]})
+    assert response.status_code == 404
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="symlink support")
 def test_symlinks_escape_is_contained(client: TestClient, tmp_path: Path) -> None:
     root = tmp_path / "docs"

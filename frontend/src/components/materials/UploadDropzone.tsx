@@ -4,7 +4,7 @@ import { useRef, useState, type DragEvent } from 'react'
 
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
 import { pickFolder } from '@/components/materials/desktopFolder'
-import { collectDropFiles } from '@/components/materials/dropFiles'
+import { resolveDropItems } from '@/components/materials/dropFiles'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +31,7 @@ export function UploadDropzone({
     event.preventDefault()
     setDragging(false)
     if (!upload.uploading) {
-      void collectDropFiles(event.dataTransfer).then((items) => {
+      void resolveDropItems(event.dataTransfer).then((items) => {
         if (items.length > 0) {
           void upload.uploadFiles(items)
         }

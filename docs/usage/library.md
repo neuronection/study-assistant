@@ -57,9 +57,9 @@ cards; entering one scopes everything to it.
   *New folder*, *New text file*, *New Markdown file*, **Upload files…**,
   **Upload folder…**, and *Add linked folder…*. **Dragging** files or a folder
   anywhere over the app window also works — a full-window **"Drop to upload"**
-  overlay appears showing where the upload will land, and dropping opens a
-  menu offering **Upload files…** (a folder drop also offers **Upload
-  folder…** to recreate its directory tree).
+  overlay appears showing where the upload will land, and dropping starts the
+  upload right away: a folder's directory tree is recreated automatically and
+  loose files go into the current location.
 - Uploads go into the **currently open folder** (course root if none).
 - **New text file** / **New Markdown file** opens the rich editor (live math,
   tables, diagrams, the pen). Press **Create** to save the file — the dialog stays
@@ -74,6 +74,10 @@ cards; entering one scopes everything to it.
   WebKitGTK view cannot pick directories). Everything else behaves the same:
   the tree is recreated and files upload with the same rules. In a browser,
   the regular directory picker is used.
+- In the **desktop app**, dragging files or folders **from your file manager**
+  onto the app window also opens the same "Drop to upload" overlay (the
+  desktop delivers drops as file paths rather than browser file objects, and
+  both are supported).
 - Supported: text PDFs, scanned PDFs, images (PNG/JPG/WebP), Markdown, plain text.
 - Text PDFs are extracted locally (fast, free). Scanned PDFs and images go to the
   model assigned to the **OCR** task and come back as markdown with LaTeX math,

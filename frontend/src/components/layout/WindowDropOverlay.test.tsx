@@ -84,10 +84,9 @@ describe('WindowDropOverlay', () => {
       clientY: 140,
       dataTransfer: filesTransfer([file]),
     })
-    expect(await screen.findByRole('menuitem', { name: 'Upload files…' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Upload folder…' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files…' }))
     await waitFor(() => expect(upload.uploadFiles).toHaveBeenCalledTimes(1))
+    const items = vi.mocked(upload.uploadFiles).mock.calls[0][0] as { file: File }[]
+    expect(items[0].file.name).toBe('notes.pdf')
   })
 
   test('dropping a folder offers the folder option and keeps relative paths', async () => {
@@ -126,10 +125,43 @@ describe('WindowDropOverlay', () => {
       files: [],
     } as unknown as DataTransfer
     fireEvent.drop(overlay, { clientX: 10, clientY: 10, dataTransfer: transfer })
-    expect(await screen.findByRole('menuitem', { name: 'Upload folder…' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload folder…' }))
     await waitFor(() => expect(upload.uploadFiles).toHaveBeenCalledTimes(1))
     const items = vi.mocked(upload.uploadFiles).mock.calls[0][0] as { relativePath?: string }[]
     expect(items[0].relativePath).toBe('pack/a.pdf')
+  })
+
+  test('dropping a desktop uri-list (WebKitGTK) uploads directly', async () => {
+    window.pywebview = { api: { pick_folder: vi.fn().mockResolvedValue(null) } }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes('/desktop/drops') && init?.method === 'POST') {
+          return {
+            ok: true,
+            json: () =>
+              Promise.resolve({ files: [{ path: '/tmp/x.pdf', rel: 'x.pdf', size: 3, mtime: 5 }] }),
+          } as unknown as Response
+        }
+        return { ok: true, blob: () => Promise.resolve(new Blob(['PDF'])) } as unknown as Response
+      }),
+    )
+    const upload = controller()
+    render(<Harness upload={upload} label="Calculus I" />)
+    act(() => {
+      window.dispatchEvent(dragEvent('dragenter', { types: ['text/uri-list', 'text/html'] }))
+    })
+    const overlay = screen.getByTestId('window-drop-overlay')
+    const transfer = {
+      types: ['text/uri-list', 'text/html'],
+      files: [],
+      items: [],
+      getData: (type: string) => (type === 'text/uri-list' ? 'file:///tmp/x.pdf' : ''),
+    } as unknown as DataTransfer
+    fireEvent.drop(overlay, { clientX: 40, clientY: 60, dataTransfer: transfer })
+    await waitFor(() => expect(upload.uploadFiles).toHaveBeenCalledTimes(1))
+    const items = vi.mocked(upload.uploadFiles).mock.calls[0][0] as { relativePath?: string }[]
+    expect(items[0].relativePath).toBe('x.pdf')
+    delete window.pywebview
+    vi.unstubAllGlobals()
   })
 })

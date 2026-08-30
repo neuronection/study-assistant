@@ -4,6 +4,7 @@ import {
   apiFetch,
   desktopFileUrl,
   listDesktopFolder,
+  registerDesktopDrops,
   type DesktopFileEntry,
 } from '@/lib/api'
 
@@ -23,6 +24,51 @@ let picking = false
 
 export function desktopFolderMode(): boolean {
   return window.pywebview !== undefined
+}
+
+export function parseFileUris(dataTransfer: DataTransfer): string[] {
+  if (typeof dataTransfer.getData !== 'function') {
+    return []
+  }
+  const uriList = dataTransfer.getData('text/uri-list')
+  const paths = uriList
+    ? uriList
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('file://'))
+        .map((line) => decodeFileUrl(line))
+    : []
+  if (paths.length > 0) {
+    return paths
+  }
+  const html = dataTransfer.getData('text/html')
+  if (!html) {
+    return []
+  }
+  const matches = html.match(/file:\/\/[^\s<"]+/g) ?? []
+  return matches.map((match) => decodeFileUrl(match))
+}
+
+function decodeFileUrl(url: string): string {
+  const path = url.slice('file://'.length)
+  try {
+    return decodeURIComponent(path)
+  } catch {
+    return path
+  }
+}
+
+export async function fetchDesktopDropItems(paths: string[]): Promise<UploadItem[]> {
+  const listing = await registerDesktopDrops(paths)
+  const items: UploadItem[] = []
+  for (const entry of listing.files) {
+    try {
+      items.push(await fetchItem(entry))
+    } catch {
+      continue
+    }
+  }
+  return items
 }
 
 function errorMessage(error: unknown): string {

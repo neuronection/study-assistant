@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'r
 import { useTranslation } from 'react-i18next'
 import { FolderUp } from 'lucide-react'
 
-import { useFileDropMenu } from '@/components/materials/fileDropMenu'
-import type { MaterialUploadController } from '@/components/materials/materialUpload'
+import { resolveDropItems } from '@/components/materials/dropFiles'
 import { useWindowDropTarget } from '@/lib/window-drop-store'
 
 interface DragLike {
@@ -11,23 +10,13 @@ interface DragLike {
 }
 
 function isFileDrag(event: DragLike): boolean {
-  return Array.from(event.dataTransfer?.types ?? []).includes('Files')
-}
-
-const noopController: MaterialUploadController = {
-  uploadFiles: async () => [],
-  uploading: false,
-  currentName: null,
-  errors: [],
-  clearErrors: () => {},
-  reportError: () => {},
+  const types = Array.from(event.dataTransfer?.types ?? [])
+  return types.includes('Files') || types.includes('text/uri-list')
 }
 
 export function WindowDropOverlay() {
   const { t } = useTranslation()
   const target = useWindowDropTarget()
-  const upload = target?.upload() ?? noopController
-  const drop = useFileDropMenu(upload)
   const [dragging, setDragging] = useState(false)
   const counter = useRef(0)
 
@@ -75,10 +64,17 @@ export function WindowDropOverlay() {
   }, [])
 
   const onOverlayDrop = (event: ReactDragEvent) => {
-    if (target === null) {
+    const controller = target?.upload()
+    if (controller === null || controller === undefined) {
       return
     }
-    void drop.onDrop(event)
+    event.preventDefault()
+    const transfer = event.dataTransfer
+    void resolveDropItems(transfer).then((items) => {
+      if (items.length > 0) {
+        void controller.uploadFiles(items)
+      }
+    })
   }
 
   return (
@@ -105,7 +101,6 @@ export function WindowDropOverlay() {
           </div>
         </div>
       ) : null}
-      {drop.menu}
     </>
   )
 }

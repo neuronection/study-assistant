@@ -494,6 +494,15 @@ export async function listDesktopFolder(path: string): Promise<DesktopFolderList
   return json<DesktopFolderListing>(response)
 }
 
+export async function registerDesktopDrops(paths: string[]): Promise<DesktopFolderListing> {
+  const response = await apiFetch('/api/v1/desktop/drops', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  })
+  return json<DesktopFolderListing>(response)
+}
+
 export function desktopFileUrl(path: string): string {
   return `/api/v1/desktop/file?path=${encodeURIComponent(path)}`
 }

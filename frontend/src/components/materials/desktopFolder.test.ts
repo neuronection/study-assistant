@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
-import { desktopFolderMode, pickFolder, uploadDesktopFolder } from './desktopFolder'
+import {
+  desktopFolderMode,
+  fetchDesktopDropItems,
+  parseFileUris,
+  pickFolder,
+  uploadDesktopFolder,
+} from './desktopFolder'
 
 function controller(): MaterialUploadController {
   return {
@@ -118,6 +124,66 @@ describe('uploadDesktopFolder', () => {
     })
     const items = vi.mocked(upload.uploadFiles).mock.calls[0][0] as { relativePath?: string }[]
     expect(items.map((item) => item.relativePath)).toEqual(['docs/sub/b.txt'])
+  })
+})
+
+describe('parseFileUris', () => {
+  test('extracts and decodes file:// uris, skipping non-file lines', () => {
+    const transfer = {
+      getData: (type: string) =>
+        type === 'text/uri-list'
+          ? 'file:///tmp/a.pdf\r\nfile:///tmp/b%20c.txt\nhttps://example.com'
+          : '',
+    } as unknown as DataTransfer
+    expect(parseFileUris(transfer)).toEqual(['/tmp/a.pdf', '/tmp/b c.txt'])
+  })
+
+  test('returns empty without getData or empty payload', () => {
+    expect(parseFileUris({} as unknown as DataTransfer)).toEqual([])
+    const transfer = { getData: () => '' } as unknown as DataTransfer
+    expect(parseFileUris(transfer)).toEqual([])
+  })
+
+  test('falls back to file urls embedded in the text/html anchor (WebKitGTK)', () => {
+    const transfer = {
+      getData: (type: string) =>
+        type === 'text/html'
+          ? '<a style="color: black">file:///home/u/%CE%A3%CF%87%CE%BF%CE%BB%CE%AE/note.docx</a>'
+          : '',
+    } as unknown as DataTransfer
+    expect(parseFileUris(transfer)).toEqual(['/home/u/Σχολή/note.docx'])
+  })
+
+  test('prefers text/uri-list when both channels are present', () => {
+    const transfer = {
+      getData: (type: string) =>
+        type === 'text/uri-list'
+          ? 'file:///tmp/from-uri.pdf'
+          : '<a>file:///tmp/from-html.pdf</a>',
+    } as unknown as DataTransfer
+    expect(parseFileUris(transfer)).toEqual(['/tmp/from-uri.pdf'])
+  })
+})
+
+describe('fetchDesktopDropItems', () => {
+  test('registers paths and builds upload items', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/desktop/drops')) {
+          return okResponse({
+            files: [
+              { path: '/tmp/docs/a.pdf', rel: 'a.pdf', size: 3, mtime: 7 },
+              { path: '/tmp/docs/pack/b.pdf', rel: 'pack/b.pdf', size: 2, mtime: 8 },
+            ],
+          })
+        }
+        return fileResponse('AAA')
+      }),
+    )
+    const items = await fetchDesktopDropItems(['/tmp/docs/a.pdf', '/tmp/docs/pack'])
+    expect(items.map((item) => item.relativePath)).toEqual(['a.pdf', 'pack/b.pdf'])
+    expect(items[0].file.lastModified).toBe(7000)
   })
 })
 

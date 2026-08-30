@@ -1,4 +1,9 @@
 import type { UploadItem } from '@/components/materials/materialUpload'
+import {
+  desktopFolderMode,
+  fetchDesktopDropItems,
+  parseFileUris,
+} from '@/components/materials/desktopFolder'
 
 type Entry = {
   isFile: boolean
@@ -83,4 +88,16 @@ export async function collectDropFiles(dataTransfer: DataTransfer): Promise<Uplo
     await collectEntry(entry, '', items)
   }
   return items
+}
+
+export async function resolveDropItems(dataTransfer: DataTransfer): Promise<UploadItem[]> {
+  const paths = parseFileUris(dataTransfer)
+  const items = await collectDropFiles(dataTransfer)
+  if (items.length > 0) {
+    return items
+  }
+  if (paths.length === 0 || !desktopFolderMode()) {
+    return []
+  }
+  return fetchDesktopDropItems(paths)
 }
