@@ -21,6 +21,7 @@ import { ScoresPage } from '@/features/scores/ScoresPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { SpikePage } from '@/features/spike/SpikePage'
+import { AboutPage } from '@/features/about/AboutPage'
 
 const rootRoute = createRootRoute({
   component: () => <AppShell />,
@@ -252,6 +253,12 @@ const settingsRoute = createRoute({
   component: () => <SettingsPage />,
 })
 
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/about',
+  component: () => <AboutPage />,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   chatRoute,
@@ -274,6 +281,7 @@ const routeTree = rootRoute.addChildren([
   spikeRoute,
   jobsRoute,
   settingsRoute,
+  aboutRoute,
 ])
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' })

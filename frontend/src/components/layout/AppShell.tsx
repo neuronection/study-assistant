@@ -10,6 +10,7 @@ import {
   FolderClosed,
   GraduationCap,
   Home,
+  Info,
   Layers,
   MessageSquare,
   NotebookPen,
@@ -488,6 +489,19 @@ export function AppShell() {
           >
             <Settings className="size-4" aria-hidden />
             {t('nav.settings')}
+          </Link>
+          <Link
+            to="/about"
+            aria-current={location.pathname === '/about' ? 'page' : undefined}
+            className={cn(
+              'focus-visible:outline-ring flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
+              location.pathname === '/about'
+                ? 'bg-surface font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Info className="size-4" aria-hidden />
+            {t('nav.about')}
           </Link>
           <button
             type="button"
