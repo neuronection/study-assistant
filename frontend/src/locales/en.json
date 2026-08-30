@@ -499,6 +499,8 @@
     "newMarkdownFile": "New Markdown file",
     "uploadFiles": "Upload files…",
     "uploadFolderMenu": "Upload folder…",
+    "windowDropTitle": "Drop to upload",
+    "windowDropTarget": "Uploads go to {{target}}",
     "uploadAction": "Upload",
     "uploadToFolder": "Upload to this folder",
     "uploadToLibrary": "Upload to course library",

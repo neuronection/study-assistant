@@ -321,6 +321,23 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-30 — **feat(library): window-wide file/folder drag overlay
+  (user-requested)** — dragging files/folders anywhere over the app window now
+  shows a full-window "Drop to upload" overlay naming the target; drop opens
+  the same files-vs-folder menu as before and uploads through the mounted
+  page's `useMaterialUpload` controller (folder trees recreated, workspace
+  drops keep node auto-allocation). New `lib/window-drop-store.ts` (module
+  store + `useWindowDropRegistration(active, label, getUpload)` — pages
+  register while mounted, `getUpload` kept fresh via ref so folder context is
+  never stale) and `components/layout/WindowDropOverlay.tsx` (window-level
+  dragenter/leave counter, Files-only dragover preventDefault so internal
+  node/material drags are untouched, menu reuse from `useFileDropMenu`);
+  mounted in AppShell; registered by LibraryPage (course label) and the
+  workspace Materials tab (node label) — the pane-level file-drop menus there
+  were superseded and removed. On screens without a registered target (e.g.
+  Settings, non-materials workspace tabs) no overlay appears.
+  Backend 767 · frontend 809 tests green.
+
 - 2026-08-30 — **fix(library): upload progress banner was dead — stuck at 0%
   until page remount (user-reported in the desktop folder-upload flow)** — the
   WS-subscription effect read the upload job id from a ref with `[queryClient]`

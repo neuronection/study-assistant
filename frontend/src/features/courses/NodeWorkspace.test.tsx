@@ -9,10 +9,11 @@ import {
 } from '@tanstack/react-router'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { NodeWorkspace } from './NodeWorkspace'
 import { useChatStore } from '@/lib/chat-store'
+import { clearWindowDropTarget, getWindowDropTarget } from '@/lib/window-drop-store'
 
 const nodeWorkspace = vi.fn()
 const courseTree = vi.fn()
@@ -515,6 +516,10 @@ function primeDefaults() {
   })
   useChatStore.setState({ open: false, session: null })
 }
+
+afterEach(() => {
+  clearWindowDropTarget()
+})
 
 describe('NodeWorkspace', () => {
   test('root workspace renders tabs, outline editor and child cards', async () => {
@@ -1373,43 +1378,13 @@ describe('NodeWorkspace', () => {
     expect(allocateMaterial).not.toHaveBeenCalled()
   })
 
-  test('materials tab dropping files on the pane opens the upload menu', async () => {
+  test('materials tab registers the window drop target for the node', async () => {
     primeDefaults()
-    uploadMaterial.mockResolvedValue({
-      material: {
-        id: 78,
-        title: 'new.pdf',
-        kind: 'pdf',
-        status: 'ready',
-        course_id: 3,
-        folder_id: null,
-        created_at: '2026-08-19T00:00:00Z',
-      },
-      job_id: null,
-      deduped: false,
-    })
     renderWorkspace('/courses/3/n/5?tab=materials')
     await screen.findByRole('button', { name: /chain-rule\.pdf/i })
-
-    const pane = document.querySelector('[data-marquee-surface]') as HTMLElement
-    const file = new File(['x'], 'new.pdf')
-    const transfer = {
-      types: ['Files'],
-      items: [file],
-      files: [file],
-    } as unknown as DataTransfer
-    fireEvent.drop(pane, {
-      clientX: 120,
-      clientY: 140,
-      dataTransfer: transfer,
-    })
-
-    expect(await screen.findByRole('menuitem', { name: 'Upload files…' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Upload folder…' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files…' }))
-    await waitFor(() => expect(uploadMaterial).toHaveBeenCalled())
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(5, 78))
-    fireEvent.keyDown(window, { key: 'Escape' })
+    const target = getWindowDropTarget()
+    expect(target?.label).toBe('Derivatives')
+    expect(target?.upload()).not.toBeNull()
   })
 
   test('practice tab switches to a flashcards segment with its own actions', async () => {

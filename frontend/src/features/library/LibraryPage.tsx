@@ -77,8 +77,8 @@ import { ViewToggle, type LibraryView } from '@/components/ui/ViewToggle'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
-import { useFileDropMenu } from '@/components/materials/fileDropMenu'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
+import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
 
 interface JobProgress {
@@ -179,6 +179,7 @@ export function LibraryPage() {
   })
   const allFolders = useMemo(() => folders.data ?? [], [folders.data])
   const currentFolder = allFolders.find((entry) => entry.id === folderId) ?? null
+  const dropTargetLabel = course?.title ?? t('library.title')
 
   useEffect(() => {
     if (linkState !== null) {
@@ -405,7 +406,7 @@ export function LibraryPage() {
       await refreshMaterials()
     },
   })
-  const fileDrop = useFileDropMenu(upload)
+  useWindowDropRegistration(courseId !== null, dropTargetLabel, () => upload)
 
 
   useEffect(() => () => clearJobHideTimer(), [])
@@ -1497,7 +1498,6 @@ className={cn(
               data-marquee-surface=""
               onDragOver={(event) => {
                 if (Array.from(event.dataTransfer.types).includes('Files')) {
-                  fileDrop.onDragOver(event)
                   return
                 }
                 if (
@@ -1509,7 +1509,6 @@ className={cn(
               }}
               onDrop={(event) => {
                 if (Array.from(event.dataTransfer.types).includes('Files')) {
-                  fileDrop.onDrop(event)
                   return
                 }
                 if (event.target !== event.currentTarget) {
@@ -1788,7 +1787,6 @@ className={cn(
       {menu ? (
         <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />
       ) : null}
-      {fileDrop.menu}
       <MarqueeBand band={band} />
       {assignOpen && courseId !== null ? (
         <AssignToNodeDialog

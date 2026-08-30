@@ -56,9 +56,10 @@ cards; entering one scopes everything to it.
 - Everything create-related lives behind the toolbar **+ (New…)** button:
   *New folder*, *New text file*, *New Markdown file*, **Upload files…**,
   **Upload folder…**, and *Add linked folder…*. **Dragging** files or a folder
-  onto the pane also works — drop them and a menu appears at the drop point
-  offering **Upload files…** (a folder drop also offers **Upload folder…** to
-  recreate its directory tree).
+  anywhere over the app window also works — a full-window **"Drop to upload"**
+  overlay appears showing where the upload will land, and dropping opens a
+  menu offering **Upload files…** (a folder drop also offers **Upload
+  folder…** to recreate its directory tree).
 - Uploads go into the **currently open folder** (course root if none).
 - **New text file** / **New Markdown file** opens the rich editor (live math,
   tables, diagrams, the pen). Press **Create** to save the file — the dialog stays

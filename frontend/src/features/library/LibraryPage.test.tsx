@@ -6,6 +6,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { LibraryPage } from './LibraryPage'
 import { MaterialDetailPage } from './MaterialDetailPage'
 import { useWorkspaceStore } from '@/lib/workspace-store'
+import { getWindowDropTarget, clearWindowDropTarget } from '@/lib/window-drop-store'
 
 const listMaterials = vi.fn()
 const getMaterial = vi.fn()
@@ -220,6 +221,7 @@ function renderAt(initial: string) {
 afterEach(() => {
   useWorkspaceStore.getState().setCourse(null)
   window.localStorage.clear()
+  clearWindowDropTarget()
   vi.clearAllMocks()
 })
 
@@ -561,114 +563,23 @@ describe('LibraryPage', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
   })
 
-  test('dropping files on the pane opens the upload menu with auto-detected options', async () => {
+  test('registers the window drop target while a course is open', async () => {
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([])
-    uploadMaterial.mockResolvedValue({
-      material: {
-        id: 51,
-        title: 'notes.pdf',
-        kind: 'pdf',
-        status: 'ready',
-        course_id: 3,
-        folder_id: null,
-        created_at: '2026-08-19T00:00:00Z',
-      },
-      job_id: null,
-      deduped: false,
-    })
     renderAt('/library?course=3')
-    await screen.findByText('No materials here yet — drop in a PDF to get started.')
-
-    const pane = document.querySelector(
-      '.mx-auto [data-marquee-surface]:not([class*="flex-1"])'
-    ) as HTMLElement
-    const file = new File(['x'], 'notes.pdf')
-    const transfer = {
-      types: ['Files'],
-      items: [file],
-      files: [file],
-    } as unknown as DataTransfer
-    fireEvent.drop(pane, {
-      clientX: 120,
-      clientY: 140,
-      dataTransfer: transfer,
-    })
-
-    expect(await screen.findByRole('menuitem', { name: 'Upload files…' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Upload folder…' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files…' }))
-    await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    fireEvent.keyDown(window, { key: 'Escape' })
+    await screen.findByRole('button', { name: 'New…' })
+    await waitFor(() => expect(getWindowDropTarget()?.label).toBe('Calculus I'))
+    expect(getWindowDropTarget()?.upload()).not.toBeNull()
   })
 
-  test('dropping a folder on the pane offers the folder upload option', async () => {
+  test('clears the window drop target without a course', async () => {
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([])
-    createFolder.mockResolvedValue({
-      id: 61,
-      name: 'pack',
-      path: 'pack',
-      course_id: 3,
-      parent_id: null,
-      source_id: null,
-      created_at: '2026-08-19T00:00:00Z',
-    })
-    uploadMaterial.mockResolvedValue({
-      material: {
-        id: 52,
-        title: 'a.pdf',
-        kind: 'pdf',
-        status: 'ready',
-        course_id: 3,
-        folder_id: null,
-        created_at: '2026-08-19T00:00:00Z',
-      },
-      job_id: null,
-      deduped: false,
-    })
-    renderAt('/library?course=3')
-    await screen.findByText('No materials here yet — drop in a PDF to get started.')
-
-    const pane = document.querySelector(
-      '.mx-auto [data-marquee-surface]:not([class*="flex-1"])'
-    ) as HTMLElement
-    const file = new File(['x'], 'a.pdf')
-    Object.defineProperty(file, 'webkitRelativePath', { value: 'pack/a.pdf' })
-    const dirEntry = {
-      isFile: false,
-      isDirectory: true,
-      name: 'pack',
-      createReader: () => {
-        const children = [
-          { isFile: true, isDirectory: false, name: 'a.pdf', file: (ok: (f: File) => void) => ok(file) },
-        ]
-        return {
-          readEntries: (success: (entries: unknown[]) => void) => {
-            success(children.slice())
-            children.length = 0
-          },
-        }
-      },
-    }
-    const transfer = {
-      types: ['Files'],
-      items: [{ webkitGetAsEntry: () => dirEntry }],
-      files: [file],
-    } as unknown as DataTransfer
-    fireEvent.drop(pane, {
-      clientX: 120,
-      clientY: 140,
-      dataTransfer: transfer,
-    })
-
-    expect(await screen.findByRole('menuitem', { name: 'Upload folder…' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Upload files…' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload folder…' }))
-    await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    fireEvent.keyDown(window, { key: 'Escape' })
+    renderAt('/library')
+    await screen.findByText('Calculus I')
+    expect(getWindowDropTarget()).toBeNull()
   })
 
   test('plus button opens the same create menu as right-click', async () => {

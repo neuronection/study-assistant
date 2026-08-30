@@ -53,7 +53,7 @@ import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { UploadDropzone } from '@/components/materials/UploadDropzone'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
-import { useFileDropMenu } from '@/components/materials/fileDropMenu'
+import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
 import { NewFolderDialog } from '@/components/materials/NewFolderDialog'
 import { NewTextFileDialog } from '@/features/library/NewTextFileDialog'
@@ -1105,7 +1105,7 @@ function MaterialsTab({
     },
   })
 
-  const fileDrop = useFileDropMenu(upload)
+  useWindowDropRegistration(true, workspace.node.title, () => upload)
 
   const createMenu = useCreateMaterialMenu({
     upload,
@@ -1304,8 +1304,6 @@ function MaterialsTab({
         pickerOpen ||
         assignOpen
       }
-      onDragOver={fileDrop.onDragOver}
-      onDrop={fileDrop.onDrop}
       onContextMenu={(event) => {
         if (event.defaultPrevented) {
           return
@@ -1424,7 +1422,6 @@ function MaterialsTab({
           onClose={() => setPaneMenu(null)}
         />
       ) : null}
-      {fileDrop.menu}
 
       {textDialog !== null ? (
         <NewTextFileDialog

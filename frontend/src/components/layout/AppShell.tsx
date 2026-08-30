@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
+import { WindowDropOverlay } from './WindowDropOverlay'
 import { ActivityButton } from './ActivityPopover'
 import { ProfileDialog } from './ProfileDialog'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
@@ -557,6 +558,7 @@ export function AppShell() {
         />
       ) : null}
       <CommandPalette open={palette.open} onClose={palette.close} />
+      <WindowDropOverlay />
       {profilesOpen ? (
         <ProfileDialog
           profiles={profileList}
