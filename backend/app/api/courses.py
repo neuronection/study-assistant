@@ -39,6 +39,7 @@ from ..services.study.organizer import (
     review_node,
     review_report_markdown,
 )
+from .courses_schemas import NodeCreatedOut, TreeNodeOut
 from .deps import content_disposition, get_session
 
 router = APIRouter(tags=["courses"])
@@ -341,14 +342,14 @@ def delete_course(
     return {"status": "deleted", "course_id": course_id}
 
 
-@router.get("/courses/{course_id}/tree")
+@router.get("/courses/{course_id}/tree", response_model=list[TreeNodeOut])
 def course_tree(course_id: int, session: Session = Depends(get_session)) -> list[dict[str, Any]]:
     _load_course(session, course_id)
     profile = ensure_default_profile(session)
     return _tree(session).tree(course_id, profile.id)
 
 
-@router.post("/courses/{course_id}/nodes", status_code=201)
+@router.post("/courses/{course_id}/nodes", status_code=201, response_model=NodeCreatedOut)
 def add_node(
     course_id: int, body: NodeCreate, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
