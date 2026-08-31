@@ -17,6 +17,16 @@ def wait_for_ingest(client: TestClient, material_id: int, timeout: float = 10.0)
     raise AssertionError("material never became ready")
 
 
+def wait_for_queue_drain(client: TestClient, timeout: float = 15.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        summary = client.get("/api/v1/jobs/summary").json()
+        if summary["queued"] == 0 and summary["running"] == 0:
+            return
+        time.sleep(0.05)
+    raise AssertionError("job queue never drained")
+
+
 def make_course(client: TestClient, title: str) -> int:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
@@ -123,6 +133,7 @@ def test_delete_cascades_subtree(client: TestClient, text_pdf: bytes) -> None:
     assert upload_response.status_code == 200
     material_id = int(upload_response.json()["material"]["id"])
     wait_for_ingest(client, material_id)
+    wait_for_queue_drain(client)
 
     response = client.delete(f"/api/v1/folders/{child['id']}")
     assert response.status_code == 204

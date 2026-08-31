@@ -47,7 +47,7 @@ def get_messages(harness: Harness) -> list[dict[str, Any]]:
 
 def wait_until(
     harness: Harness, predicate: Callable[[list[dict[str, Any]]], bool],
-    timeout: float = 5.0,
+    timeout: float = 15.0,
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

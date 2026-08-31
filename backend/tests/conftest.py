@@ -109,7 +109,10 @@ def _fast_fresh_db_migrations(
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     settings = Settings(
-        data_dir=tmp_path, config_dir=tmp_path / "config", log_level="WARNING"
+        data_dir=tmp_path,
+        config_dir=tmp_path / "config",
+        spa_dist=tmp_path / "no-spa",
+        log_level="WARNING",
     )
     app = create_app(settings)
     with TestClient(app) as test_client:
