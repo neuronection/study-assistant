@@ -217,6 +217,8 @@ class Material(Base):
     external_path: Mapped[str | None] = mapped_column(String(1000))
     file_mtime: Mapped[float | None] = mapped_column(Float)
     file_size: Mapped[int | None] = mapped_column(Integer)
+    duration_sec: Mapped[float | None] = mapped_column(Float)
+    bitrate_kbps: Mapped[int | None] = mapped_column(Integer)
 
     extractions: Mapped[list["Extraction"]] = relationship(
         back_populates="material",

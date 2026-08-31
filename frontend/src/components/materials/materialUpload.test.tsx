@@ -159,6 +159,23 @@ describe('useMaterialUpload', () => {
     expect(await screen.findByText('notes.rtf: unsupported file type (.rtf)')).toBeInTheDocument()
   })
 
+  test('a transcribe-size warning renders for oversized recordings', async () => {
+    listFolders.mockResolvedValue([])
+    uploadMaterial.mockResolvedValue({
+      ...RESULT(6, 'big.mp3'),
+      warnings: [{ code: 'transcribe_size_exceeded', limit_mb: 25, file_mb: 57 }],
+    })
+    renderHarness({ courseId: 1 })
+
+    await act(async () => {
+      await held?.uploadFiles([file('big.mp3')])
+    })
+
+    expect(
+      await screen.findByText(/likely exceeds the transcription size limit \(25 MB\)/)
+    ).toBeInTheDocument()
+  })
+
   test('no-ops without a course', async () => {
     renderHarness({ courseId: null })
     await held?.uploadFiles([file('a.pdf')])

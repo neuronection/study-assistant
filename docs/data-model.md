@@ -87,6 +87,10 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   (pending/processing/ready/failed), content_hash, phash?, source/external fields
   (for future linked folders) — index (course_id, status); upload dedup is
   per (profile, course, content_hash)
+- **materials** — AV metadata (0049, ADR-104): `duration_sec` (float, from
+  mutagen at upload), `bitrate_kbps` (int) — nullable, only set for
+  audio/video kinds; feeds the transcript metadata header and the pre-flight
+  transcription size warning
 - **extractions**: id, material_id, version (append-only; latest = current),
   extractor (pymupdf | ocr | native | manual), model, blocks JSON, markdown,
   confidence, tokens/cost, reviewed, edited_by_user
@@ -296,6 +300,9 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0049 (plan 47, ADR-104)**: `materials.duration_sec` + `materials.bitrate_kbps`
+  nullable columns — read with mutagen at upload for audio/video materials
+  (no ffmpeg, containers pass through to the provider). Downgrade drops both.
 - **0048 (plan 47, ADR-103)**: new `material_images` table — extracted embedded
   images of converted office/web materials (docx/pptx/epub/html), one row per
   image with a content-addressed blob, document position, and async `image_ocr`

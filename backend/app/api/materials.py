@@ -38,6 +38,7 @@ from .schemas import (
     MaterialImageOut,
     MaterialOut,
     MaterialUploadOut,
+    UploadWarningOut,
     ViewBox,
 )
 
@@ -71,7 +72,9 @@ class MaterialDeriveIn(BaseModel):
     node_id: int | None = None
 
 
-REINGESTABLE_KINDS = frozenset({"pdf", "md", "txt", "image", "docx", "pptx", "epub", "html"})
+REINGESTABLE_KINDS = frozenset(
+    {"pdf", "md", "txt", "image", "docx", "pptx", "epub", "html", "audio", "video"}
+)
 
 
 def _service(request: Request, session: Session) -> MaterialsService:
@@ -194,8 +197,14 @@ async def upload_material(
     if not deduped:
         job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
+    from ..services.content.materials import transcribe_size_warning
+
+    warning = transcribe_size_warning(material.kind, len(data))
     return MaterialUploadOut(
-        material=_to_out(material), job_id=job_id, deduped=deduped
+        material=_to_out(material),
+        job_id=job_id,
+        deduped=deduped,
+        warnings=[UploadWarningOut(**warning)] if warning else [],
     )
 
 

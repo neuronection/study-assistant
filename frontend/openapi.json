@@ -4735,6 +4735,13 @@
           },
           "material": {
             "$ref": "#/components/schemas/MaterialOut"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/UploadWarningOut"
+            },
+            "title": "Warnings",
+            "type": "array"
           }
         },
         "required": [
@@ -9638,6 +9645,41 @@
           "mtime"
         ],
         "title": "UningestedFileOut",
+        "type": "object"
+      },
+      "UploadWarningOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "file_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Mb"
+          },
+          "limit_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Mb"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "UploadWarningOut",
         "type": "object"
       },
       "ValidateWorkingDirOut": {

@@ -18,6 +18,12 @@ export interface MaterialUploadError {
   suffix?: string
 }
 
+export interface MaterialUploadWarning {
+  name: string
+  code: string
+  limitMb: number | null
+}
+
 function toUploadError(name: string, error: unknown): MaterialUploadError {
   if (error instanceof ApiError) {
     const unsupported = unsupportedTypeDetail(error.detail)
@@ -44,6 +50,7 @@ export interface MaterialUploadController {
   uploading: boolean
   currentName: string | null
   errors: MaterialUploadError[]
+  warnings: MaterialUploadWarning[]
   clearErrors: () => void
   reportError: (error: MaterialUploadError) => void
 }
@@ -132,6 +139,7 @@ export function useMaterialUpload({
   const [uploading, setUploading] = useState(false)
   const [currentName, setCurrentName] = useState<string | null>(null)
   const [errors, setErrors] = useState<MaterialUploadError[]>([])
+  const [warnings, setWarnings] = useState<MaterialUploadWarning[]>([])
 
   const uploadFiles = useCallback(
     async (files: FileList | File[] | UploadItem[]): Promise<UploadResult[]> => {
@@ -143,6 +151,7 @@ export function useMaterialUpload({
         return []
       }
       setErrors([])
+      setWarnings([])
       setUploading(true)
       const baseFolderId = (await getFolderId?.()) ?? null
       const cache: FolderCache = new Map()
@@ -180,6 +189,12 @@ export function useMaterialUpload({
           const folderId = segments.length > 0 ? await folderTarget(segments) : baseFolderId
           const named = (await nameFile?.(item, folderId, courseId)) ?? item.file.name
           const result = await uploadMaterial(withName(item.file, named), courseId, folderId)
+          for (const warning of result.warnings ?? []) {
+            setWarnings((current) => [
+              ...current,
+              { name: item.file.name, code: warning.code, limitMb: warning.limit_mb },
+            ])
+          }
           results.push(result)
           await queryClient.invalidateQueries({ queryKey: ['materials'] })
           await onUploaded?.(result, item)
@@ -203,5 +218,5 @@ export function useMaterialUpload({
     setErrors((current) => [...current, error])
   }, [])
 
-  return { uploadFiles, uploading, currentName, errors, clearErrors, reportError }
+  return { uploadFiles, uploading, currentName, errors, warnings, clearErrors, reportError }
 }

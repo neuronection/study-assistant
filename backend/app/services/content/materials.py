@@ -60,6 +60,8 @@ AV_SUFFIXES: dict[str, str] = {
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 
+TRANSCRIBE_SIZE_LIMIT_BYTES = 25 * 1024 * 1024
+
 
 class UnsupportedMaterialError(ValueError):
     def __init__(self, suffix: str) -> None:
@@ -70,6 +72,36 @@ class UnsupportedMaterialError(ValueError):
 def accepted_suffixes() -> list[str]:
     merged = {**KIND_BY_SUFFIX, **CONVERTIBLE_SUFFIXES, **AV_SUFFIXES}
     return sorted(merged)
+
+
+def read_av_metadata(data: bytes) -> tuple[float | None, int | None]:
+    import io
+
+    from mutagen import File as MutagenFile
+
+    try:
+        meta = MutagenFile(io.BytesIO(data))
+    except Exception:
+        return None, None
+    if meta is None or getattr(meta, "info", None) is None:
+        return None, None
+    length = getattr(meta.info, "length", None)
+    bitrate = getattr(meta.info, "bitrate", None)
+    duration = float(length) if length else None
+    kbps = int(bitrate // 1000) if bitrate else None
+    return duration, kbps
+
+
+def transcribe_size_warning(kind: str, size_bytes: int) -> dict[str, Any] | None:
+    if kind not in (MaterialKind.AUDIO, MaterialKind.VIDEO):
+        return None
+    if size_bytes <= TRANSCRIBE_SIZE_LIMIT_BYTES:
+        return None
+    return {
+        "code": "transcribe_size_exceeded",
+        "limit_mb": 25,
+        "file_mb": round(size_bytes / 1048576, 1),
+    }
 
 
 def detect_kind(filename: str) -> str:
@@ -147,6 +179,10 @@ class MaterialsService:
             if folder.source_id is not None:
                 raise ValueError("cannot upload into a linked folder")
         kind = detect_kind(filename)
+        duration_sec: float | None = None
+        bitrate_kbps: int | None = None
+        if kind in (MaterialKind.AUDIO, MaterialKind.VIDEO):
+            duration_sec, bitrate_kbps = read_av_metadata(data)
         sha256 = self._blobs.put(data, mime=mime, session=self._session)
         existing = self._find_duplicate(
             profile_id, course_id, sha256.sha256, exclude_id=dedup_exclude_id
@@ -159,6 +195,8 @@ class MaterialsService:
             group_id=group_id,
             folder_id=folder_id,
             kind=kind,
+            duration_sec=duration_sec,
+            bitrate_kbps=bitrate_kbps,
             title=PurePosixPath(filename).stem or filename,
             blob_sha=sha256.sha256,
             filename=filename,

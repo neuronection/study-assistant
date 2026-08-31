@@ -36,6 +36,15 @@ DEFAULT_GLOBS = (
     "*.epub",
     "*.html",
     "*.htm",
+    "*.mp3",
+    "*.m4a",
+    "*.wav",
+    "*.ogg",
+    "*.opus",
+    "*.mpga",
+    "*.webm",
+    "*.mp4",
+    "*.mpeg",
 )
 
 MAX_BROWSE_DEPTH = 32

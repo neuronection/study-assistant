@@ -99,7 +99,7 @@ def test_migration_0020_moves_orphans_to_unsorted(tmp_path: Path) -> None:
     cur = raw.cursor()
     assert cur.execute("SELECT version_num FROM alembic_version").fetchone()[
         0
-    ] == "0048_material_images"
+    ] == "0049_av_metadata"
     unsorted_id, root_id = cur.execute(
         "SELECT c.id, r.id FROM courses c JOIN tree_nodes r "
         "ON r.course_id = c.id AND r.is_root = 1 "

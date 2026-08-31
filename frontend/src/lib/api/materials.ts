@@ -64,10 +64,17 @@ export interface MaterialDetail {
   images: MaterialImageInfo[]
 }
 
+export interface UploadWarning {
+  code: string
+  limit_mb: number | null
+  file_mb: number | null
+}
+
 export interface UploadResult {
   material: Material
   job_id: number | null
   deduped: boolean
+  warnings?: UploadWarning[]
 }
 
 export interface SearchHitDto {

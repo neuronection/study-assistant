@@ -20,6 +20,7 @@ function controller(): MaterialUploadController {
     uploading: false,
     currentName: null,
     errors: [],
+    warnings: [],
     clearErrors: vi.fn(),
     reportError: vi.fn(),
   }

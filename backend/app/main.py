@@ -212,7 +212,7 @@ def create_app(
         app.state.session_factory,
         app.state.bus,
         handlers={
-            "ingest": make_ingest_handler(app.state.blobs, app.state.ocr),
+            "ingest": make_ingest_handler(app.state.blobs, app.state.ocr, app.state.gateway),
             "postprocess": make_postprocess_handler(
                 app.state.embedder.embed, app.state.describer.describe
             ),

@@ -4995,6 +4995,8 @@ export interface components {
             /** Job Id */
             job_id: number | null;
             material: components["schemas"]["MaterialOut"];
+            /** Warnings */
+            warnings?: components["schemas"]["UploadWarningOut"][];
         };
         /** MaterializeOut */
         MaterializeOut: {
@@ -6563,6 +6565,15 @@ export interface components {
             relpath: string;
             /** Size Bytes */
             size_bytes: number;
+        };
+        /** UploadWarningOut */
+        UploadWarningOut: {
+            /** Code */
+            code: string;
+            /** File Mb */
+            file_mb?: number | null;
+            /** Limit Mb */
+            limit_mb?: number | null;
         };
         /** ValidateWorkingDirOut */
         ValidateWorkingDirOut: {

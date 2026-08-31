@@ -180,10 +180,17 @@ class MaterialOut(BaseModel):
     created_at: datetime
 
 
+class UploadWarningOut(BaseModel):
+    code: str
+    limit_mb: int | None = None
+    file_mb: float | None = None
+
+
 class MaterialUploadOut(BaseModel):
     material: MaterialOut
     job_id: int | None
     deduped: bool
+    warnings: list[UploadWarningOut] = Field(default_factory=list)
 
 
 class ExtractionOut(BaseModel):

@@ -465,6 +465,7 @@
     "uploadingName": "Uploading {{name}}…",
     "uploadFailedName": "{{name}} failed",
     "uploadUnsupportedType": "{{name}}: unsupported file type ({{suffix}})",
+    "transcribeSizeWarning": "{{name}} likely exceeds the transcription size limit ({{limit}} MB) — use a local whisper server or split the file",
     "uploadFailedMore": "+{{count}} more",
     "allCoursesScope": "All courses",
     "scopedTo": "Course library",

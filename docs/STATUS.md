@@ -335,6 +335,31 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(ingest): plan 47-D — lecture audio/video become
+  searchable transcript materials (B13, ADR-104).** Ingest branch for kinds
+  `audio`/`video`: stage `transcribe` calls `LLMGateway.transcribe`
+  (provider-fallback + ledger + budgeting reused), the `transcribe.audio`
+  skill supplies the instruction, and the transcript is wrapped in a metadata
+  header (source filename, mutagen duration, model) before the standard
+  extraction path — provenance `{source: transcribed, model}`. **No ffmpeg**:
+  containers pass through as-is; Google's inline STT now rejects video mimes
+  with an explicit "does not accept video" message → failed job with the
+  reason visible (the plan's `video_not_supported_by_provider`); OpenAI-
+  compatible endpoints accept the documented video containers. **`mutagen`
+  is required** (migration 0049: `materials.duration_sec`/`bitrate_kbps`,
+  read at upload) and drives the **pre-flight size warning**: uploads above
+  the 25 MB transcription cap succeed but return
+  `warnings: [{code: transcribe_size_exceeded, limit_mb, file_mb}]` — the
+  frontend upload controller collects them and the dropzone renders
+  "likely exceeds the transcription size limit (25 MB) — use a local whisper
+  server or split the file" before the provider ever sees the bytes.
+  Reingest re-transcribes into a new extraction version; `REINGESTABLE_KINDS`
+  and linked-source `DEFAULT_GLOBS` include the AV suffixes. Contract grew
+  `UploadWarningOut` + `warnings` on `MaterialUploadOut`. Tests:
+  `test_av_ingest.py` (5: transcript→search, reingest versions, provider
+  rejection → failed job, size warning, zero-byte 422) + dropzone warning
+  render. Backend 807 · frontend 820 green.
+
 - 2026-08-31 — **feat(ingest): plan 47-C — docx, pptx, epub and html materials
   are first-class (B10, ADR-103).** Ingest gains a branch per kind producing
   markdown through the converter core, then riding the standard

@@ -3,7 +3,7 @@ from typing import Any, cast
 import fitz
 from sqlalchemy.orm import Session
 
-from ..ai.gateway import TaskUnassigned
+from ..ai.gateway import LLMGateway, TaskUnassigned
 from ..core.vocab import MaterialKind, MaterialStatus, ProvenanceKind
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
@@ -123,7 +123,18 @@ def _store_extraction(
     return extraction
 
 
-def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHandler:
+def _format_duration(seconds: float) -> str:
+    total = int(seconds)
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def make_ingest_handler(
+    blobs: BlobStore, ocr: OcrEngine | None = None, gateway: LLMGateway | None = None
+) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         payload = cast(IngestPayload, job.payload or {})
         raw_id = payload.get("material_id")
@@ -230,6 +241,36 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
                 markdown = convert_html_document(data, store.store)
                 _store_extraction(
                     session, material, extractor="converted:html", markdown=markdown, pages=None
+                )
+            elif material.kind in (MaterialKind.AUDIO, MaterialKind.VIDEO):
+                if gateway is None:
+                    raise JobError("transcription requires a gateway")
+                report(30, "transcribing recording")
+                from ..ai.gateway import ProviderError
+                from ..services.platform.skills import SkillService
+
+                skill = SkillService(session).resolve("transcribe.audio")
+                instruction = skill.system_template if skill is not None else None
+                mime = material.mime or "audio/mpeg"
+                try:
+                    result = gateway.transcribe(data, mime, instruction=instruction)
+                except TaskUnassigned as error:
+                    raise JobError(str(error)) from error
+                except ProviderError as error:
+                    raise JobError(str(error)) from error
+                header_lines = [
+                    f"*Transcript of `{material.filename}`",
+                ]
+                if material.duration_sec:
+                    header_lines.append(f"({_format_duration(material.duration_sec)})")
+                header_lines.append(f"— transcribed by {result.model}.*")
+                markdown = " ".join(header_lines) + f"\n\n{result.text}"
+                material.provenance = {
+                    "source": ProvenanceKind.TRANSCRIBED,
+                    "model": result.model,
+                }
+                _store_extraction(
+                    session, material, extractor="transcribe", markdown=markdown, pages=None
                 )
             else:
                 raise JobError(f"unsupported material kind '{material.kind}'")

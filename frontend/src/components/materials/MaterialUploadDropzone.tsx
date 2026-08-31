@@ -119,6 +119,23 @@ export function MaterialUploadDropzone({
     </>
   )
 
+  const warnings =
+    upload.warnings.length > 0 ? (
+      <p className="text-warning text-xs">
+        {upload.warnings
+          .slice(0, 3)
+          .map((warning) =>
+            warning.code === 'transcribe_size_exceeded'
+              ? t('library.transcribeSizeWarning', {
+                  name: warning.name,
+                  limit: warning.limitMb ?? 25,
+                })
+              : warning.code
+          )
+          .join(' · ')}
+      </p>
+    ) : null
+
   const errors =
     upload.errors.length > 0 ? (
       <p className="text-danger text-xs">
@@ -194,6 +211,7 @@ export function MaterialUploadDropzone({
           <p className="text-muted-foreground px-1 text-xs">{hint}</p>
         ) : null}
         {errors}
+        {warnings}
         {menuEl}
       </div>
     )
@@ -210,6 +228,7 @@ export function MaterialUploadDropzone({
         )}
       </div>
       {errors}
+      {warnings}
       {menuEl}
     </div>
   )

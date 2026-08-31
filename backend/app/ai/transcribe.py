@@ -52,6 +52,11 @@ def transcribe_with(
     language: str | None,
     instruction: str | None,
 ) -> tuple[str, Usage | None]:
+    if mime.startswith("video/") and resolved.provider_type == "google":
+        raise TranscriptionUnsupported(
+            f"{resolved.provider_type} inline transcription does not accept video "
+            "(audio only) — use an OpenAI-compatible provider for video files"
+        )
     if resolved.provider_type == "openai_compatible":
         return _transcribe_openai(client, resolved, data, mime, language)
     if resolved.provider_type == "google":
