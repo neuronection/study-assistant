@@ -1,10 +1,11 @@
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, ProviderError, TaskUnassigned
 from ..domain.models import Material, MaterialDrawing, Note, NoteDrawing, utcnow
 from ..jobs.cancellation import ensure_target_exists
+from ..jobs.payloads import DrawingOcrPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.notes_ocr import NotesOcrEngine
 from ..services.content.drawings import note_search_text
@@ -15,10 +16,10 @@ from ..storage.fts import sync_material_fts
 
 def make_drawing_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
-        payload: dict[str, Any] = job.payload or {}
+        payload = cast(DrawingOcrPayload, job.payload or {})
         kind = payload.get("kind")
         drawing_id = payload.get("drawing_id")
-        owner_id = payload.get(f"{kind}_id") if kind in ("note", "material") else None
+        owner_id = payload.get("note_id") if kind == "note" else payload.get("material_id")
         if kind not in ("note", "material") or drawing_id is None or owner_id is None:
             raise JobError(f"invalid drawing_ocr payload: {payload!r}")
 

@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ...domain.models import Job
+from ...jobs.payloads import DrawingOcrPayload
 from ...jobs.runner import JobRunner
 
 DRAWING_MD = re.compile(r"!\[[^\]]*\]\(ca-drawing://(\d+)\)")
@@ -75,8 +76,11 @@ def note_search_text(note: Any) -> str:
 def enqueue_drawing_ocr(
     session: Session, *, kind: str, owner_id: int, drawing_id: int
 ) -> int:
-    payload: dict[str, Any] = {"kind": kind, "drawing_id": drawing_id}
-    payload[f"{kind}_id"] = owner_id
+    payload: DrawingOcrPayload = {"kind": kind, "drawing_id": drawing_id}
+    if kind == "note":
+        payload["note_id"] = owner_id
+    else:
+        payload["material_id"] = owner_id
     job = JobRunner.enqueue(session, "drawing_ocr", payload)
     return job.id
 

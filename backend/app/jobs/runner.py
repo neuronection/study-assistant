@@ -15,6 +15,12 @@ from .cancellation import (
     clear_cancel,
     is_cancel_requested,
 )
+from .payloads import (
+    ChatTurnPayload,
+    DrawingOcrPayload,
+    IngestPayload,
+    PostprocessPayload,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -278,8 +284,12 @@ class JobRunner:
             )
 
     @staticmethod
-    def enqueue(session: Session, job_type: str, payload: dict[str, Any]) -> Job:
-        job = Job(type=job_type, payload=payload, status=JobStatus.QUEUED, progress=0)
+    def enqueue(
+        session: Session,
+        job_type: str,
+        payload: IngestPayload | PostprocessPayload | ChatTurnPayload | DrawingOcrPayload,
+    ) -> Job:
+        job = Job(type=job_type, payload=dict(payload), status=JobStatus.QUEUED, progress=0)
         session.add(job)
         session.flush()
         return job

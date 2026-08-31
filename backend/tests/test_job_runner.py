@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from alembic.config import Config
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from alembic import command
 from app.core.events import EventBus
 from app.domain.models import Job
+from app.jobs.payloads import IngestPayload
 from app.jobs.runner import GroupKey, JobError, JobHandler, JobRunner
 from app.storage.db import make_engine, make_session_factory
 
@@ -65,7 +66,7 @@ def job_error(runner: JobRunner, job_id: int) -> str | None:
 
 def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> int:
     with runner._session_factory() as session:
-        job = JobRunner.enqueue(session, job_type, payload)
+        job = JobRunner.enqueue(session, job_type, cast("IngestPayload", payload))
         session.commit()
         return job.id
 

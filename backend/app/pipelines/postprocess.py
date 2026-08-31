@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import ProviderError
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import ensure_target_exists
+from ..jobs.payloads import PostprocessPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..storage import vectors
 
@@ -92,7 +93,7 @@ def describe_material(
 
 def make_postprocess_handler(embedder: Embedder, describer: Describer) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
-        payload: dict[str, Any] = job.payload or {}
+        payload = cast(PostprocessPayload, job.payload or {})
         material = session.get(Material, payload.get("material_id"))
         if material is None:
             raise JobError("material not found")

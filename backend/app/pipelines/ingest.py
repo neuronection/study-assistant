@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import fitz
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from ..ai.gateway import TaskUnassigned
 from ..core.vocab import MaterialKind, MaterialStatus
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
+from ..jobs.payloads import IngestPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
 from ..services.content.materials import extraction_to_blocks
@@ -116,7 +117,7 @@ def _store_extraction(
 
 def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
-        payload: dict[str, Any] = job.payload or {}
+        payload = cast(IngestPayload, job.payload or {})
         raw_id = payload.get("material_id")
         if raw_id is None:
             raise JobError("ingest payload missing material_id")
