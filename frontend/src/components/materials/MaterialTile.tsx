@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 
-import { AiBadge } from '@/features/ai/AiBadge'
+import { AiGeneratedBadge } from '@/features/ai/AiGeneratedBadge'
 import { KindIcon } from '@/features/library/KindIcon'
 import { cn } from '@/lib/utils'
 
@@ -61,7 +61,7 @@ export function MaterialTile({
       >
         {material.title}
       </span>
-      {material.aiComposed ? <AiBadge /> : null}
+      {material.aiComposed ? <AiGeneratedBadge /> : null}
       {material.status ? <StatusPill status={material.status} /> : null}
     </button>
   )

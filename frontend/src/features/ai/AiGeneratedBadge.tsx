@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
 
-export function AiBadge({ className }: { className?: string }) {
+export function AiGeneratedBadge({ className }: { className?: string }) {
   const { t } = useTranslation()
   return (
     <span

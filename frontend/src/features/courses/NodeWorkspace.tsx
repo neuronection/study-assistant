@@ -51,7 +51,7 @@ import { isKeyboardClick, useSelection } from '@/lib/useSelection'
 import { MaterialList } from '@/components/materials/MaterialList'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
-import { UploadDropzone } from '@/components/materials/UploadDropzone'
+import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
@@ -1368,7 +1368,7 @@ function MaterialsTab({
             <p className="text-muted-foreground py-2 text-center text-sm">
               {t('workspace.uploadEmptyLabel')}
             </p>
-            <UploadDropzone
+            <MaterialUploadDropzone
               upload={upload}
               hint={t('workspace.uploadEmptyHint')}
             />

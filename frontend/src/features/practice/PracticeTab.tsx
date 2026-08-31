@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { EntityItems, type EntityItemEntry } from '@/components/entity-list/EntityItems'
+import { EmptyState } from '@/components/ui/empty-state'
 import { TabActionBar } from '@/components/layout/TabActionBar'
 import { Button } from '@/components/ui/button'
 import { type ContextMenuItem } from '@/components/ui/ContextMenu'
@@ -587,9 +588,7 @@ export function PracticeTab({
               <ViewToggle view={view} onChange={setView} />
             </div>
             {quizzes.data && exercises.data && items.length === 0 ? (
-              <p className="text-muted-foreground py-4 text-center text-sm">
-                {t('practice.emptyList')}
-              </p>
+              <EmptyState title={t('practice.emptyList')} />
             ) : (
               <EntityItems
                 items={items}

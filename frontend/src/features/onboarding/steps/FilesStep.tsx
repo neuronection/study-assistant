@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { UploadDropzone } from '@/components/materials/UploadDropzone'
+import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 
 import type { WizardCourse } from './CourseStep'
@@ -31,7 +31,7 @@ export function FilesStep({ course }: { course: WizardCourse | null }) {
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-sm">{t('onboarding.filesHint')}</p>
-      <UploadDropzone
+      <MaterialUploadDropzone
         upload={upload}
         label={t('onboarding.filesDropLabel')}
         hint={course.title}

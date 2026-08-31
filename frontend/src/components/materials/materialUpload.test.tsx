@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { UploadDropzone } from './UploadDropzone'
+import { MaterialUploadDropzone } from './MaterialUploadDropzone'
 import { collectDropFiles } from './dropFiles'
 import { useMaterialUpload, type MaterialUploadController } from './materialUpload'
 import type { Folder, UploadResult } from '@/lib/api'
@@ -80,7 +80,7 @@ function Harness({
 }) {
   const upload = useMaterialUpload({ courseId, getFolderId, onUploaded, onFolderCreated })
   held = upload
-  return <UploadDropzone upload={upload} variant={variant} />
+  return <MaterialUploadDropzone upload={upload} variant={variant} />
 }
 
 function renderHarness(props: Parameters<typeof Harness>[0]) {

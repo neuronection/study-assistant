@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { UploadButton } from '@/components/materials/UploadButton'
-import { UploadDropzone } from '@/components/materials/UploadDropzone'
+import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { Button } from '@/components/ui/button'
 import { ErrorBanner } from '@/components/ErrorBanner'
@@ -768,7 +768,7 @@ export function MaterialPickerDialog({
                   ))
                 : null}
               {!loading && location.kind !== 'link' ? (
-                <UploadDropzone
+                <MaterialUploadDropzone
                   upload={upload}
                   variant="row"
                   className="pt-1"

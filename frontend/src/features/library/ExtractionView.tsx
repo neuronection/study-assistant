@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { FileOutput, Loader2, Pencil, X } from 'lucide-react'
+import { FileOutput, Pencil, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -9,6 +9,7 @@ import type { Block } from '@/components/blocks/types'
 import type { DrawingAdapter } from '@/components/editor/MarkdownEditor'
 import { LazyMarkdownEditor } from '@/components/editor/LazyMarkdownEditor'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import {
   addMaterialDrawing,
   deleteMaterialDrawing,
@@ -110,7 +111,7 @@ export function ExtractionView({
   })
 
   if (isLoading) {
-    return <Loader2 className="animate-spin" aria-label={t('library.loading')} />
+    return <Spinner label={t('library.loading')} />
   }
   if (!data?.extraction) {
     return (
@@ -143,7 +144,7 @@ export function ExtractionView({
             disabled={save.isPending || !draft.trim()}
             onClick={() => save.mutate()}
           >
-            {save.isPending ? <Loader2 className="animate-spin" aria-hidden /> : null}
+            {save.isPending ? <Spinner /> : null}
             {t('library.saveEdit')}
           </Button>
         </div>
@@ -159,7 +160,7 @@ export function ExtractionView({
       onClick={() => derive.mutate()}
     >
       {derive.isPending ? (
-        <Loader2 className="animate-spin" aria-hidden />
+        <Spinner />
       ) : (
         <FileOutput aria-hidden />
       )}

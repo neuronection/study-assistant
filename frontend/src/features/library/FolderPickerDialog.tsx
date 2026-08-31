@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { listFsDirs } from '@/lib/api'
 
-import { Breadcrumbs, type Crumb } from './Breadcrumbs'
+import { LibraryBreadcrumbs, type Crumb } from './LibraryBreadcrumbs'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
 export function FolderPickerDialog({
@@ -85,7 +85,7 @@ export function FolderPickerDialog({
           >
             <ArrowUp className="size-4" aria-hidden />
           </button>
-          <Breadcrumbs items={crumbs} />
+          <LibraryBreadcrumbs items={crumbs} />
           <span className="text-muted-foreground shrink-0 text-[11px]">
             {t('picker.current')}
           </span>

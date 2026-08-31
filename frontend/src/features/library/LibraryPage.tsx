@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { WorkspaceGate } from '@/components/workspace/WorkspaceGate'
 import {
@@ -64,7 +65,7 @@ import { isKeyboardClick, useSelection } from '@/lib/useSelection'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 import { getWsClient } from '@/lib/ws-client'
 
-import { Breadcrumbs, type Crumb } from './Breadcrumbs'
+import { LibraryBreadcrumbs, type Crumb } from './LibraryBreadcrumbs'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { MarqueeBand, useMarquee } from '@/components/ui/Marquee'
 import { FolderPickerDialog } from './FolderPickerDialog'
@@ -1197,7 +1198,7 @@ export function LibraryPage() {
           >
             <ArrowUp aria-hidden />
           </Button>
-          <Breadcrumbs
+          <LibraryBreadcrumbs
             items={
               searching
                 ? [
@@ -1488,9 +1489,11 @@ className={cn(
               browseData.subdirs.length === 0 &&
               browseData.materials.length === 0 &&
               browseData.uningested.length === 0 ? (
-                <p className="text-muted-foreground col-span-full p-4 text-sm">
-                  {t('library.emptyLink')}
-                </p>
+                <EmptyState
+                  className="col-span-full"
+                  compact
+                  title={t('library.emptyLink')}
+                />
               ) : null}
             </div>
           ) : (
@@ -1752,9 +1755,11 @@ className={cn(
               childFolders.length === 0 &&
               materials.data.length === 0 &&
               !creating ? (
-                <p className="text-muted-foreground col-span-full p-4 text-sm">
-                  {t('library.empty')}
-                </p>
+                <EmptyState
+                  className="col-span-full"
+                  compact
+                  title={t('library.empty')}
+                />
               ) : null}
             </div>
           )}

@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 
 import { useCurrentOrigin } from '@/lib/origin'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { WorkspaceGate } from '@/components/workspace/WorkspaceGate'
 import {
   getDiagnostics,
@@ -316,9 +317,7 @@ export function ScoresPage() {
               )
             })}
             {attempts.data && attempts.data.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm">
-                {t('scores.emptyHistory')}
-              </p>
+              <EmptyState title={t('scores.emptyHistory')} />
             ) : null}
           </CardContent>
         </Card>
@@ -396,9 +395,7 @@ export function ScoresPage() {
               </div>
             ))}
             {mistakes.data && mistakes.data.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm">
-                {t('scores.emptyMistakes')}
-              </p>
+              <EmptyState title={t('scores.emptyMistakes')} />
             ) : null}
           </CardContent>
         </Card>

@@ -1,16 +1,15 @@
 import katex from 'katex'
 import { defaultUrlTransform, type Components } from 'react-markdown'
-import { isValidElement, useState, type ReactNode } from 'react'
+import { isValidElement, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
 import remarkMath from 'remark-math'
 
-import { Copy as CopyIcon } from 'lucide-react'
-
 import { cn } from '@/lib/utils'
 import { EntityMention } from '@/features/ai/EntityMention'
 import type { MentionRef } from '@/lib/api'
+import { CopyButton } from '@/components/ui/copy-button'
 import { MermaidDiagram } from './MermaidDiagram'
 import { PlotlyChart } from './PlotlyChart'
 import { JsxGraphBoard } from './JsxGraphBoard'
@@ -214,31 +213,22 @@ function TableBlockView({ block }: { block: TableBlock }) {
   )
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyCodeButton({ text }: { text: string }) {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
   return (
-    <button
-      type="button"
-      title={copied ? t('blocks.copied') : t('blocks.copyCode')}
-      aria-label={copied ? t('blocks.copied') : t('blocks.copyCode')}
-      className="bg-surface border-border text-muted-foreground hover:text-foreground absolute right-1.5 top-1.5 rounded border p-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-      onClick={() => {
-        void navigator.clipboard?.writeText(text).then(() => {
-          setCopied(true)
-          window.setTimeout(() => setCopied(false), 1500)
-        })
-      }}
-    >
-      <CopyIcon className="size-3" aria-hidden />
-    </button>
+    <CopyButton
+      value={text}
+      label={t('blocks.copyCode')}
+      size={12}
+      className="absolute right-1.5 top-1.5 bg-surface opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+    />
   )
 }
 
 function CodeSurface({ code, children }: { code: string; children: ReactNode }) {
   return (
     <div className="group relative">
-      <CopyButton text={code} />
+      <CopyCodeButton text={code} />
       <pre className="bg-subtle my-3 overflow-x-auto rounded-md p-3 font-mono text-xs">
         {children}
       </pre>

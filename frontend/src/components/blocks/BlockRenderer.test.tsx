@@ -181,7 +181,7 @@ describe('BlockRenderer', () => {
     )
     fireEvent.click(await screen.findByTitle('Copy code'))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('print(42)'))
-    expect(await screen.findByTitle('Copied')).toBeInTheDocument()
+    expect(await screen.findByTitle('Copy code')).toHaveAttribute('data-copied', 'true')
   })
 
 })

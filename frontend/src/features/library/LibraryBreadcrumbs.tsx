@@ -10,7 +10,7 @@ export interface Crumb {
   onClick?: () => void
 }
 
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
+export function LibraryBreadcrumbs({ items }: { items: Crumb[] }) {
   const { t } = useTranslation()
   return (
     <nav

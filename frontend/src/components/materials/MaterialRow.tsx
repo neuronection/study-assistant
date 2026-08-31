@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { AiBadge } from '@/features/ai/AiBadge'
+import { AiGeneratedBadge } from '@/features/ai/AiGeneratedBadge'
 import { KindIcon } from '@/features/library/KindIcon'
 import { CheckIndicator } from '@/components/ui/CheckIndicator'
 import { isKeyboardClick } from '@/lib/useSelection'
@@ -154,7 +154,7 @@ export function MaterialRow({
           >
             {material.title}
           </span>
-          {material.aiComposed ? <AiBadge /> : null}
+          {material.aiComposed ? <AiGeneratedBadge /> : null}
           {material.rationale ? (
             <span
               className="text-muted-foreground hidden shrink-0 truncate text-[10px] italic md:inline"
@@ -174,7 +174,7 @@ export function MaterialRow({
           {material.title}
         </span>
       )}
-      {!onOpen && material.aiComposed ? <AiBadge /> : null}
+      {!onOpen && material.aiComposed ? <AiGeneratedBadge /> : null}
       {!onOpen && material.rationale ? (
         <span
           className="text-muted-foreground hidden shrink-0 truncate text-[10px] italic md:inline"

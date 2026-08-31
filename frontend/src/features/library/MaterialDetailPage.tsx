@@ -7,7 +7,7 @@ import {
   MaterialDetailBody,
   type DetailTab,
 } from './MaterialDetailBody'
-import { Breadcrumbs } from './Breadcrumbs'
+import { LibraryBreadcrumbs } from './LibraryBreadcrumbs'
 import { getMaterial } from '@/lib/api'
 import { useQuery } from '@tanstack/react-query'
 import { listCourses } from '@/lib/api'
@@ -56,7 +56,7 @@ export function MaterialDetailPage() {
         >
           <ArrowLeft className="size-5" aria-hidden />
         </button>
-        <Breadcrumbs items={crumbs} />
+        <LibraryBreadcrumbs items={crumbs} />
       </div>
 
       <MaterialDetailBody

@@ -8,7 +8,7 @@ import { resolveDropItems } from '@/components/materials/dropFiles'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { cn } from '@/lib/utils'
 
-export function UploadDropzone({
+export function MaterialUploadDropzone({
   upload,
   variant = 'block',
   label,

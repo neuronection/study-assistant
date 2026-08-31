@@ -7,7 +7,6 @@ import {
   FileText,
   Inbox,
   Layers,
-  Loader2,
   RotateCcw,
   Trash2,
 } from 'lucide-react'
@@ -16,7 +15,9 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 
 import { ErrorBanner } from '@/components/ErrorBanner'
+import { EmptyState } from '@/components/ui/empty-state'
 import { PopoverMenu, type PopoverMenuItem } from '@/components/ui/popover-menu'
+import { Spinner } from '@/components/ui/spinner'
 import { SearchInput } from '@/components/ui/SearchInput'
 import {
   deleteFailedJobs,
@@ -332,7 +333,7 @@ export function JobsPage() {
             className="focus-visible:outline-ring bg-danger/10 text-danger hover:bg-danger/20 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 disabled:opacity-50"
           >
             {retryAll.isPending ? (
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              <Spinner size="sm" />
             ) : (
               <RotateCcw className="size-3.5" aria-hidden />
             )}
@@ -443,9 +444,9 @@ export function JobsPage() {
       </div>
 
       {jobs.isLoading ? (
-        <Loader2 className="text-muted-foreground m-8 animate-spin" aria-label={t('library.loading')} />
+        <Spinner className="m-8" label={t('library.loading')} />
       ) : visible.length === 0 ? (
-        <p className="text-muted-foreground py-12 text-center text-sm">{t('jobs.empty')}</p>
+        <EmptyState title={t('jobs.empty')} />
       ) : (
         <ul className="space-y-2">
           {visible.map((job) => (

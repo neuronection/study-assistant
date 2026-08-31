@@ -12,7 +12,7 @@ import {
 import { useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { UploadDropzone } from '@/components/materials/UploadDropzone'
+import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import {
   createFolder,
@@ -243,7 +243,7 @@ export function AttachMenu({
               {t('chat.attach.uploadNeedsCourse')}
             </p>
           ) : (
-            <UploadDropzone
+            <MaterialUploadDropzone
               upload={upload}
               variant="row"
               label={t('chat.attach.chooseFile')}
