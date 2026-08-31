@@ -3594,6 +3594,24 @@ export interface components {
             answers: components["schemas"]["ReportAnswerOut"][];
             attempt: components["schemas"]["AttemptOut"];
         };
+        /** BackupEntryOut */
+        BackupEntryOut: {
+            /** Created At */
+            created_at: string;
+            /** Name */
+            name: string;
+            /** Size */
+            size: number;
+        };
+        /** BackupRecoveryInfoOut */
+        BackupRecoveryInfoOut: {
+            /** At */
+            at: string;
+            /** From Backup */
+            from_backup: string | null;
+            /** Quarantined */
+            quarantined?: string | null;
+        };
         /** BackupSettingsIn */
         BackupSettingsIn: {
             /** Auto */
@@ -3606,6 +3624,30 @@ export interface components {
             keep_weekly?: number | null;
             /** Sync Dir */
             sync_dir?: string | null;
+        };
+        /** BackupSettingsInfoOut */
+        BackupSettingsInfoOut: {
+            /** Auto */
+            auto: boolean;
+            /** Interval Hours */
+            interval_hours: number;
+            /** Keep Daily */
+            keep_daily: number;
+            /** Keep Weekly */
+            keep_weekly: number;
+            /** Sync Dir */
+            sync_dir: string | null;
+        };
+        /** BackupSettingsOut */
+        BackupSettingsOut: {
+            settings: components["schemas"]["BackupSettingsInfoOut"];
+        };
+        /** BackupStatusOut */
+        BackupStatusOut: {
+            /** Backups */
+            backups: components["schemas"]["BackupEntryOut"][];
+            last_recovery: components["schemas"]["BackupRecoveryInfoOut"] | null;
+            settings: components["schemas"]["BackupSettingsInfoOut"];
         };
         /** Body_import_anki_api_v1_flashcards_import_anki_post */
         Body_import_anki_api_v1_flashcards_import_anki_post: {
@@ -5635,6 +5677,15 @@ export interface components {
             /** Stem Excerpt */
             stem_excerpt: string;
         };
+        /** RestoreOut */
+        RestoreOut: {
+            /** Blobs */
+            blobs: number;
+            /** Materials */
+            materials: number;
+            /** Status */
+            status: string;
+        };
         /** RetryFailedBody */
         RetryFailedBody: {
             /** Types */
@@ -6889,9 +6940,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BackupStatusOut"];
                 };
             };
         };
@@ -6935,9 +6984,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RestoreOut"];
                 };
             };
             /** @description Validation Error */
@@ -6970,9 +7017,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BackupSettingsOut"];
                 };
             };
             /** @description Validation Error */
@@ -7001,9 +7046,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BackupStatusOut"];
                 };
             };
         };
@@ -7025,9 +7068,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BackupStatusOut"];
                 };
             };
             /** @description Validation Error */
@@ -7058,9 +7099,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RestoreOut"];
                 };
             };
             /** @description Validation Error */

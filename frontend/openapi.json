@@ -359,6 +359,65 @@
         "title": "AttemptReportOut",
         "type": "object"
       },
+      "BackupEntryOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "size",
+          "created_at"
+        ],
+        "title": "BackupEntryOut",
+        "type": "object"
+      },
+      "BackupRecoveryInfoOut": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "from_backup": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Backup"
+          },
+          "quarantined": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quarantined"
+          }
+        },
+        "required": [
+          "at",
+          "from_backup"
+        ],
+        "title": "BackupRecoveryInfoOut",
+        "type": "object"
+      },
       "BackupSettingsIn": {
         "properties": {
           "auto": {
@@ -425,6 +484,89 @@
           }
         },
         "title": "BackupSettingsIn",
+        "type": "object"
+      },
+      "BackupSettingsInfoOut": {
+        "properties": {
+          "auto": {
+            "title": "Auto",
+            "type": "boolean"
+          },
+          "interval_hours": {
+            "title": "Interval Hours",
+            "type": "integer"
+          },
+          "keep_daily": {
+            "title": "Keep Daily",
+            "type": "integer"
+          },
+          "keep_weekly": {
+            "title": "Keep Weekly",
+            "type": "integer"
+          },
+          "sync_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Dir"
+          }
+        },
+        "required": [
+          "auto",
+          "interval_hours",
+          "keep_daily",
+          "keep_weekly",
+          "sync_dir"
+        ],
+        "title": "BackupSettingsInfoOut",
+        "type": "object"
+      },
+      "BackupSettingsOut": {
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/BackupSettingsInfoOut"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "title": "BackupSettingsOut",
+        "type": "object"
+      },
+      "BackupStatusOut": {
+        "properties": {
+          "backups": {
+            "items": {
+              "$ref": "#/components/schemas/BackupEntryOut"
+            },
+            "title": "Backups",
+            "type": "array"
+          },
+          "last_recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupRecoveryInfoOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settings": {
+            "$ref": "#/components/schemas/BackupSettingsInfoOut"
+          }
+        },
+        "required": [
+          "settings",
+          "backups",
+          "last_recovery"
+        ],
+        "title": "BackupStatusOut",
         "type": "object"
       },
       "Body_import_anki_api_v1_flashcards_import_anki_post": {
@@ -6843,6 +6985,29 @@
         "title": "ReportAnswerOut",
         "type": "object"
       },
+      "RestoreOut": {
+        "properties": {
+          "blobs": {
+            "title": "Blobs",
+            "type": "integer"
+          },
+          "materials": {
+            "title": "Materials",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "materials",
+          "blobs"
+        ],
+        "title": "RestoreOut",
+        "type": "object"
+      },
       "RetryFailedBody": {
         "properties": {
           "types": {
@@ -9966,9 +10131,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Backup Now Api V1 Backup Create Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BackupStatusOut"
                 }
               }
             },
@@ -10018,9 +10181,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Restore Backup Api V1 Backup Restore Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RestoreOut"
                 }
               }
             },
@@ -10061,9 +10222,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Backup Settings Api V1 Backup Settings Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BackupSettingsOut"
                 }
               }
             },
@@ -10094,9 +10253,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Backup Status Api V1 Backup Status Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BackupStatusOut"
                 }
               }
             },
@@ -10128,9 +10285,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Backup Api V1 Backup  Name  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BackupStatusOut"
                 }
               }
             },
@@ -10172,9 +10327,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Restore Backup By Name Api V1 Backup  Name  Restore Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RestoreOut"
                 }
               }
             },

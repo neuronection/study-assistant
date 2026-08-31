@@ -335,6 +335,16 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C backup — six JSON backup endpoints declare
+  typed response models** (ADR-130). New inline models in `backup.py`:
+  `BackupStatusOut` (+`BackupSettingsInfoOut`, `BackupEntryOut`,
+  `BackupRecoveryInfoOut` — mirrors the `last-recovery.json` shape, `quarantined`
+  now always present, `null` when absent — additive) shared by `/status`,
+  `/create`, `DELETE /{name}`; `BackupSettingsOut` for `PUT /settings`;
+  `RestoreOut` for both restore paths. `/export` (zip download) stays
+  model-free. Survey: backup 7 → 1 (binary); remaining untyped 200/201-JSON =
+  45. Backend 784 · frontend 815 green; contract drift guard clean.
+
 - 2026-08-31 — **feat(api): plan 55-C analytics — all eight analytics endpoints
   declare typed response models** (ADR-130). New inline models in
   `analytics.py`: `OverviewOut` (+`DayActivityOut`), `ExamStatusOut`

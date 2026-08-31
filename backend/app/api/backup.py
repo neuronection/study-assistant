@@ -34,6 +34,42 @@ class BackupSettingsIn(BaseModel):
     sync_dir: str | None = Field(default=None, max_length=1024)
 
 
+class BackupSettingsInfoOut(BaseModel):
+    auto: bool
+    interval_hours: int
+    keep_daily: int
+    keep_weekly: int
+    sync_dir: str | None
+
+
+class BackupEntryOut(BaseModel):
+    name: str
+    size: int
+    created_at: str
+
+
+class BackupRecoveryInfoOut(BaseModel):
+    at: str
+    from_backup: str | None
+    quarantined: str | None = None
+
+
+class BackupStatusOut(BaseModel):
+    settings: BackupSettingsInfoOut
+    backups: list[BackupEntryOut]
+    last_recovery: BackupRecoveryInfoOut | None
+
+
+class BackupSettingsOut(BaseModel):
+    settings: BackupSettingsInfoOut
+
+
+class RestoreOut(BaseModel):
+    status: str
+    materials: int
+    blobs: int
+
+
 def _settings_dir(request: Request) -> Path:
     settings = request.app.state.settings
     return Path(settings.data_dir)
@@ -77,12 +113,12 @@ def _status(request: Request) -> dict[str, Any]:
     }
 
 
-@router.get("/status")
+@router.get("/status", response_model=BackupStatusOut)
 def backup_status(request: Request) -> dict[str, Any]:
     return _status(request)
 
 
-@router.put("/settings")
+@router.put("/settings", response_model=BackupSettingsOut)
 def backup_settings(body: BackupSettingsIn, request: Request) -> dict[str, Any]:
     sync_value = body.sync_dir.strip() if body.sync_dir is not None else None
     if sync_value:
@@ -111,7 +147,7 @@ def backup_settings(body: BackupSettingsIn, request: Request) -> dict[str, Any]:
     }
 
 
-@router.post("/create")
+@router.post("/create", response_model=BackupStatusOut)
 def create_backup_now(request: Request) -> dict[str, Any]:
     try:
         path = request.app.state.backups.run_once(prefix="manual")
@@ -122,7 +158,7 @@ def create_backup_now(request: Request) -> dict[str, Any]:
     return _status(request)
 
 
-@router.delete("/{name}")
+@router.delete("/{name}", response_model=BackupStatusOut)
 def delete_backup(name: str, request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
     if STAMP_PATTERN.match(name) is None:
@@ -204,12 +240,12 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
     return {"status": "restored", "materials": int(count[0]), "blobs": len(blobs)}
 
 
-@router.post("/restore", status_code=200)
+@router.post("/restore", status_code=200, response_model=RestoreOut)
 async def restore_backup(request: Request, file: UploadFile) -> dict[str, Any]:
     return _apply_restore(request, await file.read())
 
 
-@router.post("/{name}/restore", status_code=200)
+@router.post("/{name}/restore", status_code=200, response_model=RestoreOut)
 def restore_backup_by_name(name: str, request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
     if STAMP_PATTERN.match(name) is None:
