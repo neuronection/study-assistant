@@ -2782,6 +2782,24 @@
         "title": "JobsSummary",
         "type": "object"
       },
+      "MaterialAssignedOut": {
+        "properties": {
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "node_id",
+          "material_id"
+        ],
+        "title": "MaterialAssignedOut",
+        "type": "object"
+      },
       "MaterialCopyIn": {
         "properties": {
           "folder_id": {
@@ -3509,6 +3527,24 @@
           "concept_id"
         ],
         "title": "NodeConceptIn",
+        "type": "object"
+      },
+      "NodeConceptLinkedOut": {
+        "properties": {
+          "concept_id": {
+            "title": "Concept Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "node_id",
+          "concept_id"
+        ],
+        "title": "NodeConceptLinkedOut",
         "type": "object"
       },
       "NodeCreate": {
@@ -13616,9 +13652,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Add Node Concept Api V1 Nodes  Node Id  Concepts Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeConceptLinkedOut"
                 }
               }
             },
@@ -13854,9 +13888,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Assign Material Api V1 Nodes  Node Id  Materials Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MaterialAssignedOut"
                 }
               }
             },

@@ -41,6 +41,8 @@ from ..services.study.organizer import (
 )
 from .courses_schemas import (
     FolderAssignedOut,
+    MaterialAssignedOut,
+    NodeConceptLinkedOut,
     NodeCreatedOut,
     NodeDeletedOut,
     NodeDetailOut,
@@ -448,7 +450,7 @@ def restore_node(body: NodeRestore, session: Session = Depends(get_session)) -> 
     return {"id": node_id}
 
 
-@router.post("/nodes/{node_id}/concepts", status_code=201)
+@router.post("/nodes/{node_id}/concepts", status_code=201, response_model=NodeConceptLinkedOut)
 def add_node_concept(
     node_id: int, body: NodeConceptIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -509,7 +511,7 @@ def _assign(session: Session, node_id: int, body: AllocationIn) -> dict[str, Any
     }
 
 
-@router.post("/nodes/{node_id}/materials", status_code=201)
+@router.post("/nodes/{node_id}/materials", status_code=201, response_model=MaterialAssignedOut)
 def assign_material(
     node_id: int, body: AllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:

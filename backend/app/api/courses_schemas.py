@@ -92,3 +92,13 @@ class StudyStateOut(BaseModel):
     status: str
     progress: float
     last_opened_at: str | None
+
+
+class NodeConceptLinkedOut(BaseModel):
+    node_id: int
+    concept_id: int
+
+
+class MaterialAssignedOut(BaseModel):
+    node_id: int
+    material_id: int

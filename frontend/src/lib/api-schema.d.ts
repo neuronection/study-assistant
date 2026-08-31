@@ -4356,6 +4356,13 @@ export interface components {
             /** Running */
             running: number;
         };
+        /** MaterialAssignedOut */
+        MaterialAssignedOut: {
+            /** Material Id */
+            material_id: number;
+            /** Node Id */
+            node_id: number;
+        };
         /** MaterialCopyIn */
         MaterialCopyIn: {
             /** Folder Id */
@@ -4572,6 +4579,13 @@ export interface components {
         NodeConceptIn: {
             /** Concept Id */
             concept_id: number;
+        };
+        /** NodeConceptLinkedOut */
+        NodeConceptLinkedOut: {
+            /** Concept Id */
+            concept_id: number;
+            /** Node Id */
+            node_id: number;
         };
         /** NodeCreate */
         NodeCreate: {
@@ -10309,9 +10323,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeConceptLinkedOut"];
                 };
             };
             /** @description Validation Error */
@@ -10474,9 +10486,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MaterialAssignedOut"];
                 };
             };
             /** @description Validation Error */
