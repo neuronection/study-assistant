@@ -30,6 +30,7 @@ import {
 import { practiceFallback, useOriginBack } from '@/lib/origin'
 
 import { cn } from '@/lib/utils'
+import { storageKeys } from '@/lib/constants'
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
@@ -72,14 +73,14 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   const navigate = useNavigate()
   const [shuffleOn, setShuffleOn] = useState<boolean>(() => {
     try {
-      return window.localStorage.getItem('ca-quiz-shuffle') === '1'
+      return window.localStorage.getItem(storageKeys.quizShuffle) === '1'
     } catch {
       return false
     }
   })
   useEffect(() => {
     try {
-      window.localStorage.setItem('ca-quiz-shuffle', shuffleOn ? '1' : '0')
+      window.localStorage.setItem(storageKeys.quizShuffle, shuffleOn ? '1' : '0')
     } catch {
       // preference persistence is best-effort only
     }

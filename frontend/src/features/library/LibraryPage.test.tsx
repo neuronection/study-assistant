@@ -7,6 +7,7 @@ import { LibraryPage } from './LibraryPage'
 import { MaterialDetailPage } from './MaterialDetailPage'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 import { getWindowDropTarget, clearWindowDropTarget } from '@/lib/window-drop-store'
+import { storageKeys } from '@/lib/constants'
 
 const listMaterials = vi.fn()
 const getMaterial = vi.fn()
@@ -405,7 +406,7 @@ describe('LibraryPage', () => {
     renderAt('/library?course=3')
     fireEvent.click(await screen.findByRole('button', { name: 'List view' }))
     await waitFor(() =>
-      expect(window.localStorage.getItem('ca-library-view')).toBe('list')
+      expect(window.localStorage.getItem(storageKeys.libraryView)).toBe('list')
     )
   })
 

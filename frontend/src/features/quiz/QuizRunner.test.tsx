@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { QuizRunner } from './QuizRunner'
 import { useChatStore } from '@/lib/chat-store'
+import { storageKeys } from '@/lib/constants'
 
 const quizQuestions = vi.fn()
 const getQuiz = vi.fn()
@@ -230,7 +231,7 @@ describe('QuizRunner', () => {
   })
 
   test('shuffle remaps displayed options to stored indices', async () => {
-    window.localStorage.setItem('ca-quiz-shuffle', '1')
+    window.localStorage.setItem(storageKeys.quizShuffle, '1')
     quizQuestions.mockResolvedValue([QUESTIONS[0]])
     startQuizAttempt.mockResolvedValue({ id: 12, score: null })
     submitQuizAnswer.mockResolvedValue({

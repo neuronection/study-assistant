@@ -7,8 +7,9 @@ import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { courseTree, type NodeInfo } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { storageKeys } from '@/lib/constants'
 
-const MAXIMIZE_KEY = 'ca-focus-fullscreen'
+const MAXIMIZE_KEY = storageKeys.focusFullscreen
 
 function readMaximized(): boolean {
   try {

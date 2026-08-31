@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { ReasoningBubble } from './ReasoningBubble'
+import { storageKeys } from '@/lib/constants'
 
 describe('ReasoningBubble', () => {
   afterEach(() => {
@@ -18,7 +19,7 @@ describe('ReasoningBubble', () => {
   })
 
   test('respects a persisted collapsed preference', () => {
-    window.localStorage.setItem('ca-chat-reasoning-open', '0')
+    window.localStorage.setItem(storageKeys.chatReasoningOpen, '0')
     render(<ReasoningBubble text="hidden by preference" />)
     expect(screen.queryByText('hidden by preference')).not.toBeInTheDocument()
   })

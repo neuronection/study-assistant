@@ -82,8 +82,9 @@ import { useWorkspaceStore } from '@/lib/workspace-store'
 import { getWsClient } from '@/lib/ws-client'
 
 import { cn } from '@/lib/utils'
+import { storageKeys, WsTopic } from '@/lib/constants'
 
-const CHAT_WIDTH_KEY = 'ca-chat-width'
+const CHAT_WIDTH_KEY = storageKeys.chatWidth
 const CHAT_MIN_WIDTH = 320
 const CHAT_MAX_WIDTH = 720
 const CHAT_DEFAULT_WIDTH = 384
@@ -646,7 +647,7 @@ export function ChatPanel({
     if (activeSession === null) {
       return
     }
-    const unsubscribe = getWsClient().subscribe(`chat:${activeSession}`, (_payload) => {
+    const unsubscribe = getWsClient().subscribe(WsTopic.chat(Number(activeSession)), (_payload) => {
       const event = _payload as
         | {
             type: string

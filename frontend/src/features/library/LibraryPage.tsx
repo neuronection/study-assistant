@@ -80,6 +80,7 @@ import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
+import { storageKeys, WsTopic } from '@/lib/constants'
 
 interface JobProgress {
   progress: number
@@ -99,7 +100,7 @@ interface LinkState {
   subdir: string
 }
 
-const VIEW_KEY = 'ca-library-view'
+const VIEW_KEY = storageKeys.libraryView
 
 const REINGESTABLE_KINDS = new Set(['pdf', 'md', 'txt', 'image'])
 
@@ -415,7 +416,7 @@ export function LibraryPage() {
     if (uploadJobId === null) {
       return
     }
-    const unsubscribe = getWsClient().subscribe(`jobs:${uploadJobId}`, (payload) => {
+    const unsubscribe = getWsClient().subscribe(WsTopic.jobs(uploadJobId), (payload) => {
       const progress = payload as JobProgress
       setJob(progress)
       if (

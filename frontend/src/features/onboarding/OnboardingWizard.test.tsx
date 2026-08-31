@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { OnboardingWizard } from './OnboardingWizard'
 import { useWizardStore } from './wizardStore'
+import { storageKeys } from '@/lib/constants'
 
 const getOnboardingState = vi.fn()
 const getWorkingDir = vi.fn()
@@ -112,7 +113,7 @@ describe('OnboardingWizard', () => {
   })
 
   test('does not auto-open when previously dismissed', async () => {
-    window.localStorage.setItem('ca-onboarding-done', '1')
+    window.localStorage.setItem(storageKeys.onboardingDone, '1')
     renderWizard()
     await waitFor(() => expect(getOnboardingState).toHaveBeenCalled())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -122,7 +123,7 @@ describe('OnboardingWizard', () => {
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Skip for now' }))
     await waitFor(() =>
-      expect(window.localStorage.getItem('ca-onboarding-done')).toBe('1')
+      expect(window.localStorage.getItem(storageKeys.onboardingDone)).toBe('1')
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -192,7 +193,7 @@ describe('OnboardingWizard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Go to Today' }))
     await waitFor(() =>
-      expect(window.localStorage.getItem('ca-onboarding-done')).toBe('1')
+      expect(window.localStorage.getItem(storageKeys.onboardingDone)).toBe('1')
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })

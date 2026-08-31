@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
+import { storageKeys } from '@/lib/constants'
 
-const REASONING_OPEN_KEY = 'ca-chat-reasoning-open'
+const REASONING_OPEN_KEY = storageKeys.chatReasoningOpen
 
 function readPref(): boolean {
   try {

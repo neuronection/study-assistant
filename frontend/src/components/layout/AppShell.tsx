@@ -39,6 +39,7 @@ import { useWorkspaceStore } from '@/lib/workspace-store'
 import { fuzzyFilter } from '@/lib/fuzzy'
 
 import { cn } from '@/lib/utils'
+import { storageKeys } from '@/lib/constants'
 
 const DESTINATIONS: Array<{
   key: string
@@ -331,7 +332,7 @@ export function AppShell() {
   useEffect(() => {
     let storedProfileId: number | null = null
     try {
-      const raw = window.localStorage.getItem('ca-profile-id')
+      const raw = window.localStorage.getItem(storageKeys.profileId)
       if (raw) {
         const value = Number(raw)
         if (Number.isFinite(value)) {
@@ -401,9 +402,9 @@ export function AppShell() {
     setActiveProfile(profileId)
     try {
       if (profileId === null) {
-        window.localStorage.removeItem('ca-profile-id')
+        window.localStorage.removeItem(storageKeys.profileId)
       } else {
-        window.localStorage.setItem('ca-profile-id', String(profileId))
+        window.localStorage.setItem(storageKeys.profileId, String(profileId))
       }
     } catch {
       // profile persistence is best-effort; the in-memory switch still works

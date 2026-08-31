@@ -25,8 +25,9 @@ import { ModelsStep } from './steps/ModelsStep'
 import { ProviderStep } from './steps/ProviderStep'
 import { WorkingDirStep } from './steps/WorkingDirStep'
 import { useWizardStore } from './wizardStore'
+import { storageKeys } from '@/lib/constants'
 
-const DONE_KEY = 'ca-onboarding-done'
+const DONE_KEY = storageKeys.onboardingDone
 
 const STEP_KEYS = [
   'welcome',

@@ -120,6 +120,7 @@ import { MaterialPickerDialog } from './MaterialPickerDialog'
 import { NodeSettingsMenu } from './NodeSettingsMenu'
 import { NodeTreeSidebar } from './NodeTreeSidebar'
 import { PracticeTab } from '@/features/practice/PracticeTab'
+import { storageKeys } from '@/lib/constants'
 
 const TABS = [
   'overview',
@@ -936,7 +937,7 @@ function MaterialsTab({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [view, setView] = useStoredView('ca-materials-view', 'list')
+  const [view, setView] = useStoredView(storageKeys.materialsView, 'list')
   const [menu, setMenu] = useState<{
     x: number
     y: number
@@ -1488,7 +1489,7 @@ function NotesTab({
   const [query, setQuery] = useState('')
   const [submitted, setSubmitted] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
-  const [view, setView] = useStoredView('ca-notes-view', 'list')
+  const [view, setView] = useStoredView(storageKeys.notesView, 'list')
   const [renaming, setRenaming] = useState<{ id: number; title: string } | null>(null)
   const [undoItem, setUndoItem] = useState<number | null>(null)
   const [moveOpen, setMoveOpen] = useState(false)
@@ -2079,14 +2080,14 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   const [alongsidePickerFor, setAlongsidePickerFor] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
-      return window.localStorage.getItem('ca-tree-sidebar-open') !== '0'
+      return window.localStorage.getItem(storageKeys.treeSidebarOpen) !== '0'
     } catch {
       return true
     }
   })
   useEffect(() => {
     try {
-      window.localStorage.setItem('ca-tree-sidebar-open', sidebarOpen ? '1' : '0')
+      window.localStorage.setItem(storageKeys.treeSidebarOpen, sidebarOpen ? '1' : '0')
     } catch {
       // preference persistence is best-effort only
     }

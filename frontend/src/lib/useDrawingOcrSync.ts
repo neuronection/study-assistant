@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { getWsClient } from '@/lib/ws-client'
+import { WsTopic } from '@/lib/constants'
 
 export function useDrawingOcrSync(
   drawings: { ocr_job_id?: number | null }[] | undefined,
@@ -19,7 +20,7 @@ export function useDrawingOcrSync(
     }
     const jobIds = key.split(',').map(Number)
     const unsubscribes = jobIds.map((jobId) =>
-      getWsClient().subscribe(`jobs:${jobId}`, (payload) => {
+      getWsClient().subscribe(WsTopic.jobs(jobId), (payload) => {
         const status = (payload as { status?: string }).status
         if (status === 'done' || status === 'failed') {
           onSettledRef.current()

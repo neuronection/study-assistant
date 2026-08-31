@@ -1,6 +1,7 @@
 import { create } from 'zustand'
+import { storageKeys } from '@/lib/constants'
 
-const STORAGE_KEY = 'ca-course-id'
+const STORAGE_KEY = storageKeys.courseId
 
 function readStoredCourse(): number | null {
   try {

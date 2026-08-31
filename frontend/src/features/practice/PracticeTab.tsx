@@ -41,6 +41,7 @@ import {
 } from '@/lib/api'
 
 import { cn } from '@/lib/utils'
+import { storageKeys } from '@/lib/constants'
 
 function ScopeChip({
   nodeId,
@@ -104,7 +105,7 @@ export function PracticeTab({
   const [showPractice, setShowPractice] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [similarError, setSimilarError] = useState<string | null>(null)
-  const [view, setView] = useStoredView('ca-practice-view', 'list')
+  const [view, setView] = useStoredView(storageKeys.practiceView, 'list')
   const [undoItem, setUndoItem] = useState<number | null>(null)
   const [moveTarget, setMoveTarget] = useState(false)
   const [renaming, setRenaming] = useState<
