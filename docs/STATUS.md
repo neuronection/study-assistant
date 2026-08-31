@@ -335,6 +335,19 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **refactor(jobs): plan 55-C tranche 1 — job payloads are typed
+  (ADR-130).** New `app/jobs/payloads.py`: `IngestPayload`/`PostprocessPayload`/
+  `ChatTurnPayload`/`DrawingOcrPayload` TypedDicts (`Required` keys for mandatory
+  fields) documenting the four job payload schemas. `JobRunner.enqueue` is now
+  typed against their union — an enqueue with the wrong payload shape for its job
+  type is a mypy error at every call site (the drawing-OCR f-string key build
+  became a typed conditional in `enqueue_drawing_ocr`), and the
+  ingest/postprocess/drawing_ocr handlers read `cast(<Payload>, job.payload or {})`
+  so payload access is checked while the Job column legitimately stays
+  schema-less JSON. Remaining C tranches (courses/tree, quiz/exercises,
+  chat/context, metrics/bundle) add pydantic response models + typed service
+  returns per domain. Backend 782 · frontend 815 green.
+
 - 2026-08-31 — **refactor(ui): plan 55-D — WS topics and localStorage keys are
   single-sourced.** New `lib/constants.ts`: `WsTopic` builders mirroring the
   backend's `core/vocab.py` factories (jobs/chat/source/note/material — every
