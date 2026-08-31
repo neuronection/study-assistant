@@ -335,6 +335,25 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(types): plan 55-B — the frontend contract is now
+  generated from OpenAPI, with drift guards in CI (ADR-129).**
+  `scripts/export-openapi.py` boots `create_app` against a throwaway data dir
+  (no lifespan/DB) and writes **`frontend/openapi.json`** (202 paths, 165
+  schemas, committed); **`openapi-typescript`** (devDep) generates the committed
+  **`frontend/src/lib/api-schema.d.ts`**; `pnpm api:types` chains both. **CI
+  guards both halves**: the backend job re-exports the schema and
+  `git diff --exit-code` on it; the frontend job regenerates the `d.ts` from the
+  committed snapshot and diffs it — a backend contract change now fails CI at
+  the exact generated diff instead of at runtime. Enum synergy from 55-A:
+  `JobOut.status → JobStatus`, `MaterialOut.kind/status → MaterialKind/
+  MaterialStatus` generate **real TS unions** in the schema (`"queued" |
+  "running" | "failed" | "done" | "cancelled"`). First migrated consumers:
+  `lib/api/jobs.ts` (JobInfo/JobsSummary/JobTypeInfo → `components['schemas']`)
+  and `lib/api/system.ts` (Health → HealthResponse); new endpoints' types are
+  born generated from here on. Workflow pin extended
+  (`test_ci_workflow_guards_openapi_and_generated_types_drift`).
+  Backend 782 · frontend 813 green; drift guard verified clean locally.
+
 - 2026-08-31 — **refactor(vocab): plan 55-A — closed vocabularies become
   StrEnums; string matching swept off the core surfaces (ADR-128).** New
   `app/core/vocab.py`: JobStatus (incl. `cancelled`), JobType, MaterialKind
