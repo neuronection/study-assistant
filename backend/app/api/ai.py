@@ -131,7 +131,11 @@ def editor_transform_job(job_id: int, request: Request) -> EditorTransformStatus
     )
 
 
-@router.post("/editor/jobs/{job_id}/cancel")
+class EditorCancelOut(BaseModel):
+    cancelled: bool
+
+
+@router.post("/editor/jobs/{job_id}/cancel", response_model=EditorCancelOut)
 def editor_transform_cancel(job_id: int, request: Request) -> dict[str, bool]:
     cancelled = request.app.state.editor_ai.cancel_job(job_id)
     if not cancelled:
@@ -257,7 +261,27 @@ def _resource_tool_info(tool: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@router.get("/tools")
+class ToolArgumentOut(BaseModel):
+    name: str
+    type: str
+    required: bool
+    description: str | None
+
+
+class ToolInfoOut(BaseModel):
+    name: str
+    description: str
+    example: str | None = None
+    arguments: list[ToolArgumentOut]
+    response: str | None = None
+    scope: str | None = None
+
+
+class ToolsOut(BaseModel):
+    tools: list[ToolInfoOut]
+
+
+@router.get("/tools", response_model=ToolsOut)
 async def list_tools(request: Request) -> dict[str, Any]:
     return {
         "tools": [
@@ -267,7 +291,19 @@ async def list_tools(request: Request) -> dict[str, Any]:
     }
 
 
-@router.get("/mcp")
+class McpToolOut(BaseModel):
+    name: str
+    description: str | None
+    arguments: list[ToolArgumentOut]
+
+
+class McpInfoOut(BaseModel):
+    command: str
+    instructions: str
+    tools: list[McpToolOut]
+
+
+@router.get("/mcp", response_model=McpInfoOut)
 async def mcp_info(request: Request) -> dict[str, Any]:
     server = create_resource_server(request.app.state.session_factory)
     mcp_tools = await server.list_tools()

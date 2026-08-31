@@ -142,6 +142,10 @@ class TurnQueued(BaseModel):
     job_id: int
 
 
+class SessionDeletedOut(BaseModel):
+    deleted_item_id: int
+
+
 def _chat_service(request: Request, session: Session) -> ChatService:
     return ChatService(session, request.app.state.gateway, request.app.state.embedder)
 
@@ -315,7 +319,7 @@ def update_session(
     return _session_out(chat_session)
 
 
-@router.delete("/sessions/{session_id}")
+@router.delete("/sessions/{session_id}", response_model=SessionDeletedOut)
 def delete_session(
     session_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -380,7 +384,11 @@ class StatePatchIn(BaseModel):
     delta: list[dict[str, Any]] = Field(min_length=1, max_length=200)
 
 
-@router.patch("/messages/{message_id}/state")
+class MessageStateOut(BaseModel):
+    state: dict[str, Any]
+
+
+@router.patch("/messages/{message_id}/state", response_model=MessageStateOut)
 def patch_message_state(
     message_id: int,
     body: StatePatchIn,
@@ -592,7 +600,34 @@ def dismiss_proposal(
     return _proposal_row_out(proposal)
 
 
-@router.get("/sessions/{session_id}/context")
+class ContextNodeOut(BaseModel):
+    id: int
+    title: str
+
+
+class MentionRefOut(BaseModel):
+    ref: str
+    kind: str
+    id: int
+    title: str
+    course_id: int | None = None
+    summary: str | None = None
+
+
+class NotePreviewOut(BaseModel):
+    id: int
+    title: str
+
+
+class SessionContextOut(BaseModel):
+    session_id: int
+    course_id: int | None
+    node: ContextNodeOut | None
+    registry: list[MentionRefOut]
+    latest_notes: list[NotePreviewOut]
+
+
+@router.get("/sessions/{session_id}/context", response_model=SessionContextOut)
 def session_context(
     session_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -630,7 +665,12 @@ class BranchNodeOut(BaseModel):
     active_child_id: int | None
 
 
-@router.get("/sessions/{session_id}/tree")
+class BranchTreeOut(BaseModel):
+    active_root_id: int | None
+    nodes: list[BranchNodeOut]
+
+
+@router.get("/sessions/{session_id}/tree", response_model=BranchTreeOut)
 def session_branch_tree(
     session_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -666,7 +706,7 @@ def session_branch_tree(
     ]
     return {
         "active_root_id": chat_session.active_root_id,
-        "nodes": [node.model_dump() for node in nodes],
+        "nodes": nodes,
     }
 
 
@@ -816,7 +856,11 @@ def _release_stop_event(session_id: int, event: threading.Event) -> None:
             del _STOP_EVENTS[session_id]
 
 
-@router.post("/sessions/{session_id}/stop")
+class StopOut(BaseModel):
+    stopped: bool
+
+
+@router.post("/sessions/{session_id}/stop", response_model=StopOut)
 def stop_session_turn(
     session_id: int,
     request: Request,

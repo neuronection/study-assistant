@@ -335,6 +335,21 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C ai/chat/sources — twelve more endpoints
+  declare typed response models** (ADR-130). AI: `EditorCancelOut`,
+  `ToolsOut` (+`ToolInfoOut`/`ToolArgumentOut` — the chat tool catalog and MCP
+  resource tools now schema-documented), `McpInfoOut` (+`McpToolOut`); the
+  presets endpoint already carried `dict[str, dict[str, str]]`. Chat:
+  `SessionDeletedOut`, `MessageStateOut`, `SessionContextOut`
+  (+`MentionRefOut`/`ContextNodeOut`/`NotePreviewOut` — the mention-registry
+  handle shape), `BranchTreeOut` (serializes `BranchNodeOut` directly),
+  `StopOut`. Sources: `SourceBrowseOut` (+`SourceSubdirOut`/
+  `SourceMaterialOut` with `MaterialKind`/`MaterialStatus` enums,
+  `UningestedFileOut`), `IngestFileOut`, `ScanAllOut`. Survey: ai 4 → 1
+  (presets dict-of-dicts remains, typed as a free-form dict), chat 5 → 0,
+  sources 3 → 0; remaining untyped 200/201-JSON = 41. Backend 784 · frontend
+  815 green; contract drift guard clean.
+
 - 2026-08-31 — **feat(api): plan 55-C backup — six JSON backup endpoints declare
   typed response models** (ADR-130). New inline models in `backup.py`:
   `BackupStatusOut` (+`BackupSettingsInfoOut`, `BackupEntryOut`,

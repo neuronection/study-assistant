@@ -650,6 +650,89 @@
         "title": "Body_upload_material_api_v1_materials_post",
         "type": "object"
       },
+      "BranchNodeOut": {
+        "properties": {
+          "active_child_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Child Id"
+          },
+          "children": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "excerpt",
+          "parent_id",
+          "children",
+          "active_child_id"
+        ],
+        "title": "BranchNodeOut",
+        "type": "object"
+      },
+      "BranchTreeOut": {
+        "properties": {
+          "active_root_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Root Id"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/BranchNodeOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "active_root_id",
+          "nodes"
+        ],
+        "title": "BranchTreeOut",
+        "type": "object"
+      },
       "BreadcrumbEntryOut": {
         "properties": {
           "depth": {
@@ -1414,6 +1497,24 @@
           "nodes"
         ],
         "title": "ConceptsCommitOut",
+        "type": "object"
+      },
+      "ContextNodeOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ContextNodeOut",
         "type": "object"
       },
       "ContextScope": {
@@ -2624,6 +2725,19 @@
         "title": "EditIn",
         "type": "object"
       },
+      "EditorCancelOut": {
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cancelled"
+        ],
+        "title": "EditorCancelOut",
+        "type": "object"
+      },
       "EditorTransformIn": {
         "properties": {
           "context_document": {
@@ -3670,6 +3784,36 @@
         "title": "IngestFileIn",
         "type": "object"
       },
+      "IngestFileOut": {
+        "properties": {
+          "deduped": {
+            "title": "Deduped",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "material_id",
+          "job_id",
+          "deduped"
+        ],
+        "title": "IngestFileOut",
+        "type": "object"
+      },
       "ItemFlag": {
         "enum": [
           "ok",
@@ -4249,6 +4393,65 @@
         "title": "MaterializeOut",
         "type": "object"
       },
+      "McpInfoOut": {
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "instructions": {
+            "title": "Instructions",
+            "type": "string"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/McpToolOut"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "command",
+          "instructions",
+          "tools"
+        ],
+        "title": "McpInfoOut",
+        "type": "object"
+      },
+      "McpToolOut": {
+        "properties": {
+          "arguments": {
+            "items": {
+              "$ref": "#/components/schemas/ToolArgumentOut"
+            },
+            "title": "Arguments",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "arguments"
+        ],
+        "title": "McpToolOut",
+        "type": "object"
+      },
       "MentionOut": {
         "properties": {
           "course_id": {
@@ -4297,6 +4500,56 @@
           "title"
         ],
         "title": "MentionOut",
+        "type": "object"
+      },
+      "MentionRefOut": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "kind",
+          "id",
+          "title"
+        ],
+        "title": "MentionRefOut",
         "type": "object"
       },
       "MessageIn": {
@@ -4458,6 +4711,20 @@
           "grounded"
         ],
         "title": "MessageOut",
+        "type": "object"
+      },
+      "MessageStateOut": {
+        "properties": {
+          "state": {
+            "additionalProperties": true,
+            "title": "State",
+            "type": "object"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "MessageStateOut",
         "type": "object"
       },
       "MindmapEditIn": {
@@ -5598,6 +5865,24 @@
           "updated_at"
         ],
         "title": "NoteOut",
+        "type": "object"
+      },
+      "NotePreviewOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "NotePreviewOut",
         "type": "object"
       },
       "NoteRestoreIn": {
@@ -7176,6 +7461,30 @@
         "title": "SaveIn",
         "type": "object"
       },
+      "ScanAllOut": {
+        "properties": {
+          "results": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "title": "Results",
+            "type": "object"
+          },
+          "scanned": {
+            "title": "Scanned",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scanned",
+          "results"
+        ],
+        "title": "ScanAllOut",
+        "type": "object"
+      },
       "ScanResult": {
         "properties": {
           "queued_jobs": {
@@ -7270,6 +7579,58 @@
         "title": "SearchOut",
         "type": "object"
       },
+      "SessionContextOut": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "latest_notes": {
+            "items": {
+              "$ref": "#/components/schemas/NotePreviewOut"
+            },
+            "title": "Latest Notes",
+            "type": "array"
+          },
+          "node": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextNodeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registry": {
+            "items": {
+              "$ref": "#/components/schemas/MentionRefOut"
+            },
+            "title": "Registry",
+            "type": "array"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "course_id",
+          "node",
+          "registry",
+          "latest_notes"
+        ],
+        "title": "SessionContextOut",
+        "type": "object"
+      },
       "SessionCreate": {
         "properties": {
           "course_id": {
@@ -7312,6 +7673,19 @@
           }
         },
         "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionDeletedOut": {
+        "properties": {
+          "deleted_item_id": {
+            "title": "Deleted Item Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_item_id"
+        ],
+        "title": "SessionDeletedOut",
         "type": "object"
       },
       "SessionUpdate": {
@@ -7384,6 +7758,104 @@
         "title": "SkillOut",
         "type": "object"
       },
+      "SourceBrowseOut": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_scan_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scan Error"
+          },
+          "last_scanned_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scanned At"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/SourceMaterialOut"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "missing_target": {
+            "title": "Missing Target",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "scan_interval_sec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Interval Sec"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "subdir": {
+            "title": "Subdir",
+            "type": "string"
+          },
+          "subdirs": {
+            "items": {
+              "$ref": "#/components/schemas/SourceSubdirOut"
+            },
+            "title": "Subdirs",
+            "type": "array"
+          },
+          "uningested": {
+            "items": {
+              "$ref": "#/components/schemas/UningestedFileOut"
+            },
+            "title": "Uningested",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source_id",
+          "label",
+          "path",
+          "subdir",
+          "missing_target",
+          "enabled",
+          "scan_interval_sec",
+          "last_scan_error",
+          "last_scanned_at",
+          "subdirs",
+          "materials",
+          "uningested"
+        ],
+        "title": "SourceBrowseOut",
+        "type": "object"
+      },
       "SourceIn": {
         "properties": {
           "course_id": {
@@ -7440,6 +7912,42 @@
           "course_id"
         ],
         "title": "SourceIn",
+        "type": "object"
+      },
+      "SourceMaterialOut": {
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MaterialKind"
+          },
+          "relpath": {
+            "title": "Relpath",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MaterialStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "status",
+          "filename",
+          "relpath"
+        ],
+        "title": "SourceMaterialOut",
         "type": "object"
       },
       "SourceOut": {
@@ -7532,6 +8040,19 @@
           "last_scanned_at"
         ],
         "title": "SourceOut",
+        "type": "object"
+      },
+      "SourceSubdirOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SourceSubdirOut",
         "type": "object"
       },
       "SpeedAccuracyCellOut": {
@@ -7687,6 +8208,19 @@
           "has_expected"
         ],
         "title": "StepOut",
+        "type": "object"
+      },
+      "StopOut": {
+        "properties": {
+          "stopped": {
+            "title": "Stopped",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stopped"
+        ],
+        "title": "StopOut",
         "type": "object"
       },
       "StudyStateIn": {
@@ -7943,6 +8477,41 @@
         "title": "TextFileIn",
         "type": "object"
       },
+      "ToolArgumentOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "required",
+          "description"
+        ],
+        "title": "ToolArgumentOut",
+        "type": "object"
+      },
       "ToolCallOut": {
         "properties": {
           "argument": {
@@ -8025,6 +8594,81 @@
           "argument"
         ],
         "title": "ToolCallOut",
+        "type": "object"
+      },
+      "ToolInfoOut": {
+        "properties": {
+          "arguments": {
+            "items": {
+              "$ref": "#/components/schemas/ToolArgumentOut"
+            },
+            "title": "Arguments",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "arguments"
+        ],
+        "title": "ToolInfoOut",
+        "type": "object"
+      },
+      "ToolsOut": {
+        "properties": {
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/ToolInfoOut"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tools"
+        ],
+        "title": "ToolsOut",
         "type": "object"
       },
       "TranscribeOut": {
@@ -8354,6 +8998,34 @@
           "job_id"
         ],
         "title": "TurnQueued",
+        "type": "object"
+      },
+      "UningestedFileOut": {
+        "properties": {
+          "mtime": {
+            "title": "Mtime",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "relpath": {
+            "title": "Relpath",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "relpath",
+          "size_bytes",
+          "mtime"
+        ],
+        "title": "UningestedFileOut",
         "type": "object"
       },
       "ValidationError": {
@@ -9712,11 +10384,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Editor Transform Cancel Api V1 Ai Editor Jobs  Job Id  Cancel Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EditorCancelOut"
                 }
               }
             },
@@ -9788,9 +10456,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Mcp Info Api V1 Ai Mcp Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/McpInfoOut"
                 }
               }
             },
@@ -9811,9 +10477,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Tools Api V1 Ai Tools Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ToolsOut"
                 }
               }
             },
@@ -10559,9 +11223,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Patch Message State Api V1 Chat Messages  Message Id  State Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageStateOut"
                 }
               }
             },
@@ -10779,9 +11441,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Session Api V1 Chat Sessions  Session Id  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SessionDeletedOut"
                 }
               }
             },
@@ -10873,9 +11533,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Session Context Api V1 Chat Sessions  Session Id  Context Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SessionContextOut"
                 }
               }
             },
@@ -11013,11 +11671,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Stop Session Turn Api V1 Chat Sessions  Session Id  Stop Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/StopOut"
                 }
               }
             },
@@ -11059,9 +11713,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Session Branch Tree Api V1 Chat Sessions  Session Id  Tree Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BranchTreeOut"
                 }
               }
             },
@@ -19642,9 +20294,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Scan All Sources Api V1 Sources Scan All Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ScanAllOut"
                 }
               }
             },
@@ -19771,9 +20421,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Browse Source Api V1 Sources  Source Id  Browse Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SourceBrowseOut"
                 }
               }
             },
@@ -19825,9 +20473,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Ingest Source File Api V1 Sources  Source Id  Ingest Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/IngestFileOut"
                 }
               }
             },

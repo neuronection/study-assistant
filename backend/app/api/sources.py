@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..core.vocab import MaterialKind, MaterialStatus
 from ..domain.models import Material, MaterialSource
 from ..jobs.runner import JobRunner
 from ..services.content.sources import SourcesError, SourcesService
@@ -12,6 +13,44 @@ from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 
 router = APIRouter(prefix="/sources", tags=["sources"])
+
+
+class SourceBrowseOut(BaseModel):
+    source_id: int
+    label: str
+    path: str
+    subdir: str
+    missing_target: bool
+    enabled: bool
+    scan_interval_sec: int | None
+    last_scan_error: str | None
+    last_scanned_at: str | None
+    subdirs: list["SourceSubdirOut"]
+    materials: list["SourceMaterialOut"]
+    uningested: list["UningestedFileOut"]
+
+
+class SourceSubdirOut(BaseModel):
+    name: str
+
+
+class SourceMaterialOut(BaseModel):
+    id: int
+    title: str
+    kind: MaterialKind
+    status: MaterialStatus
+    filename: str
+    relpath: str
+
+
+class UningestedFileOut(BaseModel):
+    name: str
+    relpath: str
+    size_bytes: int
+    mtime: float
+
+
+SourceBrowseOut.model_rebuild()
 
 
 class SourceIn(BaseModel):
@@ -114,7 +153,7 @@ def delete_source(
     session.commit()
 
 
-@router.get("/{source_id}/browse")
+@router.get("/{source_id}/browse", response_model=SourceBrowseOut)
 def browse_source(
     source_id: int,
     request: Request,
@@ -133,7 +172,13 @@ class IngestFileIn(BaseModel):
     relpath: str = Field(min_length=1, max_length=2000)
 
 
-@router.post("/{source_id}/ingest", status_code=201)
+class IngestFileOut(BaseModel):
+    material_id: int
+    job_id: int | None
+    deduped: bool
+
+
+@router.post("/{source_id}/ingest", status_code=201, response_model=IngestFileOut)
 def ingest_source_file(
     source_id: int,
     body: IngestFileIn,
@@ -201,7 +246,12 @@ def _enqueue_ingests(session: Session, source_id: int) -> int:
     return len(pending)
 
 
-@router.post("/scan-all")
+class ScanAllOut(BaseModel):
+    scanned: int
+    results: dict[str, dict[str, int]]
+
+
+@router.post("/scan-all", response_model=ScanAllOut)
 def scan_all_sources(
     request: Request,
     session: Session = Depends(get_session),

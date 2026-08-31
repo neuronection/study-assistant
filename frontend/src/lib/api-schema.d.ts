@@ -3676,6 +3676,28 @@ export interface components {
             /** File */
             file: string;
         };
+        /** BranchNodeOut */
+        BranchNodeOut: {
+            /** Active Child Id */
+            active_child_id: number | null;
+            /** Children */
+            children: number[];
+            /** Excerpt */
+            excerpt: string;
+            /** Id */
+            id: number;
+            /** Parent Id */
+            parent_id: number | null;
+            /** Role */
+            role: string;
+        };
+        /** BranchTreeOut */
+        BranchTreeOut: {
+            /** Active Root Id */
+            active_root_id: number | null;
+            /** Nodes */
+            nodes: components["schemas"]["BranchNodeOut"][];
+        };
         /** BreadcrumbEntryOut */
         BreadcrumbEntryOut: {
             /** Depth */
@@ -3929,6 +3951,13 @@ export interface components {
             links: number;
             /** Nodes */
             nodes: number;
+        };
+        /** ContextNodeOut */
+        ContextNodeOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /**
          * ContextScope
@@ -4269,6 +4298,11 @@ export interface components {
         EditIn: {
             /** Content */
             content: string;
+        };
+        /** EditorCancelOut */
+        EditorCancelOut: {
+            /** Cancelled */
+            cancelled: boolean;
         };
         /** EditorTransformIn */
         EditorTransformIn: {
@@ -4638,6 +4672,15 @@ export interface components {
             /** Relpath */
             relpath: string;
         };
+        /** IngestFileOut */
+        IngestFileOut: {
+            /** Deduped */
+            deduped: boolean;
+            /** Job Id */
+            job_id: number | null;
+            /** Material Id */
+            material_id: number;
+        };
         /**
          * ItemFlag
          * @enum {string}
@@ -4818,8 +4861,41 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** McpInfoOut */
+        McpInfoOut: {
+            /** Command */
+            command: string;
+            /** Instructions */
+            instructions: string;
+            /** Tools */
+            tools: components["schemas"]["McpToolOut"][];
+        };
+        /** McpToolOut */
+        McpToolOut: {
+            /** Arguments */
+            arguments: components["schemas"]["ToolArgumentOut"][];
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+        };
         /** MentionOut */
         MentionOut: {
+            /** Course Id */
+            course_id?: number | null;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Ref */
+            ref: string;
+            /** Summary */
+            summary?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** MentionRefOut */
+        MentionRefOut: {
             /** Course Id */
             course_id?: number | null;
             /** Id */
@@ -4884,6 +4960,13 @@ export interface components {
             variant_index: number;
             /** Warnings */
             warnings?: string[];
+        };
+        /** MessageStateOut */
+        MessageStateOut: {
+            /** State */
+            state: {
+                [key: string]: unknown;
+            };
         };
         /** MindmapEditIn */
         MindmapEditIn: {
@@ -5226,6 +5309,13 @@ export interface components {
             title: string;
             /** Updated At */
             updated_at: string;
+        };
+        /** NotePreviewOut */
+        NotePreviewOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /** NoteRestoreIn */
         NoteRestoreIn: {
@@ -5742,6 +5832,17 @@ export interface components {
              */
             user_template: string;
         };
+        /** ScanAllOut */
+        ScanAllOut: {
+            /** Results */
+            results: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Scanned */
+            scanned: number;
+        };
         /** ScanResult */
         ScanResult: {
             /** Queued Jobs */
@@ -5776,6 +5877,18 @@ export interface components {
             /** Query */
             query: string;
         };
+        /** SessionContextOut */
+        SessionContextOut: {
+            /** Course Id */
+            course_id: number | null;
+            /** Latest Notes */
+            latest_notes: components["schemas"]["NotePreviewOut"][];
+            node: components["schemas"]["ContextNodeOut"] | null;
+            /** Registry */
+            registry: components["schemas"]["MentionRefOut"][];
+            /** Session Id */
+            session_id: number;
+        };
         /** SessionCreate */
         SessionCreate: {
             /** Course Id */
@@ -5789,6 +5902,11 @@ export interface components {
             title: string;
             /** Use Embeddings */
             use_embeddings?: boolean | null;
+        };
+        /** SessionDeletedOut */
+        SessionDeletedOut: {
+            /** Deleted Item Id */
+            deleted_item_id: number;
         };
         /** SessionUpdate */
         SessionUpdate: {
@@ -5810,6 +5928,33 @@ export interface components {
             /** Task */
             task: string;
         };
+        /** SourceBrowseOut */
+        SourceBrowseOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Label */
+            label: string;
+            /** Last Scan Error */
+            last_scan_error: string | null;
+            /** Last Scanned At */
+            last_scanned_at: string | null;
+            /** Materials */
+            materials: components["schemas"]["SourceMaterialOut"][];
+            /** Missing Target */
+            missing_target: boolean;
+            /** Path */
+            path: string;
+            /** Scan Interval Sec */
+            scan_interval_sec: number | null;
+            /** Source Id */
+            source_id: number;
+            /** Subdir */
+            subdir: string;
+            /** Subdirs */
+            subdirs: components["schemas"]["SourceSubdirOut"][];
+            /** Uningested */
+            uningested: components["schemas"]["UningestedFileOut"][];
+        };
         /** SourceIn */
         SourceIn: {
             /** Course Id */
@@ -5827,6 +5972,19 @@ export interface components {
             recursive: boolean;
             /** Scan Interval Sec */
             scan_interval_sec?: number | null;
+        };
+        /** SourceMaterialOut */
+        SourceMaterialOut: {
+            /** Filename */
+            filename: string;
+            /** Id */
+            id: number;
+            kind: components["schemas"]["MaterialKind"];
+            /** Relpath */
+            relpath: string;
+            status: components["schemas"]["MaterialStatus"];
+            /** Title */
+            title: string;
         };
         /** SourceOut */
         SourceOut: {
@@ -5852,6 +6010,11 @@ export interface components {
             recursive: boolean;
             /** Scan Interval Sec */
             scan_interval_sec?: number | null;
+        };
+        /** SourceSubdirOut */
+        SourceSubdirOut: {
+            /** Name */
+            name: string;
         };
         /** SpeedAccuracyCellOut */
         SpeedAccuracyCellOut: {
@@ -5910,6 +6073,11 @@ export interface components {
             prompt: {
                 [key: string]: unknown;
             }[];
+        };
+        /** StopOut */
+        StopOut: {
+            /** Stopped */
+            stopped: boolean;
         };
         /** StudyStateIn */
         StudyStateIn: {
@@ -5989,6 +6157,17 @@ export interface components {
             /** Folder Id */
             folder_id?: number | null;
         };
+        /** ToolArgumentOut */
+        ToolArgumentOut: {
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+            /** Required */
+            required: boolean;
+            /** Type */
+            type: string;
+        };
         /** ToolCallOut */
         ToolCallOut: {
             /** Argument */
@@ -6007,6 +6186,26 @@ export interface components {
             status?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /** ToolInfoOut */
+        ToolInfoOut: {
+            /** Arguments */
+            arguments: components["schemas"]["ToolArgumentOut"][];
+            /** Description */
+            description: string;
+            /** Example */
+            example?: string | null;
+            /** Name */
+            name: string;
+            /** Response */
+            response?: string | null;
+            /** Scope */
+            scope?: string | null;
+        };
+        /** ToolsOut */
+        ToolsOut: {
+            /** Tools */
+            tools: components["schemas"]["ToolInfoOut"][];
         };
         /** TranscribeOut */
         TranscribeOut: {
@@ -6125,6 +6324,17 @@ export interface components {
             /** Job Id */
             job_id: number;
             user_message: components["schemas"]["MessageOut"];
+        };
+        /** UningestedFileOut */
+        UningestedFileOut: {
+            /** Mtime */
+            mtime: number;
+            /** Name */
+            name: string;
+            /** Relpath */
+            relpath: string;
+            /** Size Bytes */
+            size_bytes: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -6604,9 +6814,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["EditorCancelOut"];
                 };
             };
             /** @description Validation Error */
@@ -6668,9 +6876,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["McpInfoOut"];
                 };
             };
         };
@@ -6690,9 +6896,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ToolsOut"];
                 };
             };
         };
@@ -7262,9 +7466,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MessageStateOut"];
                 };
             };
             /** @description Validation Error */
@@ -7421,9 +7623,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SessionDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -7489,9 +7689,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SessionContextOut"];
                 };
             };
             /** @description Validation Error */
@@ -7588,9 +7786,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["StopOut"];
                 };
             };
             /** @description Validation Error */
@@ -7621,9 +7817,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BranchTreeOut"];
                 };
             };
             /** @description Validation Error */
@@ -13519,9 +13713,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ScanAllOut"];
                 };
             };
         };
@@ -13609,9 +13801,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SourceBrowseOut"];
                 };
             };
             /** @description Validation Error */
@@ -13646,9 +13836,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["IngestFileOut"];
                 };
             };
             /** @description Validation Error */
