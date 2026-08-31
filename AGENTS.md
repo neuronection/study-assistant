@@ -21,7 +21,13 @@ so keep your own backups).
 4. **Follow the ADRs** (`dev/plans/06-decisions-and-risks.md`). If a decision must change,
    propose a new ADR in conversation — don't silently contradict one.
 5. **No comments in code** unless requested. Conventions: mimic existing style, ruff +
-   mypy strict (backend), eslint + vitest (frontend).
+   mypy strict (backend), eslint + vitest (frontend). Typed vocabularies (plan 55):
+   closed sets come from `backend/app/core/vocab.py` StrEnums (never new bare-string
+   vocabularies); frontend request/response types are generated from OpenAPI
+   (`frontend/openapi.json` + `src/lib/api-schema.d.ts` via `pnpm api:types`, CI
+   drift-guarded — new endpoints' types are born in the schema, hand types only for
+   client-side shapes); placement: API-client functions in `frontend/src/lib/api/<domain>.ts`,
+   services in `backend/app/services/<group>/`, models in `backend/app/domain/models/<domain>.py`.
 6. **Never commit secrets.** API keys live only in the OS keyring, never in files, env
    blocks, or the DB. Tests must never touch the real OS keyring — `backend/tests/conftest.py`
    installs an in-memory keyring backend for the whole suite; keep it that way (new secret

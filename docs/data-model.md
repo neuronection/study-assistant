@@ -263,7 +263,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   provider cache-read tokens, cost discounted at 0.1×), cost_usd?, latency_ms —
   every model call lands here; `context_type="gateway"` rows are the cost ledger
   (one per real API call, with real provider usage numbers since 37A)
-- **jobs**: id, type (ingest/postprocess/chat_turn), payload, status
+- **jobs**: id, type (ingest/postprocess/chat_turn/drawing_ocr), payload, status
   (queued/running/done/failed/cancelled), progress, stage, error, timestamps
 
 ## Derived structures (not in Alembic)
