@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import TaskUnassigned
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
+from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
 from ..services.materials import extraction_to_blocks
@@ -115,7 +116,10 @@ def _store_extraction(
 def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         payload: dict[str, Any] = job.payload or {}
-        material_id = payload.get("material_id")
+        raw_id = payload.get("material_id")
+        if raw_id is None:
+            raise JobError("ingest payload missing material_id")
+        material_id = int(raw_id)
         material = session.get(Material, material_id)
         if material is None:
             raise JobError(f"material {material_id} not found")
@@ -148,6 +152,8 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
 
         def fail(error: Exception) -> None:
             session.rollback()
+            if isinstance(error, JobCancelled) or is_cancel_requested(job.id):
+                return
             fresh = session.get(Material, material_id)
             if fresh is not None:
                 fresh.status = "failed"
@@ -189,6 +195,7 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
 
         report(80, "indexing")
         _sync_fts(session, material, markdown)
+        ensure_target_exists(session, Material, int(material_id), "material")
         material.status = "ready"
         from ..jobs.runner import JobRunner
 

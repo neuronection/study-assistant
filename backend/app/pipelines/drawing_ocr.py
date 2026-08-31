@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, ProviderError, TaskUnassigned
 from ..domain.models import Material, MaterialDrawing, Note, NoteDrawing, utcnow
+from ..jobs.cancellation import ensure_target_exists
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.notes_ocr import NotesOcrEngine
 from ..services.drawings import note_search_text
@@ -43,6 +44,8 @@ def make_drawing_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandle
         except (TaskUnassigned, ProviderError) as error:
             raise JobError(str(error)) from error
 
+        model = NoteDrawing if kind == "note" else MaterialDrawing
+        ensure_target_exists(session, model, int(drawing_id), "drawing")
         drawing.ocr_version += 1
         drawing.ocr_blocks = [{"type": "text", "md": markdown}]
         drawing.ocr_markdown = markdown

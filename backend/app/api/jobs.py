@@ -11,7 +11,7 @@ from .deps import get_session
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 NON_RETRYABLE_TYPES = frozenset({"chat_turn"})
-JOB_STATUSES = frozenset({"queued", "running", "done", "failed"})
+JOB_STATUSES = frozenset({"queued", "running", "done", "failed", "cancelled"})
 
 
 class JobOut(BaseModel):
@@ -35,6 +35,7 @@ class JobsSummary(BaseModel):
     running: int
     failed: int
     done: int
+    cancelled: int = 0
     failed_retryable: int
     failed_stale: int
 
@@ -246,6 +247,7 @@ def jobs_summary(
         running=counts.get("running", 0),
         failed=counts.get("failed", 0),
         done=counts.get("done", 0),
+        cancelled=counts.get("cancelled", 0),
         failed_retryable=failed_retryable,
         failed_stale=failed_stale,
     )

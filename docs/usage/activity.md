@@ -35,16 +35,22 @@ picture — useful when many items failed at once:
 - **Name links straight to the material** behind the task (when there is one), so
   you can open the file that failed to inspect or replace it.
 - The error text is shown in full — click it to expand/collapse long tracebacks.
-- Status tabs (**Failed / Running / Queued / Done / All**) with live counts, plus
-  search by name or id; **Retry all failed** sits in the header.
+- Status tabs (**Failed / Running / Queued / Done / Cancelled / All**) with live
+  counts, plus search by name or id; **Retry all failed** sits in the header.
 - A **Type** filter narrows the list to one task kind, and a **Completed /
   Started / Created** switcher sorts by that date, oldest or newest first. Tabs,
   type, sorting and direction are part of the URL, so a filtered view can be
   bookmarked or reopened later exactly as it was.
-- Failed and done rows carry a small **delete** button (confirmation first); the
-  header **Delete…** menu offers *Delete all failed* — scoped to the active Type
-  filter when one is set — and *Delete source-missing (N)* for the hopeless ones.
-  Queued and running tasks cannot be deleted mid-flight.
+- Failed, done and cancelled rows carry a small **delete** button (confirmation
+  first); the header **Delete…** menu offers *Delete all failed* — scoped to the
+  active Type filter when one is set — and *Delete source-missing (N)* for the
+  hopeless ones. Queued and running tasks cannot be deleted mid-flight.
+
+**Cancelled tasks.** When you delete a file (or folder, note or course) that still
+has queued or running background tasks — for example an OCR import — those tasks are
+**cancelled**, not failed: they show a grey *cancelled* chip, never count toward the
+red failure badge, and offer no retry (their source is gone, so a retry could never
+succeed). A task that was already finished keeps its result.
 
 The page refreshes every few seconds; retried rows flip to *Running* on their own,
 and deleted rows simply disappear from every view.

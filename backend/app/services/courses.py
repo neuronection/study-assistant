@@ -37,6 +37,7 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
+from ..jobs.cancellation import cancel_jobs_for
 from ..services.folders import (
     folder_links_by_node,
     folder_member_ids,
@@ -601,6 +602,7 @@ def purge_course(session: Session, course: Course) -> None:
         )
     )
     if session_ids:
+        cancel_jobs_for(session, chat_session_ids=session_ids)
         message_ids = list(
             session.scalars(
                 select(ChatMessage.id).where(ChatMessage.session_id.in_(session_ids))
@@ -649,6 +651,7 @@ def purge_course(session: Session, course: Course) -> None:
         session.execute(delete(ReviewLog).where(ReviewLog.card_id == exercise.id))
         session.delete(exercise)
     for note in list(session.scalars(select(Note).where(Note.course_id == course.id))):
+        cancel_jobs_for(session, note_ids=[note.id])
         session.delete(note)
     for material in list(
         session.scalars(select(Material).where(Material.course_id == course.id))

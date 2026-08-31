@@ -1,7 +1,21 @@
 # Project Status
 
 Single source of truth for what exists and what phase we are in. Update per the
-`ca-docs-sync` skill with every change (see AGENTS.md).
+`sa-docs-sync` skill with every change (see AGENTS.md).
+
+**Next up (planned 2026-08-31, user-approved):** post-1.0 rounds **47–55** in
+`dev/plans/` (local-only), execution order **54 → 55 → 47–53** — **54
+consolidation & hardening first** (module splits, delete-during-ingest
+cancellation, flake hygiene), **55 code quality & typed contracts** (StrEnum
+vocabularies over string matching, OpenAPI-generated frontend types with CI drift
+guard, typed service boundaries, assistant-ui adoption round 2; no-comments rule
+reaffirmed), then ingestion breadth (office formats + lecture AV), local AI
+engines (ADR-105: no in-process ML models, ever), study experience (cross-course
+review, study sessions, exam timing), `ca-course/v2` + OSS readiness, AI-native
+answer types (C21/G7/C20/C14 + widened C16/C19/C4/C5/C11), topic explorer & course
+genesis (scratchpad, AI-scaffolded courses, web research tools), planner &
+expression (H5/H6 planner + forecast, quiz-me, teach-back, TTS, print engine).
+See the 2026-08-31 changelog entries.
 
 ## Current phase: post-1.0 — **shared UI library adoption (`@neuronection/assistant-ui`) COMPLETE (2026-08-29, user-requested)** — study consumes the family library (`github.com/neuronection/assistant-ui@0.1.0`, published via Changesets with provenance): `components/ui/button.tsx` and `card.tsx` are now **pure re-exports** from the library (implementations deleted, same-commit rule; 65+35 import sites untouched), `@neuronection/assistant-ui/styles.css` imported after `index.css` in `main.tsx` (token defaults == study's palette), `optimizeDeps.exclude` added to `vite.config.ts` (required for linked local development via the library's `dev-link` tooling); **all 27 `window.confirm` sites across 18 files** (settings, chat, library, notes, courses, practice, jobs, canvas/editor, layout) replaced by a promise-based `lib/use-confirm.tsx` hook over the library's destructive-themed `ConfirmationModal` — existing i18n keys reused (`*.confirmDelete*` → description, short labels → title/confirmLabel, `common.cancel`), and confirm-mocking tests now click the modal's confirm button (`within(dialog)` scoping where labels collide); drift is policed by the library's `audit-usage.mjs` (case-insensitive, study clean over 313 files) plus a weekly drift-audit workflow snippet in the library repo — preceded by **plan 45 (working directory, ADR-101) COMPLETE (2026-08-28, user-requested)** — the app data directory is now user-visible and changeable: `core/working_dir.py` pointer file (`<platform config dir>/StudyAssistant/working-dir.txt`, `SA_CONFIG_DIR` overrides the config dir for tests/packaging), `Settings.data_dir` factory resolves pointer → platform default (env `SA_DATA_DIR`/.env stays strongest), new `api/config.py` — `GET /config/working-dir` (`{path, default_path, custom, restart_pending}`), `POST …/validate` (absolute/writable/empty-or-`app.db` policy with machine reason codes; non-existent targets checked via nearest existing ancestor), `PUT` (write pointer, restart applies), `DELETE` (clear pointer); frontend shared `WorkingDirEditor` (input + Check/Use-after-restart/Use-default/Restore-default + restart-pending banner with Undo) mounted as a **Settings → Data card** and as **wizard step 2** (core-8 steps now) — preceded by **plan 44 (first-run setup wizard, ADR-100) COMPLETE (2026-08-28, user-requested)** — a fresh install (server truth: no provider AND no course) auto-opens a full-screen wizard overlay over the AppShell; `GET /onboarding/state` is the one-round-trip gate/summary aggregate (`has_provider/has_enabled_model/defaults_set/has_course/has_material`); core-7 steps (Welcome → AI provider → Enable models → Capability defaults → First course (create or load sample) → First files via `UploadDropzone`+`useMaterialUpload` on the created course → Done checklist with open-course CTA), every step skippable, dismissal in localStorage `ca-onboarding-done`, re-openable from Settings→Providers empty state and the Home onboarding card; `ProviderFormDialog` create-mode logic extracted into shared `useProviderCreate` + `ProviderCreateFields` so wizard and Settings can't drift — preceded by **plan 43 (infinite drawing canvas: pan/zoom navigation, fullscreen, crop-on-save + view-box scale metadata, ADR-098) COMPLETE (2026-08-28, user-requested)** — an unbounded canvas (wheel = zoom to cursor; middle-drag / Space-drag / hand tool = pan; floating bottom bar: zoom −/%,+, Fit, 1:1), fullscreen toggle on the drawing dialogs, saves crop the PNG to the strokes' bounding box + 24 px pad and persist the exported region as nullable `view` JSON on `note_drawings`/`material_drawings` (0046) so re-editing restores exact 100% scale; drawings render at natural size (no stretch) — preceded by **plan 42 (dictation via Whisper STT, ADR-097) COMPLETE (2026-08-27, user-requested)** — a 🎤 mic button in the shared Tiptap editor toolbar and the chat composer records a clip (MediaRecorder webm/opus, timer + live level strip, cancel), `POST /ai/transcribe` (multipart, ≤25 MB, optional language) returns `{text, model}` inserted at the cursor/draft caret; new `transcribe` task + `audio` capability in the task chain (provider-native STT: `openai_compatible` → `/audio/transcriptions` incl. local whisper servers, Google → `generateContent` inline audio via the `transcribe.audio` seed skill, anthropic unsupported; audio ephemeral, ledgered), Settings caps pickers gained `audio` — preceded by **plan 41 (chat branch-tree rail, ADR-095) COMPLETE (2026-08-27, user-requested)** — a `GitBranch` header popover renders the full conversation tree from a new read-only `GET /chat/sessions/{id}/tree` (commit-graph styling, active path highlighted, click a node = `select` that variant; no schema change, no graph deps) — preceded by **plan 40 (chat turn branches + composer & message actions, ADR-093…094) COMPLETE (2026-08-27, user-requested)** — 40A branch-tree core (migration 0044 `chat_messages.parent_id`/`active_child_id` + `chat_sessions.active_root_id`, active-path history, edit/regenerate/select endpoints, FIFO per-session turn lock); 40B message-action UI (copy/edit/resend/regenerate + ‹k/N› variant switcher); 40C "+"-menu equation editor/drawing canvas/screenshot-crop attachments; 40D stop-generation + scroll-to-bottom pill + code-block copy + session .md export; plan 33 (cheat-sheet menu + compose builder, ADR-070) DONE; plan 34 (interactive widget blocks + AG-UI state channel, ADR-071…076) COMPLETE; plan 35 (chat streaming performance + turn-trace observability + tool-call component system, ADR-077…079) COMPLETE; plan 36 (MCP resource tools as shared chat tools + Settings page, ADR-080) IN PROGRESS; plan 37 (AI gateway framework + reliability, ADR-081…084) **COMPLETE** — 37A LangChain behind the gateway (retry + fallback + real token accounting, socket-guarded no-network suite), 37B native `.bind_tools()` tool calling (cap-gated, prompt fallback), 37C `.with_structured_output()` pre-validation fast path, 37D prompt caching (Anthropic hints + OpenAI accounting, `cached_input_tokens` ledger); plan 32's Ctrl+N palette remains documented-only; **plan 38 (AI gateway best-practices alignment, ADR-085…087 — 2026-08-26) COMPLETE** (reasoning-effort parity incl. Google with per-provider value filtering, real-usage accounting in `generate_structured`, profile-based structured-output pre-gate, gateway cleanups); **plan 39 (jobs hygiene: failed-job delete + stale detection + boot pruning, and the task-defaults persistence fix — ADR-089/090) COMPLETE**
 
@@ -203,7 +217,7 @@ palette** (Ctrl+K: fuzzy navigation, quick note, tutor chat, course jumps) ·
 concept analytics (weakness matrix + materialize write `concept_id`; quiz
 generation accepts `concept_id`).
 
-Plans: `dev/plans/` (01–34) — **gitignored, local-only**. Roadmap: `dev/plans/05-roadmap.md`. ADRs: `dev/plans/06-decisions-and-risks.md` (88 ADRs — 046–051 plan 22, 052–055 plan 23, 056–059 plan 24, 058–059 plan 25, 060–061 plan 26, 062 plan 27, 063 plan 28, 064 plan 29, 065 folder delete-refusal UX, 066 folder-delete cascade, 067 multi-item drag, 068 inline editor AI helper plan 31, 069 unified practice plan 32, 070 cheat-sheet compose menu plan 33, 071 AG-UI contract plan 34, 072 widget layer plan 34, 073 renderers plan 34, 074 state channel plan 34, 075 exercise widgets plan 34, 076 chat widgets plan 34, 077 turn-trace observability plan 35, 078 per-tool component registry plan 35, 079 incremental memoized streaming rendering plan 35, 080 shared MCP resource-tool registry + chat resource tools plan 36, 081–084 AI gateway framework plan 37, 085–087 AI gateway best-practices plan 38, 088 per-capability default task models, 090 insert-only seeding of `default_task_assignments` (plan 39 — fixes the restart wipe), 089 job lifecycle hygiene: explicit deletion + stale detection + done-history pruning (plan 39), 097 dictation/transcribe task plan 42, 098 infinite drawing canvas + crop-on-save + view-box scale metadata (plan 43), 102 OCR payload efficiency + async drawing OCR (plan 46), 099 shell reaffirmed (pywebview) + PyInstaller/deb/AppImage/exe packaging + tag-driven release. Tracked docs: AGENTS.md, `docs/`, `.opencode/`.
+Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit — order 54 → 55 → 47–53) — **gitignored, local-only**. Roadmap: `dev/plans/05-roadmap.md`. ADRs: `dev/plans/06-decisions-and-risks.md` (102 recorded; 103–130 reserved by plans 47–55 — 046–051 plan 22, 052–055 plan 23, 056–059 plan 24, 058–059 plan 25, 060–061 plan 26, 062 plan 27, 063 plan 28, 064 plan 29, 065 folder delete-refusal UX, 066 folder-delete cascade, 067 multi-item drag, 068 inline editor AI helper plan 31, 069 unified practice plan 32, 070 cheat-sheet compose menu plan 33, 071 AG-UI contract plan 34, 072 widget layer plan 34, 073 renderers plan 34, 074 state channel plan 34, 075 exercise widgets plan 34, 076 chat widgets plan 34, 077 turn-trace observability plan 35, 078 per-tool component registry plan 35, 079 incremental memoized streaming rendering plan 35, 080 shared MCP resource-tool registry + chat resource tools plan 36, 081–084 AI gateway framework plan 37, 085–087 AI gateway best-practices plan 38, 088 per-capability default task models, 090 insert-only seeding of `default_task_assignments` (plan 39 — fixes the restart wipe), 089 job lifecycle hygiene: explicit deletion + stale detection + done-history pruning (plan 39), 097 dictation/transcribe task plan 42, 098 infinite drawing canvas + crop-on-save + view-box scale metadata (plan 43), 102 OCR payload efficiency + async drawing OCR (plan 46), 099 shell reaffirmed (pywebview) + PyInstaller/deb/AppImage/exe packaging + tag-driven release. Tracked docs: AGENTS.md, `docs/` (`.opencode/` and `dev/` are gitignored, local-only).
 
 ## Module status
 
@@ -211,7 +225,7 @@ Plans: `dev/plans/` (01–34) — **gitignored, local-only**. Roadmap: `dev/plan
 |---|---|---|
 | **Working directory (plan 45)** | done | The app data directory (db/blobs/backups/cache) is a first-class setting. Backend: `core/working_dir.py` (pointer file in `SA_CONFIG_DIR`, default `<platform config dir>/StudyAssistant/working-dir.txt`), `Settings.data_dir` factory = pointer → platform default (`SA_DATA_DIR`/`.env` still wins), `api/config.py` — `GET /config/working-dir` (`path`/`default_path`/`custom`/`restart_pending`), `POST /config/working-dir/validate` (absolute, writable, empty **or** existing SA dir with `app.db`; reasons `relative_path`/`already_current`/`inside_current`/`contains_current`/`not_a_directory`/`not_writable`/`not_empty`/`invalid_path`; writability probed with a temp file, creatable paths via nearest existing ancestor), `PUT` (validate + write pointer; applies on restart), `DELETE` (clear). Frontend: shared `features/settings/WorkingDirEditor` (validate feedback, Save gated on a validated changed path, Use-default, Restore-default, restart-pending banner + Undo) in **Settings → Data** (top card) and **wizard step 2** (now 8 steps). No live rebind, no auto-copy — moving data = backup/restore (`usage/getting-started.md`). Tests: `test_working_dir.py` (8) + `WorkingDirEditor.test.tsx` (4) |
 | **First-run wizard (plan 44)** | done | Fresh install (no provider AND no course, server truth) auto-opens a full-screen wizard overlay over the AppShell; `GET /onboarding/state` (`has_provider`/`has_enabled_model`/`defaults_set`/`has_course`/`has_material`) is the gate + Done-summary aggregate. Core-7 steps (`features/onboarding/`): Welcome → **Provider** (shared `useProviderCreate`+`ProviderCreateFields` extracted from the Settings dialog; create advances automatically) → **Models** (enable toggles + Enable all over discovered models) → **Defaults** (text/vision/embeddings/audio selects over enabled+cap-matching models, TasksTab pattern) → **Course** (create via `POST /courses` or load `POST /onboarding/sample`, adopts real title from the refreshed list) → **Files** (`UploadDropzone` + `useMaterialUpload` on the created course; ingest continues in background) → **Done** (checklist from refetched state + Open-course/Go-to-Today CTAs). Fully skippable (Back / Skip for now / header X), dismissal in localStorage `ca-onboarding-done` (same `ca-*` convention), re-openable via `useWizardStore.openWizard()` from Settings→Providers empty state + Home onboarding card. Fetch error ⇒ never auto-open. Tests: `test_onboarding_state.py` (2) + `OnboardingWizard.test.tsx` (7) |
-| **Job retry + task-activity rail** | done |`api/jobs.py` — `GET /jobs` (status/type filters, labels, errors, `material_id`, `retriable` flag, **+`stale` flag when the job's material/chat-session no longer exists**), `GET /jobs/summary` (queued/running/failed/done + `failed_retryable`, **+`failed_stale`**), `GET /jobs/types`, `POST /jobs/{id}/retry`, `POST /jobs/retry-failed` (optional type filter); retriable = failed + handler registered + not `chat_turn`; retry resets to queued, wakes pool; **plan 39B (ADR-089): `DELETE /jobs/{id}` (204; done/failed only, queued/running → 422) + `DELETE /jobs/failed` bulk delete (optional `{types}` filter, covers non-retriable `chat_turn`; literal route declared before `/{job_id}`)**; **boot-time prune of done history (39C: `prune_done_jobs`, `SA_JOBS_DONE_TTL_DAYS` default 14)**. Frontend (39D): `/jobs` page per-row delete + header **Delete…** menu (*Delete all failed* incl. Type-filter scope, *Delete source-missing*) + `source removed` chips with retry hidden; activity popover per-row delete + **Delete all failed** icon + **Delete source-missing (N)**; `ActivityButton` (rail footer): red failure badge from summary polling, panel with failed/in-progress/done sections, per-row ⭯ retry + **Retry all N**, 2 s refresh while open, **View all tasks** link → new `/jobs` page (status tabs w/ counts, search, full errors expandable, status·stage chips, material deep links); 3 JobsPage tests; `usage/activity.md`. Plan 39D adds delete/stale UI affordances |
+| **Job retry + task-activity rail** | done |`api/jobs.py` — `GET /jobs` (status/type filters, labels, errors, `material_id`, `retriable` flag, **+`stale` flag when the job's material/chat-session no longer exists**), `GET /jobs/summary` (queued/running/failed/done + `failed_retryable`, **+`failed_stale`**, **+`cancelled` (54-A)**), `GET /jobs/types`, `POST /jobs/{id}/retry`, `POST /jobs/retry-failed` (optional type filter); retriable = failed + handler registered + not `chat_turn`; retry resets to queued, wakes pool; **plan 39B (ADR-089): `DELETE /jobs/{id}` (204; done/failed only, queued/running → 422) + `DELETE /jobs/failed` bulk delete (optional `{types}` filter, covers non-retriable `chat_turn`; literal route declared before `/{job_id}`)**; **boot-time prune of done history (39C: `prune_done_jobs`, `SA_JOBS_DONE_TTL_DAYS` default 14)**. **Plan 54-A (ADR-126): terminal `cancelled` status — cancel-on-purge for queued jobs, cooperative cancel flags + report checkpoints for running ones, commit-time stale re-checks in ingest/postprocess/drawing_ocr (`app/jobs/cancellation.py`); cancelled rows are grey, non-retriable, excluded from the failure badge, deletable; JobsPage Cancelled tab + ActivityPopover cancelled chips; upload banner treats cancelled as terminal.** Frontend (39D): `/jobs` page per-row delete + header **Delete…** menu (*Delete all failed* incl. Type-filter scope, *Delete source-missing*) + `source removed` chips with retry hidden; activity popover per-row delete + **Delete all failed** icon + **Delete source-missing (N)**; `ActivityButton` (rail footer): red failure badge from summary polling, panel with failed/in-progress/done sections, per-row ⭯ retry + **Retry all N**, 2 s refresh while open, **View all tasks** link → new `/jobs` page (status tabs w/ counts, search, full errors expandable, status·stage chips, material deep links); 3 JobsPage tests; `usage/activity.md`. Plan 39D adds delete/stale UI affordances |
 | **Interactive widgets & AG-UI (plan 34)** | done | **34A (ADR-071)** `app/agui/` contract (`events.py`/`state.py`/`mapping.py`); **34B (ADR-072)** `widget` block + `components/widgets/` registry + `app/ai/widgets.py` grammar; **34C (ADR-073)** `PlotlyChart`/`JsxGraphBoard` render `chart`/`geo`; **34D (ADR-074)** migration 0033 `state` columns + `PATCH /chat/messages/{id}/state` + `STATE` tool + `diffState`; **34E (ADR-075)** exgen `steps[].widgets` + `step_attempts.state` recording + player collection; **34F (ADR-076)** `PLOT` tool + ` ```chart `/ ` ```widget ` fence parsing into chat blocks + chat-panel PATCH wiring. Deferred (non-goals): numberline/graph-sketch grading, context-resolver `widget_state` slot, live WS `StateSnapshot` read, `ag-ui-protocol` SDK interop |
 | **AI companion (P11)** | done | **11A mentions done** — registry/parser (`app/ai/mentions.py`), session-stable chat handles (0022), mentions on messages + explanation/step blocks, advisory `mentions_in_range`, `EntityMention`/`AiBadge` + BlockRenderer inline chips. **11B chat on-demand context done** — chat on ContextResolver (hybrid retrieval, subtree scope, manifest w/ index-card summaries first), `READ <handle>` tool (own budget 3/turn, 4k chars, model-only results; reads recorded 0023 + shown as eye chips), tool doc generated from `CHAT_TOOL_CATALOG` (single source w/ `/ai/tools`), `GET /chat/sessions/{id}/context` + "What the AI sees" panel, ProviderError logged in postprocess jobs, CONTEXT_VARS extended; **2026-08-21: READ covers quiz/exercise, composer attachments feed the registry (see Chat RAG row + changelog)**. **11C1 HITL
 proposals core done** — `app/ai/proposals.py` (create_note whitelist + fence
@@ -320,6 +334,148 @@ a backend node binding) |
 | Analytics/diagnostics (P7 first slice) | in progress | Migration 0010: concept_skill_stats, daily_rollups, item_stats, study_goals. `services/metrics.py` = single source of truth (doc 10 definitions): weakness matrix (concepts×skills, sample-size aware — <3 answers flagged not-enough-data), error-pattern profile (totals + 7d trend), speed–accuracy quadrants (fluent/rushing/effortful/struggling vs expected time), item analysis (p-correct, avg-time ratio, distractor selection; n≥20 + p outside [0.1,0.95] auto-flags question `review`), streak/daily-history/XP/level, due-card counts, recommendations engine (review > weak cells [conceptual→read, else drill] > strong-but-stale challenge; each with evidence numbers; exam attempts excluded from mastery). API: /analytics/overview, /diagnostics, /recommendations, /items, /goal (PUT), /materialize (writes rollup tables + question flags). Frontend: **Today screen** (streak, goal ring w/ editable daily goal, due reviews, next-best-action cards with evidence + one-tap actions, 90-day heatmap), **Scores page → 4 tabs** (History, Diagnostics w/ matrix heatmap + error tags + quadrants, Tips, Mistakes). Slice 2: **weak-area sessions (H4)** — quiz generate accepts topic+skill focus (FOCUS TOPIC / SKILL FOCUS directives in the quizgen prompt; topic-scoped retrieval; title carries topic); Today drill/challenge buttons generate a targeted quiz and jump straight in. **Backup/restore (I6)** — `GET /backup/export` = consistent sqlite snapshot (backup API, converted to rollback-journal so archives are portable) + all blobs + manifest (`ca-backup/v1`); `POST /backup/restore` validates zip+manifest+integrity+alembic history, replaces DB (WAL sidecars removed) + blobs, re-runs migrations, reseeds; Settings→Data tab. **Automatic backups (plan 22 C, 2026-08-21)**: BackupScheduler (startup + interval), post-write archive validation, 14+8 daily/weekly retention, optional sync-folder copy, boot integrity check w/ auto-recovery + quarantine, `GET /backup/status` · `PUT /backup/settings` · `POST /backup/create` · `POST /backup/{name}/restore` · `DELETE /backup/{name}`, Automatic-backups card in Settings→Data (ADR-047). **Print export (I16 first cut)** — print CSS (rail/buttons hidden) + Print on quiz rows. Pending: mastery rings/tree visualizations, rollups on quiz-finish |
 
 ## Changelog
+
+- 2026-08-31 — **feat(jobs): plan 54-A — delete-during-ingest is now a clean
+  `cancelled`, not a confusing failure (ADR-126, user-approved round in progress).**
+  Deleting a material/folder/course while its background job was queued or running
+  used to leave a failed job ("material x not found") or a running job committing
+  into a purged entity. New `app/jobs/cancellation.py`: a terminal **`cancelled`
+  job status** (no migration — string column), a process-level cancel-flag
+  registry, and `cancel_jobs_for(session, material_ids/chat_session_ids/note_ids)`
+  which marks matching **queued** jobs cancelled directly and sets **cancel flags**
+  on running ones (the just-claimed race is covered by the flag check at
+  `_run_handler` start). Every progress `report()` call is now a **cooperative
+  cancellation checkpoint** (raises `JobCancelled` when flagged) — no handler code
+  needed for the common case — and `JobRunner._run_handler` gained a
+  `JobCancelled` branch that marks the row cancelled instead of failed (retry
+  refused, excluded from the failure badge and retry-failed). **Commit-time stale
+  re-checks** (`ensure_target_exists` — expire_all + existence probe in the same
+  transaction) close the delete-between-last-stage-and-commit hole in `ingest`
+  (before the final ready-commit), `postprocess` (before the index-card write) and
+  `drawing_ocr` (after the long vision call); ingest's `fail()` no longer marks a
+  material `failed` when the failure is a cancellation. Wiring:
+  `purge_material` cancels the material's jobs, course purge cancels its chat-turn
+  and note-drawing jobs, note delete cancels its drawing jobs. API: `/jobs`
+  accepts `status=cancelled`, summary gained `cancelled`. Frontend: JobsPage
+  **Cancelled** tab + muted chip + delete button on cancelled rows,
+  ActivityPopover shows cancelled rows (muted chip) among recent items and the
+  failure badge ignores them, and the library upload banner treats `cancelled` as
+  terminal (no more stuck 0% banner). Tests: `test_job_cancellation.py` (7:
+  purge-cancels-queued, running-flag→cancelled, flag-before-start never runs the
+  handler, API summary/retry/delete contract, `ensure_target_exists`, payload
+  matching for notes/chats). Backend 776 · frontend 813, full gate green.
+
+- 2026-08-31 — **docs(planning): plan 55 — code quality & typed contracts
+  (user-requested best-practices round; runs after 54, before features).**
+  Audit with hard numbers: only **2 StrEnum classes** in the backend vs **573
+  `dict[str, Any]`** occurrences and bare-literal vocabularies everywhere (job
+  statuses, kinds, modes, WS topics as scattered f-strings); the frontend
+  hand-maintains **145 interfaces** mirroring the backend; three verified local
+  duplicates of assistant-ui modules (`ErrorBanner.tsx`, `UndoDeleteNotice.tsx`,
+  `BlockRenderer`'s inline copy button vs library `error-banner`/`undo-notice`/
+  `copy-button`). **Restructure verdict: none beyond 54** — the remaining issues
+  are typing/vocabulary discipline, not structure. Slices: **A** StrEnum
+  vocabularies in `app/core/vocab.py` for every closed set (JobStatus incl.
+  `cancelled`, MaterialKind, QuestionType, ComposeKind, AttemptMode, Capability,
+  TaskName, WSTopic factories; open registries like exercise kinds keep typed
+  registries — ADR-128); **B** OpenAPI-generated frontend types
+  (`openapi-typescript`, committed `api-schema.d.ts`, CI drift guard, schema
+  exported by a pytest fixture; new endpoints born generated — ADR-129); **C**
+  typed service/API boundaries per domain (response models on every endpoint,
+  TypedDicts for stable-shape JSON columns; ADR-130); **D** shared constants per
+  side (WS topic builders, storage keys); **E** library adoption round 2
+  (verified dupes → shims; inline spinner/empty-state sweep; 47–53 surfaces use
+  library `Wizard`/`DatePicker`/`ChipList`/`Table` first). User decisions:
+  clean-code interpretation, **no-comments rule stays**, TS **generated from
+  OpenAPI**. Tracked-code changes: none.
+
+- 2026-08-31 — **docs(planning): plan 54 (consolidation & hardening) + plan-51
+  widening + self-review revisions across 47–53.** Follow-up verification answered
+  "is anything still missing?" honestly: **plan 54** (user-approved, **runs before
+  the feature rounds**) — A: the deferred delete-during-ingest fix (ADR-126: new
+  terminal `cancelled` job status, cancel-on-purge for queued jobs, cooperative
+  cancel flags at handler stage boundaries, commit-time stale re-check in the same
+  transaction); B/C/D: zero-behavior mechanical splits of the three verified
+  pressure seams — `lib/api.ts` (3,584 lines → `lib/api/` package behind a
+  re-export shim), `domain/models.py` (976 lines → `domain/models/` package,
+  alembic-safe), `services/` (31 flat files → content/study/knowledge/platform
+  groups, one-shot import updates) with a test-count invariance check (ADR-127);
+  E: the four named flakes fixed by waiting on observables (never retry/sleep) +
+  removing the folders-tests' hidden `frontend/dist` dependency, ten-run soak.
+  **Plan 51 widened** (user-approved) with slices E–H: C16 composite questions with
+  deterministic follow-through credit (SymPy recomputes later parts from the
+  student's earlier value, ADR-122), C19 per-cell-graded table completion (ADR-123),
+  C4/C5 hotspot/labeling + graph-reading over server-computed chart data (ADR-124),
+  C11 item-level Elo adaptive difficulty (ADR-125) — all verified missing
+  (`QUESTION_TYPES` today = single/multi/truefalse/text/numeric/equation).
+  **Same-day revisions** patched into 47–53: plan 47 — linked-source scans
+  skip-with-reason instead of failed-job piles, a real `material_images` +
+  `image_ocr` home for embedded doc images, `mutagen` required with a pre-flight
+  provider-limit warning (25 MB-class caps without ffmpeg); plan 48 — provider
+  Test-connection row (library `ConnectionTestRow`), detect-local validates
+  OpenAI-shaped responses on collision-prone ports; plan 49 — study-session
+  fragmentation guard (resume sessions ended ≤2 min, no confetti rows); plan 50 —
+  e2e mock provider uses a blank API key (legal per 48-A) so CI needs no secret
+  service; plan 52 — promote-to-course drops concept coverage honestly, scratch
+  analytics scoping (streaks yes, forecasting/recommendations no); plan 53 —
+  quiz-me `accept` variants (synonyms deterministic, paraphrase-judging never),
+  speechSynthesis feature-detect for WebKitGTK, WebKitGTK print verification +
+  webapp-mode fallback. Tracked-code changes: none.
+
+- 2026-08-31 — **docs(planning): plans 52–53 close the "ultimate assistant" gaps
+  (exploration + planner/expression).** Follow-up to the gap audit: **52 — topic
+  explorer & course genesis**: the app was closed-world (every course starts with
+  an upload; notes course-bound per ADR-040/036) — a per-profile **Scratchpad**
+  system course + Promote-to-course subtree move becomes the sanctioned ADR-040
+  exception (0050 `courses.origin`/`hidden`); `course.genesis` drafts a 2-level
+  outline from a topic (reuse of the outline task + draft→commit flow) and a
+  budget-gated job chain scaffolds `lesson` compose kinds + seeded
+  quizzes/flashcards, everything AI-provenance-tagged; SEARCH/FETCH chat research
+  tools over a generic Tavily-style/SearXNG search-provider setting (keyring key)
+  with optional web grounding of the outline (ADR-116/117). **53 — planner &
+  expression**: `plan_items` (0051) + deterministic plan drafting from exam_date ×
+  coverage (no scheduler engine), mastery-weighted exam-readiness forecast in
+  `exam_status` (evidence lines, not-enough-data gate), **Quiz-me** chat mode
+  where the model asks via a QUIZ tool but the *server* grades through the
+  equivalence chain — the model never sees the expected answer (ADR-121), teach-back
+  flow reusing the rubric `explain` path onto `concept_skill_stats`, TTS read-aloud
+  (`speech` capability + `tts` task, ephemeral audio, speechSynthesis fallback,
+  ADR-119), and a print/PDF engine of print-HTML templates (quiz paper/key,
+  flashcard cut-out sheets, materials, planner week) over the browser's
+  print-to-PDF — no weasyprint/Typst bundling (ADR-118…120). Roadmap backlog and
+  `dev/plans/README.md` updated. Tracked-code changes: none.
+
+- 2026-08-31 — **docs(planning): post-1.0 gap audit → five approved rounds (plans
+  47–51) + `ca-plan` skill renamed `sa-plan`.** A full docs/codebase audit
+  (backend + frontend + family alignment vs neuronection.com / assistant-ui) fed
+  five slice-level plans in `dev/plans/` (local-only, gitignored): **47**
+  ingestion breadth — DOCX/PPTX/EPUB/HTML converters (B10 vision promise, today
+  uploads as kind `doc` then fails ingest with `unsupported material kind`) +
+  lecture audio/video → transcript materials via the existing `transcribe` task
+  (B13), unsupported uploads 422 at the door (ADR-103/104); **48** local-first AI
+  engines — llama.cpp/LM Studio presets, `GET /providers/detect-local` probing,
+  embeddings via OpenAI-compatible local servers, and **ADR-105 superseding
+  ADR-011's sentence-transformers clause: no in-process ML models, ever** (local =
+  OpenAI-compatible engines the user runs; no torch in the bundle); **49** study
+  experience — cross-course Review queue (`features/flashcards/` dissolves into
+  `features/review/`, one queue two scopes), `study_sessions` + focus timer
+  (minutes-or-answers goals, activity-based streaks), server-enforced exam timing
+  (ADR-106…108); **50** sharing/OSS — `ca-course/v2` (flashcards+FSRS, exam_date,
+  error patterns, import enqueues postprocess so imported courses stop degrading
+  to FTS-only), skill packs (J7), Playwright e2e smoke vs a mock OpenAI-compatible
+  provider gating releases, README/About/sample-course polish (ADR-109…111);
+  **51** AI-native answer types — C21 number-line answers, G7 graph-sketch grading
+  (keypoint-based v1, freehand out), C20 error-spotting (detector-seeded flaws,
+  equivalence-chain proof of wrongness for LLM-proposed ones), C14 code execution
+  in Pyodide — server-side execution: none, ever (ADR-112…115). Roadmap
+  `dev/plans/05-roadmap.md` post-1.0 backlog rewritten around the rounds;
+  `docs/STATUS.md` (this file) stays the tracked source of truth. Repo hygiene
+  en route: `.opencode/skills/ca-plan` → `sa-plan` (the AGENTS.md `sa-plan`
+  reference now resolves), its content updated (plans 01–46, current
+  conventions), `dev/plans/README.md` document table gained rows 43–51 and lost
+  its stale CourseAssistant title, README badges now track GitHub releases
+  (were hardcoded v0.1.0 / "in development"). Tracked-code changes: none (no
+  product code touched this round).
 
 - 2026-08-30 — **feat(library): drop uploads directly (user feedback)** — the
   drag-drop menu (files-vs-folder choice) is gone: dropping now uploads
@@ -4857,12 +5013,11 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
 
 ## Open issues
 
-- **Delete-during-ingest hardening (2026-08-28)**: deleting a material/folder/course
-  while its ingest (or postprocess) job is running no longer corrupts the delete
-  (`passive_deletes` fix), but the in-flight job still isn't cancelled or
-  re-validated — it fails on the FK (or posts to a replaced material). surfaced by
-  the v0.1.1 release-gate CI flake; proper fix = job-side stale check right before
-  commit + cancel-on-purge, worth a small dedicated round.
+- **Delete-during-ingest hardening — RESOLVED (2026-08-31, plan 54-A/ADR-126)**:
+  in-flight jobs are now cancelled (cooperative report checkpoints + cancel flags +
+  commit-time stale re-checks) instead of failing on the FK or committing into a
+  purged entity; queued jobs are marked `cancelled` at purge time. See the
+  changelog entry.
 - **JSXGraph uses `eval` internally (plan 34C, 2026-08-24)**: `jsxgraph`'s bundled
   JessieCode/math evaluation (`createFunction`/parser) calls `eval`/`new Function` on
   expression strings — library code, not ours, and reachable only via the `geo` block's
@@ -4906,10 +5061,12 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   timing; `pnpm webapp` remains the browser-first fallback.
 - **WebKitGTK spike: PASSED** (user-verified 2026-08-18 on Linux Mint / snap VS Code
   terminal, after env sanitization).
-- Local-embeddings default (ADR-011: sentence-transformers/bge-m3) is **not wired yet** —
-  embeddings currently require a provider model via the `embeddings` task (google or
-  openai-compatible). Pulling in torch is a heavy install; revisit during packaging or
-  when offline mode becomes a priority. Vector search degrades to FTS-only meanwhile.
+- **Local embeddings (resolved by decision, 2026-08-31)**: ADR-011's
+  sentence-transformers/bge-m3 clause is **superseded by ADR-105 (plan 48)** — no
+  in-process ML models, ever; local embeddings = any OpenAI-compatible local server
+  (Ollama `/v1/embeddings`, llama.cpp, LM Studio) via the existing `embeddings` task.
+  Vector search degrades to FTS-only until the user assigns an embeddings model, and
+  plan 48 makes that path discoverable from the wizard.
 - **Golden fixtures need real material (user action)**: drop ~20 scanned math pages +
   ~10 worst handwriting photos into `backend/tests/fixtures/golden/{pages,handwriting}/`
   per its README (ADR-019: real scans, not synthetic). OCR golden evals (plan 04

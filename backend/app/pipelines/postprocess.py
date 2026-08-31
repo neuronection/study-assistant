@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
+from ..jobs.cancellation import ensure_target_exists
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..storage import vectors
 
@@ -116,6 +117,7 @@ def make_postprocess_handler(embedder: Embedder, describer: Describer) -> JobHan
             embedded = 0
         session.commit()
         report(70, "index card")
+        ensure_target_exists(session, Material, material.id, "material")
         try:
             described = describe_material(session, material, extraction, describer)
         except ProviderError as error:

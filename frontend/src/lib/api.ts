@@ -3115,7 +3115,7 @@ export interface ProfileInfo {
 export interface JobInfo {
   id: number
   type: string
-  status: 'queued' | 'running' | 'done' | 'failed'
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
   progress: number
   stage: string | null
   error: string | null
@@ -3157,6 +3157,7 @@ export interface JobsSummary {
   running: number
   failed: number
   done: number
+  cancelled: number
   failed_retryable: number
   failed_stale: number
 }

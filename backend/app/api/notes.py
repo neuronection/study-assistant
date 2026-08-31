@@ -604,8 +604,10 @@ def delete_note(
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
+    from ..jobs.cancellation import cancel_jobs_for
     from ..services import trash
 
+    cancel_jobs_for(session, note_ids=[note.id])
     deleted_item_id = trash.snapshot(
         session,
         "note",

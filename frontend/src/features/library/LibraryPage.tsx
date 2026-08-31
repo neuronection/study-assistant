@@ -418,7 +418,11 @@ export function LibraryPage() {
     const unsubscribe = getWsClient().subscribe(`jobs:${uploadJobId}`, (payload) => {
       const progress = payload as JobProgress
       setJob(progress)
-      if (progress.status === 'done' || progress.status === 'failed') {
+      if (
+        progress.status === 'done' ||
+        progress.status === 'failed' ||
+        progress.status === 'cancelled'
+      ) {
         void queryClient.invalidateQueries({ queryKey: ['materials'] })
         void queryClient.invalidateQueries({ queryKey: ['source-browse'] })
         clearJobHideTimer()

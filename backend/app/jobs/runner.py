@@ -8,6 +8,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ..core.events import EventBus
 from ..domain.models import Job, utcnow
+from .cancellation import (
+    CANCELLED_ERROR,
+    JobCancelled,
+    clear_cancel,
+    is_cancel_requested,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -183,12 +189,19 @@ class JobRunner:
     def _run_handler(self, job_id: int, job_type: str) -> None:
         handler = self._handlers.get(job_type)
         try:
+            if is_cancel_requested(job_id):
+                self._mark_cancelled(job_id, CANCELLED_ERROR)
+                return
             with self._session_factory() as session:
                 job_row = session.get(Job, job_id)
                 if job_row is None:
                     return
+                if job_row.status != "running":
+                    return
 
                 def report(progress: int, stage: str) -> None:
+                    if is_cancel_requested(job_id):
+                        raise JobCancelled(CANCELLED_ERROR)
                     job_row.progress = max(0, min(100, progress))
                     job_row.stage = stage
                     session.commit()
@@ -206,6 +219,9 @@ class JobRunner:
                         session.commit()
                         self.publish_progress(job_id, 100, job_row.stage or "", "done")
                         logger.info("job_done", job_id=job_id, job_type=job_type)
+                except JobCancelled:
+                    session.rollback()
+                    self._mark_cancelled(job_id, CANCELLED_ERROR)
                 except Exception as error:
                     session.rollback()
                     logger.exception(
@@ -217,6 +233,29 @@ class JobRunner:
                 "job_handler_setup_failed", job_id=job_id, error=str(error)
             )
             self._mark_failed(job_id, str(error))
+        finally:
+            clear_cancel(job_id)
+
+    def _mark_cancelled(self, job_id: int, error: str) -> None:
+        with self._session_factory() as session:
+            cancelled = session.get(Job, job_id)
+            if cancelled is None:
+                return
+            if cancelled.status not in ("queued", "running"):
+                return
+            cancelled.status = "cancelled"
+            cancelled.error = str(error)[:4000]
+            cancelled.finished_at = utcnow()
+            session.commit()
+            self._bus.publish_threadsafe(
+                f"jobs:{job_id}",
+                {
+                    "progress": cancelled.progress or 0,
+                    "stage": "cancelled",
+                    "status": "cancelled",
+                },
+            )
+            logger.info("job_cancelled", job_id=job_id)
 
     def _mark_failed(self, job_id: int, error: str) -> None:
         with self._session_factory() as session:

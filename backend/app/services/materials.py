@@ -17,6 +17,7 @@ from ..domain.models import (
     MaterialStudyState,
     TreeNode,
 )
+from ..jobs.cancellation import cancel_jobs_for_material
 from ..jobs.runner import JobRunner
 from ..pipelines.chunking import chunk_markdown
 from ..storage import vectors
@@ -44,6 +45,7 @@ def detect_kind(filename: str) -> str:
 
 
 def purge_material(session: Session, material: Material) -> None:
+    cancel_jobs_for_material(session, material.id)
     extraction_ids = list(
         session.scalars(
             select(Extraction.id).where(Extraction.material_id == material.id)

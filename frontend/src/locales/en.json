@@ -1691,6 +1691,7 @@
     "tab_running": "Running",
     "tab_queued": "Queued",
     "tab_done": "Done",
+    "tab_cancelled": "Cancelled",
     "searchPlaceholder": "Search by name or id…",
     "retryAllPlain": "Retry all failed",
     "startedWhen": "started {{time}}",

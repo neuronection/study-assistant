@@ -31,7 +31,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/use-confirm'
 
-const STATUS_TABS = ['failed', 'running', 'queued', 'done'] as const
+const STATUS_TABS = ['failed', 'running', 'queued', 'done', 'cancelled'] as const
 type StatusTab = 'all' | (typeof STATUS_TABS)[number]
 type SortKey = 'created' | 'started' | 'finished'
 
@@ -62,6 +62,7 @@ const STATUS_STYLES: Record<string, string> = {
   running: 'bg-primary/15 text-primary',
   queued: 'bg-warning/15 text-warning',
   done: 'bg-success/15 text-success',
+  cancelled: 'bg-subtle text-muted-foreground',
 }
 
 function formatDateTime(iso: string | null): string {
@@ -151,7 +152,7 @@ function JobRow({
             <RotateCcw className="size-4" aria-hidden />
           </button>
         ) : null}
-        {job.status === 'failed' || job.status === 'done' ? (
+        {job.status === 'failed' || job.status === 'done' || job.status === 'cancelled' ? (
           <button
             type="button"
             onClick={() => onDelete(job.id)}

@@ -128,10 +128,16 @@ function ActiveRow({ job }: { job: JobInfo }) {
 }
 
 function DoneRow({ job }: { job: JobInfo }) {
+  const { t } = useTranslation()
   return (
     <li className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs">
       <Activity className="text-muted-foreground size-3.5 shrink-0 opacity-50" aria-hidden />
       <span className="text-muted-foreground min-w-0 flex-1 truncate">{job.label}</span>
+      {job.status === 'cancelled' ? (
+        <span className="bg-subtle text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[10px]">
+          {t('jobs.tab_cancelled')}
+        </span>
+      ) : null}
       <span className="text-muted-foreground shrink-0 text-[10px] opacity-70">
         {relativeTime(job.finished_at ?? job.created_at)}
       </span>
@@ -226,7 +232,9 @@ export function ActivityButton() {
   const active = allJobs.filter(
     (job) => job.status === 'running' || job.status === 'queued'
   )
-  const done = allJobs.filter((job) => job.status === 'done').slice(0, 8)
+  const done = allJobs.filter(
+    (job) => job.status === 'done' || job.status === 'cancelled'
+  ).slice(0, 8)
   const failedCount = summary.data?.failed ?? 0
   const staleCount = summary.data?.failed_stale ?? 0
 

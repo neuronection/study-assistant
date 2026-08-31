@@ -211,4 +211,24 @@ describe('JobsPage', () => {
       'true'
     )
   })
+
+  test('cancelled jobs render a muted chip, no retry, and a delete button', async () => {
+    mockListJobs.mockResolvedValue([
+      {
+        ...FAILED,
+        id: 44,
+        status: 'cancelled',
+        retriable: false,
+        error: null,
+        stage: null,
+      },
+    ])
+    renderPage('/jobs?status=cancelled')
+    const dialog = await screen.findByRole('list')
+    await within(dialog).findByText('Lecture 3.pdf')
+    expect(mockListJobs).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }))
+    expect(within(dialog).getAllByText('cancelled').length).toBeGreaterThan(0)
+    expect(within(dialog).queryByLabelText(/retry: /i)).not.toBeInTheDocument()
+    expect(within(dialog).getByLabelText(/jobs\.deleteOne: /i)).toBeInTheDocument()
+  })
 })
