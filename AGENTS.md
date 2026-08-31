@@ -1,6 +1,8 @@
 # Study Assistant — Agent Instructions
 
-AI-powered, local-first desktop study workbench (Python backend + React SPA in pywebview).
+AI-powered, local-first study workbench (Python backend + React SPA) that runs
+as a desktop app (pywebview window, `pnpm app`) or in the browser
+(`pnpm webapp`) — both modes first-class.
 Math-first (calculus), subject-agnostic by design. Full plans live in `dev/plans/` — read
 them before changing architecture. **`docs/STATUS.md` is the single source of truth for
 what exists and what phase we are in.** All of `dev/` is personal scratch space and
