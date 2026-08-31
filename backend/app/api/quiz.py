@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..ai.gateway import ProviderError, TaskUnassigned
+from ..core.vocab import AttemptMode
 from ..domain.models import (
     Activity,
     AiInteraction,
@@ -657,14 +658,14 @@ def quiz_questions(
 @router.post("/activities/{activity_id}/attempts", response_model=AttemptOut, status_code=201)
 def start_attempt(
     activity_id: int,
-    mode: str = "practice",
+    mode: str = AttemptMode.PRACTICE,
     session: Session = Depends(get_session),
 ) -> AttemptOut:
     profile = ensure_default_profile(session)
     activity = session.get(Activity, activity_id)
     if activity is None or activity.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="quiz not found")
-    if mode not in ("practice", "exam"):
+    if mode not in (AttemptMode.PRACTICE, AttemptMode.EXAM):
         raise HTTPException(status_code=422, detail="mode must be practice or exam")
     attempt = Attempt(activity_id=activity_id, mode=mode)
     session.add(attempt)
@@ -821,7 +822,7 @@ def request_quiz_hint(
     attempt, _activity, question = _load_attempt_question(
         session, attempt_id, profile.id, question_id
     )
-    if attempt.mode == "exam":
+    if attempt.mode == AttemptMode.EXAM:
         raise HTTPException(status_code=422, detail="help is disabled in exam mode")
     if attempt.finished_at is not None:
         raise HTTPException(status_code=422, detail="attempt already finished")
@@ -966,7 +967,7 @@ def ask_about_question(
     attempt, activity, question = _load_attempt_question(
         session, attempt_id, profile.id, question_id
     )
-    if attempt.mode == "exam" and attempt.finished_at is None:
+    if attempt.mode == AttemptMode.EXAM and attempt.finished_at is None:
         raise HTTPException(status_code=422, detail="help is disabled in exam mode")
     service = ChatService(session, request.app.state.gateway, request.app.state.embedder)
     chat_session = service.create_session(

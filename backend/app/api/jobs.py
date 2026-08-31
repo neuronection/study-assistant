@@ -5,13 +5,14 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..core.vocab import JobStatus
 from ..domain.models import ChatSession, Job, Material, Note
 from .deps import get_session
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 NON_RETRYABLE_TYPES = frozenset({"chat_turn"})
-JOB_STATUSES = frozenset({"queued", "running", "done", "failed", "cancelled"})
+JOB_STATUSES = frozenset(status.value for status in JobStatus)
 
 
 class JobOut(BaseModel):
@@ -197,7 +198,7 @@ def _to_out(
 
 
 def _reset(job: Job) -> None:
-    job.status = "queued"
+    job.status = JobStatus.QUEUED
     job.progress = 0
     job.stage = None
     job.error = None
@@ -235,7 +236,7 @@ def jobs_summary(
     ).all()
     counts: dict[str, int] = {str(status): int(count) for status, count in rows}
     retriable_types = request.app.state.jobs.retriable_handlers()
-    failed_jobs = list(session.scalars(select(Job).where(Job.status == "failed")))
+    failed_jobs = list(session.scalars(select(Job).where(Job.status == JobStatus.FAILED)))
     failed_retryable = sum(
         1
         for job in failed_jobs
@@ -243,11 +244,11 @@ def jobs_summary(
     )
     failed_stale = len(_stale_job_ids(session, failed_jobs))
     return JobsSummary(
-        queued=counts.get("queued", 0),
-        running=counts.get("running", 0),
-        failed=counts.get("failed", 0),
-        done=counts.get("done", 0),
-        cancelled=counts.get("cancelled", 0),
+        queued=counts.get(JobStatus.QUEUED.value, 0),
+        running=counts.get(JobStatus.RUNNING.value, 0),
+        failed=counts.get(JobStatus.FAILED.value, 0),
+        done=counts.get(JobStatus.DONE.value, 0),
+        cancelled=counts.get(JobStatus.CANCELLED.value, 0),
         failed_retryable=failed_retryable,
         failed_stale=failed_stale,
     )
@@ -272,7 +273,7 @@ def retry_job(
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
     retriable_types = request.app.state.jobs.retriable_handlers()
-    if job.status != "failed":
+    if job.status != JobStatus.FAILED:
         raise HTTPException(
             status_code=422, detail="only failed jobs can be retried"
         )
@@ -294,7 +295,7 @@ def retry_failed_jobs(
     session: Session = Depends(get_session),
 ) -> dict[str, int]:
     retriable_types = request.app.state.jobs.retriable_handlers()
-    query = select(Job).where(Job.status == "failed")
+    query = select(Job).where(Job.status == JobStatus.FAILED)
     if body.types:
         wanted = [entry for entry in body.types if entry not in NON_RETRYABLE_TYPES]
         if not wanted:
@@ -317,7 +318,7 @@ def delete_failed_jobs(
     body: DeleteFailedBody,
     session: Session = Depends(get_session),
 ) -> dict[str, int]:
-    query = select(Job).where(Job.status == "failed")
+    query = select(Job).where(Job.status == JobStatus.FAILED)
     if body.types:
         query = query.where(Job.type.in_(body.types))
     candidates = list(session.scalars(query))
@@ -341,7 +342,7 @@ def delete_job(
     job = session.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
-    if job.status in {"queued", "running"}:
+    if job.status in (JobStatus.QUEUED, JobStatus.RUNNING):
         raise HTTPException(
             status_code=422,
             detail=f"job '{job.type}' cannot be deleted while {job.status}",

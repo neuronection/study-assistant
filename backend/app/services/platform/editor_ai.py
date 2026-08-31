@@ -11,6 +11,7 @@ from ...ai.gateway import LLMGateway, ProviderError, TaskUnassigned
 from ...ai.runner import AuditRef, TaskRunner
 from ...ai.skills import EDITOR_TRANSFORM_SYSTEM
 from ...core.events import EventBus
+from ...core.vocab import JobStatus
 
 EDITOR_TASK = "editor_transform"
 EDITOR_SKILL = "editor.transform"
@@ -170,7 +171,7 @@ class EditorTransformResult:
 @dataclass
 class EditorTransformJob:
     id: int
-    status: str = "queued"
+    status: str = JobStatus.QUEUED.value
     result_md: str = ""
     error: str | None = None
     model_label: str | None = None
@@ -289,7 +290,7 @@ class EditorTransformService:
             context_document=context_document,
             context_material=context_material,
         )
-        job.status = "running"
+        job.status = JobStatus.RUNNING.value
         self._publish(bus, job.id, {"type": "editor_start", "job_id": job.id})
         try:
             with self._session_factory() as session:
@@ -346,7 +347,7 @@ class EditorTransformService:
             )
             return
         if job.cancelled:
-            job.status = "cancelled"
+            job.status = JobStatus.CANCELLED.value
             self._publish(
                 bus,
                 job.id,
@@ -364,7 +365,7 @@ class EditorTransformService:
                 bus, job.id, {"type": "editor_error", "job_id": job.id, "message": job.error}
             )
         else:
-            job.status = "done"
+            job.status = JobStatus.DONE.value
             self._publish(
                 bus, job.id, {"type": "editor_done", "job_id": job.id, "result_md": job.result_md}
             )
@@ -387,7 +388,8 @@ def wait_for_job(
 ) -> EditorTransformJob | None:
     deadline = time.monotonic() + timeout
     job = get_job()
-    while job is not None and job.status in ("queued", "running") and time.monotonic() < deadline:
+    active = (JobStatus.QUEUED.value, JobStatus.RUNNING.value)
+    while job is not None and job.status in active and time.monotonic() < deadline:
         time.sleep(0.05)
         job = get_job()
     return job

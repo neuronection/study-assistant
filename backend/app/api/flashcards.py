@@ -7,6 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..ai.gateway import ProviderError, TaskUnassigned
+from ..core.vocab import WsTopic
 from ..domain.models import (
     Exercise,
     Extraction,
@@ -192,10 +193,10 @@ def generate_cards(
             count=body.count,
             source=body.source,
             source_ref=(
-                f"note:{body.note_id}"
-                if body.source == "note"
-                else f"material:{body.material_id}"
-                if body.source == "material"
+                WsTopic.note(body.note_id)
+                if body.source == "note" and body.note_id is not None
+                else WsTopic.material(body.material_id)
+                if body.source == "material" and body.material_id is not None
                 else None
             ),
             content=content,

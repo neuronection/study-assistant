@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from ...core.vocab import WsTopic
 from ...domain.models import Material, MaterialSource
 from ...jobs.runner import JobRunner
 from ..content.sources import SourcesError, SourcesService
@@ -107,5 +108,5 @@ class ScanScheduler:
                     session.commit()
             return None
         self._jobs.wake()
-        self._publish(f"source:{source_id}", {"event": "scanned", **stats})
+        self._publish(WsTopic.source(source_id), {"event": "scanned", **stats})
         return stats

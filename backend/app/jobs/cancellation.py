@@ -4,11 +4,12 @@ from typing import Any, cast
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from ..core.vocab import JobStatus
 from ..domain.models import Job, utcnow
 
 CANCELLED_ERROR = "source deleted before this job finished"
 
-_active_statuses = ("queued", "running")
+_active_statuses = (JobStatus.QUEUED, JobStatus.RUNNING)
 
 _cancel_flags: dict[int, threading.Event] = {}
 _flags_lock = threading.Lock()
@@ -89,7 +90,7 @@ def cancel_jobs_for(
         claimed = session.execute(
             update(Job)
             .where(Job.id == job.id, Job.status == "queued")
-            .values(status="cancelled", error=CANCELLED_ERROR, finished_at=utcnow())
+            .values(status=JobStatus.CANCELLED, error=CANCELLED_ERROR, finished_at=utcnow())
         )
         session.commit()
         if int(cast(Any, claimed).rowcount or 0):

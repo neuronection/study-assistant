@@ -5,6 +5,7 @@ import structlog
 from sqlalchemy import delete, func
 from sqlalchemy.orm import Session
 
+from ..core.vocab import JobStatus
 from ..domain.models import Job, utcnow
 
 logger = structlog.get_logger(__name__)
@@ -20,7 +21,7 @@ def prune_done_jobs(
     with session_factory() as session:
         result = session.execute(
             delete(Job).where(
-                Job.status == "done",
+                Job.status == JobStatus.DONE,
                 func.coalesce(Job.finished_at, Job.created_at) < cutoff,
             )
         )

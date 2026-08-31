@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ...core.vocab import AttemptMode
 from ...domain.models import (
     Activity,
     Answer,
@@ -55,7 +56,7 @@ def answer_rows(
         .join(Question, Answer.question_id == Question.id)
         .join(Attempt, Answer.attempt_id == Attempt.id)
         .join(Activity, Attempt.activity_id == Activity.id)
-        .where(Activity.profile_id == profile_id, Attempt.mode != "exam")
+        .where(Activity.profile_id == profile_id, Attempt.mode != AttemptMode.EXAM.value)
     )
     if course_id is not None:
         statement = statement.where(Activity.course_id == course_id)

@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..core.events import EventBus
+from ..core.vocab import JobStatus, JobType, WsTopic
 from ..domain.models import Job, utcnow
 from .cancellation import (
     CANCELLED_ERROR,
@@ -82,11 +83,11 @@ class JobRunner:
         return job_type in self._handlers
 
     def retriable_handlers(self) -> frozenset[str]:
-        return frozenset(self._handlers) - {"chat_turn"}
+        return frozenset(self._handlers) - {JobType.CHAT_TURN}
 
     def publish_progress(self, job_id: int, progress: int, stage: str, status: str) -> None:
         self._bus.publish_threadsafe(
-            f"jobs:{job_id}", {"progress": progress, "stage": stage, "status": status}
+            WsTopic.jobs(job_id), {"progress": progress, "stage": stage, "status": status}
         )
 
     def _reclaim_interrupted(self) -> int:
@@ -94,7 +95,7 @@ class JobRunner:
             result = session.execute(
                 update(Job)
                 .where(Job.status == "running")
-                .values(status="failed", error=INTERRUPTED_ERROR, finished_at=utcnow())
+                .values(status=JobStatus.FAILED, error=INTERRUPTED_ERROR, finished_at=utcnow())
             )
             session.commit()
             return int(cast(Any, result).rowcount or 0)
@@ -114,7 +115,7 @@ class JobRunner:
         earlier = session.scalars(
             select(Job)
             .where(
-                Job.status.in_(["queued", "running"]),
+                Job.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
                 Job.id < job.id,
                 Job.type == job.type,
             )
@@ -127,7 +128,7 @@ class JobRunner:
         with self._session_factory() as session:
             candidates = session.scalars(
                 select(Job)
-                .where(Job.status == "queued")
+                .where(Job.status == JobStatus.QUEUED)
                 .order_by(Job.id)
                 .limit(25)
             ).all()
@@ -136,7 +137,7 @@ class JobRunner:
                     continue
                 claimed = session.execute(
                     update(Job)
-                    .where(Job.id == job.id, Job.status == "queued")
+                    .where(Job.id == job.id, Job.status == JobStatus.QUEUED)
                     .values(status="running", started_at=utcnow())
                 )
                 session.commit()
@@ -196,7 +197,7 @@ class JobRunner:
                 job_row = session.get(Job, job_id)
                 if job_row is None:
                     return
-                if job_row.status != "running":
+                if job_row.status != JobStatus.RUNNING:
                     return
 
                 def report(progress: int, stage: str) -> None:
@@ -212,8 +213,8 @@ class JobRunner:
                         raise JobError(f"no handler registered for job type '{job_type}'")
                     handler(session, job_row, report)
                     session.expire(job_row, ["status", "progress", "stage", "finished_at"])
-                    if job_row.status == "running":
-                        job_row.status = "done"
+                    if job_row.status == JobStatus.RUNNING:
+                        job_row.status = JobStatus.DONE
                         job_row.progress = 100
                         job_row.finished_at = utcnow()
                         session.commit()
@@ -241,18 +242,18 @@ class JobRunner:
             cancelled = session.get(Job, job_id)
             if cancelled is None:
                 return
-            if cancelled.status not in ("queued", "running"):
+            if cancelled.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
                 return
-            cancelled.status = "cancelled"
+            cancelled.status = JobStatus.CANCELLED
             cancelled.error = str(error)[:4000]
             cancelled.finished_at = utcnow()
             session.commit()
             self._bus.publish_threadsafe(
-                f"jobs:{job_id}",
+                WsTopic.jobs(job_id),
                 {
                     "progress": cancelled.progress or 0,
                     "stage": "cancelled",
-                    "status": "cancelled",
+                    "status": JobStatus.CANCELLED,
                 },
             )
             logger.info("job_cancelled", job_id=job_id)
@@ -262,23 +263,23 @@ class JobRunner:
             failed = session.get(Job, job_id)
             if failed is None:
                 return
-            failed.status = "failed"
+            failed.status = JobStatus.FAILED
             failed.error = str(error)[:4000]
             failed.finished_at = utcnow()
             session.commit()
             self._bus.publish_threadsafe(
-                f"jobs:{job_id}",
+                WsTopic.jobs(job_id),
                 {
                     "progress": failed.progress or 0,
                     "stage": "failed",
-                    "status": "failed",
+                    "status": JobStatus.FAILED,
                     "error": str(error)[:500],
                 },
             )
 
     @staticmethod
     def enqueue(session: Session, job_type: str, payload: dict[str, Any]) -> Job:
-        job = Job(type=job_type, payload=payload, status="queued", progress=0)
+        job = Job(type=job_type, payload=payload, status=JobStatus.QUEUED, progress=0)
         session.add(job)
         session.flush()
         return job

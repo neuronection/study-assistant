@@ -14,6 +14,7 @@ from ..ai.gateway import ProviderError
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS
 from ..core.events import EventBus
+from ..core.vocab import WsTopic
 from ..domain.models import (
     AiInteraction,
     ChatMessage,
@@ -859,7 +860,7 @@ def make_chat_turn_handler(gateway: Any, embedder: Any, bus: EventBus) -> JobHan
             service.chain_under_later_reply(pending)
 
             def emit(event: dict[str, Any]) -> None:
-                bus.publish_threadsafe(f"chat:{chat_session.id}", event)
+                bus.publish_threadsafe(WsTopic.chat(chat_session.id), event)
 
             stop_event = _register_stop_event(chat_session.id)
             try:

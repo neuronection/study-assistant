@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ...core.vocab import MaterialStatus
 from ...domain.models import (
     Blob,
     Course,
@@ -319,7 +320,7 @@ class SourcesService:
                 Material.profile_id == profile_id,
                 Material.course_id == source.course_id,
                 Material.content_hash == content_hash,
-                Material.status != "failed",
+                Material.status != MaterialStatus.FAILED,
             )
         ).first()
         if duplicate is not None:
@@ -359,7 +360,7 @@ class SourcesService:
             stat = path.stat()
             material = known.get(key)
             if material is not None and material.status == "missing":
-                material.status = "pending"
+                material.status = MaterialStatus.PENDING
                 material.file_mtime = stat.st_mtime
                 material.file_size = stat.st_size
                 stats["updated"] += 1
@@ -387,7 +388,7 @@ class SourcesService:
                     Material.profile_id == profile_id,
                     Material.course_id == source.course_id,
                     Material.content_hash == content_hash,
-                    Material.status != "failed",
+                    Material.status != MaterialStatus.FAILED,
                 )
             ).first()
             if duplicate is not None:
@@ -397,7 +398,7 @@ class SourcesService:
                     duplicate.file_mtime = stat.st_mtime
                     duplicate.file_size = stat.st_size
                     if duplicate.status == "missing":
-                        duplicate.status = "ready"
+                        duplicate.status = MaterialStatus.READY
                     stats["moved"] += 1
                 else:
                     stats["unchanged"] += 1
@@ -452,7 +453,7 @@ class SourcesService:
             blob_sha=sha,
             filename=path.name,
             mime=None,
-            status="pending",
+            status=MaterialStatus.PENDING,
             content_hash=content_hash,
             source_id=source.id,
             external_path=str(path),
@@ -471,5 +472,5 @@ class SourcesService:
         material.content_hash = content_hash
         material.file_mtime = stat.st_mtime
         material.file_size = stat.st_size
-        material.status = "pending"
+        material.status = MaterialStatus.PENDING
         self._session.flush()

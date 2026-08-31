@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..core import secrets
+from ..core.vocab import Capability
 from ..domain.models import (
     AiModel,
     CourseDefaultTaskAssignment,
@@ -19,7 +20,7 @@ from ..domain.models import (
 
 PROVIDER_TYPES = ("google", "openai_compatible", "anthropic")
 
-DEFAULT_REQUIRES = ("text", "vision", "embeddings", "audio")
+DEFAULT_REQUIRES = tuple(c.value for c in Capability)
 
 DEFAULT_BASE_URLS: dict[str, str] = {
     "google": "https://generativelanguage.googleapis.com",

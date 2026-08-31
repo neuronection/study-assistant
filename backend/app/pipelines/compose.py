@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import LLMGateway, ProviderError
 from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import COMPOSE_SYSTEM
+from ..core.vocab import ProvenanceKind
 from ..domain.models import Extraction, Material, MaterialLink, Note, TreeNode
 from ..services.content.materials import MaterialsService
 from ..services.knowledge.context import ContextBundle
@@ -355,7 +356,7 @@ class ComposeService:
             content=f"# {doc_title}\n\n{markdown}",
         )
         provenance: dict[str, object] = {
-            "source": "ai-composed",
+            "source": ProvenanceKind.AI_COMPOSED,
             "kind": kind,
             "model": result.model_label,
         }
@@ -407,7 +408,7 @@ class ComposeService:
             content=f"# {title}\n\n{markdown}",
         )
         material.provenance = {
-            "source": "ai-composed",
+            "source": ProvenanceKind.AI_COMPOSED,
             "kind": kind,
             "model": model_label,
         }

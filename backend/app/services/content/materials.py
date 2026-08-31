@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from ...core.vocab import MaterialKind
 from ...domain.models import (
     Blob,
     Chunk,
@@ -26,14 +27,14 @@ from ...storage.fts import delete_material_fts, sync_material_fts
 from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs
 
 KIND_BY_SUFFIX: dict[str, str] = {
-    ".pdf": "pdf",
-    ".png": "image",
-    ".jpg": "image",
-    ".jpeg": "image",
-    ".webp": "image",
-    ".md": "md",
-    ".markdown": "md",
-    ".txt": "txt",
+    ".pdf": MaterialKind.PDF,
+    ".png": MaterialKind.IMAGE,
+    ".jpg": MaterialKind.IMAGE,
+    ".jpeg": MaterialKind.IMAGE,
+    ".webp": MaterialKind.IMAGE,
+    ".md": MaterialKind.MD,
+    ".markdown": MaterialKind.MD,
+    ".txt": MaterialKind.TXT,
 }
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -41,7 +42,7 @@ MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 
 def detect_kind(filename: str) -> str:
     suffix = PurePosixPath(filename.lower()).suffix
-    return KIND_BY_SUFFIX.get(suffix, "doc")
+    return KIND_BY_SUFFIX.get(suffix, MaterialKind.DOC)
 
 
 def purge_material(session: Session, material: Material) -> None:

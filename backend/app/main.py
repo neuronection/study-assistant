@@ -23,6 +23,7 @@ from .core.config import Settings, get_settings
 from .core.events import EventBus
 from .core.logging import setup_logging
 from .core.profile_context import reset_active_profile, set_active_profile
+from .core.vocab import WsTopic
 from .jobs.runner import JobRunner
 from .ocr.gateway_ocr import GatewayOcr
 from .pipelines.drawing_ocr import make_drawing_ocr_handler
@@ -204,7 +205,7 @@ def create_app(
         chat_session_id = (job.payload or {}).get("chat_session_id")
         if chat_session_id is None:
             return None
-        return f"chat:{chat_session_id}"
+        return WsTopic.chat(chat_session_id)
 
     app.state.jobs = JobRunner(
         app.state.session_factory,

@@ -4,6 +4,7 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import TaskUnassigned
+from ..core.vocab import MaterialKind, MaterialStatus
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
@@ -124,7 +125,7 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
         if material is None:
             raise JobError(f"material {material_id} not found")
 
-        material.status = "processing"
+        material.status = MaterialStatus.PROCESSING
         session.commit()
         report(10, "reading file")
 
@@ -156,12 +157,12 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
                 return
             fresh = session.get(Material, material_id)
             if fresh is not None:
-                fresh.status = "failed"
+                fresh.status = MaterialStatus.FAILED
                 session.commit()
 
         try:
             markdown: str = ""
-            if material.kind == "pdf":
+            if material.kind == MaterialKind.PDF:
                 report(30, "extracting pdf text")
                 text_markdown, pages, has_text_layer = extract_pdf_text(data)
                 if has_text_layer:
@@ -177,13 +178,13 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
                     _store_extraction(
                         session, material, extractor="ocr", markdown=markdown, pages=pages
                     )
-            elif material.kind in ("md", "txt"):
+            elif material.kind in (MaterialKind.MD, MaterialKind.TXT):
                 report(60, "building extraction")
                 markdown = data.decode("utf-8", errors="replace")
                 _store_extraction(
                     session, material, extractor="native", markdown=markdown, pages=None
                 )
-            elif material.kind == "image":
+            elif material.kind == MaterialKind.IMAGE:
                 mime = material.mime or "image/png"
                 markdown = ocr_images([(data, mime)], 20, 60)
                 _store_extraction(session, material, extractor="ocr", markdown=markdown, pages=1)
@@ -196,7 +197,7 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
         report(80, "indexing")
         _sync_fts(session, material, markdown)
         ensure_target_exists(session, Material, int(material_id), "material")
-        material.status = "ready"
+        material.status = MaterialStatus.READY
         from ..jobs.runner import JobRunner
 
         JobRunner.enqueue(
