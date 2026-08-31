@@ -335,6 +335,18 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **refactor(ui): plan 55-D — WS topics and localStorage keys are
+  single-sourced.** New `lib/constants.ts`: `WsTopic` builders mirroring the
+  backend's `core/vocab.py` factories (jobs/chat/source/note/material — every
+  publish/subscribe site now goes through them; the ChatPanel session topic
+  coerces its id explicitly) and `storageKeys` (the 12 real `ca-*` localStorage
+  keys — profile/course/onboarding/quiz-shuffle/chat prefs/view toggles/sidebar
+  state) replacing every literal. The `ca-material://`/`ca-drawing://` link
+  schemes and the SVG gradient id are intentionally untouched (wire formats and
+  SVG ids, not storage). New `constants.test.ts` pins the topic strings against
+  the backend's values and the `ca-` prefix/uniqueness invariant. Frontend 815
+  tests green.
+
 - 2026-08-31 — **feat(types): plan 55-B — the frontend contract is now
   generated from OpenAPI, with drift guards in CI (ADR-129).**
   `scripts/export-openapi.py` boots `create_app` against a throwaway data dir
