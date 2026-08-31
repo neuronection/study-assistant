@@ -30,6 +30,10 @@ jobs:
       - run: uv run --directory backend alembic upgrade head
         env:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data
+      - name: OpenAPI schema drift guard
+        run: |
+          uv run --directory backend python scripts/export-openapi.py
+          git diff --exit-code -- frontend/openapi.json
 
   frontend:
     runs-on: ubuntu-latest
@@ -43,6 +47,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generated API types drift guard
+        run: |
+          pnpm --filter frontend exec openapi-typescript openapi.json -o src/lib/api-schema.d.ts
+          git diff --exit-code -- frontend/src/lib/api-schema.d.ts
       - run: pnpm --filter frontend lint
       - run: pnpm --filter frontend typecheck
       - run: pnpm --filter frontend test

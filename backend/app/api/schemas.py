@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from ..core.vocab import MaterialKind, MaterialStatus
+
 MODEL_CAPS = ("text", "vision", "tools", "embeddings", "audio")
 
 
@@ -165,8 +167,8 @@ class CourseDefaultTaskOut(BaseModel):
 class MaterialOut(BaseModel):
     id: int
     title: str
-    kind: str
-    status: str
+    kind: MaterialKind
+    status: MaterialStatus
     filename: str
     mime: str | None
     pages: int | None

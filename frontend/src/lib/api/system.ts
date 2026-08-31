@@ -1,10 +1,7 @@
+import type { components } from '@/lib/api-schema'
 import { json, apiFetch } from './client'
 
-export interface Health {
-  status: string
-  version: string
-  db: string
-}
+export type Health = components['schemas']['HealthResponse']
 
 export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> {
   const response = await fetchFn('/api/v1/health')

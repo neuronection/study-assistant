@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError, TaskUnassigned
+from ..core.vocab import MaterialKind, MaterialStatus
 from ..domain.models import Extraction, Material, MaterialDrawing
 from ..jobs.runner import JobRunner
 from ..services.content.drawings import (
@@ -74,8 +75,8 @@ def _to_out(material: Material) -> MaterialOut:
     return MaterialOut(
         id=material.id,
         title=material.title,
-        kind=material.kind,
-        status=material.status,
+        kind=MaterialKind(material.kind),
+        status=MaterialStatus(material.status),
         filename=material.filename,
         mime=material.mime,
         pages=material.pages,

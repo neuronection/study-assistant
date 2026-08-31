@@ -359,7 +359,7 @@ class SourcesService:
             seen.add(key)
             stat = path.stat()
             material = known.get(key)
-            if material is not None and material.status == "missing":
+            if material is not None and material.status == MaterialStatus.MISSING:
                 material.status = MaterialStatus.PENDING
                 material.file_mtime = stat.st_mtime
                 material.file_size = stat.st_size
@@ -397,7 +397,7 @@ class SourcesService:
                     duplicate.filename = path.name
                     duplicate.file_mtime = stat.st_mtime
                     duplicate.file_size = stat.st_size
-                    if duplicate.status == "missing":
+                    if duplicate.status == MaterialStatus.MISSING:
                         duplicate.status = MaterialStatus.READY
                     stats["moved"] += 1
                 else:
@@ -410,7 +410,7 @@ class SourcesService:
 
         for known_path, material in known.items():
             if known_path not in seen and not Path(str(known_path)).is_file():
-                material.status = "missing"
+                material.status = MaterialStatus.MISSING
                 stats["missing"] += 1
 
         source.last_scanned_at = utcnow()

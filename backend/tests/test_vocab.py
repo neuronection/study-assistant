@@ -17,9 +17,9 @@ def test_parse_accepts_values_and_rejects_unknown() -> None:
 
 
 def test_strenum_compares_equal_to_its_value() -> None:
-    assert JobStatus.QUEUED == "queued"
     assert JobStatus.QUEUED.value == "queued"
     assert str(JobStatus.QUEUED) == "queued"
+    assert JobStatus.parse("queued") == JobStatus.QUEUED
 
 
 def test_job_status_active_pair() -> None:

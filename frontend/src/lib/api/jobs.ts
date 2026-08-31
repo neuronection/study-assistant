@@ -1,20 +1,9 @@
+import type { components } from '@/lib/api-schema'
 import { json, apiFetch } from './client'
 
-export interface JobInfo {
-  id: number
-  type: string
-  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
-  progress: number
-  stage: string | null
-  error: string | null
-  label: string
-  material_id: number | null
-  retriable: boolean
-  stale: boolean
-  created_at: string | null
-  started_at: string | null
-  finished_at: string | null
-}
+type Schemas = components['schemas']
+
+export type JobInfo = Schemas['JobOut']
 
 export async function listJobs(params?: {
   status?: string
@@ -40,15 +29,7 @@ export async function listJobs(params?: {
   return json<JobInfo[]>(response)
 }
 
-export interface JobsSummary {
-  queued: number
-  running: number
-  failed: number
-  done: number
-  cancelled: number
-  failed_retryable: number
-  failed_stale: number
-}
+export type JobsSummary = Schemas['JobsSummary']
 
 export async function getJobsSummary(): Promise<JobsSummary> {
   const response = await apiFetch('/api/v1/jobs/summary')
@@ -75,10 +56,7 @@ export async function retryFailedJobs(types?: string[]): Promise<{ retried: numb
   return json<{ retried: number }>(response)
 }
 
-export interface JobTypeInfo {
-  type: string
-  label: string
-}
+export type JobTypeInfo = Schemas['JobTypeOut']
 
 export async function listJobTypes(): Promise<JobTypeInfo[]> {
   const response = await apiFetch('/api/v1/jobs/types')

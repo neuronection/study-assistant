@@ -90,3 +90,17 @@ def test_ci_workflow_installs_girepository_1_0_dev() -> None:
         "libgirepository-2.0-dev" not in workflow
     ), "ci workflow installs girepository-2.0; pygobject 3.50 needs gobject-introspection-1.0"
     assert "uv sync --frozen" in workflow
+
+
+def test_ci_workflow_guards_openapi_and_generated_types_drift() -> None:
+    workflow = _read(".github/workflows/ci.yml")
+    assert "export-openapi.py" in workflow, "backend job must regenerate the OpenAPI schema"
+    assert (
+        "git diff --exit-code -- frontend/openapi.json" in workflow
+    ), "backend job must guard schema drift"
+    assert (
+        "git diff --exit-code -- frontend/src/lib/api-schema.d.ts" in workflow
+    ), "frontend job must guard generated types drift"
+    assert (
+        "openapi-typescript openapi.json" in workflow
+    ), "frontend job must regenerate api-schema.d.ts"

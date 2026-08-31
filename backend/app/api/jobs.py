@@ -18,7 +18,7 @@ JOB_STATUSES = frozenset(status.value for status in JobStatus)
 class JobOut(BaseModel):
     id: int
     type: str
-    status: str
+    status: JobStatus
     progress: int
     stage: str | None
     error: str | None
@@ -183,7 +183,7 @@ def _to_out(
     return JobOut(
         id=job.id,
         type=job.type,
-        status=job.status,
+        status=JobStatus(job.status),
         progress=job.progress,
         stage=job.stage,
         error=job.error,

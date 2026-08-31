@@ -43,6 +43,7 @@ class MaterialStatus(StrVocab):
     PROCESSING = "processing"
     READY = "ready"
     FAILED = "failed"
+    MISSING = "missing"
 
 
 class AttemptMode(StrVocab):
