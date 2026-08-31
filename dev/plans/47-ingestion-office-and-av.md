@@ -1,6 +1,8 @@
 # Plan 47 — Ingestion breadth: office/web formats + lecture audio/video (user request 2026-08-31)
 
-Status: planned (2026-08-31, user-approved) · Phase: post-1.0 · Suggested order: A → B → C → D
+Status: **COMPLETE (2026-08-31 — A, B, C, D all landed; backend 807 · frontend 820 green)** · Phase: post-1.0
+
+As-built notes: A landed with `GET /materials/accepted` (preferred over a duplicated constant), `SourcesService.scan` now returns a `ScanReport` (stats + per-file `skipped` surfaced in `POST /sources/{id}/scan`), and unsupported browse-ingests get the same machine 422 as uploads. B's math placeholder is a visible `[math-block]` token (html2text drops HTML comments); `ca-image://{id}` is the embedded-image ref scheme, with `image_ref` blocks in the extraction block model and a `resolveImage` resolver on `BlockRenderer`; EPUB images are not extracted in v1 (text-focused; documented). C extracted images for docx (mammoth image handler), pptx (slide pictures) and html (data-URIs only; external URLs pass through); converters live in `app/pipelines/convert/` with `ImageStore` collecting rows and enqueueing `image_ocr` inside the ingest transaction; derive copies image rows + remaps refs like drawings. D: mutagen metadata lives on the material row (0049 `duration_sec`/`bitrate_kbps`); the pre-flight warning rides `MaterialUploadOut.warnings` (machine code `transcribe_size_exceeded`) rendered i18n-side by the upload dropzone; Google inline STT rejects video mimes explicitly (the provider-rejection reason surfaces in the failed job's error).
 
 ## Context
 

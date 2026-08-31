@@ -366,7 +366,11 @@ construction. **Phase 11 complete.**
 
 **Planned rounds (audit 2026-08-31, user-approved):**
 
-- **Plan 47** — ingestion breadth: DOCX/PPTX/EPUB/HTML converters (B10) + lecture
+- **Plan 47 — COMPLETE (2026-08-31)** — as-built: A upload honesty (422 + accepted
+  endpoint + scan skips), B converter core + `material_images` (0048) + `image_ocr`,
+  C docx/pptx/epub/html ingest branches, D AV transcription (0049 AV metadata,
+  mutagen pre-flight warning). Backend 807 · frontend 820 at close. Original line:
+  ingestion breadth: DOCX/PPTX/EPUB/HTML converters (B10) + lecture
   audio/video ingestion via the `transcribe` task (B13); unsupported uploads now 422
   at the door (ADR-103/104).
 - **Plan 48** — local-first AI engines: llama.cpp / LM Studio presets, local-engine
@@ -387,11 +391,11 @@ construction. **Phase 11 complete.**
 - **Plan 53** — planner & expression: study planner (H5) + exam-readiness forecast
   (H6), Quiz-me mode with server-side deterministic grading (F5), teach-back, TTS
   read-aloud (I14), print/PDF template engine (I16) (ADR-118…121).
-- **Plan 54** — consolidation & hardening (**runs first**): cancel-on-purge +
+- **Plan 54 — COMPLETE (2026-08-31)** — as-built: cancellation + structural seams + flake hygiene all landed (ADR-126/127; backend 782 at close). Original line: consolidation & hardening (**ran first**): cancel-on-purge +
   `cancelled` job status + commit-time stale checks (the deferred
   delete-during-ingest fix), mechanical splits of `lib/api.ts` / `domain/models.py`
   / `services/` behind stable import paths, flake-class hygiene (ADR-126/127).
-- **Plan 55** — code quality & typed contracts (**after 54, before features**):
+- **Plan 55 — COMPLETE (2026-08-31)** — as-built: A/B/C/D/E all landed (ADR-128…130); every JSON endpoint typed, frontend contract generated, assistant-ui round 2 adopted. Original line: code quality & typed contracts (**after 54, before features**):
   StrEnum vocabularies over string matching (ADR-128), OpenAPI-generated frontend
   types + CI drift guard (ADR-129), typed service/API boundaries (ADR-130), shared
   constants, assistant-ui adoption round 2. No-comments rule reaffirmed.
