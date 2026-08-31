@@ -17,7 +17,8 @@ without touching app code.
 │      │               knowledge/ (courses, tree, concepts, context),   │
 │      │               platform/ (chat, skills, backup, trash, …),      │
 │      │               search/ (hybrid FTS⊕vec engine)                  │
-│      ├─ pipelines/   ingest, postprocess, drawing_ocr, quizgen       │
+│      ├─ pipelines/   ingest, postprocess, drawing_ocr, image_ocr,   │
+│      │   quizgen, convert/                                          │
 │      │               compose (AI-composed material)                  │
 │      ├─ ai/          gateway (LangChain chat models behind LLMGateway),   │
 │      │              providers/tasks, chat_models, types,                  │
@@ -46,7 +47,7 @@ without touching app code.
 | `domain/` | SQLAlchemy 2 models in a package (54-C): `models/core.py` (profiles/courses/tree), `models/content.py`, `models/study.py`, `models/chat.py`, `models/ops.py` (jobs/analytics/trash/skills) — `models/__init__` re-exports everything; single source of truth for Alembic autogen |
 | `services/` | Business logic over the models, grouped by domain (54-D): `content/`, `study/`, `knowledge/`, `platform/`, `search/` (see ai.md / features.md for behavior) |
 | `core/vocab.py` | StrEnum vocabularies (55-A, ADR-128): JobStatus/JobType/MaterialKind/MaterialStatus/AttemptMode/ComposeKind/Capability/ProvenanceKind + `WsTopic` factories — closed sets never appear as bare literals; DB columns stay strings |
-| `pipelines/` | Multi-step flows: ingest (PDF text / OCR / native), postprocess (embed + index cards), drawing_ocr (background drawing transcription, ADR-102), quizgen (blueprint → LLM → validate → repair) |
+| `pipelines/` | Multi-step flows: ingest (PDF text / OCR / native / office-web conversion via `convert/` / AV transcription, plan 47 ADR-103/104), postprocess (embed + index cards), drawing_ocr + image_ocr (background transcription of drawings and extracted document images, ADR-102/103), quizgen (blueprint → LLM → validate → repair) |
 | `ai/` | Model layer — see [ai.md](ai.md) |
 | `math/` | Deterministic math trust layer — see [math-verification.md](math-verification.md) |
 | `ocr/` | `OcrEngine` interface; `GatewayOcr` routes page images through the `ocr` task (any assigned vision model); `imaging.py` caps the long edge and re-encodes payloads (WebP q85) before any vision call (ADR-102) |

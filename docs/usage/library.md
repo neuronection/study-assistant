@@ -94,6 +94,13 @@ cards; entering one scopes everything to it.
   spots appear as a `[math-block]` marker in the extraction for you to fix in
   the editor; embedded images (equation screenshots included) are extracted,
   shown in place, and sent to the **OCR** task so their text is searchable.
+- **Recordings become transcripts**: audio/video uploads are sent to the model
+  assigned to the **Transcribe** task and land as normal materials whose
+  extraction is the transcript (searchable, quotable, quiz-generatable), with
+  the source filename, duration and model noted at the top. Large recordings
+  are warned about **at upload** (most providers cap transcription around
+  25 MB) — use a local whisper server or split the file. Re-ingest
+  re-transcribes into a new version (handy after switching to a better model).
 - **Anything else is refused at the door** — uploading an unsupported type
   (`.doc`, `.rtf`, `.pages`, …) shows an instant "unsupported file type"
   message instead of creating a broken file. Legacy binary formats are not
