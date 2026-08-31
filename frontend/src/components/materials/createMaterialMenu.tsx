@@ -5,6 +5,7 @@ import { useRef } from 'react'
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
 import { pickFolder } from '@/components/materials/desktopFolder'
 import type { ContextMenuItem } from '@/components/ui/ContextMenu'
+import { useAcceptedTypes } from '@/lib/useAcceptedTypes'
 
 export function useCreateMaterialMenu({
   upload,
@@ -20,6 +21,7 @@ export function useCreateMaterialMenu({
   append?: ContextMenuItem[]
 }): { items: ContextMenuItem[]; inputs: ReactNode } {
   const { t } = useTranslation()
+  const accept = useAcceptedTypes()
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
 
@@ -59,6 +61,7 @@ export function useCreateMaterialMenu({
         ref={fileInput}
         type="file"
         multiple
+        accept={accept}
         hidden
         aria-label={t('library.uploadFilesPlain')}
         onChange={(event) => {

@@ -1,5 +1,7 @@
 import { ChevronDown, FileUp, FolderUp, Loader2, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+
+import { useAcceptedTypes } from '@/lib/useAcceptedTypes'
 import { useRef } from 'react'
 
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
@@ -22,6 +24,7 @@ export function UploadButton({
   className?: string
 }) {
   const { t } = useTranslation()
+  const accept = useAcceptedTypes()
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
   const pending = upload.uploading
@@ -32,6 +35,7 @@ export function UploadButton({
         ref={fileInput}
         type="file"
         multiple
+        accept={accept}
         className="hidden"
         aria-label={t('library.uploadFilesPlain')}
         onChange={(event) => {

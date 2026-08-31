@@ -335,6 +335,30 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(ingest): plan 47-A — upload honesty + converter
+  architecture (ADR-103, ADR-103/104 recorded).** The `doc` fallback is gone:
+  `detect_kind` now knows `KIND_BY_SUFFIX` (pdf/image/md/txt),
+  `CONVERTIBLE_SUFFIXES` (.docx/.pptx/.epub/.html/.htm → kinds docx/pptx/epub/
+  html) and `AV_SUFFIXES` (.mp3/.m4a/.wav/.ogg/.opus/.mpga → audio;
+  .webm/.mp4/.mpeg → video); unknown suffixes raise `UnsupportedMaterialError`
+  and the upload endpoint maps it to **422
+  `{reason: "unsupported_type", suffix, accepted}` — validated before the blob
+  is stored**, so nothing is written. New `GET /materials/accepted` publishes
+  the accepted list (`{suffixes, accept}`); the frontend file pickers
+  (dropzone, create menu, upload button) take their `accept` attribute from a
+  shared `useAcceptedTypes` query, and the upload error row renders the
+  reason i18n-keyed (`library.uploadUnsupportedType`) via `ApiError.detail` +
+  `unsupportedTypeDetail`. **Linked sources skip instead of failing**:
+  `SourcesService.scan` returns a `ScanReport` (stats + per-file `skipped`
+  reasons surfaced in `POST /sources/{id}/scan`), unsupported files are
+  counted and skipped before any material/blob is created, and browse-ingest
+  of an unsupported file gets the same 422. New kinds land in the generated
+  contract (`MaterialKind` union grows; `AcceptedTypesOut`, `ScanResult.skipped`).
+  `.doc`/.rtf/.pages stay unsupported on purpose — the 422 names them.
+  Tests: `test_upload_honesty.py` (6: kind matrix, accepted suffixes, 422
+  writes-nothing, accepted endpoint, scan skips + ingest 422, docx accepted).
+  Backend 790 · frontend 817 green.
+
 - 2026-08-31 — **feat(ui): plan 55-E — assistant-ui adoption round 2; plan 55
   COMPLETE.** The BlockRenderer's inline code copy button (the one verified
   local duplicate) is replaced by the library's `CopyButton` via new shim

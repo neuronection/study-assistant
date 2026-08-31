@@ -5,6 +5,8 @@ import {
   createFolder,
   listFolders,
   uploadMaterial,
+  ApiError,
+  unsupportedTypeDetail,
   type Folder,
   type UploadResult,
 } from '@/lib/api'
@@ -12,6 +14,23 @@ import {
 export interface MaterialUploadError {
   name: string
   message: string
+  reason?: string
+  suffix?: string
+}
+
+function toUploadError(name: string, error: unknown): MaterialUploadError {
+  if (error instanceof ApiError) {
+    const unsupported = unsupportedTypeDetail(error.detail)
+    if (unsupported !== null) {
+      return {
+        name,
+        message: error.message,
+        reason: unsupported.reason,
+        suffix: unsupported.suffix,
+      }
+    }
+  }
+  return { name, message: error instanceof Error ? error.message : String(error) }
 }
 
 export interface UploadItem {
@@ -165,10 +184,7 @@ export function useMaterialUpload({
           await queryClient.invalidateQueries({ queryKey: ['materials'] })
           await onUploaded?.(result, item)
         } catch (error) {
-          setErrors((current) => [
-            ...current,
-            { name: item.file.name, message: error instanceof Error ? error.message : String(error) },
-          ])
+          setErrors((current) => [...current, toUploadError(item.file.name, error)])
         }
       }
       if (foldersCreated) {

@@ -5,6 +5,7 @@ import { useRef, useState, type DragEvent } from 'react'
 import type { MaterialUploadController } from '@/components/materials/materialUpload'
 import { pickFolder } from '@/components/materials/desktopFolder'
 import { resolveDropItems } from '@/components/materials/dropFiles'
+import { useAcceptedTypes } from '@/lib/useAcceptedTypes'
 import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +23,7 @@ export function MaterialUploadDropzone({
   className?: string
 }) {
   const { t } = useTranslation()
+  const accept = useAcceptedTypes()
   const [dragging, setDragging] = useState(false)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -103,6 +105,7 @@ export function MaterialUploadDropzone({
         ref={fileInput}
         type="file"
         multiple
+        accept={accept}
         className="hidden"
         aria-label={label ?? t('library.dropOrBrowse')}
         onChange={(event) => {
@@ -121,7 +124,11 @@ export function MaterialUploadDropzone({
       <p className="text-danger text-xs">
         {upload.errors
           .slice(0, 3)
-          .map((error) => t('library.uploadFailedName', { name: error.name }))
+          .map((error) =>
+            error.reason === 'unsupported_type'
+              ? t('library.uploadUnsupportedType', { name: error.name, suffix: error.suffix })
+              : t('library.uploadFailedName', { name: error.name })
+          )
           .join(' · ')}
         {upload.errors.length > 3
           ? ` ${t('library.uploadFailedMore', { count: upload.errors.length - 3 })}`

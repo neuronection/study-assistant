@@ -37,12 +37,47 @@ KIND_BY_SUFFIX: dict[str, str] = {
     ".txt": MaterialKind.TXT,
 }
 
+CONVERTIBLE_SUFFIXES: dict[str, str] = {
+    ".docx": MaterialKind.DOCX,
+    ".pptx": MaterialKind.PPTX,
+    ".epub": MaterialKind.EPUB,
+    ".html": MaterialKind.HTML,
+    ".htm": MaterialKind.HTML,
+}
+
+AV_SUFFIXES: dict[str, str] = {
+    ".mp3": MaterialKind.AUDIO,
+    ".m4a": MaterialKind.AUDIO,
+    ".wav": MaterialKind.AUDIO,
+    ".ogg": MaterialKind.AUDIO,
+    ".opus": MaterialKind.AUDIO,
+    ".mpga": MaterialKind.AUDIO,
+    ".webm": MaterialKind.VIDEO,
+    ".mp4": MaterialKind.VIDEO,
+    ".mpeg": MaterialKind.VIDEO,
+}
+
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
+
+
+class UnsupportedMaterialError(ValueError):
+    def __init__(self, suffix: str) -> None:
+        super().__init__(f"unsupported file type '{suffix}'")
+        self.suffix = suffix
+
+
+def accepted_suffixes() -> list[str]:
+    merged = {**KIND_BY_SUFFIX, **CONVERTIBLE_SUFFIXES, **AV_SUFFIXES}
+    return sorted(merged)
 
 
 def detect_kind(filename: str) -> str:
     suffix = PurePosixPath(filename.lower()).suffix
-    return KIND_BY_SUFFIX.get(suffix, MaterialKind.DOC)
+    for table in (KIND_BY_SUFFIX, CONVERTIBLE_SUFFIXES, AV_SUFFIXES):
+        kind = table.get(suffix)
+        if kind is not None:
+            return kind
+    raise UnsupportedMaterialError(suffix)
 
 
 def purge_material(session: Session, material: Material) -> None:
@@ -110,6 +145,7 @@ class MaterialsService:
                 raise ValueError("folder belongs to a different course")
             if folder.source_id is not None:
                 raise ValueError("cannot upload into a linked folder")
+        kind = detect_kind(filename)
         sha256 = self._blobs.put(data, mime=mime, session=self._session)
         existing = self._find_duplicate(
             profile_id, course_id, sha256.sha256, exclude_id=dedup_exclude_id
@@ -121,7 +157,7 @@ class MaterialsService:
             course_id=course_id,
             group_id=group_id,
             folder_id=folder_id,
-            kind=detect_kind(filename),
+            kind=kind,
             title=PurePosixPath(filename).stem or filename,
             blob_sha=sha256.sha256,
             filename=filename,

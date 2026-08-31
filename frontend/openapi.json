@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "AcceptedTypesOut": {
+        "properties": {
+          "accept": {
+            "title": "Accept",
+            "type": "string"
+          },
+          "suffixes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suffixes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "suffixes",
+          "accept"
+        ],
+        "title": "AcceptedTypesOut",
+        "type": "object"
+      },
       "ActionIn": {
         "properties": {
           "action": {
@@ -4375,7 +4396,13 @@
           "image",
           "md",
           "txt",
-          "doc"
+          "doc",
+          "docx",
+          "pptx",
+          "epub",
+          "html",
+          "audio",
+          "video"
         ],
         "title": "MaterialKind",
         "type": "string"
@@ -7911,6 +7938,13 @@
           "queued_jobs": {
             "title": "Queued Jobs",
             "type": "integer"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "array"
           },
           "stats": {
             "additionalProperties": {
@@ -15819,6 +15853,27 @@
           }
         },
         "summary": "Upload Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/accepted": {
+      "get": {
+        "operationId": "accepted_types_api_v1_materials_accepted_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedTypesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Accepted Types",
         "tags": [
           "materials"
         ]

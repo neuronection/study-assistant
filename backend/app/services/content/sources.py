@@ -4,6 +4,7 @@ import os
 import posixpath
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,7 @@ from ...domain.models import (
     MaterialSource,
     utcnow,
 )
-from .materials import detect_kind
+from .materials import UnsupportedMaterialError, detect_kind
 
 DEFAULT_GLOBS = ("*.pdf", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.md", "*.markdown", "*.txt")
 
@@ -28,6 +29,12 @@ MAX_BROWSE_DEPTH = 32
 
 class SourcesError(ValueError):
     pass
+
+
+@dataclass
+class ScanReport:
+    stats: dict[str, int]
+    skipped: list[str] = field(default_factory=list)
 
 
 def _iter_files(root: Path, recursive: bool, globs: list[str]) -> list[Path]:
@@ -314,6 +321,7 @@ class SourcesService:
             raise SourcesError("file not found in linked folder")
         if not _matches_globs(target.name, list(source.include_globs or DEFAULT_GLOBS)):
             raise SourcesError("file type is excluded by this source's filters")
+        kind = detect_kind(target.name)
         content_hash = _content_hash(target)
         duplicate = self._session.scalars(
             select(Material).where(
@@ -327,11 +335,11 @@ class SourcesService:
             return duplicate, True
         stat = target.stat()
         material = self._create_material(
-            profile_id, source, target, stat, content_hash
+            profile_id, source, target, stat, content_hash, kind=kind
         )
         return material, False
 
-    def scan(self, profile_id: int, source_id: int) -> dict[str, int]:
+    def scan(self, profile_id: int, source_id: int) -> ScanReport:
         source = self._session.get(MaterialSource, source_id)
         if source is None or source.profile_id != profile_id:
             raise SourcesError("source not found")
@@ -351,7 +359,8 @@ class SourcesService:
                 )
             )
         }
-        stats = {"new": 0, "updated": 0, "unchanged": 0, "missing": 0, "moved": 0}
+        stats = {"new": 0, "updated": 0, "unchanged": 0, "missing": 0, "moved": 0, "skipped": 0}
+        skipped: list[str] = []
         globs = list(source.include_globs or DEFAULT_GLOBS)
         seen: set[str] = set()
         for path in _iter_files(root, source.recursive, globs):
@@ -359,6 +368,13 @@ class SourcesService:
             seen.add(key)
             stat = path.stat()
             material = known.get(key)
+            if material is None:
+                try:
+                    detect_kind(path.name)
+                except UnsupportedMaterialError as error:
+                    stats["skipped"] += 1
+                    skipped.append(f"{path.name}: unsupported type ({error.suffix})")
+                    continue
             if material is not None and material.status == MaterialStatus.MISSING:
                 material.status = MaterialStatus.PENDING
                 material.file_mtime = stat.st_mtime
@@ -416,7 +432,7 @@ class SourcesService:
         source.last_scanned_at = utcnow()
         source.last_scan_error = None
         self._session.flush()
-        return stats
+        return ScanReport(stats=stats, skipped=skipped)
 
     def _store_blob(self, path: Path) -> str:
         data = path.read_bytes()
@@ -443,12 +459,15 @@ class SourcesService:
         path: Path,
         stat: Any,
         content_hash: str,
+        kind: str | None = None,
     ) -> Material:
+        if kind is None:
+            kind = detect_kind(path.name)
         sha = self._store_blob(path)
         material = Material(
             profile_id=profile_id,
             course_id=source.course_id,
-            kind=detect_kind(path.name),
+            kind=kind,
             title=path.stem,
             blob_sha=sha,
             filename=path.name,

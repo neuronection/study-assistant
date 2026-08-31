@@ -18,7 +18,12 @@ from ..services.content.drawings import (
     pending_ocr_job_id,
     strip_drawing_refs,
 )
-from ..services.content.materials import MaterialsService, purge_material
+from ..services.content.materials import (
+    MaterialsService,
+    UnsupportedMaterialError,
+    accepted_suffixes,
+    purge_material,
+)
 from ..services.knowledge.courses import StructureService
 from ..services.platform.profiles import ensure_default_profile
 from .courses_schemas import ViaFolderOut
@@ -160,6 +165,15 @@ async def upload_material(
             course_id=course_id,
             folder_id=folder_id,
         )
+    except UnsupportedMaterialError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "reason": "unsupported_type",
+                "suffix": error.suffix,
+                "accepted": accepted_suffixes(),
+            },
+        ) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     job_id: int | None = None
@@ -169,6 +183,17 @@ async def upload_material(
     return MaterialUploadOut(
         material=_to_out(material), job_id=job_id, deduped=deduped
     )
+
+
+class AcceptedTypesOut(BaseModel):
+    suffixes: list[str]
+    accept: str
+
+
+@router.get("/accepted", response_model=AcceptedTypesOut)
+def accepted_types() -> AcceptedTypesOut:
+    suffixes = accepted_suffixes()
+    return AcceptedTypesOut(suffixes=suffixes, accept=",".join(suffixes))
 
 
 class ComposeIn(BaseModel):

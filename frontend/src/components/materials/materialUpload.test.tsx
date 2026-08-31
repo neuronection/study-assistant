@@ -7,9 +7,12 @@ import { collectDropFiles } from './dropFiles'
 import { useMaterialUpload, type MaterialUploadController } from './materialUpload'
 import type { Folder, UploadResult } from '@/lib/api'
 
+import { ApiError } from '@/lib/api'
+
 const uploadMaterial = vi.fn()
 const listFolders = vi.fn()
 const createFolder = vi.fn()
+const getAcceptedTypes = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -19,6 +22,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listFolders: (...args: unknown[]) => listFolders(...(args as [number?])),
     createFolder: (...args: unknown[]) =>
       createFolder(...(args as [string, number | null, number])),
+    getAcceptedTypes: (...args: unknown[]) => getAcceptedTypes(...(args as [])),
   }
 })
 
@@ -99,6 +103,8 @@ describe('useMaterialUpload', () => {
     uploadMaterial.mockReset()
     listFolders.mockReset()
     createFolder.mockReset()
+    getAcceptedTypes.mockReset()
+    getAcceptedTypes.mockResolvedValue({ suffixes: ['.pdf', '.docx'], accept: '.pdf,.docx' })
   })
 
   test('uploads each file sequentially, invalidates, and keeps going after per-file errors', async () => {
@@ -127,6 +133,30 @@ describe('useMaterialUpload', () => {
     expect(held?.errors).toEqual([{ name: 'bad.pdf', message: 'boom' }])
     expect(held?.uploading).toBe(false)
     expect(held?.currentName).toBeNull()
+  })
+
+  test('file input carries the accepted types as its accept attribute', async () => {
+    renderHarness({ courseId: 1 })
+    const input = screen.getByLabelText('Drop files here or click to browse')
+    await waitFor(() => expect(input.getAttribute('accept')).toBe('.pdf,.docx'))
+  })
+
+  test('an unsupported-type 422 renders the suffix-specific reason', async () => {
+    listFolders.mockResolvedValue([])
+    uploadMaterial.mockRejectedValue(
+      new ApiError('unsupported file type (.rtf)', 422, {
+        reason: 'unsupported_type',
+        suffix: '.rtf',
+        accepted: ['.pdf'],
+      })
+    )
+    renderHarness({ courseId: 1 })
+
+    await act(async () => {
+      await held?.uploadFiles([file('notes.rtf')])
+    })
+
+    expect(await screen.findByText('notes.rtf: unsupported file type (.rtf)')).toBeInTheDocument()
   })
 
   test('no-ops without a course', async () => {

@@ -1,10 +1,30 @@
 export class ApiError extends Error {
   status: number
+  detail: unknown
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, detail?: unknown) {
     super(message)
     this.status = status
+    this.detail = detail
   }
+}
+
+export interface UnsupportedTypeDetail {
+  reason: 'unsupported_type'
+  suffix: string
+  accepted: string[]
+}
+
+export function unsupportedTypeDetail(detail: unknown): UnsupportedTypeDetail | null {
+  if (
+    detail !== null &&
+    typeof detail === 'object' &&
+    !Array.isArray(detail) &&
+    (detail as { reason?: unknown }).reason === 'unsupported_type'
+  ) {
+    return detail as UnsupportedTypeDetail
+  }
+  return null
 }
 
 export function apiDetailMessage(detail: unknown): string | null {
@@ -40,6 +60,7 @@ export async function json<T>(response: Response): Promise<T> {
     throw new ApiError(
       apiDetailMessage(body?.detail) ?? `request failed: ${response.status}`,
       response.status,
+      body?.detail,
     )
   }
   return (await response.json()) as T
@@ -51,6 +72,7 @@ export async function expectOk(response: Response): Promise<void> {
     throw new ApiError(
       apiDetailMessage(body?.detail) ?? `request failed: ${response.status}`,
       response.status,
+      body?.detail,
     )
   }
 }

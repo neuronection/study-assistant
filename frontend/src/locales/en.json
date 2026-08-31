@@ -464,6 +464,7 @@
     "uploadFolderShort": "Folder",
     "uploadingName": "Uploading {{name}}…",
     "uploadFailedName": "{{name}} failed",
+    "uploadUnsupportedType": "{{name}}: unsupported file type ({{suffix}})",
     "uploadFailedMore": "+{{count}} more",
     "allCoursesScope": "All courses",
     "scopedTo": "Course library",

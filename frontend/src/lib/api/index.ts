@@ -93,6 +93,7 @@ export {
   blobUrl,
   getActiveProfile,
   setActiveProfile,
+  unsupportedTypeDetail,
 } from './client'
 
 export type {
@@ -239,6 +240,7 @@ export {
 } from './jobs'
 
 export type {
+  AcceptedTypes,
   BlockDto,
   ComposeKind,
   ComposedMaterial,
@@ -260,6 +262,7 @@ export type {
 export {
   COMPOSE_KINDS,
   addMaterialDrawing,
+  getAcceptedTypes,
   allocateMaterial,
   allocateNodeFolder,
   assignCourseMaterial,

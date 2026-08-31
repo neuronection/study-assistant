@@ -1,4 +1,9 @@
+import type { components } from '@/lib/api-schema'
 import { ApiError, json, expectOk, apiFetch } from './client'
+
+type Schemas = components['schemas']
+
+export type AcceptedTypes = Schemas['AcceptedTypesOut']
 import type { NoteDrawingInfo } from './notes'
 
 export interface Material {
@@ -549,4 +554,9 @@ export async function deleteMaterialDrawing(
     method: 'DELETE',
   })
   return json<MaterialDetail>(response)
+}
+
+export async function getAcceptedTypes(): Promise<AcceptedTypes> {
+  const response = await apiFetch('/api/v1/materials/accepted')
+  return json<AcceptedTypes>(response)
 }

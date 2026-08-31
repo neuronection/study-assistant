@@ -36,6 +36,12 @@ class MaterialKind(StrVocab):
     MD = "md"
     TXT = "txt"
     DOC = "doc"
+    DOCX = "docx"
+    PPTX = "pptx"
+    EPUB = "epub"
+    HTML = "html"
+    AUDIO = "audio"
+    VIDEO = "video"
 
 
 class MaterialStatus(StrVocab):

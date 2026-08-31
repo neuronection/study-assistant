@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ..core.vocab import MaterialKind, MaterialStatus
 from ..domain.models import Material, MaterialSource
 from ..jobs.runner import JobRunner
+from ..services.content.materials import UnsupportedMaterialError, accepted_suffixes
 from ..services.content.sources import SourcesError, SourcesService
 from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
@@ -97,6 +98,7 @@ def _source_out(session: Session, source: MaterialSource, material_count: int = 
 class ScanResult(BaseModel):
     stats: dict[str, int]
     queued_jobs: int
+    skipped: list[str] = Field(default_factory=list)
 
 
 @router.get("", response_model=list[SourceOut])
@@ -189,6 +191,15 @@ def ingest_source_file(
     service = SourcesService(session, request.app.state.settings.blobs_dir)
     try:
         material, deduped = service.ingest_file(profile.id, source_id, body.relpath)
+    except UnsupportedMaterialError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "reason": "unsupported_type",
+                "suffix": error.suffix,
+                "accepted": accepted_suffixes(),
+            },
+        ) from error
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     job_id: int | None = None
@@ -273,7 +284,7 @@ def scan_source(
     profile = ensure_default_profile(session)
     service = SourcesService(session, request.app.state.settings.blobs_dir)
     try:
-        stats = service.scan(profile.id, source_id)
+        report = service.scan(profile.id, source_id)
     except SourcesError as error:
         session.rollback()
         failure = SourcesService(session, request.app.state.settings.blobs_dir)
@@ -287,4 +298,4 @@ def scan_source(
     queued = _enqueue_ingests(session, source_id)
     session.commit()
     request.app.state.jobs.wake()
-    return ScanResult(stats=stats, queued_jobs=queued)
+    return ScanResult(stats=report.stats, queued_jobs=queued, skipped=report.skipped)

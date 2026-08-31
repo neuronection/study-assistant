@@ -84,7 +84,7 @@ class ScanScheduler:
         try:
             with self._session_factory() as session:
                 service = SourcesService(session, self._blobs_dir)
-                stats = service.scan(profile_id, source_id)
+                stats = service.scan(profile_id, source_id).stats
                 pending = list(
                     session.scalars(
                         select(Material.id).where(
