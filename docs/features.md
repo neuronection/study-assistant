@@ -101,6 +101,12 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   their own `material_images` rows with async `image_ocr` transcription joining
   search/AI context, and unsupported types are refused at upload (422) — plan
   47-A; audio/video (B13) lands with plan 47-D
+- ✅ **Lecture audio/video ingest (B13, plan 47-D)**: `.mp3/.m4a/.wav/.ogg/.opus/.mpga`
+  and `.webm/.mp4/.mpeg` recordings transcribe through the provider **transcribe**
+  task into normal markdown materials (searchable, quotable, quiz-generatable)
+  with a metadata header and `transcribed` provenance; duration/bitrate are read
+  at upload (mutagen) and oversized recordings warn before the provider sees the
+  bytes; re-ingest re-transcribes into a new version
 - — Perceptual-hash image dedup (B9), preprocessing (B11),
   version diffing (B12), watched import inbox
 
