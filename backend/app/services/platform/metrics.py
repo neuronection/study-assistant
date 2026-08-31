@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...core.vocab import AttemptMode
+from ...core.vocab import AttemptMode, ItemFlag, RecommendationKind, SpeedLabel, SpeedQuadrant
 from ...domain.models import (
     Activity,
     Answer,
@@ -208,7 +208,13 @@ def speed_accuracy(rows: list[AnswerRow]) -> list[dict[str, Any]]:
             continue
         accuracy = sum(1 for r in concept_rows if r.correct) / len(concept_rows)
         avg_ratio = sum(ratios) / len(ratios)
-        speed = "rushing" if avg_ratio < 0.6 else "slow" if avg_ratio > 1.4 else "normal"
+        speed = (
+            SpeedLabel.RUSHING
+            if avg_ratio < 0.6
+            else SpeedLabel.SLOW
+            if avg_ratio > 1.4
+            else SpeedLabel.NORMAL
+        )
         quadrant = _quadrant(avg_ratio, accuracy)
         result.append(
             {
@@ -223,16 +229,16 @@ def speed_accuracy(rows: list[AnswerRow]) -> list[dict[str, Any]]:
     return result
 
 
-def _quadrant(time_ratio: float, accuracy: float) -> str:
+def _quadrant(time_ratio: float, accuracy: float) -> SpeedQuadrant:
     fast = time_ratio < 1.0
     accurate = accuracy >= 0.7
     if fast and accurate:
-        return "fluent"
+        return SpeedQuadrant.FLUENT
     if fast and not accurate:
-        return "rushing"
+        return SpeedQuadrant.RUSHING
     if not fast and accurate:
-        return "effortful"
-    return "struggling"
+        return SpeedQuadrant.EFFORTFUL
+    return SpeedQuadrant.STRUGGLING
 
 
 def item_analysis(session: Session, profile_id: int) -> list[dict[str, Any]]:
@@ -263,9 +269,9 @@ def item_analysis(session: Session, profile_id: int) -> list[dict[str, Any]]:
                     distractors[key] = distractors.get(key, 0) + 1
         avg_time = sum(times) / len(times) if times else None
         ratio = avg_time / (expected * 1000) if avg_time and expected else None
-        flag = "ok"
+        flag = ItemFlag.OK
         if n >= ITEM_FLAG_MIN_N and not 0.1 <= p_correct <= 0.95:
-            flag = "review"
+            flag = ItemFlag.REVIEW
         stats.append(
             {
                 "question_id": question_id,
@@ -510,7 +516,7 @@ def recommendations(
     if due > 0:
         recs.append(
             {
-                "kind": "review",
+                "kind": RecommendationKind.REVIEW,
                 "priority": 100 + min(due, 20),
                 "title_key": "review_due",
                 "concept": None,
@@ -524,7 +530,11 @@ def recommendations(
         misses = round(cell["n"] * (1 - cell["accuracy"]))
         recs.append(
             {
-                "kind": "read" if cell["skill"] == "conceptual" else "drill",
+                "kind": (
+                    RecommendationKind.READ
+                    if cell["skill"] == "conceptual"
+                    else RecommendationKind.DRILL
+                ),
                 "priority": round(cell["weakness_score"] * 50),
                 "concept": cell["concept"],
                 "skill": cell["skill"],
@@ -547,7 +557,7 @@ def recommendations(
     for cell in strong_stale[:1]:
         recs.append(
             {
-                "kind": "challenge",
+                "kind": RecommendationKind.CHALLENGE,
                 "priority": 20,
                 "concept": cell["concept"],
                 "skill": cell["skill"],
@@ -614,6 +624,6 @@ def materialize(session: Session, profile_id: int) -> None:
         stat.flag = item["flag"]
         stat.updated_at = utcnow()
         question = session.get(Question, item["question_id"])
-        if question is not None and item["flag"] == "review":
-            question.flag = "review"
+        if question is not None and item["flag"] == ItemFlag.REVIEW:
+            question.flag = ItemFlag.REVIEW
     session.flush()

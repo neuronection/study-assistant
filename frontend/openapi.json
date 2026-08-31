@@ -1283,6 +1283,84 @@
         "title": "ContextScope",
         "type": "string"
       },
+      "CostTaskOut": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "models": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Models",
+            "type": "object"
+          },
+          "monthly_cap_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Cap Usd"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "tokens_in": {
+            "title": "Tokens In",
+            "type": "integer"
+          },
+          "tokens_out": {
+            "title": "Tokens Out",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task",
+          "calls",
+          "tokens_in",
+          "tokens_out",
+          "cost_usd",
+          "models"
+        ],
+        "title": "CostTaskOut",
+        "type": "object"
+      },
+      "CostsOut": {
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "per_task": {
+            "items": {
+              "$ref": "#/components/schemas/CostTaskOut"
+            },
+            "title": "Per Task",
+            "type": "array"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month",
+          "per_task",
+          "total_usd"
+        ],
+        "title": "CostsOut",
+        "type": "object"
+      },
       "CourseCreate": {
         "properties": {
           "color": {
@@ -1927,6 +2005,44 @@
         "title": "CourseUpdate",
         "type": "object"
       },
+      "DayActivityOut": {
+        "properties": {
+          "answers_n": {
+            "title": "Answers N",
+            "type": "integer"
+          },
+          "cards_reviewed": {
+            "title": "Cards Reviewed",
+            "type": "integer"
+          },
+          "correct_n": {
+            "title": "Correct N",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "minutes": {
+            "title": "Minutes",
+            "type": "number"
+          },
+          "xp": {
+            "title": "Xp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "answers_n",
+          "correct_n",
+          "cards_reviewed",
+          "minutes",
+          "xp"
+        ],
+        "title": "DayActivityOut",
+        "type": "object"
+      },
       "DefaultTaskOut": {
         "properties": {
           "fallback_model_id": {
@@ -2092,6 +2208,46 @@
           "files"
         ],
         "title": "DesktopFolderOut",
+        "type": "object"
+      },
+      "DiagnosticsOut": {
+        "properties": {
+          "error_profile": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorTagStatOut"
+            },
+            "title": "Error Profile",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "speed_accuracy": {
+            "items": {
+              "$ref": "#/components/schemas/SpeedAccuracyCellOut"
+            },
+            "title": "Speed Accuracy",
+            "type": "array"
+          },
+          "weakness_matrix": {
+            "items": {
+              "$ref": "#/components/schemas/WeaknessCellOut"
+            },
+            "title": "Weakness Matrix",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weakness_matrix",
+          "error_profile",
+          "speed_accuracy",
+          "skills"
+        ],
+        "title": "DiagnosticsOut",
         "type": "object"
       },
       "DiffOut": {
@@ -2455,6 +2611,115 @@
           "status"
         ],
         "title": "EditorTransformStatusOut",
+        "type": "object"
+      },
+      "ErrorTagStatOut": {
+        "properties": {
+          "last_seen_at": {
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "previous_7d": {
+            "title": "Previous 7D",
+            "type": "integer"
+          },
+          "recent_7d": {
+            "title": "Recent 7D",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "trend": {
+            "title": "Trend",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tag",
+          "total",
+          "recent_7d",
+          "previous_7d",
+          "trend",
+          "last_seen_at"
+        ],
+        "title": "ErrorTagStatOut",
+        "type": "object"
+      },
+      "ExamStatusOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "engaged_nodes": {
+            "title": "Engaged Nodes",
+            "type": "integer"
+          },
+          "exam_date": {
+            "title": "Exam Date",
+            "type": "string"
+          },
+          "most_behind_node": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MostBehindNodeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nodes_per_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nodes Per Day"
+          },
+          "on_track": {
+            "title": "On Track",
+            "type": "boolean"
+          },
+          "remaining_nodes": {
+            "title": "Remaining Nodes",
+            "type": "integer"
+          },
+          "total_nodes": {
+            "title": "Total Nodes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "course_id",
+          "course_title",
+          "exam_date",
+          "days_left",
+          "total_nodes",
+          "engaged_nodes",
+          "remaining_nodes",
+          "nodes_per_day",
+          "on_track",
+          "most_behind_node"
+        ],
+        "title": "ExamStatusOut",
         "type": "object"
       },
       "ExerciseCreate": {
@@ -2999,6 +3264,19 @@
         "title": "GoalIn",
         "type": "object"
       },
+      "GoalOut": {
+        "properties": {
+          "answers_per_day": {
+            "title": "Answers Per Day",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answers_per_day"
+        ],
+        "title": "GoalOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3248,6 +3526,85 @@
           "relpath"
         ],
         "title": "IngestFileIn",
+        "type": "object"
+      },
+      "ItemFlag": {
+        "enum": [
+          "ok",
+          "review"
+        ],
+        "title": "ItemFlag",
+        "type": "string"
+      },
+      "ItemStatOut": {
+        "properties": {
+          "avg_time_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Time Ms"
+          },
+          "avg_time_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Time Ratio"
+          },
+          "distractor_selection": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distractor Selection"
+          },
+          "flag": {
+            "$ref": "#/components/schemas/ItemFlag"
+          },
+          "n_attempts": {
+            "title": "N Attempts",
+            "type": "integer"
+          },
+          "p_correct": {
+            "title": "P Correct",
+            "type": "number"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "stem_excerpt": {
+            "title": "Stem Excerpt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "n_attempts",
+          "p_correct",
+          "avg_time_ms",
+          "avg_time_ratio",
+          "distractor_selection",
+          "flag",
+          "stem_excerpt"
+        ],
+        "title": "ItemStatOut",
         "type": "object"
       },
       "JobOut": {
@@ -3737,6 +4094,19 @@
         "title": "MaterialUploadOut",
         "type": "object"
       },
+      "MaterializeOut": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "MaterializeOut",
+        "type": "object"
+      },
       "MentionOut": {
         "properties": {
           "course_id": {
@@ -4214,6 +4584,24 @@
           }
         },
         "title": "ModelUpdate",
+        "type": "object"
+      },
+      "MostBehindNodeOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "MostBehindNodeOut",
         "type": "object"
       },
       "NodeArtifactsOut": {
@@ -5390,6 +5778,51 @@
         "title": "OutlineSectionOut",
         "type": "object"
       },
+      "OverviewOut": {
+        "properties": {
+          "due_cards": {
+            "title": "Due Cards",
+            "type": "integer"
+          },
+          "goal": {
+            "title": "Goal",
+            "type": "integer"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DayActivityOut"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "streak": {
+            "title": "Streak",
+            "type": "integer"
+          },
+          "today": {
+            "$ref": "#/components/schemas/DayActivityOut"
+          },
+          "total_xp": {
+            "title": "Total Xp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "today",
+          "goal",
+          "streak",
+          "total_xp",
+          "level",
+          "due_cards",
+          "history"
+        ],
+        "title": "OverviewOut",
+        "type": "object"
+      },
       "PatternCreateIn": {
         "properties": {
           "course_id": {
@@ -6258,6 +6691,72 @@
         "title": "RecognizeOut",
         "type": "object"
       },
+      "RecommendationKind": {
+        "enum": [
+          "review",
+          "read",
+          "drill",
+          "challenge"
+        ],
+        "title": "RecommendationKind",
+        "type": "string"
+      },
+      "RecommendationOut": {
+        "properties": {
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RecommendationKind"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill"
+          },
+          "title_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Key"
+          }
+        },
+        "required": [
+          "kind",
+          "priority",
+          "evidence"
+        ],
+        "title": "RecommendationOut",
+        "type": "object"
+      },
       "RelinkIn": {
         "properties": {
           "path": {
@@ -6869,6 +7368,61 @@
         ],
         "title": "SourceOut",
         "type": "object"
+      },
+      "SpeedAccuracyCellOut": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "avg_time_ratio": {
+            "title": "Avg Time Ratio",
+            "type": "number"
+          },
+          "concept": {
+            "title": "Concept",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "quadrant": {
+            "$ref": "#/components/schemas/SpeedQuadrant"
+          },
+          "speed": {
+            "$ref": "#/components/schemas/SpeedLabel"
+          }
+        },
+        "required": [
+          "concept",
+          "n",
+          "accuracy",
+          "avg_time_ratio",
+          "speed",
+          "quadrant"
+        ],
+        "title": "SpeedAccuracyCellOut",
+        "type": "object"
+      },
+      "SpeedLabel": {
+        "enum": [
+          "rushing",
+          "slow",
+          "normal"
+        ],
+        "title": "SpeedLabel",
+        "type": "string"
+      },
+      "SpeedQuadrant": {
+        "enum": [
+          "fluent",
+          "rushing",
+          "effortful",
+          "struggling"
+        ],
+        "title": "SpeedQuadrant",
+        "type": "string"
       },
       "StatePatchIn": {
         "properties": {
@@ -7804,6 +8358,73 @@
           "height"
         ],
         "title": "ViewBox",
+        "type": "object"
+      },
+      "WeaknessCellOut": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "avg_time_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Time Ratio"
+          },
+          "concept": {
+            "title": "Concept",
+            "type": "string"
+          },
+          "concept_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept Id"
+          },
+          "enough_data": {
+            "title": "Enough Data",
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "weakness_score": {
+            "title": "Weakness Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "concept",
+          "concept_id",
+          "skill",
+          "n",
+          "accuracy",
+          "avg_time_ratio",
+          "last_seen_at",
+          "weakness_score",
+          "enough_data"
+        ],
+        "title": "WeaknessCellOut",
         "type": "object"
       },
       "WorkingDirIn": {
@@ -9089,9 +9710,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Costs Api V1 Analytics Costs Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CostsOut"
                 }
               }
             },
@@ -9130,9 +9749,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Diagnostics Api V1 Analytics Diagnostics Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DiagnosticsOut"
                 }
               }
             },
@@ -9164,8 +9781,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/ExamStatusOut"
                   },
                   "title": "Response Exams Api V1 Analytics Exams Get",
                   "type": "array"
@@ -9199,11 +9815,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "title": "Response Set Goal Api V1 Analytics Goal Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/GoalOut"
                 }
               }
             },
@@ -9235,8 +9847,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/ItemStatOut"
                   },
                   "title": "Response Items Api V1 Analytics Items Get",
                   "type": "array"
@@ -9260,9 +9871,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Materialize Api V1 Analytics Materialize Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MaterializeOut"
                 }
               }
             },
@@ -9283,9 +9892,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Overview Api V1 Analytics Overview Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/OverviewOut"
                 }
               }
             },
@@ -9325,8 +9932,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/RecommendationOut"
                   },
                   "title": "Response Recommendations Api V1 Analytics Recommendations Get",
                   "type": "array"

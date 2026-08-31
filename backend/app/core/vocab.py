@@ -95,6 +95,31 @@ class StudyStatus(StrVocab):
     STUDIED = "studied"
 
 
+class RecommendationKind(StrVocab):
+    REVIEW = "review"
+    READ = "read"
+    DRILL = "drill"
+    CHALLENGE = "challenge"
+
+
+class SpeedLabel(StrVocab):
+    RUSHING = "rushing"
+    SLOW = "slow"
+    NORMAL = "normal"
+
+
+class SpeedQuadrant(StrVocab):
+    FLUENT = "fluent"
+    RUSHING = "rushing"
+    EFFORTFUL = "effortful"
+    STRUGGLING = "struggling"
+
+
+class ItemFlag(StrVocab):
+    OK = "ok"
+    REVIEW = "review"
+
+
 class WsTopic:
     @staticmethod
     def jobs(job_id: int) -> str:

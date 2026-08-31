@@ -335,6 +335,20 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C analytics — all eight analytics endpoints
+  declare typed response models** (ADR-130). New inline models in
+  `analytics.py`: `OverviewOut` (+`DayActivityOut`), `ExamStatusOut`
+  (+`MostBehindNodeOut`), `DiagnosticsOut` (+`WeaknessCellOut`,
+  `ErrorTagStatOut`, `SpeedAccuracyCellOut`), `list[RecommendationOut]`,
+  `list[ItemStatOut]`, `GoalOut`, `MaterializeOut`, `CostsOut`
+  (+`CostTaskOut`). Four new StrEnums in `core/vocab.py` —
+  `RecommendationKind`, `SpeedLabel`, `SpeedQuadrant`, `ItemFlag` — swept into
+  `metrics.py` (recommendation kinds, speed/quadrant labels, item flag
+  computation + materialize's question-flag write; StrEnum dict equality keeps
+  every existing assertion valid). Survey: analytics 8 → 0; remaining untyped
+  200/201-JSON = 51. Backend 784 · frontend 815 green; contract drift guard
+  clean.
+
 - 2026-08-31 — **feat(api): plan 55-C quiz — the nine JSON quiz endpoints
   declare typed response models** (ADR-130). New inline models in `quiz.py`:
   `AttemptListItemOut` (`mode` typed as the `AttemptMode` enum → real union in

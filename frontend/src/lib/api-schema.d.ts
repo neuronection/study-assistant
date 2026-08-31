@@ -3893,6 +3893,34 @@ export interface components {
          * @enum {string}
          */
         ContextScope: "node" | "subtree" | "course";
+        /** CostTaskOut */
+        CostTaskOut: {
+            /** Calls */
+            calls: number;
+            /** Cost Usd */
+            cost_usd: number;
+            /** Models */
+            models: {
+                [key: string]: number;
+            };
+            /** Monthly Cap Usd */
+            monthly_cap_usd?: number | null;
+            /** Task */
+            task: string;
+            /** Tokens In */
+            tokens_in: number;
+            /** Tokens Out */
+            tokens_out: number;
+        };
+        /** CostsOut */
+        CostsOut: {
+            /** Month */
+            month: string;
+            /** Per Task */
+            per_task: components["schemas"]["CostTaskOut"][];
+            /** Total Usd */
+            total_usd: number;
+        };
         /** CourseCreate */
         CourseCreate: {
             /** Color */
@@ -4042,6 +4070,21 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** DayActivityOut */
+        DayActivityOut: {
+            /** Answers N */
+            answers_n: number;
+            /** Cards Reviewed */
+            cards_reviewed: number;
+            /** Correct N */
+            correct_n: number;
+            /** Day */
+            day: string;
+            /** Minutes */
+            minutes: number;
+            /** Xp */
+            xp: number;
+        };
         /** DefaultTaskOut */
         DefaultTaskOut: {
             /** Fallback Model Id */
@@ -4092,6 +4135,17 @@ export interface components {
             files: components["schemas"]["DesktopFileEntry"][];
             /** Path */
             path: string;
+        };
+        /** DiagnosticsOut */
+        DiagnosticsOut: {
+            /** Error Profile */
+            error_profile: components["schemas"]["ErrorTagStatOut"][];
+            /** Skills */
+            skills: string[];
+            /** Speed Accuracy */
+            speed_accuracy: components["schemas"]["SpeedAccuracyCellOut"][];
+            /** Weakness Matrix */
+            weakness_matrix: components["schemas"]["WeaknessCellOut"][];
         };
         /** DiffOut */
         DiffOut: {
@@ -4240,6 +4294,43 @@ export interface components {
             rounds: number;
             /** Status */
             status: string;
+        };
+        /** ErrorTagStatOut */
+        ErrorTagStatOut: {
+            /** Last Seen At */
+            last_seen_at: string;
+            /** Previous 7D */
+            previous_7d: number;
+            /** Recent 7D */
+            recent_7d: number;
+            /** Tag */
+            tag: string;
+            /** Total */
+            total: number;
+            /** Trend */
+            trend: number;
+        };
+        /** ExamStatusOut */
+        ExamStatusOut: {
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Days Left */
+            days_left: number;
+            /** Engaged Nodes */
+            engaged_nodes: number;
+            /** Exam Date */
+            exam_date: string;
+            most_behind_node: components["schemas"]["MostBehindNodeOut"] | null;
+            /** Nodes Per Day */
+            nodes_per_day: number | null;
+            /** On Track */
+            on_track: boolean;
+            /** Remaining Nodes */
+            remaining_nodes: number;
+            /** Total Nodes */
+            total_nodes: number;
         };
         /** ExerciseCreate */
         ExerciseCreate: {
@@ -4417,6 +4508,11 @@ export interface components {
             /** Answers Per Day */
             answers_per_day: number;
         };
+        /** GoalOut */
+        GoalOut: {
+            /** Answers Per Day */
+            answers_per_day: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -4499,6 +4595,31 @@ export interface components {
         IngestFileIn: {
             /** Relpath */
             relpath: string;
+        };
+        /**
+         * ItemFlag
+         * @enum {string}
+         */
+        ItemFlag: "ok" | "review";
+        /** ItemStatOut */
+        ItemStatOut: {
+            /** Avg Time Ms */
+            avg_time_ms: number | null;
+            /** Avg Time Ratio */
+            avg_time_ratio: number | null;
+            /** Distractor Selection */
+            distractor_selection: {
+                [key: string]: number;
+            } | null;
+            flag: components["schemas"]["ItemFlag"];
+            /** N Attempts */
+            n_attempts: number;
+            /** P Correct */
+            p_correct: number;
+            /** Question Id */
+            question_id: number;
+            /** Stem Excerpt */
+            stem_excerpt: string;
         };
         /** JobOut */
         JobOut: {
@@ -4650,6 +4771,11 @@ export interface components {
             job_id: number | null;
             material: components["schemas"]["MaterialOut"];
         };
+        /** MaterializeOut */
+        MaterializeOut: {
+            /** Status */
+            status: string;
+        };
         /** MentionOut */
         MentionOut: {
             /** Course Id */
@@ -4798,6 +4924,13 @@ export interface components {
             label?: string | null;
             /** Reasoning Effort */
             reasoning_effort?: string | null;
+        };
+        /** MostBehindNodeOut */
+        MostBehindNodeOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /** NodeArtifactsOut */
         NodeArtifactsOut: {
@@ -5153,6 +5286,22 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** OverviewOut */
+        OverviewOut: {
+            /** Due Cards */
+            due_cards: number;
+            /** Goal */
+            goal: number;
+            /** History */
+            history: components["schemas"]["DayActivityOut"][];
+            /** Level */
+            level: number;
+            /** Streak */
+            streak: number;
+            today: components["schemas"]["DayActivityOut"];
+            /** Total Xp */
+            total_xp: number;
+        };
         /** PatternCreateIn */
         PatternCreateIn: {
             /** Course Id */
@@ -5440,6 +5589,27 @@ export interface components {
             /** Markdown */
             markdown: string;
         };
+        /**
+         * RecommendationKind
+         * @enum {string}
+         */
+        RecommendationKind: "review" | "read" | "drill" | "challenge";
+        /** RecommendationOut */
+        RecommendationOut: {
+            /** Concept */
+            concept?: string | null;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            kind: components["schemas"]["RecommendationKind"];
+            /** Priority */
+            priority: number;
+            /** Skill */
+            skill?: string | null;
+            /** Title Key */
+            title_key?: string | null;
+        };
         /** RelinkIn */
         RelinkIn: {
             /** Path */
@@ -5632,6 +5802,29 @@ export interface components {
             /** Scan Interval Sec */
             scan_interval_sec?: number | null;
         };
+        /** SpeedAccuracyCellOut */
+        SpeedAccuracyCellOut: {
+            /** Accuracy */
+            accuracy: number;
+            /** Avg Time Ratio */
+            avg_time_ratio: number;
+            /** Concept */
+            concept: string;
+            /** N */
+            n: number;
+            quadrant: components["schemas"]["SpeedQuadrant"];
+            speed: components["schemas"]["SpeedLabel"];
+        };
+        /**
+         * SpeedLabel
+         * @enum {string}
+         */
+        SpeedLabel: "rushing" | "slow" | "normal";
+        /**
+         * SpeedQuadrant
+         * @enum {string}
+         */
+        SpeedQuadrant: "fluent" | "rushing" | "effortful" | "struggling";
         /** StatePatchIn */
         StatePatchIn: {
             /** Delta */
@@ -5939,6 +6132,27 @@ export interface components {
             x: number;
             /** Y */
             y: number;
+        };
+        /** WeaknessCellOut */
+        WeaknessCellOut: {
+            /** Accuracy */
+            accuracy: number;
+            /** Avg Time Ratio */
+            avg_time_ratio: number | null;
+            /** Concept */
+            concept: string;
+            /** Concept Id */
+            concept_id: number | null;
+            /** Enough Data */
+            enough_data: boolean;
+            /** Last Seen At */
+            last_seen_at: string;
+            /** N */
+            n: number;
+            /** Skill */
+            skill: string;
+            /** Weakness Score */
+            weakness_score: number;
         };
         /** WorkingDirIn */
         WorkingDirIn: {
@@ -6480,9 +6694,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CostsOut"];
                 };
             };
         };
@@ -6504,9 +6716,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DiagnosticsOut"];
                 };
             };
             /** @description Validation Error */
@@ -6535,9 +6745,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["ExamStatusOut"][];
                 };
             };
         };
@@ -6561,9 +6769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
+                    "application/json": components["schemas"]["GoalOut"];
                 };
             };
             /** @description Validation Error */
@@ -6592,9 +6798,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["ItemStatOut"][];
                 };
             };
         };
@@ -6614,9 +6818,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MaterializeOut"];
                 };
             };
         };
@@ -6636,9 +6838,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OverviewOut"];
                 };
             };
         };
@@ -6660,9 +6860,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["RecommendationOut"][];
                 };
             };
             /** @description Validation Error */
