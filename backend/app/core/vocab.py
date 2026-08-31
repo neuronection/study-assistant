@@ -28,6 +28,7 @@ class JobType(StrVocab):
     POSTPROCESS = "postprocess"
     CHAT_TURN = "chat_turn"
     DRAWING_OCR = "drawing_ocr"
+    IMAGE_OCR = "image_ocr"
 
 
 class MaterialKind(StrVocab):

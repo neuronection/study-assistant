@@ -27,6 +27,7 @@ from .core.vocab import WsTopic
 from .jobs.runner import JobRunner
 from .ocr.gateway_ocr import GatewayOcr
 from .pipelines.drawing_ocr import make_drawing_ocr_handler
+from .pipelines.image_ocr import make_image_ocr_handler
 from .pipelines.ingest import make_ingest_handler
 from .pipelines.postprocess import make_postprocess_handler
 from .services.platform.backup import (
@@ -219,6 +220,7 @@ def create_app(
                 app.state.gateway, app.state.embedder, app.state.bus
             ),
             "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
+            "image_ocr": make_image_ocr_handler(app.state.gateway, app.state.blobs),
         },
         group_key=_chat_turn_group,
     )

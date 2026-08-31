@@ -38,6 +38,9 @@ from .content import (
     MaterialFolderLink as MaterialFolderLink,
 )
 from .content import (
+    MaterialImage as MaterialImage,
+)
+from .content import (
     MaterialIndexCard as MaterialIndexCard,
 )
 from .content import (

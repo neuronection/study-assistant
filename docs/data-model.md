@@ -91,6 +91,13 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   extractor (pymupdf | ocr | native | manual), model, blocks JSON, markdown,
   confidence, tokens/cost, reviewed, edited_by_user
 - **chunks**: id, extraction_id, ordinal, text, token_count
+- **material_images** (0048, ADR-103): id, material_id (FK, cascade), position
+  (document order), blob_sha (FK→blobs, content-addressed), mime, ocr_version,
+  ocr_markdown, ocr_job_id, created_at — embedded images extracted from
+  converted office/web materials (plan 47); referenced from the extraction
+  markdown via `ca-image://{id}`, transcribed asynchronously by the
+  `image_ocr` job (plan-46 async pattern), OCR text joins FTS/AI context like
+  drawing OCR
 - **material_drawings** (0032, ADR-064): id, material_id (FK, cascade), strokes
   JSON (replayable vector strokes — the source of truth), png_sha (FK→blobs,
   content-addressed PNG render), view JSON (0046, ADR-098 — exported region,
@@ -289,6 +296,11 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0048 (plan 47, ADR-103)**: new `material_images` table — extracted embedded
+  images of converted office/web materials (docx/pptx/epub/html), one row per
+  image with a content-addressed blob, document position, and async `image_ocr`
+  state (`ocr_version`/`ocr_markdown`/`ocr_job_id`, plan-46 pattern). Downgrade
+  drops the table.
 - **0047 (plan 46, ADR-102)**: `ocr_job_id` nullable Integer column added to
   `note_drawings` and `material_drawings` — pointer to the in-flight background
   `drawing_ocr` job (create/update/re-OCR save first and return; the job fills

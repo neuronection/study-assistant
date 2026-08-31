@@ -18,6 +18,7 @@ from .cancellation import (
 from .payloads import (
     ChatTurnPayload,
     DrawingOcrPayload,
+    ImageOcrPayload,
     IngestPayload,
     PostprocessPayload,
 )
@@ -287,7 +288,11 @@ class JobRunner:
     def enqueue(
         session: Session,
         job_type: str,
-        payload: IngestPayload | PostprocessPayload | ChatTurnPayload | DrawingOcrPayload,
+        payload: IngestPayload
+        | PostprocessPayload
+        | ChatTurnPayload
+        | DrawingOcrPayload
+        | ImageOcrPayload,
     ) -> Job:
         job = Job(type=job_type, payload=dict(payload), status=JobStatus.QUEUED, progress=0)
         session.add(job)

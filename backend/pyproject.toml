@@ -25,6 +25,7 @@ dependencies = [
     "sqlite-vec>=0.1.9",
     "mcp>=1.7",
     "pillow>=11",
+    "html2text>=2025.4.15",
 ]
 dynamic = ["version"]
 

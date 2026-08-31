@@ -684,7 +684,7 @@ def _refresh_material_fts(
     markdown = latest.markdown if latest is not None else ""
     from ..storage.fts import sync_material_fts
 
-    sync_material_fts(session, material, markdown, service.drawing_ocr_text(material))
+    sync_material_fts(session, material, markdown, service.embedded_ocr_text(material))
 
 
 def _store_material_drawing(

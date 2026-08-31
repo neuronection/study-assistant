@@ -480,7 +480,7 @@ class MaterialsService:
         )
         self._session.add(extraction)
         self._session.flush()
-        ocr = self.drawing_ocr_text(material)
+        ocr = self.embedded_ocr_text(material)
         chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
         for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
             self._session.add(
@@ -502,7 +502,7 @@ class MaterialsService:
                 difficulty=None,
             )
         )
-        sync_material_fts(self._session, material, markdown, self.drawing_ocr_text(material))
+        sync_material_fts(self._session, material, markdown, self.embedded_ocr_text(material))
         self._session.flush()
         return extraction, previous_chunk_ids
 
@@ -513,6 +513,26 @@ class MaterialsService:
             if drawing.ocr_markdown
         ]
         return "\n".join(parts)
+
+    def image_ocr_text(self, material: Material) -> str:
+        parts = [
+            image.ocr_markdown
+            for image in material.images
+            if image.ocr_markdown
+        ]
+        return "\n".join(parts)
+
+    def embedded_ocr_text(self, material: Material) -> str:
+        parts = [
+            text
+            for text in (
+                self.drawing_ocr_text(material),
+                self.image_ocr_text(material),
+            )
+            if text
+        ]
+        return "\n".join(parts)
+
 
     def blob_bytes(self, material: Material) -> bytes | None:
         if material.blob_sha is None:

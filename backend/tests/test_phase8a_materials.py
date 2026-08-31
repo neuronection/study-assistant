@@ -105,7 +105,7 @@ def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
     cur = raw.cursor()
     assert (
         cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0047_drawing_ocr_jobs"
+        == "0048_material_images"
     )
     unsorted_id = cur.execute(
         "SELECT id FROM courses WHERE title = 'Unsorted' AND profile_id = 1"

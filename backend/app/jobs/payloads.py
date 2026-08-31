@@ -22,3 +22,8 @@ class DrawingOcrPayload(TypedDict, total=False):
     drawing_id: Required[int]
     note_id: int
     material_id: int
+
+
+class ImageOcrPayload(TypedDict, total=False):
+    image_id: Required[int]
+    material_id: Required[int]

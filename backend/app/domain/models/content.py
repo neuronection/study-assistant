@@ -226,6 +226,26 @@ class Material(Base):
     drawings: Mapped[list["MaterialDrawing"]] = relationship(
         back_populates="material", cascade="all, delete-orphan"
     )
+    images: Mapped[list["MaterialImage"]] = relationship(
+        back_populates="material", cascade="all, delete-orphan"
+    )
+
+
+class MaterialImage(Base):
+    __tablename__ = "material_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    material_id: Mapped[int] = mapped_column(ForeignKey("materials.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    mime: Mapped[str | None] = mapped_column(String(120))
+    ocr_version: Mapped[int] = mapped_column(Integer, default=0)
+    ocr_markdown: Mapped[str | None] = mapped_column(Text)
+    ocr_job_id: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    material: Mapped[Material] = relationship(back_populates="images")
+
 
 class Extraction(Base):
     __tablename__ = "extractions"

@@ -45,21 +45,22 @@ def extract_pdf_text(data: bytes) -> tuple[str, int, bool]:
     return markdown, len(pages), has_text_layer
 
 
-def _sync_fts(
-    session: Session,
-    material: Material,
-    markdown: str,
-) -> None:
-    sync_material_fts(session, material, markdown, _drawing_ocr_text(material))
-
-
-def _drawing_ocr_text(material: Material) -> str:
+def _embedded_ocr_text(material: Material) -> str:
     parts = [
         drawing.ocr_markdown
         for drawing in material.drawings
         if drawing.ocr_markdown
     ]
+    parts += [image.ocr_markdown for image in material.images if image.ocr_markdown]
     return "\n".join(parts)
+
+
+def _sync_fts(
+    session: Session,
+    material: Material,
+    markdown: str,
+) -> None:
+    sync_material_fts(session, material, markdown, _embedded_ocr_text(material))
 
 
 def _store_extraction(
@@ -90,7 +91,7 @@ def _store_extraction(
     session.add(extraction)
     session.flush()
 
-    ocr = _drawing_ocr_text(material)
+    ocr = _embedded_ocr_text(material)
     chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
     for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
         session.add(

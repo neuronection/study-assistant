@@ -335,6 +335,26 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(ingest): plan 47-B — HTML→markdown converter core +
+  `material_images` home (ADR-103).** New `app/pipelines/convert/` package:
+  `html_to_markdown` (html2text with house config — headings, links, images,
+  pipe tables, no width wrapping; script/style dropped; whitespace
+  normalized). Math honesty: `<math>` (MathML) blocks become a `[math-block]`
+  placeholder token — no pure-Python converter handles MathML, the extraction
+  QA editor is the correction surface (same policy as OCR). **Migration 0048
+  `material_images`** (model `MaterialImage`): extracted embedded images of
+  converted materials — document position, content-addressed blob, async OCR
+  state (`ocr_version`/`ocr_markdown`/`ocr_job_id`, the plan-46 pattern).
+  New `image_ocr` job type (payload TypedDict, handler registered at boot):
+  transcribes from the stored blob via the vision task, clears the pointer,
+  and refreshes material FTS — drawing OCR *and* image OCR text now both join
+  FTS/AI extra context via `embedded_ocr_text` at every sync site (ingest,
+  extraction edit, drawing OCR, service). Purge cascades images with the
+  material. Migration-head assertions bumped; `docs/data-model.md` updated.
+  Tests: converter fidelity fixtures (`tests/fixtures/convert/`) +
+  purge-cascade + live `image_ocr` handler round-trip. Backend 797 green;
+  frontend untouched.
+
 - 2026-08-31 — **feat(ingest): plan 47-A — upload honesty + converter
   architecture (ADR-103, ADR-103/104 recorded).** The `doc` fallback is gone:
   `detect_kind` now knows `KIND_BY_SUFFIX` (pdf/image/md/txt),

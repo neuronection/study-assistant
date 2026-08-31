@@ -68,7 +68,7 @@ def make_drawing_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandle
                 session,
                 material,
                 latest.markdown if latest is not None else "",
-                service.drawing_ocr_text(material),
+                service.embedded_ocr_text(material),
             )
         session.commit()
         report(100, "done")
