@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai.gateway import LLMGateway, Message
-from ..domain.models import Concept, ConceptLink, Course, NodeConcept, TreeNode
+from ...ai.gateway import LLMGateway, Message
+from ...domain.models import Concept, ConceptLink, Course, NodeConcept, TreeNode
 
 CONCEPTS_TASK = "concepts"
 

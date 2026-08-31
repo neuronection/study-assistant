@@ -11,8 +11,8 @@ from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway
 from app.core.config import Settings
 from app.domain.models import ChatSession
 from app.main import create_app
-from app.services.chat import ChatService
-from app.services.profiles import ensure_default_profile
+from app.services.platform.chat import ChatService
+from app.services.platform.profiles import ensure_default_profile
 
 
 class Harness:

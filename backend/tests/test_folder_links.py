@@ -6,7 +6,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from app.domain.models import Course, Material, MaterialFolder, TreeNode
-from app.services import organizer
+from app.services.study import organizer
 
 
 def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:

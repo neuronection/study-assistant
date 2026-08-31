@@ -1,7 +1,7 @@
 from typing import Any
 
-from ..ai.contracts.contracts import Constraint
-from ..domain.models import SkillVersion
+from ...ai.contracts.contracts import Constraint
+from ...domain.models import SkillVersion
 
 LADDER_WORDS = {1: 50, 2: 70, 3: 100, 4: 140, 5: 400}
 

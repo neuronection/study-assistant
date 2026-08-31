@@ -3,8 +3,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..domain.models import Activity, Course, ErrorPattern, Mistake, Question, utcnow
-from ..math.equivalence import equivalent
+from ...domain.models import Activity, Course, ErrorPattern, Mistake, Question, utcnow
+from ...math.equivalence import equivalent
 
 
 class PatternError(ValueError):

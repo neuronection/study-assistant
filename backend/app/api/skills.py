@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.skills import CONTEXT_VARS
 from ..domain.models import CourseType
-from ..services.skills import SkillsError, SkillService
+from ..services.platform.skills import SkillsError, SkillService
 from .deps import get_session
 
 router = APIRouter(prefix="/skills", tags=["skills"])

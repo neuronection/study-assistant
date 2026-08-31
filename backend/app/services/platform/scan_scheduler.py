@@ -8,9 +8,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..domain.models import Material, MaterialSource
-from ..jobs.runner import JobRunner
-from .sources import SourcesError, SourcesService
+from ...domain.models import Material, MaterialSource
+from ...jobs.runner import JobRunner
+from ..content.sources import SourcesError, SourcesService
 
 
 class ScanScheduler:

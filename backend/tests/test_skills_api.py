@@ -95,8 +95,8 @@ def test_seed_refresh_updates_seed_name_and_description() -> None:
     import unittest.mock
 
     import app.ai.skills as skills_module
-    import app.services.skills as services_skills
-    from app.services.skills import seed_skills
+    import app.services.platform.skills as services_skills
+    from app.services.platform.skills import seed_skills
 
     seed = next(entry for entry in skills_module.SEEDS if entry.key == "notes.transcribe")
     client = make_client()
@@ -283,7 +283,7 @@ def test_seed_refresh_updates_unmodified_system_v1_only() -> None:
     import unittest.mock
 
     import app.ai.skills as skills_module
-    from app.services.skills import SkillService, seed_skills
+    from app.services.platform.skills import SkillService, seed_skills
 
     seed = next(entry for entry in skills_module.SEEDS if entry.key == "tutor.hint")
     original = seed.system_prompt
@@ -305,7 +305,7 @@ def test_seed_refresh_updates_unmodified_system_v1_only() -> None:
         versions = client.get("/api/v1/skills/tutor.hint/versions").json()
         min(entry["id"] for entry in versions)
 
-        import app.services.skills as services_skills
+        import app.services.platform.skills as services_skills
 
         mutated = original.replace("ladder", "escalator")
         assert mutated != original

@@ -11,7 +11,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from .. import __version__
+from ... import __version__
 
 MANIFEST_NAME = "manifest.json"
 DB_NAME = "database.sqlite"

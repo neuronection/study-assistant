@@ -24,14 +24,14 @@ from ..domain.models import (
     utcnow,
 )
 from ..jobs.runner import JobError, JobHandler, JobRunner
-from ..services.chat import ChatError, ChatService
-from ..services.profiles import ensure_default_profile
-from ..services.proposal_actions import (
+from ..services.knowledge.tree import TreeError, TreeService
+from ..services.platform.chat import ChatError, ChatService
+from ..services.platform.profiles import ensure_default_profile
+from ..services.platform.proposal_actions import (
     ProposalActionError,
     execute_proposal,
     mark_stale,
 )
-from ..services.tree import TreeError, TreeService
 from .deps import get_session
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -322,7 +322,7 @@ def delete_session(
     chat_session = _chat_service(request, session).get_session(session_id, profile.id)
     if chat_session is None:
         raise HTTPException(status_code=404, detail="chat session not found")
-    from ..services import trash
+    from ..services.platform import trash
 
     deleted_item_id = trash.snapshot(
         session, "chat", chat_session.id, chat_session.title, profile.id
@@ -506,8 +506,13 @@ def _execute_compose_material(
     proposal: ChatProposal,
 ) -> dict[str, Any] | None:
     from ..pipelines.compose import ComposeError, ComposeService
-    from ..services.context import ContextError, ContextResolver, ContextScope, ContextSpec
-    from ..services.materials import MaterialsService
+    from ..services.content.materials import MaterialsService
+    from ..services.knowledge.context import (
+        ContextError,
+        ContextResolver,
+        ContextScope,
+        ContextSpec,
+    )
 
     payload = proposal.payload or {}
     course_id = chat_session.course_id

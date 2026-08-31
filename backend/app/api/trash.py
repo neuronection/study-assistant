@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from ..domain.models import DeletedItem
-from ..services import trash
-from ..services.profiles import ensure_default_profile
+from ..services.platform import trash
+from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 
 router = APIRouter(prefix="/deleted-items", tags=["trash"])

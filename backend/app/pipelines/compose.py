@@ -9,8 +9,8 @@ from ..ai.gateway import LLMGateway, ProviderError
 from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import COMPOSE_SYSTEM
 from ..domain.models import Extraction, Material, MaterialLink, Note, TreeNode
-from ..services.context import ContextBundle
-from ..services.materials import MaterialsService
+from ..services.content.materials import MaterialsService
+from ..services.knowledge.context import ContextBundle
 from ..storage.blobs import BlobStore
 
 logger = structlog.get_logger(__name__)

@@ -9,20 +9,20 @@ from starlette.concurrency import run_in_threadpool
 from ..ai.gateway import BudgetExceeded, ProviderError, TaskUnassigned
 from ..ai.tools import CHAT_TOOL_CATALOG
 from ..mcp_resources import MCP_INSTRUCTIONS, RESOURCE_TOOLS, create_resource_server
-from ..services.context import (
+from ..services.knowledge.context import (
     ContextError,
     ContextParams,
     ContextResolver,
     ContextSpec,
 )
-from ..services.editor_ai import (
+from ..services.platform.editor_ai import (
     EDITOR_PRESETS,
     MAX_CONTEXT_CHARS,
     MAX_INSTRUCTION_CHARS,
     MAX_TEXT_CHARS,
     EditorTransformService,
 )
-from ..services.skills import SkillService
+from ..services.platform.skills import SkillService
 from .deps import get_session
 
 router = APIRouter(prefix="/ai", tags=["ai"])

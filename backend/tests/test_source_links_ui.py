@@ -308,7 +308,7 @@ def test_scan_scheduler_cycles_sources(tmp_path: Path) -> None:
     from alembic import command
     from app.core.config import Settings
     from app.main import create_app
-    from app.services.scan_scheduler import ScanScheduler
+    from app.services.platform.scan_scheduler import ScanScheduler
 
     db_path = tmp_path / "sched.db"
     cfg = Config("alembic.ini")

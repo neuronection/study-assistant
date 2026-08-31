@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from ..domain.models import AiModel, Course, DefaultTaskAssignment, Material, Provider
 from ..pipelines.chunking import chunk_markdown
 from ..pipelines.ingest import _store_extraction
-from ..services.materials import detect_kind
-from ..services.profiles import ensure_default_profile
+from ..services.content.materials import detect_kind
+from ..services.platform.profiles import ensure_default_profile
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
 from .deps import get_session

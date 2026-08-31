@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..pipelines.qpkg import read_qpkg
-from ..pipelines.quizgen import validate_question
+from ...pipelines.qpkg import read_qpkg
+from ...pipelines.quizgen import validate_question
 
 INBOX_SUFFIXES = (".caq.json", ".json", ".qpkg")
 SCHEMA_CARD = """# Study Assistant quiz authoring (caq/v1)

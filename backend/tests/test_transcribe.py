@@ -291,7 +291,7 @@ def test_transcribe_skill_seeded(
 ) -> None:
     test_client, _gateway, app = client
     with test_client:
-        from app.services.skills import SkillService
+        from app.services.platform.skills import SkillService
 
         with app.state.session_factory() as session:
             version = SkillService(session).resolve("transcribe.audio")

@@ -8,7 +8,7 @@ from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
-from ..services.materials import extraction_to_blocks
+from ..services.content.materials import extraction_to_blocks
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
 from .chunking import chunk_markdown

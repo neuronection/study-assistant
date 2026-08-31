@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..domain.models import Exercise, ExerciseStep
+from ...domain.models import Exercise, ExerciseStep
 from .exercise_kinds import (
     LEGACY_CARD_KIND_MAP,
     is_card_kind,

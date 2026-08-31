@@ -4,9 +4,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai.contracts.contracts import Constraint, validate
-from ..ai.gateway import LLMGateway, Message
-from ..domain.models import (
+from ...ai.contracts.contracts import Constraint, validate
+from ...ai.gateway import LLMGateway, Message
+from ...domain.models import (
     AiInteraction,
     Attempt,
     ExerciseSession,
@@ -14,8 +14,8 @@ from ..domain.models import (
     Question,
     StepAttempt,
 )
-from ..math.equivalence import equivalent
-from .skills import SkillService
+from ...math.equivalence import equivalent
+from ..platform.skills import SkillService
 
 TUTOR_TASK = "tutor"
 MAX_REPAIR_ROUNDS = 2
@@ -169,7 +169,7 @@ class TutorService:
         skills = SkillService(self._session)
         version = skills.resolve(TUTOR_SKILL, course_id=exercise_session.exercise.course_id)
         if version is None:
-            from ..ai.skills import TUTOR_SYSTEM
+            from ...ai.skills import TUTOR_SYSTEM
 
             system_prompt = TUTOR_SYSTEM
             constraints = [
@@ -264,7 +264,7 @@ class TutorService:
             QUIZ_HELP_SKILL, course_id=activity.course_id if activity else None
         )
         if version is None:
-            from ..ai.skills import QUIZ_HELP_SYSTEM
+            from ...ai.skills import QUIZ_HELP_SYSTEM
 
             system_prompt = QUIZ_HELP_SYSTEM
             constraints = [

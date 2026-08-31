@@ -3,11 +3,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..ai.gateway import LLMGateway
-from ..ai.runner import AuditRef, TaskRunner
-from ..ai.skills import GRADE_FREEFORM_SYSTEM
-from ..ai.structured import RubricOut
-from ..domain.models import ExerciseStep
+from ...ai.gateway import LLMGateway
+from ...ai.runner import AuditRef, TaskRunner
+from ...ai.skills import GRADE_FREEFORM_SYSTEM
+from ...ai.structured import RubricOut
+from ...domain.models import ExerciseStep
 
 RUBRIC_TASK = "grade"
 RUBRIC_SKILL = "grade.freeform"

@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ..domain.models import Exercise, FsrsState, utcnow
-from ..services.cards import card_parts, create_card_exercise
+from ..services.study.cards import card_parts, create_card_exercise
 
 CLOZE_RE = re.compile(r"\{\{c\d+::")
 

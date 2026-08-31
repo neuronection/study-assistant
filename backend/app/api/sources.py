@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from ..domain.models import Material, MaterialSource
 from ..jobs.runner import JobRunner
-from ..services.profiles import ensure_default_profile
-from ..services.sources import SourcesError, SourcesService
+from ..services.content.sources import SourcesError, SourcesService
+from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 
 router = APIRouter(prefix="/sources", tags=["sources"])

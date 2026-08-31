@@ -122,7 +122,7 @@ def test_notes_ocr_uses_skill_service_override() -> None:
         app = client.app
         assert isinstance(app, FastAPI)
         with app.state.session_factory() as db:
-            from app.services.skills import SkillService
+            from app.services.platform.skills import SkillService
 
             service = SkillService(db)
             service.save_version(

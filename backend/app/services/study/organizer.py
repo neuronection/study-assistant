@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai.gateway import LLMGateway, Message
-from ..domain.models import (
+from ...ai.gateway import LLMGateway, Message
+from ...domain.models import (
     Concept,
     Material,
     MaterialFolder,
@@ -14,8 +14,8 @@ from ..domain.models import (
     NodeConcept,
     TreeNode,
 )
-from ..services.tree import TreeService
-from .folders import folder_links_by_node, folder_member_ids
+from ..content.folders import folder_links_by_node, folder_member_ids
+from ..knowledge.tree import TreeService
 
 REVIEW_TASK = "description"
 

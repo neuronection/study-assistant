@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..domain.models import (
+from ...domain.models import (
     Blob,
     Course,
     Material,
@@ -18,7 +18,7 @@ from ..domain.models import (
     MaterialSource,
     utcnow,
 )
-from ..services.materials import detect_kind
+from .materials import detect_kind
 
 DEFAULT_GLOBS = ("*.pdf", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.md", "*.markdown", "*.txt")
 

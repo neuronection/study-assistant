@@ -271,7 +271,7 @@ def test_trash_expiry_purges_old_items() -> None:
     import tempfile
 
     from app.domain.models import DeletedItem
-    from app.services.trash import purge_expired, snapshot
+    from app.services.platform.trash import purge_expired, snapshot
 
     client = make_client(tempfile.mkdtemp())
     with client:

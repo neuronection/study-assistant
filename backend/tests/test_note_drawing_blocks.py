@@ -129,13 +129,13 @@ def test_body_md_round_trip_is_lossless(tmp_path: Any) -> None:
 
 
 def _blocks_md(blocks: object) -> str:
-    from app.services.drawings import blocks_md as join
+    from app.services.content.drawings import blocks_md as join
 
     return join(blocks)  # type: ignore[arg-type]
 
 
 def test_legacy_stripped_blocks_rejoin_unchanged(tmp_path: Any) -> None:
-    from app.services.drawings import blocks_md as _blocks_md
+    from app.services.content.drawings import blocks_md as _blocks_md
 
     legacy: list[dict[str, Any]] = [
         {"type": "text", "md": "before"},

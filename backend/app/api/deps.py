@@ -4,7 +4,7 @@ from urllib.parse import quote
 from fastapi import Header, Request
 from sqlalchemy.orm import Session
 
-from ..services.profiles import get_profile
+from ..services.platform.profiles import get_profile
 
 
 def content_disposition(filename: str, kind: str = "attachment") -> str:

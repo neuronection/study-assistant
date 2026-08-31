@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.ai.gateway import LLMGateway, Message, ResolvedModel
 from app.domain.models import ChatMessage, ChatSession
-from app.services.chat import ChatService
-from app.services.profiles import ensure_default_profile
+from app.services.platform.chat import ChatService
+from app.services.platform.profiles import ensure_default_profile
 
 
 class NoEmbedder:

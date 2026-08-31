@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai.mentions import MentionRegistry
-from ..domain.models import (
+from ...ai.mentions import MentionRegistry
+from ...domain.models import (
     Concept,
     Course,
     Material,
@@ -17,8 +17,8 @@ from ..domain.models import (
     Note,
     TreeNode,
 )
-from .folders import folder_links_by_node, folder_member_ids
-from .search import EmbedQuery, retrieve_chunks_hybrid
+from ..content.folders import folder_links_by_node, folder_member_ids
+from ..search import EmbedQuery, retrieve_chunks_hybrid
 from .tree import subtree_material_ids
 
 RETRIEVAL_EXCLUDED_KINDS = {"node_review"}

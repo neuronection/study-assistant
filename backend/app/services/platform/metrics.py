@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..domain.models import (
+from ...domain.models import (
     Activity,
     Answer,
     Attempt,
@@ -405,7 +405,7 @@ def set_goal(session: Session, profile_id: int, answers_per_day: int) -> int:
 
 
 def exam_status(session: Session, profile_id: int) -> list[dict[str, Any]]:
-    from .tree import TreeService
+    from ..knowledge.tree import TreeService
 
     courses = list(
         session.scalars(

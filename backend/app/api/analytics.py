@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..services import metrics
-from ..services.profiles import ensure_default_profile
+from ..services.platform import metrics
+from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])

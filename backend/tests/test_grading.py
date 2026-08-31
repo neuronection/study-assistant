@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.domain.models import Question
-from app.services.grading import grade
+from app.services.study.grading import grade
 
 
 def make_question(

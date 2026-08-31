@@ -326,7 +326,7 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
 
 
 def test_material_drawings_remap_helpers() -> None:
-    from app.services.drawings import (
+    from app.services.content.drawings import (
         drawing_ref_ids,
         md_to_blocks,
         remap_drawing_refs,

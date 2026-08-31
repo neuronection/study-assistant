@@ -28,14 +28,14 @@ from .ocr.gateway_ocr import GatewayOcr
 from .pipelines.drawing_ocr import make_drawing_ocr_handler
 from .pipelines.ingest import make_ingest_handler
 from .pipelines.postprocess import make_postprocess_handler
-from .services.backup import (
+from .services.platform.backup import (
     BackupScheduler,
     EffectiveBackupSettings,
     boot_integrity_check,
     load_effective_settings,
 )
-from .services.profiles import ensure_default_profile
-from .services.scan_scheduler import ScanScheduler
+from .services.platform.profiles import ensure_default_profile
+from .services.platform.scan_scheduler import ScanScheduler
 from .storage.blobs import BlobStore
 from .storage.db import Engine, make_engine, make_session_factory
 
@@ -170,12 +170,12 @@ def create_app(
                     TaskAssignment(task=task_def.task, model_id=None, fallback_model_id=None)
                 )
         seed_default_task_assignments(session)
-        from .services.skills import (
+        from .services.platform.skills import (
             seed_course_types,
             seed_error_patterns,
             seed_skills,
         )
-        from .services.trash import purge_expired
+        from .services.platform.trash import purge_expired
 
         seed_course_types(session)
         seed_error_patterns(session)
@@ -189,7 +189,7 @@ def create_app(
 
     app.state.blobs = BlobStore(settings.blobs_dir)
     app.state.gateway = gateway if gateway is not None else LLMGateway(app.state.session_factory)
-    from .services.editor_ai import EditorTransformService
+    from .services.platform.editor_ai import EditorTransformService
 
     app.state.editor_ai = EditorTransformService(app.state.session_factory, app.state.gateway)
     app.state.ocr = ocr if ocr is not None else GatewayOcr(app.state.gateway)

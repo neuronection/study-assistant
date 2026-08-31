@@ -17,17 +17,17 @@ from ..domain.models import (
     NoteVersion,
     utcnow,
 )
-from ..services.drawings import (
+from ..services.content.drawings import (
     blocks_md,
     enqueue_drawing_ocr,
     md_to_blocks,
     note_search_text,
     pending_ocr_job_id,
 )
-from ..services.profiles import ensure_default_profile
+from ..services.knowledge.tree import TreeError, TreeService
+from ..services.platform.profiles import ensure_default_profile
+from ..services.platform.skills import SkillService
 from ..services.search import fuzzy_text_match
-from ..services.skills import SkillService
-from ..services.tree import TreeError, TreeService
 from .deps import get_session
 from .schemas import ViewBox
 
@@ -234,7 +234,12 @@ def compose_note(
     session: Session = Depends(get_session),
 ) -> NoteDetail:
     profile = ensure_default_profile(session)
-    from ..services.context import ContextError, ContextResolver, ContextScope, ContextSpec
+    from ..services.knowledge.context import (
+        ContextError,
+        ContextResolver,
+        ContextScope,
+        ContextSpec,
+    )
 
     try:
         bundle = ContextResolver(session, request.app.state.embedder.embed).resolve(
@@ -605,7 +610,7 @@ def delete_note(
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
     from ..jobs.cancellation import cancel_jobs_for
-    from ..services import trash
+    from ..services.platform import trash
 
     cancel_jobs_for(session, note_ids=[note.id])
     deleted_item_id = trash.snapshot(

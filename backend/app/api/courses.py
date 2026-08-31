@@ -18,27 +18,27 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from ..services.concepts import (
+from ..services.knowledge.concepts import (
     ConceptsError,
     commit_concepts,
     concept_graph,
     extract_concepts,
 )
-from ..services.courses import (
+from ..services.knowledge.courses import (
     CourseError,
     OutlineService,
     StructureService,
     purge_course,
 )
-from ..services.organizer import (
+from ..services.knowledge.tree import TreeError, TreeService
+from ..services.platform.profiles import ensure_default_profile
+from ..services.study.organizer import (
     OrganizerError,
     missing_note_markdown,
     node_context,
     review_node,
     review_report_markdown,
 )
-from ..services.profiles import ensure_default_profile
-from ..services.tree import TreeError, TreeService
 from .deps import content_disposition, get_session
 
 router = APIRouter(tags=["courses"])
@@ -251,7 +251,7 @@ def update_course(
 def export_course(
     course_id: int, request: Request, session: Session = Depends(get_session)
 ) -> Response:
-    from ..services.course_bundle import BundleError, build_course_bundle
+    from ..services.content.course_bundle import BundleError, build_course_bundle
 
     profile = ensure_default_profile(session)
     course = session.get(Course, course_id)
@@ -280,7 +280,7 @@ async def import_course(
     dry_run: bool = False,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
-    from ..services.course_bundle import (
+    from ..services.content.course_bundle import (
         BundleError,
         bundle_preview,
         import_course_bundle,
@@ -330,7 +330,7 @@ def delete_course(
             status_code=409,
             detail="refusing to delete a course without a confirmed backup",
         )
-    from ..services.backup import create_backup
+    from ..services.platform.backup import create_backup
 
     settings = request.app.state.settings
     create_backup(
@@ -763,7 +763,7 @@ def review_node_endpoint(
     from datetime import datetime as dt
 
     from ..pipelines.compose import ComposeService, find_live_artifact
-    from ..services.materials import MaterialsService
+    from ..services.content.materials import MaterialsService
 
     report = review_report_markdown(node.title, findings)
     dated = dt.now(UTC).date().isoformat()

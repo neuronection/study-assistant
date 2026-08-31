@@ -9,10 +9,10 @@ from ..ai.structured import ExerciseOut
 from ..ai.widgets import EXGEN_WIDGET_DOC, validate_widget_block
 from ..domain.models import Exercise, ExerciseStep
 from ..math.equivalence import expressions_equivalent, parse_math
-from ..services.context import ContextBundle
-from ..services.exercise_kinds import RUBRIC_KINDS, STRUCTURAL_KINDS
-from ..services.exercise_rubric import validate_rubric_payload
-from ..services.exercise_structs import validate_structural_payload
+from ..services.knowledge.context import ContextBundle
+from ..services.study.exercise_kinds import RUBRIC_KINDS, STRUCTURAL_KINDS
+from ..services.study.exercise_rubric import validate_rubric_payload
+from ..services.study.exercise_structs import validate_structural_payload
 
 EXGEN_TASK = "exgen"
 EXGEN_SKILL = "exercise.generate"

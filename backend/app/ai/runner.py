@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ..domain.models import AiInteraction
-from ..services.skills import SkillService
+from ..services.platform.skills import SkillService
 from .gateway import LLMGateway, Message
 from .parsing import estimate_tokens, extract_json_object
 

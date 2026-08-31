@@ -29,19 +29,19 @@ from ..pipelines.quizgen import (
     QuizgenService,
     validate_question,
 )
-from ..services.chat import ChatService
-from ..services.context import (
+from ..services.knowledge.context import (
     ContextBundle,
     ContextError,
     ContextParams,
     ContextResolver,
 )
-from ..services.grading import grade
-from ..services.inbox import InboxService
-from ..services.patterns import ErrorPatternService
-from ..services.profiles import ensure_default_profile
-from ..services.tree import TreeError, TreeService
-from ..services.tutor import TutorError, TutorService
+from ..services.knowledge.tree import TreeError, TreeService
+from ..services.platform.chat import ChatService
+from ..services.platform.profiles import ensure_default_profile
+from ..services.study.grading import grade
+from ..services.study.inbox import InboxService
+from ..services.study.patterns import ErrorPatternService
+from ..services.study.tutor import TutorError, TutorService
 from .deps import get_session
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
@@ -614,7 +614,7 @@ def delete_quiz(activity_id: int, session: Session = Depends(get_session)) -> di
     )
     if activity is None:
         raise HTTPException(status_code=404, detail="quiz not found")
-    from ..services import trash
+    from ..services.platform import trash
 
     deleted_item_id = trash.snapshot(
         session, "quiz", activity.id, activity.title, profile.id

@@ -3,7 +3,7 @@ import pytest
 
 from app.ai.gateway import LLMGateway, Message, ProviderError, ResolvedModel
 from app.ai.tools import calculate, extract_tool_calls, run_tool_line, strip_tool_lines
-from app.services.chat import _tool_result_summary
+from app.services.platform.chat import _tool_result_summary
 
 
 def make_stream_gateway(transport: httpx.BaseTransport) -> LLMGateway:

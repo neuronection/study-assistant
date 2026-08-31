@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 
-from ..services.backup import (
+from ..services.platform.backup import (
     STAMP_PATTERN,
     BackupError,
     BackupSettingsOverride,
@@ -19,7 +19,7 @@ from ..services.backup import (
     read_archive,
     store_settings_override,
 )
-from ..services.profiles import ensure_default_profile
+from ..services.platform.profiles import ensure_default_profile
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 

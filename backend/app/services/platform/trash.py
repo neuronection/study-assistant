@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import DateTime, delete, select
 from sqlalchemy.orm import Session
 
-from ..domain.models import (
+from ...domain.models import (
     Activity,
     Answer,
     Attempt,

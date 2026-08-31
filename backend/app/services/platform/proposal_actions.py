@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..domain.models import (
+from ...domain.models import (
     Concept,
     Material,
     MaterialFolder,
@@ -12,7 +12,7 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from .folders import folder_links_by_node, folder_member_ids
+from ..content.folders import folder_links_by_node, folder_member_ids
 
 
 class ProposalActionError(ValueError):

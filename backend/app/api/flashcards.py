@@ -20,15 +20,15 @@ from ..domain.models import (
 from ..pipelines.anki import export_apkg, import_apkg
 from ..pipelines.flashcards import FlashcardsError, FlashcardsService, validate_card
 from ..scheduling import fsrs
-from ..services.cards import (
+from ..services.knowledge.context import ContextError, ContextParams, ContextResolver
+from ..services.knowledge.tree import TreeError, TreeService
+from ..services.platform.profiles import ensure_default_profile
+from ..services.study.cards import (
     card_parts,
     card_source,
     create_card_exercise,
 )
-from ..services.context import ContextError, ContextParams, ContextResolver
-from ..services.exercise_kinds import CARD_KINDS
-from ..services.profiles import ensure_default_profile
-from ..services.tree import TreeError, TreeService
+from ..services.study.exercise_kinds import CARD_KINDS
 from .deps import get_session
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])

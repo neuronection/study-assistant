@@ -9,7 +9,7 @@ from ..ai.skills import QUIZGEN_SYSTEM
 from ..ai.structured import QuizgenOut
 from ..domain.models import Activity, Question
 from ..math.equivalence import expressions_equivalent
-from ..services.context import ContextBundle
+from ..services.knowledge.context import ContextBundle
 
 QUIZGEN_TASK = "quizgen"
 QUIZGEN_SKILL = "quiz.generate"

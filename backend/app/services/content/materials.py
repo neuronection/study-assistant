@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ..domain.models import (
+from ...domain.models import (
     Blob,
     Chunk,
     Course,
@@ -17,12 +17,12 @@ from ..domain.models import (
     MaterialStudyState,
     TreeNode,
 )
-from ..jobs.cancellation import cancel_jobs_for_material
-from ..jobs.runner import JobRunner
-from ..pipelines.chunking import chunk_markdown
-from ..storage import vectors
-from ..storage.blobs import BlobStore
-from ..storage.fts import delete_material_fts, sync_material_fts
+from ...jobs.cancellation import cancel_jobs_for_material
+from ...jobs.runner import JobRunner
+from ...pipelines.chunking import chunk_markdown
+from ...storage import vectors
+from ...storage.blobs import BlobStore
+from ...storage.fts import delete_material_fts, sync_material_fts
 from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs
 
 KIND_BY_SUFFIX: dict[str, str] = {

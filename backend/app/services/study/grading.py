@@ -2,8 +2,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..domain.models import Question
-from ..math.equivalence import equivalent
+from ...domain.models import Question
+from ...math.equivalence import equivalent
 
 _WHITESPACE_RE = re.compile(r"\s+")
 

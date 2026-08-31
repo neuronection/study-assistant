@@ -17,7 +17,7 @@ from .domain.models import (
     Question,
     TreeNode,
 )
-from .services.tree import TreeService
+from .services.knowledge.tree import TreeService
 
 MCP_SERVER_NAME = "studyassistant"
 MCP_INSTRUCTIONS = (
@@ -280,7 +280,7 @@ def _get_node_context(
     max_chunks: int = 12,
     profile_id: int | None = None,
 ) -> dict[str, Any]:
-    from .services.context import (
+    from .services.knowledge.context import (
         ContextError,
         ContextResolver,
         ContextScope,

@@ -19,21 +19,21 @@ from ..domain.models import (
     StepAttempt,
 )
 from ..pipelines.exgen import ExgenError, ExgenService
-from ..services.chat import ChatService
-from ..services.context import ContextBundle, ContextError, ContextParams, ContextResolver
-from ..services.exercise_kinds import GENERATABLE_KINDS
-from ..services.exercise_rubric import (
+from ..services.knowledge.context import ContextBundle, ContextError, ContextParams, ContextResolver
+from ..services.knowledge.tree import TreeError, TreeService
+from ..services.platform.chat import ChatService
+from ..services.platform.profiles import ensure_default_profile
+from ..services.study.exercise_kinds import GENERATABLE_KINDS
+from ..services.study.exercise_rubric import (
     RUBRIC_KINDS,
     RubricError,
     RubricGrader,
     rubric_deterministic_check,
     rubric_public_input,
 )
-from ..services.exercise_structs import STRUCT_KINDS, check_structural, public_input
-from ..services.patterns import ErrorPatternService, PatternError
-from ..services.profiles import ensure_default_profile
-from ..services.tree import TreeError, TreeService
-from ..services.tutor import TutorError, TutorService
+from ..services.study.exercise_structs import STRUCT_KINDS, check_structural, public_input
+from ..services.study.patterns import ErrorPatternService, PatternError
+from ..services.study.tutor import TutorError, TutorService
 from .deps import get_session
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
@@ -610,7 +610,7 @@ def delete_exercise(
     exercise = session.get(Exercise, exercise_id)
     if exercise is None:
         raise HTTPException(status_code=404, detail="exercise not found")
-    from ..services import trash
+    from ..services.platform import trash
 
     deleted_item_id = trash.snapshot(
         session, "exercise", exercise.id, exercise.title, exercise.profile_id

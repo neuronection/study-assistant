@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import ImagePart, LLMGateway, Message, TextPart
 from ..ai.skills import NOTES_OCR_SYSTEM
-from ..services.skills import SkillService
+from ..services.platform.skills import SkillService
 from .imaging import ocr_image_max_edge, prepare_ocr_image
 
 NOTES_OCR_TASK = "notes_ocr"

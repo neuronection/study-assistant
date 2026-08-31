@@ -4,9 +4,9 @@ import jinja2
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai.contracts.contracts import Constraint
-from ..ai.skills import CONTEXT_VARS, SEED_COURSE_TYPES, SEED_ERROR_PATTERNS, SEEDS
-from ..domain.models import Course, CourseType, ErrorPattern, Skill, SkillVersion, utcnow
+from ...ai.contracts.contracts import Constraint
+from ...ai.skills import CONTEXT_VARS, SEED_COURSE_TYPES, SEED_ERROR_PATTERNS, SEEDS
+from ...domain.models import Course, CourseType, ErrorPattern, Skill, SkillVersion, utcnow
 
 SCOPE_TYPES = ("system", "course_type", "course")
 

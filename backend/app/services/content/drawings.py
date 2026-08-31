@@ -3,8 +3,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..domain.models import Job
-from ..jobs.runner import JobRunner
+from ...domain.models import Job
+from ...jobs.runner import JobRunner
 
 DRAWING_MD = re.compile(r"!\[[^\]]*\]\(ca-drawing://(\d+)\)")
 

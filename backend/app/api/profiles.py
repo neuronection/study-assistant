@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..ocr.imaging import ALLOWED_IMAGE_MAX_EDGE, DEFAULT_IMAGE_MAX_EDGE
-from ..services.profiles import create_profile, ensure_default_profile, list_profiles
+from ..services.platform.profiles import create_profile, ensure_default_profile, list_profiles
 from .deps import get_session
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -90,7 +90,7 @@ def add_profile(
 def remove_profile(profile_id: int, session: Session = Depends(get_session)) -> None:
     from sqlalchemy.exc import IntegrityError
 
-    from ..services.profiles import list_profiles
+    from ..services.platform.profiles import list_profiles
 
     profiles = list_profiles(session)
     if len(profiles) <= 1:

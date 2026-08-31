@@ -7,8 +7,8 @@ from ..domain.models import Material, MaterialDrawing, Note, NoteDrawing, utcnow
 from ..jobs.cancellation import ensure_target_exists
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.notes_ocr import NotesOcrEngine
-from ..services.drawings import note_search_text
-from ..services.materials import MaterialsService
+from ..services.content.drawings import note_search_text
+from ..services.content.materials import MaterialsService
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
 

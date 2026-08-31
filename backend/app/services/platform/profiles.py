@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core.profile_context import active_profile_id
-from ..domain.models import Profile
+from ...core.profile_context import active_profile_id
+from ...domain.models import Profile
 
 
 def ensure_default_profile(session: Session) -> Profile:

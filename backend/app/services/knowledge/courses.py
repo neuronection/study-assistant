@@ -5,8 +5,8 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ..ai.gateway import LLMGateway, Message
-from ..domain.models import (
+from ...ai.gateway import LLMGateway, Message
+from ...domain.models import (
     Activity,
     Answer,
     Attempt,
@@ -37,14 +37,14 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from ..jobs.cancellation import cancel_jobs_for
-from ..services.folders import (
+from ...jobs.cancellation import cancel_jobs_for
+from ..content.folders import (
     folder_links_by_node,
     folder_member_ids,
     subtree_folder_ids,
 )
-from ..services.materials import purge_material
-from ..services.tree import TreeService
+from ..content.materials import purge_material
+from .tree import TreeService
 
 OUTLINE_TASK = "outline"
 

@@ -9,33 +9,33 @@ import structlog
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..ai.contracts.contracts import (
+from ...ai.contracts.contracts import (
     CHAT_ANSWER_CONTRACT,
     CITATION_RE,
     Constraint,
     ValidationResult,
     validate,
 )
-from ..ai.gateway import LLMGateway, Message, ProviderError, is_tool_unsupported_error
-from ..ai.mentions import MentionRegistry, registry_from_json
-from ..ai.parsing import blocks_to_md as _blocks_to_md
-from ..ai.parsing import parse_answer_blocks
-from ..ai.proposals import (
+from ...ai.gateway import LLMGateway, Message, ProviderError, is_tool_unsupported_error
+from ...ai.mentions import MentionRegistry, registry_from_json
+from ...ai.parsing import blocks_to_md as _blocks_to_md
+from ...ai.parsing import parse_answer_blocks
+from ...ai.proposals import (
     DISMISSAL_NOTE,
     PROPOSAL_DOC,
     extract_proposal,
     strip_proposal_fences,
 )
-from ..ai.skills import CHAT_ANSWER_SYSTEM
-from ..ai.tools import (
+from ...ai.skills import CHAT_ANSWER_SYSTEM
+from ...ai.tools import (
     CHAT_TOOL_DOC,
     TOOL_LINE_RE,
     extract_tool_calls,
     run_tool_line,
     strip_tool_lines,
 )
-from ..ai.widgets import CHAT_WIDGET_DOC
-from ..domain.models import (
+from ...ai.widgets import CHAT_WIDGET_DOC
+from ...domain.models import (
     Activity,
     AiInteraction,
     Answer,
@@ -57,15 +57,15 @@ from ..domain.models import (
     StepAttempt,
     TreeNode,
 )
-from ..mcp_resources import (
+from ...mcp_resources import (
     RESOURCE_TOOL_BY_KEYWORD,
     ResourceError,
     build_resource_tool_doc,
 )
-from ..services.context import ContextResolver, ContextScope, ContextSpec
-from ..services.search import retrieve_chunks_hybrid
-from ..services.skills import SkillService
-from ..services.tutor import quiz_guard_context
+from ..knowledge.context import ContextResolver, ContextScope, ContextSpec
+from ..search import retrieve_chunks_hybrid
+from ..study.tutor import quiz_guard_context
+from .skills import SkillService
 
 logger = structlog.get_logger(__name__)
 
@@ -879,7 +879,7 @@ class ChatService:
 
     def _use_native_tools(self, course_id: int | None = None) -> bool:
         try:
-            from ..ai.chat_models import use_native_tools
+            from ...ai.chat_models import use_native_tools
 
             return use_native_tools(self._gateway.resolve(CHAT_TASK, course_id))
         except Exception:
@@ -1104,7 +1104,7 @@ class ChatService:
                     if buffer:
                         stream_interruption = str(error)[:200]
                     elif native_tools and is_tool_unsupported_error(error):
-                        from ..ai.chat_models import degrade_native_tools
+                        from ...ai.chat_models import degrade_native_tools
 
                         degrade_native_tools(
                             self._gateway.resolve(

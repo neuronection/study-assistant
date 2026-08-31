@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..domain.models import MaterialFolder
-from ..services.courses import StructureService
-from ..services.folders import FolderError, FoldersService
-from ..services.profiles import ensure_default_profile
+from ..services.content.folders import FolderError, FoldersService
+from ..services.knowledge.courses import StructureService
+from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 from .schemas import FolderCreate, FolderMove, FolderOut, FolderRename
 

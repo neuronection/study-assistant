@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app
-from app.services.backup import (
+from app.services.platform.backup import (
     BackupScheduler,
     EffectiveBackupSettings,
     apply_retention,

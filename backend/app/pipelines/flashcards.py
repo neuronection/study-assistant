@@ -10,8 +10,8 @@ from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import FLASHCARDS_SYSTEM
 from ..ai.structured import FlashcardsOut
 from ..domain.models import Exercise, ExerciseStep
-from ..services.cards import create_card_exercise
-from ..services.context import ContextBundle
+from ..services.knowledge.context import ContextBundle
+from ..services.study.cards import create_card_exercise
 
 FLASHCARDS_TASK = "flashcards"
 FLASHCARDS_SKILL = "flashcards.generate"

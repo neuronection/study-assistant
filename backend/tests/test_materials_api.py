@@ -174,7 +174,7 @@ def test_txt_material_ingests_native(client: TestClient) -> None:
 
 
 def test_extraction_to_blocks_keeps_fences_whole() -> None:
-    from app.services.materials import extraction_to_blocks
+    from app.services.content.materials import extraction_to_blocks
 
     markdown = (
         "# Partial fractions\n\n"
@@ -201,7 +201,7 @@ def test_extraction_to_blocks_keeps_fences_whole() -> None:
 
 
 def test_extraction_to_blocks_plain_split_unchanged() -> None:
-    from app.services.materials import extraction_to_blocks
+    from app.services.content.materials import extraction_to_blocks
 
     assert extraction_to_blocks("a\n\nb\n\n\nc") == [
         {"type": "text", "md": "a"},

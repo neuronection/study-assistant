@@ -314,7 +314,7 @@ def test_tree_carries_direct_counts(client: TestClient) -> None:
 
 
 def test_delete_restore_round_trip(client: TestClient) -> None:
-    from app.services.tree import _SNAPSHOTS
+    from app.services.knowledge.tree import _SNAPSHOTS
 
     _SNAPSHOTS.clear()
     course_id = make_course(client, "Undo")

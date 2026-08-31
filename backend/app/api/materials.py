@@ -12,14 +12,14 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..domain.models import Extraction, Material, MaterialDrawing
 from ..jobs.runner import JobRunner
-from ..services.courses import StructureService
-from ..services.drawings import (
+from ..services.content.drawings import (
     enqueue_drawing_ocr,
     pending_ocr_job_id,
     strip_drawing_refs,
 )
-from ..services.materials import MaterialsService, purge_material
-from ..services.profiles import ensure_default_profile
+from ..services.content.materials import MaterialsService, purge_material
+from ..services.knowledge.courses import StructureService
+from ..services.platform.profiles import ensure_default_profile
 from .deps import content_disposition, get_session
 from .schemas import (
     DrawingIn,
@@ -193,7 +193,7 @@ def compose_material(
 ) -> MaterialUploadOut:
     profile = ensure_default_profile(session)
     from ..pipelines.compose import ComposeError, ComposeService
-    from ..services.context import (
+    from ..services.knowledge.context import (
         ContextError,
         ContextResolver,
         ContextScope,
@@ -218,8 +218,8 @@ def compose_material(
     except ContextError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     from ..pipelines.compose import find_live_artifact
-    from ..services.materials import MaterialsService
-    from ..services.tree import TreeService
+    from ..services.content.materials import MaterialsService
+    from ..services.knowledge.tree import TreeService
 
     placement_node_id = (
         bundle.node.id if bundle.node is not None else body.node_id

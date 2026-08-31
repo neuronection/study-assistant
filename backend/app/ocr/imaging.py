@@ -4,7 +4,7 @@ import structlog
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from ..services.profiles import ensure_default_profile
+from ..services.platform.profiles import ensure_default_profile
 
 logger = structlog.get_logger(__name__)
 

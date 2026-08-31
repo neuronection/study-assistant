@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 from app.ai.gateway import LLMGateway, Message, ResolvedModel
 from app.core.config import Settings
 from app.main import create_app
-from app.services.exercise_rubric import validate_rubric_payload
-from app.services.exercise_structs import (
+from app.services.study.exercise_rubric import validate_rubric_payload
+from app.services.study.exercise_structs import (
     check_structural,
     public_input,
     validate_structural_payload,

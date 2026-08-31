@@ -19,8 +19,8 @@ from app.ai.gateway import Message, TaskUnassigned
 from app.core.config import Settings
 from app.domain.models import AiInteraction
 from app.main import create_app
-from app.services.editor_ai import validate_output
-from app.services.skills import SkillService
+from app.services.platform.editor_ai import validate_output
+from app.services.platform.skills import SkillService
 
 
 class UnassignedGateway(ScriptedGateway):

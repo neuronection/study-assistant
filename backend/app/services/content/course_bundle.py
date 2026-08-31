@@ -9,8 +9,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import __version__
-from ..domain.models import (
+from ... import __version__
+from ...domain.models import (
     Activity,
     Chunk,
     Concept,
@@ -34,9 +34,9 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from ..pipelines.chunking import chunk_markdown
-from ..storage.blobs import blob_path
-from ..storage.fts import sync_material_fts
+from ...pipelines.chunking import chunk_markdown
+from ...storage.blobs import blob_path
+from ...storage.fts import sync_material_fts
 from .drawings import remap_drawing_refs
 from .folders import FoldersService
 from .materials import extraction_to_blocks
@@ -668,7 +668,7 @@ def import_course_bundle(
     blob_store: Any,
     existing_titles: set[str],
 ) -> dict[str, Any]:
-    from ..services.tree import TreeService
+    from ..knowledge.tree import TreeService
 
     title = str(bundle.course["title"]).strip()[:300]
     imported_title = title

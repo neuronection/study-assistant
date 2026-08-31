@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy import update as sa_update
 from sqlalchemy.orm import Session
 
-from ..domain.models import (
+from ...domain.models import (
     Activity,
     ChatSession,
     Concept,
@@ -23,7 +23,7 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from .folders import folder_links_by_node, folder_member_ids
+from ..content.folders import folder_links_by_node, folder_member_ids
 
 MAX_DEPTH = 4
 ORDER_STEP = 1000
