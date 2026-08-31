@@ -48,3 +48,47 @@ class NodeCreatedOut(BaseModel):
     title: str
     order_idx: int
     depth: int
+
+
+class NodeDetailOut(BaseModel):
+    id: int
+    course_id: int
+    parent_id: int | None
+    title: str
+    summary: str | None
+    objectives: list[str]
+    ai_hint: str | None
+    depth: int
+    is_root: bool
+    order_idx: int
+
+
+class NodeUpdatedOut(BaseModel):
+    id: int
+    title: str
+    ai_hint: str | None
+
+
+class NodeMovedOut(BaseModel):
+    id: int
+    parent_id: int | None
+    order_idx: int
+
+
+class NodeDeletedOut(BaseModel):
+    undo_token: str | None
+
+
+class NodeRestoredOut(BaseModel):
+    id: int
+
+
+class FolderAssignedOut(BaseModel):
+    node_id: int
+    folder_id: int
+
+
+class StudyStateOut(BaseModel):
+    status: str
+    progress: float
+    last_opened_at: str | None

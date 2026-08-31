@@ -39,7 +39,17 @@ from ..services.study.organizer import (
     review_node,
     review_report_markdown,
 )
-from .courses_schemas import NodeCreatedOut, TreeNodeOut
+from .courses_schemas import (
+    FolderAssignedOut,
+    NodeCreatedOut,
+    NodeDeletedOut,
+    NodeDetailOut,
+    NodeMovedOut,
+    NodeRestoredOut,
+    NodeUpdatedOut,
+    StudyStateOut,
+    TreeNodeOut,
+)
 from .deps import content_disposition, get_session
 
 router = APIRouter(tags=["courses"])
@@ -368,7 +378,7 @@ def add_node(
     return {"id": node.id, "title": node.title, "order_idx": node.order_idx, "depth": node.depth}
 
 
-@router.get("/nodes/{node_id}")
+@router.get("/nodes/{node_id}", response_model=NodeDetailOut)
 def get_node(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     node = _load_node(session, node_id)
     return {
@@ -385,7 +395,7 @@ def get_node(node_id: int, session: Session = Depends(get_session)) -> dict[str,
     }
 
 
-@router.patch("/nodes/{node_id}")
+@router.patch("/nodes/{node_id}", response_model=NodeUpdatedOut)
 def patch_node(
     node_id: int, body: NodeUpdate, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -404,7 +414,7 @@ def patch_node(
     return {"id": node.id, "title": node.title, "ai_hint": node.ai_hint}
 
 
-@router.patch("/nodes/{node_id}/move")
+@router.patch("/nodes/{node_id}/move", response_model=NodeMovedOut)
 def move_node(
     node_id: int, body: NodeMove, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -417,7 +427,7 @@ def move_node(
     return {"id": node.id, "parent_id": node.parent_id, "order_idx": node.order_idx}
 
 
-@router.delete("/nodes/{node_id}")
+@router.delete("/nodes/{node_id}", response_model=NodeDeletedOut)
 def delete_node(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     _load_node(session, node_id)
     try:
@@ -428,7 +438,7 @@ def delete_node(node_id: int, session: Session = Depends(get_session)) -> dict[s
     return {"undo_token": token}
 
 
-@router.post("/nodes/restore", status_code=200)
+@router.post("/nodes/restore", status_code=200, response_model=NodeRestoredOut)
 def restore_node(body: NodeRestore, session: Session = Depends(get_session)) -> dict[str, Any]:
     try:
         node_id = _tree(session).restore_node(body.undo_token)
@@ -521,7 +531,7 @@ def unassign_material(
     session.commit()
 
 
-@router.post("/nodes/{node_id}/folder-materials", status_code=201)
+@router.post("/nodes/{node_id}/folder-materials", status_code=201, response_model=FolderAssignedOut)
 def assign_folder_materials(
     node_id: int, body: FolderAllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -919,7 +929,7 @@ def set_study_state(
     return {"status": state.status, "progress": state.progress}
 
 
-@router.get("/study-states")
+@router.get("/study-states", response_model=dict[str, StudyStateOut])
 def list_study_states(
     session: Session = Depends(get_session),
 ) -> dict[str, dict[str, Any]]:

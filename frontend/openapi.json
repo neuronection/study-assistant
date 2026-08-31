@@ -2169,6 +2169,24 @@
         "title": "FolderAllocationIn",
         "type": "object"
       },
+      "FolderAssignedOut": {
+        "properties": {
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "node_id",
+          "folder_id"
+        ],
+        "title": "FolderAssignedOut",
+        "type": "object"
+      },
       "FolderCreate": {
         "properties": {
           "course_id": {
@@ -3543,6 +3561,136 @@
         "title": "NodeCreate",
         "type": "object"
       },
+      "NodeCreatedOut": {
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "order_idx": {
+            "title": "Order Idx",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "order_idx",
+          "depth"
+        ],
+        "title": "NodeCreatedOut",
+        "type": "object"
+      },
+      "NodeDeletedOut": {
+        "properties": {
+          "undo_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undo Token"
+          }
+        },
+        "required": [
+          "undo_token"
+        ],
+        "title": "NodeDeletedOut",
+        "type": "object"
+      },
+      "NodeDetailOut": {
+        "properties": {
+          "ai_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Hint"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_root": {
+            "title": "Is Root",
+            "type": "boolean"
+          },
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "order_idx": {
+            "title": "Order Idx",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "parent_id",
+          "title",
+          "summary",
+          "objectives",
+          "ai_hint",
+          "depth",
+          "is_root",
+          "order_idx"
+        ],
+        "title": "NodeDetailOut",
+        "type": "object"
+      },
       "NodeMove": {
         "properties": {
           "parent_id": {
@@ -3561,6 +3709,36 @@
         "title": "NodeMove",
         "type": "object"
       },
+      "NodeMovedOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "order_idx": {
+            "title": "Order Idx",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "order_idx"
+        ],
+        "title": "NodeMovedOut",
+        "type": "object"
+      },
       "NodeRestore": {
         "properties": {
           "undo_token": {
@@ -3572,6 +3750,19 @@
           "undo_token"
         ],
         "title": "NodeRestore",
+        "type": "object"
+      },
+      "NodeRestoredOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "NodeRestoredOut",
         "type": "object"
       },
       "NodeUpdate": {
@@ -3626,6 +3817,36 @@
           }
         },
         "title": "NodeUpdate",
+        "type": "object"
+      },
+      "NodeUpdatedOut": {
+        "properties": {
+          "ai_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Hint"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "ai_hint"
+        ],
+        "title": "NodeUpdatedOut",
         "type": "object"
       },
       "NoteComposeIn": {
@@ -5596,6 +5817,36 @@
         "title": "StudyStateIn",
         "type": "object"
       },
+      "StudyStateOut": {
+        "properties": {
+          "last_opened_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Opened At"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "progress",
+          "last_opened_at"
+        ],
+        "title": "StudyStateOut",
+        "type": "object"
+      },
       "TaskAssignmentIn": {
         "properties": {
           "fallback_model_id": {
@@ -5971,6 +6222,217 @@
           "created_at"
         ],
         "title": "TranscriptEntry",
+        "type": "object"
+      },
+      "TreeNodeCounts": {
+        "properties": {
+          "cards_due": {
+            "default": 0,
+            "title": "Cards Due",
+            "type": "integer"
+          },
+          "exercises": {
+            "default": 0,
+            "title": "Exercises",
+            "type": "integer"
+          },
+          "flashcards": {
+            "default": 0,
+            "title": "Flashcards",
+            "type": "integer"
+          },
+          "materials": {
+            "default": 0,
+            "title": "Materials",
+            "type": "integer"
+          },
+          "notes": {
+            "default": 0,
+            "title": "Notes",
+            "type": "integer"
+          },
+          "quizzes": {
+            "default": 0,
+            "title": "Quizzes",
+            "type": "integer"
+          },
+          "studied": {
+            "default": 0,
+            "title": "Studied",
+            "type": "integer"
+          }
+        },
+        "title": "TreeNodeCounts",
+        "type": "object"
+      },
+      "TreeNodeFolderLink": {
+        "properties": {
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          }
+        },
+        "required": [
+          "folder_id",
+          "name",
+          "source_id"
+        ],
+        "title": "TreeNodeFolderLink",
+        "type": "object"
+      },
+      "TreeNodeMaterialLink": {
+        "properties": {
+          "auto_assigned": {
+            "title": "Auto Assigned",
+            "type": "boolean"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "title",
+          "rationale",
+          "auto_assigned",
+          "confidence"
+        ],
+        "title": "TreeNodeMaterialLink",
+        "type": "object"
+      },
+      "TreeNodeOut": {
+        "properties": {
+          "ai_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Hint"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/TreeNodeOut"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TreeNodeCounts"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "folder_links": {
+            "items": {
+              "$ref": "#/components/schemas/TreeNodeFolderLink"
+            },
+            "title": "Folder Links",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_root": {
+            "title": "Is Root",
+            "type": "boolean"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/TreeNodeMaterialLink"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "order_idx": {
+            "title": "Order Idx",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "objectives",
+          "ai_hint",
+          "order_idx",
+          "depth",
+          "is_root",
+          "children",
+          "counts",
+          "folder_links",
+          "materials"
+        ],
+        "title": "TreeNodeOut",
         "type": "object"
       },
       "TurnQueued": {
@@ -9019,9 +9481,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Add Node Api V1 Courses  Course Id  Nodes Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeCreatedOut"
                 }
               }
             },
@@ -9376,8 +9836,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/TreeNodeOut"
                   },
                   "title": "Response Course Tree Api V1 Courses  Course Id  Tree Get",
                   "type": "array"
@@ -12913,9 +13372,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Restore Node Api V1 Nodes Restore Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeRestoredOut"
                 }
               }
             },
@@ -12957,9 +13414,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Node Api V1 Nodes  Node Id  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeDeletedOut"
                 }
               }
             },
@@ -12999,9 +13454,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Node Api V1 Nodes  Node Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeDetailOut"
                 }
               }
             },
@@ -13051,9 +13504,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Patch Node Api V1 Nodes  Node Id  Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeUpdatedOut"
                 }
               }
             },
@@ -13307,9 +13758,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Assign Folder Materials Api V1 Nodes  Node Id  Folder Materials Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FolderAssignedOut"
                 }
               }
             },
@@ -13503,9 +13952,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Move Node Api V1 Nodes  Node Id  Move Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeMovedOut"
                 }
               }
             },
@@ -17143,8 +17590,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/StudyStateOut"
                   },
                   "title": "Response List Study States Api V1 Study States Get",
                   "type": "object"

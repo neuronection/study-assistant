@@ -4155,6 +4155,13 @@ export interface components {
             /** Rationale */
             rationale?: string | null;
         };
+        /** FolderAssignedOut */
+        FolderAssignedOut: {
+            /** Folder Id */
+            folder_id: number;
+            /** Node Id */
+            node_id: number;
+        };
         /** FolderCreate */
         FolderCreate: {
             /** Course Id */
@@ -4579,6 +4586,45 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** NodeCreatedOut */
+        NodeCreatedOut: {
+            /** Depth */
+            depth: number;
+            /** Id */
+            id: number;
+            /** Order Idx */
+            order_idx: number;
+            /** Title */
+            title: string;
+        };
+        /** NodeDeletedOut */
+        NodeDeletedOut: {
+            /** Undo Token */
+            undo_token: string | null;
+        };
+        /** NodeDetailOut */
+        NodeDetailOut: {
+            /** Ai Hint */
+            ai_hint: string | null;
+            /** Course Id */
+            course_id: number;
+            /** Depth */
+            depth: number;
+            /** Id */
+            id: number;
+            /** Is Root */
+            is_root: boolean;
+            /** Objectives */
+            objectives: string[];
+            /** Order Idx */
+            order_idx: number;
+            /** Parent Id */
+            parent_id: number | null;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
         /** NodeMove */
         NodeMove: {
             /** Parent Id */
@@ -4586,10 +4632,24 @@ export interface components {
             /** Position */
             position: number;
         };
+        /** NodeMovedOut */
+        NodeMovedOut: {
+            /** Id */
+            id: number;
+            /** Order Idx */
+            order_idx: number;
+            /** Parent Id */
+            parent_id: number | null;
+        };
         /** NodeRestore */
         NodeRestore: {
             /** Undo Token */
             undo_token: string;
+        };
+        /** NodeRestoredOut */
+        NodeRestoredOut: {
+            /** Id */
+            id: number;
         };
         /** NodeUpdate */
         NodeUpdate: {
@@ -4601,6 +4661,15 @@ export interface components {
             summary?: string | null;
             /** Title */
             title?: string | null;
+        };
+        /** NodeUpdatedOut */
+        NodeUpdatedOut: {
+            /** Ai Hint */
+            ai_hint: string | null;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /** NoteComposeIn */
         NoteComposeIn: {
@@ -5234,6 +5303,15 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** StudyStateOut */
+        StudyStateOut: {
+            /** Last Opened At */
+            last_opened_at: string | null;
+            /** Progress */
+            progress: number;
+            /** Status */
+            status: string;
+        };
         /** TaskAssignmentIn */
         TaskAssignmentIn: {
             /** Fallback Model Id */
@@ -5336,6 +5414,92 @@ export interface components {
             response: string | null;
             /** Step Idx */
             step_idx: number;
+        };
+        /** TreeNodeCounts */
+        TreeNodeCounts: {
+            /**
+             * Cards Due
+             * @default 0
+             */
+            cards_due: number;
+            /**
+             * Exercises
+             * @default 0
+             */
+            exercises: number;
+            /**
+             * Flashcards
+             * @default 0
+             */
+            flashcards: number;
+            /**
+             * Materials
+             * @default 0
+             */
+            materials: number;
+            /**
+             * Notes
+             * @default 0
+             */
+            notes: number;
+            /**
+             * Quizzes
+             * @default 0
+             */
+            quizzes: number;
+            /**
+             * Studied
+             * @default 0
+             */
+            studied: number;
+        };
+        /** TreeNodeFolderLink */
+        TreeNodeFolderLink: {
+            /** Folder Id */
+            folder_id: number;
+            /** Name */
+            name: string;
+            /** Source Id */
+            source_id: number | null;
+        };
+        /** TreeNodeMaterialLink */
+        TreeNodeMaterialLink: {
+            /** Auto Assigned */
+            auto_assigned: boolean;
+            /** Confidence */
+            confidence: number | null;
+            /** Material Id */
+            material_id: number;
+            /** Rationale */
+            rationale: string | null;
+            /** Title */
+            title: string;
+        };
+        /** TreeNodeOut */
+        TreeNodeOut: {
+            /** Ai Hint */
+            ai_hint: string | null;
+            /** Children */
+            children: components["schemas"]["TreeNodeOut"][];
+            counts: components["schemas"]["TreeNodeCounts"];
+            /** Depth */
+            depth: number;
+            /** Folder Links */
+            folder_links: components["schemas"]["TreeNodeFolderLink"][];
+            /** Id */
+            id: number;
+            /** Is Root */
+            is_root: boolean;
+            /** Materials */
+            materials: components["schemas"]["TreeNodeMaterialLink"][];
+            /** Objectives */
+            objectives: string[];
+            /** Order Idx */
+            order_idx: number;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
         };
         /** TurnQueued */
         TurnQueued: {
@@ -7328,9 +7492,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeCreatedOut"];
                 };
             };
             /** @description Validation Error */
@@ -7565,9 +7727,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["TreeNodeOut"][];
                 };
             };
             /** @description Validation Error */
@@ -9982,9 +10142,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeRestoredOut"];
                 };
             };
             /** @description Validation Error */
@@ -10015,9 +10173,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeDetailOut"];
                 };
             };
             /** @description Validation Error */
@@ -10048,9 +10204,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -10085,9 +10239,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeUpdatedOut"];
                 };
             };
             /** @description Validation Error */
@@ -10257,9 +10409,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["FolderAssignedOut"];
                 };
             };
             /** @description Validation Error */
@@ -10391,9 +10541,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeMovedOut"];
                 };
             };
             /** @description Validation Error */
@@ -12905,9 +13053,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: {
-                            [key: string]: unknown;
-                        };
+                        [key: string]: components["schemas"]["StudyStateOut"];
                     };
                 };
             };
