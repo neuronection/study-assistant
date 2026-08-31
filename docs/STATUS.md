@@ -335,6 +335,22 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **refactor(vocab): plan 55-A — closed vocabularies become
+  StrEnums; string matching swept off the core surfaces (ADR-128).** New
+  `app/core/vocab.py`: JobStatus (incl. `cancelled`), JobType, MaterialKind
+  (+`doc`), MaterialStatus, AttemptMode, ComposeKind, Capability, ProvenanceKind,
+  a `parse()` classmethod whose ValueError names the allowed set (feeds 422s),
+  and `WsTopic` factories (`jobs/chat/source/note/material`) replacing scattered
+  f-strings at every publish site (runner, chat API + group key, scan scheduler,
+  flashcards). Swept to enums: the jobs stack (runner, cancellation, pruning,
+  jobs API, editor-AI job mirror), material kind + status paths (materials
+  service, ingest, sources), attempt modes (quiz API, models default, metrics
+  exclusion), provenance markers (`ai-composed`/`derived`), capability requires
+  tuple. Rules recorded: DB stays strings (StrEnum binds as its value; `.value`
+  for dict lookups over DB-string keys — Enum hashes by name); open registries
+  (exercise kinds, compose KINDS, TASK_DEFS) keep typed registries. 5 new
+  `test_vocab.py` units. Backend 781 · frontend 813 green.
+
 - 2026-08-31 — **refactor: plan 54 COMPLETE — the three structural seams split
   with zero behavior change (ADR-127).** **54-E flake hygiene:** the test
   `client` fixture now points `spa_dist` at a missing dir so the whole backend
