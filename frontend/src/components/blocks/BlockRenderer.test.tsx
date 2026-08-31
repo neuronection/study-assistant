@@ -145,6 +145,24 @@ describe('BlockRenderer', () => {
     expect(screen.getByText(/hologram/)).toBeInTheDocument()
   })
 
+  test('renders image_ref blocks through the image resolver', () => {
+    render(
+      <BlockRenderer
+        blocks={[{ type: 'image_ref', image_id: 7 }]}
+        resolveImage={(id) =>
+          id === 7 ? { blob_sha: 'cafe1234', ocr_markdown: 'unit circle' } : undefined
+        }
+      />,
+    )
+    const img = screen.getByAltText('unit circle')
+    expect(img).toHaveAttribute('src', '/api/v1/blobs/cafe1234')
+  })
+
+  test('unresolved image_ref blocks fall back to a placeholder', () => {
+    render(<BlockRenderer blocks={[{ type: 'image_ref', image_id: 9 }]} />)
+    expect(screen.getByText('#9')).toBeInTheDocument()
+  })
+
   test('renders drawing blocks with the png and a transcript', () => {
     render(
       <BlockRenderer

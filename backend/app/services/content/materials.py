@@ -13,6 +13,7 @@ from ...domain.models import (
     Material,
     MaterialDrawing,
     MaterialFolder,
+    MaterialImage,
     MaterialIndexCard,
     MaterialLink,
     MaterialStudyState,
@@ -24,7 +25,7 @@ from ...pipelines.chunking import chunk_markdown
 from ...storage import vectors
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
-from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs
+from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs, remap_image_refs
 
 KIND_BY_SUFFIX: dict[str, str] = {
     ".pdf": MaterialKind.PDF,
@@ -347,6 +348,28 @@ class MaterialsService:
         )
         if deduped:
             return derived, True
+        source_images = list(material.images)
+        if source_images:
+            image_mapping: dict[int, int] = {}
+            for source_image in source_images:
+                new_image = MaterialImage(
+                    material_id=derived.id,
+                    position=source_image.position,
+                    blob_sha=source_image.blob_sha,
+                    mime=source_image.mime,
+                    ocr_version=source_image.ocr_version,
+                    ocr_markdown=source_image.ocr_markdown,
+                )
+                self._session.add(new_image)
+                self._session.flush()
+                image_mapping[source_image.id] = new_image.id
+            remapped_markdown = remap_image_refs(extraction.markdown, image_mapping)
+            stored = self._blobs.put(
+                remapped_markdown.encode("utf-8"), mime="text/markdown", session=self._session
+            )
+            derived.blob_sha = stored.sha256
+            derived.content_hash = stored.sha256
+            self._session.flush()
         source_drawings = list(material.drawings)
         if source_drawings:
             mapping: dict[int, int] = {}

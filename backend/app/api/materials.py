@@ -35,6 +35,7 @@ from .schemas import (
     ExtractionOut,
     IndexCardOut,
     MaterialDetailOut,
+    MaterialImageOut,
     MaterialOut,
     MaterialUploadOut,
     ViewBox,
@@ -70,7 +71,7 @@ class MaterialDeriveIn(BaseModel):
     node_id: int | None = None
 
 
-REINGESTABLE_KINDS = frozenset({"pdf", "md", "txt", "image"})
+REINGESTABLE_KINDS = frozenset({"pdf", "md", "txt", "image", "docx", "pptx", "epub", "html"})
 
 
 def _service(request: Request, session: Session) -> MaterialsService:
@@ -142,6 +143,19 @@ def _material_detail(
             else None
         ),
         drawings=_drawings_out(session, material),
+        images=[
+            MaterialImageOut(
+                id=image.id,
+                position=image.position,
+                blob_sha=image.blob_sha,
+                mime=image.mime,
+                ocr_version=image.ocr_version,
+                ocr_markdown=image.ocr_markdown,
+                ocr_job_id=pending_ocr_job_id(session, image),
+                created_at=image.created_at,
+            )
+            for image in sorted(material.images, key=lambda entry: entry.position)
+        ],
     )
 
 

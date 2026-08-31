@@ -26,6 +26,9 @@ dependencies = [
     "mcp>=1.7",
     "pillow>=11",
     "html2text>=2025.4.15",
+    "mammoth>=1.12.1",
+    "python-pptx>=1.0.2",
+    "ebooklib>=0.20",
 ]
 dynamic = ["version"]
 
@@ -68,7 +71,7 @@ strict = true
 exclude = ["^dist/"]
 
 [[tool.mypy.overrides]]
-module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock"]
+module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

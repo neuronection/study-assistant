@@ -228,11 +228,23 @@ class IndexCardOut(BaseModel):
     difficulty: int | None = None
 
 
+class MaterialImageOut(BaseModel):
+    id: int
+    position: int
+    blob_sha: str | None
+    mime: str | None
+    ocr_version: int
+    ocr_markdown: str | None
+    ocr_job_id: int | None = None
+    created_at: datetime
+
+
 class MaterialDetailOut(BaseModel):
     material: MaterialOut
     extraction: ExtractionOut | None
     index_card: IndexCardOut | None
     drawings: list[DrawingOut] = Field(default_factory=list)
+    images: list[MaterialImageOut] = Field(default_factory=list)
 
 
 class SearchHit(BaseModel):

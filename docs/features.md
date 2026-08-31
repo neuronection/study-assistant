@@ -95,7 +95,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   (library grid + list, workspace rows with drag/unassign, picker with
   assigned-lock and selection states, generate dialog) — status pill, read-state
   + progress, AI badge, rationale tooltip in one place
-- — Perceptual-hash image dedup (B9), DOCX/PPTX/EPUB (B10), preprocessing (B11),
+- ✅ **DOCX/PPTX/EPUB/HTML ingest (B10, plan 47)**: office/web documents convert
+  to markdown extractions at ingest (headings/tables/links/images; slide +
+  speaker-note fidelity for decks; spine order for EPUBs), embedded images get
+  their own `material_images` rows with async `image_ocr` transcription joining
+  search/AI context, and unsupported types are refused at upload (422) — plan
+  47-A; audio/video (B13) lands with plan 47-D
+- — Perceptual-hash image dedup (B9), preprocessing (B11),
   version diffing (B12), watched import inbox
 
 ## Courses & structure

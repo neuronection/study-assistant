@@ -8,16 +8,24 @@ from ...jobs.payloads import DrawingOcrPayload
 from ...jobs.runner import JobRunner
 
 DRAWING_MD = re.compile(r"!\[[^\]]*\]\(ca-drawing://(\d+)\)")
+IMAGE_MD = re.compile(r"!\[[^\]]*\]\(ca-image://(\d+)\)")
+EMBEDDED_MD = re.compile(
+    r"!\[[^\]]*\]\((?:ca-drawing|ca-image)://(\d+)\)"
+)
 
 
 def md_to_blocks(md: str) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = []
     position = 0
-    for match in DRAWING_MD.finditer(md):
+    for match in EMBEDDED_MD.finditer(md):
         before = md[position : match.start()]
         if before:
             blocks.append({"type": "text", "md": before})
-        blocks.append({"type": "drawing", "drawing_id": int(match.group(1))})
+        ref = match.group(0)
+        if "ca-drawing://" in ref:
+            blocks.append({"type": "drawing", "drawing_id": int(match.group(1))})
+        else:
+            blocks.append({"type": "image_ref", "image_id": int(match.group(1))})
         position = match.end()
     rest = md[position:]
     if rest:
@@ -45,6 +53,16 @@ def remap_drawing_refs(md: str, mapping: dict[int, int]) -> str:
     return DRAWING_MD.sub(_replace, md)
 
 
+def remap_image_refs(md: str, mapping: dict[int, int]) -> str:
+    def _replace(match: re.Match[str]) -> str:
+        old = int(match.group(1))
+        new = mapping.get(old, old)
+        alt = match.group(0).split("](", 1)[0][2:]
+        return f"![{alt}](ca-image://{new})"
+
+    return IMAGE_MD.sub(_replace, md)
+
+
 def blocks_md(blocks: list[dict[str, Any]] | None) -> str:
     if not blocks:
         return ""
@@ -52,6 +70,8 @@ def blocks_md(blocks: list[dict[str, Any]] | None) -> str:
     for block in blocks:
         if block.get("type") == "drawing":
             part = f"![drawing](ca-drawing://{block['drawing_id']})"
+        elif block.get("type") == "image_ref":
+            part = f"![image](ca-image://{block['image_id']})"
         elif block.get("md"):
             part = str(block["md"])
         else:

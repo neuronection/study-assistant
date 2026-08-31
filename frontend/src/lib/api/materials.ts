@@ -45,11 +45,23 @@ export interface IndexCard {
   difficulty: number | null
 }
 
+export interface MaterialImageInfo {
+  id: number
+  position: number
+  blob_sha: string | null
+  mime: string | null
+  ocr_version: number
+  ocr_markdown: string | null
+  ocr_job_id: number | null
+  created_at: string
+}
+
 export interface MaterialDetail {
   material: Material
   extraction: Extraction | null
   index_card: IndexCard | null
   drawings: NoteDrawingInfo[]
+  images: MaterialImageInfo[]
 }
 
 export interface UploadResult {

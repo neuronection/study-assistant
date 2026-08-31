@@ -4889,8 +4889,32 @@ export interface components {
             /** Drawings */
             drawings?: components["schemas"]["DrawingOut"][];
             extraction: components["schemas"]["ExtractionOut"] | null;
+            /** Images */
+            images?: components["schemas"]["MaterialImageOut"][];
             index_card: components["schemas"]["IndexCardOut"] | null;
             material: components["schemas"]["MaterialOut"];
+        };
+        /** MaterialImageOut */
+        MaterialImageOut: {
+            /** Blob Sha */
+            blob_sha: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Mime */
+            mime: string | null;
+            /** Ocr Job Id */
+            ocr_job_id?: number | null;
+            /** Ocr Markdown */
+            ocr_markdown: string | null;
+            /** Ocr Version */
+            ocr_version: number;
+            /** Position */
+            position: number;
         };
         /**
          * MaterialKind

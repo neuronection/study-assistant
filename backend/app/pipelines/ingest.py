@@ -4,7 +4,7 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import TaskUnassigned
-from ..core.vocab import MaterialKind, MaterialStatus
+from ..core.vocab import MaterialKind, MaterialStatus, ProvenanceKind
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
 from ..jobs.payloads import IngestPayload
@@ -14,6 +14,13 @@ from ..services.content.materials import extraction_to_blocks
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
 from .chunking import chunk_markdown
+from .convert import (
+    ImageStore,
+    convert_html_document,
+    docx_to_markdown,
+    epub_to_markdown,
+    pptx_to_markdown,
+)
 
 MIN_TEXT_CHARS_PER_PAGE = 50
 OCR_RASTER_DPI = 150
@@ -164,6 +171,8 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
 
         try:
             markdown: str = ""
+            converted_kind: str | None = None
+            store: ImageStore | None = None
             if material.kind == MaterialKind.PDF:
                 report(30, "extracting pdf text")
                 text_markdown, pages, has_text_layer = extract_pdf_text(data)
@@ -190,11 +199,47 @@ def make_ingest_handler(blobs: BlobStore, ocr: OcrEngine | None = None) -> JobHa
                 mime = material.mime or "image/png"
                 markdown = ocr_images([(data, mime)], 20, 60)
                 _store_extraction(session, material, extractor="ocr", markdown=markdown, pages=1)
+            elif material.kind == MaterialKind.DOCX:
+                converted_kind = "docx"
+                report(30, "converting docx")
+                store = ImageStore(session, blobs, material.id)
+                markdown = docx_to_markdown(data, store.store)
+                _store_extraction(
+                    session, material, extractor="converted:docx", markdown=markdown, pages=None
+                )
+            elif material.kind == MaterialKind.PPTX:
+                converted_kind = "pptx"
+                report(30, "converting pptx")
+                store = ImageStore(session, blobs, material.id)
+                markdown = pptx_to_markdown(data, store.store)
+                _store_extraction(
+                    session, material, extractor="converted:pptx", markdown=markdown, pages=None
+                )
+            elif material.kind == MaterialKind.EPUB:
+                converted_kind = "epub"
+                report(30, "converting epub")
+                store = ImageStore(session, blobs, material.id)
+                markdown = epub_to_markdown(data)
+                _store_extraction(
+                    session, material, extractor="converted:epub", markdown=markdown, pages=None
+                )
+            elif material.kind == MaterialKind.HTML:
+                converted_kind = "html"
+                report(30, "converting html")
+                store = ImageStore(session, blobs, material.id)
+                markdown = convert_html_document(data, store.store)
+                _store_extraction(
+                    session, material, extractor="converted:html", markdown=markdown, pages=None
+                )
             else:
                 raise JobError(f"unsupported material kind '{material.kind}'")
         except Exception as error:
             fail(error)
             raise
+
+        if converted_kind is not None and store is not None:
+            material.provenance = {"source": ProvenanceKind.CONVERTED, "converter": converted_kind}
+            store.enqueue_ocr_jobs(session)
 
         report(80, "indexing")
         _sync_fts(session, material, markdown)

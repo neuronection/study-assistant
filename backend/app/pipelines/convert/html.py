@@ -1,10 +1,14 @@
+import base64
 import re
+from collections.abc import Callable
 
 import html2text
 
 _MATH_BLOCK_RE = re.compile(r"<math\b.*?</math\s*>", re.DOTALL | re.IGNORECASE)
 
 _MATH_PLACEHOLDER = "\n\n[math-block]\n\n"
+
+_DATA_URI_RE = re.compile(r'src="data:(image/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)"')
 
 
 def _drop_math_blocks(html: str) -> str:
@@ -41,3 +45,24 @@ def html_to_markdown(html: str) -> str:
     prepared = _drop_math_blocks(html)
     markdown = _CONVERTER.handle(prepared)
     return _normalize_whitespace(markdown)
+
+
+def convert_html_document(
+    data: bytes, store_image: Callable[[bytes, str | None], int]
+) -> str:
+    """Convert an uploaded HTML material. Data-URI images are stored via
+    ``store_image`` and replaced with ``ca-image://`` refs; external image
+    URLs pass through untouched."""
+    html = data.decode("utf-8", errors="replace")
+
+    def embed(match: re.Match[str]) -> str:
+        mime = match.group(1)
+        try:
+            payload = base64.b64decode(match.group(2))
+        except (ValueError, TypeError):
+            return match.group(0)
+        image_id = store_image(payload, mime)
+        return f'src="ca-image://{image_id}"'
+
+    rewritten = _DATA_URI_RE.sub(embed, html)
+    return html_to_markdown(rewritten)

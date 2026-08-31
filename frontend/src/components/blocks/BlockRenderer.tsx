@@ -19,6 +19,7 @@ import type {
   Block,
   ChartBlock,
   CodeBlock,
+  ImageRefBlock,
   DiagramBlock,
   DrawingBlock,
   GeoBlock,
@@ -257,6 +258,37 @@ function GeoBlockView({ block }: { block: GeoBlock }) {
   return <JsxGraphBoard script={script} />
 }
 
+export interface MaterialImageMeta {
+  blob_sha: string | null
+  ocr_markdown: string | null
+}
+
+function ImageRefBlockView({
+  block,
+  resolve,
+}: {
+  block: ImageRefBlock
+  resolve?: (id: number) => MaterialImageMeta | undefined
+}) {
+  const meta = resolve?.(block.image_id)
+  if (meta?.blob_sha) {
+    return (
+      <figure className="my-3">
+        <img
+          src={`/api/v1/blobs/${meta.blob_sha}`}
+          alt={meta.ocr_markdown ?? `Embedded image ${block.image_id}`}
+          className="border-border w-full rounded-md border"
+        />
+      </figure>
+    )
+  }
+  return (
+    <div className="border-border bg-subtle text-muted-foreground my-3 rounded-md border border-dashed p-3 text-xs">
+      {`#${block.image_id}`}
+    </div>
+  )
+}
+
 function DrawingBlockView({
   block,
   resolve,
@@ -335,11 +367,13 @@ export function BlockRenderer({
   blocks,
   className,
   resolveDrawing,
+  resolveImage,
   onWidgetStateChange,
 }: {
   blocks: Block[]
   className?: string
   resolveDrawing?: DrawingResolver
+  resolveImage?: (id: number) => MaterialImageMeta | undefined
   onWidgetStateChange?: (widgetId: string, state: Record<string, unknown>) => void
 }) {
   return (
@@ -370,6 +404,14 @@ export function BlockRenderer({
                 key={i}
                 block={block as DrawingBlock}
                 resolve={resolveDrawing}
+              />
+            )
+          case 'image_ref':
+            return (
+              <ImageRefBlockView
+                key={i}
+                block={block as ImageRefBlock}
+                resolve={resolveImage}
               />
             )
           case 'widget':

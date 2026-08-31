@@ -4368,6 +4368,13 @@
               }
             ]
           },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialImageOut"
+            },
+            "title": "Images",
+            "type": "array"
+          },
           "index_card": {
             "anyOf": [
               {
@@ -4388,6 +4395,82 @@
           "index_card"
         ],
         "title": "MaterialDetailOut",
+        "type": "object"
+      },
+      "MaterialImageOut": {
+        "properties": {
+          "blob_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blob Sha"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime"
+          },
+          "ocr_job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Job Id"
+          },
+          "ocr_markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Markdown"
+          },
+          "ocr_version": {
+            "title": "Ocr Version",
+            "type": "integer"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "blob_sha",
+          "mime",
+          "ocr_version",
+          "ocr_markdown",
+          "created_at"
+        ],
+        "title": "MaterialImageOut",
         "type": "object"
       },
       "MaterialKind": {

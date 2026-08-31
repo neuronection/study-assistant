@@ -78,10 +78,26 @@ cards; entering one scopes everything to it.
   onto the app window also opens the same "Drop to upload" overlay (the
   desktop delivers drops as file paths rather than browser file objects, and
   both are supported).
-- Supported: text PDFs, scanned PDFs, images (PNG/JPG/WebP), Markdown, plain text.
+- Supported: text PDFs, scanned PDFs, images (PNG/JPG/WebP), Markdown, plain text,
+  **Office/web documents** (`.docx`, `.pptx`, `.epub`, `.html`/`.htm`) and
+  **lecture recordings** (audio: `.mp3`, `.m4a`, `.wav`, `.ogg`, `.opus`, `.mpga`;
+  video: `.webm`, `.mp4`, `.mpeg`).
 - Text PDFs are extracted locally (fast, free). Scanned PDFs and images go to the
   model assigned to the **OCR** task and come back as markdown with LaTeX math,
   tables and diagrams.
+- **Office/web documents are converted** into markdown extractions: Word
+  documents keep headings, tables, links and inline images; PowerPoint decks
+  become `## Slide N — <title>` sections with speaker notes preserved as
+  quotes; EPUB books follow their chapter order; HTML pages keep headings,
+  tables and links. One honest limitation: **math written as equations**
+  (MathML/OMML) cannot be converted faithfully by any offline tool — those
+  spots appear as a `[math-block]` marker in the extraction for you to fix in
+  the editor; embedded images (equation screenshots included) are extracted,
+  shown in place, and sent to the **OCR** task so their text is searchable.
+- **Anything else is refused at the door** — uploading an unsupported type
+  (`.doc`, `.rtf`, `.pages`, …) shows an instant "unsupported file type"
+  message instead of creating a broken file. Legacy binary formats are not
+  supported on purpose.
 - Re-uploading the same file **to the same course** is detected (content hash) —
   nothing is processed twice. The same file in a second course is a separate
   material (bytes stored once on disk).

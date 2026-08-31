@@ -335,6 +335,29 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(ingest): plan 47-C — docx, pptx, epub and html materials
+  are first-class (B10, ADR-103).** Ingest gains a branch per kind producing
+  markdown through the converter core, then riding the standard
+  extraction → chunk → FTS → embed → postprocess path with
+  `provenance {source: converted, converter: …}`: **docx** via mammoth
+  (headings/tables/links; embedded images stored as `material_images` +
+  `ca-image://{id}` refs), **pptx** via python-pptx (`## Slide N — <title>`
+  sections, text frames as bullets, speaker notes as `> ` quotes, slide
+  pictures extracted), **epub** via ebooklib (spine order, `# <chapter>`
+  sections), **html** directly (data-URI images stored and referenced,
+  external URLs untouched). New `ImageStore` collects image rows during
+  conversion and enqueues `image_ocr` jobs inside the ingest transaction so
+  transcripts arrive async; image OCR text joins FTS via `embedded_ocr_text`.
+  Extractions lift `ca-image://` refs into `image_ref` blocks (`md_to_blocks`
+  now understands both drawing and image refs); `MaterialDetailOut` carries
+  `images[]` (generated contract grew `MaterialImageOut`) and the reading
+  view resolves refs to blobs through a new `resolveImage` prop. Reingest
+  covers the four kinds; `DEFAULT_GLOBS` for linked sources now includes
+  them; derive copies image rows + remaps refs (mirroring drawings).
+  mypy overrides for stub-less `mammoth`/`ebooklib`. Committed micro-fixtures
+  (handcrafted OOXML docx, python-pptx deck, ebooklib book, html) + 5
+  per-kind ingest tests. Backend 802 · frontend 819 green.
+
 - 2026-08-31 — **feat(ingest): plan 47-B — HTML→markdown converter core +
   `material_images` home (ADR-103).** New `app/pipelines/convert/` package:
   `html_to_markdown` (html2text with house config — headings, links, images,

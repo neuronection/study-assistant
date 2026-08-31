@@ -59,6 +59,11 @@ export interface DrawingBlock {
   drawing_id: number
 }
 
+export interface ImageRefBlock {
+  type: 'image_ref'
+  image_id: number
+}
+
 export interface WidgetBlock {
   type: 'widget'
   widget: string
@@ -83,5 +88,6 @@ export type Block =
   | CodeBlock
   | GeoBlock
   | DrawingBlock
+  | ImageRefBlock
   | WidgetBlock
   | UnknownBlock

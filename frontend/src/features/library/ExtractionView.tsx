@@ -272,6 +272,7 @@ export function ExtractionView({
       <BlockRenderer
         blocks={data.extraction.blocks as Block[]}
         resolveDrawing={(id) => data.drawings.find((entry) => entry.id === id)}
+        resolveImage={(id) => data.images.find((entry) => entry.id === id)}
       />
     </div>
   )

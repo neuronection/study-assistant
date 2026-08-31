@@ -22,7 +22,21 @@ from ...domain.models import (
 )
 from .materials import UnsupportedMaterialError, detect_kind
 
-DEFAULT_GLOBS = ("*.pdf", "*.png", "*.jpg", "*.jpeg", "*.webp", "*.md", "*.markdown", "*.txt")
+DEFAULT_GLOBS = (
+    "*.pdf",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.webp",
+    "*.md",
+    "*.markdown",
+    "*.txt",
+    "*.docx",
+    "*.pptx",
+    "*.epub",
+    "*.html",
+    "*.htm",
+)
 
 MAX_BROWSE_DEPTH = 32
 
