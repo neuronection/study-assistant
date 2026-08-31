@@ -5,8 +5,8 @@
 # Study Assistant
 ### Local-first, AI-powered study workbench
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg)](docs/STATUS.md)
-[![Status](https://img.shields.io/badge/status-in%20development-orange.svg)](docs/STATUS.md)
+[![Release](https://img.shields.io/github/v/release/neuronection/study-assistant?include_prereleases)](https://github.com/neuronection/study-assistant/releases)
+[![Status](https://img.shields.io/badge/status-pre--release-orange.svg)](docs/STATUS.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Browser-lightgrey.svg)](#quick-start)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
