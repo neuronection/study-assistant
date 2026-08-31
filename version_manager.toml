@@ -1,0 +1,15 @@
+# Study Assistant — version manager config (family-unified script)
+# Family-unified script — do not fork; keep in sync with the internal standards distribution
+
+[project]
+name = "Study Assistant"
+
+[version]
+file = "backend/app/__init__.py"
+pattern = '__version__\s*=\s*"(?P<version>[^"]+)"'
+
+# Changelog lives in docs/STATUS.md (same-commit discipline) — nothing extra
+# is staged at release time.
+
+[release]
+tag_prefix = "v"
