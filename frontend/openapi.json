@@ -1499,6 +1499,25 @@
         "title": "ConceptsCommitOut",
         "type": "object"
       },
+      "ConstraintOut": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "kind",
+          "params"
+        ],
+        "title": "ConstraintOut",
+        "type": "object"
+      },
       "ContextNodeOut": {
         "properties": {
           "id": {
@@ -2372,6 +2391,52 @@
         "title": "DeleteFailedBody",
         "type": "object"
       },
+      "DeleteFailedOut": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "DeleteFailedOut",
+        "type": "object"
+      },
+      "DeletedItemOut": {
+        "properties": {
+          "deleted_at": {
+            "title": "Deleted At",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "purge_after": {
+            "title": "Purge After",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entity_type",
+          "title",
+          "deleted_at",
+          "purge_after"
+        ],
+        "title": "DeletedItemOut",
+        "type": "object"
+      },
       "DesktopDropsIn": {
         "properties": {
           "paths": {
@@ -3041,6 +3106,19 @@
         "title": "ExerciseCreate",
         "type": "object"
       },
+      "ExerciseDeletedOut": {
+        "properties": {
+          "deleted_item_id": {
+            "title": "Deleted Item Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_item_id"
+        ],
+        "title": "ExerciseDeletedOut",
+        "type": "object"
+      },
       "ExerciseMove": {
         "properties": {
           "node_id": {
@@ -3326,6 +3404,24 @@
         "title": "FolderAssignedOut",
         "type": "object"
       },
+      "FolderBreadcrumbOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "FolderBreadcrumbOut",
+        "type": "object"
+      },
       "FolderCreate": {
         "properties": {
           "course_id": {
@@ -3357,6 +3453,32 @@
         "title": "FolderCreate",
         "type": "object"
       },
+      "FolderDeleteInfoOut": {
+        "properties": {
+          "materials": {
+            "title": "Materials",
+            "type": "integer"
+          },
+          "node_links": {
+            "items": {
+              "$ref": "#/components/schemas/FolderNodeLinkOut"
+            },
+            "title": "Node Links",
+            "type": "array"
+          },
+          "subfolders": {
+            "title": "Subfolders",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "subfolders",
+          "materials",
+          "node_links"
+        ],
+        "title": "FolderDeleteInfoOut",
+        "type": "object"
+      },
       "FolderMove": {
         "properties": {
           "parent_id": {
@@ -3375,6 +3497,52 @@
           "parent_id"
         ],
         "title": "FolderMove",
+        "type": "object"
+      },
+      "FolderNodeLinkOut": {
+        "properties": {
+          "breadcrumb": {
+            "items": {
+              "$ref": "#/components/schemas/FolderBreadcrumbOut"
+            },
+            "title": "Breadcrumb",
+            "type": "array"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "folder_count": {
+            "title": "Folder Count",
+            "type": "integer"
+          },
+          "is_course_level": {
+            "title": "Is Course Level",
+            "type": "boolean"
+          },
+          "material_count": {
+            "title": "Material Count",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "owner_title": {
+            "title": "Owner Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "owner_title",
+          "breadcrumb",
+          "is_course_level",
+          "course_title",
+          "folder_count",
+          "material_count"
+        ],
+        "title": "FolderNodeLinkOut",
         "type": "object"
       },
       "FolderOut": {
@@ -4079,6 +4247,24 @@
         "title": "JobsSummary",
         "type": "object"
       },
+      "LinkBreadcrumbOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "LinkBreadcrumbOut",
+        "type": "object"
+      },
       "MaterialAssignedOut": {
         "properties": {
           "material_id": {
@@ -4193,6 +4379,75 @@
         ],
         "title": "MaterialKind",
         "type": "string"
+      },
+      "MaterialLinkInfoOut": {
+        "properties": {
+          "auto_assigned": {
+            "title": "Auto Assigned",
+            "type": "boolean"
+          },
+          "breadcrumb": {
+            "items": {
+              "$ref": "#/components/schemas/LinkBreadcrumbOut"
+            },
+            "title": "Breadcrumb",
+            "type": "array"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "is_course_level": {
+            "title": "Is Course Level",
+            "type": "boolean"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "owner_title": {
+            "title": "Owner Title",
+            "type": "string"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "via_folder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViaFolderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "node_id",
+          "owner_title",
+          "breadcrumb",
+          "is_course_level",
+          "course_id",
+          "course_title",
+          "auto_assigned",
+          "rationale",
+          "via_folder"
+        ],
+        "title": "MaterialLinkInfoOut",
+        "type": "object"
       },
       "MaterialMove": {
         "properties": {
@@ -5678,6 +5933,19 @@
         "title": "NoteCreate",
         "type": "object"
       },
+      "NoteDeletedOut": {
+        "properties": {
+          "deleted_item_id": {
+            "title": "Deleted Item Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_item_id"
+        ],
+        "title": "NoteDeletedOut",
+        "type": "object"
+      },
       "NoteDetail": {
         "properties": {
           "body": {
@@ -5898,6 +6166,24 @@
         "title": "NoteRestoreIn",
         "type": "object"
       },
+      "NoteTagCountOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "count"
+        ],
+        "title": "NoteTagCountOut",
+        "type": "object"
+      },
       "NoteUpdate": {
         "properties": {
           "base_updated_at": {
@@ -6068,6 +6354,42 @@
           "next_cursor"
         ],
         "title": "NotesPage",
+        "type": "object"
+      },
+      "OnboardingStateOut": {
+        "properties": {
+          "defaults_set": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Defaults Set",
+            "type": "array"
+          },
+          "has_course": {
+            "title": "Has Course",
+            "type": "boolean"
+          },
+          "has_enabled_model": {
+            "title": "Has Enabled Model",
+            "type": "boolean"
+          },
+          "has_material": {
+            "title": "Has Material",
+            "type": "boolean"
+          },
+          "has_provider": {
+            "title": "Has Provider",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "has_provider",
+          "has_enabled_model",
+          "defaults_set",
+          "has_course",
+          "has_material"
+        ],
+        "title": "OnboardingStateOut",
         "type": "object"
       },
       "OutlineChapterOut": {
@@ -7270,6 +7592,69 @@
         "title": "ReportAnswerOut",
         "type": "object"
       },
+      "ResetWorkingDirOut": {
+        "properties": {
+          "restart_required": {
+            "title": "Restart Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "restart_required"
+        ],
+        "title": "ResetWorkingDirOut",
+        "type": "object"
+      },
+      "ResolutionOut": {
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chain": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Chain",
+            "type": "object"
+          }
+        },
+        "required": [
+          "chain",
+          "active"
+        ],
+        "title": "ResolutionOut",
+        "type": "object"
+      },
+      "RestoreDeletedOut": {
+        "properties": {
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "entity_type",
+          "title"
+        ],
+        "title": "RestoreDeletedOut",
+        "type": "object"
+      },
       "RestoreOut": {
         "properties": {
           "blobs": {
@@ -7311,6 +7696,19 @@
           }
         },
         "title": "RetryFailedBody",
+        "type": "object"
+      },
+      "RetryFailedOut": {
+        "properties": {
+          "retried": {
+            "title": "Retried",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retried"
+        ],
+        "title": "RetryFailedOut",
         "type": "object"
       },
       "ReviewFindingKind": {
@@ -7400,6 +7798,29 @@
           "state"
         ],
         "title": "ReviewOut",
+        "type": "object"
+      },
+      "SampleCourseOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "materials": {
+            "title": "Materials",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "course_id",
+          "materials",
+          "created"
+        ],
+        "title": "SampleCourseOut",
         "type": "object"
       },
       "SaveIn": {
@@ -7716,6 +8137,24 @@
           }
         },
         "title": "SessionUpdate",
+        "type": "object"
+      },
+      "SetWorkingDirOut": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "restart_required": {
+            "title": "Restart Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "restart_required"
+        ],
+        "title": "SetWorkingDirOut",
         "type": "object"
       },
       "SkillOut": {
@@ -8285,6 +8724,31 @@
         "title": "StudyStatus",
         "type": "string"
       },
+      "SummaryNoteOut": {
+        "properties": {
+          "node_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Title"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "note_id",
+          "node_title"
+        ],
+        "title": "SummaryNoteOut",
+        "type": "object"
+      },
       "TaskAssignmentIn": {
         "properties": {
           "fallback_model_id": {
@@ -8438,6 +8902,37 @@
           "skill_key"
         ],
         "title": "TestRunIn",
+        "type": "object"
+      },
+      "TestRunOut": {
+        "properties": {
+          "constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ConstraintOut"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "skill_version_id": {
+            "title": "Skill Version Id",
+            "type": "integer"
+          },
+          "system": {
+            "title": "System",
+            "type": "string"
+          },
+          "user": {
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "system",
+          "user",
+          "constraints",
+          "skill_version_id"
+        ],
+        "title": "TestRunOut",
         "type": "object"
       },
       "TextFileIn": {
@@ -9028,6 +9523,46 @@
         "title": "UningestedFileOut",
         "type": "object"
       },
+      "ValidateWorkingDirOut": {
+        "properties": {
+          "empty": {
+            "title": "Empty",
+            "type": "boolean"
+          },
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "has_app_db": {
+            "title": "Has App Db",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "reason",
+          "exists",
+          "empty",
+          "has_app_db"
+        ],
+        "title": "ValidateWorkingDirOut",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -9277,6 +9812,34 @@
           "path"
         ],
         "title": "WorkingDirIn",
+        "type": "object"
+      },
+      "WorkingDirOut": {
+        "properties": {
+          "custom": {
+            "title": "Custom",
+            "type": "boolean"
+          },
+          "default_path": {
+            "title": "Default Path",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "restart_pending": {
+            "title": "Restart Pending",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "default_path",
+          "custom",
+          "restart_pending"
+        ],
+        "title": "WorkingDirOut",
         "type": "object"
       },
       "WorkspaceChildOut": {
@@ -11744,9 +12307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Reset Working Dir Api V1 Config Working Dir Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ResetWorkingDirOut"
                 }
               }
             },
@@ -11765,9 +12326,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Working Dir Api V1 Config Working Dir Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/WorkingDirOut"
                 }
               }
             },
@@ -11796,9 +12355,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Set Working Dir Api V1 Config Working Dir Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SetWorkingDirOut"
                 }
               }
             },
@@ -11839,9 +12396,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Validate Working Dir Api V1 Config Working Dir Validate Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ValidateWorkingDirOut"
                 }
               }
             },
@@ -12900,8 +13455,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/DeletedItemOut"
                   },
                   "title": "Response List Deleted Items Api V1 Deleted Items Get",
                   "type": "array"
@@ -12971,9 +13525,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Restore Deleted Item Api V1 Deleted Items  Item Id  Restore Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RestoreDeletedOut"
                 }
               }
             },
@@ -13624,9 +14176,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Session Summary Note Api V1 Exercises Sessions  Session Id  Summary Note Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SummaryNoteOut"
                 }
               }
             },
@@ -13714,9 +14264,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Exercise Api V1 Exercises  Exercise Id  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ExerciseDeletedOut"
                 }
               }
             },
@@ -14615,9 +15163,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Folder Delete Info Api V1 Folders  Folder Id  Delete Info Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FolderDeleteInfoOut"
                 }
               }
             },
@@ -14946,11 +15492,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "title": "Response Delete Failed Jobs Api V1 Jobs Failed Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DeleteFailedOut"
                 }
               }
             },
@@ -14991,11 +15533,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "title": "Response Retry Failed Jobs Api V1 Jobs Retry Failed Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RetryFailedOut"
                 }
               }
             },
@@ -15979,8 +16517,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/MaterialLinkInfoOut"
                   },
                   "title": "Response Material Links Api V1 Materials  Material Id  Links Get",
                   "type": "array"
@@ -17318,8 +17855,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/NoteTagCountOut"
                   },
                   "title": "Response List Note Tags Api V1 Notes Tags List Get",
                   "type": "array"
@@ -17364,9 +17900,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Note Api V1 Notes  Note Id  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NoteDeletedOut"
                 }
               }
             },
@@ -17953,9 +18487,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Sample Course Api V1 Onboarding Sample Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SampleCourseOut"
                 }
               }
             },
@@ -17976,9 +18508,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Onboarding State Api V1 Onboarding State Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/OnboardingStateOut"
                 }
               }
             },
@@ -19888,9 +20418,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Test Run Api V1 Skills Test Run Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/TestRunOut"
                 }
               }
             },
@@ -20008,9 +20536,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Resolution Api V1 Skills  Skill Key  Resolution Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ResolutionOut"
                 }
               }
             },

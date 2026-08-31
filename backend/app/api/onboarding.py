@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..domain.models import AiModel, Course, DefaultTaskAssignment, Material, Provider
@@ -65,7 +66,15 @@ SAMPLE_MATERIALS: list[tuple[str, str]] = [
 ]
 
 
-@router.get("/state")
+class OnboardingStateOut(BaseModel):
+    has_provider: bool
+    has_enabled_model: bool
+    defaults_set: list[str]
+    has_course: bool
+    has_material: bool
+
+
+@router.get("/state", response_model=OnboardingStateOut)
 def get_onboarding_state(session: Session = Depends(get_session)) -> dict[str, Any]:
     has_provider = session.query(Provider.id).first() is not None
     has_enabled_model = (
@@ -88,7 +97,13 @@ def get_onboarding_state(session: Session = Depends(get_session)) -> dict[str, A
     }
 
 
-@router.post("/sample", status_code=201)
+class SampleCourseOut(BaseModel):
+    course_id: int
+    materials: int
+    created: bool
+
+
+@router.post("/sample", status_code=201, response_model=SampleCourseOut)
 def create_sample_course(
     request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:

@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..domain.models import MaterialFolder
@@ -84,7 +85,28 @@ def move_folder(
     return _to_out(folder)
 
 
-@router.get("/{folder_id}/delete-info")
+class FolderBreadcrumbOut(BaseModel):
+    id: int
+    title: str
+
+
+class FolderNodeLinkOut(BaseModel):
+    node_id: int
+    owner_title: str
+    breadcrumb: list[FolderBreadcrumbOut]
+    is_course_level: bool
+    course_title: str
+    folder_count: int
+    material_count: int
+
+
+class FolderDeleteInfoOut(BaseModel):
+    subfolders: int
+    materials: int
+    node_links: list[FolderNodeLinkOut]
+
+
+@router.get("/{folder_id}/delete-info", response_model=FolderDeleteInfoOut)
 def folder_delete_info(
     folder_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:

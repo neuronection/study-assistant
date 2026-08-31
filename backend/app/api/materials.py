@@ -21,6 +21,7 @@ from ..services.content.drawings import (
 from ..services.content.materials import MaterialsService, purge_material
 from ..services.knowledge.courses import StructureService
 from ..services.platform.profiles import ensure_default_profile
+from .courses_schemas import ViaFolderOut
 from .deps import content_disposition, get_session
 from .schemas import (
     DrawingIn,
@@ -417,7 +418,26 @@ def list_materials(
     return [_to_out(material) for material in materials]
 
 
-@router.get("/{material_id}/links")
+class LinkBreadcrumbOut(BaseModel):
+    id: int
+    title: str
+
+
+class MaterialLinkInfoOut(BaseModel):
+    node_id: int
+    owner_title: str
+    breadcrumb: list[LinkBreadcrumbOut]
+    is_course_level: bool
+    course_id: int
+    course_title: str
+    auto_assigned: bool
+    rationale: str | None
+    via_folder: ViaFolderOut | None
+
+
+@router.get(
+    "/{material_id}/links", response_model=list[MaterialLinkInfoOut]
+)
 def material_links(
     request: Request,
     material_id: int,

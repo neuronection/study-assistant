@@ -335,6 +335,26 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C stragglers — the last untyped JSON
+  endpoints now declare response models; plan 55-C endpoint typing is
+  COMPLETE** (ADR-130). Config/working-dir (`WorkingDirOut`,
+  `ValidateWorkingDirOut`, `SetWorkingDirOut`, `ResetWorkingDirOut`), trash
+  (`list[DeletedItemOut]`, `RestoreDeletedOut`), exercises
+  (`SummaryNoteOut`, `ExerciseDeletedOut`), folders (`FolderDeleteInfoOut`
+  +node-link/breadcrumb models — the delete-info breadcrumb is the 2-field
+  `{id,title}` shape, matching `material_links`), notes (`NoteTagCountOut`,
+  `NoteDeletedOut`), jobs (`RetryFailedOut`, `DeleteFailedOut`), onboarding
+  (`OnboardingStateOut`, `SampleCourseOut`), skills (`ResolutionOut`,
+  `TestRunOut` +`ConstraintOut`; `context-vars` stays an honest
+  `dict[str, dict[str, str]]`), materials (`list[MaterialLinkInfoOut]`),
+  presets likewise stays `dict[str, dict[str, str]]`. Intentionally
+  model-free remainder: binary/file downloads only (root, blobs, desktop
+  file, backup/course/quiz exports, anki deck). Both flagged in the survey
+  as typed-but-anonymous dicts now have real named models in the schema.
+  **Final survey: 0 untyped 200/201-JSON endpoints** — every JSON response
+  in the API validates against a documented model. Backend 784 · frontend
+  815 green; contract drift guard clean.
+
 - 2026-08-31 — **feat(api): plan 55-C ai/chat/sources — twelve more endpoints
   declare typed response models** (ADR-130). AI: `EditorCancelOut`,
   `ToolsOut` (+`ToolInfoOut`/`ToolArgumentOut` — the chat tool catalog and MCP

@@ -288,7 +288,15 @@ def retry_job(
     return _to_out(session, job, retriable_types, _stale_job_ids(session, [job]))
 
 
-@router.post("/retry-failed")
+class RetryFailedOut(BaseModel):
+    retried: int
+
+
+class DeleteFailedOut(BaseModel):
+    deleted: int
+
+
+@router.post("/retry-failed", response_model=RetryFailedOut)
 def retry_failed_jobs(
     body: RetryFailedBody,
     request: Request,
@@ -313,7 +321,7 @@ def retry_failed_jobs(
     return {"retried": retried}
 
 
-@router.delete("/failed")
+@router.delete("/failed", response_model=DeleteFailedOut)
 def delete_failed_jobs(
     body: DeleteFailedBody,
     session: Session = Depends(get_session),

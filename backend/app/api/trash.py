@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..domain.models import DeletedItem
@@ -11,6 +12,21 @@ from .deps import get_session
 router = APIRouter(prefix="/deleted-items", tags=["trash"])
 
 
+class DeletedItemOut(BaseModel):
+    id: int
+    entity_type: str
+    title: str
+    deleted_at: str
+    purge_after: str
+
+
+class RestoreDeletedOut(BaseModel):
+    status: str
+    entity_type: str
+    title: str
+
+
+
 def _load_item(session: Session, item_id: int, profile_id: int) -> DeletedItem:
     item = session.get(DeletedItem, item_id)
     if item is None or item.profile_id != profile_id:
@@ -18,13 +34,13 @@ def _load_item(session: Session, item_id: int, profile_id: int) -> DeletedItem:
     return item
 
 
-@router.get("")
+@router.get("", response_model=list[DeletedItemOut])
 def list_deleted_items(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
     return trash.list_items(session, profile.id)
 
 
-@router.post("/{item_id}/restore")
+@router.post("/{item_id}/restore", response_model=RestoreDeletedOut)
 def restore_deleted_item(
     item_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:

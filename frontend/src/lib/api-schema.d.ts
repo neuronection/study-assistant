@@ -3952,6 +3952,15 @@ export interface components {
             /** Nodes */
             nodes: number;
         };
+        /** ConstraintOut */
+        ConstraintOut: {
+            /** Kind */
+            kind: string;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+        };
         /** ContextNodeOut */
         ContextNodeOut: {
             /** Id */
@@ -4178,6 +4187,24 @@ export interface components {
             stale_only: boolean;
             /** Types */
             types?: string[] | null;
+        };
+        /** DeleteFailedOut */
+        DeleteFailedOut: {
+            /** Deleted */
+            deleted: number;
+        };
+        /** DeletedItemOut */
+        DeletedItemOut: {
+            /** Deleted At */
+            deleted_at: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Id */
+            id: number;
+            /** Purge After */
+            purge_after: string;
+            /** Title */
+            title: string;
         };
         /** DesktopDropsIn */
         DesktopDropsIn: {
@@ -4423,6 +4450,11 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ExerciseDeletedOut */
+        ExerciseDeletedOut: {
+            /** Deleted Item Id */
+            deleted_item_id: number;
+        };
         /** ExerciseMove */
         ExerciseMove: {
             /** Node Id */
@@ -4522,6 +4554,13 @@ export interface components {
             /** Node Id */
             node_id: number;
         };
+        /** FolderBreadcrumbOut */
+        FolderBreadcrumbOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
         /** FolderCreate */
         FolderCreate: {
             /** Course Id */
@@ -4531,10 +4570,36 @@ export interface components {
             /** Parent Id */
             parent_id?: number | null;
         };
+        /** FolderDeleteInfoOut */
+        FolderDeleteInfoOut: {
+            /** Materials */
+            materials: number;
+            /** Node Links */
+            node_links: components["schemas"]["FolderNodeLinkOut"][];
+            /** Subfolders */
+            subfolders: number;
+        };
         /** FolderMove */
         FolderMove: {
             /** Parent Id */
             parent_id: number | null;
+        };
+        /** FolderNodeLinkOut */
+        FolderNodeLinkOut: {
+            /** Breadcrumb */
+            breadcrumb: components["schemas"]["FolderBreadcrumbOut"][];
+            /** Course Title */
+            course_title: string;
+            /** Folder Count */
+            folder_count: number;
+            /** Is Course Level */
+            is_course_level: boolean;
+            /** Material Count */
+            material_count: number;
+            /** Node Id */
+            node_id: number;
+            /** Owner Title */
+            owner_title: string;
         };
         /** FolderOut */
         FolderOut: {
@@ -4769,6 +4834,13 @@ export interface components {
             /** Running */
             running: number;
         };
+        /** LinkBreadcrumbOut */
+        LinkBreadcrumbOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
         /** MaterialAssignedOut */
         MaterialAssignedOut: {
             /** Material Id */
@@ -4801,6 +4873,26 @@ export interface components {
          * @enum {string}
          */
         MaterialKind: "pdf" | "image" | "md" | "txt" | "doc";
+        /** MaterialLinkInfoOut */
+        MaterialLinkInfoOut: {
+            /** Auto Assigned */
+            auto_assigned: boolean;
+            /** Breadcrumb */
+            breadcrumb: components["schemas"]["LinkBreadcrumbOut"][];
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Is Course Level */
+            is_course_level: boolean;
+            /** Node Id */
+            node_id: number;
+            /** Owner Title */
+            owner_title: string;
+            /** Rationale */
+            rationale: string | null;
+            via_folder: components["schemas"]["ViaFolderOut"] | null;
+        };
         /** MaterialMove */
         MaterialMove: {
             /** Folder Id */
@@ -5255,6 +5347,11 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** NoteDeletedOut */
+        NoteDeletedOut: {
+            /** Deleted Item Id */
+            deleted_item_id: number;
+        };
         /** NoteDetail */
         NoteDetail: {
             /** Body */
@@ -5322,6 +5419,13 @@ export interface components {
             /** Version Id */
             version_id: number;
         };
+        /** NoteTagCountOut */
+        NoteTagCountOut: {
+            /** Count */
+            count: number;
+            /** Tag */
+            tag: string;
+        };
         /** NoteUpdate */
         NoteUpdate: {
             /** Base Updated At */
@@ -5374,6 +5478,19 @@ export interface components {
             items: components["schemas"]["NoteOut"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /** OnboardingStateOut */
+        OnboardingStateOut: {
+            /** Defaults Set */
+            defaults_set: string[];
+            /** Has Course */
+            has_course: boolean;
+            /** Has Enabled Model */
+            has_enabled_model: boolean;
+            /** Has Material */
+            has_material: boolean;
+            /** Has Provider */
+            has_provider: boolean;
         };
         /** OutlineChapterOut */
         OutlineChapterOut: {
@@ -5767,6 +5884,28 @@ export interface components {
             /** Stem Excerpt */
             stem_excerpt: string;
         };
+        /** ResetWorkingDirOut */
+        ResetWorkingDirOut: {
+            /** Restart Required */
+            restart_required: boolean;
+        };
+        /** ResolutionOut */
+        ResolutionOut: {
+            active: components["schemas"]["VersionOut"] | null;
+            /** Chain */
+            chain: {
+                [key: string]: string;
+            };
+        };
+        /** RestoreDeletedOut */
+        RestoreDeletedOut: {
+            /** Entity Type */
+            entity_type: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+        };
         /** RestoreOut */
         RestoreOut: {
             /** Blobs */
@@ -5780,6 +5919,11 @@ export interface components {
         RetryFailedBody: {
             /** Types */
             types?: string[] | null;
+        };
+        /** RetryFailedOut */
+        RetryFailedOut: {
+            /** Retried */
+            retried: number;
         };
         /**
          * ReviewFindingKind
@@ -5809,6 +5953,15 @@ export interface components {
             interval_days: number;
             /** State */
             state: string;
+        };
+        /** SampleCourseOut */
+        SampleCourseOut: {
+            /** Course Id */
+            course_id: number;
+            /** Created */
+            created: boolean;
+            /** Materials */
+            materials: number;
         };
         /** SaveIn */
         SaveIn: {
@@ -5914,6 +6067,13 @@ export interface components {
             title?: string | null;
             /** Use Embeddings */
             use_embeddings?: boolean | null;
+        };
+        /** SetWorkingDirOut */
+        SetWorkingDirOut: {
+            /** Path */
+            path: string;
+            /** Restart Required */
+            restart_required: boolean;
         };
         /** SkillOut */
         SkillOut: {
@@ -6099,6 +6259,13 @@ export interface components {
          * @enum {string}
          */
         StudyStatus: "unread" | "reading" | "studied";
+        /** SummaryNoteOut */
+        SummaryNoteOut: {
+            /** Node Title */
+            node_title: string | null;
+            /** Note Id */
+            note_id: number;
+        };
         /** TaskAssignmentIn */
         TaskAssignmentIn: {
             /** Fallback Model Id */
@@ -6142,6 +6309,17 @@ export interface components {
             };
             /** Skill Key */
             skill_key: string;
+        };
+        /** TestRunOut */
+        TestRunOut: {
+            /** Constraints */
+            constraints: components["schemas"]["ConstraintOut"][];
+            /** Skill Version Id */
+            skill_version_id: number;
+            /** System */
+            system: string;
+            /** User */
+            user: string;
         };
         /** TextFileIn */
         TextFileIn: {
@@ -6336,6 +6514,19 @@ export interface components {
             /** Size Bytes */
             size_bytes: number;
         };
+        /** ValidateWorkingDirOut */
+        ValidateWorkingDirOut: {
+            /** Empty */
+            empty: boolean;
+            /** Exists */
+            exists: boolean;
+            /** Has App Db */
+            has_app_db: boolean;
+            /** Reason */
+            reason: string | null;
+            /** Valid */
+            valid: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -6419,6 +6610,17 @@ export interface components {
         WorkingDirIn: {
             /** Path */
             path: string;
+        };
+        /** WorkingDirOut */
+        WorkingDirOut: {
+            /** Custom */
+            custom: boolean;
+            /** Default Path */
+            default_path: string;
+            /** Path */
+            path: string;
+            /** Restart Pending */
+            restart_pending: boolean;
         };
         /** WorkspaceChildOut */
         WorkspaceChildOut: {
@@ -7846,9 +8048,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["WorkingDirOut"];
                 };
             };
         };
@@ -7872,9 +8072,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SetWorkingDirOut"];
                 };
             };
             /** @description Validation Error */
@@ -7903,9 +8101,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ResetWorkingDirOut"];
                 };
             };
         };
@@ -7929,9 +8125,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ValidateWorkingDirOut"];
                 };
             };
             /** @description Validation Error */
@@ -8667,9 +8861,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["DeletedItemOut"][];
                 };
             };
         };
@@ -8720,9 +8912,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RestoreDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -9182,9 +9372,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SummaryNoteOut"];
                 };
             };
             /** @description Validation Error */
@@ -9277,9 +9465,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ExerciseDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -9833,9 +10019,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["FolderDeleteInfoOut"];
                 };
             };
             /** @description Validation Error */
@@ -10051,9 +10235,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
+                    "application/json": components["schemas"]["DeleteFailedOut"];
                 };
             };
             /** @description Validation Error */
@@ -10086,9 +10268,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
+                    "application/json": components["schemas"]["RetryFailedOut"];
                 };
             };
             /** @description Validation Error */
@@ -10752,9 +10932,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["MaterialLinkInfoOut"][];
                 };
             };
             /** @description Validation Error */
@@ -11638,9 +11816,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["NoteTagCountOut"][];
                 };
             };
             /** @description Validation Error */
@@ -11702,9 +11878,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NoteDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -12071,9 +12245,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SampleCourseOut"];
                 };
             };
         };
@@ -12093,9 +12265,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OnboardingStateOut"];
                 };
             };
         };
@@ -13432,9 +13602,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TestRunOut"];
                 };
             };
             /** @description Validation Error */
@@ -13500,9 +13668,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ResolutionOut"];
                 };
             };
             /** @description Validation Error */

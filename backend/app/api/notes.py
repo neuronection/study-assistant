@@ -399,7 +399,12 @@ def list_notes(
     return NotesPage(items=[_note_out(note) for note in rows], next_cursor=next_cursor)
 
 
-@router.get("/tags/list")
+class NoteTagCountOut(BaseModel):
+    tag: str
+    count: int
+
+
+@router.get("/tags/list", response_model=list[NoteTagCountOut])
 def list_note_tags(
     course_id: int | None = None,
     session: Session = Depends(get_session),
@@ -603,7 +608,11 @@ def restore_note_version(
     return _note_detail(session, note)
 
 
-@router.delete("/{note_id}")
+class NoteDeletedOut(BaseModel):
+    deleted_item_id: int
+
+
+@router.delete("/{note_id}", response_model=NoteDeletedOut)
 def delete_note(
     note_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:

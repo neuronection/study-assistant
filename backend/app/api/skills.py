@@ -191,7 +191,12 @@ def restore_default(
     return _version_out(version)
 
 
-@router.get("/{skill_key}/resolution", response_model=dict[str, Any])
+class ResolutionOut(BaseModel):
+    chain: dict[str, str]
+    active: VersionOut | None
+
+
+@router.get("/{skill_key}/resolution", response_model=ResolutionOut)
 def resolution(
     skill_key: str, course_id: int | None = None, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -226,7 +231,19 @@ def context_vars() -> dict[str, dict[str, str]]:
     return {key: {"type": value[0], "docs": value[1]} for key, value in CONTEXT_VARS.items()}
 
 
-@router.post("/test-run", response_model=dict[str, Any])
+class ConstraintOut(BaseModel):
+    kind: str
+    params: dict[str, Any]
+
+
+class TestRunOut(BaseModel):
+    system: str
+    user: str
+    constraints: list[ConstraintOut]
+    skill_version_id: int
+
+
+@router.post("/test-run", response_model=TestRunOut)
 def test_run(
     body: TestRunIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:

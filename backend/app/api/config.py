@@ -14,6 +14,30 @@ class WorkingDirIn(BaseModel):
     path: str = Field(min_length=1, max_length=1024)
 
 
+class WorkingDirOut(BaseModel):
+    path: str
+    default_path: str
+    custom: bool
+    restart_pending: bool
+
+
+class ValidateWorkingDirOut(BaseModel):
+    valid: bool
+    reason: str | None
+    exists: bool
+    empty: bool
+    has_app_db: bool
+
+
+class SetWorkingDirOut(BaseModel):
+    path: str
+    restart_required: bool
+
+
+class ResetWorkingDirOut(BaseModel):
+    restart_required: bool
+
+
 def _is_writable(directory: Path) -> bool:
     probe = directory / ".sa-write-probe"
     try:
@@ -63,7 +87,7 @@ def _validate_target(current: Path, raw: str) -> tuple[Path | None, str | None, 
     return candidate, None, info
 
 
-@router.get("/working-dir")
+@router.get("/working-dir", response_model=WorkingDirOut)
 def get_working_dir(request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
     pointer = read_override(Path(settings.config_dir))
@@ -76,14 +100,14 @@ def get_working_dir(request: Request) -> dict[str, Any]:
     }
 
 
-@router.post("/working-dir/validate")
+@router.post("/working-dir/validate", response_model=ValidateWorkingDirOut)
 def validate_working_dir(request: Request, body: WorkingDirIn) -> dict[str, Any]:
     settings = request.app.state.settings
     target, reason, info = _validate_target(Path(settings.data_dir), body.path)
     return {"valid": target is not None, "reason": reason, **info}
 
 
-@router.put("/working-dir")
+@router.put("/working-dir", response_model=SetWorkingDirOut)
 def set_working_dir(request: Request, body: WorkingDirIn) -> dict[str, Any]:
     settings = request.app.state.settings
     target, reason, _ = _validate_target(Path(settings.data_dir), body.path)
@@ -93,7 +117,7 @@ def set_working_dir(request: Request, body: WorkingDirIn) -> dict[str, Any]:
     return {"path": str(target), "restart_required": True}
 
 
-@router.delete("/working-dir")
+@router.delete("/working-dir", response_model=ResetWorkingDirOut)
 def reset_working_dir(request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
     pointer = read_override(Path(settings.config_dir))

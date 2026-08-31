@@ -603,7 +603,16 @@ def move_exercise(
     return _exercise_out(exercise, count)
 
 
-@router.delete("/{exercise_id}")
+class SummaryNoteOut(BaseModel):
+    note_id: int
+    node_title: str | None
+
+
+class ExerciseDeletedOut(BaseModel):
+    deleted_item_id: int
+
+
+@router.delete("/{exercise_id}", response_model=ExerciseDeletedOut)
 def delete_exercise(
     exercise_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -959,7 +968,7 @@ def session_transcript(
     return _transcript_entries(session, exercise_session)
 
 
-@router.post("/sessions/{session_id}/summary-note")
+@router.post("/sessions/{session_id}/summary-note", response_model=SummaryNoteOut)
 def session_summary_note(
     session_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
