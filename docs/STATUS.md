@@ -335,6 +335,16 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C tranches 3+4 — node CRUD/move/delete/
+  restore, folder assignment, study-states, node-concept linking and material
+  assignment all declare typed response models** (`NodeDetailOut`,
+  `NodeUpdatedOut`, `NodeMovedOut`, `NodeDeletedOut`, `NodeRestoredOut`,
+  `FolderAssignedOut`, `StudyStateOut` — progress is float, as the roundtrip
+  test proved — `NodeConceptLinkedOut`, `MaterialAssignedOut` in
+  `courses_schemas.py`; schema 170 → 179 components). Courses-tag untyped
+  endpoints: 32 → 21 (survey recorded; next: quiz 11, analytics 8, backup 7).
+  Backend 782 · frontend 815 green; contract drift guard clean.
+
 - 2026-08-31 — **feat(api): plan 55-C tranche 2 — the course tree responses are
   typed (ADR-130).** New `app/api/courses_schemas.py` (`TreeNodeOut` recursive,
   `TreeNodeCounts`, `TreeNodeMaterialLink`, `TreeNodeFolderLink`,
