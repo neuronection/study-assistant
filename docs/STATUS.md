@@ -335,6 +335,15 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C tranche 2 — the course tree responses are
+  typed (ADR-130).** New `app/api/courses_schemas.py` (`TreeNodeOut` recursive,
+  `TreeNodeCounts`, `TreeNodeMaterialLink`, `TreeNodeFolderLink`,
+  `NodeCreatedOut`); `GET /courses/{id}/tree` and `POST /courses/{id}/nodes`
+  declare `response_model` — FastAPI now validates + documents the shapes (202
+  → 170 schemas) and the generated TS contract carries them. Survey added: 32
+  courses-tag endpoints remain untyped (the rest of tranche 2+), quiz 11,
+  analytics 8. Backend 782 · frontend 815 green; contract drift guard clean.
+
 - 2026-08-31 — **refactor(jobs): plan 55-C tranche 1 — job payloads are typed
   (ADR-130).** New `app/jobs/payloads.py`: `IngestPayload`/`PostprocessPayload`/
   `ChatTurnPayload`/`DrawingOcrPayload` TypedDicts (`Required` keys for mandatory
