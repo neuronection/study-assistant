@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...ai.gateway import LLMGateway, Message
+from ...core.vocab import ReviewFindingKind
 from ...domain.models import (
     Concept,
     Material,
@@ -40,7 +41,6 @@ REVIEW_SYSTEM = (
 )
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
-_FINDING_KINDS = ("gap", "ordering", "orphan", "coverage")
 
 
 class OrganizerError(ValueError):
@@ -82,9 +82,12 @@ def review_node(
     for entry in (parsed.get("findings") or [])[:MAX_FINDINGS]:
         if not isinstance(entry, dict):
             continue
-        kind = str(entry.get("kind", "")).strip()
         title = str(entry.get("title", "")).strip()[:200]
-        if kind not in _FINDING_KINDS or not title:
+        try:
+            kind = ReviewFindingKind.parse(str(entry.get("kind", "")).strip())
+        except ValueError:
+            continue
+        if not title:
             continue
         findings.append(
             {

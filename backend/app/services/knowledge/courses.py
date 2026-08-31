@@ -6,6 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ...ai.gateway import LLMGateway, Message
+from ...core.vocab import StudyStatus
 from ...domain.models import (
     Activity,
     Answer,
@@ -557,8 +558,10 @@ class StructureService:
     def set_study_state(
         self, material_id: int, profile_id: int, status: str, progress: float | None = None
     ) -> MaterialStudyState:
-        if status not in ("unread", "reading", "studied"):
-            raise CourseError("status must be unread, reading or studied")
+        try:
+            status_value = StudyStatus.parse(status)
+        except ValueError as error:
+            raise CourseError(str(error)) from error
         state = self._session.scalars(
             select(MaterialStudyState).where(
                 MaterialStudyState.material_id == material_id,
@@ -567,14 +570,17 @@ class StructureService:
         ).first()
         if state is None:
             state = MaterialStudyState(
-                material_id=material_id, profile_id=profile_id, status="unread", progress=0.0
+                material_id=material_id,
+                profile_id=profile_id,
+                status=StudyStatus.UNREAD,
+                progress=0.0,
             )
             self._session.add(state)
-        state.status = status
+        state.status = status_value
         state.last_opened_at = utcnow()
         if progress is not None:
             state.progress = max(0.0, min(1.0, progress))
-        elif status == "studied":
+        elif status_value == StudyStatus.STUDIED:
             state.progress = 1.0
         self._session.flush()
         return state

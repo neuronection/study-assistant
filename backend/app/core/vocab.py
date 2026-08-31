@@ -76,6 +76,25 @@ class ProvenanceKind(StrVocab):
     TRANSCRIBED = "transcribed"
 
 
+class ConceptRelation(StrVocab):
+    PREREQ_OF = "prereq-of"
+    PART_OF = "part-of"
+    RELATED_TO = "related-to"
+
+
+class ReviewFindingKind(StrVocab):
+    GAP = "gap"
+    ORDERING = "ordering"
+    ORPHAN = "orphan"
+    COVERAGE = "coverage"
+
+
+class StudyStatus(StrVocab):
+    UNREAD = "unread"
+    READING = "reading"
+    STUDIED = "studied"
+
+
 class WsTopic:
     @staticmethod
     def jobs(job_id: int) -> str:

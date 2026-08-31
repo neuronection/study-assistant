@@ -6,6 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy import update as sa_update
 from sqlalchemy.orm import Session
 
+from ...core.vocab import StudyStatus
 from ...domain.models import (
     Activity,
     ChatSession,
@@ -859,7 +860,7 @@ class TreeService:
                 "title": material.title if material else f"#{material_id}",
                 "kind": material.kind if material else "doc",
                 "status": material.status if material else "missing",
-                "read_status": state.status if state else "unread",
+                "read_status": state.status if state else StudyStatus.UNREAD,
                 "progress": state.progress if state else 0.0,
                 "rationale": link.rationale if link is not None else None,
                 "auto_assigned": link.auto_assigned if link is not None else None,

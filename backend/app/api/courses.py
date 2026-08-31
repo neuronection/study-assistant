@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError
+from ..core.vocab import StudyStatus
 from ..domain.models import (
     Concept,
     Course,
@@ -40,15 +41,28 @@ from ..services.study.organizer import (
     review_report_markdown,
 )
 from .courses_schemas import (
+    ConceptDraftOut,
+    ConceptGraphOut,
+    ConceptsCommitOut,
+    CourseDeletedOut,
+    CourseImportOut,
+    CourseMaterialsEntryOut,
+    DraftNoteOut,
     FolderAssignedOut,
+    ImportedCourseOut,
     MaterialAssignedOut,
+    NodeArtifactsOut,
     NodeConceptLinkedOut,
     NodeCreatedOut,
     NodeDeletedOut,
     NodeDetailOut,
     NodeMovedOut,
     NodeRestoredOut,
+    NodeReviewOut,
     NodeUpdatedOut,
+    NodeWorkspaceOut,
+    OutlineCommitOut,
+    OutlineDraftOut,
     StudyStateOut,
     TreeNodeOut,
 )
@@ -129,7 +143,7 @@ class OutlineCommit(BaseModel):
 
 
 class StudyStateIn(BaseModel):
-    status: str = Field(pattern="^(unread|reading|studied)$")
+    status: StudyStatus
     progress: float | None = None
 
 
@@ -287,7 +301,7 @@ def export_course(
     )
 
 
-@router.post("/courses/import")
+@router.post("/courses/import", response_model=CourseImportOut)
 async def import_course(
     request: Request,
     dry_run: bool = False,
@@ -324,10 +338,10 @@ async def import_course(
         )
     except BundleError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    return {"dry_run": False, "imported": result}
+    return {"dry_run": False, "imported": ImportedCourseOut.model_validate(result)}
 
 
-@router.delete("/courses/{course_id}")
+@router.delete("/courses/{course_id}", response_model=CourseDeletedOut)
 def delete_course(
     course_id: int,
     request: Request,
@@ -486,7 +500,7 @@ def remove_node_concept(
         session.commit()
 
 
-@router.get("/nodes/{node_id}/workspace")
+@router.get("/nodes/{node_id}/workspace", response_model=NodeWorkspaceOut)
 def node_workspace(
     node_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -557,7 +571,9 @@ def unassign_folder_materials(
     session.commit()
 
 
-@router.get("/courses/{course_id}/materials")
+@router.get(
+    "/courses/{course_id}/materials", response_model=list[CourseMaterialsEntryOut]
+)
 def course_materials(
     course_id: int, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
@@ -565,7 +581,11 @@ def course_materials(
     return _structure(session).course_materials(course_id)
 
 
-@router.post("/courses/{course_id}/materials", status_code=201)
+@router.post(
+    "/courses/{course_id}/materials",
+    status_code=201,
+    response_model=MaterialAssignedOut,
+)
 def assign_course_material(
     course_id: int, body: AllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -589,7 +609,11 @@ def unassign_course_material(
     session.commit()
 
 
-@router.post("/courses/{course_id}/folder-materials", status_code=201)
+@router.post(
+    "/courses/{course_id}/folder-materials",
+    status_code=201,
+    response_model=FolderAssignedOut,
+)
 def assign_course_folder_materials(
     course_id: int, body: FolderAllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -615,7 +639,9 @@ def unassign_course_folder_materials(
     session.commit()
 
 
-@router.post("/courses/{course_id}/outline/draft")
+@router.post(
+    "/courses/{course_id}/outline/draft", response_model=OutlineDraftOut
+)
 def outline_draft(
     course_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -643,7 +669,9 @@ def outline_draft(
         raise HTTPException(status_code=502, detail=str(error)) from error
 
 
-@router.post("/courses/{course_id}/outline/commit")
+@router.post(
+    "/courses/{course_id}/outline/commit", response_model=OutlineCommitOut
+)
 def outline_commit(
     course_id: int, body: OutlineCommit, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -656,7 +684,9 @@ def outline_commit(
     return result
 
 
-@router.post("/courses/{course_id}/concepts/extract")
+@router.post(
+    "/courses/{course_id}/concepts/extract", response_model=ConceptDraftOut
+)
 def extract_course_concepts(
     course_id: int,
     request: Request,
@@ -724,7 +754,9 @@ def extract_course_concepts(
     return draft
 
 
-@router.post("/courses/{course_id}/concepts/commit")
+@router.post(
+    "/courses/{course_id}/concepts/commit", response_model=ConceptsCommitOut
+)
 def commit_course_concepts(
     course_id: int,
     body: ConceptsCommit,
@@ -744,7 +776,7 @@ def commit_course_concepts(
     return result
 
 
-@router.get("/courses/{course_id}/concepts")
+@router.get("/courses/{course_id}/concepts", response_model=ConceptGraphOut)
 def course_concept_graph(
     course_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -752,7 +784,7 @@ def course_concept_graph(
     return concept_graph(session, course_id)
 
 
-@router.post("/nodes/{node_id}/review")
+@router.post("/nodes/{node_id}/review", response_model=NodeReviewOut)
 def review_node_endpoint(
     node_id: int,
     request: Request,
@@ -814,7 +846,7 @@ def review_node_endpoint(
     }
 
 
-@router.post("/nodes/{node_id}/draft-note")
+@router.post("/nodes/{node_id}/draft-note", response_model=DraftNoteOut)
 def draft_node_note(
     node_id: int,
     request: Request,
@@ -875,7 +907,7 @@ def draft_node_note(
     session.commit()
     return {"note_id": note.id, "markdown": markdown, "existing": False}
 
-@router.get("/nodes/{node_id}/artifacts")
+@router.get("/nodes/{node_id}/artifacts", response_model=NodeArtifactsOut)
 def node_artifacts(
     node_id: int,
     kind: str | None = None,
@@ -913,7 +945,9 @@ def node_artifacts(
         result["artifact"] = artifact
     return result
 
-@router.put("/materials/{material_id}/study-state")
+@router.put(
+    "/materials/{material_id}/study-state", response_model=StudyStateOut
+)
 def set_study_state(
     material_id: int,
     body: StudyStateIn,
@@ -928,7 +962,13 @@ def set_study_state(
     except CourseError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return {"status": state.status, "progress": state.progress}
+    return {
+        "status": state.status,
+        "progress": state.progress,
+        "last_opened_at": (
+            state.last_opened_at.isoformat() if state.last_opened_at else None
+        ),
+    }
 
 
 @router.get("/study-states", response_model=dict[str, StudyStateOut])

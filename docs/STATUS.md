@@ -335,6 +335,30 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C courses remainder — every JSON endpoint in
+  the courses tag now declares a typed response model** (ADR-130). New models in
+  `courses_schemas.py`: the workspace payload (`NodeWorkspaceOut` with
+  node/breadcrumb/children/folders/materials/notes/counts/concepts — `kind`/
+  `status`/`read_status` generate real enum unions), `CourseMaterialsEntryOut`
+  (+`ViaFolderOut`), `CourseDeletedOut`, `CourseImportOut` (+`BundlePreviewOut`/
+  `ImportedCourseOut`), `OutlineDraftOut`/`OutlineCommitOut`,
+  `ConceptDraftOut`/`ConceptsCommitOut`/`ConceptGraphOut` (`from`/`to` via
+  serialization/validation aliases), `NodeReviewOut` (+`ReviewFindingOut`),
+  `DraftNoteOut`, `NodeArtifactsOut` (+`ArtifactRefOut`; the optional
+  `artifact` key is now always present, `null` when unfiltered — additive).
+  `PUT /materials/{id}/study-state` now returns the full `StudyStateOut`
+  (adds `last_opened_at`, matching `/study-states`). Vocabulary: three new
+  StrEnums in `core/vocab.py` — `ConceptRelation`, `ReviewFindingKind`,
+  `StudyStatus` — swept into the concepts/organizer/structure/tree write paths
+  (relation/kind validation, study-state status, workspace `read_status`
+  fallback). Schema 179 → 216 components. Survey refined (old count treated
+  204s/binary as untyped): remaining untyped 200/201-JSON endpoints = **61** —
+  quiz 11, analytics 8, backup 7, chat 5, ai 4, config 4, skills 3, sources 3,
+  exercises 2, jobs 2, notes 2, onboarding 2, trash 2, flashcards/folders/
+  materials 1 each; binary responses (root, blobs, desktop file,
+  course export) intentionally stay model-free. Backend 783 · frontend 815
+  green; contract drift guard clean.
+
 - 2026-08-31 — **feat(api): plan 55-C tranches 3+4 — node CRUD/move/delete/
   restore, folder assignment, study-states, node-concept linking and material
   assignment all declare typed response models** (`NodeDetailOut`,

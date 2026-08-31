@@ -3523,6 +3523,13 @@ export interface components {
             /** Skipped */
             skipped: number;
         };
+        /** ArtifactRefOut */
+        ArtifactRefOut: {
+            /** Material Id */
+            material_id: number;
+            /** Title */
+            title: string;
+        };
         /** AskIn */
         AskIn: {
             /** Pending Answer */
@@ -3600,10 +3607,30 @@ export interface components {
             /** File */
             file: string;
         };
+        /** BreadcrumbEntryOut */
+        BreadcrumbEntryOut: {
+            /** Depth */
+            depth: number;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
         /** BudgetIn */
         BudgetIn: {
             /** Monthly Cap Usd */
             monthly_cap_usd?: number | null;
+        };
+        /** BundlePreviewOut */
+        BundlePreviewOut: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Title */
+            title: string | null;
+            /** Warnings */
+            warnings: string[];
         };
         /** CaqDocument */
         CaqDocument: {
@@ -3723,6 +3750,79 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** ConceptCoverageOut */
+        ConceptCoverageOut: {
+            /** Node Id */
+            node_id: number;
+            /** Node Title */
+            node_title: string;
+        };
+        /** ConceptDraftEntryOut */
+        ConceptDraftEntryOut: {
+            /** Aliases */
+            aliases: string[];
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+        };
+        /** ConceptDraftOut */
+        ConceptDraftOut: {
+            /** Concepts */
+            concepts: components["schemas"]["ConceptDraftEntryOut"][];
+            /** Links */
+            links: components["schemas"]["ConceptLinkDraftOut"][];
+            /** Nodes */
+            nodes: components["schemas"]["ConceptNodeDraftOut"][];
+        };
+        /** ConceptGraphConceptOut */
+        ConceptGraphConceptOut: {
+            /** Aliases */
+            aliases: string[];
+            /** Description */
+            description: string | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Nodes */
+            nodes: components["schemas"]["ConceptCoverageOut"][];
+        };
+        /** ConceptGraphLinkOut */
+        ConceptGraphLinkOut: {
+            /** From */
+            from: string | null;
+            relation: components["schemas"]["ConceptRelation"];
+            /** To */
+            to: string | null;
+        };
+        /** ConceptGraphOut */
+        ConceptGraphOut: {
+            /** Concepts */
+            concepts: components["schemas"]["ConceptGraphConceptOut"][];
+            /** Links */
+            links: components["schemas"]["ConceptGraphLinkOut"][];
+        };
+        /** ConceptLinkDraftOut */
+        ConceptLinkDraftOut: {
+            /** From */
+            from: string;
+            relation: components["schemas"]["ConceptRelation"];
+            /** To */
+            to: string;
+        };
+        /** ConceptNodeDraftOut */
+        ConceptNodeDraftOut: {
+            /** Concepts */
+            concepts: string[];
+            /** Node Title */
+            node_title: string;
+        };
+        /**
+         * ConceptRelation
+         * @enum {string}
+         */
+        ConceptRelation: "prereq-of" | "part-of" | "related-to";
         /** ConceptsCommit */
         ConceptsCommit: {
             /** Concepts */
@@ -3737,6 +3837,17 @@ export interface components {
             nodes: {
                 [key: string]: unknown;
             }[];
+        };
+        /** ConceptsCommitOut */
+        ConceptsCommitOut: {
+            /** Concepts */
+            concepts: number;
+            /** Created */
+            created: number;
+            /** Links */
+            links: number;
+            /** Nodes */
+            nodes: number;
         };
         /**
          * ContextScope
@@ -3774,6 +3885,40 @@ export interface components {
             model_label: string | null;
             /** Requires */
             requires: string;
+        };
+        /** CourseDeletedOut */
+        CourseDeletedOut: {
+            /** Course Id */
+            course_id: number;
+            /** Status */
+            status: string;
+        };
+        /** CourseImportOut */
+        CourseImportOut: {
+            /** Dry Run */
+            dry_run: boolean;
+            imported?: components["schemas"]["ImportedCourseOut"] | null;
+            preview?: components["schemas"]["BundlePreviewOut"] | null;
+        };
+        /** CourseMaterialsEntryOut */
+        CourseMaterialsEntryOut: {
+            /** Auto Assigned */
+            auto_assigned: boolean;
+            /** Confidence */
+            confidence: number | null;
+            /** Material Id */
+            material_id: number;
+            /** Node Id */
+            node_id: number;
+            /** Node Is Root */
+            node_is_root: boolean;
+            /** Node Title */
+            node_title: string;
+            /** Rationale */
+            rationale: string | null;
+            /** Title */
+            title: string;
+            via_folder: components["schemas"]["ViaFolderOut"] | null;
         };
         /** CourseOut */
         CourseOut: {
@@ -3915,6 +4060,15 @@ export interface components {
             system: string;
             /** User */
             user: string;
+        };
+        /** DraftNoteOut */
+        DraftNoteOut: {
+            /** Existing */
+            existing: boolean;
+            /** Markdown */
+            markdown: string;
+            /** Note Id */
+            note_id: number;
         };
         /** DrawingIn */
         DrawingIn: {
@@ -4260,6 +4414,15 @@ export interface components {
             /** Violations */
             violations: string | null;
         };
+        /** ImportedCourseOut */
+        ImportedCourseOut: {
+            /** Course Id */
+            course_id: number;
+            /** Imported At */
+            imported_at: string;
+            /** Title */
+            title: string;
+        };
         /** InboxEntryOut */
         InboxEntryOut: {
             /** Filename */
@@ -4575,6 +4738,13 @@ export interface components {
             /** Reasoning Effort */
             reasoning_effort?: string | null;
         };
+        /** NodeArtifactsOut */
+        NodeArtifactsOut: {
+            artifact?: components["schemas"]["ArtifactRefOut"] | null;
+            cheat_sheet: components["schemas"]["ArtifactRefOut"] | null;
+            /** Reviews */
+            reviews: components["schemas"]["ArtifactRefOut"][];
+        };
         /** NodeConceptIn */
         NodeConceptIn: {
             /** Concept Id */
@@ -4665,6 +4835,17 @@ export interface components {
             /** Id */
             id: number;
         };
+        /** NodeReviewOut */
+        NodeReviewOut: {
+            /** Findings */
+            findings: components["schemas"]["ReviewFindingOut"][];
+            /** Material Id */
+            material_id: number;
+            /** Node Id */
+            node_id: number;
+            /** Node Title */
+            node_title: string;
+        };
         /** NodeUpdate */
         NodeUpdate: {
             /** Ai Hint */
@@ -4684,6 +4865,27 @@ export interface components {
             id: number;
             /** Title */
             title: string;
+        };
+        /** NodeWorkspaceOut */
+        NodeWorkspaceOut: {
+            /** Child Materials */
+            child_materials: {
+                [key: string]: components["schemas"]["WorkspaceMaterialOut"][];
+            };
+            /** Children */
+            children: components["schemas"]["WorkspaceChildOut"][];
+            /** Concepts */
+            concepts: components["schemas"]["WorkspaceConceptOut"][];
+            counts: components["schemas"]["WorkspaceCountsOut"];
+            /** Folder Material Ids */
+            folder_material_ids: number[];
+            /** Folders */
+            folders: components["schemas"]["WorkspaceFolderOut"][];
+            /** Materials */
+            materials: components["schemas"]["WorkspaceMaterialOut"][];
+            node: components["schemas"]["WorkspaceNodeOut"];
+            /** Notes */
+            notes: components["schemas"]["WorkspaceNoteOut"][];
         };
         /** NoteComposeIn */
         NoteComposeIn: {
@@ -4847,12 +5049,48 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** OutlineChapterOut */
+        OutlineChapterOut: {
+            /** Sections */
+            sections: components["schemas"]["OutlineSectionOut"][];
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
         /** OutlineCommit */
         OutlineCommit: {
             /** Chapters */
             chapters: {
                 [key: string]: unknown;
             }[];
+        };
+        /** OutlineCommitOut */
+        OutlineCommitOut: {
+            /** Allocations */
+            allocations: number;
+            /** Chapters */
+            chapters: number;
+            /** Sections */
+            sections: number;
+        };
+        /** OutlineDraftOut */
+        OutlineDraftOut: {
+            /** Chapters */
+            chapters: components["schemas"]["OutlineChapterOut"][];
+        };
+        /** OutlineSectionOut */
+        OutlineSectionOut: {
+            /** Confidence */
+            confidence: number;
+            /** Material Ids */
+            material_ids: number[];
+            /** Objectives */
+            objectives: string[];
+            /** Rationale */
+            rationale: string | null;
+            /** Title */
+            title: string;
         };
         /** PatternCreateIn */
         PatternCreateIn: {
@@ -5135,6 +5373,21 @@ export interface components {
             /** Types */
             types?: string[] | null;
         };
+        /**
+         * ReviewFindingKind
+         * @enum {string}
+         */
+        ReviewFindingKind: "gap" | "ordering" | "orphan" | "coverage";
+        /** ReviewFindingOut */
+        ReviewFindingOut: {
+            /** Detail */
+            detail: string | null;
+            kind: components["schemas"]["ReviewFindingKind"];
+            /** Suggestion */
+            suggestion: string | null;
+            /** Title */
+            title: string;
+        };
         /** ReviewIn */
         ReviewIn: {
             /** Rating */
@@ -5179,6 +5432,13 @@ export interface components {
             stats: {
                 [key: string]: number;
             };
+        };
+        /** ScopeCountsOut */
+        ScopeCountsOut: {
+            /** Direct */
+            direct: number;
+            /** With Children */
+            with_children: number;
         };
         /** SearchHit */
         SearchHit: {
@@ -5314,8 +5574,7 @@ export interface components {
         StudyStateIn: {
             /** Progress */
             progress?: number | null;
-            /** Status */
-            status: string;
+            status: components["schemas"]["StudyStatus"];
         };
         /** StudyStateOut */
         StudyStateOut: {
@@ -5326,6 +5585,11 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * StudyStatus
+         * @enum {string}
+         */
+        StudyStatus: "unread" | "reading" | "studied";
         /** TaskAssignmentIn */
         TaskAssignmentIn: {
             /** Fallback Model Id */
@@ -5561,6 +5825,13 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** ViaFolderOut */
+        ViaFolderOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
         /** ViewBox */
         ViewBox: {
             /** Height */
@@ -5576,6 +5847,124 @@ export interface components {
         WorkingDirIn: {
             /** Path */
             path: string;
+        };
+        /** WorkspaceChildOut */
+        WorkspaceChildOut: {
+            /** Depth */
+            depth: number;
+            /** Id */
+            id: number;
+            /** Objectives */
+            objectives: string[];
+            /** Order Idx */
+            order_idx: number;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
+        /** WorkspaceConceptOut */
+        WorkspaceConceptOut: {
+            /** Direct */
+            direct: boolean;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Node Ids */
+            node_ids: number[];
+        };
+        /** WorkspaceCountsOut */
+        WorkspaceCountsOut: {
+            /** Child Nodes */
+            child_nodes: number;
+            exercises: components["schemas"]["ScopeCountsOut"];
+            flashcards: components["schemas"]["ScopeCountsOut"];
+            notes: components["schemas"]["ScopeCountsOut"];
+            quizzes: components["schemas"]["ScopeCountsOut"];
+        };
+        /** WorkspaceFolderOut */
+        WorkspaceFolderOut: {
+            /** Auto Assigned */
+            auto_assigned: boolean;
+            /** Folder Id */
+            folder_id: number;
+            /** Member Count */
+            member_count: number;
+            /** Name */
+            name: string;
+            /** Rationale */
+            rationale: string | null;
+            /** Source Id */
+            source_id: number | null;
+        };
+        /** WorkspaceMaterialOut */
+        WorkspaceMaterialOut: {
+            /** Auto Assigned */
+            auto_assigned: boolean | null;
+            /** Confidence */
+            confidence: number | null;
+            kind: components["schemas"]["MaterialKind"];
+            /** Material Id */
+            material_id: number;
+            /** Progress */
+            progress: number;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            } | null;
+            /** Rationale */
+            rationale: string | null;
+            read_status: components["schemas"]["StudyStatus"];
+            status: components["schemas"]["MaterialStatus"];
+            /** Title */
+            title: string;
+            /** Via Folder Id */
+            via_folder_id: number | null;
+            /** Via Folder Name */
+            via_folder_name: string | null;
+        };
+        /** WorkspaceNodeOut */
+        WorkspaceNodeOut: {
+            /** Ai Hint */
+            ai_hint: string | null;
+            /** Breadcrumb */
+            breadcrumb: components["schemas"]["BreadcrumbEntryOut"][];
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string | null;
+            /** Depth */
+            depth: number;
+            /** Id */
+            id: number;
+            /** Is Root */
+            is_root: boolean;
+            /** Objectives */
+            objectives: string[];
+            /** Parent Id */
+            parent_id: number | null;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
+        /** WorkspaceNoteOut */
+        WorkspaceNoteOut: {
+            /** Id */
+            id: number;
+            /** Node Id */
+            node_id: number | null;
+            /** Owner Id */
+            owner_id: number | null;
+            /** Owner Type */
+            owner_type: string | null;
+            /** Pinned */
+            pinned: boolean;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at: string | null;
         };
         /** SessionOut */
         app__api__chat__SessionOut: {
@@ -7098,9 +7487,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CourseImportOut"];
                 };
             };
             /** @description Validation Error */
@@ -7133,9 +7520,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CourseDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -7201,9 +7586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ConceptGraphOut"];
                 };
             };
             /** @description Validation Error */
@@ -7238,9 +7621,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
+                    "application/json": components["schemas"]["ConceptsCommitOut"];
                 };
             };
             /** @description Validation Error */
@@ -7271,9 +7652,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ConceptDraftOut"];
                 };
             };
             /** @description Validation Error */
@@ -7339,9 +7718,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["FolderAssignedOut"];
                 };
             };
             /** @description Validation Error */
@@ -7402,9 +7779,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["CourseMaterialsEntryOut"][];
                 };
             };
             /** @description Validation Error */
@@ -7439,9 +7814,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MaterialAssignedOut"];
                 };
             };
             /** @description Validation Error */
@@ -7541,9 +7914,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OutlineCommitOut"];
                 };
             };
             /** @description Validation Error */
@@ -7574,9 +7945,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OutlineDraftOut"];
                 };
             };
             /** @description Validation Error */
@@ -9993,9 +10362,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["StudyStateOut"];
                 };
             };
             /** @description Validation Error */
@@ -10286,9 +10653,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeArtifactsOut"];
                 };
             };
             /** @description Validation Error */
@@ -10384,9 +10749,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DraftNoteOut"];
                 };
             };
             /** @description Validation Error */
@@ -10582,9 +10945,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeReviewOut"];
                 };
             };
             /** @description Validation Error */
@@ -10615,9 +10976,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["NodeWorkspaceOut"];
                 };
             };
             /** @description Validation Error */

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...ai.gateway import LLMGateway, Message
+from ...core.vocab import ConceptRelation
 from ...domain.models import Concept, ConceptLink, Course, NodeConcept, TreeNode
 
 CONCEPTS_TASK = "concepts"
@@ -118,10 +119,11 @@ def _validate(
             continue
         source = _clean_name(entry.get("from"))
         target = _clean_name(entry.get("to"))
-        relation = str(entry.get("relation", "")).strip()
-        if source not in seen or target not in seen or source == target:
+        try:
+            relation = ConceptRelation.parse(str(entry.get("relation", "")).strip())
+        except ValueError:
             continue
-        if relation not in ("prereq-of", "part-of", "related-to"):
+        if source not in seen or target not in seen or source == target:
             continue
         key = (source, target, relation)
         if key in link_seen:

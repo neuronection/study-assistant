@@ -292,7 +292,10 @@ def test_study_state_roundtrip(course_client: TestClient) -> None:
         json={"status": "reading", "progress": 0.4},
     )
     assert response.status_code == 200
-    assert response.json() == {"status": "reading", "progress": 0.4}
+    body = response.json()
+    assert body["status"] == "reading"
+    assert body["progress"] == 0.4
+    assert body["last_opened_at"] is not None
 
     states = course_client.get("/api/v1/study-states").json()
     assert states[str(material_id)]["status"] == "reading"
@@ -306,3 +309,83 @@ def test_study_state_roundtrip(course_client: TestClient) -> None:
         f"/api/v1/materials/{material_id}/study-state", json={"status": "studied"}
     )
     assert studied.json()["progress"] == 1.0
+
+
+def test_course_materials_and_workspace_response_shapes(
+    course_client: TestClient,
+) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Shapes"}).json()["id"]
+    material_id = add_material(course_client, "shapes.txt", course_id)
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    chapter = course_client.post(
+        f"/api/v1/courses/{course_id}/nodes",
+        json={"course_id": course_id, "parent_id": root["id"], "title": "Chapter"},
+    ).json()
+    assigned = course_client.post(
+        f"/api/v1/nodes/{chapter['id']}/materials",
+        json={"material_id": material_id, "rationale": "manual"},
+    )
+    assert assigned.status_code == 201
+    assert assigned.json() == {"node_id": chapter["id"], "material_id": material_id}
+
+    entries = course_client.get(f"/api/v1/courses/{course_id}/materials").json()
+    assert len(entries) == 1
+    assert set(entries[0]) == {
+        "node_id",
+        "node_title",
+        "node_is_root",
+        "material_id",
+        "title",
+        "rationale",
+        "auto_assigned",
+        "confidence",
+        "via_folder",
+    }
+    assert entries[0]["via_folder"] is None
+    assert entries[0]["node_id"] == chapter["id"]
+
+    workspace = course_client.get(f"/api/v1/nodes/{chapter['id']}/workspace").json()
+    assert set(workspace) == {
+        "node",
+        "children",
+        "folders",
+        "materials",
+        "folder_material_ids",
+        "child_materials",
+        "notes",
+        "counts",
+        "concepts",
+    }
+    assert set(workspace["node"]) == {
+        "id",
+        "course_id",
+        "course_title",
+        "title",
+        "summary",
+        "objectives",
+        "ai_hint",
+        "depth",
+        "is_root",
+        "parent_id",
+        "breadcrumb",
+    }
+    assert set(workspace["counts"]) == {
+        "notes",
+        "quizzes",
+        "exercises",
+        "flashcards",
+        "child_nodes",
+    }
+    assert workspace["counts"]["child_nodes"] == 0
+    assert workspace["materials"][0]["kind"] == "txt"
+    assert workspace["materials"][0]["status"] == "ready"
+    assert workspace["materials"][0]["read_status"] == "unread"
+    assert workspace["materials"][0]["progress"] == 0.0
+    assert workspace["materials"][0]["provenance"] is None
+    assert workspace["child_materials"] == {}
+
+    deleted = course_client.delete(
+        f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
+    )
+    assert deleted.status_code == 200
+    assert deleted.json() == {"status": "deleted", "course_id": course_id}

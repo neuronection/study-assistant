@@ -143,6 +143,24 @@
         "title": "AnkiImportOut",
         "type": "object"
       },
+      "ArtifactRefOut": {
+        "properties": {
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "title"
+        ],
+        "title": "ArtifactRefOut",
+        "type": "object"
+      },
       "AskIn": {
         "properties": {
           "pending_answer": {
@@ -406,6 +424,29 @@
         "title": "Body_upload_material_api_v1_materials_post",
         "type": "object"
       },
+      "BreadcrumbEntryOut": {
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "depth"
+        ],
+        "title": "BreadcrumbEntryOut",
+        "type": "object"
+      },
       "BudgetIn": {
         "properties": {
           "monthly_cap_usd": {
@@ -422,6 +463,42 @@
           }
         },
         "title": "BudgetIn",
+        "type": "object"
+      },
+      "BundlePreviewOut": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "counts",
+          "warnings"
+        ],
+        "title": "BundlePreviewOut",
         "type": "object"
       },
       "CaqDocument": {
@@ -768,6 +845,247 @@
         "title": "ComposeIn",
         "type": "object"
       },
+      "ConceptCoverageOut": {
+        "properties": {
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "node_title": {
+            "title": "Node Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_title"
+        ],
+        "title": "ConceptCoverageOut",
+        "type": "object"
+      },
+      "ConceptDraftEntryOut": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "aliases"
+        ],
+        "title": "ConceptDraftEntryOut",
+        "type": "object"
+      },
+      "ConceptDraftOut": {
+        "properties": {
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptDraftEntryOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptLinkDraftOut"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptNodeDraftOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "concepts",
+          "links",
+          "nodes"
+        ],
+        "title": "ConceptDraftOut",
+        "type": "object"
+      },
+      "ConceptGraphConceptOut": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptCoverageOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "aliases",
+          "nodes"
+        ],
+        "title": "ConceptGraphConceptOut",
+        "type": "object"
+      },
+      "ConceptGraphLinkOut": {
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/ConceptRelation"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "relation"
+        ],
+        "title": "ConceptGraphLinkOut",
+        "type": "object"
+      },
+      "ConceptGraphOut": {
+        "properties": {
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptGraphConceptOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptGraphLinkOut"
+            },
+            "title": "Links",
+            "type": "array"
+          }
+        },
+        "required": [
+          "concepts",
+          "links"
+        ],
+        "title": "ConceptGraphOut",
+        "type": "object"
+      },
+      "ConceptLinkDraftOut": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/ConceptRelation"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "relation"
+        ],
+        "title": "ConceptLinkDraftOut",
+        "type": "object"
+      },
+      "ConceptNodeDraftOut": {
+        "properties": {
+          "concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "node_title": {
+            "title": "Node Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_title",
+          "concepts"
+        ],
+        "title": "ConceptNodeDraftOut",
+        "type": "object"
+      },
+      "ConceptRelation": {
+        "enum": [
+          "prereq-of",
+          "part-of",
+          "related-to"
+        ],
+        "title": "ConceptRelation",
+        "type": "string"
+      },
       "ConceptsCommit": {
         "properties": {
           "concepts": {
@@ -801,6 +1119,34 @@
           "nodes"
         ],
         "title": "ConceptsCommit",
+        "type": "object"
+      },
+      "ConceptsCommitOut": {
+        "properties": {
+          "concepts": {
+            "title": "Concepts",
+            "type": "integer"
+          },
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "links": {
+            "title": "Links",
+            "type": "integer"
+          },
+          "nodes": {
+            "title": "Nodes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "concepts",
+          "created",
+          "links",
+          "nodes"
+        ],
+        "title": "ConceptsCommitOut",
         "type": "object"
       },
       "ContextScope": {
@@ -965,6 +1311,130 @@
           "global_fallback_model_label"
         ],
         "title": "CourseDefaultTaskOut",
+        "type": "object"
+      },
+      "CourseDeletedOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "course_id"
+        ],
+        "title": "CourseDeletedOut",
+        "type": "object"
+      },
+      "CourseImportOut": {
+        "properties": {
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "imported": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportedCourseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BundlePreviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "dry_run"
+        ],
+        "title": "CourseImportOut",
+        "type": "object"
+      },
+      "CourseMaterialsEntryOut": {
+        "properties": {
+          "auto_assigned": {
+            "title": "Auto Assigned",
+            "type": "boolean"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "node_is_root": {
+            "title": "Node Is Root",
+            "type": "boolean"
+          },
+          "node_title": {
+            "title": "Node Title",
+            "type": "string"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "via_folder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ViaFolderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "node_id",
+          "node_title",
+          "node_is_root",
+          "material_id",
+          "title",
+          "rationale",
+          "auto_assigned",
+          "confidence",
+          "via_folder"
+        ],
+        "title": "CourseMaterialsEntryOut",
         "type": "object"
       },
       "CourseOut": {
@@ -1515,6 +1985,29 @@
           "user"
         ],
         "title": "DiffOut",
+        "type": "object"
+      },
+      "DraftNoteOut": {
+        "properties": {
+          "existing": {
+            "title": "Existing",
+            "type": "boolean"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "note_id",
+          "markdown",
+          "existing"
+        ],
+        "title": "DraftNoteOut",
         "type": "object"
       },
       "DrawingIn": {
@@ -2473,6 +2966,29 @@
           "violations"
         ],
         "title": "HintOut",
+        "type": "object"
+      },
+      "ImportedCourseOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "imported_at": {
+            "title": "Imported At",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "title",
+          "imported_at"
+        ],
+        "title": "ImportedCourseOut",
         "type": "object"
       },
       "InboxEntryOut": {
@@ -3516,6 +4032,43 @@
         "title": "ModelUpdate",
         "type": "object"
       },
+      "NodeArtifactsOut": {
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArtifactRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cheat_sheet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArtifactRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactRefOut"
+            },
+            "title": "Reviews",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cheat_sheet",
+          "reviews"
+        ],
+        "title": "NodeArtifactsOut",
+        "type": "object"
+      },
       "NodeConceptIn": {
         "properties": {
           "concept_id": {
@@ -3801,6 +4354,37 @@
         "title": "NodeRestoredOut",
         "type": "object"
       },
+      "NodeReviewOut": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "node_title": {
+            "title": "Node Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_title",
+          "findings",
+          "material_id"
+        ],
+        "title": "NodeReviewOut",
+        "type": "object"
+      },
       "NodeUpdate": {
         "properties": {
           "ai_hint": {
@@ -3883,6 +4467,81 @@
           "ai_hint"
         ],
         "title": "NodeUpdatedOut",
+        "type": "object"
+      },
+      "NodeWorkspaceOut": {
+        "properties": {
+          "child_materials": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/WorkspaceMaterialOut"
+              },
+              "type": "array"
+            },
+            "title": "Child Materials",
+            "type": "object"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceChildOut"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceConceptOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/WorkspaceCountsOut"
+          },
+          "folder_material_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Folder Material Ids",
+            "type": "array"
+          },
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceFolderOut"
+            },
+            "title": "Folders",
+            "type": "array"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceMaterialOut"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "node": {
+            "$ref": "#/components/schemas/WorkspaceNodeOut"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceNoteOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "node",
+          "children",
+          "folders",
+          "materials",
+          "folder_material_ids",
+          "child_materials",
+          "notes",
+          "counts",
+          "concepts"
+        ],
+        "title": "NodeWorkspaceOut",
         "type": "object"
       },
       "NoteComposeIn": {
@@ -4412,6 +5071,39 @@
         "title": "NotesPage",
         "type": "object"
       },
+      "OutlineChapterOut": {
+        "properties": {
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/OutlineSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "summary",
+          "sections"
+        ],
+        "title": "OutlineChapterOut",
+        "type": "object"
+      },
       "OutlineCommit": {
         "properties": {
           "chapters": {
@@ -4427,6 +5119,91 @@
           "chapters"
         ],
         "title": "OutlineCommit",
+        "type": "object"
+      },
+      "OutlineCommitOut": {
+        "properties": {
+          "allocations": {
+            "title": "Allocations",
+            "type": "integer"
+          },
+          "chapters": {
+            "title": "Chapters",
+            "type": "integer"
+          },
+          "sections": {
+            "title": "Sections",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chapters",
+          "sections",
+          "allocations"
+        ],
+        "title": "OutlineCommitOut",
+        "type": "object"
+      },
+      "OutlineDraftOut": {
+        "properties": {
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/OutlineChapterOut"
+            },
+            "title": "Chapters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "chapters"
+        ],
+        "title": "OutlineDraftOut",
+        "type": "object"
+      },
+      "OutlineSectionOut": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "material_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Material Ids",
+            "type": "array"
+          },
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "objectives",
+          "material_ids",
+          "rationale",
+          "confidence"
+        ],
+        "title": "OutlineSectionOut",
         "type": "object"
       },
       "PatternCreateIn": {
@@ -5291,6 +6068,57 @@
         "title": "RetryFailedBody",
         "type": "object"
       },
+      "ReviewFindingKind": {
+        "enum": [
+          "gap",
+          "ordering",
+          "orphan",
+          "coverage"
+        ],
+        "title": "ReviewFindingKind",
+        "type": "string"
+      },
+      "ReviewFindingOut": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReviewFindingKind"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "detail",
+          "suggestion"
+        ],
+        "title": "ReviewFindingOut",
+        "type": "object"
+      },
       "ReviewIn": {
         "properties": {
           "rating": {
@@ -5407,6 +6235,24 @@
           "queued_jobs"
         ],
         "title": "ScanResult",
+        "type": "object"
+      },
+      "ScopeCountsOut": {
+        "properties": {
+          "direct": {
+            "title": "Direct",
+            "type": "integer"
+          },
+          "with_children": {
+            "title": "With Children",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "direct",
+          "with_children"
+        ],
+        "title": "ScopeCountsOut",
         "type": "object"
       },
       "SearchHit": {
@@ -5842,9 +6688,7 @@
             "title": "Progress"
           },
           "status": {
-            "pattern": "^(unread|reading|studied)$",
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/StudyStatus"
           }
         },
         "required": [
@@ -5882,6 +6726,15 @@
         ],
         "title": "StudyStateOut",
         "type": "object"
+      },
+      "StudyStatus": {
+        "enum": [
+          "unread",
+          "reading",
+          "studied"
+        ],
+        "title": "StudyStatus",
+        "type": "string"
       },
       "TaskAssignmentIn": {
         "properties": {
@@ -6609,6 +7462,24 @@
         "title": "VersionOut",
         "type": "object"
       },
+      "ViaFolderOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ViaFolderOut",
+        "type": "object"
+      },
       "ViewBox": {
         "properties": {
           "height": {
@@ -6652,6 +7523,442 @@
           "path"
         ],
         "title": "WorkingDirIn",
+        "type": "object"
+      },
+      "WorkspaceChildOut": {
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "order_idx": {
+            "title": "Order Idx",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "depth",
+          "order_idx",
+          "objectives",
+          "summary"
+        ],
+        "title": "WorkspaceChildOut",
+        "type": "object"
+      },
+      "WorkspaceConceptOut": {
+        "properties": {
+          "direct": {
+            "title": "Direct",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "node_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Node Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "direct",
+          "node_ids"
+        ],
+        "title": "WorkspaceConceptOut",
+        "type": "object"
+      },
+      "WorkspaceCountsOut": {
+        "properties": {
+          "child_nodes": {
+            "title": "Child Nodes",
+            "type": "integer"
+          },
+          "exercises": {
+            "$ref": "#/components/schemas/ScopeCountsOut"
+          },
+          "flashcards": {
+            "$ref": "#/components/schemas/ScopeCountsOut"
+          },
+          "notes": {
+            "$ref": "#/components/schemas/ScopeCountsOut"
+          },
+          "quizzes": {
+            "$ref": "#/components/schemas/ScopeCountsOut"
+          }
+        },
+        "required": [
+          "notes",
+          "quizzes",
+          "exercises",
+          "flashcards",
+          "child_nodes"
+        ],
+        "title": "WorkspaceCountsOut",
+        "type": "object"
+      },
+      "WorkspaceFolderOut": {
+        "properties": {
+          "auto_assigned": {
+            "title": "Auto Assigned",
+            "type": "boolean"
+          },
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "integer"
+          },
+          "member_count": {
+            "title": "Member Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          }
+        },
+        "required": [
+          "folder_id",
+          "name",
+          "source_id",
+          "member_count",
+          "rationale",
+          "auto_assigned"
+        ],
+        "title": "WorkspaceFolderOut",
+        "type": "object"
+      },
+      "WorkspaceMaterialOut": {
+        "properties": {
+          "auto_assigned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Assigned"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MaterialKind"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "read_status": {
+            "$ref": "#/components/schemas/StudyStatus"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MaterialStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "via_folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Folder Id"
+          },
+          "via_folder_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Folder Name"
+          }
+        },
+        "required": [
+          "material_id",
+          "title",
+          "kind",
+          "status",
+          "read_status",
+          "progress",
+          "rationale",
+          "auto_assigned",
+          "confidence",
+          "provenance",
+          "via_folder_id",
+          "via_folder_name"
+        ],
+        "title": "WorkspaceMaterialOut",
+        "type": "object"
+      },
+      "WorkspaceNodeOut": {
+        "properties": {
+          "ai_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Hint"
+          },
+          "breadcrumb": {
+            "items": {
+              "$ref": "#/components/schemas/BreadcrumbEntryOut"
+            },
+            "title": "Breadcrumb",
+            "type": "array"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Title"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_root": {
+            "title": "Is Root",
+            "type": "boolean"
+          },
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "course_title",
+          "title",
+          "summary",
+          "objectives",
+          "ai_hint",
+          "depth",
+          "is_root",
+          "parent_id",
+          "breadcrumb"
+        ],
+        "title": "WorkspaceNodeOut",
+        "type": "object"
+      },
+      "WorkspaceNoteOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "owner_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Type"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "node_id",
+          "owner_type",
+          "owner_id",
+          "pinned",
+          "updated_at"
+        ],
+        "title": "WorkspaceNoteOut",
         "type": "object"
       },
       "app__api__chat__SessionOut": {
@@ -8934,9 +10241,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Import Course Api V1 Courses Import Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CourseImportOut"
                 }
               }
             },
@@ -8988,9 +10293,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Course Api V1 Courses  Course Id  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CourseDeletedOut"
                 }
               }
             },
@@ -9082,9 +10385,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Course Concept Graph Api V1 Courses  Course Id  Concepts Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ConceptGraphOut"
                 }
               }
             },
@@ -9136,11 +10437,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "title": "Response Commit Course Concepts Api V1 Courses  Course Id  Concepts Commit Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ConceptsCommitOut"
                 }
               }
             },
@@ -9182,9 +10479,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Extract Course Concepts Api V1 Courses  Course Id  Concepts Extract Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ConceptDraftOut"
                 }
               }
             },
@@ -9276,9 +10571,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Assign Course Folder Materials Api V1 Courses  Course Id  Folder Materials Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FolderAssignedOut"
                 }
               }
             },
@@ -9365,8 +10658,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/CourseMaterialsEntryOut"
                   },
                   "title": "Response Course Materials Api V1 Courses  Course Id  Materials Get",
                   "type": "array"
@@ -9419,9 +10711,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Assign Course Material Api V1 Courses  Course Id  Materials Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MaterialAssignedOut"
                 }
               }
             },
@@ -9569,9 +10859,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Outline Commit Api V1 Courses  Course Id  Outline Commit Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/OutlineCommitOut"
                 }
               }
             },
@@ -9613,9 +10901,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Outline Draft Api V1 Courses  Course Id  Outline Draft Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/OutlineDraftOut"
                 }
               }
             },
@@ -13188,9 +14474,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Set Study State Api V1 Materials  Material Id  Study State Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/StudyStateOut"
                 }
               }
             },
@@ -13598,9 +14882,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Node Artifacts Api V1 Nodes  Node Id  Artifacts Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeArtifactsOut"
                 }
               }
             },
@@ -13738,9 +15020,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Draft Node Note Api V1 Nodes  Node Id  Draft Note Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DraftNoteOut"
                 }
               }
             },
@@ -14026,9 +15306,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Review Node Endpoint Api V1 Nodes  Node Id  Review Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeReviewOut"
                 }
               }
             },
@@ -14070,9 +15348,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Node Workspace Api V1 Nodes  Node Id  Workspace Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/NodeWorkspaceOut"
                 }
               }
             },
