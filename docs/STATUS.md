@@ -335,6 +335,31 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **refactor: plan 54 COMPLETE — the three structural seams split
+  with zero behavior change (ADR-127).** **54-E flake hygiene:** the test
+  `client` fixture now points `spa_dist` at a missing dir so the whole backend
+  suite is **SPA-mount-independent** (fresh worktrees no longer need
+  `pnpm build`; unmatched-path 404/405 semantics deterministic); chat-branch and
+  chat-turn-error wait deadlines 5→15 s (the CPU-starvation class from the
+  release gate); the folder-cascade test waits for the job queue to drain before
+  deleting (plus 54-A's cancel-on-purge closes its postprocess race). **54-B:**
+  `lib/api.ts` (3,584 lines) → **`lib/api/` package of 15 domain modules**
+  (client/materials/folders/sources/courses/chat/ai/quiz/exercises/notes/
+  flashcards/analytics/jobs/settings/system) — `@/lib/api` resolves to the
+  package index, all 65+ import sites untouched, exported surface exactly the
+  original 380 symbols (`json`/`expectOk`/`audioFilename` stay client-internal);
+  new endpoints land in their domain module from now on. **54-C:**
+  `domain/models.py` (976 lines) → **`models/` package**
+  (core/content/study/chat/ops) whose `__init__` re-exports every public name
+  with explicit `as` aliases (mypy-strict-safe); SQLAlchemy string FKs and
+  relationships resolve registry-wide, alembic untouched. **54-D:** the 28 flat
+  service modules → **content/study/knowledge/platform groups** (`search` stays
+  top-level), one-shot import rewrite across app + tests. Enforcement: test-count
+  invariance (813/776 unchanged through every split), mypy strict + ruff clean at
+  each commit. 5× full backend soak green. Retires the LazyNoteEditor /
+  folder-cascade / chat-turn flake watch items and the frontend/dist suite
+  dependency from Open issues.
+
 - 2026-08-31 — **feat(jobs): plan 54-A — delete-during-ingest is now a clean
   `cancelled`, not a confusing failure (ADR-126, user-approved round in progress).**
   Deleting a material/folder/course while its background job was queued or running
@@ -5023,29 +5048,11 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   expression strings — library code, not ours, and reachable only via the `geo` block's
   construction script in the local sandboxed shell. Accepted for now (G5's approved
   library); revisit if the `geo` script source ever widens beyond app-generated content.
-- **Frontend suite: rare flake under load (unidentified, watch item)** — twice on
-  2026-08-21 a full `pnpm test` run under concurrent lint/typecheck/build load
-  reported 1 failed test, but 4+ immediate reruns (including one under
-  simulated load) were fully green and the failing test name was lost to output
-  truncation. **Recurred twice on 2026-08-27 (again 1 failed under full-suite
-  load, green on immediate rerun both times, name again lost to the truncated
-  tail; one reproduction attempt with lint+build running concurrently was
-  green). **Named 2026-08-28: `src/features/notes/LazyNoteEditor.test.tsx >
-  renders the editor through the lazy boundary` — the assertion races the lazy
-  chunk's Suspense (Loading spinner still mounted instead of the editor); green
-  on 3 immediate reruns.** If it recurs, capture the full log before rerunning;
-  likely a timing-sensitive fake-timer or jsdom timing test, not plan-23 behavior.
-- **Backend suite: intermittent folder-cascade flake under random ordering** —
-  `test_folders_api.py::test_delete_cascades_subtree` failed once on 2026-08-27
-  during a full random-order run (sqlite error mid-test) but passed in isolation,
-  in file order, and in 2+ subsequent full runs; watch item only.
-- **Backend suite: `test_chat_turn_error` flake under heavy parallel load (watch
-  item, 2026-08-28)** — failed once in a full `uv run pytest` run while the
-  frontend suite ran concurrently on the same machine; passed immediately after
-  in isolation and in 2 subsequent full-suite runs. Unrelated to plan 44 (that
-  round only added a read-only onboarding endpoint); likely the same
-  CPU-starvation timing class as the 2026-08-27 folder-cascade flake. If it
-  recurs, capture the full failure output before rerunning.
+- **Frontend suite flake watch items + the `frontend/dist` suite dependency —
+  RESOLVED (2026-08-31, plan 54-E)**: LazyNoteEditor Suspense race, folder-cascade
+  sqlite contention, and the chat-turn timing flakes are fixed by waiting on
+  observables (SPA-independent test client, queue-drain waits, 15 s deadlines);
+  a fresh worktree now runs the backend suite without `pnpm build`.
 - **Desktop shell white screen (RESOLVED 2026-08-28)**: the SPA loads and runs
   inside WebKitGTK (server logs show index/assets/health all 200; a screenshot
   harness showed the DOM renders) but the user's window shows white. localStorage
