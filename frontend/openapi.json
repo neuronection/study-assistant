@@ -223,6 +223,70 @@
         "title": "AttachmentIn",
         "type": "object"
       },
+      "AttemptListItemOut": {
+        "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AttemptMode"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "activity_id",
+          "title",
+          "mode",
+          "started_at",
+          "finished_at",
+          "score"
+        ],
+        "title": "AttemptListItemOut",
+        "type": "object"
+      },
+      "AttemptMode": {
+        "enum": [
+          "practice",
+          "exam"
+        ],
+        "title": "AttemptMode",
+        "type": "string"
+      },
       "AttemptOut": {
         "properties": {
           "activity_id": {
@@ -273,6 +337,26 @@
           "score"
         ],
         "title": "AttemptOut",
+        "type": "object"
+      },
+      "AttemptReportOut": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/ReportAnswerOut"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptOut"
+          }
+        },
+        "required": [
+          "attempt",
+          "answers"
+        ],
+        "title": "AttemptReportOut",
         "type": "object"
       },
       "BackupSettingsIn": {
@@ -524,6 +608,47 @@
           "questions"
         ],
         "title": "CaqDocument",
+        "type": "object"
+      },
+      "CaqImportOut": {
+        "properties": {
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionCheckOut"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dry_run",
+          "results",
+          "valid",
+          "total"
+        ],
+        "title": "CaqImportOut",
         "type": "object"
       },
       "CardIn": {
@@ -3032,6 +3157,19 @@
         "title": "InboxEntryOut",
         "type": "object"
       },
+      "InboxPathOut": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "InboxPathOut",
+        "type": "object"
+      },
       "IndexCardOut": {
         "properties": {
           "difficulty": {
@@ -3856,6 +3994,52 @@
           "markdown"
         ],
         "title": "MindmapEditOut",
+        "type": "object"
+      },
+      "MistakeListItemOut": {
+        "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "integer"
+          },
+          "activity_title": {
+            "title": "Activity Title",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Error Tags",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "stem_excerpt": {
+            "title": "Stem Excerpt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question_id",
+          "activity_id",
+          "activity_title",
+          "stem_excerpt",
+          "error_tags",
+          "created_at"
+        ],
+        "title": "MistakeListItemOut",
         "type": "object"
       },
       "ModelCreateIn": {
@@ -5757,6 +5941,32 @@
         "title": "ProviderUpdate",
         "type": "object"
       },
+      "QuestionCheckOut": {
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "ok",
+          "problems"
+        ],
+        "title": "QuestionCheckOut",
+        "type": "object"
+      },
       "QuestionOut": {
         "properties": {
           "bloom": {
@@ -5851,6 +6061,42 @@
           "flag"
         ],
         "title": "QuestionOut",
+        "type": "object"
+      },
+      "QuizDeletedOut": {
+        "properties": {
+          "deleted_item_id": {
+            "title": "Deleted Item Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_item_id"
+        ],
+        "title": "QuizDeletedOut",
+        "type": "object"
+      },
+      "QuizHelpEntryOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "markdown",
+          "created_at"
+        ],
+        "title": "QuizHelpEntryOut",
         "type": "object"
       },
       "QuizHintIn": {
@@ -6046,6 +6292,56 @@
           "caps"
         ],
         "title": "RemoteModelOut",
+        "type": "object"
+      },
+      "ReportAnswerOut": {
+        "properties": {
+          "correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct"
+          },
+          "error_tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Error Tags",
+            "type": "array"
+          },
+          "partial_credit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partial Credit"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "stem_excerpt": {
+            "title": "Stem Excerpt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "correct",
+          "partial_credit",
+          "error_tags",
+          "stem_excerpt"
+        ],
+        "title": "ReportAnswerOut",
         "type": "object"
       },
       "RetryFailedBody": {
@@ -16852,9 +17148,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Quiz Api V1 Quiz Activities  Activity Id  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/QuizDeletedOut"
                 }
               }
             },
@@ -17224,8 +17518,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/AttemptListItemOut"
                   },
                   "title": "Response List Attempts Api V1 Quiz Attempts Get",
                   "type": "array"
@@ -17425,8 +17718,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/QuizHelpEntryOut"
                   },
                   "title": "Response List Quiz Help Api V1 Quiz Attempts  Attempt Id  Questions  Question Id  Help Get",
                   "type": "array"
@@ -17532,9 +17824,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Attempt Report Api V1 Quiz Attempts  Attempt Id  Report Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AttemptReportOut"
                 }
               }
             },
@@ -17637,9 +17927,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Import Caq Api V1 Quiz Import Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CaqImportOut"
                 }
               }
             },
@@ -17701,9 +17989,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Import Qpkg Api V1 Quiz Import Qpkg Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CaqImportOut"
                 }
               }
             },
@@ -17759,11 +18045,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Inbox Path Api V1 Quiz Inbox Path Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/InboxPathOut"
                 }
               }
             },
@@ -17805,9 +18087,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Inbox Import Api V1 Quiz Inbox  Filename  Import Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CaqImportOut"
                 }
               }
             },
@@ -17857,8 +18137,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/MistakeListItemOut"
                   },
                   "title": "Response List Mistakes Api V1 Quiz Mistakes Get",
                   "type": "array"

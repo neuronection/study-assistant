@@ -3552,6 +3552,27 @@ export interface components {
              */
             kind: "material" | "note" | "quiz" | "exercise" | "node" | "course";
         };
+        /** AttemptListItemOut */
+        AttemptListItemOut: {
+            /** Activity Id */
+            activity_id: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: number;
+            mode: components["schemas"]["AttemptMode"];
+            /** Score */
+            score: number | null;
+            /** Started At */
+            started_at: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * AttemptMode
+         * @enum {string}
+         */
+        AttemptMode: "practice" | "exam";
         /** AttemptOut */
         AttemptOut: {
             /** Activity Id */
@@ -3566,6 +3587,12 @@ export interface components {
             score: number | null;
             /** Started At */
             started_at: string;
+        };
+        /** AttemptReportOut */
+        AttemptReportOut: {
+            /** Answers */
+            answers: components["schemas"]["ReportAnswerOut"][];
+            attempt: components["schemas"]["AttemptOut"];
         };
         /** BackupSettingsIn */
         BackupSettingsIn: {
@@ -3645,6 +3672,18 @@ export interface components {
             title: string;
         } & {
             [key: string]: unknown;
+        };
+        /** CaqImportOut */
+        CaqImportOut: {
+            activity?: components["schemas"]["ActivityOut"] | null;
+            /** Dry Run */
+            dry_run: boolean;
+            /** Results */
+            results: components["schemas"]["QuestionCheckOut"][];
+            /** Total */
+            total: number;
+            /** Valid */
+            valid: number;
         };
         /** CardIn */
         CardIn: {
@@ -4438,6 +4477,11 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** InboxPathOut */
+        InboxPathOut: {
+            /** Path */
+            path: string;
+        };
         /** IndexCardOut */
         IndexCardOut: {
             /** Difficulty */
@@ -4689,6 +4733,23 @@ export interface components {
         MindmapEditOut: {
             /** Markdown */
             markdown: string;
+        };
+        /** MistakeListItemOut */
+        MistakeListItemOut: {
+            /** Activity Id */
+            activity_id: number;
+            /** Activity Title */
+            activity_title: string;
+            /** Created At */
+            created_at: string;
+            /** Error Tags */
+            error_tags: string[];
+            /** Id */
+            id: number;
+            /** Question Id */
+            question_id: number;
+            /** Stem Excerpt */
+            stem_excerpt: string;
         };
         /** ModelCreateIn */
         ModelCreateIn: {
@@ -5278,6 +5339,15 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** QuestionCheckOut */
+        QuestionCheckOut: {
+            /** Index */
+            index: number;
+            /** Ok */
+            ok: boolean;
+            /** Problems */
+            problems: string[];
+        };
         /** QuestionOut */
         QuestionOut: {
             /** Bloom */
@@ -5302,6 +5372,20 @@ export interface components {
             }[];
             /** Type */
             type: string;
+        };
+        /** QuizDeletedOut */
+        QuizDeletedOut: {
+            /** Deleted Item Id */
+            deleted_item_id: number;
+        };
+        /** QuizHelpEntryOut */
+        QuizHelpEntryOut: {
+            /** Created At */
+            created_at: string;
+            /** Level */
+            level: number;
+            /** Markdown */
+            markdown: string;
         };
         /** QuizHintIn */
         QuizHintIn: {
@@ -5367,6 +5451,19 @@ export interface components {
             caps: string[];
             /** External Id */
             external_id: string;
+        };
+        /** ReportAnswerOut */
+        ReportAnswerOut: {
+            /** Correct */
+            correct: boolean | null;
+            /** Error Tags */
+            error_tags: string[];
+            /** Partial Credit */
+            partial_credit: number | null;
+            /** Question Id */
+            question_id: number;
+            /** Stem Excerpt */
+            stem_excerpt: string;
         };
         /** RetryFailedBody */
         RetryFailedBody: {
@@ -12022,9 +12119,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["QuizDeletedOut"];
                 };
             };
             /** @description Validation Error */
@@ -12251,9 +12346,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["AttemptListItemOut"][];
                 };
             };
             /** @description Validation Error */
@@ -12383,9 +12476,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["QuizHelpEntryOut"][];
                 };
             };
             /** @description Validation Error */
@@ -12452,9 +12543,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AttemptReportOut"];
                 };
             };
             /** @description Validation Error */
@@ -12523,9 +12612,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CaqImportOut"];
                 };
             };
             /** @description Validation Error */
@@ -12561,9 +12648,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CaqImportOut"];
                 };
             };
             /** @description Validation Error */
@@ -12612,9 +12697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["InboxPathOut"];
                 };
             };
         };
@@ -12638,9 +12721,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CaqImportOut"];
                 };
             };
             /** @description Validation Error */
@@ -12671,9 +12752,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["MistakeListItemOut"][];
                 };
             };
             /** @description Validation Error */

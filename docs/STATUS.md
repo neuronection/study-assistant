@@ -335,6 +335,18 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-08-31 — **feat(api): plan 55-C quiz — the nine JSON quiz endpoints
+  declare typed response models** (ADR-130). New inline models in `quiz.py`:
+  `AttemptListItemOut` (`mode` typed as the `AttemptMode` enum → real union in
+  the schema), `MistakeListItemOut`, `CaqImportOut` (+`QuestionCheckOut`;
+  `activity` now always present, `null` on dry-run — additive) shared by
+  `/import`, `/import-qpkg` and `/inbox/{filename}/import`, `QuizDeletedOut`,
+  `QuizHelpEntryOut`, `AttemptReportOut` (+`ReportAnswerOut`),
+  `InboxPathOut`. The two file-download exports (`.caq.json` attachment,
+  `.qpkg` octet-stream) intentionally stay model-free. Survey: quiz 11 → 2
+  (both binary); remaining untyped 200/201-JSON = 59. Backend 784 · frontend
+  815 green; contract drift guard clean.
+
 - 2026-08-31 — **feat(api): plan 55-C courses remainder — every JSON endpoint in
   the courses tag now declares a typed response model** (ADR-130). New models in
   `courses_schemas.py`: the workspace payload (`NodeWorkspaceOut` with

@@ -479,3 +479,92 @@ def test_quizgen_shuffle_remaps_options() -> None:
             assert single.answer["index"] in range(len(single.options))
             for key in single.distractor_misconceptions or {}:
                 assert int(key) in range(len(single.options))
+
+
+def test_quiz_response_shapes(quiz_client: TestClient) -> None:
+    course_id = make_course(quiz_client)
+    activity = quiz_client.post(
+        "/api/v1/quiz/generate", json={"course_id": course_id, "count": 3}
+    ).json()
+
+    inbox = quiz_client.get("/api/v1/quiz/inbox/path").json()
+    assert set(inbox) == {"path"}
+
+    attempt = quiz_client.post(
+        f"/api/v1/quiz/activities/{activity['id']}/attempts"
+    ).json()
+    attempts = quiz_client.get("/api/v1/quiz/attempts").json()
+    assert len(attempts) == 1
+    assert set(attempts[0]) == {
+        "id",
+        "activity_id",
+        "title",
+        "mode",
+        "started_at",
+        "finished_at",
+        "score",
+    }
+    assert attempts[0]["mode"] == "practice"
+    assert attempts[0]["score"] is None
+
+    questions = quiz_client.get(
+        f"/api/v1/quiz/activities/{activity['id']}/questions"
+    ).json()
+    quiz_client.post(
+        f"/api/v1/quiz/attempts/{attempt['id']}/answers",
+        json={"question_id": questions[0]["id"], "response": {"index": 1}},
+    )
+    mistakes = quiz_client.get("/api/v1/quiz/mistakes").json()
+    assert len(mistakes) == 1
+    assert set(mistakes[0]) == {
+        "id",
+        "question_id",
+        "activity_id",
+        "activity_title",
+        "stem_excerpt",
+        "error_tags",
+        "created_at",
+    }
+
+    report = quiz_client.get(
+        f"/api/v1/quiz/attempts/{attempt['id']}/report"
+    ).json()
+    assert set(report) == {"attempt", "answers"}
+    assert set(report["attempt"]) == {
+        "id",
+        "activity_id",
+        "mode",
+        "started_at",
+        "finished_at",
+        "score",
+    }
+    assert set(report["answers"][0]) == {
+        "question_id",
+        "correct",
+        "partial_credit",
+        "error_tags",
+        "stem_excerpt",
+    }
+
+    dry = quiz_client.post(
+        "/api/v1/quiz/import",
+        params={"course_id": course_id, "dry_run": "true"},
+        json={
+            "title": "Imported",
+            "questions": [
+                {
+                    "id": "q1",
+                    "type": "truefalse",
+                    "stem_md": "2 > 1?",
+                    "answer": {"value": True},
+                }
+            ],
+        },
+    ).json()
+    assert set(dry) == {"dry_run", "results", "valid", "total", "activity"}
+    assert dry["dry_run"] is True
+    assert dry["activity"] is None
+
+    deleted = quiz_client.delete(f"/api/v1/quiz/activities/{activity['id']}")
+    assert deleted.status_code == 200
+    assert set(deleted.json()) == {"deleted_item_id"}

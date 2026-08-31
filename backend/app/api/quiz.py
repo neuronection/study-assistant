@@ -107,6 +107,67 @@ class AttemptOut(BaseModel):
     score: float | None
 
 
+class AttemptListItemOut(BaseModel):
+    id: int
+    activity_id: int
+    title: str
+    mode: AttemptMode
+    started_at: str
+    finished_at: str | None
+    score: float | None
+
+
+class MistakeListItemOut(BaseModel):
+    id: int
+    question_id: int
+    activity_id: int
+    activity_title: str
+    stem_excerpt: str
+    error_tags: list[str]
+    created_at: str
+
+
+class QuestionCheckOut(BaseModel):
+    index: int
+    ok: bool
+    problems: list[str]
+
+
+class CaqImportOut(BaseModel):
+    dry_run: bool
+    results: list[QuestionCheckOut]
+    valid: int
+    total: int
+    activity: ActivityOut | None = None
+
+
+class QuizDeletedOut(BaseModel):
+    deleted_item_id: int
+
+
+class QuizHelpEntryOut(BaseModel):
+    level: int
+    markdown: str
+    created_at: str
+
+
+class ReportAnswerOut(BaseModel):
+    question_id: int
+    correct: bool | None
+    partial_credit: float | None
+    error_tags: list[str]
+    stem_excerpt: str
+
+
+class AttemptReportOut(BaseModel):
+    attempt: AttemptOut
+    answers: list[ReportAnswerOut]
+
+
+class InboxPathOut(BaseModel):
+    path: str
+
+
 def _activity_out(activity: Activity, question_count: int) -> ActivityOut:
     return ActivityOut(
         id=activity.id,
@@ -221,7 +282,7 @@ def generate_quiz(
     return _activity_out(activity, len(questions))
 
 
-@router.get("/attempts")
+@router.get("/attempts", response_model=list[AttemptListItemOut])
 def list_attempts(
     course_id: int | None = None, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
@@ -250,7 +311,7 @@ def list_attempts(
     ]
 
 
-@router.get("/mistakes")
+@router.get("/mistakes", response_model=list[MistakeListItemOut])
 def list_mistakes(
     course_id: int | None = None, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
@@ -377,7 +438,7 @@ def export_qpkg(activity_id: int, session: Session = Depends(get_session)) -> Re
     )
 
 
-@router.post("/import-qpkg", status_code=200)
+@router.post("/import-qpkg", status_code=200, response_model=CaqImportOut)
 async def import_qpkg(
     file: UploadFile,
     course_id: int,
@@ -456,7 +517,7 @@ def _question_from_draft(
     )
 
 
-@router.post("/import")
+@router.post("/import", response_model=CaqImportOut)
 def import_caq(
     body: CaqDocument,
     course_id: int,
@@ -605,7 +666,7 @@ def move_quiz(
     return _activity_out(activity, count)
 
 
-@router.delete("/activities/{activity_id}")
+@router.delete("/activities/{activity_id}", response_model=QuizDeletedOut)
 def delete_quiz(activity_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     activity = session.scalar(
@@ -875,7 +936,10 @@ def request_quiz_hint(
     )
 
 
-@router.get("/attempts/{attempt_id}/questions/{question_id}/help")
+@router.get(
+    "/attempts/{attempt_id}/questions/{question_id}/help",
+    response_model=list[QuizHelpEntryOut],
+)
 def list_quiz_help(
     attempt_id: int,
     question_id: int,
@@ -1019,7 +1083,7 @@ def finish_attempt(
     return _attempt_out(attempt)
 
 
-@router.get("/attempts/{attempt_id}/report")
+@router.get("/attempts/{attempt_id}/report", response_model=AttemptReportOut)
 def attempt_report(
     attempt_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -1084,12 +1148,12 @@ def inbox_scan(request: Request) -> list[InboxEntryOut]:
     ]
 
 
-@router.get("/inbox/path")
+@router.get("/inbox/path", response_model=InboxPathOut)
 def inbox_path(request: Request) -> dict[str, str]:
     return {"path": str(_inbox(request).ensure_root())}
 
 
-@router.post("/inbox/{filename}/import")
+@router.post("/inbox/{filename}/import", response_model=CaqImportOut)
 def inbox_import(
     filename: str,
     request: Request,
