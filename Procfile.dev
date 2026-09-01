@@ -1,0 +1,15 @@
+# Study Assistant — development Procfile (used by scripts/run-dev.sh via honcho)
+#
+# Each entry: `<name>: <command>`. Honcho runs them as one process group:
+# a single Ctrl+C stops both, and if either dies honcho exits loud with the
+# traceback in the foreground. Ports come from the environment (honcho expands
+# ${VAR:-default}) and default to SA_PORT=8000 / VITE_PORT=5173.
+#
+# Start everything:   ./scripts/run-dev.sh
+# Start one process:  uv run --directory backend honcho start backend -f Procfile.dev
+#
+# Desktop mode (pywebview) is a single process and does NOT use this file:
+# see scripts/app.sh (or `pnpm app`). Built-SPA mode: scripts/webapp.sh.
+
+backend:  uv run --directory backend uvicorn app.main:create_app --factory --reload --port ${SA_PORT:-8000}
+frontend: pnpm --filter frontend dev --port ${VITE_PORT:-5173}

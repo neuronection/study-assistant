@@ -423,6 +423,18 @@ a backend node binding) |
   test retired with the old dialog); backend untouched. Known issue opened:
   `backend/tests/test_version_manager.py` (4) stale against the family-unified
   version-manager refactor (fails on clean main — pre-existing, not slice B).
+- 2026-09-01 — **`pnpm dev` moves to the family-uniform `scripts/run-dev.sh` under honcho.**
+  The dev entrypoint joins career/health-assistant's uniform interface: `./scripts/run-dev.sh`
+  with `--force` / `--force-stop` / `--no-bootstrap` / `--help` (old flags `--reset [--yes] [--all]`
+  unchanged, still kills port holders first). Process management switches from
+  `trap 'kill 0'` + `wait` to honcho + `Procfile.dev` (same as the sibling assistants): colored
+  per-process log prefixes and crash propagation — one dead process stops the group loud instead
+  of a half-dead dev environment. `scripts/dev.sh` stays as a thin deprecated alias, so `pnpm dev`
+  and muscle memory keep working. honcho added to the backend dev group (`uv add --group dev
+  honcho`); ports still `SA_PORT`/8000 + `VITE_PORT`/5173. Shared helpers (port kill, venv/node
+  bootstrap, colors, help) come from the family lib `scripts/lib/dev-common.sh` (canonical in
+  career-assistant, synced via its `scripts/sync-dev-lib.sh`). Desktop (`pnpm app`) and built-SPA
+  (`pnpm webapp`) modes untouched.
 - 2026-08-31 — **feat(ingest): plan 47-D — lecture audio/video become
   searchable transcript materials (B13, ADR-104).** Ingest branch for kinds
   `audio`/`video`: stage `transcribe` calls `LLMGateway.transcribe`
