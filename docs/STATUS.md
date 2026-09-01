@@ -335,6 +335,31 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-01 — **feat(settings): plan 56-B — AI-settings surfaces rebuilt on the
+  family library (`@neuronection/assistant-ui` 0.10.x), ADR-131/132.** The
+  Settings → Models tab is now a thin composition over the library's new
+  `ModelRegistry` module (health-design-language: icon-tile provider cards with
+  enabled/total pill, capability chips with icons + `data-as-cap` theming hooks);
+  the remote catalog (search, capability filters incl. *Unclassified*, Add-all,
+  manual add) is collapsed behind an **Add model** trigger, and every catalog row
+  shows the app-guessed capabilities with an inline **draft panel** (label, cap
+  chips, reasoning effort) shared by add and edit — `AddModelDialog` +
+  `EditModelDialog` (~544 ln) are deleted in the same commit; only enabled models
+  list, disabled ones re-enter via the catalog's add path. Providers tab rides the
+  library `ConnectionTestRow` (inline variant: Connected/Failed + model count);
+  provider create/edit dialogs adopt library `ProviderForm` (`hideBaseUrl` for
+  fixed-endpoint types, write-only key field); Tasks tab adopts `TaskAssignmentPicker`
+  v2 — capability-defaults section with per-capability **fallback** pickers,
+  `requires`-filtered catalogs, require badges + inherit notes + consequence
+  nudges + spend/budget via `renderMeta`. New ui shims: model-registry,
+  capability-chips, connection-test-row, task-assignment-picker, provider-form,
+  model-picker. Library-side commits: `model-registry` module,
+  `capability-chips`, task-assignment v2, provider-form/options, CI-canonical
+  gallery baselines (`visual-rebaseline` workflow) + date-picker month-rollover
+  test fix. Frontend 819 tests green (settings suite re-based; scroll-pagination
+  test retired with the old dialog); backend untouched. Known issue opened:
+  `backend/tests/test_version_manager.py` (4) stale against the family-unified
+  version-manager refactor (fails on clean main — pre-existing, not slice B).
 - 2026-08-31 — **feat(ingest): plan 47-D — lecture audio/video become
   searchable transcript materials (B13, ADR-104).** Ingest branch for kinds
   `audio`/`video`: stage `transcribe` calls `LLMGateway.transcribe`

@@ -1,159 +1,220 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Database, Eye, FileText, AudioLines, Wrench } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { CapabilityDescriptor } from '@/components/ui/capability-chips'
 import {
+  ModelRegistry,
+  type ModelRegistryDraft,
+  type ModelRegistryModel,
+  type ModelRegistryPatch,
+} from '@/components/ui/model-registry'
+import {
+  createModel,
   deleteModel,
   listModels,
   listProviders,
-  type AiModel,
-  type Provider,
+  listRemoteModels,
+  updateModel,
 } from '@/lib/api'
-
 import { useConfirm } from '@/lib/use-confirm'
-import { cn } from '@/lib/utils'
-import { AddModelDialog } from './AddModelDialog'
-import { EditModelDialog } from './EditModelDialog'
 
-function CapBadge({ cap }: { cap: string }) {
-  return (
-    <span className="bg-subtle text-muted-foreground rounded-full px-2 py-0.5 text-[11px]">
-      {cap}
-    </span>
-  )
-}
-
-function ModelRow({
-  model,
-  onEdit,
-}: {
-  model: AiModel
-  onEdit: (model: AiModel) => void
-}) {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const [confirm, confirmElement] = useConfirm()
-  const remove = useMutation({
-    mutationFn: () => deleteModel(model.id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['models'] })
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-
-  return (
-    <div
-      className={cn(
-        'hover:bg-subtle flex items-center gap-3 rounded-md px-2 py-1.5 text-sm',
-        model.missing && 'opacity-50'
-      )}
-    >
-      <span className="min-w-0 flex-1 truncate font-mono text-xs" title={model.label}>
-        {model.external_id}
-      </span>
-      {model.missing ? (
-        <span className="text-warning text-[11px]">{t('settings.missing')}</span>
-      ) : null}
-      <span className="hidden shrink-0 gap-1 sm:flex">
-        {model.caps.map((cap) => (
-          <CapBadge key={cap} cap={cap} />
-        ))}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7 shrink-0"
-        title={t('settings.editModel')}
-        onClick={() => onEdit(model)}
-      >
-        <Pencil className="size-3.5" aria-hidden />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7 shrink-0"
-        title={t('settings.deleteModel')}
-        disabled={remove.isPending}
-        onClick={async () => {
-          const ok = await confirm({
-            title: t('settings.deleteModel'),
-            description: t('settings.confirmDeleteModel'),
-            confirmLabel: t('settings.deleteModel'),
-            cancelLabel: t('common.cancel'),
-            destructive: true,
-          })
-          if (ok) remove.mutate()
-        }}
-      >
-        {remove.isPending ? (
-          <Loader2 className="size-3.5 animate-spin" aria-hidden />
-        ) : (
-          <Trash2 className="size-3.5" aria-hidden />
-        )}
-      </Button>
-      {confirmElement}
-    </div>
-  )
-}
+const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'audio'] as const
+const REASONING_EFFORT_OPTIONS = ['none', 'low', 'medium', 'high', 'max', 'xhigh'] as const
+const CAP_ICONS = {
+  text: FileText,
+  vision: Eye,
+  tools: Wrench,
+  embeddings: Database,
+  audio: AudioLines,
+} as const
 
 export function ModelsTab() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
   const models = useQuery({ queryKey: ['models'], queryFn: listModels })
-  const [addTo, setAddTo] = useState<Provider | null>(null)
-  const [editing, setEditing] = useState<AiModel | null>(null)
+  const [expandedProviderId, setExpandedProviderId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [confirm, confirmElement] = useConfirm()
+  const autoExpanded = useRef(false)
+
+  useEffect(() => {
+    if (!autoExpanded.current && !expandedProviderId && providers.data?.length) {
+      autoExpanded.current = true
+      setExpandedProviderId(String(providers.data[0].id))
+    }
+  }, [expandedProviderId, providers.data])
+
+  const providerId = expandedProviderId !== null ? Number(expandedProviderId) : null
+  const remote = useQuery({
+    queryKey: ['remote-models', expandedProviderId],
+    queryFn: () => listRemoteModels(providerId!),
+    enabled: providerId !== null,
+    retry: false,
+  })
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['models'] })
+    await queryClient.invalidateQueries({ queryKey: ['tasks'] })
+  }
+
+  const handleAdd = async (pid: string, draft: ModelRegistryDraft) => {
+    setError(null)
+    try {
+      await createModel({
+        provider_id: Number(pid),
+        external_id: draft.externalId,
+        label: draft.label ?? null,
+        caps: draft.caps,
+        enabled: true,
+        reasoning_effort: draft.reasoningEffort || null,
+      })
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const handleAddAll = async (pid: string, drafts: ModelRegistryDraft[]) => {
+    setError(null)
+    const BATCH = 20
+    try {
+      for (let offset = 0; offset < drafts.length; offset += BATCH) {
+        await Promise.all(
+          drafts.slice(offset, offset + BATCH).map((draft) =>
+            createModel({
+              provider_id: Number(pid),
+              external_id: draft.externalId,
+              caps: draft.caps,
+              enabled: true,
+            })
+          )
+        )
+      }
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const handleUpdate = async (model: ModelRegistryModel, patch: ModelRegistryPatch) => {
+    setError(null)
+    try {
+      await updateModel(Number(model.id), {
+        ...(patch.label !== undefined ? { label: patch.label } : {}),
+        ...(patch.caps !== undefined ? { caps: patch.caps } : {}),
+        ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
+        ...(patch.reasoningEffort !== undefined
+          ? { reasoning_effort: patch.reasoningEffort || null }
+          : {}),
+      })
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const handleDelete = async (model: ModelRegistryModel) => {
+    const ok = await confirm({
+      title: t('settings.deleteModel'),
+      description: t('settings.confirmDeleteModel'),
+      confirmLabel: t('settings.deleteModel'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    })
+    if (!ok) {
+      return
+    }
+    setError(null)
+    try {
+      await deleteModel(Number(model.id))
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const capDescriptors: CapabilityDescriptor[] = MODEL_CAPS.map((cap) => ({
+    value: cap,
+    label: t(`settings.caps.${cap}`),
+    icon: CAP_ICONS[cap],
+  }))
+  const registryProviders = (providers.data ?? []).map((provider) => ({
+    id: String(provider.id),
+    name: provider.name,
+    type: provider.type,
+    baseUrl: provider.base_url ?? undefined,
+  }))
+  const registryModels: ModelRegistryModel[] = (models.data ?? [])
+    .filter((model) => model.enabled)
+    .map((model) => ({
+      id: String(model.id),
+      providerId: String(model.provider_id),
+      externalId: model.external_id,
+      label: model.label || undefined,
+      caps: model.caps,
+      enabled: model.enabled,
+      reasoningEffort: model.reasoning_effort ?? undefined,
+      missing: model.missing,
+    }))
 
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">{t('settings.modelsHint')}</p>
-      {(providers.data ?? []).map((provider) => {
-        const providerModels = (models.data ?? []).filter(
-          (model) => model.provider_id === provider.id
-        )
-        const selected = providerModels.filter((model) => model.enabled)
-        return (
-          <Card key={provider.id}>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm">
-                {provider.name}
-                <span className="text-muted-foreground ml-2 text-xs font-normal">
-                  {t('settings.selectedCount', { count: selected.length })}
-                </span>
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => setAddTo(provider)}>
-                  <Plus aria-hidden />
-                  {t('settings.addModel')}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {selected.length === 0 ? (
-                <p className="text-muted-foreground text-xs">{t('settings.noModels')}</p>
-              ) : null}
-              {selected.map((model) => (
-                <ModelRow key={model.id} model={model} onEdit={(next) => setEditing(next)} />
-              ))}
-            </CardContent>
-          </Card>
-        )
-      })}
-      {providers.data && providers.data.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">
-          {t('settings.noProvidersFirst')}
-        </p>
-      ) : null}
-      {addTo ? (
-        <AddModelDialog
-          provider={addTo}
-          existingModels={(models.data ?? []).filter((model) => model.provider_id === addTo.id)}
-          onClose={() => setAddTo(null)}
-        />
-      ) : null}
-      {editing ? <EditModelDialog model={editing} onClose={() => setEditing(null)} /> : null}
+      <ModelRegistry
+        providers={registryProviders}
+        models={registryModels}
+        caps={capDescriptors}
+        expandedProviderId={expandedProviderId}
+        onExpandedProviderChange={setExpandedProviderId}
+        remoteModels={remote.data?.map((remoteModel) => ({
+          id: remoteModel.external_id,
+          caps: remoteModel.caps,
+        }))}
+        remoteState={
+          remote.fetchStatus === 'fetching'
+            ? 'loading'
+            : remote.isError
+              ? 'error'
+              : 'ready'
+        }
+        remoteError={remote.isError ? remote.error.message : null}
+        onRetryRemote={() => void remote.refetch()}
+        onAddModel={(pid, draft) => void handleAdd(pid, draft)}
+        onAddAll={(pid, drafts) => void handleAddAll(pid, drafts)}
+        onUpdateModel={(model, patch) => void handleUpdate(model, patch)}
+        onDeleteModel={(model) => void handleDelete(model)}
+        reasoningEffortOptions={[...REASONING_EFFORT_OPTIONS]}
+        addLabel={t('settings.addShort')}
+        addAllLabel={t('settings.addAllShort')}
+        browseLabel={t('settings.addModel')}
+        configureLabel={t('settings.configure')}
+        editLabel={t('settings.editModel')}
+        removeLabel={t('settings.deleteModel')}
+        missingLabel={t('settings.missing')}
+        capsLabel={t('settings.modelCaps')}
+        searchPlaceholder={t('settings.searchModels')}
+        searchLabel={t('settings.searchModels')}
+        capFilterLabel={t('settings.capFilter')}
+        unclassifiedLabel={t('settings.unclassified')}
+        emptyProviderLabel={t('settings.noModels')}
+        remoteEmptyLabel={t('settings.noModelMatches')}
+        remoteLoadingLabel={t('settings.loadingModels')}
+        retryLabel={t('settings.retry')}
+        manualAddLabel={t('settings.addManually')}
+        externalIdLabel={t('settings.manualIdLabel')}
+        labelLabel={t('settings.modelLabel')}
+        reasoningEffortLabel={t('settings.modelReasoningEffort')}
+        reasoningEffortPlaceholder={t('settings.modelReasoningEffortPlaceholder')}
+        saveLabel={t('settings.save')}
+        cancelLabel={t('settings.cancel')}
+        addDraftLabel={t('settings.addModel')}
+        providersEmptyLabel={t('settings.noProvidersFirst')}
+      />
+      {error ? <p className="text-danger text-xs">{error}</p> : null}
+      {confirmElement}
     </div>
   )
 }

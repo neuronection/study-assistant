@@ -50,20 +50,19 @@ the empty state of Settings → Providers.
    URL). The choice sets the connection type; the name prefills but stays editable.
 3. Paste your API key — it is stored in your **operating system's keyring**, never in
    the database or any file.
-4. Press **Test** to check connectivity, then go to **Models**:
-   - The list shows **your selected models** per provider. **Add model** opens a
-     searchable dialog over the provider's *live* catalog — type a few letters
-     (fuzzy, out-of-order matching; caps count too, so "vision" lists vision
-     models); long catalogs load more as you scroll. **Add all N** bulk-adds
-     everything matching the current search (with a confirmation above 20).
-     If listing fails (e.g. a missing/rejected API key — the error tells you
-     which), fix the key via **Edit provider** or use **Add manually** and type
-     the exact model id.
-   - Bulk import: in the Add-model dialog, clear the search and press **Add all N**.
-   - Each model's **edit** (pencil) button renames it and corrects its capabilities
-     (text / image-vision / tools / embeddings) — OCR tasks only see vision-capable
-     models. Unchecking *enabled* hides it from the list (re-add via Add model); the
-     trash button removes it for good.
+4. Press **Test** to check connectivity (the row shows Connected/Failed and the
+   model count), then go to **Models**:
+   - The list shows **your selected models** per provider. **Add model** opens the
+     provider's *live* catalog inline: a searchable list (substring match, e.g.
+     "vision" lists vision models), **capability filters** (text / image-vision /
+     tools / embeddings / audio, plus *Unclassified*), **Add all N** for everything
+     currently filtered, and **Add manually** for ids the catalog can't list. Every
+     catalog row shows the *guessed* capabilities — click its chevron to open the
+     draft panel and correct them (plus display name and reasoning effort) before
+     adding.
+   - Each model's **edit** (pencil) opens the same draft panel inline — rename it,
+     correct its capabilities (OCR tasks only see vision-capable models), or set
+     reasoning effort. The trash button removes it for good (with confirmation).
    - Existing providers can be renamed/re-keyed via their **edit** button.
 5. Go to **Tasks**. Set one **default model** per capability (text / vision /
    embeddings) in the *Default models* section at the top — every task without a custom

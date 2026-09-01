@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ProviderForm } from '@/components/ui/provider-form'
 import { updateProvider, type Provider } from '@/lib/api'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
@@ -89,37 +90,20 @@ function ProviderEditForm({
           {t(`settings.types.${provider.type}`)}
         </p>
       </div>
-      <label className="block space-y-1 text-sm">
-        <span className="text-muted-foreground">{t('settings.providerName')}</span>
-        <input
-          className="bg-surface border-border w-full rounded-md border px-3 py-2"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </label>
-      {provider.type === 'openai_compatible' ? (
-        <label className="block space-y-1 text-sm">
-          <span className="text-muted-foreground">{t('settings.baseUrl')}</span>
-          <input
-            className="bg-surface border-border w-full rounded-md border px-3 py-2 font-mono text-xs"
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-          />
-        </label>
-      ) : null}
-      <label className="block space-y-1 text-sm">
-        <span className="text-muted-foreground">{t('settings.apiKey')}</span>
-        <input
-          type="password"
-          className="bg-surface border-border w-full rounded-md border px-3 py-2 font-mono text-xs"
-          value={apiKey}
-          onChange={(event) => setApiKey(event.target.value)}
-          placeholder={provider.masked_key ?? t('settings.apiKeyOptional')}
-        />
-        {provider.masked_key ? (
-          <span className="text-muted-foreground text-[11px]">{t('settings.apiKeyKeepHint')}</span>
-        ) : null}
-      </label>
+      <ProviderForm
+        name={name}
+        onNameChange={setName}
+        baseUrl={baseUrl}
+        onBaseUrlChange={setBaseUrl}
+        apiKey={apiKey}
+        onApiKeyChange={setApiKey}
+        nameLabel={t('settings.providerName')}
+        baseUrlLabel={t('settings.baseUrl')}
+        apiKeyLabel={t('settings.apiKey')}
+        apiKeyHelp={t('settings.apiKeyKeepHint')}
+        hasStoredKey={Boolean(provider.masked_key)}
+        storedKeyLabel={provider.masked_key ?? undefined}
+      />
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"

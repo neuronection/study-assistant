@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Pencil, Plus, Sparkles, Trash2, Zap } from 'lucide-react'
+import { Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ConnectionTestRow } from '@/components/ui/connection-test-row'
 import { deleteProvider, listProviders, testProvider, type Provider } from '@/lib/api'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { useConfirm } from '@/lib/use-confirm'
-import { cn } from '@/lib/utils'
 import { ProviderFormDialog } from './ProviderFormDialog'
 
 export function ProvidersTab() {
@@ -52,13 +52,6 @@ export function ProvidersTab() {
       {(providers.data ?? []).map((provider) => (
         <Card key={provider.id}>
           <CardContent className="flex items-center gap-3 p-4">
-            <span
-              className={cn(
-                'inline-block size-2.5 shrink-0 rounded-full',
-                provider.status?.ok ? 'bg-success' : provider.status ? 'bg-danger' : 'bg-warning'
-              )}
-              title={provider.status?.error ?? provider.status?.ok ? undefined : t('settings.notTested')}
-            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">
                 {provider.name} <span className="text-muted-foreground">· {provider.type}</span>
@@ -70,27 +63,34 @@ export function ProvidersTab() {
               </p>
               <p className="text-muted-foreground truncate font-mono text-xs">
                 {provider.base_url} · {provider.masked_key ?? t('settings.noKey')}
-                {provider.status?.model_count !== null && provider.status?.model_count !== undefined
-                  ? ` · ${provider.status.model_count} ${t('settings.modelsCount')}`
-                  : ''}
               </p>
-              {provider.status?.error ? (
-                <p className="text-danger truncate text-xs">{provider.status.error}</p>
-              ) : null}
+              <ConnectionTestRow
+                variant="inline"
+                className="mt-1"
+                label={t('settings.connection')}
+                status={
+                  busyId === provider.id
+                    ? 'testing'
+                    : provider.status
+                      ? provider.status.ok
+                        ? 'ok'
+                        : 'fail'
+                      : 'idle'
+                }
+                errorMessage={provider.status?.error ?? null}
+                meta={
+                  provider.status?.model_count !== null &&
+                  provider.status?.model_count !== undefined
+                    ? `${provider.status.model_count} ${t('settings.modelsCount')}`
+                    : undefined
+                }
+                testLabel={t('settings.test')}
+                okLabel={t('settings.testOk')}
+                failLabel={t('settings.testFail')}
+                onTest={() => test.mutate(provider.id)}
+                disabled={busyId === provider.id}
+              />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busyId === provider.id}
-              onClick={() => test.mutate(provider.id)}
-            >
-              {busyId === provider.id ? (
-                <Loader2 className="animate-spin" aria-hidden />
-              ) : (
-                <Zap aria-hidden />
-              )}
-              {t('settings.test')}
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -135,3 +135,4 @@ export function ProvidersTab() {
     </div>
   )
 }
+

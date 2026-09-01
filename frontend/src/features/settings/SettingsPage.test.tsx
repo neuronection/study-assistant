@@ -108,7 +108,7 @@ describe('SettingsPage', () => {
     expect(screen.queryByText(/supersecret/i)).not.toBeInTheDocument()
   })
 
-  test('models tab shows only selected (enabled) models', async () => {
+  test('models tab lists selected (enabled) models only', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
@@ -133,12 +133,15 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
     expect(await screen.findByText('gemini-2.5-flash')).toBeInTheDocument()
-    expect(screen.getByText('vision')).toBeInTheDocument()
+    expect(screen.getAllByText('image / vision').length).toBeGreaterThan(0)
     expect(screen.queryByText('gemini-2.5-pro')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    const browse = screen.getByRole('button', { name: 'Add model' })
+    expect(browse).toHaveAttribute('aria-expanded', 'false')
   })
 
   test('tasks tab lists tasks with requirement badges', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
     listTaskDefaults.mockResolvedValue([])
     listTasks.mockResolvedValue([
       {
@@ -163,6 +166,7 @@ describe('SettingsPage', () => {
   })
 
   test('tasks tab nudges on unassigned embeddings and concepts', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
     listTaskDefaults.mockResolvedValue([])
     listTasks.mockResolvedValue([
       {
@@ -200,6 +204,7 @@ describe('SettingsPage', () => {
   })
 
   test('tasks tab shows default models section and inherited task model', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
     listTaskDefaults.mockResolvedValue([
       {
         requires: 'text',
@@ -245,6 +250,7 @@ describe('SettingsPage', () => {
   })
 
   test('tasks tab sends a task override when a custom model is picked', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
     listTaskDefaults.mockResolvedValue([])
     listTasks.mockResolvedValue([
       {
@@ -282,6 +288,7 @@ describe('SettingsPage', () => {
   })
 
   test('tasks tab sets a default model per capability', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
     listTaskDefaults.mockResolvedValue([
       { requires: 'text', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
       { requires: 'vision', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
@@ -302,7 +309,7 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
     await screen.findByText(/default models/i)
-    const textPrimary = screen.getByRole('combobox', { name: 'Default text model' })
+    const textPrimary = screen.getByRole('combobox', { name: 'Model — Default text model' })
     fireEvent.click(textPrimary)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
@@ -382,7 +389,7 @@ describe('SettingsPage', () => {
     listTasks.mockResolvedValue([])
     listTaskDefaults.mockResolvedValue([])
     await renderSettings('/settings?tab=models')
-    expect(await screen.findByRole('button', { name: /add model/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Add model' })).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: /^tasks$/i }))
     await waitFor(() =>
@@ -423,7 +430,7 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('models tab add-model dialog searches remote list and adds', async () => {
+  test('models tab searches the catalog and quick-adds with the guessed caps', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
@@ -452,17 +459,18 @@ describe('SettingsPage', () => {
     })
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
-    fireEvent.click(await screen.findByRole('button', { name: /add model/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
 
-    const search = await screen.findByLabelText(/search models/i)
     expect(await screen.findByText('gemini-2.5-pro')).toBeInTheDocument()
     expect(screen.getByText('text-embedding-004')).toBeInTheDocument()
     expect(screen.getByText('Added')).toBeInTheDocument()
 
-    fireEvent.change(search, { target: { value: 'pro' } })
+    fireEvent.change(await screen.findByLabelText(/search models/i), {
+      target: { value: 'pro' },
+    })
     expect(screen.queryByText('text-embedding-004')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getAllByRole('button', { name: /^add$/i })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Add gemini-2.5-pro' }))
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -475,7 +483,7 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('add-model dialog offers manual add when listing fails', async () => {
+  test('models tab offers manual add with cap correction when listing fails', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([])
     listRemoteModels.mockRejectedValue(
@@ -494,17 +502,16 @@ describe('SettingsPage', () => {
     })
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
-    fireEvent.click(await screen.findByRole('button', { name: /add model/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
 
     expect(await screen.findByText(/no API key is stored/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /edit provider/i })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /add manually/i }))
-    fireEvent.change(await screen.findByLabelText(/model id/i), {
-      target: { value: 'gpt-9-turbo' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /image \/ vision/i }))
-    fireEvent.click(screen.getByRole('button', { name: /^add$/i }))
+    const idInput = await screen.findByLabelText(/model id/i)
+    fireEvent.change(idInput, { target: { value: 'gpt-9-turbo' } })
+    const draft = idInput.closest('[data-as="model-registry-draft"]') as HTMLElement
+    fireEvent.click(within(draft).getByRole('button', { name: 'image / vision' }))
+    fireEvent.click(within(draft).getByRole('button', { name: 'Add model' }))
 
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
@@ -533,76 +540,13 @@ describe('SettingsPage', () => {
     ])
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
-    fireEvent.click(await screen.findByRole('button', { name: /delete model/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /delete model gemini-2\.5-flash/i }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete model' }))
     await waitFor(() => expect(deleteModel).toHaveBeenCalledWith(11))
   })
 
-  test('add-model dialog fuzzy-searches and loads more on scroll', async () => {
-    const observers: { callback: IntersectionObserverCallback }[] = []
-    class StubObserver {
-      callback: IntersectionObserverCallback
-      constructor(callback: IntersectionObserverCallback) {
-        this.callback = callback
-        observers.push(this)
-      }
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-      takeRecords() {
-        return []
-      }
-    }
-    vi.stubGlobal('IntersectionObserver', StubObserver)
-
-    const catalog = Array.from({ length: 75 }, (_, index) => ({
-      external_id: `model-${String(index).padStart(2, '0')}`,
-      caps: ['text'],
-    }))
-    try {
-      listProviders.mockResolvedValue([PROVIDER])
-      listModels.mockResolvedValue([])
-      listRemoteModels.mockResolvedValue(catalog)
-      await await renderSettings()
-      screen.getByRole('button', { name: /models/i }).click()
-      fireEvent.click(await screen.findByRole('button', { name: /add model/i }))
-
-      expect(await screen.findByText('model-00')).toBeInTheDocument()
-      expect(screen.getByText('model-29')).toBeInTheDocument()
-      expect(screen.queryByText('model-30')).not.toBeInTheDocument()
-      expect(screen.getByText(/showing 30 of 75/i)).toBeInTheDocument()
-
-      observers[observers.length - 1].callback(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver
-      )
-      expect(await screen.findByText('model-30')).toBeInTheDocument()
-      expect(screen.getByText('model-59')).toBeInTheDocument()
-      expect(screen.queryByText('model-60')).not.toBeInTheDocument()
-      expect(screen.getByText(/showing 60 of 75/i)).toBeInTheDocument()
-
-      observers[observers.length - 1].callback(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver
-      )
-      await waitFor(() =>
-        expect(screen.queryByText(/showing \d+ of 75/i)).not.toBeInTheDocument()
-      )
-      expect(screen.getByText('model-74')).toBeInTheDocument()
-
-      fireEvent.change(screen.getByLabelText(/search models/i), {
-        target: { value: 'm7' },
-      })
-      const matches = await screen.findAllByText(/^model-7\d$/)
-      expect(matches.length).toBeGreaterThanOrEqual(5)
-      expect(screen.queryByText('model-00')).not.toBeInTheDocument()
-    } finally {
-      vi.unstubAllGlobals()
-    }
-  })
-
-  test('add-model dialog bulk-adds the current matches', async () => {
+  test('models tab bulk-adds the filtered catalog entries', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([])
     listRemoteModels.mockResolvedValue([
@@ -611,15 +555,16 @@ describe('SettingsPage', () => {
       { external_id: 'text-embedding-004', caps: ['embeddings'] },
     ])
     createModel.mockResolvedValue({ id: 1 })
+    createModel.mockClear()
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
-    fireEvent.click(await screen.findByRole('button', { name: /add model/i }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     await screen.findByText('gemini-2.5-flash')
 
     fireEvent.change(screen.getByLabelText(/search models/i), {
       target: { value: 'gemini' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /add all 2/i }))
+    fireEvent.click(screen.getByRole('button', { name: /add all \(2\)/i }))
 
     await waitFor(() => expect(createModel).toHaveBeenCalledTimes(2))
     expect(createModel).toHaveBeenCalledWith(
@@ -633,7 +578,7 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('models tab edit dialog changes caps and label', async () => {
+  test('models tab edits label and caps in the draft panel', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
@@ -657,19 +602,19 @@ describe('SettingsPage', () => {
     })
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
-    fireEvent.click(await screen.findByRole('button', { name: /edit model/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /edit model gemini-2\.5-flash/i }))
 
     const labelInput = await screen.findByLabelText(/display name/i)
     fireEvent.change(labelInput, { target: { value: 'Flash' } })
-    fireEvent.click(screen.getByRole('button', { name: /image \/ vision/i }))
+    const draft = labelInput.closest('[data-as="model-registry-draft"]') as HTMLElement
+    fireEvent.click(within(draft).getByRole('button', { name: 'image / vision' }))
 
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    fireEvent.click(within(draft).getByRole('button', { name: /^save$/i }))
     await waitFor(() =>
       expect(updateModel).toHaveBeenCalledWith(11, {
         label: 'Flash',
         caps: ['text', 'tools'],
-        enabled: true,
-        reasoning_effort: '',
+        reasoning_effort: null,
       })
     )
   })
