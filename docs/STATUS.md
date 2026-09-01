@@ -335,6 +335,15 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-01 — **test(scripts): version_manager tests realigned with the
+  family-unified config-driven API.** The 4 tests still monkeypatching the removed
+  `VERSION_FILE`/`ROOT`-era `set_version`/`current_version` interface now drive the
+  b608eb4 surface: `set` runs through `main()` against a tmp repo with its own
+  `version_manager.toml` (patched `ROOT`/`CONFIG_PATH`), invalid versions assert
+  `SystemExit` + untouched file, `show` compares against `read_version(load_config())`,
+  and the release test calls `git_release(cfg, …)` on a tmp git repo (dirty version
+  file committed, tagged `v0.1.2`, clean tree). Backend 807 tests green.
+
 - 2026-09-01 — **feat(ui): workspace navigation/action separation + guided
   course onboarding.** The NodeWorkspace tab strip is now **underline tabs** on a
   full-width border (active tab = primary underline) instead of pill buttons — tabs

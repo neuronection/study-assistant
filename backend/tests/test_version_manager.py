@@ -1,5 +1,6 @@
 import importlib.util
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,42 @@ spec = importlib.util.spec_from_file_location("version_manager", SCRIPT)
 assert spec is not None and spec.loader is not None
 vm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(vm)
+
+TEST_CONFIG = """\
+[project]
+name = "Test App"
+
+[version]
+file = "backend/app/__init__.py"
+pattern = '__version__\\s*=\\s*"(?P<version>[^"]+)"'
+
+[release]
+tag_prefix = "v"
+commit_message = "chore(release): {version}"
+"""
+
+
+def _make_repo(tmp_path: Path, init_git: bool = False) -> Path:
+    repo = tmp_path / "repo"
+    version_dir = repo / "backend" / "app"
+    version_dir.mkdir(parents=True)
+    (version_dir / "__init__.py").write_text(
+        '__version__ = "0.1.1"\n', encoding="utf-8"
+    )
+    (repo / "version_manager.toml").write_text(TEST_CONFIG, encoding="utf-8")
+    if init_git:
+        _git(repo, "init", "-q")
+        _git(repo, "config", "user.email", "test@example.com")
+        _git(repo, "config", "user.name", "Test")
+        _git(repo, "config", "commit.gpgsign", "false")
+        _git(repo, "add", ".")
+        _git(repo, "commit", "-q", "-m", "init")
+    return repo
+
+
+def _patch_vm(monkeypatch: pytest.MonkeyPatch, repo: Path) -> None:
+    monkeypatch.setattr(vm, "ROOT", repo)
+    monkeypatch.setattr(vm, "CONFIG_PATH", repo / "version_manager.toml")
 
 
 def test_parse_and_format_roundtrip() -> None:
@@ -39,13 +76,19 @@ def test_bump_rc_increments_and_patch_promotes() -> None:
     assert vm.bump_version("0.2.1-rc.2", "minor") == "0.3.0"
 
 
-def test_set_version_rewrites_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    version_file = tmp_path / "__init__.py"
-    version_file.write_text('__version__ = "0.1.0"\n', encoding="utf-8")
-    monkeypatch.setattr(vm, "VERSION_FILE", version_file)
-    vm.set_version("9.8.7-rc.1")
+def test_set_command_rewrites_version_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo = _make_repo(tmp_path)
+    _patch_vm(monkeypatch, repo)
+    monkeypatch.setattr(sys, "argv", ["version_manager.py", "set", "9.8.7-rc.1"])
+    vm.main()
+    version_file = repo / "backend" / "app" / "__init__.py"
     assert version_file.read_text(encoding="utf-8") == '__version__ = "9.8.7-rc.1"\n'
-    assert vm.current_version() == "9.8.7-rc.1"
+    assert vm.read_version(vm.load_config()) == "9.8.7-rc.1"
+    assert capsys.readouterr().out.count("9.8.7-rc.1") >= 1
 
 
 def test_cli_show_prints_repo_version() -> None:
@@ -53,7 +96,7 @@ def test_cli_show_prints_repo_version() -> None:
         ["python3", str(SCRIPT), "show"], capture_output=True, text=True, cwd=REPO_ROOT
     )
     assert result.returncode == 0
-    assert result.stdout.strip() == vm.current_version()
+    assert result.stdout.strip() == vm.read_version(vm.load_config())
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -65,21 +108,13 @@ def _git(repo: Path, *args: str) -> str:
 def test_release_commits_dirty_version_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    _git(repo, "init", "-q")
-    _git(repo, "config", "user.email", "test@example.com")
-    _git(repo, "config", "user.name", "Test")
-    _git(repo, "config", "commit.gpgsign", "false")
-    version_file = repo / "backend" / "app" / "__init__.py"
-    version_file.parent.mkdir(parents=True)
-    version_file.write_text('__version__ = "0.1.1"\n', encoding="utf-8")
-    _git(repo, "add", ".")
-    _git(repo, "commit", "-q", "-m", "init")
-    version_file.write_text('__version__ = "0.1.2"\n', encoding="utf-8")
-    monkeypatch.setattr(vm, "ROOT", repo)
-    monkeypatch.setattr(vm, "VERSION_FILE", version_file)
-    vm.git_release("0.1.2", push=False)
+    repo = _make_repo(tmp_path, init_git=True)
+    (repo / "backend" / "app" / "__init__.py").write_text(
+        '__version__ = "0.1.2"\n', encoding="utf-8"
+    )
+    _patch_vm(monkeypatch, repo)
+    cfg = vm.load_config()
+    vm.git_release(cfg, "0.1.2", push=False)
     assert _git(repo, "log", "-1", "--pretty=%s").strip() == "chore(release): 0.1.2"
     assert _git(repo, "tag").split() == ["v0.1.2"]
     assert _git(repo, "status", "--porcelain") == ""
@@ -88,9 +123,10 @@ def test_release_commits_dirty_version_file(
 def test_set_rejects_invalid_version_untouched(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    version_file = tmp_path / "__init__.py"
-    version_file.write_text('__version__ = "0.1.0"\n', encoding="utf-8")
-    monkeypatch.setattr(vm, "VERSION_FILE", version_file)
-    with pytest.raises(ValueError):
-        vm.set_version("not-semver")
-    assert version_file.read_text(encoding="utf-8") == '__version__ = "0.1.0"\n'
+    repo = _make_repo(tmp_path)
+    _patch_vm(monkeypatch, repo)
+    monkeypatch.setattr(sys, "argv", ["version_manager.py", "set", "not-semver"])
+    with pytest.raises(SystemExit):
+        vm.main()
+    version_file = repo / "backend" / "app" / "__init__.py"
+    assert version_file.read_text(encoding="utf-8") == '__version__ = "0.1.1"\n'
