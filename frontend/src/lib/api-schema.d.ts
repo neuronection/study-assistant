@@ -3182,6 +3182,40 @@ export interface paths {
         patch: operations["update_course_type_api_v1_skills_course_types__course_type_id__patch"];
         trace?: never;
     };
+    "/api/v1/skills/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Pack */
+        post: operations["export_pack_api_v1_skills_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills/packs/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Pack */
+        post: operations["import_pack_api_v1_skills_packs_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skills/test-run": {
         parameters: {
             query?: never;
@@ -6196,6 +6230,95 @@ export interface components {
             name: string;
             /** Task */
             task: string;
+        };
+        /** SkillPackCommitOut */
+        SkillPackCommitOut: {
+            /** Created */
+            created: string[];
+            /** Renamed */
+            renamed: {
+                [key: string]: string;
+            }[];
+            /** Replaced */
+            replaced: string[];
+            /** Skipped */
+            skipped: {
+                [key: string]: string;
+            }[];
+        };
+        /** SkillPackExportIn */
+        SkillPackExportIn: {
+            /** Keys */
+            keys: string[];
+        };
+        /** SkillPackOut */
+        SkillPackOut: {
+            /** Exported At */
+            exported_at: string;
+            /** Format */
+            format: string;
+            /** Skills */
+            skills: components["schemas"]["SkillPackSkillOut"][];
+        };
+        /** SkillPackPreviewOut */
+        SkillPackPreviewOut: {
+            /** Format */
+            format: string;
+            /** Skills */
+            skills: components["schemas"]["SkillPackPreviewSkillOut"][];
+        };
+        /** SkillPackPreviewSkillOut */
+        SkillPackPreviewSkillOut: {
+            /** Active Version */
+            active_version: number | null;
+            /** Collision */
+            collision: boolean;
+            /** Description */
+            description: string | null;
+            /** Errors */
+            errors: string[];
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Task */
+            task: string;
+            /** Version Count */
+            version_count: number;
+        };
+        /** SkillPackSkillOut */
+        SkillPackSkillOut: {
+            /** Description */
+            description: string | null;
+            /** Is System */
+            is_system: boolean;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Task */
+            task: string;
+            /** Versions */
+            versions: components["schemas"]["SkillPackVersionOut"][];
+        };
+        /** SkillPackVersionOut */
+        SkillPackVersionOut: {
+            /** Contract */
+            contract: {
+                [key: string]: unknown;
+            } | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            } | null;
+            /** System Template */
+            system_template: string;
+            /** User Template */
+            user_template: string;
+            /** Version */
+            version: number;
         };
         /** SourceBrowseOut */
         SourceBrowseOut: {
@@ -13731,6 +13854,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CourseTypeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_pack_api_v1_skills_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillPackExportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillPackOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_pack_api_v1_skills_packs_import_post: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+                resolutions?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillPackPreviewOut"] | components["schemas"]["SkillPackCommitOut"];
                 };
             };
             /** @description Validation Error */

@@ -372,6 +372,9 @@ export type {
   RemoteModelInfo,
   SkillInfo,
   SkillVersionInfo,
+  SkillPack,
+  SkillPackCommit,
+  SkillPackPreview,
   TaskInfo,
 } from './settings'
 
@@ -399,6 +402,9 @@ export {
   restoreBackup,
   restoreBackupByName,
   restoreSkillDefault,
+  exportSkillPack,
+  importSkillPackCommit,
+  importSkillPackPreview,
   saveSkillVersion,
   setTaskBudget,
   skillResolution,

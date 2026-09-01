@@ -369,6 +369,41 @@ export async function restoreSkillDefault(skillKey: string): Promise<SkillVersio
   return json<SkillVersionInfo>(response)
 }
 
+export type SkillPack = components['schemas']['SkillPackOut']
+export type SkillPackPreview = components['schemas']['SkillPackPreviewOut']
+export type SkillPackCommit = components['schemas']['SkillPackCommitOut']
+
+export async function exportSkillPack(keys: string[]): Promise<SkillPack> {
+  const response = await apiFetch('/api/v1/skills/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keys }),
+  })
+  return json<SkillPack>(response)
+}
+
+export async function importSkillPackPreview(pack: unknown): Promise<SkillPackPreview> {
+  const response = await apiFetch('/api/v1/skills/packs/import?dry_run=true', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pack),
+  })
+  return json<SkillPackPreview>(response)
+}
+
+export async function importSkillPackCommit(
+  pack: unknown,
+  resolutions: Record<string, string>
+): Promise<SkillPackCommit> {
+  const query = new URLSearchParams({ dry_run: 'false', resolutions: JSON.stringify(resolutions) })
+  const response = await apiFetch(`/api/v1/skills/packs/import?${query.toString()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pack),
+  })
+  return json<SkillPackCommit>(response)
+}
+
 export async function skillResolution(
   skillKey: string,
   courseId?: number | null

@@ -8500,6 +8500,283 @@
         "title": "SkillOut",
         "type": "object"
       },
+      "SkillPackCommitOut": {
+        "properties": {
+          "created": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "renamed": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Renamed",
+            "type": "array"
+          },
+          "replaced": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Replaced",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "created",
+          "replaced",
+          "renamed",
+          "skipped"
+        ],
+        "title": "SkillPackCommitOut",
+        "type": "object"
+      },
+      "SkillPackExportIn": {
+        "properties": {
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "title": "SkillPackExportIn",
+        "type": "object"
+      },
+      "SkillPackOut": {
+        "properties": {
+          "exported_at": {
+            "title": "Exported At",
+            "type": "string"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillPackSkillOut"
+            },
+            "title": "Skills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "exported_at",
+          "skills"
+        ],
+        "title": "SkillPackOut",
+        "type": "object"
+      },
+      "SkillPackPreviewOut": {
+        "properties": {
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillPackPreviewSkillOut"
+            },
+            "title": "Skills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "skills"
+        ],
+        "title": "SkillPackPreviewOut",
+        "type": "object"
+      },
+      "SkillPackPreviewSkillOut": {
+        "properties": {
+          "active_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Version"
+          },
+          "collision": {
+            "title": "Collision",
+            "type": "boolean"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "version_count": {
+            "title": "Version Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "task",
+          "name",
+          "description",
+          "version_count",
+          "active_version",
+          "collision",
+          "errors"
+        ],
+        "title": "SkillPackPreviewSkillOut",
+        "type": "object"
+      },
+      "SkillPackSkillOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_system": {
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/SkillPackVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task",
+          "key",
+          "name",
+          "description",
+          "is_system",
+          "versions"
+        ],
+        "title": "SkillPackSkillOut",
+        "type": "object"
+      },
+      "SkillPackVersionOut": {
+        "properties": {
+          "contract": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          },
+          "system_template": {
+            "title": "System Template",
+            "type": "string"
+          },
+          "user_template": {
+            "title": "User Template",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "system_template",
+          "user_template",
+          "params",
+          "contract",
+          "is_active"
+        ],
+        "title": "SkillPackVersionOut",
+        "type": "object"
+      },
       "SourceBrowseOut": {
         "properties": {
           "enabled": {
@@ -20799,6 +21076,108 @@
           }
         },
         "summary": "Update Course Type",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/export": {
+      "post": {
+        "operationId": "export_pack_api_v1_skills_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillPackExportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillPackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Pack",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/v1/skills/packs/import": {
+      "post": {
+        "operationId": "import_pack_api_v1_skills_packs_import_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resolutions",
+            "required": false,
+            "schema": {
+              "default": "{}",
+              "title": "Resolutions",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SkillPackPreviewOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SkillPackCommitOut"
+                    }
+                  ],
+                  "title": "Response Import Pack Api V1 Skills Packs Import Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Pack",
         "tags": [
           "skills"
         ]

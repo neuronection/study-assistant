@@ -144,3 +144,53 @@ POST /api/v1/courses/import?dry_run=true|false  body: zip (v1 + v2) → {importe
 UI: Courses page — **Export** link on each course card, **Import course** with
 dry-run preview → confirm → opens the imported workspace (postprocess progress
 in the activity rail).
+
+# Skill packs — `ca-skills/v1` (plan 50 B, ADR-110)
+
+Custom skill prompts travel as plain JSON: **skill definitions (task/key/name/
+description) + their full system-scope version history** (templates, params,
+contracts, active flags). Course-type and course-scope overrides never travel
+(they reference machine-local ids); skills contain prompts only — no secrets —
+by construction.
+
+## Pack shape
+
+```json
+{
+  "format": "ca-skills/v1",
+  "exported_at": "<iso>",
+  "skills": [
+    {
+      "task": "chat",
+      "key": "chat.answer",
+      "name": "…", "description": "…", "is_system": false,
+      "versions": [
+        {"version": 1, "system_template": "…", "user_template": "…",
+         "params": {…}, "contract": {…}, "is_active": true}
+      ]
+    }
+  ]
+}
+```
+
+## API
+
+```
+POST /api/v1/skills/export            {keys: [key…]}            → pack JSON
+POST /api/v1/skills/packs/import?dry_run=true                  → staged preview
+POST /api/v1/skills/packs/import?dry_run=false&resolutions={"key":"replace"|"rename"|"skip"}
+```
+
+**Preview** parses the pack and reports, per skill: version count, the packed
+active version, whether the key already exists here (collision), and template
+validation errors (the same jinja checks the editor enforces). **Commit** walks
+the skills with the chosen collision resolution — `replace` appends the packed
+versions as new versions on the existing skill (history preserved, the packed
+active version wins activation), `rename` imports under a `-2`/`-3…` suffixed
+key as a fresh user skill, `skip` (the default for collisions) leaves the local
+skill untouched. Skills whose templates fail validation are skipped with the
+reason; unknown tasks and malformed packs are rejected with 422.
+
+UI: Settings → Skills — a per-row **Export** action downloads
+`<key>.ca-skills.json`, and **Import pack…** opens the staged
+file-picker → preview → commit dialog.

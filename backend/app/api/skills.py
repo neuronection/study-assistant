@@ -1,6 +1,7 @@
+import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -54,6 +55,57 @@ class SaveIn(BaseModel):
     user_template: str = ""
     params: dict[str, Any] | None = None
     contract: dict[str, Any] | None = None
+
+
+class SkillPackExportIn(BaseModel):
+    keys: list[str] = Field(min_length=1)
+
+
+class SkillPackVersionOut(BaseModel):
+    version: int
+    system_template: str
+    user_template: str
+    params: dict[str, Any] | None
+    contract: dict[str, Any] | None
+    is_active: bool
+
+
+class SkillPackSkillOut(BaseModel):
+    task: str
+    key: str
+    name: str
+    description: str | None
+    is_system: bool
+    versions: list[SkillPackVersionOut]
+
+
+class SkillPackOut(BaseModel):
+    format: str
+    exported_at: str
+    skills: list[SkillPackSkillOut]
+
+
+class SkillPackPreviewSkillOut(BaseModel):
+    key: str
+    task: str
+    name: str
+    description: str | None
+    version_count: int
+    active_version: int | None
+    collision: bool
+    errors: list[str]
+
+
+class SkillPackPreviewOut(BaseModel):
+    format: str
+    skills: list[SkillPackPreviewSkillOut]
+
+
+class SkillPackCommitOut(BaseModel):
+    created: list[str]
+    replaced: list[str]
+    renamed: list[dict[str, str]]
+    skipped: list[dict[str, str]]
 
 
 class DiffOut(BaseModel):
@@ -261,3 +313,53 @@ def test_run(
         ],
         "skill_version_id": version.id,
     }
+
+
+@router.post("/export", response_model=SkillPackOut)
+def export_pack(
+    body: SkillPackExportIn, session: Session = Depends(get_session)
+) -> SkillPackOut:
+    from ..services.platform.skill_packs import PackError, export_skill_pack
+
+    try:
+        pack = export_skill_pack(session, body.keys)
+    except PackError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    return SkillPackOut.model_validate(pack)
+
+
+@router.post("/packs/import", response_model=SkillPackPreviewOut | SkillPackCommitOut)
+async def import_pack(
+    request: Request,
+    dry_run: bool = True,
+    resolutions: str = "{}",
+    session: Session = Depends(get_session),
+) -> SkillPackPreviewOut | SkillPackCommitOut:
+    from ..services.platform.skill_packs import (
+        PackError,
+        import_skill_pack,
+        preview_skill_pack,
+    )
+
+    try:
+        payload = await request.json()
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail="pack must be JSON") from error
+    try:
+        if dry_run:
+            result = preview_skill_pack(session, payload)
+            session.rollback()
+            return SkillPackPreviewOut.model_validate(result)
+        try:
+            chosen = json.loads(resolutions) if resolutions else {}
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail="resolutions must be JSON") from error
+        if not isinstance(chosen, dict):
+            raise HTTPException(status_code=422, detail="resolutions must be an object")
+        result = import_skill_pack(session, payload, chosen)
+    except PackError as error:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    return SkillPackCommitOut.model_validate(result)

@@ -19,6 +19,9 @@ const skillVersions = vi.fn()
 const skillResolution = vi.fn()
 const contextVars = vi.fn()
 const saveSkillVersion = vi.fn()
+const exportSkillPack = vi.fn()
+const importSkillPackPreview = vi.fn()
+const importSkillPackCommit = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -31,6 +34,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
     skillResolution: (key: string, courseId?: number | null) => skillResolution(key, courseId),
     contextVars: () => contextVars(),
     saveSkillVersion: (key: string, body: unknown) => saveSkillVersion(key, body),
+    exportSkillPack: (keys: string[]) => exportSkillPack(keys),
+    importSkillPackPreview: (pack: unknown) => importSkillPackPreview(pack),
+    importSkillPackCommit: (pack: unknown, res: Record<string, string>) =>
+      importSkillPackCommit(pack, res),
     listProviders: () => Promise.resolve([]),
     listModels: () => Promise.resolve([]),
     listTasks: () => Promise.resolve([]),
@@ -71,6 +78,10 @@ describe('Settings Skills tab', () => {
     skillResolution.mockReset()
     contextVars.mockReset()
     saveSkillVersion.mockReset()
+    exportSkillPack.mockReset()
+    importSkillPackPreview.mockReset()
+    importSkillPackCommit.mockReset()
+    exportSkillPack.mockResolvedValue({ format: 'ca-skills/v1', exported_at: 'now', skills: [] })
     listSkills.mockResolvedValue([
       {
         key: 'tutor.hint',
@@ -137,5 +148,92 @@ describe('Settings Skills tab', () => {
         })
       )
     )
+  })
+})
+
+describe('Settings Skills tab — packs', () => {
+  beforeEach(() => {
+    listSkills.mockResolvedValue([
+      {
+        key: 'tutor.hint',
+        task: 'tutor',
+        name: 'Tutor hint',
+        description: 'Guided hint ladder',
+        is_system: true,
+      },
+    ])
+    listCourseTypes.mockResolvedValue([{ id: 1, key: 'math', name: 'Math', description: null }])
+    listCourses.mockResolvedValue([])
+    skillVersions.mockResolvedValue([])
+    skillResolution.mockResolvedValue({ chain: { system: 'v1' }, active: null })
+    contextVars.mockResolvedValue({})
+  })
+
+  test('exports a skill pack from the row action', async () => {
+    await renderSettings()
+    fireEvent.click(await screen.findByTitle(/export skill pack/i))
+    await waitFor(() => expect(exportSkillPack).toHaveBeenCalledWith(['tutor.hint']))
+  })
+
+  test('import flow: preview, resolution, commit', async () => {
+    const pack = {
+      format: 'ca-skills/v1',
+      exported_at: 'now',
+      skills: [
+        {
+          task: 'tutor',
+          key: 'tutor.hint',
+          name: 'Tutor hint',
+          description: null,
+          is_system: true,
+          versions: [
+            {
+              version: 1,
+              system_template: 'You are a patient tutor.',
+              user_template: '',
+              params: null,
+              contract: null,
+              is_active: true,
+            },
+          ],
+        },
+      ],
+    }
+    importSkillPackPreview.mockResolvedValue({
+      format: 'ca-skills/v1',
+      skills: [
+        {
+          key: 'tutor.hint',
+          task: 'tutor',
+          name: 'Tutor hint',
+          description: null,
+          version_count: 1,
+          active_version: 1,
+          collision: true,
+          errors: [],
+        },
+      ],
+    })
+    importSkillPackCommit.mockResolvedValue({
+      created: [],
+      replaced: ['tutor.hint'],
+      renamed: [],
+      skipped: [],
+    })
+    await renderSettings()
+    fireEvent.click(await screen.findByRole('button', { name: /import pack…/i }))
+    const input = await screen.findByLabelText(/pack file/i, { selector: 'input' })
+    const file = new File([JSON.stringify(pack)], 'pack.json', {
+      type: 'application/json',
+    })
+    fireEvent.change(input, { target: { files: [file] } })
+    expect(await screen.findByText(/already exists here/)).toBeInTheDocument()
+    const select = screen.getByLabelText(/resolution for tutor\.hint/i)
+    fireEvent.change(select, { target: { value: 'replace' } })
+    fireEvent.click(screen.getByRole('button', { name: /^import$/i }))
+    await waitFor(() =>
+      expect(importSkillPackCommit).toHaveBeenCalledWith(pack, { 'tutor.hint': 'replace' })
+    )
+    expect(await screen.findByText(/imported 1 skill/i)).toBeInTheDocument()
   })
 })

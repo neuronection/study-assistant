@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { BookOpen, Plus, Sparkles } from 'lucide-react'
+import { Download, FileUp, Plus, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { createCourseType, listCourseTypes, listCourses, listSkills } from '@/lib/api'
+import { createCourseType, exportSkillPack, listCourseTypes, listCourses, listSkills } from '@/lib/api'
 
+import { SkillPackImportDialog } from './SkillPackImportDialog'
 import { SkillsEditor } from './SkillsPage'
 
 export function SkillsTab() {
@@ -17,6 +18,23 @@ export function SkillsTab() {
   const [editing, setEditing] = useState<{ key: string; name: string } | null>(null)
   const [courseId, setCourseId] = useState<number | null>(null)
   const [newType, setNewType] = useState<{ key: string; name: string } | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  const exportPack = useMutation({
+    mutationFn: (key: string) => exportSkillPack([key]),
+    onSuccess: (pack, key) => {
+      setExportError(null)
+      const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${key}.ca-skills.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    },
+    onError: (err: Error) => setExportError(err.message),
+  })
 
   const addType = useMutation({
     mutationFn: (body: { key: string; name: string }) => createCourseType(body),
@@ -104,8 +122,12 @@ export function SkillsTab() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">{t('settings.skills')}</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <FileUp aria-hidden />
+            {t('settings.packImport')}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-1">
           {(skills.data ?? []).map((skill) => (
@@ -113,7 +135,6 @@ export function SkillsTab() {
               key={skill.key}
               className="border-border flex items-center gap-3 rounded-md border px-3 py-2"
             >
-              <BookOpen className="text-muted-foreground size-4 shrink-0" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">
                   {skill.name}
@@ -124,6 +145,14 @@ export function SkillsTab() {
                 <p className="text-muted-foreground truncate text-xs">{skill.description}</p>
               </div>
               <Button
+                size="icon"
+                variant="ghost"
+                title={t('settings.packExport')}
+                onClick={() => exportPack.mutate(skill.key)}
+              >
+                <Download className="size-4" aria-hidden />
+              </Button>
+              <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setEditing({ key: skill.key, name: skill.name })}
@@ -133,8 +162,10 @@ export function SkillsTab() {
               </Button>
             </div>
           ))}
+          {exportError ? <p className="text-danger text-xs">{exportError}</p> : null}
         </CardContent>
       </Card>
+      {importOpen ? <SkillPackImportDialog onClose={() => setImportOpen(false)} /> : null}
     </div>
   )
 }
