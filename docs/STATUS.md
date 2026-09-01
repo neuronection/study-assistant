@@ -423,6 +423,21 @@ a backend node binding) |
   test retired with the old dialog); backend untouched. Known issue opened:
   `backend/tests/test_version_manager.py` (4) stale against the family-unified
   version-manager refactor (fails on clean main — pre-existing, not slice B).
+- 2026-09-01 — **Docker web-service tier added (family-standard layout).** Study can now
+  run as a self-hosted web service in Docker, mirroring health/career-assistant's `docker/`
+  taxonomy: `docker/Dockerfile` (multi-stage: pnpm frontend bundle → uv-managed backend image
+  serving API + SPA from one uvicorn process; web mode skips pywebview/PyGObject/pycairo and
+  their GTK deps via `uv sync --no-install-package`), `docker/entrypoint.sh` (migrations +
+  uvicorn web mode), `docker-compose.standalone.yml` (backend + nginx; **SQLite by design** —
+  all state in the `SA_DATA_DIR=/data` volume, single-replica), `nginx.conf`/`nginx-TLS.conf`
+  (incl. the `/ws` WebSocket endpoint, SSE-friendly, certbot ACME + HSTS TLS variant),
+  `docker/README.md`, and a root `.dockerignore`. Ops scripts `scripts/run-docker.sh`
+  (first deploy) and `scripts/update-docker.sh` (git pull + rebuild + health-wait) with the
+  shared `scripts/lib-docker.sh` helpers, family-adapted from health-assistant. Release
+  workflow gains a `docker` job publishing `ghcr.io/<owner>/<repo>` semver images
+  (`STUDY_IMAGE=` override on the compose stacks). Verified: image build, container boot
+  (`/api/v1/health` 200, SPA served, DB ok), full standalone stack through nginx (health +
+  SPA + WS upgrade 101), nginx -t on both confs.
 - 2026-09-01 — **`pnpm dev` moves to the family-uniform `scripts/run-dev.sh` under honcho.**
   The dev entrypoint joins career/health-assistant's uniform interface: `./scripts/run-dev.sh`
   with `--force` / `--force-stop` / `--no-bootstrap` / `--help` (old flags `--reset [--yes] [--all]`
