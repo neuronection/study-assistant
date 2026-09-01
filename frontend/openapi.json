@@ -3826,6 +3826,14 @@
             "title": "Imported At",
             "type": "string"
           },
+          "postprocess_job_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Postprocess Job Ids",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -13105,6 +13113,26 @@
             "schema": {
               "title": "Course Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_history",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include History",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_note_versions",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Note Versions",
+              "type": "boolean"
             }
           }
         ],

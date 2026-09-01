@@ -146,6 +146,7 @@ class ImportedCourseOut(BaseModel):
     course_id: int
     title: str
     imported_at: str
+    postprocess_job_ids: list[int] = []
 
 
 class CourseImportOut(BaseModel):

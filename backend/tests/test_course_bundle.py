@@ -9,8 +9,10 @@ from fastapi.testclient import TestClient
 from app.ai.gateway import LLMGateway, Message, ResolvedModel
 from app.core.config import Settings
 from app.domain.models import (
+    Activity,
     Concept,
     ConceptLink,
+    Course,
     Exercise,
     ExerciseStep,
     Extraction,
@@ -356,11 +358,13 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
         assert "manifest.json" in names
         assert "course.json" in names
         manifest = json.loads(archive.read("manifest.json"))
-        assert manifest["format"] == "ca-course/v1"
+        assert manifest["format"] == "ca-course/v2"
         assert manifest["course_title"] == "Calculus I"
         assert manifest["counts"]["quizzes"] == 1
         assert manifest["counts"]["exercises"] == 1
         assert manifest["counts"]["notes"] == 1
+        assert manifest["counts"]["card_schedules"] == 0
+        assert manifest["counts"]["attempts"] == 0
         assert manifest["warnings"] == []
         blob_names = [name for name in names if name.startswith("blobs/")]
         assert len(blob_names) == 2
@@ -607,3 +611,244 @@ def test_bundle_rejects_bad_archives(tmp_path: Any) -> None:
         wrong = client.post("/api/v1/courses/import", content=wrong_format.getvalue())
         assert wrong.status_code == 422
         assert "unsupported" in wrong.json()["detail"]
+
+
+def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
+    from datetime import date, timedelta
+
+    from app.domain.models import (
+        Answer,
+        Attempt,
+        ErrorPattern,
+        FsrsState,
+        NoteVersion,
+        ReviewLog,
+    )
+
+    client = make_client(tmp_path)
+    with client:
+        course_id = seed_course(client)
+        patched = client.patch(
+            f"/api/v1/courses/{course_id}",
+            json={"exam_date": str(date.today() + timedelta(days=14))},
+        )
+        assert patched.status_code == 200, patched.text
+
+        card = client.post(
+            "/api/v1/flashcards",
+            json={
+                "course_id": course_id,
+                "kind": "basic",
+                "front_md": "d/dx of e^x?",
+                "back_md": "e^x",
+            },
+        )
+        assert card.status_code == 201, card.text
+        card_id = card.json()["id"]
+        reviewed = client.post(f"/api/v1/flashcards/{card_id}/review", json={"rating": 3})
+        assert reviewed.status_code == 200, reviewed.text
+
+        app = client.app
+        assert isinstance(app, FastAPI)
+        with app.state.session_factory() as db:
+            quiz_activity = (
+                db.query(Activity).filter(Activity.course_id == course_id).first()
+            )
+            assert quiz_activity is not None
+            question = (
+                db.query(Question).filter(Question.activity_id == quiz_activity.id).first()
+            )
+            assert question is not None
+            attempt = Attempt(activity_id=quiz_activity.id, mode="practice", score=1.0)
+            db.add(attempt)
+            db.flush()
+            db.add(
+                Answer(
+                    attempt_id=attempt.id,
+                    question_id=question.id,
+                    correct=True,
+                    time_ms=4200,
+                )
+            )
+            db.add(
+                ErrorPattern(
+                    key="dropped_minus_import",
+                    course_type_id=None,
+                    name="Dropped minus",
+                    description="A minus sign vanished.",
+                    is_system=False,
+                )
+            )
+            note_row = db.query(Note).filter(Note.course_id == course_id).first()
+            assert note_row is not None
+            db.add(
+                NoteVersion(
+                    note_id=note_row.id,
+                    profile_id=1,
+                    title="Whiteboard (old)",
+                    tags=["calc"],
+                    body=[{"type": "text", "md": "older body"}],
+                    cause="edit",
+                )
+            )
+            db.commit()
+
+        exported = client.get(
+            f"/api/v1/courses/{course_id}/export",
+            params={"include_history": "true", "include_note_versions": "true"},
+        )
+        assert exported.status_code == 200, exported.text
+        archive = zipfile.ZipFile(BytesIO(exported.content))
+        manifest = json.loads(archive.read("manifest.json"))
+        assert manifest["format"] == "ca-course/v2"
+        assert manifest["options"] == {
+            "include_history": True,
+            "include_note_versions": True,
+        }
+        assert manifest["counts"]["card_schedules"] == 1
+        assert manifest["counts"]["error_patterns"] == 1
+        assert manifest["counts"]["attempts"] == 1
+        cards_json = json.loads(archive.read("cards.json"))
+        assert cards_json[0]["exercise_id"] == card_id
+        assert cards_json[0]["state"] != "new"
+        assert len(cards_json[0]["reviews"]) == 1
+        assert json.loads(archive.read("course.json"))["exam_date"] is not None
+        assert len(json.loads(archive.read("note-versions.json"))) == 1
+
+        imported = client.post(
+            "/api/v1/courses/import?dry_run=false", content=exported.content
+        )
+        assert imported.status_code == 200, imported.text
+        job_ids = imported.json()["imported"]["postprocess_job_ids"]
+        assert len(job_ids) == 1
+        new_course_id = imported.json()["imported"]["course_id"]
+
+        with app.state.session_factory() as db:
+            from sqlalchemy import select
+
+            new_cards = list(
+                db.scalars(select(Exercise).where(Exercise.course_id == new_course_id))
+            )
+            new_card = next(row for row in new_cards if row.kind.startswith("card_"))
+            state = db.scalars(
+                select(FsrsState).where(FsrsState.card_id == new_card.id)
+            ).one()
+            assert state.state == cards_json[0]["state"]
+            assert state.reps == 1
+            assert (
+                len(list(db.scalars(select(ReviewLog).where(ReviewLog.card_id == new_card.id))))
+                == 1
+            )
+
+            new_course = db.get(Course, new_course_id)
+            assert new_course is not None
+            assert new_course.exam_date is not None
+
+            patterns = list(
+                db.scalars(select(ErrorPattern).where(ErrorPattern.key == "dropped_minus_import"))
+            )
+            assert len(patterns) == 1
+            assert patterns[0].is_system is False
+
+            new_notes = list(db.scalars(select(Note).where(Note.course_id == new_course_id)))
+            versions = (
+                db.query(NoteVersion).filter(NoteVersion.note_id == new_notes[0].id).all()
+            )
+            assert len(versions) == 1
+            assert versions[0].title == "Whiteboard (old)"
+
+            new_activities = list(
+                db.scalars(select(Activity).where(Activity.course_id == new_course_id))
+            )
+            new_attempts = (
+                db.query(Attempt).filter(Attempt.activity_id == new_activities[0].id).all()
+            )
+            assert len(new_attempts) == 1
+            assert new_attempts[0].score == 1.0
+            answers = (
+                db.query(Answer).filter(Answer.attempt_id == new_attempts[0].id).all()
+            )
+            assert len(answers) == 1
+            assert answers[0].correct is True
+            assert answers[0].time_ms == 4200
+
+
+def test_v2_default_export_omits_history_and_versions(tmp_path: Any) -> None:
+    client = make_client(tmp_path)
+    with client:
+        course_id = seed_course(client)
+        exported = client.get(f"/api/v1/courses/{course_id}/export")
+        archive = zipfile.ZipFile(BytesIO(exported.content))
+        manifest = json.loads(archive.read("manifest.json"))
+        assert manifest["options"] == {
+            "include_history": False,
+            "include_note_versions": False,
+        }
+        assert json.loads(archive.read("history.json")) == {}
+        assert json.loads(archive.read("note-versions.json")) == []
+
+
+def test_v1_bundle_still_imports(tmp_path: Any) -> None:
+    client = make_client(tmp_path)
+    with client:
+        course_id = seed_course(client)
+        exported = client.get(f"/api/v1/courses/{course_id}/export")
+        source = zipfile.ZipFile(BytesIO(exported.content))
+
+        downgraded = BytesIO()
+        with zipfile.ZipFile(downgraded, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in source.namelist():
+                if name in ("cards.json", "patterns.json", "history.json", "note-versions.json"):
+                    continue
+                data = source.read(name)
+                if name == "manifest.json":
+                    manifest = json.loads(data)
+                    manifest["format"] = "ca-course/v1"
+                    data = json.dumps(manifest).encode()
+                archive.writestr(name, data)
+
+        imported = client.post(
+            "/api/v1/courses/import?dry_run=false", content=downgraded.getvalue()
+        )
+        assert imported.status_code == 200, imported.text
+        new_course_id = imported.json()["imported"]["course_id"]
+        exercises = client.get(
+            "/api/v1/exercises", params={"course_id": new_course_id}
+        ).json()
+        assert [entry["title"] for entry in exercises] == ["Differentiate"]
+
+
+def test_v2_reexport_is_deterministic(tmp_path: Any) -> None:
+    client_a = make_client(tmp_path / "a")
+    with client_a:
+        course_id = seed_course(client_a)
+        first = client_a.get(f"/api/v1/courses/{course_id}/export").content
+
+    client_b = make_client(tmp_path / "b")
+    with client_b:
+        imported = client_b.post("/api/v1/courses/import?dry_run=false", content=first)
+        second_course = imported.json()["imported"]["course_id"]
+        assert imported.json()["imported"]["title"] == "Calculus I"
+        second = client_b.get(f"/api/v1/courses/{second_course}/export").content
+
+    client_c = make_client(tmp_path / "c")
+    with client_c:
+        reimported = client_c.post("/api/v1/courses/import?dry_run=false", content=second)
+        third_course = reimported.json()["imported"]["course_id"]
+        third = client_c.get(f"/api/v1/courses/{third_course}/export").content
+
+    def members(payload: bytes) -> dict[str, Any]:
+        archive = zipfile.ZipFile(BytesIO(payload))
+        out: dict[str, Any] = {}
+        for name in archive.namelist():
+            if name.startswith("blobs/"):
+                out[name] = archive.read(name)
+            elif name == "manifest.json":
+                manifest = json.loads(archive.read(name))
+                manifest.pop("created_at", None)
+                out[name] = manifest
+            else:
+                out[name] = json.loads(archive.read(name))
+        return out
+
+    assert members(second) == members(third)

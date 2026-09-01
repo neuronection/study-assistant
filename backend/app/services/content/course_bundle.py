@@ -1,7 +1,7 @@
 import json
 import zipfile
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -12,13 +12,18 @@ from sqlalchemy.orm import Session
 from ... import __version__
 from ...domain.models import (
     Activity,
+    Answer,
+    Attempt,
     Chunk,
     Concept,
     ConceptLink,
     Course,
+    ErrorPattern,
     Exercise,
+    ExerciseSession,
     ExerciseStep,
     Extraction,
+    FsrsState,
     Material,
     MaterialDrawing,
     MaterialFolder,
@@ -28,20 +33,27 @@ from ...domain.models import (
     NodeConcept,
     Note,
     NoteDrawing,
+    NoteVersion,
     Question,
+    QuizHelpEvent,
+    ReviewLog,
     Skill,
     SkillVersion,
+    StepAttempt,
     TreeNode,
     utcnow,
 )
 from ...pipelines.chunking import chunk_markdown
 from ...storage.blobs import blob_path
 from ...storage.fts import sync_material_fts
+from ..study.exercise_kinds import is_card_kind
 from .drawings import remap_drawing_refs
 from .folders import FoldersService
 from .materials import extraction_to_blocks
 
 BUNDLE_FORMAT = "ca-course/v1"
+BUNDLE_FORMAT_V2 = "ca-course/v2"
+SUPPORTED_FORMATS = (BUNDLE_FORMAT, BUNDLE_FORMAT_V2)
 MANIFEST_NAME = "manifest.json"
 COURSE_NAME = "course.json"
 TREE_NAME = "tree.json"
@@ -52,6 +64,10 @@ NOTES_NAME = "notes.json"
 QUIZZES_NAME = "quizzes.json"
 EXERCISES_NAME = "exercises.json"
 SKILLS_NAME = "skills-overrides.json"
+CARDS_NAME = "cards.json"
+PATTERNS_NAME = "patterns.json"
+HISTORY_NAME = "history.json"
+NOTE_VERSIONS_NAME = "note-versions.json"
 BLOBS_PREFIX = "blobs/"
 
 JSON_NAMES = (
@@ -63,6 +79,13 @@ JSON_NAMES = (
     QUIZZES_NAME,
     EXERCISES_NAME,
     SKILLS_NAME,
+)
+
+OPTIONAL_JSON_NAMES = (
+    CARDS_NAME,
+    PATTERNS_NAME,
+    HISTORY_NAME,
+    NOTE_VERSIONS_NAME,
 )
 
 
@@ -83,6 +106,10 @@ class BundleData:
     exercises: list[dict[str, Any]]
     skills: list[dict[str, Any]]
     blobs: dict[str, bytes]
+    cards: list[dict[str, Any]] = field(default_factory=list)
+    patterns: list[dict[str, Any]] = field(default_factory=list)
+    history: dict[str, Any] = field(default_factory=dict)
+    note_versions: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _export_course(session: Session, course: Course) -> dict[str, Any]:
@@ -94,6 +121,245 @@ def _export_course(session: Session, course: Course) -> dict[str, Any]:
         "goals": course.goals,
         "tags": course.tags,
         "color": course.color,
+        "exam_date": course.exam_date.isoformat() if course.exam_date else None,
+    }
+
+
+def _export_cards(
+    session: Session, course_id: int, include_history: bool
+) -> list[dict[str, Any]]:
+    exercises = list(
+        session.scalars(select(Exercise).where(Exercise.course_id == course_id))
+    )
+    card_ids = [exercise.id for exercise in exercises if is_card_kind(exercise.kind)]
+    if not card_ids:
+        return []
+    states = {
+        state.card_id: state
+        for state in session.scalars(
+            select(FsrsState).where(FsrsState.card_id.in_(card_ids))
+        )
+    }
+    reviews: dict[int, list[ReviewLog]] = {}
+    if include_history:
+        for log in session.scalars(
+            select(ReviewLog).where(ReviewLog.card_id.in_(card_ids)).order_by(ReviewLog.id)
+        ):
+            reviews.setdefault(log.card_id, []).append(log)
+    out: list[dict[str, Any]] = []
+    for card_id in sorted(card_ids):
+        state = states.get(card_id)
+        out.append(
+            {
+                "exercise_id": card_id,
+                "state": state.state if state else "new",
+                "stability": state.stability if state else None,
+                "difficulty": state.difficulty if state else None,
+                "reps": state.reps if state else 0,
+                "lapses": state.lapses if state else 0,
+                "due_at": state.due_at.isoformat() if state else None,
+                "last_review_at": (
+                    state.last_review_at.isoformat() if state and state.last_review_at else None
+                ),
+                "reviews": [
+                    {
+                        "rating": log.rating,
+                        "interval_days": log.interval_days,
+                        "elapsed_days": log.elapsed_days,
+                        "reviewed_at": log.reviewed_at.isoformat(),
+                    }
+                    for log in reviews.get(card_id, [])
+                ],
+            }
+        )
+    return out
+
+
+def _export_patterns(session: Session, course: Course) -> list[dict[str, Any]]:
+    course_type_id = course.course_type_id
+    if course_type_id is None:
+        rows = session.scalars(
+            select(ErrorPattern).where(
+                ErrorPattern.is_system.is_(False),
+                ErrorPattern.course_type_id.is_(None),
+            )
+        )
+    else:
+        rows = session.scalars(
+            select(ErrorPattern).where(
+                ErrorPattern.is_system.is_(False),
+                ErrorPattern.course_type_id.in_([course_type_id, None]),
+            )
+        )
+    return [
+        {
+            "key": pattern.key,
+            "name": pattern.name,
+            "description": pattern.description,
+            "example": pattern.example,
+            "detection": pattern.detection,
+            "is_active": pattern.is_active,
+            "order_idx": pattern.order_idx,
+        }
+        for pattern in rows
+    ]
+
+
+def _export_note_versions(session: Session, course_id: int) -> list[dict[str, Any]]:
+    note_ids = list(
+        session.scalars(select(Note.id).where(Note.course_id == course_id))
+    )
+    if not note_ids:
+        return []
+    versions = list(
+        session.scalars(
+            select(NoteVersion).where(NoteVersion.note_id.in_(note_ids)).order_by(NoteVersion.id)
+        )
+    )
+    return [
+        {
+            "note_id": version.note_id,
+            "title": version.title,
+            "tags": version.tags,
+            "body": version.body,
+            "cause": version.cause,
+            "created_at": version.created_at.isoformat(),
+        }
+        for version in versions
+    ]
+
+
+def _export_history(session: Session, course_id: int) -> dict[str, Any]:
+    activities = list(
+        session.scalars(select(Activity.id).where(Activity.course_id == course_id))
+    )
+    exercise_ids = list(
+        session.scalars(select(Exercise.id).where(Exercise.course_id == course_id))
+    )
+    attempts = (
+        list(
+            session.scalars(
+                select(Attempt).where(Attempt.activity_id.in_(activities)).order_by(Attempt.id)
+            )
+        )
+        if activities
+        else []
+    )
+    attempt_ids = [attempt.id for attempt in attempts]
+    answers = (
+        list(
+            session.scalars(
+                select(Answer).where(Answer.attempt_id.in_(attempt_ids)).order_by(Answer.id)
+            )
+        )
+        if attempt_ids
+        else []
+    )
+    sessions = (
+        list(
+            session.scalars(
+                select(ExerciseSession)
+                .where(ExerciseSession.exercise_id.in_(exercise_ids))
+                .order_by(ExerciseSession.id)
+            )
+        )
+        if exercise_ids
+        else []
+    )
+    session_ids = [row.id for row in sessions]
+    step_attempts = (
+        list(
+            session.scalars(
+                select(StepAttempt)
+                .where(StepAttempt.session_id.in_(session_ids))
+                .order_by(StepAttempt.id)
+            )
+        )
+        if session_ids
+        else []
+    )
+    help_events = (
+        list(
+            session.scalars(
+                select(QuizHelpEvent)
+                .where(QuizHelpEvent.attempt_id.in_(attempt_ids))
+                .order_by(QuizHelpEvent.id)
+            )
+        )
+        if attempt_ids
+        else []
+    )
+    return {
+        "attempts": [
+            {
+                "id": attempt.id,
+                "activity_id": attempt.activity_id,
+                "mode": attempt.mode,
+                "started_at": attempt.started_at.isoformat(),
+                "finished_at": (
+                    attempt.finished_at.isoformat() if attempt.finished_at else None
+                ),
+                "score": attempt.score,
+                "meta": attempt.meta,
+            }
+            for attempt in attempts
+        ],
+        "answers": [
+            {
+                "attempt_id": answer.attempt_id,
+                "question_id": answer.question_id,
+                "response": answer.response,
+                "input_mode": answer.input_mode,
+                "correct": answer.correct,
+                "partial_credit": answer.partial_credit,
+                "feedback": answer.feedback,
+                "graded_by": answer.graded_by,
+                "time_ms": answer.time_ms,
+                "retries": answer.retries,
+                "error_tags": answer.error_tags,
+                "help_events": answer.help_events,
+                "created_at": answer.created_at.isoformat(),
+            }
+            for answer in answers
+        ],
+        "exercise_sessions": [
+            {
+                "id": row.id,
+                "exercise_id": row.exercise_id,
+                "current_step_idx": row.current_step_idx,
+                "status": row.status,
+                "socratic": row.socratic,
+                "independence_score": row.independence_score,
+                "started_at": row.started_at.isoformat(),
+                "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+            }
+            for row in sessions
+        ],
+        "step_attempts": [
+            {
+                "session_id": row.session_id,
+                "step_idx": row.step_idx,
+                "response": row.response,
+                "correct": row.correct,
+                "hint_level_used": row.hint_level_used,
+                "error_class": row.error_class,
+                "feedback": row.feedback,
+                "state": row.state,
+                "created_at": row.created_at.isoformat(),
+            }
+            for row in step_attempts
+        ],
+        "quiz_help_events": [
+            {
+                "attempt_id": row.attempt_id,
+                "question_id": row.question_id,
+                "level": row.level,
+                "markdown": row.markdown,
+                "violations": row.violations,
+                "created_at": row.created_at.isoformat(),
+            }
+            for row in help_events
+        ],
     }
 
 
@@ -378,6 +644,7 @@ def _export_quizzes(session: Session, course_id: int) -> list[dict[str, Any]]:
                 "config": activity.config,
                 "questions": [
                     {
+                        "id": question.id,
                         "type": question.type,
                         "stem": question.stem,
                         "options": question.options,
@@ -470,7 +737,12 @@ def _export_skills(session: Session, course_id: int) -> list[dict[str, Any]]:
 
 
 def build_course_bundle(
-    session: Session, course: Course, blobs_root: Path
+    session: Session,
+    course: Course,
+    blobs_root: Path,
+    *,
+    include_history: bool = False,
+    include_note_versions: bool = False,
 ) -> bytes:
     tree = _export_tree(session, course.id)
     concepts = _export_concepts(session, course.id)
@@ -480,6 +752,10 @@ def build_course_bundle(
     quizzes = _export_quizzes(session, course.id)
     exercises = _export_exercises(session, course.id)
     skills = _export_skills(session, course.id)
+    cards = _export_cards(session, course.id, include_history)
+    patterns = _export_patterns(session, course)
+    note_versions = _export_note_versions(session, course.id) if include_note_versions else []
+    history = _export_history(session, course.id) if include_history else {}
     shas = {sha for sha in (material_shas | note_shas) if sha}
     warnings: list[str] = list(folder_warnings)
     readable = {sha for sha in shas if blob_path(blobs_root, sha).is_file()}
@@ -512,18 +788,26 @@ def build_course_bundle(
     exportable = shas & readable
 
     manifest = {
-        "format": BUNDLE_FORMAT,
+        "format": BUNDLE_FORMAT_V2,
         "app_version": __version__,
         "created_at": datetime.now(UTC).isoformat(),
         "course_title": course.title,
+        "options": {
+            "include_history": include_history,
+            "include_note_versions": include_note_versions,
+        },
             "counts": {
                 "nodes": len(tree),
                 "concepts": len(concepts["concepts"]),
                 "materials": len(materials),
                 "folders": len(folders["folders"]),
                 "notes": len(notes),
+                "note_versions": len(note_versions),
                 "quizzes": len(quizzes),
                 "exercises": len(exercises),
+                "card_schedules": len(cards),
+                "error_patterns": len(patterns),
+                "attempts": len(history.get("attempts", [])),
                 "skill_overrides": len(skills),
                 "blobs": len(exportable),
             },
@@ -541,6 +825,10 @@ def build_course_bundle(
         archive.writestr(QUIZZES_NAME, json.dumps(quizzes))
         archive.writestr(EXERCISES_NAME, json.dumps(exercises))
         archive.writestr(SKILLS_NAME, json.dumps(skills))
+        archive.writestr(CARDS_NAME, json.dumps(cards))
+        archive.writestr(PATTERNS_NAME, json.dumps(patterns))
+        archive.writestr(HISTORY_NAME, json.dumps(history))
+        archive.writestr(NOTE_VERSIONS_NAME, json.dumps(note_versions))
         for sha in sorted(exportable):
             data = blob_path(blobs_root, sha).read_bytes()
             archive.writestr(f"{BLOBS_PREFIX}{sha}", data)
@@ -559,7 +847,7 @@ def read_course_bundle(data: bytes) -> BundleData:
         manifest = json.loads(archive.read(MANIFEST_NAME))
     except ValueError as error:
         raise BundleError("unreadable manifest") from error
-    if manifest.get("format") != BUNDLE_FORMAT:
+    if manifest.get("format") not in SUPPORTED_FORMATS:
         raise BundleError(f"unsupported bundle format: {manifest.get('format')!r}")
 
     payload: dict[str, Any] = {}
@@ -578,6 +866,16 @@ def read_course_bundle(data: bytes) -> BundleData:
     else:
         folders_payload = {"folders": [], "links": []}
 
+    optional: dict[str, Any] = {}
+    for name in OPTIONAL_JSON_NAMES:
+        if name in names:
+            try:
+                optional[name] = json.loads(archive.read(name))
+            except ValueError as error:
+                raise BundleError(f"unreadable {name}") from error
+        else:
+            optional[name] = [] if name != HISTORY_NAME else {}
+
     blobs: dict[str, bytes] = {}
     for name in names:
         if name.startswith(BLOBS_PREFIX) and not name.endswith("/"):
@@ -595,6 +893,10 @@ def read_course_bundle(data: bytes) -> BundleData:
         exercises=payload[EXERCISES_NAME],
         skills=payload[SKILLS_NAME],
         blobs=blobs,
+        cards=optional[CARDS_NAME],
+        patterns=optional[PATTERNS_NAME],
+        history=optional[HISTORY_NAME],
+        note_versions=optional[NOTE_VERSIONS_NAME],
     )
     _validate_bundle(bundle)
     return bundle
@@ -645,6 +947,58 @@ def _validate_bundle(bundle: BundleData) -> None:
     for exercise in bundle.exercises:
         if exercise.get("node_id") is not None and exercise["node_id"] not in node_ids:
             raise BundleError(f"exercise {exercise['id']} references an unknown node")
+    exercise_ids = {entry["id"] for entry in bundle.exercises}
+    for card in bundle.cards:
+        if card.get("exercise_id") not in exercise_ids:
+            raise BundleError(
+                f"card schedule {card.get('exercise_id')} references an unknown exercise"
+            )
+    for pattern in bundle.patterns:
+        if not str(pattern.get("key") or "").strip():
+            raise BundleError("error pattern is missing its key")
+        if not str(pattern.get("name") or "").strip():
+            raise BundleError(f"error pattern '{pattern.get('key')}' is missing its name")
+    activity_ids = {entry["id"] for entry in bundle.quizzes}
+    question_ids = {
+        question["id"]
+        for quiz in bundle.quizzes
+        for question in quiz.get("questions", [])
+        if question.get("id") is not None
+    }
+    attempt_ids = {entry["id"] for entry in bundle.history.get("attempts", [])}
+    session_ids = {entry["id"] for entry in bundle.history.get("exercise_sessions", [])}
+    for answer in bundle.history.get("answers", []):
+        if answer.get("attempt_id") not in attempt_ids:
+            raise BundleError("history answer references an unknown attempt")
+        if answer.get("question_id") not in question_ids:
+            raise BundleError("history answer references an unknown question")
+    for attempt in bundle.history.get("attempts", []):
+        if attempt.get("activity_id") not in activity_ids:
+            raise BundleError("history attempt references an unknown quiz")
+    for row in bundle.history.get("exercise_sessions", []):
+        if row.get("exercise_id") not in exercise_ids:
+            raise BundleError("history session references an unknown exercise")
+    for row in bundle.history.get("step_attempts", []):
+        if row.get("session_id") not in session_ids:
+            raise BundleError("history step attempt references an unknown session")
+    for row in bundle.history.get("quiz_help_events", []):
+        if row.get("attempt_id") not in attempt_ids:
+            raise BundleError("history help event references an unknown attempt")
+        if row.get("question_id") not in question_ids:
+            raise BundleError("history help event references an unknown question")
+    note_ids = {entry["id"] for entry in bundle.notes}
+    for version in bundle.note_versions:
+        if version.get("note_id") not in note_ids:
+            raise BundleError("note version references an unknown note")
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
 
 
 def bundle_preview(bundle: BundleData) -> dict[str, Any]:
@@ -675,6 +1029,14 @@ def import_course_bundle(
     if imported_title in existing_titles:
         imported_title = f"{title[:280]} (imported)"
 
+    raw_exam_date = bundle.course.get("exam_date")
+    exam_date = None
+    if raw_exam_date:
+        try:
+            exam_date = date.fromisoformat(str(raw_exam_date))
+        except ValueError as error:
+            raise BundleError(f"invalid exam_date: {raw_exam_date!r}") from error
+
     course = Course(
         profile_id=profile_id,
         title=imported_title,
@@ -684,6 +1046,7 @@ def import_course_bundle(
         goals=bundle.course.get("goals"),
         tags=bundle.course.get("tags"),
         color=bundle.course.get("color"),
+        exam_date=exam_date,
     )
     session.add(course)
     session.flush()
@@ -773,6 +1136,7 @@ def import_course_bundle(
     session.flush()
 
     material_map: dict[int, int] = {}
+    postprocess_job_ids: list[int] = []
     for entry in bundle.materials:
         sha = entry.get("blob_sha")
         if sha is not None:
@@ -874,7 +1238,13 @@ def import_course_bundle(
                 )
             )
         session.flush()
+        from ...jobs.runner import JobRunner
 
+        postprocess_job_ids.append(
+            JobRunner.enqueue(session, "postprocess", {"material_id": material.id}).id
+        )
+
+    note_map: dict[int, int] = {}
     for entry in bundle.notes:
         note = Note(
             profile_id=profile_id,
@@ -890,6 +1260,7 @@ def import_course_bundle(
         note.search_text = str(note.title)
         session.add(note)
         session.flush()
+        note_map[entry["id"]] = note.id
         for drawing in entry.get("drawings", []):
             sha = drawing.get("png_sha")
             if sha is not None:
@@ -908,6 +1279,24 @@ def import_course_bundle(
                 note.search_text = f"{note.search_text}\n{drawing['ocr_markdown']}"
         session.flush()
 
+    for version in bundle.note_versions:
+        session.add(
+            NoteVersion(
+                note_id=note_map[version["note_id"]],
+                profile_id=profile_id,
+                title=str(version.get("title") or "Note")[:300],
+                tags=version.get("tags"),
+                body=version.get("body") or [],
+                cause=str(version.get("cause") or "import"),
+                created_at=_parse_datetime(version.get("created_at")) or utcnow(),
+            )
+        )
+    session.flush()
+
+    question_map: dict[int, int] = {}
+    attempt_map: dict[int, int] = {}
+    session_map: dict[int, int] = {}
+    activity_map: dict[int, int] = {}
     for entry in bundle.quizzes:
         activity = Activity(
             profile_id=profile_id,
@@ -919,34 +1308,37 @@ def import_course_bundle(
         )
         session.add(activity)
         session.flush()
+        activity_map[entry["id"]] = activity.id
         for question in entry.get("questions", []):
             concept_ids = question.get("concept_ids") or []
             remapped = [
                 concept_map[cid] for cid in concept_ids if cid in concept_map
             ]
-            session.add(
-                Question(
-                    activity_id=activity.id,
-                    type=str(question.get("type") or "single"),
-                    stem=question.get("stem") or [{"type": "text", "md": ""}],
-                    options=question.get("options"),
-                    answer=question.get("answer") or {},
-                    explanation=question.get("explanation"),
-                    difficulty=question.get("difficulty"),
-                    bloom=question.get("bloom"),
-                    skill=question.get("skill"),
-                    concept_ids=remapped or None,
-                    expected_time_sec=question.get("expected_time_sec"),
-                    curriculum_code=question.get("curriculum_code"),
-                    distractor_misconceptions=question.get("distractor_misconceptions"),
-                    sympy_check=question.get("sympy_check"),
-                    input_modes=question.get("input_modes"),
-                    tags=question.get("tags"),
-                    flag=str(question.get("flag") or "ok"),
-                )
+            question_row = Question(
+                activity_id=activity.id,
+                type=str(question.get("type") or "single"),
+                stem=question.get("stem") or [{"type": "text", "md": ""}],
+                options=question.get("options"),
+                answer=question.get("answer") or {},
+                explanation=question.get("explanation"),
+                difficulty=question.get("difficulty"),
+                bloom=question.get("bloom"),
+                skill=question.get("skill"),
+                concept_ids=remapped or None,
+                expected_time_sec=question.get("expected_time_sec"),
+                curriculum_code=question.get("curriculum_code"),
+                distractor_misconceptions=question.get("distractor_misconceptions"),
+                sympy_check=question.get("sympy_check"),
+                input_modes=question.get("input_modes"),
+                tags=question.get("tags"),
+                flag=str(question.get("flag") or "ok"),
             )
-        session.flush()
+            session.add(question_row)
+            session.flush()
+            if question.get("id") is not None:
+                question_map[question["id"]] = question_row.id
 
+    exercise_map: dict[int, int] = {}
     for entry in bundle.exercises:
         exercise = Exercise(
             profile_id=profile_id,
@@ -961,6 +1353,7 @@ def import_course_bundle(
         )
         session.add(exercise)
         session.flush()
+        exercise_map[entry["id"]] = exercise.id
         for step in entry.get("steps", []):
             session.add(
                 ExerciseStep(
@@ -973,6 +1366,124 @@ def import_course_bundle(
                 )
             )
         session.flush()
+
+    for card in bundle.cards:
+        due_at = _parse_datetime(card.get("due_at"))
+        session.add(
+            FsrsState(
+                card_id=exercise_map[card["exercise_id"]],
+                state=str(card.get("state") or "new"),
+                stability=card.get("stability"),
+                difficulty=card.get("difficulty"),
+                reps=int(card.get("reps") or 0),
+                lapses=int(card.get("lapses") or 0),
+                due_at=due_at or utcnow(),
+                last_review_at=_parse_datetime(card.get("last_review_at")),
+            )
+        )
+        for review in card.get("reviews", []):
+            session.add(
+                ReviewLog(
+                    card_id=exercise_map[card["exercise_id"]],
+                    rating=int(review.get("rating") or 0),
+                    interval_days=float(review.get("interval_days") or 0),
+                    elapsed_days=float(review.get("elapsed_days") or 0),
+                    reviewed_at=_parse_datetime(review.get("reviewed_at")) or utcnow(),
+                )
+            )
+
+    existing_pattern_keys = set(
+        session.scalars(select(ErrorPattern.key))
+    )
+    for pattern in bundle.patterns:
+        key = str(pattern.get("key") or "").strip()
+        if not key or key in existing_pattern_keys:
+            continue
+        existing_pattern_keys.add(key)
+        session.add(
+            ErrorPattern(
+                key=key[:80],
+                course_type_id=course.course_type_id,
+                name=str(pattern.get("name") or key)[:200],
+                description=str(pattern.get("description") or ""),
+                example=pattern.get("example"),
+                detection=pattern.get("detection"),
+                is_system=False,
+                is_active=bool(pattern.get("is_active", True)),
+                order_idx=int(pattern.get("order_idx") or 0),
+            )
+        )
+
+    history = bundle.history
+    for attempt in history.get("attempts", []):
+        attempt_row = Attempt(
+            activity_id=activity_map[attempt["activity_id"]],
+            mode=str(attempt.get("mode") or "practice"),
+            started_at=_parse_datetime(attempt.get("started_at")) or utcnow(),
+            finished_at=_parse_datetime(attempt.get("finished_at")),
+            score=attempt.get("score"),
+            meta=attempt.get("meta"),
+        )
+        session.add(attempt_row)
+        session.flush()
+        attempt_map[attempt["id"]] = attempt_row.id
+    for answer in history.get("answers", []):
+        session.add(
+            Answer(
+                attempt_id=attempt_map[answer["attempt_id"]],
+                question_id=question_map[answer["question_id"]],
+                response=answer.get("response"),
+                input_mode=answer.get("input_mode"),
+                correct=answer.get("correct"),
+                partial_credit=answer.get("partial_credit"),
+                feedback=answer.get("feedback"),
+                graded_by=answer.get("graded_by"),
+                time_ms=answer.get("time_ms"),
+                retries=int(answer.get("retries") or 0),
+                error_tags=answer.get("error_tags"),
+                help_events=answer.get("help_events"),
+                created_at=_parse_datetime(answer.get("created_at")) or utcnow(),
+            )
+        )
+    for row in history.get("exercise_sessions", []):
+        session_row = ExerciseSession(
+            exercise_id=exercise_map[row["exercise_id"]],
+            current_step_idx=int(row.get("current_step_idx") or 0),
+            status=str(row.get("status") or "active"),
+            socratic=bool(row.get("socratic")),
+            independence_score=row.get("independence_score"),
+            started_at=_parse_datetime(row.get("started_at")) or utcnow(),
+            finished_at=_parse_datetime(row.get("finished_at")),
+        )
+        session.add(session_row)
+        session.flush()
+        session_map[row["id"]] = session_row.id
+    for row in history.get("step_attempts", []):
+        session.add(
+            StepAttempt(
+                session_id=session_map[row["session_id"]],
+                step_idx=int(row.get("step_idx") or 0),
+                response=row.get("response"),
+                correct=row.get("correct"),
+                hint_level_used=row.get("hint_level_used"),
+                error_class=row.get("error_class"),
+                feedback=row.get("feedback"),
+                state=row.get("state"),
+                created_at=_parse_datetime(row.get("created_at")) or utcnow(),
+            )
+        )
+    for row in history.get("quiz_help_events", []):
+        session.add(
+            QuizHelpEvent(
+                attempt_id=attempt_map[row["attempt_id"]],
+                question_id=question_map[row["question_id"]],
+                level=int(row.get("level") or 0),
+                markdown=str(row.get("markdown") or ""),
+                violations=row.get("violations"),
+                created_at=_parse_datetime(row.get("created_at")) or utcnow(),
+            )
+        )
+    session.flush()
 
     for entry in bundle.skills:
         skill = session.scalars(select(Skill).where(Skill.name == entry["skill"])).first()
@@ -1008,4 +1519,5 @@ def import_course_bundle(
         "course_id": course.id,
         "title": course.title,
         "imported_at": utcnow().isoformat(),
+        "postprocess_job_ids": postprocess_job_ids,
     }

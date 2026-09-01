@@ -276,7 +276,11 @@ def update_course(
 
 @router.get("/courses/{course_id}/export")
 def export_course(
-    course_id: int, request: Request, session: Session = Depends(get_session)
+    course_id: int,
+    request: Request,
+    include_history: bool = False,
+    include_note_versions: bool = False,
+    session: Session = Depends(get_session),
 ) -> Response:
     from ..services.content.course_bundle import BundleError, build_course_bundle
 
@@ -286,7 +290,11 @@ def export_course(
         raise HTTPException(status_code=404, detail="course not found")
     try:
         package = build_course_bundle(
-            session, course, request.app.state.settings.blobs_dir
+            session,
+            course,
+            request.app.state.settings.blobs_dir,
+            include_history=include_history,
+            include_note_versions=include_note_versions,
         )
     except BundleError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error

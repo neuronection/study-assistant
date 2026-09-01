@@ -5,7 +5,7 @@ external AI assistants. Import runs through the **same validators as generated
 quizzes** — external output is never trusted, validators decide.
 
 (Companion formats: `qpkg` quiz packages, Anki `.apkg` decks, full-app
-`ca-backup/v1` archives, and **course bundles `ca-course/v1`** — see the bottom
+`ca-backup/v1` archives, and **course bundles `ca-course/v2`** — see the bottom
 of this page.)
 
 ## Document
@@ -72,28 +72,36 @@ agent self-serve `schema.json`.
 
 ---
 
-# Course bundles — `ca-course/v1` (plan 22 F, ADR-050)
+# Course bundles — `ca-course/v2` (plan 22 F → plan 50 A, ADR-050/ADR-109)
 
-Whole-course sharing without personal data — a classmate (or next-semester you)
-receives the *content*: materials with their extractions, notes, tree, concepts,
-quizzes, exercises. Everything practice-related and personal (attempts, answers,
-mistakes, analytics, chats, scheduling state, read-status) **never travels** —
-that is what `ca-backup/v1` (Settings → Data) is for.
+Whole-course sharing without personal data by default — a classmate (or
+next-semester you) receives the *content*: materials with their extractions,
+notes, tree, concepts, quizzes, exercises, **flashcards with their FSRS
+schedules (v2)**, **exam date (v2)**, and **discovered error patterns (v2)**.
+Attempts/answers and note version history stay behind explicit opt-in flags;
+mistakes, analytics, chats and read-status **never travel** — that is what
+`ca-backup/v1` (Settings → Data) is for. The exporter emits v2 only; the
+importer accepts **v1 and v2** (v1 → v2 defaults: no card schedules, no exam
+date, no history).
 
 ## Archive layout (zip)
 
 | Entry | Contents |
 |---|---|
-| `manifest.json` | format, app version, created_at, course title, per-entity counts, `warnings` (see below) |
-| `course.json` | course meta (title/subject/level/description/goals/tags/color) |
+| `manifest.json` | format, app version, created_at, course title, `options` (`include_history`/`include_note_versions`, v2), per-entity counts, `warnings` (see below) |
+| `course.json` | course meta (title/subject/level/description/goals/tags/color + **`exam_date` v2**) |
 | `tree.json` | nodes (parent/title/summary/objectives/ai_hint/order) — exactly one root |
 | `concepts.json` | concepts + links + per-node coverage |
-| `materials.json` | materials incl. latest extraction, index card, node links, provenance, `folder_path` (virtual-library location), **`drawings`** (plan 29/ADR-064 — strokes + OCR + `id` per material drawing; absent in pre-29 bundles, imports cleanly; `view` export-region metadata per 0046/ADR-098 — absent in pre-46 bundles, imports cleanly) |
+| `materials.json` | materials incl. latest extraction, index card, node links, provenance, `folder_path` (virtual-library location), **`drawings`** (plan 29/ADR-064 — strokes + OCR + `id` per material drawing; absent in pre-29 bundles, imports cleanly; `view` export-region metadata per 0046/ADR-098 — absent in pre-46 bundles, imports cleanly); v2 questions carry their `id` (for history remapping) |
 | `folders.json` | library folders (path/name hierarchy) + folder-to-node assignments (`folder_links`, plan 25 — absent in pre-25 bundles, imports cleanly) |
 | `notes.json` | notes incl. blocks (drawing refs) + drawings (strokes + OCR + optional `view`) |
 | `quizzes.json` | activities + questions (full metadata taxonomy) |
 | `exercises.json` | exercises (all kinds incl. `card_*`) + steps |
 | `skills-overrides.json` | course-scope skill forks |
+| `cards.json` (v2) | per-flashcard FSRS schedule (state/stability/difficulty/reps/lapses/due/last review) + **`reviews` (review log) only when `include_history`** — schedules travel by default, history is opt-in |
+| `patterns.json` (v2) | **discovered** error patterns only (seeded/system rows are re-seeded, never exported) |
+| `history.json` (v2, opt-in) | quiz attempts + answers, exercise sessions + step attempts, quiz help events — empty unless `include_history` |
+| `note-versions.json` (v2, opt-in) | note version history — empty unless `include_note_versions` (current body always travels in `notes.json`) |
 | `blobs/<sha256>` | every referenced original (content-addressed) |
 
 **Degraded exports never fail**: if a referenced blob file is missing on disk
@@ -111,15 +119,28 @@ export, landing unfiled).
 without extraction). Commit always **imports as a new course** with full id
 remapping: tree paths rebuilt natively via the tree service, concept ids
 remapped into question tags, extractions written directly and re-chunked with
-FTS rebuild (**no re-OCR, no jobs**). **Material drawings** are recreated as new
+FTS rebuild (**no re-OCR**). **Material drawings** are recreated as new
 rows and their `ca-drawing://{old}` refs are remapped to the fresh ids in both
 the extraction markdown and blocks (their OCR joins the imported FTS). Title
 collision → "… (imported)".
 
+**v2 import is self-healing (ADR-109)**: every imported material with an
+extraction gets a `postprocess` job (embeddings + index card) exactly like an
+upload — imported courses no longer degrade to FTS-only search. The import
+response carries `postprocess_job_ids`; progress rides the usual `jobs:{id}`
+WS topic / activity rail. Card schedules land on the imported flashcards,
+discovered error patterns are re-created for the imported course's course type
+(existing keys are skipped), and history/note versions are written when the
+bundle carries them. **Round-trip pin**: exporting an imported v2 course and
+re-importing it on a fresh machine produces a byte-identical bundle
+(manifest `created_at` excepted).
+
 ```
-GET  /api/v1/courses/{id}/export              → ca-course/v1 zip download
-POST /api/v1/courses/import?dry_run=true|false  body: zip
+GET  /api/v1/courses/{id}/export[?include_history=true][&include_note_versions=true]
+                                              → ca-course/v2 zip download (v2 only)
+POST /api/v1/courses/import?dry_run=true|false  body: zip (v1 + v2) → {imported:{postprocess_job_ids}}
 ```
 
 UI: Courses page — **Export** link on each course card, **Import course** with
-dry-run preview → confirm → opens the imported workspace.
+dry-run preview → confirm → opens the imported workspace (postprocess progress
+in the activity rail).

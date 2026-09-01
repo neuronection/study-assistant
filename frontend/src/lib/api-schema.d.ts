@@ -4737,6 +4737,11 @@ export interface components {
             course_id: number;
             /** Imported At */
             imported_at: string;
+            /**
+             * Postprocess Job Ids
+             * @default []
+             */
+            postprocess_job_ids: number[];
             /** Title */
             title: string;
         };
@@ -8503,7 +8508,10 @@ export interface operations {
     };
     export_course_api_v1_courses__course_id__export_get: {
         parameters: {
-            query?: never;
+            query?: {
+                include_history?: boolean;
+                include_note_versions?: boolean;
+            };
             header?: never;
             path: {
                 course_id: number;
