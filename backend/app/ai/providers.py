@@ -44,7 +44,26 @@ PRESETS: dict[str, dict[str, str]] = {
         "type": "openai_compatible",
         "base_url": "http://localhost:11434/v1",
     },
+    "llama_cpp": {
+        "name": "llama.cpp (local)",
+        "type": "openai_compatible",
+        "base_url": "http://localhost:8080/v1",
+    },
+    "lm_studio": {
+        "name": "LM Studio (local)",
+        "type": "openai_compatible",
+        "base_url": "http://localhost:1234/v1",
+    },
 }
+
+DETECT_TARGETS: dict[str, tuple[str, ...]] = {
+    "ollama": ("http://localhost:11434/v1",),
+    "llama_cpp": ("http://localhost:8080/v1", "http://localhost:8081/v1"),
+    "lm_studio": ("http://localhost:1234/v1",),
+}
+
+DETECT_CONNECT_TIMEOUT = 0.3
+DETECT_READ_TIMEOUT = 1.5
 
 
 class ProviderError(ValueError):
@@ -55,6 +74,62 @@ class ProviderError(ValueError):
 class RemoteModel:
     external_id: str
     caps: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class LocalEngineHit:
+    preset_id: str
+    name: str
+    base_url: str
+    models: tuple[str, ...]
+
+
+def _probe_openai_shape(client: httpx.Client, base_url: str) -> tuple[str, ...] | None:
+    try:
+        response = client.get(f"{base_url}/models")
+    except httpx.HTTPError:
+        return None
+    if response.status_code != 200:
+        return None
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, list):
+        return None
+    return tuple(
+        item["id"] for item in data if isinstance(item, dict) and isinstance(item.get("id"), str)
+    )
+
+
+def detect_local_engines(
+    transport: httpx.BaseTransport | None = None,
+    configured_base_urls: frozenset[str] | set[str] = frozenset(),
+) -> list[LocalEngineHit]:
+    hits: list[LocalEngineHit] = []
+    with httpx.Client(
+        timeout=httpx.Timeout(DETECT_READ_TIMEOUT, connect=DETECT_CONNECT_TIMEOUT),
+        transport=transport,
+    ) as client:
+        for preset_id, base_urls in DETECT_TARGETS.items():
+            preset = PRESETS[preset_id]
+            for base_url in base_urls:
+                if base_url in configured_base_urls:
+                    break
+                models = _probe_openai_shape(client, base_url)
+                if models is None:
+                    continue
+                hits.append(
+                    LocalEngineHit(
+                        preset_id=preset_id,
+                        name=preset["name"],
+                        base_url=base_url,
+                        models=models,
+                    )
+                )
+                break
+    return hits
 
 
 def infer_caps(external_id: str, methods: list[str] | None = None) -> list[str]:

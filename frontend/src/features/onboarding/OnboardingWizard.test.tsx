@@ -10,6 +10,7 @@ const getOnboardingState = vi.fn()
 const getWorkingDir = vi.fn()
 const listPresets = vi.fn()
 const createProvider = vi.fn()
+const detectLocalEngines = vi.fn()
 const listModels = vi.fn()
 const updateModel = vi.fn()
 const listTaskDefaults = vi.fn()
@@ -27,6 +28,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     getWorkingDir: () => getWorkingDir(),
     listPresets: () => listPresets(),
     createProvider: (body: unknown) => createProvider(body),
+    detectLocalEngines: () => detectLocalEngines(),
     listModels: () => listModels(),
     updateModel: (id: number, body: unknown) => updateModel(id, body),
     listTaskDefaults: () => listTaskDefaults(),
@@ -90,6 +92,7 @@ describe('OnboardingWizard', () => {
     listPresets.mockResolvedValue({
       google: { name: 'Google', type: 'google', base_url: '' },
     })
+    detectLocalEngines.mockResolvedValue([])
     listModels.mockResolvedValue([MODEL])
     listTaskDefaults.mockResolvedValue([])
     listCourses.mockResolvedValue([])
@@ -134,6 +137,33 @@ describe('OnboardingWizard', () => {
     await waitFor(() => expect(getOnboardingState).toHaveBeenCalled())
     act(() => useWizardStore.getState().openWizard())
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  test('provider step offers a detected local engine with one-click add', async () => {
+    detectLocalEngines.mockResolvedValue([
+      {
+        preset_id: 'ollama',
+        name: 'Ollama (local)',
+        base_url: 'http://localhost:11434/v1',
+        models: ['qwen3:8b', 'nomic-embed-text'],
+      },
+    ])
+    createProvider.mockResolvedValue({ id: 9, name: 'Ollama (local)' })
+    renderWizard()
+    fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByText('Ollama (local)')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /add ollama \(local\)/i }))
+    await waitFor(() =>
+      expect(createProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Ollama (local)',
+          base_url: 'http://localhost:11434/v1',
+          is_local: true,
+        })
+      )
+    )
+    expect(await screen.findByText('Choose your models')).toBeInTheDocument()
   })
 
   test('provider creation advances to the models step', async () => {

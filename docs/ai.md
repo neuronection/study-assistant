@@ -1,13 +1,17 @@
 # AI layer
 
 Nothing is hardcoded to a vendor. Providers, models, and per-task assignment are
-user-configured in **Settings**; Gemini is just one example.
+user-configured in **Settings**; Gemini is just one example. **Everything can run
+fully local** — llama.cpp, LM Studio, Ollama and whisper-class servers are
+presets, the wizard auto-detects running local engines, and API keys are optional
+for local engines (ADR-105: no in-process ML models, ever). See
+`docs/usage/local-ai.md`.
 
 ## Concepts
 
 | Concept | Where | Notes |
 |---|---|---|
-| **Provider** | Settings → Providers | An account/endpoint: `google`, `openai_compatible` (covers OpenAI, Ollama, LM Studio, vLLM, OpenRouter, Groq…), or `anthropic`. Presets incl. Ollama (localhost:11434/v1, no key). API key → OS keyring only. |
+| **Provider** | Settings → Providers | An account/endpoint: `google`, `openai_compatible` (covers OpenAI, Ollama, LM Studio, vLLM, OpenRouter, Groq…), or `anthropic`. Local presets: Ollama (`localhost:11434/v1`), llama.cpp (`localhost:8080/v1`), LM Studio (`localhost:1234/v1`) — all keyless; `GET /providers/detect-local` probes these ports (shape-validated, localhost-only) for the wizard/settings detection. API key → OS keyring only. |
 | **Model** | Settings → Models | Auto-discovered from the provider (`/models` endpoints); capability heuristics (text/vision/tools/embeddings/audio) pre-fill, always user-overridable; vanished models flagged `missing` so assignments aren't destroyed. `audio` is inferred for Whisper-class ids (`whisper`, `transcribe`) and every `gemini` model (audio input on `generateContent`). |
 | **Task** | Settings → Tasks | Fixed registry (`app/ai/tasks.py`): `ocr`*, `notes_ocr`*, `description`, `outline`, `concepts`, `quizgen`, `exgen`, `tutor`, `grade`, `chat`, `flashcards`, `embeddings`, `transcribe`**. * = hard-requires a vision-capable model, ** = hard-requires a speech-to-text (audio) model (both enforced at assignment time, UI and API). Each task: assigned model + optional fallback, or **"(Inherit default)"** — a per-capability **default model** (`text`/`vision`/`embeddings`/`audio`, `default_task_assignments`) supplies any task without a custom model (ADR-088); a custom model on a task is an override that shadows the default. |
 

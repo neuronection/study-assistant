@@ -19,6 +19,9 @@ from ..ai.providers import (
     list_course_default_assignments,
     list_default_assignments,
 )
+from ..ai.providers import (
+    detect_local_engines as probe_local_engines,
+)
 from ..ai.tasks import TASK_DEFS, TaskDef
 from ..domain.models import (
     AiModel,
@@ -66,6 +69,28 @@ def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
 @router.get("/providers/presets", response_model=dict[str, dict[str, str]])
 def provider_presets() -> dict[str, dict[str, str]]:
     return PRESETS
+
+
+class LocalEngineHitOut(BaseModel):
+    preset_id: str
+    name: str
+    base_url: str
+    models: list[str]
+
+
+@router.get("/providers/detect-local", response_model=list[LocalEngineHitOut])
+def detect_local(session: Session = Depends(get_session)) -> list[LocalEngineHitOut]:
+    configured = set(session.scalars(select(Provider.base_url)).all())
+    hits = probe_local_engines(configured_base_urls=configured)
+    return [
+        LocalEngineHitOut(
+            preset_id=hit.preset_id,
+            name=hit.name,
+            base_url=hit.base_url,
+            models=list(hit.models),
+        )
+        for hit in hits
+    ]
 
 
 @router.get("/providers", response_model=list[ProviderOut])

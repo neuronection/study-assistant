@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { assignTaskDefault, listModels, listTaskDefaults } from '@/lib/api'
+import { assignTaskDefault, listModels, listProviders, listTaskDefaults } from '@/lib/api'
 
 const CAP_ORDER = ['text', 'vision', 'embeddings', 'audio'] as const
 
@@ -11,7 +11,12 @@ export function DefaultsStep() {
   const queryClient = useQueryClient()
   const defaults = useQuery({ queryKey: ['task-defaults'], queryFn: listTaskDefaults })
   const models = useQuery({ queryKey: ['models'], queryFn: listModels })
+  const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
   const [error, setError] = useState<string | null>(null)
+
+  const providersList = providers.data ?? []
+  const allLocal =
+    providersList.length > 0 && providersList.every((provider) => provider.is_local)
 
   const enabledModels = (models.data ?? []).filter(
     (model) => model.enabled && !model.missing
@@ -41,6 +46,11 @@ export function DefaultsStep() {
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-sm">{t('onboarding.defaultsHint')}</p>
+      {allLocal ? (
+        <p className="border-success/30 bg-success/10 text-success rounded-md border px-3 py-2 text-xs">
+          {t('settings.localOnlyHint')}
+        </p>
+      ) : null}
       {error ? <p className="text-danger text-xs">{error}</p> : null}
       {enabledModels.length === 0 ? (
         <p className="text-muted-foreground py-4 text-center text-sm">

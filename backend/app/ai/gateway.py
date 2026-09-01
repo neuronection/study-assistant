@@ -155,6 +155,10 @@ class LLMGateway:
         self._retry_attempts = max(1, retry_attempts)
         self._retry_wait = retry_wait
 
+    @property
+    def transport(self) -> httpx.BaseTransport | None:
+        return self._transport
+
     def _check_budget(self, task: str) -> None:
         if self._session_factory is None:
             return
@@ -316,6 +320,11 @@ class LLMGateway:
 
     def resolve(self, task: str, course_id: int | None = None) -> ResolvedModel:
         return self._resolve_chain(task, None, course_id)[0]
+
+    def record_usage(
+        self, task: str, resolved: ResolvedModel, prompt: str, latency_ms: int
+    ) -> None:
+        self._ledger(task, resolved, prompt, "", latency_ms, None)
 
     def _sleep_backoff(self, attempt: int) -> None:
         time.sleep(min(self._retry_wait * (2**attempt), 5.0))

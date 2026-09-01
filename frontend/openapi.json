@@ -4286,6 +4286,37 @@
         "title": "LinkBreadcrumbOut",
         "type": "object"
       },
+      "LocalEngineHitOut": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preset_id": {
+            "title": "Preset Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "preset_id",
+          "name",
+          "base_url",
+          "models"
+        ],
+        "title": "LocalEngineHitOut",
+        "type": "object"
+      },
       "MaterialAssignedOut": {
         "properties": {
           "material_id": {
@@ -19059,6 +19090,31 @@
           }
         },
         "summary": "Create Provider",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/providers/detect-local": {
+      "get": {
+        "operationId": "detect_local_api_v1_providers_detect_local_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocalEngineHitOut"
+                  },
+                  "title": "Response Detect Local Api V1 Providers Detect Local Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Detect Local",
         "tags": [
           "ai"
         ]

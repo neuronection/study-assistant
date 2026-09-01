@@ -4,12 +4,22 @@ import { useState } from 'react'
 import { createProvider, listPresets, type Provider } from '@/lib/api'
 
 export const CUSTOM_PRESET = 'custom'
-export const PROVIDER_PRESET_ORDER = ['google', 'openai', 'anthropic', 'ollama'] as const
+export const PROVIDER_PRESET_ORDER = [
+  'google',
+  'openai',
+  'anthropic',
+  'ollama',
+  'llama_cpp',
+  'lm_studio',
+] as const
+const LOCAL_PRESETS = new Set(['ollama', 'llama_cpp', 'lm_studio'])
 const PRESET_TYPES: Record<string, string> = {
   google: 'google',
   anthropic: 'anthropic',
   openai: 'openai_compatible',
   ollama: 'openai_compatible',
+  llama_cpp: 'openai_compatible',
+  lm_studio: 'openai_compatible',
   [CUSTOM_PRESET]: 'openai_compatible',
 }
 
@@ -34,8 +44,8 @@ export function useProviderCreate({ onCreated }: { onCreated: (provider: Provide
     if (preset && (!nameDirty || presetNames.includes(name))) {
       setName(preset.name)
     }
-    setBaseUrl(key === 'openai' || key === 'ollama' ? (preset?.base_url ?? '') : '')
-    setIsLocal(key === 'ollama')
+    setBaseUrl(key === CUSTOM_PRESET ? '' : (preset?.base_url ?? ''))
+    setIsLocal(LOCAL_PRESETS.has(key))
   }
 
   const save = useMutation({

@@ -1,4 +1,7 @@
+import type { components } from '@/lib/api-schema'
 import { json, apiFetch } from './client'
+
+export type LocalEngineHit = components['schemas']['LocalEngineHitOut']
 
 export interface Provider {
   id: number
@@ -27,6 +30,11 @@ export async function listProviders(): Promise<Provider[]> {
 export async function listPresets(): Promise<Record<string, ProviderPreset>> {
   const response = await apiFetch('/api/v1/providers/presets')
   return json<Record<string, ProviderPreset>>(response)
+}
+
+export async function detectLocalEngines(): Promise<LocalEngineHit[]> {
+  const response = await apiFetch('/api/v1/providers/detect-local')
+  return json<LocalEngineHit[]>(response)
 }
 
 export async function createProvider(body: {

@@ -64,8 +64,12 @@ It is **in-development** software, built for technical students first.
   generate a quiz) through review cards you approve — it cannot write into your course
   on its own.
 - **Bring your own LLM.** Google Gemini, Anthropic, OpenAI, any OpenAI-compatible
-  endpoint (including a local Ollama). Per-task model assignment: pin one model to OCR,
+  endpoint. Per-task model assignment: pin one model to OCR,
   another to chat, another to quiz generation.
+- **Runs fully local.** Point it at llama.cpp, LM Studio or Ollama and every
+  capability — chat, vision OCR, embeddings, dictation — runs on your machine,
+  keyless and free. The first-run wizard detects running engines for you.
+  See [docs/usage/local-ai.md](docs/usage/local-ai.md).
 - **Math answers aren't string-matched.** A deterministic equivalence chain grades typed
   math semantically, and a code-enforced leak guard proves hints never reveal the answer.
 

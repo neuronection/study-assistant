@@ -774,7 +774,14 @@
     "maxTokensClear": "Max tokens clear",
     "primaryPicker": "Primary",
     "primaryInfo": "Serves every run of this task. Tasks without their own override use their capability default.",
-    "fallbackInfo": "Used automatically when the primary model fails or is rate-limited."
+    "fallbackInfo": "Used automatically when the primary model fails or is rate-limited.",
+    "detectLocal": "Detect local engines",
+    "detectingLocal": "Detecting local engines…",
+    "localFound": "Running on this machine:",
+    "noLocalEngines": "No local engines detected — start llama.cpp, LM Studio or Ollama and search again.",
+    "localEngineModels": "{{count}} models",
+    "addEngine": "Add {{name}}",
+    "localOnlyHint": "All providers are local — everything runs on this machine, fully offline. See docs/usage/local-ai.md."
   },
   "spike": {
     "title": "Rendering spike",

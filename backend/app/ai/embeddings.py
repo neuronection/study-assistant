@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Any
 
 import httpx
@@ -11,15 +12,19 @@ EMBEDDINGS_TASK = "embeddings"
 class GatewayEmbedder:
     def __init__(self, gateway: LLMGateway, transport: httpx.BaseTransport | None = None) -> None:
         self._gateway = gateway
-        self._transport = transport
+        self._transport = transport if transport is not None else gateway.transport
 
     def embed(self, texts: list[str]) -> tuple[str, list[list[float]]] | None:
         try:
             resolved = self._gateway.resolve(EMBEDDINGS_TASK)
         except TaskUnassigned:
             return None
+        started = time.monotonic()
         with httpx.Client(timeout=180, transport=self._transport) as client:
             vectors = _embed_with(client, resolved, texts)
+        self._gateway.record_usage(
+            EMBEDDINGS_TASK, resolved, "\n".join(texts), int((time.monotonic() - started) * 1000)
+        )
         return resolved.external_id, vectors
 
 

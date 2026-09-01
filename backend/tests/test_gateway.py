@@ -839,3 +839,49 @@ def test_structured_generation_parsed_none_degrades(monkeypatch: pytest.MonkeyPa
     result = gateway.generate_structured("chat", [Message(role="user", content="hi")], QuizgenOut)
     assert result is None
     assert calls == [("with_structured_output", True)]
+
+
+def test_embedder_records_embeddings_in_ledger(tmp_path: object) -> None:
+    from sqlalchemy import select
+
+    from app.ai.embeddings import GatewayEmbedder
+    from app.domain.models import AiInteraction, AiModel, DefaultTaskAssignment, Provider
+
+    factory = _migrated_factory(tmp_path)
+    with factory() as session:
+        provider = Provider(
+            name="p", type="openai_compatible", base_url="http://x/v1", keyring_ref="provider:1"
+        )
+        session.add(provider)
+        session.flush()
+        model = AiModel(
+            provider_id=provider.id,
+            external_id="nomic",
+            label="nomic",
+            caps=["embeddings"],
+            enabled=True,
+        )
+        session.add(model)
+        session.flush()
+        session.add(
+            DefaultTaskAssignment(requires="embeddings", model_id=model.id, fallback_model_id=None)
+        )
+        session.commit()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/embeddings")
+        return httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1, 0.2]}]})
+
+    gateway = LLMGateway(factory, transport=httpx.MockTransport(handler))
+    result = GatewayEmbedder(gateway).embed(["derivative chain rule"])
+    assert result is not None
+    assert result[0] == "nomic"
+    assert result[1] == [[0.1, 0.2]]
+
+    with factory() as session:
+        row = session.scalars(
+            select(AiInteraction).where(AiInteraction.task == "embeddings")
+        ).one()
+        assert row.model == "nomic"
+        assert row.input_tokens > 0
+        assert row.latency_ms >= 0

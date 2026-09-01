@@ -10,6 +10,7 @@ import { deleteProvider, listProviders, testProvider, type Provider } from '@/li
 import { getCountryFlag } from '@/lib/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
+import { LocalEngines } from './LocalEngines'
 import { useConfirm } from '@/lib/use-confirm'
 import { ProviderFormDialog } from './ProviderFormDialog'
 
@@ -131,10 +132,15 @@ export function ProvidersTab() {
       {providers.data && providers.data.length === 0 ? (
         <div className="space-y-2 py-8 text-center">
           <p className="text-muted-foreground text-sm">{t('settings.noProviders')}</p>
-          <Button variant="outline" size="sm" onClick={() => openWizard()}>
-            <Sparkles aria-hidden />
-            {t('onboarding.runWizard')}
-          </Button>
+          <div className="flex justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openWizard()}>
+              <Sparkles aria-hidden />
+              {t('onboarding.runWizard')}
+            </Button>
+          </div>
+          <div className="mx-auto max-w-sm pt-2 text-left">
+            <LocalEngines />
+          </div>
         </div>
       ) : null}
       {form ? (
