@@ -335,6 +335,17 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-01 — **test(chat): load-immune poll deadlines in chat-turn tests.** The
+  one-off `test_regenerate_adds_assistant_variant` flake was a deadline blow under
+  the saturated `pytest -n auto` run (single-test `--durations` shows the test call
+  itself at ~0.4s; product logic — per-session turn lock, atomic finalize commit,
+  wake-after-commit, `busy_timeout=30000` — verified race-free), not a product race:
+  `test_chat_branches.py` poll helpers now use 30s deadlines (`wait_for_assistant`
+  was 5s, the tightest in the suite) and `wait_until`'s timeout error dumps the last
+  polled messages instead of a bare "condition never met"; `test_chat_turn_error.py`
+  deadline bumped to match. sa-dev skill §4 gained the poll-deadline rule. Backend
+  807 tests green.
+
 - 2026-09-01 — **test(scripts): version_manager tests realigned with the
   family-unified config-driven API.** The 4 tests still monkeypatching the removed
   `VERSION_FILE`/`ROOT`-era `set_version`/`current_version` interface now drive the

@@ -47,18 +47,21 @@ def get_messages(harness: Harness) -> list[dict[str, Any]]:
 
 def wait_until(
     harness: Harness, predicate: Callable[[list[dict[str, Any]]], bool],
-    timeout: float = 15.0,
+    timeout: float = 30.0,
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
+    messages: list[dict[str, Any]] = []
     while time.monotonic() < deadline:
         messages = get_messages(harness)
         if messages and predicate(messages):
             return messages
         time.sleep(0.05)
-    raise AssertionError("condition never met")
+    raise AssertionError(
+        f"condition never met within {timeout}s; last messages: {messages!r}"
+    )
 
 
-def wait_for_assistant(harness: Harness, timeout: float = 5.0) -> list[dict[str, Any]]:
+def wait_for_assistant(harness: Harness, timeout: float = 30.0) -> list[dict[str, Any]]:
     return wait_until(harness, lambda messages: messages[-1]["role"] == "assistant")
 
 

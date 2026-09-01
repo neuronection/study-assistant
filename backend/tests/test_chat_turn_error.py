@@ -47,7 +47,7 @@ def client(tmp_path: Path) -> Iterator[tuple[TestClient, FastAPI, list[dict[str,
         yield test_client, app, events
 
 
-def wait_for_condition(condition: Any, timeout: float = 15.0) -> None:
+def wait_for_condition(condition: Any, timeout: float = 30.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if condition():
