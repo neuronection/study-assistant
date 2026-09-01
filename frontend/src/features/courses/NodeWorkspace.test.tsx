@@ -777,6 +777,49 @@ describe('NodeWorkspace', () => {
     expect(screen.getByRole('button', { name: 'Add child' })).toBeInTheDocument()
   })
 
+  test('fresh course root shows the guided onboarding card instead of the action bar', async () => {
+    primeDefaults()
+    nodeWorkspace.mockImplementation((id: number) =>
+      Promise.resolve(id === 1 ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
+    )
+    renderWorkspace('/courses/3')
+    expect(await screen.findByTestId('course-onboarding')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add materials/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /generate ai outline/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add node/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /study this course/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ask the tutor/i })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /compose study material/i })
+    ).not.toBeInTheDocument()
+  })
+
+  test('onboarding add materials navigates to the materials tab', async () => {
+    primeDefaults()
+    nodeWorkspace.mockImplementation((id: number) =>
+      Promise.resolve(id === 1 ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
+    )
+    renderWorkspace('/courses/3')
+    fireEvent.click(await screen.findByRole('button', { name: /add materials/i }))
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/courses/$courseId',
+      params: { courseId: '3' },
+      search: { tab: 'materials' },
+    })
+  })
+
+  test('onboarding generate outline drafts the course outline', async () => {
+    primeDefaults()
+    outlineDraft.mockResolvedValue(DRAFT)
+    nodeWorkspace.mockImplementation((id: number) =>
+      Promise.resolve(id === 1 ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
+    )
+    renderWorkspace('/courses/3')
+    fireEvent.click(await screen.findByRole('button', { name: /generate ai outline/i }))
+    await waitFor(() => expect(outlineDraft).toHaveBeenCalledWith(3))
+    expect(await screen.findByText('Limits')).toBeInTheDocument()
+  })
+
   test('root overview hosts outline actions in the action bar', async () => {
     primeDefaults()
     renderWorkspace('/courses/3')

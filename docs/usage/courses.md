@@ -192,10 +192,12 @@ workspace (the active tab is preserved).
 - Virtualized, so even very large courses scroll smoothly. Hidden on narrow
   screens; toggle it with the panel button next to the breadcrumb.
 
-Tabs (deep-linkable via `?tab=`). Every tab opens with the same **action bar**: one
-primary action (filled) for the tab's main verb, outlined secondary actions beside it,
-and tab meta (like the concept/graph counts) on the right. The same bar lives in the
-same spot on every tab, so "where's the button" never depends on the tab you're on.
+Tabs (deep-linkable via `?tab=`) render as **underline tabs** — the active tab is
+marked by a colored underline on a full-width divider, so navigation is visually
+distinct from buttons. Every tab opens with the same **action bar**: one primary
+action (filled) for the tab's main verb, quiet secondary actions beside it, and tab
+meta (like the concept/graph counts) on the right. The same bar lives in the same
+spot on every tab, so "where's the button" never depends on the tab you're on.
 
 **Node settings** live in the workspace header, not in a tab: the gear next to the
 node title opens a popover with the node's **Title**, **Description** (shown under
@@ -206,7 +208,10 @@ are set. At the course root the Title/Description edit the course itself.
 - **Overview** — objectives as chips, then the action bar: **Compose study material**
   (AI-assembled reading for this node), the AI **Review** and **Cheat sheet** actions,
   plus **Add child** (any node; inline title field below the bar) or, at the course
-  root, **AI outline** (draft → review → commit) and **Add node**. Below the bar, a
+  root, **AI outline** (draft → review → commit) and **Add node**. A **brand-new
+  course** (no materials and no sections yet) replaces the action bar with a
+  three-step **getting-started card** — add materials, shape the structure, start
+  studying — each step with its own buttons. Below the bar, a
   **Subsections** heading shows this node's children as cards (open, quick practice,
   ask; each card also shows its **description** when one is set); empty nodes prompt
   you to add the first subsection. Everyday tree editing

@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { TabActionBar } from './TabActionBar'
 
 describe('TabActionBar', () => {
-  test('renders actions with outline buttons and calls back on click', () => {
+  test('renders actions with quiet ghost buttons and calls back on click', () => {
     const onSecondary = vi.fn()
     render(
       <TabActionBar
@@ -19,8 +19,8 @@ describe('TabActionBar', () => {
     expect(extract).toBeInTheDocument()
     const draft = screen.getByRole('button', { name: /draft notes/i })
     expect(draft).toBeInTheDocument()
-    expect(extract.className).toContain('border')
-    expect(draft.className).toContain('border')
+    expect(extract.className).not.toContain('border')
+    expect(draft.className).not.toContain('border')
     fireEvent.click(draft)
     expect(onSecondary).toHaveBeenCalledTimes(1)
   })
@@ -38,7 +38,7 @@ describe('TabActionBar', () => {
     expect(buttons[0]).toHaveTextContent('Generate quiz')
     expect(buttons[1]).toHaveTextContent('Import')
     expect(buttons[0].className).not.toContain('border')
-    expect(buttons[1].className).toContain('border')
+    expect(buttons[1].className).not.toContain('border')
   })
 
   test('pending action shows a spinner and is disabled', () => {

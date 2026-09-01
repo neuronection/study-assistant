@@ -151,7 +151,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ **Unified NodeWorkspace (9B/9C/9D)**: one scaffold for the course root
   (`/courses/{id}`) and every node (`/courses/{id}/n/{nodeId}`, old `/chapters/`
   URLs redirect) — routable tabs Overview · Materials · Notes · Concepts · Practice ·
-  Tutor · Settings (root only), pill-style with icons and live content counts (plus a due-cards badge on
+  Tutor · Settings (root only), underline-style with icons and live content counts (plus a due-cards badge on
   Practice); flashcards live in Practice's **Flashcards segment** (`?tab=cards`
   deep-links there); breadcrumb + course accent; depth-aware **Study here** (opens the
   **study launcher** — quiz, exercises, flashcards, study guide, summary sheet,
@@ -172,7 +172,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   workspace **Overview action bar** hosts node creation on every node
   (**2026-08-23**: the root Structure card and the inner Subsections "Add child"
   button are retired — inner nodes get **Add child**, the root gets **AI outline +
-  Add node**, inline title form below the bar); material
+  Add node**, inline title form below the bar; **2026-09-01**: a brand-new course
+  root shows a three-step getting-started card instead of the action bar); material
   rows drag onto sidebar nodes to assign; **Study…** in the row's context menu
   opens the entity action menu scoped to that node — ask / quiz / exercises /
   flashcards / study guide / write note, with generation prefilled to the node

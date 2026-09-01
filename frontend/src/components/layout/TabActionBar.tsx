@@ -33,7 +33,7 @@ export function TabActionBar({ actions, info }: { actions: TabAction[]; info?: R
                 'h-8 gap-1.5 rounded-sm px-3 text-xs',
                 action.primary
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'border-border bg-surface border hover:bg-subtle'
+                  : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
               )}
               trigger={
                 <>
@@ -50,8 +50,9 @@ export function TabActionBar({ actions, info }: { actions: TabAction[]; info?: R
         return (
           <Button
             key={action.label}
-            variant={action.primary ? 'default' : 'outline'}
+            variant={action.primary ? 'default' : 'ghost'}
             size="sm"
+            className={action.primary ? undefined : 'text-muted-foreground hover:text-foreground'}
             disabled={action.pending || action.disabled}
             title={action.title}
             onClick={() => action.onAction?.()}

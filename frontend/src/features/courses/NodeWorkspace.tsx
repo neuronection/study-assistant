@@ -19,6 +19,7 @@ import {
   ScrollText,
   Settings,
   Sparkles,
+  Upload,
   X,
 } from 'lucide-react'
 import {
@@ -40,6 +41,7 @@ import {
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { AssignToNodeDialog } from './AssignToNodeDialog'
 import { RenameDialog } from '@/components/RenameDialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { ViewToggle } from '@/components/ui/ViewToggle'
 import { useStoredView } from '@/lib/useStoredView'
@@ -559,6 +561,104 @@ function OutlineDraftView({
   )
 }
 
+function CourseOnboardingCard({
+  courseTitle,
+  outlinePending,
+  onAddMaterials,
+  onGenerateOutline,
+  onAddNode,
+  onStudy,
+  onAsk,
+}: {
+  courseTitle: string
+  outlinePending: boolean
+  onAddMaterials: () => void
+  onGenerateOutline: () => void
+  onAddNode: () => void
+  onStudy: () => void
+  onAsk: () => void
+}) {
+  const { t } = useTranslation()
+  const steps = [
+    {
+      title: t('workspace.onboardStep1Title'),
+      description: t('workspace.onboardStep1Desc'),
+      actions: (
+        <Button size="sm" onClick={onAddMaterials}>
+          <FolderClosed aria-hidden />
+          {t('workspace.onboardAddMaterials')}
+        </Button>
+      ),
+    },
+    {
+      title: t('workspace.onboardStep2Title'),
+      description: t('workspace.onboardStep2Desc'),
+      actions: (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={outlinePending}
+            onClick={onGenerateOutline}
+          >
+            {outlinePending ? (
+              <Loader2 className="animate-spin" aria-hidden />
+            ) : (
+              <Sparkles aria-hidden />
+            )}
+            {t('workspace.onboardGenerateOutline')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={onAddNode}>
+            <Plus aria-hidden />
+            {t('courses.addNode')}
+          </Button>
+        </>
+      ),
+    },
+    {
+      title: t('workspace.onboardStep3Title'),
+      description: t('workspace.onboardStep3Desc'),
+      actions: (
+        <>
+          <Button size="sm" variant="outline" onClick={onStudy}>
+            <Sparkles aria-hidden />
+            {t('workspace.onboardStudy')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={onAsk}>
+            <MessageSquare aria-hidden />
+            {t('workspace.onboardAsk')}
+          </Button>
+        </>
+      ),
+    },
+  ]
+  return (
+    <Card data-testid="course-onboarding">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="text-primary size-4" aria-hidden />
+          {t('workspace.onboardTitle', { title: courseTitle })}
+        </CardTitle>
+        <p className="text-muted-foreground text-xs">{t('workspace.onboardSubtitle')}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {steps.map((step, index) => (
+          <div key={step.title} className="border-border flex gap-3 rounded-lg border p-3">
+            <span className="bg-primary/10 text-primary flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-sm font-medium">{step.title}</p>
+              <p className="text-muted-foreground text-xs">{step.description}</p>
+              <div className="flex flex-wrap gap-2 pt-1">{step.actions}</div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
 function NodeCreateForm({
   title,
   setTitle,
@@ -790,6 +890,9 @@ function OverviewTab({
   studyPending,
   askPending,
   onOpenMaterial,
+  onGoToMaterials,
+  onStudyLauncher,
+  onAskHere,
 }: {
   courseId: string
   currentId: number
@@ -800,6 +903,9 @@ function OverviewTab({
   studyPending: boolean
   askPending: boolean
   onOpenMaterial: (materialId: number) => void
+  onGoToMaterials: () => void
+  onStudyLauncher: () => void
+  onAskHere: () => void
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -862,6 +968,12 @@ function OverviewTab({
       </div>
     ) : null
 
+  const courseIsEmpty =
+    isRoot &&
+    workspace.children.length === 0 &&
+    workspace.materials.length === 0 &&
+    workspace.folders.length === 0
+
   return (
     <div className="space-y-6">
       {workspace.node.objectives.length > 0 ? (
@@ -877,12 +989,24 @@ function OverviewTab({
         </div>
       ) : null}
 
-      <OrganizerCard
-        nodeId={currentId}
-        courseId={courseId}
-        onOpenMaterial={onOpenMaterial}
-        extraActions={nodeActions}
-      />
+      {courseIsEmpty ? (
+        <CourseOnboardingCard
+          courseTitle={workspace.node.title}
+          outlinePending={generateDraft.isPending}
+          onAddMaterials={onGoToMaterials}
+          onGenerateOutline={() => generateDraft.mutate()}
+          onAddNode={() => setAdding(true)}
+          onStudy={onStudyLauncher}
+          onAsk={onAskHere}
+        />
+      ) : (
+        <OrganizerCard
+          nodeId={currentId}
+          courseId={courseId}
+          onOpenMaterial={onOpenMaterial}
+          extraActions={nodeActions}
+        />
+      )}
 
       {adding ? (
         <NodeCreateForm
@@ -1364,15 +1488,17 @@ function MaterialsTab({
           </div>
         </div>
         {workspace.materials.length === 0 && workspace.folders.length === 0 ? (
-          <div className="space-y-3">
-            <p className="text-muted-foreground py-2 text-center text-sm">
-              {t('workspace.uploadEmptyLabel')}
-            </p>
-            <MaterialUploadDropzone
-              upload={upload}
-              hint={t('workspace.uploadEmptyHint')}
-            />
-          </div>
+          <EmptyState
+            icon={Upload}
+            title={t('workspace.uploadEmptyLabel')}
+            description={t('workspace.uploadEmptyHint')}
+            action={
+              <MaterialUploadDropzone
+                upload={upload}
+                hint={t('workspace.uploadEmptyHint')}
+              />
+            }
+          />
         ) : visibleFolders.length === 0 && visibleMaterials.length === 0 ? (
           <p className="text-muted-foreground py-2 text-center text-sm">
             {t('workspace.noSearchResults')}
@@ -1772,7 +1898,27 @@ function NotesTab({
 
       <div>
         {notes.data && flatNotes.length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center text-sm">{t('chapter.noNotes')}</p>
+          submitted || activeTag ? (
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              {t('workspace.noSearchResults')}
+            </p>
+          ) : (
+            <EmptyState
+              icon={NotebookPen}
+              title={t('chapter.noNotes')}
+              description={t('workspace.notesEmptyDesc')}
+              action={
+                <Button size="sm" disabled={create.isPending} onClick={() => create.mutate()}>
+                  {create.isPending ? (
+                    <Loader2 className="animate-spin" aria-hidden />
+                  ) : (
+                    <Plus aria-hidden />
+                  )}
+                  {t('workspace.firstNote')}
+                </Button>
+              }
+            />
+          )
         ) : (
           <EntityItems
             items={noteItems}
@@ -2033,7 +2179,21 @@ function TutorTab({
       />
       <div className="space-y-1">
         {(sessions.data ?? []).length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center text-sm">{t('workspace.noSessions')}</p>
+          <EmptyState
+            icon={MessageSquare}
+            title={t('workspace.noSessions')}
+            description={t('workspace.tutorEmptyDesc')}
+            action={
+              <Button size="sm" disabled={askPending} onClick={() => onAsk(currentId, nodeTitle)}>
+                {askPending ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <MessageSquare aria-hidden />
+                )}
+                {t('workspace.tutorStartChat')}
+              </Button>
+            }
+          />
         ) : (
           (sessions.data ?? []).map((session) => (
             <button
@@ -2407,7 +2567,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
         message={askAbout.isError ? (askAbout.error as Error).message : null}
       />
 
-      <div className="mb-2 flex flex-wrap items-center gap-1" role="tablist">
+      <div className="flex flex-wrap items-center gap-x-1 border-border border-b" role="tablist">
         {TABS.filter((entry) => node.is_root || entry !== 'settings').map((entry) => {
           const meta = TAB_META[entry]
           const count = tabCount(entry, currentNodeCounts)
@@ -2419,10 +2579,10 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
               aria-selected={effectiveTab === entry}
               aria-current={effectiveTab === entry ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors',
+                '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors',
                 effectiveTab === entry
-                  ? 'bg-primary/15 text-primary font-medium'
-                  : 'text-muted-foreground hover:bg-subtle hover:text-foreground'
+                  ? 'border-primary text-primary font-medium'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               )}
               onClick={() => setTab(entry)}
             >
@@ -2432,7 +2592,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
                 <span
                   className={cn(
                     'rounded-full px-1.5 text-[10px] leading-4',
-                    effectiveTab === entry ? 'bg-surface text-muted-foreground' : 'bg-subtle'
+                    effectiveTab === entry ? 'bg-primary/10 text-primary' : 'bg-subtle'
                   )}
                 >
                   {count}
@@ -2463,6 +2623,9 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
           studyPending={studyHere.isPending}
           askPending={askAbout.isPending}
           onOpenMaterial={openMaterialAt}
+          onGoToMaterials={() => setTab('materials')}
+          onStudyLauncher={() => setLauncherNode(currentId)}
+          onAskHere={() => askAbout.mutate({ targetId: currentId, title: node.title })}
         />
       ) : null}
       {effectiveTab === 'materials' ? (
