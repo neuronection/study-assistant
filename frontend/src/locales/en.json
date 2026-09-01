@@ -760,7 +760,21 @@
     "testFail": "Failed",
     "taskOverrides": "Per-task overrides",
     "model": "Model",
-    "clearAssignment": "Clear assignment"
+    "clearAssignment": "Clear assignment",
+    "temperature": "Temperature",
+    "maxTokens": "Max tokens",
+    "manualIdToggle": "Enter the model id manually",
+    "customOption": "Custom…",
+    "hosting": "Hosting",
+    "localKind": "Local / on-premise",
+    "cloudKind": "Cloud",
+    "country": "Country",
+    "countryPlaceholder": "Select a country…",
+    "temperatureClear": "Temperature clear",
+    "maxTokensClear": "Max tokens clear",
+    "primaryPicker": "Primary",
+    "primaryInfo": "Serves every run of this task. Tasks without their own override use their capability default.",
+    "fallbackInfo": "Used automatically when the primary model fails or is rate-limited."
   },
   "spike": {
     "title": "Rendering spike",

@@ -6,6 +6,8 @@ export interface Provider {
   type: string
   base_url: string
   enabled: boolean
+  is_local: boolean | null
+  country: string | null
   masked_key: string | null
   status: { last_tested_at?: string; ok?: boolean; error?: string | null; model_count?: number | null } | null
   created_at: string
@@ -32,6 +34,8 @@ export async function createProvider(body: {
   type: string
   base_url?: string | null
   api_key?: string | null
+  is_local?: boolean | null
+  country?: string | null
 }): Promise<Provider> {
   const response = await apiFetch('/api/v1/providers', {
     method: 'POST',
@@ -53,6 +57,8 @@ export async function updateProvider(
     base_url?: string | null
     enabled?: boolean
     api_key?: string | null
+    is_local?: boolean | null
+    country?: string | null
   }
 ): Promise<Provider> {
   const response = await apiFetch(`/api/v1/providers/${id}`, {
@@ -108,6 +114,8 @@ export async function createModel(body: {
   caps?: string[] | null
   enabled?: boolean
   reasoning_effort?: string | null
+  temperature?: number | null
+  max_tokens?: number | null
 }): Promise<AiModel> {
   const response = await apiFetch('/api/v1/models', {
     method: 'POST',
@@ -119,7 +127,14 @@ export async function createModel(body: {
 
 export async function updateModel(
   id: number,
-  body: { enabled?: boolean; label?: string; caps?: string[]; reasoning_effort?: string | null }
+  body: {
+    enabled?: boolean
+    label?: string
+    caps?: string[]
+    reasoning_effort?: string | null
+    temperature?: number | null
+    max_tokens?: number | null
+  }
 ): Promise<AiModel> {
   const response = await apiFetch(`/api/v1/models/${id}`, {
     method: 'PATCH',

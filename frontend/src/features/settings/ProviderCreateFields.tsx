@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 import { ProviderForm } from '@/components/ui/provider-form'
+import { COUNTRIES } from '@/lib/countries'
 
 import { CUSTOM_PRESET, PROVIDER_PRESET_ORDER, type ProviderCreateState } from './useProviderCreate'
 
@@ -37,6 +38,21 @@ export function ProviderCreateFields({ state }: { state: ProviderCreateState }) 
         hideBaseUrl={state.selectedType !== 'openai_compatible'}
         apiKeyLabel={t('settings.apiKey')}
         apiKeyHelp={t('settings.apiKeyOptional')}
+        showLocationKind
+        locationKind={state.isLocal ? 'local' : 'cloud'}
+        onLocationKindChange={(kind) => state.setIsLocal(kind === 'local')}
+        locationLabel={t('settings.hosting')}
+        localLabel={t('settings.localKind')}
+        cloudLabel={t('settings.cloudKind')}
+        showCountry
+        country={state.country}
+        onCountryChange={state.setCountry}
+        countryLabel={t('settings.country')}
+        countryPlaceholder={t('settings.countryPlaceholder')}
+        countryOptions={COUNTRIES.map((entry) => ({
+          value: entry.code,
+          label: `${entry.flag} ${entry.name}`,
+        }))}
         error={state.error ?? undefined}
       >
         {custom && !state.baseUrl.trim() ? (

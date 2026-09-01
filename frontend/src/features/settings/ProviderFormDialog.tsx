@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProviderForm } from '@/components/ui/provider-form'
 import { updateProvider, type Provider } from '@/lib/api'
+import { COUNTRIES } from '@/lib/countries'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
 import { ProviderCreateFields } from './ProviderCreateFields'
@@ -61,6 +62,8 @@ function ProviderEditForm({
   const [baseUrl, setBaseUrl] = useState(provider.base_url ?? '')
   const [apiKey, setApiKey] = useState('')
   const [enabled, setEnabled] = useState(provider.enabled)
+  const [isLocal, setIsLocal] = useState(provider.is_local ?? false)
+  const [country, setCountry] = useState(provider.country ?? '')
   const [error, setError] = useState<string | null>(null)
 
   const save = useMutation({
@@ -70,6 +73,8 @@ function ProviderEditForm({
         name: name.trim(),
         base_url: provider.type === 'openai_compatible' ? baseUrl.trim() || null : undefined,
         enabled,
+        is_local: isLocal,
+        country: country.trim() || null,
         ...(trimmedKey ? { api_key: trimmedKey } : {}),
       })
     },
@@ -103,6 +108,21 @@ function ProviderEditForm({
         apiKeyHelp={t('settings.apiKeyKeepHint')}
         hasStoredKey={Boolean(provider.masked_key)}
         storedKeyLabel={provider.masked_key ?? undefined}
+        showLocationKind
+        locationKind={isLocal ? 'local' : 'cloud'}
+        onLocationKindChange={(kind) => setIsLocal(kind === 'local')}
+        locationLabel={t('settings.hosting')}
+        localLabel={t('settings.localKind')}
+        cloudLabel={t('settings.cloudKind')}
+        showCountry
+        country={country}
+        onCountryChange={setCountry}
+        countryLabel={t('settings.country')}
+        countryPlaceholder={t('settings.countryPlaceholder')}
+        countryOptions={COUNTRIES.map((entry) => ({
+          value: entry.code,
+          label: `${entry.flag} ${entry.name}`,
+        }))}
       />
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input

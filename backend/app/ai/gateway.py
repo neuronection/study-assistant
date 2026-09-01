@@ -306,6 +306,8 @@ class LLMGateway:
                         cost_in=db_model.cost_in,
                         cost_out=db_model.cost_out,
                         reasoning_effort=db_model.reasoning_effort,
+                        temperature=db_model.temperature,
+                        max_tokens=db_model.max_tokens,
                     )
                 )
             if chain:

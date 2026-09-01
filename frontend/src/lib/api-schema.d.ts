@@ -5157,10 +5157,14 @@ export interface components {
             external_id: string;
             /** Label */
             label?: string | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
             /** Provider Id */
             provider_id: number;
             /** Reasoning Effort */
             reasoning_effort?: string | null;
+            /** Temperature */
+            temperature?: number | null;
         };
         /** ModelOut */
         ModelOut: {
@@ -5174,12 +5178,16 @@ export interface components {
             id: number;
             /** Label */
             label: string;
+            /** Max Tokens */
+            max_tokens?: number | null;
             /** Missing */
             missing: boolean;
             /** Provider Id */
             provider_id: number;
             /** Reasoning Effort */
             reasoning_effort?: string | null;
+            /** Temperature */
+            temperature?: number | null;
         };
         /** ModelUpdate */
         ModelUpdate: {
@@ -5189,8 +5197,12 @@ export interface components {
             enabled?: boolean | null;
             /** Label */
             label?: string | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
             /** Reasoning Effort */
             reasoning_effort?: string | null;
+            /** Temperature */
+            temperature?: number | null;
         };
         /** MostBehindNodeOut */
         MostBehindNodeOut: {
@@ -5747,6 +5759,10 @@ export interface components {
             api_key?: string | null;
             /** Base Url */
             base_url?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Is Local */
+            is_local?: boolean | null;
             /** Name */
             name: string;
             /** Type */
@@ -5756,6 +5772,8 @@ export interface components {
         ProviderOut: {
             /** Base Url */
             base_url: string;
+            /** Country */
+            country?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -5765,6 +5783,8 @@ export interface components {
             enabled: boolean;
             /** Id */
             id: number;
+            /** Is Local */
+            is_local?: boolean | null;
             /** Masked Key */
             masked_key: string | null;
             /** Name */
@@ -5782,8 +5802,12 @@ export interface components {
             api_key?: string | null;
             /** Base Url */
             base_url?: string | null;
+            /** Country */
+            country?: string | null;
             /** Enabled */
             enabled?: boolean | null;
+            /** Is Local */
+            is_local?: boolean | null;
             /** Name */
             name?: string | null;
         };

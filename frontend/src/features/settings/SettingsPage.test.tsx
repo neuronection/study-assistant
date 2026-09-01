@@ -108,7 +108,7 @@ describe('SettingsPage', () => {
     expect(screen.queryByText(/supersecret/i)).not.toBeInTheDocument()
   })
 
-  test('models tab lists selected (enabled) models only', async () => {
+  test('models tab lists selected (enabled) models with a catalog trigger', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
@@ -160,9 +160,11 @@ describe('SettingsPage', () => {
     listModels.mockResolvedValue([])
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
-    expect(await screen.findByText('ocr')).toBeInTheDocument()
+    expect(await screen.findByText('OCR')).toBeInTheDocument()
     expect(screen.getByText('vision')).toBeInTheDocument()
-    expect(screen.getAllByText('— unassigned —').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole('combobox', { name: 'OCR' })[0],
+    ).toHaveTextContent(/select a model/i)
   })
 
   test('tasks tab nudges on unassigned embeddings and concepts', async () => {
@@ -244,7 +246,9 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
     expect(await screen.findByText(/default models/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/Default text model/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/set one default per capability/i)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Text' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Image / Vision' })).toBeInTheDocument()
     expect((await screen.findAllByRole('combobox')).length).toBeGreaterThanOrEqual(5)
     expect(await screen.findByText(/Inherited — using gemini-2.5-flash/)).toBeInTheDocument()
   })
@@ -279,7 +283,7 @@ describe('SettingsPage', () => {
     ])
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
-    await screen.findByText('quizgen')
+    await screen.findByText('Quizgen')
     const trigger = screen.getAllByRole('combobox').at(-1)!
     fireEvent.click(trigger)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
@@ -309,7 +313,7 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /tasks/i }).click()
     await screen.findByText(/default models/i)
-    const textPrimary = screen.getByRole('combobox', { name: 'Model — Default text model' })
+    const textPrimary = screen.getByRole('combobox', { name: 'Text' })
     fireEvent.click(textPrimary)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
@@ -332,6 +336,10 @@ describe('SettingsPage', () => {
       target: { value: 'sk-local' },
     })
 
+    expect(screen.getByRole('button', { name: /local \/ on-premise/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     screen.getByRole('button', { name: /^add$/i }).click()
     await waitFor(() =>
       expect(createProvider).toHaveBeenCalledWith({
@@ -339,6 +347,8 @@ describe('SettingsPage', () => {
         type: 'openai_compatible',
         base_url: 'http://localhost:11434/v1',
         api_key: 'sk-local',
+        is_local: true,
+        country: null,
       })
     )
   })
@@ -379,6 +389,8 @@ describe('SettingsPage', () => {
         type: 'openai_compatible',
         base_url: 'http://localhost:1234/v1',
         api_key: null,
+        is_local: false,
+        country: null,
       })
     )
   })
@@ -389,7 +401,7 @@ describe('SettingsPage', () => {
     listTasks.mockResolvedValue([])
     listTaskDefaults.mockResolvedValue([])
     await renderSettings('/settings?tab=models')
-    expect(await screen.findByRole('button', { name: 'Add model' })).toHaveAttribute('aria-expanded', 'false')
+    expect(await screen.findByRole('button', { name: 'Add model' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^tasks$/i }))
     await waitFor(() =>
@@ -430,7 +442,7 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('models tab searches the catalog and quick-adds with the guessed caps', async () => {
+  test('models tab adds a model through the catalog modal', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
@@ -441,6 +453,8 @@ describe('SettingsPage', () => {
         caps: ['text', 'vision', 'tools'],
         enabled: true,
         missing: false,
+        temperature: null,
+        max_tokens: null,
       },
     ])
     listRemoteModels.mockResolvedValue([
@@ -456,21 +470,22 @@ describe('SettingsPage', () => {
       caps: ['text', 'vision', 'tools'],
       enabled: true,
       missing: false,
+      temperature: null,
+      max_tokens: null,
     })
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
+    const dialog = await screen.findByRole('dialog')
 
-    expect(await screen.findByText('gemini-2.5-pro')).toBeInTheDocument()
-    expect(screen.getByText('text-embedding-004')).toBeInTheDocument()
-    expect(screen.getByText('Added')).toBeInTheDocument()
+    const picker = within(dialog).getByRole('combobox', { name: 'Model' })
+    fireEvent.click(picker)
+    fireEvent.click(await screen.findByRole('option', { name: 'gemini-2.5-pro' }))
+    expect(
+      within(dialog).getByRole('button', { name: 'image / vision' }),
+    ).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.change(await screen.findByLabelText(/search models/i), {
-      target: { value: 'pro' },
-    })
-    expect(screen.queryByText('text-embedding-004')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Add gemini-2.5-pro' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -478,6 +493,8 @@ describe('SettingsPage', () => {
           external_id: 'gemini-2.5-pro',
           caps: ['text', 'vision', 'tools'],
           enabled: true,
+          temperature: null,
+          max_tokens: null,
         })
       )
     )
@@ -503,15 +520,16 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
+    const dialog = await screen.findByRole('dialog')
 
-    expect(await screen.findByText(/no API key is stored/i)).toBeInTheDocument()
+    expect(await within(dialog).findByText(/no API key is stored/i)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /add manually/i }))
-    const idInput = await screen.findByLabelText(/model id/i)
-    fireEvent.change(idInput, { target: { value: 'gpt-9-turbo' } })
-    const draft = idInput.closest('[data-as="model-registry-draft"]') as HTMLElement
-    fireEvent.click(within(draft).getByRole('button', { name: 'image / vision' }))
-    fireEvent.click(within(draft).getByRole('button', { name: 'Add model' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /manual/i }))
+    fireEvent.change(within(dialog).getByLabelText('Model'), {
+      target: { value: 'gpt-9-turbo' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'image / vision' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
 
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
@@ -546,7 +564,7 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(deleteModel).toHaveBeenCalledWith(11))
   })
 
-  test('models tab bulk-adds the filtered catalog entries', async () => {
+  test('models tab bulk-adds pending entries from the modal footer', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([])
     listRemoteModels.mockResolvedValue([
@@ -559,22 +577,16 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
-    await screen.findByText('gemini-2.5-flash')
+    const dialog = await screen.findByRole('dialog')
 
-    fireEvent.change(screen.getByLabelText(/search models/i), {
-      target: { value: 'gemini' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /add all \(2\)/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /add all \(3\)/i }))
 
-    await waitFor(() => expect(createModel).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(createModel).toHaveBeenCalledTimes(3))
     expect(createModel).toHaveBeenCalledWith(
       expect.objectContaining({ external_id: 'gemini-2.5-flash', enabled: true })
     )
     expect(createModel).toHaveBeenCalledWith(
-      expect.objectContaining({ external_id: 'gemini-2.5-pro', enabled: true })
-    )
-    expect(createModel).not.toHaveBeenCalledWith(
-      expect.objectContaining({ external_id: 'text-embedding-004' })
+      expect.objectContaining({ external_id: 'text-embedding-004', caps: ['embeddings'] })
     )
   })
 
@@ -603,18 +615,20 @@ describe('SettingsPage', () => {
     await await renderSettings()
     screen.getByRole('button', { name: /models/i }).click()
     fireEvent.click(await screen.findByRole('button', { name: /edit model gemini-2\.5-flash/i }))
+    const dialog = await screen.findByRole('dialog')
 
-    const labelInput = await screen.findByLabelText(/display name/i)
+    const labelInput = await within(dialog).findByLabelText(/display name/i)
     fireEvent.change(labelInput, { target: { value: 'Flash' } })
-    const draft = labelInput.closest('[data-as="model-registry-draft"]') as HTMLElement
-    fireEvent.click(within(draft).getByRole('button', { name: 'image / vision' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'image / vision' }))
 
-    fireEvent.click(within(draft).getByRole('button', { name: /^save$/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /^save$/i }))
     await waitFor(() =>
       expect(updateModel).toHaveBeenCalledWith(11, {
         label: 'Flash',
         caps: ['text', 'tools'],
         reasoning_effort: null,
+        temperature: null,
+        max_tokens: null,
       })
     )
   })

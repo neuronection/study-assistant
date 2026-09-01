@@ -42,6 +42,8 @@ class ResolvedModel:
     cost_in: float | None = None
     cost_out: float | None = None
     reasoning_effort: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
 
 
 @dataclass(frozen=True)

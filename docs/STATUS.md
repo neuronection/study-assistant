@@ -335,6 +335,31 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-01 — **feat(settings): plan 56-B2 — provider/model generation settings +
+  live-tested UI polish (`@neuronection/assistant-ui` 0.13.1).** Backend:
+  migration **0050** — `providers.is_local`/`providers.country` (optional
+  metadata) and `models.temperature`/`models.max_tokens` (nullable generation
+  settings); `ResolvedModel` carries them and all three gateway builders
+  (OpenAI/Anthropic/Google) honor them; provider create/patch + model
+  create/patch accept the new fields (`model_fields_set`-based clearing —
+  temperature/max_tokens/reasoning_effort can be unset); OpenAPI artifacts
+  regenerated. Frontend: Models tab modal honors the new fields (reasoning
+  dropdown + Custom…, clearable temperature/max-tokens number fields with
+  far-right spinners); Providers create/edit gain the **Hosting Local/Cloud
+  toggle** and **Country select** (library `ProviderForm` flag-gated optional
+  fields) with a local badge / country flag on provider cards. Tasks tab:
+  capability-defaults titles beautified (`beautifyId`, new `./fuzzy` subpath),
+  **Primary/Fallback badges with click-only info popups**, fallback stacked
+  above primary each with its own clear button, per-task budget UI removed
+  (limit feature shelved — backend columns/endpoints dormant, re-enable = UI
+  only). Combobox: `hideLabel`, modal-popover panel (wheel-scrollable inside
+  dialogs) + typo-tolerant ranked search (`gemni`→Gemini). Dev workflow:
+  library `dev-link` for live testing (vitest requires the tarball flow — dual
+  React), `resolve.dedupe` added to study's Vite config. Gates: frontend 819
+  tests ✓ build ✓; backend ruff/mypy ✓ (803 passed; the 4
+  `test_version_manager` failures pre-date this work — stale tests vs the
+  family-unified version manager, tracked in Open issues).
+
 - 2026-09-01 — **feat(settings): plan 56-B — AI-settings surfaces rebuilt on the
   family library (`@neuronection/assistant-ui` 0.10.x), ADR-131/132.** The
   Settings → Models tab is now a thin composition over the library's new

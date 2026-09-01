@@ -150,7 +150,7 @@ def test_migration_0026_folds_flashcards_into_exercises(tmp_path: Path) -> None:
     cur = raw.cursor()
     assert cur.execute("SELECT version_num FROM alembic_version").fetchone()[
         0
-    ] == "0049_av_metadata"
+    ] == "0050_provider_and_model_settings"
     assert (
         cur.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='flashcards'"

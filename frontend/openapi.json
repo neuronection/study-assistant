@@ -5232,6 +5232,18 @@
             ],
             "title": "Label"
           },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
           "provider_id": {
             "title": "Provider Id",
             "type": "integer"
@@ -5247,6 +5259,19 @@
               }
             ],
             "title": "Reasoning Effort"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
           }
         },
         "required": [
@@ -5281,6 +5306,17 @@
             "title": "Label",
             "type": "string"
           },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
           "missing": {
             "title": "Missing",
             "type": "boolean"
@@ -5299,6 +5335,17 @@
               }
             ],
             "title": "Reasoning Effort"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
           }
         },
         "required": [
@@ -5351,6 +5398,18 @@
             ],
             "title": "Label"
           },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
           "reasoning_effort": {
             "anyOf": [
               {
@@ -5362,6 +5421,19 @@
               }
             ],
             "title": "Reasoning Effort"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
           }
         },
         "title": "ModelUpdate",
@@ -7107,6 +7179,29 @@
             ],
             "title": "Base Url"
           },
+          "country": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "is_local": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Local"
+          },
           "name": {
             "maxLength": 120,
             "minLength": 1,
@@ -7132,6 +7227,17 @@
             "title": "Base Url",
             "type": "string"
           },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -7144,6 +7250,17 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "is_local": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Local"
           },
           "masked_key": {
             "anyOf": [
@@ -7214,6 +7331,18 @@
             ],
             "title": "Base Url"
           },
+          "country": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
           "enabled": {
             "anyOf": [
               {
@@ -7224,6 +7353,17 @@
               }
             ],
             "title": "Enabled"
+          },
+          "is_local": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Local"
           },
           "name": {
             "anyOf": [

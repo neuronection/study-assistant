@@ -191,6 +191,10 @@ def _openai_model(
     }
     if resolved.reasoning_effort:
         kwargs["reasoning_effort"] = resolved.reasoning_effort
+    if resolved.temperature is not None:
+        kwargs["temperature"] = resolved.temperature
+    if resolved.max_tokens is not None:
+        kwargs["max_tokens"] = resolved.max_tokens
     if resolved.base_url:
         kwargs["base_url"] = resolved.base_url
     if transport is not None:
@@ -214,6 +218,10 @@ def _anthropic_model(
     }
     if resolved.reasoning_effort in _ANTHROPIC_REASONING_EFFORT_LEVELS:
         kwargs["reasoning_effort"] = resolved.reasoning_effort
+    if resolved.temperature is not None:
+        kwargs["temperature"] = resolved.temperature
+    if resolved.max_tokens is not None:
+        kwargs["max_tokens"] = resolved.max_tokens
     model = ChatAnthropic(**kwargs)
     if transport is not None:
         model._client = AnthropicClient(
@@ -239,6 +247,10 @@ def _google_model(
     }
     if resolved.reasoning_effort in _GOOGLE_REASONING_EFFORT_LEVELS:
         kwargs["reasoning_effort"] = resolved.reasoning_effort
+    if resolved.temperature is not None:
+        kwargs["temperature"] = resolved.temperature
+    if resolved.max_tokens is not None:
+        kwargs["max_tokens"] = resolved.max_tokens
     model = ChatGoogleGenerativeAI(**kwargs)
     if transport is not None:
         model.client = GoogleClient(

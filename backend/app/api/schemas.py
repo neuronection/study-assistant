@@ -39,6 +39,8 @@ class FolderOut(BaseModel):
 
 
 class ProviderCreate(BaseModel):
+    is_local: bool | None = None
+    country: str | None = Field(default=None, max_length=80)
     name: str = Field(min_length=1, max_length=120)
     type: str = Field(pattern="^(google|openai_compatible|anthropic)$")
     base_url: str | None = None
@@ -50,6 +52,8 @@ class ProviderUpdate(BaseModel):
     base_url: str | None = None
     enabled: bool | None = None
     api_key: str | None = None
+    is_local: bool | None = None
+    country: str | None = Field(default=None, max_length=80)
 
 
 class RemoteModelOut(BaseModel):
@@ -64,6 +68,8 @@ class ModelCreateIn(BaseModel):
     caps: list[str] | None = None
     enabled: bool = True
     reasoning_effort: str | None = Field(default=None, max_length=20)
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    max_tokens: int | None = Field(default=None, ge=1)
 
     @field_validator("caps")
     @classmethod
@@ -82,6 +88,8 @@ class ProviderOut(BaseModel):
     type: str
     base_url: str
     enabled: bool
+    is_local: bool | None = None
+    country: str | None = None
     masked_key: str | None
     status: dict[str, Any] | None
     created_at: datetime
@@ -96,6 +104,8 @@ class ModelOut(BaseModel):
     enabled: bool
     missing: bool
     reasoning_effort: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
 
 
 class ModelUpdate(BaseModel):
@@ -103,6 +113,8 @@ class ModelUpdate(BaseModel):
     enabled: bool | None = None
     caps: list[str] | None = None
     reasoning_effort: str | None = Field(default=None, max_length=20)
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    max_tokens: int | None = Field(default=None, ge=1)
 
     @field_validator("caps")
     @classmethod

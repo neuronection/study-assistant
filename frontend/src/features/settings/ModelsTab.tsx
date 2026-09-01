@@ -70,6 +70,8 @@ export function ModelsTab() {
         caps: draft.caps,
         enabled: true,
         reasoning_effort: draft.reasoningEffort || null,
+        temperature: draft.temperature ?? null,
+        max_tokens: draft.maxTokens ?? null,
       })
       await refresh()
     } catch (err) {
@@ -89,6 +91,8 @@ export function ModelsTab() {
               external_id: draft.externalId,
               caps: draft.caps,
               enabled: true,
+              temperature: draft.temperature ?? null,
+              max_tokens: draft.maxTokens ?? null,
             })
           )
         )
@@ -105,10 +109,11 @@ export function ModelsTab() {
       await updateModel(Number(model.id), {
         ...(patch.label !== undefined ? { label: patch.label } : {}),
         ...(patch.caps !== undefined ? { caps: patch.caps } : {}),
-        ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
         ...(patch.reasoningEffort !== undefined
           ? { reasoning_effort: patch.reasoningEffort || null }
           : {}),
+        ...(patch.temperature !== undefined ? { temperature: patch.temperature } : {}),
+        ...(patch.maxTokens !== undefined ? { max_tokens: patch.maxTokens } : {}),
       })
       await refresh()
     } catch (err) {
@@ -187,27 +192,28 @@ export function ModelsTab() {
         onUpdateModel={(model, patch) => void handleUpdate(model, patch)}
         onDeleteModel={(model) => void handleDelete(model)}
         reasoningEffortOptions={[...REASONING_EFFORT_OPTIONS]}
-        addLabel={t('settings.addShort')}
+        addLabel={t('settings.addModel')}
         addAllLabel={t('settings.addAllShort')}
-        browseLabel={t('settings.addModel')}
-        configureLabel={t('settings.configure')}
+        addTitle={t('settings.addModel')}
+        editTitle={t('settings.editModel')}
+        selectModelLabel={t('settings.model')}
+        manualIdToggleLabel={t('settings.manualIdToggle')}
         editLabel={t('settings.editModel')}
         removeLabel={t('settings.deleteModel')}
         missingLabel={t('settings.missing')}
         capsLabel={t('settings.modelCaps')}
+        capsHint={t('settings.modelCapsHint')}
         searchPlaceholder={t('settings.searchModels')}
         searchLabel={t('settings.searchModels')}
-        capFilterLabel={t('settings.capFilter')}
-        unclassifiedLabel={t('settings.unclassified')}
         emptyProviderLabel={t('settings.noModels')}
         remoteEmptyLabel={t('settings.noModelMatches')}
         remoteLoadingLabel={t('settings.loadingModels')}
         retryLabel={t('settings.retry')}
-        manualAddLabel={t('settings.addManually')}
-        externalIdLabel={t('settings.manualIdLabel')}
+        customOptionLabel={t('settings.customOption')}
+        temperatureLabel={t('settings.temperature')}
+        maxTokensLabel={t('settings.maxTokens')}
         labelLabel={t('settings.modelLabel')}
         reasoningEffortLabel={t('settings.modelReasoningEffort')}
-        reasoningEffortPlaceholder={t('settings.modelReasoningEffortPlaceholder')}
         saveLabel={t('settings.save')}
         cancelLabel={t('settings.cancel')}
         addDraftLabel={t('settings.addModel')}

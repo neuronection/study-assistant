@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { House, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConnectionTestRow } from '@/components/ui/connection-test-row'
 import { deleteProvider, listProviders, testProvider, type Provider } from '@/lib/api'
+import { getCountryFlag } from '@/lib/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { useConfirm } from '@/lib/use-confirm'
@@ -55,6 +56,14 @@ export function ProvidersTab() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">
                 {provider.name} <span className="text-muted-foreground">· {provider.type}</span>
+                {provider.is_local ? (
+                  <span className="bg-primary/10 text-primary ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]">
+                    <House className="size-3" aria-hidden />
+                    {t('settings.localKind')}
+                  </span>
+                ) : provider.country ? (
+                  <span className="ml-2 text-xs">{getCountryFlag(provider.country)}</span>
+                ) : null}
                 {!provider.enabled ? (
                   <span className="text-muted-foreground ml-2 text-xs">
                     {t('settings.disabled')}

@@ -55,6 +55,8 @@ def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
         type=provider.type,
         base_url=provider.base_url,
         enabled=provider.enabled,
+        is_local=provider.is_local,
+        country=provider.country,
         masked_key=service.masked_key(provider),
         status=provider.status,
         created_at=provider.created_at,
@@ -87,6 +89,8 @@ def create_provider(
             base_url=body.base_url,
             api_key=body.api_key,
         )
+        provider.is_local = body.is_local
+        provider.country = (body.country or "").strip() or None
         remote = service.discover(provider)
         service.record_status(provider, ok=True, error=None, model_count=len(remote))
     except ProviderError as error:
@@ -110,6 +114,11 @@ def update_provider(
             enabled=body.enabled,
             api_key=body.api_key,
         )
+        if provider is not None:
+            if "is_local" in body.model_fields_set:
+                provider.is_local = body.is_local
+            if "country" in body.model_fields_set:
+                provider.country = (body.country or "").strip() or None
     except ProviderError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if provider is None:
@@ -204,6 +213,8 @@ def _model_out(model: AiModel) -> ModelOut:
         enabled=model.enabled,
         missing=model.missing,
         reasoning_effort=model.reasoning_effort,
+        temperature=model.temperature,
+        max_tokens=model.max_tokens,
     )
 
 
@@ -309,6 +320,10 @@ def update_model(
         model.caps = body.caps
     if body.reasoning_effort is not None:
         model.reasoning_effort = body.reasoning_effort.strip() or None
+    if "temperature" in body.model_fields_set:
+        model.temperature = body.temperature
+    if "max_tokens" in body.model_fields_set:
+        model.max_tokens = body.max_tokens
     session.commit()
     return _model_out(model)
 

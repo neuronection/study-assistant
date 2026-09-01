@@ -21,6 +21,8 @@ export function useProviderCreate({ onCreated }: { onCreated: (provider: Provide
   const [nameDirty, setNameDirty] = useState(false)
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [isLocal, setIsLocal] = useState(false)
+  const [country, setCountry] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const presetNames = Object.values(presets.data ?? {}).map((preset) => preset.name)
@@ -33,6 +35,7 @@ export function useProviderCreate({ onCreated }: { onCreated: (provider: Provide
       setName(preset.name)
     }
     setBaseUrl(key === 'openai' || key === 'ollama' ? (preset?.base_url ?? '') : '')
+    setIsLocal(key === 'ollama')
   }
 
   const save = useMutation({
@@ -42,6 +45,8 @@ export function useProviderCreate({ onCreated }: { onCreated: (provider: Provide
         type: selectedType,
         base_url: selectedType === 'openai_compatible' ? baseUrl.trim() || null : null,
         api_key: apiKey || null,
+        is_local: isLocal,
+        country: country.trim() || null,
       }),
     onSuccess: async (provider) => {
       await queryClient.invalidateQueries({ queryKey: ['providers'] })
@@ -67,6 +72,10 @@ export function useProviderCreate({ onCreated }: { onCreated: (provider: Provide
     setBaseUrl,
     apiKey,
     setApiKey,
+    isLocal,
+    setIsLocal,
+    country,
+    setCountry,
     error,
     canSave,
     submitting: save.isPending,

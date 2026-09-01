@@ -71,6 +71,8 @@ class Provider(Base):
     base_url: Mapped[str] = mapped_column(String(300))
     keyring_ref: Mapped[str] = mapped_column(String(200))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_local: Mapped[bool | None] = mapped_column(Boolean)
+    country: Mapped[str | None] = mapped_column(String(80))
     status: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -89,6 +91,8 @@ class AiModel(Base):
     cost_in: Mapped[float | None] = mapped_column(Float)
     cost_out: Mapped[float | None] = mapped_column(Float)
     reasoning_effort: Mapped[str | None] = mapped_column(String(20))
+    temperature: Mapped[float | None] = mapped_column(Float)
+    max_tokens: Mapped[int | None] = mapped_column(Integer)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     missing: Mapped[bool] = mapped_column(Boolean, default=False)
     discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
