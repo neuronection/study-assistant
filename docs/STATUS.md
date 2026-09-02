@@ -328,6 +328,36 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-02 — **feat(e2e): plan 50-C — Playwright e2e smoke against the real
+  backend (ADR-111).** New `frontend/e2e/` harness: `playwright.config.ts`
+  (project `e2e`, excluded from vitest + eslint, separate `pnpm e2e` script);
+  **global setup builds the SPA, spawns the real backend** (`e2e/run_backend.py`
+  → `create_app` + uvicorn on a free port, temp `SA_DATA_DIR`, backend-served
+  SPA mount) **and a mock OpenAI-compatible provider** (`e2e/mock_provider.py`
+  via the backend venv's uvicorn: `/v1/models`, streaming
+  `/v1/chat/completions` with a fixed quiz JSON for the quizgen prompt and a
+  `CALC 2+2` tool line for chat, `/v1/embeddings`); the provider is seeded
+  **keyless per plan 48-A** (blank key — no SecretService needed in CI) with
+  caps corrected at seed time exactly like the plan-56 flow. Four smoke specs,
+  each 60 s-capped, workers=1, fresh temp data dir per run: **S1** fresh boot →
+  wizard auto-opens → skip → shell renders; **S2** create course → upload a
+  markdown fixture through the library create-menu input → extraction lands →
+  library search finds it; **S3** quiz generated from the mock via
+  `POST /quiz/generate` (validators-passing fixed question) → runner answers
+  "B 4" → Correct → Finish → "You scored 100%."; **S4** chat turn streams the
+  mock's fixed answer **with a prompt-grammar CALC tool card** (tool executed
+  server-side, "Show details for Calculate" renders, trace shows 1 tool).
+  Harness hardening: children spawn detached with logs piped to
+  `test-results/*.log`, teardown kills the whole process group (plain
+  `kill <pid>` misses uv's python child; `/bin/sh` kill has no `--`), state
+  (ports/pids) rides `e2e/.state.json` (gitignored). CI: new `e2e` job
+  (ubuntu, `playwright install --with-deps chromium`, artifact upload on
+  failure) and the same smoke added to the **release gate** after the unit
+  suites. Known e2e ordering constraint: the chat spec runs before the
+  course specs so its session has no course bound (keeps the citation-contract
+  repair path out of the smoke). Frontend gate green incl. e2e 4/4; backend
+  untouched.
+
 - 2026-09-01 — **feat(ai): plan 48 — local-first AI engines (A/B/D complete, C
   verified against live Ollama; ADR-105).** **48-A presets:** `PRESETS` gained
   `llama_cpp` (`http://localhost:8080/v1`) and `lm_studio`
