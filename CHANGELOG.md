@@ -5,6 +5,15 @@ All notable changes to **Study Assistant** are documented here.
 ## [Unreleased]
 
 ### Added
+- **Sidebar footer project block** — "Part of Neuronection" (mark + wordmark
+  link), the three family assistants (Health / Career / Study — library
+  marks, aligned names, external links, the current app emphasized), Fund +
+  About pills and the app version (from `frontend/package.json`). The Fund
+  popup reuses the library `SponsorCard` (Buy Me a Coffee + GitHub star
+  channels in `config/funding.tsx`, also wired into the About page). Copy
+  lives in the app locale — the library stays presentational per ADR-006.
+- **`@neuronection/assistant-ui` ^0.16.0** — compact SponsorCard redesign,
+  clickable current-app FamilyBadge, `SidebarNav.secondaryItems`.
 - **Plan 50 — sharing & OSS readiness** — four slices, four commits:
   - **`ca-course/v2` course bundles (ADR-109)** — bundles now carry the full
     learning state: flashcards with FSRS schedules (review log opt-in),
@@ -29,6 +38,11 @@ All notable changes to **Study Assistant** are documented here.
 
 ### Changed
 
+- **Sidebar nav structure** — Settings is now a pinned `secondaryItems`
+  entry on the library `SidebarNav` (replacing the hand-rolled footer
+  link) and the About link becomes the footer block's About pill;
+  `/about` itself is unchanged. `frontend/package.json` now carries the
+  app version (propagated by `version_manager.toml` on every bump).
 - **App shell nav on the shared library primitive** — the primary
   sidebar navigation is now `SidebarNav` from `@neuronection/assistant-ui`
   (keyboard navigation, `aria-current`, family-standard visuals), driven

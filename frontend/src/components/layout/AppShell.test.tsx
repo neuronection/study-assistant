@@ -122,10 +122,18 @@ describe('AppShell rail', () => {
     expect(screen.queryByRole('link', { name: 'Exercises' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Notes' })).not.toBeInTheDocument()
     // primary nav entries are controlled buttons (SidebarNav) — the router
-    // stays app-side; Settings stays a footer link
+    // stays app-side; Settings is pinned via secondaryItems, About lives in
+    // the footer project block
     expect(screen.getByRole('button', { name: 'Scores' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tutor' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument()
+  })
+
+  test('sidebar footer shows the family block, About pill and app version', async () => {
+    renderShell()
+    expect(await screen.findByText('More from the family')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'About' })).toBeInTheDocument()
+    expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
   })
 
   test('course switcher lists courses and picking one activates the course and navigates', async () => {

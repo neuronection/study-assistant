@@ -21,6 +21,16 @@
     "noCoursesMatch": "No courses match",
     "selectCourse": "Select a course"
   },
+  "footer": {
+    "partOf": "Part of",
+    "moreFromFamily": "More from the family",
+    "assistant": "Assistant",
+    "fund": "Fund",
+    "version": "v{{version}}"
+  },
+  "sponsor": {
+    "title": "Help Study Assistant grow"
+  },
   "common": {
     "clearSearch": "Clear search",
     "search": "Search",

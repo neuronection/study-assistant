@@ -7,7 +7,6 @@ import {
   FolderClosed,
   GraduationCap,
   Home,
-  Info,
   Layers,
   MessageSquare,
   NotebookPen,
@@ -25,6 +24,7 @@ import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
 import { WindowDropOverlay } from './WindowDropOverlay'
 import { ActivityButton } from './ActivityPopover'
 import { ProfileDialog } from './ProfileDialog'
+import { SidebarFooter } from './SidebarFooter'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { Popover } from '@/components/ui/popover'
 import { SidebarNav } from '@/components/ui/sidebar-nav'
@@ -452,38 +452,13 @@ export function AppShell() {
             label: t(labelKey),
             icon,
           }))}
+          secondaryItems={[{ id: '/settings', label: t('nav.settings'), icon: Settings }]}
           activeId={resolveActiveId(location.pathname)}
           onNavigate={(id) => void navigate({ to: id })}
           labels={{ navAria: t('nav.primary') }}
           className="w-full flex-1 border-r-0 bg-transparent"
         />
         <div className="space-y-2 border-t border-border p-3">
-          <Link
-            to="/settings"
-            aria-current={location.pathname.startsWith('/settings') ? 'page' : undefined}
-            className={cn(
-              'focus-visible:outline-ring flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-              location.pathname.startsWith('/settings')
-                ? 'bg-surface font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Settings className="size-4" aria-hidden />
-            {t('nav.settings')}
-          </Link>
-          <Link
-            to="/about"
-            aria-current={location.pathname === '/about' ? 'page' : undefined}
-            className={cn(
-              'focus-visible:outline-ring flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-              location.pathname === '/about'
-                ? 'bg-surface font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Info className="size-4" aria-hidden />
-            {t('nav.about')}
-          </Link>
           <button
             type="button"
             className={cn(
@@ -520,6 +495,15 @@ export function AppShell() {
               >
                 <MessageSquare className="size-4" aria-hidden />
               </button>
+            </div>
+          </div>
+          <div className="pt-3">
+            <div
+              aria-hidden
+              className="via-border bg-linear-to-r from-transparent h-px to-transparent"
+            />
+            <div className="pt-3">
+              <SidebarFooter />
             </div>
           </div>
         </div>
