@@ -27,3 +27,4 @@ packaging/_deb/
 packaging/_appimage/
 packaging/*.deb
 packaging/*.AppImage
+.assistant-ui-dev-link.json
