@@ -8106,8 +8106,18 @@
             "title": "Created",
             "type": "boolean"
           },
+          "flashcards": {
+            "default": 0,
+            "title": "Flashcards",
+            "type": "integer"
+          },
           "materials": {
             "title": "Materials",
+            "type": "integer"
+          },
+          "quiz_questions": {
+            "default": 0,
+            "title": "Quiz Questions",
             "type": "integer"
           }
         },

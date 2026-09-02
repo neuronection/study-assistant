@@ -28,6 +28,8 @@ export function AboutPage() {
         linksTitle="Contact & Connect"
         links={[
           { group: 'Project', href: 'https://github.com/neuronection/study-assistant', label: 'GitHub', subtitle: 'neuronection/study-assistant', icon: GitHubGlyph },
+          { group: 'Family', href: 'https://neuronection.com', label: 'neuronection.com', subtitle: 'The Neuronection family hub', icon: GitHubGlyph },
+          { group: 'Family', href: 'https://github.com/neuronection/assistant-ui', label: 'assistant-ui', subtitle: 'Shared UI library', icon: GitHubGlyph },
           { group: 'Creator', href: 'https://www.linkedin.com/in/ilias-chatzopoulos-aabb22163/', label: 'LinkedIn', subtitle: 'Ilias Chatzopoulos', icon: LinkedInGlyph },
           { group: 'Creator', copyValue: 'constliakos@gmail.com', label: 'constliakos@gmail.com', subtitle: 'Click to copy', icon: Mail },
         ]}

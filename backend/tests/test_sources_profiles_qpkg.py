@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.ai.gateway import LLMGateway, Message, ResolvedModel
@@ -292,3 +293,50 @@ def test_sample_course_onboarding() -> None:
 
         hits = client.get("/api/v1/search", params={"q": "power rule"}).json()["hits"]
         assert len(hits) >= 1
+
+
+def test_sample_course_study_content() -> None:
+    from datetime import date, timedelta
+
+    from app.domain.models import Activity, Concept, FsrsState, Question
+
+    client = make_client()
+    with client:
+        created = client.post("/api/v1/onboarding/sample")
+        assert created.status_code == 201, created.text
+        body = created.json()
+        assert body["flashcards"] == 6
+        assert body["quiz_questions"] == 3
+
+        courses = client.get("/api/v1/courses").json()
+        sample = next(c for c in courses if c["title"] == "Calculus I (sample)")
+        course_id = sample["id"]
+        exam_date = sample["exam_date"]
+        assert exam_date is not None
+        assert date.fromisoformat(exam_date[:10]) <= date.today() + timedelta(days=15)
+
+        cards = client.get("/api/v1/flashcards", params={"course_id": course_id}).json()
+        assert len(cards) == 6
+        due = client.get("/api/v1/flashcards/due", params={"course_id": course_id}).json()
+        assert len(due) == 2
+
+        activities = client.get(
+            "/api/v1/quiz/activities", params={"course_id": course_id}
+        ).json()
+        assert [a["title"] for a in activities] == ["Sample quiz — Derivatives"]
+
+        app = client.app
+        assert isinstance(app, FastAPI)
+        with app.state.session_factory() as db:
+            activity = db.query(Activity).filter(Activity.course_id == course_id).one()
+            questions = db.query(Question).filter(Question.activity_id == activity.id).all()
+            assert len(questions) == 3
+            assert all(q.concept_ids for q in questions)
+            concepts = db.query(Concept).filter(Concept.course_id == course_id).all()
+            assert [c.name for c in concepts] == ["Derivatives"]
+            states = (
+                db.query(FsrsState)
+                .filter(FsrsState.card_id.in_([card["id"] for card in cards]))
+                .all()
+            )
+            assert len(states) == 6

@@ -41,6 +41,17 @@ Every step can be skipped, and the wizard is never forced on you again — but y
 can re-run it any time via **Run setup wizard** on the Home onboarding card or in
 the empty state of Settings → Providers.
 
+## The sample course
+
+*Calculus I (sample)* is a one-click demo of the full loop, loaded with real
+content: three short Markdown chapters (derivatives, limits, integration — all
+rendered with KaTeX), a **3-question sample quiz** (single choice, numeric with
+deterministic grading, true/false), **6 flashcards in the FSRS queue — 2 already
+due** so the Home review tile and the Practice tab light up honestly, a
+**Derivatives concept** linked to the questions and the course root for the
+diagnostics, and an **exam date two weeks out** so the countdown on Home has
+something to count. Everything is editable or deletable like any other course.
+
 ## Connect an AI provider (required for AI features)
 
 1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —

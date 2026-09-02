@@ -6101,8 +6101,18 @@ export interface components {
             course_id: number;
             /** Created */
             created: boolean;
+            /**
+             * Flashcards
+             * @default 0
+             */
+            flashcards: number;
             /** Materials */
             materials: number;
+            /**
+             * Quiz Questions
+             * @default 0
+             */
+            quiz_questions: number;
         };
         /** SaveIn */
         SaveIn: {

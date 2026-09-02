@@ -1,14 +1,29 @@
+from datetime import date, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..domain.models import AiModel, Course, DefaultTaskAssignment, Material, Provider
+from ..domain.models import (
+    Activity,
+    AiModel,
+    Concept,
+    Course,
+    DefaultTaskAssignment,
+    FsrsState,
+    Material,
+    NodeConcept,
+    Provider,
+    Question,
+    utcnow,
+)
 from ..pipelines.chunking import chunk_markdown
 from ..pipelines.ingest import _store_extraction
 from ..services.content.materials import detect_kind
+from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study.cards import create_card_exercise
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
 from .deps import get_session
@@ -101,6 +116,135 @@ class SampleCourseOut(BaseModel):
     course_id: int
     materials: int
     created: bool
+    flashcards: int = 0
+    quiz_questions: int = 0
+
+
+SAMPLE_QUESTIONS: list[dict[str, Any]] = [
+    {
+        "type": "single",
+        "stem": [{"type": "text", "md": "Which rule gives $(fg)' = f'g + fg'$?"}],
+        "options": [
+            {"type": "text", "md": "Product rule"},
+            {"type": "text", "md": "Quotient rule"},
+            {"type": "text", "md": "Chain rule"},
+            {"type": "text", "md": "Power rule"},
+        ],
+        "answer": {"index": 0},
+        "explanation": [{"type": "text", "md": "That identity **is** the product rule."}],
+        "difficulty": 1,
+        "bloom": "remember",
+        "skill": "conceptual",
+        "expected_time_sec": 30,
+    },
+    {
+        "type": "numeric",
+        "stem": [{"type": "text", "md": "Differentiate $f(x) = x^3$ and evaluate at $x = 2$."}],
+        "answer": {"value": "12"},
+        "explanation": [
+            {"type": "text", "md": "Power rule: $f'(x) = 3x^2$, so $f'(2) = 12$."}
+        ],
+        "difficulty": 2,
+        "bloom": "apply",
+        "skill": "procedural",
+        "expected_time_sec": 45,
+    },
+    {
+        "type": "truefalse",
+        "stem": [
+            {"type": "text", "md": "True or false: $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$."}
+        ],
+        "answer": {"value": True},
+        "explanation": [
+            {"type": "text", "md": "The standard limit; direct substitution gives $0/0$."}
+        ],
+        "difficulty": 2,
+        "bloom": "remember",
+        "skill": "conceptual",
+        "expected_time_sec": 30,
+    },
+]
+
+SAMPLE_CARDS: list[tuple[str, str, int]] = [
+    ("State the power rule", "$f'(x) = n x^{n-1}$", 0),
+    ("State the product rule", "$(fg)' = f'g + fg'$", 0),
+    ("State the quotient rule", "$\\left(\\frac{f}{g}\\right)' = \\frac{f'g - fg'}{g^2}$", 3),
+    ("State the chain rule", "$(f \\circ g)'(x) = f'(g(x))\\,g'(x)$", 5),
+    ("$\\int x^n\\,dx = ?$", "$\\frac{x^{n+1}}{n+1} + C$ for $n \\neq -1$", 8),
+    (
+        "What does continuity at $a$ require?",
+        "The limit exists, equals $f(a)$, and $f$ is defined at $a$",
+        12,
+    ),
+]
+
+
+def _seed_sample_study_content(session: Session, course: Course) -> tuple[int, int]:
+    tree = TreeService(session)
+    root = tree.ensure_root(course.id)
+
+    concept = Concept(
+        course_id=course.id,
+        name="Derivatives",
+        description="Rules for differentiating sums, products, quotients and compositions.",
+    )
+    session.add(concept)
+    session.flush()
+    session.add(NodeConcept(node_id=root.id, concept_id=concept.id, weight=1.0))
+
+    activity = Activity(
+        profile_id=course.profile_id,
+        course_id=course.id,
+        node_id=root.id,
+        type="quiz",
+        title="Sample quiz — Derivatives",
+    )
+    session.add(activity)
+    session.flush()
+    for draft in SAMPLE_QUESTIONS:
+        session.add(
+            Question(
+                activity_id=activity.id,
+                type=str(draft["type"]),
+                stem=draft["stem"],
+                options=draft.get("options"),
+                answer=draft["answer"],
+                explanation=draft["explanation"],
+                difficulty=draft["difficulty"],
+                bloom=draft["bloom"],
+                skill=draft["skill"],
+                concept_ids=[concept.id],
+                expected_time_sec=draft["expected_time_sec"],
+                flag="ok",
+            )
+        )
+
+    now = utcnow()
+    for index, (front, back, due_in_days) in enumerate(SAMPLE_CARDS):
+        card = create_card_exercise(
+            session,
+            profile_id=course.profile_id,
+            course_id=course.id,
+            node_id=root.id,
+            kind="basic",
+            front=[{"type": "text", "md": front}],
+            back=[{"type": "text", "md": back}],
+            source="sample",
+        )
+        session.add(
+            FsrsState(
+                card_id=card.id,
+                state="review",
+                stability=2.5,
+                difficulty=5.0,
+                reps=1,
+                lapses=0,
+                due_at=now + timedelta(days=due_in_days, minutes=-index),
+                last_review_at=now - timedelta(days=1),
+            )
+        )
+    session.flush()
+    return len(SAMPLE_CARDS), len(SAMPLE_QUESTIONS)
 
 
 @router.post("/sample", status_code=201, response_model=SampleCourseOut)
@@ -118,6 +262,7 @@ def create_sample_course(
         subject="Mathematics",
         level="Introductory",
         description="A small sample course so you can try everything immediately.",
+        exam_date=date.today() + timedelta(days=14),
     )
     session.add(course)
     session.flush()
@@ -147,5 +292,16 @@ def create_sample_course(
         material.status = "ready"
         _ = chunk_markdown(markdown)
         created += 1
+    try:
+        flashcards, quiz_questions = _seed_sample_study_content(session, course)
+    except TreeError as error:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"sample course incomplete: {error}") from error
     session.commit()
-    return {"course_id": course.id, "materials": created, "created": True}
+    return {
+        "course_id": course.id,
+        "materials": created,
+        "created": True,
+        "flashcards": flashcards,
+        "quiz_questions": quiz_questions,
+    }
