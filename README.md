@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/neuronection/study-assistant?include_prereleases)](https://github.com/neuronection/study-assistant/releases)
 [![Status](https://img.shields.io/badge/status-pre--release-orange.svg)](docs/STATUS.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Browser-lightgrey.svg)](#quick-start)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Browser%20%7C%20Docker-lightgrey.svg)](#quick-start)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
@@ -29,6 +29,7 @@
 - [Features](#features)
 - [Math you can trust](#math-you-can-trust)
 - [Quick start](#quick-start)
+  - [Run as a web service (Docker)](#run-as-a-web-service-docker)
 - [Architecture at a glance](#architecture-at-a-glance)
 - [Documentation](#documentation)
 - [Tech stack](#tech-stack)
@@ -192,6 +193,23 @@ pnpm webapp                               # build + serve + open http://127.0.0.
 uvicorn + Vite with hot reload on `localhost:5173`; `pnpm app` opens the pywebview
 desktop window. All modes accept `--reset` to wipe local data. Override the port with
 `SA_PORT`.
+
+### Run as a web service (Docker)
+
+Self-host the web app on a server with the family-standard standalone stack
+(backend image + nginx; SQLite stays by design — all state lives in one
+volume):
+
+```bash
+docker compose -f docker/docker-compose.standalone.yml up -d --build
+# → http://localhost
+```
+
+TLS-terminating config, backups, and ops scripts (`scripts/run-docker.sh`,
+`scripts/update-docker.sh`) are covered in [docker/README.md](docker/README.md).
+Pre-built images are published on GHCR with every release
+(`STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag>`). Note: SQLite + a single data
+volume mean one backend replica — horizontal scale is out of scope by design.
 
 ### Connect an AI provider
 

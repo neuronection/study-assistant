@@ -16,7 +16,9 @@ so keep your own backups).
 2. **Every unit of work updates documentation.** Code changes that alter behavior,
    architecture, schema, or APIs require same-commit doc updates (`docs/STATUS.md` at
    minimum — see the `sa-docs-sync` skill). A PR that changes code but not docs is
-   incomplete.
+   incomplete — CI enforces the CHANGELOG half of this on PRs
+   (`scripts/check-changelog.sh`, family standard per `dev/guidelines/deployment.md`
+   and the `family-docs-sync` skill).
 3. **Scope discipline.** Work only on the current phase (see `docs/STATUS.md` and
    `dev/plans/05-roadmap.md`). The v0.1 walking skeleton may not slip. Features outside
    the current phase need explicit user approval first.

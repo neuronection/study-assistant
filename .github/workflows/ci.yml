@@ -84,3 +84,15 @@ jobs:
         with:
           name: playwright-artifacts
           path: frontend/test-results/
+  docs-sync:
+    name: Docs sync (CHANGELOG gate)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: User-visible changes must update CHANGELOG.md
+        run: |
+          BASE="$(git merge-base HEAD "origin/${{ github.event.pull_request.base.ref }}")"
+          scripts/check-changelog.sh "$BASE"
