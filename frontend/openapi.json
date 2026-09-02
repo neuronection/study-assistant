@@ -6880,6 +6880,11 @@
             "default": "seeded",
             "title": "Source",
             "type": "string"
+          },
+          "spotted": {
+            "default": 0,
+            "title": "Spotted",
+            "type": "integer"
           }
         },
         "required": [

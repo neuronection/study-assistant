@@ -5710,6 +5710,11 @@ export interface components {
              * @default seeded
              */
             source: string;
+            /**
+             * Spotted
+             * @default 0
+             */
+            spotted: number;
         };
         /** PatternProposalOut */
         PatternProposalOut: {

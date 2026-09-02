@@ -104,3 +104,26 @@ pure geometry — no LLM anywhere in the verify path:
 - **Error tags** (`boundary_kind`, `missed_region`, `extra_region`,
   `missed_point`, `extra_point`) flow into the mistake notebook like any other
   graded answer; the attempt report carries the exact payload for replay.
+
+## Error-spot flaw proofing (`error_spot`, plan 51-C, ADR-114)
+
+Finding someone else's mistake is graded without an LLM, and the flaw itself is
+proven before the exercise is ever banked:
+
+- **Proof of wrongness (generation-time)**: the generator returns both solution
+  versions with per-line math answers; validators require every answer to parse
+  (`parse_math`), the flawed line's answer to be **non-equivalent** to the
+  correct one (equivalence chain), and every other line's answer to be
+  **equivalent** between the versions — exactly one provable flaw or the draft
+  is rejected into repair.
+- **Detector-seeded flaws (deterministic-first)**: for patterns with a code
+  detector, the flawed answer must additionally *equal the detector's
+  transformation* of the correct one — `sign_slip` → `-(correct)`,
+  `dropped_factor` → `<seeded factor>*(correct)` — proven by the chain at
+  generation time, so the drill exercises exactly the tagged misconception.
+- **Grading (student side)**: picking the flawed line is exact (deterministic);
+  when the exercise requires a correction (`requires_fix`), the typed fix is
+  graded by the equivalence chain against the true line's answer — right pick
+  with a missing or non-equivalent fix is incorrect with feedback naming which
+  half failed. Legacy pick-only responses stay deterministic. The rubric LLM
+  path remains only as the fallback for malformed responses.

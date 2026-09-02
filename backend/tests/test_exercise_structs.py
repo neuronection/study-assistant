@@ -336,6 +336,15 @@ ERROR_SPOT_DRAFT = json.dumps(
                 "$d/dx (e^x) = e^x$",
             ],
             "flaw_index": 1,
+            "lines_correct": [
+                "$d/dx (3x^2) = 6x$",
+                "$d/dx (\\sin(2x)) = 2\\cos(2x)$",
+                "$d/dx (e^x) = e^x$",
+            ],
+            "answers_flawed": ["6*x", "cos(2*x)", "e**x"],
+            "answers_correct": ["6*x", "2*cos(2*x)", "e**x"],
+            "correct_line": "$d/dx (\\sin(2x)) = 2\\cos(2x)$",
+            "requires_fix": False,
             "rubric": [
                 {"id": "chain", "text": "the missing inner derivative factor 2"}
             ],
@@ -405,6 +414,51 @@ def test_validate_rubric_payload() -> None:
                 "rubric": [{"id": "a", "text": "t"}],
                 "lines": ["a", "b"],
                 "flaw_index": 9,
+            },
+        )
+        != []
+    )
+    assert (
+        validate_rubric_payload(
+            "error_spot",
+            {
+                "rubric": [{"id": "a", "text": "t"}],
+                "lines": ["a", "b"],
+                "flaw_index": 0,
+                "lines_correct": ["a", "b"],
+                "answers_flawed": ["x", "y"],
+                "answers_correct": ["x", "y"],
+                "correct_line": "a",
+            },
+        )
+        != []
+    )
+    assert (
+        validate_rubric_payload(
+            "error_spot",
+            {
+                "rubric": [{"id": "a", "text": "t"}],
+                "lines": ["a", "b"],
+                "flaw_index": 0,
+                "lines_correct": ["a", "b"],
+                "answers_flawed": ["x", "y"],
+                "answers_correct": ["x", "y"],
+                "correct_line": "a",
+            },
+        )
+        != []
+    )
+    assert (
+        validate_rubric_payload(
+            "error_spot",
+            {
+                "rubric": [{"id": "a", "text": "t"}],
+                "lines": ["a", "b"],
+                "flaw_index": 0,
+                "lines_correct": ["a", "b"],
+                "answers_flawed": ["x", "y*3"],
+                "answers_correct": ["x", "y"],
+                "correct_line": "a",
             },
         )
         != []

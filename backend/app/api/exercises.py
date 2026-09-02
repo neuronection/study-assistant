@@ -132,6 +132,7 @@ class PatternOut(BaseModel):
     example: str | None = None
     source: str = "seeded"
     occurrences: int
+    spotted: int = 0
 
 
 class PatternProposalOut(BaseModel):
@@ -401,6 +402,7 @@ def drill_patterns(
     service = ErrorPatternService(session)
     patterns = service.resolve(course_id)
     counts = service.counts(course_id)
+    spotted = service.spotted_counts(course_id)
     return [
         PatternOut(
             pattern=pattern.key,
@@ -409,6 +411,7 @@ def drill_patterns(
             example=pattern.example,
             source="seeded" if pattern.is_system else "discovered",
             occurrences=counts.get(pattern.key, 0),
+            spotted=spotted.get(pattern.key, 0),
         )
         for pattern in patterns
     ]
@@ -481,21 +484,24 @@ def start_drill(
     if pattern is None or not pattern.is_active or pattern.key not in resolved:
         raise HTTPException(status_code=422, detail="unknown error pattern")
     course = session.get(Course, body.course_id)
-    exercise = _run_exgen(
-        request,
-        session,
-        profile.id,
-        course_id=body.course_id,
-        node_id=None,
-        topic=None,
-        difficulty=None,
-        step_count=3,
-        context=None,
-        pattern=body.pattern,
-        pattern_description=pattern.description,
-        pattern_example=pattern.example,
-        subject=course.subject if course is not None else None,
-    )
+    try:
+        exgen = ExgenService(session, request.app.state.gateway)
+        exercise = exgen.generate_error_spot_drill(
+            profile.id,
+            course_id=body.course_id,
+            node_id=None,
+            pattern=pattern.key,
+            pattern_description=pattern.description,
+            pattern_example=pattern.example,
+            subject=course.subject if course is not None else None,
+            detection=pattern.detection,
+        )
+    except (ExgenError, TaskUnassigned, ProviderError) as error:
+        session.rollback()
+        raise HTTPException(
+            status_code=502 if isinstance(error, (TaskUnassigned, ProviderError)) else 422,
+            detail=str(error),
+        ) from error
     session.commit()
     return _exercise_out(exercise, len(exercise.steps))
 

@@ -35,6 +35,11 @@ function PatternRow({
               {t('exercises.occurrences', { count: pattern.occurrences })}
             </span>
           ) : null}
+          {pattern.spotted ? (
+            <span className="bg-success/15 text-success rounded-full px-2 py-0.5 text-[11px]">
+              {t('exercises.spotted', { count: pattern.spotted })}
+            </span>
+          ) : null}
         </p>
         <p className="text-muted-foreground truncate text-xs">{pattern.description}</p>
       </div>

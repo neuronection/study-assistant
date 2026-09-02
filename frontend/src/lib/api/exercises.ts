@@ -29,6 +29,7 @@ export interface ExerciseStepInput {
   prompt_md?: string
   blank_count?: number
   lines?: string[]
+  requires_fix?: boolean
   min?: number
   max?: number
 }
@@ -203,6 +204,7 @@ export interface DrillPattern {
   example?: string | null
   source: 'seeded' | 'discovered'
   occurrences: number
+  spotted?: number
 }
 
 export interface PatternProposal {

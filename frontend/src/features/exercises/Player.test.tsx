@@ -272,7 +272,12 @@ describe('exercise Player rubric kinds', () => {
     fireEvent.click(radios[1])
     expect(submit.disabled).toBe(false)
     fireEvent.click(submit)
-    await waitFor(() => expect(submitStepAnswer).toHaveBeenCalledWith(3, '1'))
+    await waitFor(() =>
+      expect(submitStepAnswer).toHaveBeenCalledWith(
+        3,
+        JSON.stringify({ picked: [1], fix: '' }),
+      ),
+    )
     expect(await screen.findByText(/error_spot: correct/i)).toBeInTheDocument()
   })
 

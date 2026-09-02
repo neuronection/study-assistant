@@ -257,20 +257,30 @@ def test_similar_rejects_identical_variant() -> None:
 def test_drill_patterns_and_start() -> None:
     client = make_client(
         [
-            exercise_json(
-                steps=[
-                    {
-                        "prompt_md": "Differentiate $-3x^2$.",
-                        "expected_kind": "math",
-                        "expected_value": "-6x",
+            json.dumps(
+                {
+                    "title": "Spot the sign slip",
+                    "kind": "error_spot",
+                    "prompt_md": "One line below is flawed. Identify it and supply the fix.",
+                    "difficulty": 2,
+                    "payload": {
+                        "prompt_md": "One line below is flawed. Identify it and supply the fix.",
+                        "lines": [
+                            "$d/dx (-3x^2) = 6x$",
+                            "At $x = 1$: $6$",
+                        ],
+                        "flaw_index": 0,
+                        "lines_correct": [
+                            "$d/dx (-3x^2) = -6x$",
+                            "At $x = 1$: $-6$",
+                        ],
+                        "answers_flawed": ["6*x", "6"],
+                        "answers_correct": ["-6*x", "6"],
+                        "correct_line": "$d/dx (-3x^2) = -6x$",
+                        "requires_fix": True,
+                        "rubric": [{"id": "sign", "text": "the flipped minus sign"}],
                     },
-                    {
-                        "prompt_md": "Evaluate at $x=1$.",
-                        "expected_kind": "numeric",
-                        "expected_value": "-6",
-                    },
-                ],
-                title="Sign slip drill",
+                }
             )
         ]
     )

@@ -27,23 +27,33 @@ EQUATION_QUIZ = json.dumps(
     }
 )
 
-DRILL_JSON = json.dumps(
+ERROR_SPOT_DRILL_JSON = json.dumps(
     {
-        "title": "Sign slip drill",
-        "context_md": "Differentiate step by step.",
+        "title": "Spot the dropped term",
+        "kind": "error_spot",
+        "prompt_md": "One line below is flawed. Identify it and supply the fix.",
         "difficulty": 2,
-        "steps": [
-            {
-                "prompt_md": "Differentiate $-3x^2$.",
-                "expected_kind": "math",
-                "expected_value": "-6x",
-            },
-            {
-                "prompt_md": "Evaluate at $x=1$.",
-                "expected_kind": "numeric",
-                "expected_value": "-6",
-            },
-        ],
+        "payload": {
+            "prompt_md": "One line below is flawed. Identify it and supply the fix.",
+            "lines": [
+                "Let $f = x^2$ and $g = \\sin x$.",
+                "$f' = 2x$ and $g' = \\cos x$.",
+                "$f'g + fg' = 2x\\sin x$",
+            ],
+            "flaw_index": 2,
+            "lines_correct": [
+                "Let $f = x^2$ and $g = \\sin x$.",
+                "$f' = 2x$ and $g' = \\cos x$.",
+                "$f'g + fg' = 2x\\sin x + x^2\\cos x$",
+            ],
+            "answers_flawed": ["x**2", "2*x", "2*x*sin(x)"],
+            "answers_correct": ["x**2", "2*x", "2*x*sin(x) + x**2*cos(x)"],
+            "correct_line": "$f'g + fg' = 2x\\sin x + x^2\\cos x$",
+            "requires_fix": True,
+            "rubric": [
+                {"id": "second_term", "text": "the missing $x^2\\cos x$ term"}
+            ],
+        },
     }
 )
 
@@ -227,7 +237,11 @@ def test_propose_empty_without_mistakes() -> None:
 
 def test_propose_and_approve_discovered_pattern() -> None:
     client = make_client(
-        {"quizgen": [EQUATION_QUIZ], "description": [PROPOSALS_JSON], "exgen": [DRILL_JSON]}
+        {
+            "quizgen": [EQUATION_QUIZ],
+            "description": [PROPOSALS_JSON],
+            "exgen": [ERROR_SPOT_DRILL_JSON],
+        }
     )
     with client:
         math = make_course(client, "math")

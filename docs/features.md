@@ -324,6 +324,22 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   detected deterministically by the equivalence chain at grade time, and the AI
   proposes new patterns from recent wrong answers via approve/dismiss HITL cards
   (`pattern.discover`) — D8/G10
+- ✅ **Error-spotting exercises, deterministic-first (C20, plan 51-C, ADR-114)**:
+  drills are now proven `error_spot` exercises — the generator returns both the
+  flawed and the fully-correct solution with per-line math answers, and
+  validators prove via the equivalence chain that exactly one line is wrong
+  (flawed ≢ correct at the flaw, every other line equivalent, both versions'
+  answers parse) before anything is banked; when the pattern has a code detector
+  (`sign_slip`/`dropped_factor`) the flawed answer must additionally carry
+  exactly the detector's signature (negation / a seeded factor multiple) —
+  ADR-114's deterministic-first seeding. Grading is deterministic: picking the
+  flawed line is exact; drills require typing the corrected line's answer,
+  graded by the equivalence chain against the true line (right pick + wrong/missing
+  fix = incorrect with precise feedback; legacy pick-only responses still grade).
+  The DrillsCard shows a per-pattern **spotted** count (correct picks on drills,
+  tracked separately from your own mistakes); every error_spot generation —
+  generic or drill — carries the same proof. Lines input gains the correction
+  field (`requires_fix` on the step input) — C20
 - ✅ Multi-step exercises with expected answers per step; session transcript
   endpoint (every answer + hint visible in order) — D1/D5/D10
 - ✅ 5-level hint ladder (clarify → nudge → strategy → partial → full); levels never

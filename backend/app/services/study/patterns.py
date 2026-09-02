@@ -3,7 +3,17 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...domain.models import Activity, Course, ErrorPattern, Mistake, Question, utcnow
+from ...domain.models import (
+    Activity,
+    Course,
+    ErrorPattern,
+    Exercise,
+    ExerciseSession,
+    Mistake,
+    Question,
+    StepAttempt,
+    utcnow,
+)
 from ...math.equivalence import equivalent
 
 
@@ -78,6 +88,22 @@ class ErrorPatternService:
             for pattern in self.resolve(course_id)
             if _detection_matches(pattern.detection, response, expected)
         ]
+
+    def spotted_counts(self, course_id: int) -> dict[str, int]:
+        rows = self._session.execute(
+            select(Exercise.created_from, StepAttempt.correct)
+            .join(ExerciseSession, ExerciseSession.exercise_id == Exercise.id)
+            .join(StepAttempt, StepAttempt.session_id == ExerciseSession.id)
+            .where(Exercise.course_id == course_id, Exercise.kind == "error_spot")
+        )
+        counts: dict[str, int] = {}
+        for created_from, correct in rows:
+            if not correct or not isinstance(created_from, dict):
+                continue
+            key = created_from.get("pattern")
+            if isinstance(key, str) and key:
+                counts[key] = counts.get(key, 0) + 1
+        return counts
 
     def create_discovered(
         self,

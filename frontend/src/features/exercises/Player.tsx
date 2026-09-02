@@ -17,7 +17,10 @@ import {
   structuralResponseComplete,
   type StructuralResponse,
 } from '@/components/exercise-inputs/ExerciseInput'
-import { RubricStepInput } from '@/components/exercise-inputs/RubricInputs'
+import {
+  RubricStepInput,
+  rubricResponseComplete,
+} from '@/components/exercise-inputs/RubricInputs'
 import { FocusShell, useFocusContext } from '@/components/layout/FocusShell'
 import { MathInput } from '@/components/math/MathInput'
 import type { Block } from '@/components/blocks/types'
@@ -192,7 +195,9 @@ export function Player({ exerciseId }: { exerciseId: number }) {
     ? numberlinePayloadComplete(numberline)
     : structuralStep
       ? structuralResponseComplete(step.input!, structural)
-      : answer.trim().length > 0
+      : rubricStep
+        ? rubricResponseComplete(step.input!, answer)
+        : answer.trim().length > 0
   const nextHintLevel = Math.min(hints.length + 1, 5)
 
   return (

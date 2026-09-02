@@ -8,7 +8,7 @@ from ..ai.skills import EXGEN_SYSTEM
 from ..ai.structured import ExerciseOut
 from ..ai.widgets import EXGEN_WIDGET_DOC, validate_widget_block
 from ..domain.models import Exercise, ExerciseStep
-from ..math.equivalence import expressions_equivalent, parse_math
+from ..math.equivalence import equivalent, expressions_equivalent, parse_math
 from ..math.regions import validate_region_answer
 from ..services.knowledge.context import ContextBundle
 from ..services.study.exercise_kinds import RUBRIC_KINDS, STRUCTURAL_KINDS
@@ -50,10 +50,19 @@ STRUCTURAL_SCHEMAS: dict[str, str] = {
     ),
     "error_spot": (
         '{"title": str, "kind": "error_spot", "prompt_md": str (instructions), '
-        '"payload": {"prompt_md": str, "lines": [str, ...] (a worked solution with '
-        "EXACTLY ONE flawed line), "
+        '"payload": {"prompt_md": str, "lines": [str, ...] (the worked solution '
+        "with EXACTLY ONE flawed line, shown to the student), "
         '"flaw_index": 0-based index of the flawed line, '
-        '"rubric": [{"id": str, "text": str}, ...] (what identifies the flaw)}}'
+        '"lines_correct": [str, ...] (the same solution fully correct), '
+        '"answers_flawed": [str, ...] (the key math answer of each flawed line, '
+        "sympy-parseable), "
+        '"answers_correct": [str, ...] (the key math answer of each correct line), '
+        '"correct_line": str (the corrected version of the flawed line), '
+        '"requires_fix": bool (whether the student must also type the corrected '
+        "line's answer), "
+        '"rubric": [{"id": str, "text": str}, ...] (what identifies the flaw)}} '
+        "— ONLY the flawed line may differ between the two versions; its flawed "
+        "answer must be provably non-equivalent to the correct one"
     ),
     "correct_solution": (
         '{"title": str, "kind": "correct_solution", "prompt_md": str (instructions), '
@@ -86,6 +95,76 @@ def _structural_problems(draft: dict[str, Any], kind: str) -> list[str]:
 
 class ExgenError(ValueError):
     pass
+
+
+def _is_number_str(value: Any) -> bool:
+    if not isinstance(value, str):
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
+def _seed_directive(detection: dict[str, Any] | None) -> str:
+    if not isinstance(detection, dict):
+        return ""
+    kind = detection.get("type")
+    if kind == "negated":
+        return (
+            "The pattern's flaw is a sign slip: the flawed line's answer must be "
+            "exactly the negation of the correct answer, -(correct answer)."
+        )
+    if kind == "factor":
+        factors = [value for value in detection.get("factors", []) if _is_number_str(value)]
+        if factors:
+            options = ", ".join(str(value) for value in factors)
+            return (
+                "The pattern's flaw is a dropped factor: the flawed line's answer "
+                "must be a constant multiple of the correct answer — use exactly "
+                f"one of these factors: {options} (factor*(correct answer))."
+            )
+    return ""
+
+
+def _seed_problems(detection: dict[str, Any] | None, payload: dict[str, Any]) -> list[str]:
+    if not isinstance(detection, dict):
+        return []
+    flaw_index = payload.get("flaw_index")
+    answers_flawed = payload.get("answers_flawed")
+    answers_correct = payload.get("answers_correct")
+    if (
+        not isinstance(flaw_index, int)
+        or not isinstance(answers_flawed, list)
+        or not isinstance(answers_correct, list)
+        or not 0 <= flaw_index < len(answers_flawed)
+        or flaw_index >= len(answers_correct)
+    ):
+        return []
+    flawed = answers_flawed[flaw_index]
+    correct = answers_correct[flaw_index]
+    if not isinstance(flawed, str) or not isinstance(correct, str):
+        return []
+    kind = detection.get("type")
+    if kind == "negated":
+        if not equivalent(flawed, f"-({correct})").equivalent:
+            return [
+                "error_spot: the flawed answer is not the sign-slip negation "
+                "of the correct one"
+            ]
+    elif kind == "factor":
+        matched = any(
+            _is_number_str(factor)
+            and equivalent(flawed, f"{factor}*({correct})").equivalent
+            for factor in detection.get("factors", [])
+        )
+        if not matched:
+            return [
+                "error_spot: the flawed answer is not a dropped-factor multiple "
+                "of the correct one"
+            ]
+    return []
 
 
 def _step_problems(step: dict[str, Any], index: int) -> list[str]:
@@ -420,6 +499,110 @@ class ExgenService:
         )
         self._session.flush()
         return exercise, []
+
+    def generate_error_spot_drill(
+        self,
+        profile_id: int,
+        *,
+        course_id: int | None,
+        node_id: int | None = None,
+        pattern: str,
+        pattern_description: str,
+        pattern_example: str | None,
+        subject: str | None,
+        detection: dict[str, Any] | None = None,
+    ) -> Exercise:
+        seed_directive = _seed_directive(detection)
+        sections = [
+            (
+                f"Create ONE error-spotting exercise for the error pattern "
+                f"'{pattern}': {pattern_description}."
+            ),
+            (
+                f"Example flaw: {pattern_example}"
+                if pattern_example
+                else "No example available."
+            ),
+            f"Course subject: {subject or 'general'}.",
+            (
+                "Return a JSON object with exactly this shape: "
+                + STRUCTURAL_SCHEMAS["error_spot"]
+            ),
+            (
+                "Build lines_correct as a fully correct worked solution (3-6 lines) "
+                "with one math answer per line (answers_correct), then the SAME "
+                "solution with exactly one flawed line (lines/answers_flawed/"
+                "flaw_index). Every other line stays identical and its answer "
+                "equivalent; the flawed answer must be provably non-equivalent to "
+                "the correct one. Set requires_fix to true."
+            ),
+        ]
+        if seed_directive:
+            sections.append(seed_directive)
+        prompt = "\n".join(sections)
+
+        def validate(draft: dict[str, Any]) -> list[str]:
+            problems = _structural_problems(draft, "error_spot")
+            problems.extend(_seed_problems(detection, draft.get("payload") or {}))
+            return problems
+
+        runner = TaskRunner(self._session, self._gateway)
+        result = runner.run_json(
+            task=EXGEN_TASK,
+            prompt=prompt,
+            validate=validate,
+            fallback_system=EXGEN_SYSTEM,
+            skill_key=EXGEN_SKILL,
+            course_id=course_id,
+            render_vars={"topic": pattern_description, "count": "1"},
+            max_rounds=MAX_REPAIR_ROUNDS,
+            error_type=ExgenError,
+            audit=AuditRef("exgen", None, f"error-spot drill {pattern}"),
+            schema=ExerciseOut,
+        )
+        if result.problems:
+            raise ExgenError(
+                "error-spot exercise did not pass validation after repairs: "
+                + "; ".join(result.problems[:10])
+            )
+        payload = dict(result.draft.get("payload") or {})
+        payload["requires_fix"] = True
+        flaw_index = payload.get("flaw_index")
+        lines_correct = result.draft.get("lines_correct")
+        if (
+            "correct_line" not in payload
+            and isinstance(lines_correct, list)
+            and isinstance(flaw_index, int)
+            and 0 <= flaw_index < len(lines_correct)
+        ):
+            payload["correct_line"] = lines_correct[flaw_index]
+        exercise = Exercise(
+            profile_id=profile_id,
+            course_id=course_id,
+            node_id=node_id,
+            title=str(result.draft.get("title", f"Spot the error: {pattern}")).strip()[:300],
+            kind="error_spot",
+            difficulty=(
+                float(result.draft.get("difficulty", 3) or 3)
+                if result.draft.get("difficulty") is not None
+                else None
+            ),
+            created_from={"source": "drill", "pattern": pattern},
+        )
+        self._session.add(exercise)
+        self._session.flush()
+        self._session.add(
+            ExerciseStep(
+                exercise_id=exercise.id,
+                order_idx=0,
+                prompt=[
+                    {"type": "text", "md": str(result.draft.get("prompt_md", ""))}
+                ],
+                expected={"kind": "error_spot", **payload},
+            )
+        )
+        self._session.flush()
+        return exercise
 
     def _build_structural_prompt(
         self,
