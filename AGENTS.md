@@ -71,6 +71,10 @@ local sibling `../assistant-ui`), not a third-party package — see the
   boundary rules, `scripts/verify-in-app.mjs` — details in the skill).
 - Styling via `--as-*` tokens and `data-as-*` only; app identity in
   `frontend/src/theme.css`.
+- **Dev-link hygiene:** never commit manifest edits while wired to the
+  local checkout (`link:` in `pnpm-workspace.yaml`). Guarded by
+  `scripts/check-dev-link.sh` in CI and as a pre-commit hook — enable
+  once per clone: `git config core.hooksPath scripts/githooks`.
 
 ## Standing workflow
 

@@ -46,6 +46,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: assistant-ui dev-link guard (never commit manifest edits)
+        run: scripts/check-dev-link.sh
       - run: pnpm install --frozen-lockfile
       - name: Generated API types drift guard
         run: |
