@@ -38,6 +38,7 @@ import { fuzzyFilter } from '@/lib/fuzzy'
 
 import { cn } from '@/lib/utils'
 import { storageKeys } from '@/lib/constants'
+import { useIsShortViewport } from '@/lib/use-media-query'
 import { PRIMARY_NAV, resolveActiveId } from '@/config/nav'
 
 const DESTINATIONS: Array<{
@@ -316,6 +317,7 @@ export function AppShell() {
   const [selected, setSelected] = useState<number | null>(null)
   const [profilesOpen, setProfilesOpen] = useState(false)
   const palette = useCommandPaletteOpen()
+  const shortViewport = useIsShortViewport()
   const courseList = courses.data ?? []
   const profileList = profiles.data ?? []
   const activeCourse = courseList.find((course) => course.id === courseId) ?? null
@@ -405,47 +407,7 @@ export function AppShell() {
 
   return (
     <div className="bg-surface text-foreground flex h-screen overflow-hidden">
-      <aside className="border-border bg-subtle flex w-60 shrink-0 flex-col border-r">
-        <div className="border-border border-b px-3 py-3">
-          <AppLogo />
-        </div>
-        <div className="border-border space-y-2 border-b px-3 py-3">
-          <button
-            type="button"
-            className="focus-visible:outline-ring text-muted-foreground hover:text-foreground border-border hover:border-border bg-surface flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-1"
-            title={t('palette.shortcut')}
-            aria-label={t('palette.shortcut')}
-            onClick={palette.openPalette}
-          >
-            <Search className="size-3.5 shrink-0" aria-hidden />
-            <span className="flex-1">{t('palette.searchLabel')}</span>
-            <kbd className="text-muted-foreground rounded border border-border px-1 text-[10px]">{t('palette.ctrlK')}</kbd>
-          </button>
-          {courseList.length > 0 ? (
-            <>
-              <CourseSwitcher
-                courses={courseList}
-                courseId={courseId}
-                selectLabel={t('nav.selectCourse')}
-                allLabel={t('workspace.allCourses')}
-                manageLabel={t('nav.courses')}
-                searchLabel={t('nav.searchCourses')}
-                emptyLabel={t('nav.noCoursesMatch')}
-                label={t('workspace.select')}
-                onPick={(next) => void openCourse(next)}
-              />
-              {activeCourse ? <QuickDestinations courseId={String(activeCourse.id)} /> : null}
-            </>
-          ) : (
-            <Link
-              to="/courses"
-              className="focus-visible:outline-ring border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-subtle flex items-center gap-2 rounded-md border px-2 py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-1"
-            >
-              <Plus className="size-3.5" aria-hidden />
-              {t('nav.createCourse')}
-            </Link>
-          )}
-        </div>
+      <aside className="border-border bg-subtle w-60 shrink-0 border-r">
         <SidebarNav
           items={PRIMARY_NAV.map(({ to, icon, labelKey }) => ({
             id: to,
@@ -456,57 +418,108 @@ export function AppShell() {
           activeId={resolveActiveId(location.pathname)}
           onNavigate={(id) => void navigate({ to: id })}
           labels={{ navAria: t('nav.primary') }}
-          className="w-full flex-1 border-r-0 bg-transparent"
-        />
-        <div className="space-y-2 border-t border-border p-3">
-          <button
-            type="button"
-            className={cn(
-              'focus-visible:outline-ring flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-              'text-muted-foreground hover:text-foreground'
-            )}
-            title={t('profiles.manage')}
-            onClick={() => setProfilesOpen(true)}
-          >
-            <UserRound className="size-4" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-left">
-              {selected === null
-                ? t('profiles.default')
-                : (profileList.find((profile) => profile.id === selected)?.name ??
-                  t('profiles.default'))}
-            </span>
-            <ChevronDown className="size-3.5 shrink-0" aria-hidden />
-          </button>
-          <div className="flex items-center justify-between pt-1">
-            <ThemeToggle />
-            <div className="flex items-center gap-1">
-              <ActivityButton />
+          compact={shortViewport}
+          className="h-full w-full border-r-0 bg-transparent"
+          header={
+            <div className="border-border bg-subtle space-y-2 border-b px-3 pb-3">
+              <div className="pt-3">
+                <AppLogo />
+              </div>
+              <button
+                type="button"
+                className="focus-visible:outline-ring text-muted-foreground hover:text-foreground border-border hover:border-border bg-surface flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-1"
+                title={t('palette.shortcut')}
+                aria-label={t('palette.shortcut')}
+                onClick={palette.openPalette}
+              >
+                <Search className="size-3.5 shrink-0" aria-hidden />
+                <span className="flex-1">{t('palette.searchLabel')}</span>
+                <kbd className="text-muted-foreground rounded border border-border px-1 text-[10px]">{t('palette.ctrlK')}</kbd>
+              </button>
+              {courseList.length > 0 ? (
+                <>
+                  <CourseSwitcher
+                    courses={courseList}
+                    courseId={courseId}
+                    selectLabel={t('nav.selectCourse')}
+                    allLabel={t('workspace.allCourses')}
+                    manageLabel={t('nav.courses')}
+                    searchLabel={t('nav.searchCourses')}
+                    emptyLabel={t('nav.noCoursesMatch')}
+                    label={t('workspace.select')}
+                    onPick={(next) => void openCourse(next)}
+                  />
+                  {activeCourse ? <QuickDestinations courseId={String(activeCourse.id)} /> : null}
+                </>
+              ) : (
+                <Link
+                  to="/courses"
+                  className="focus-visible:outline-ring border-border bg-surface text-muted-foreground hover:text-foreground hover:bg-subtle flex items-center gap-2 rounded-md border px-2 py-2 text-xs focus-visible:outline-2 focus-visible:outline-offset-1"
+                >
+                  <Plus className="size-3.5" aria-hidden />
+                  {t('nav.createCourse')}
+                </Link>
+              )}
+            </div>
+          }
+          footer={
+            <div className="space-y-2">
               <button
                 type="button"
                 className={cn(
-                  'focus-visible:outline-ring rounded-md p-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-                  chatOpen
-                    ? 'bg-surface text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                  'focus-visible:outline-ring flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
+                  'text-muted-foreground hover:text-foreground'
                 )}
-                title={chatOpen ? t('chat.close') : t('chat.open')}
-                aria-pressed={chatOpen}
-                onClick={() => (chatOpen ? closeChat() : setOpen(true))}
+                title={t('profiles.manage')}
+                onClick={() => setProfilesOpen(true)}
               >
-                <MessageSquare className="size-4" aria-hidden />
+                <UserRound className="size-4" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {selected === null
+                    ? t('profiles.default')
+                    : (profileList.find((profile) => profile.id === selected)?.name ??
+                      t('profiles.default'))}
+                </span>
+                <ChevronDown className="size-3.5 shrink-0" aria-hidden />
               </button>
+              <div className="flex items-center justify-between pt-1">
+                <ThemeToggle />
+                <div className="flex items-center gap-1">
+                  <ActivityButton />
+                  <button
+                    type="button"
+                    className={cn(
+                      'focus-visible:outline-ring rounded-md p-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
+                      chatOpen
+                        ? 'bg-surface text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title={chatOpen ? t('chat.close') : t('chat.open')}
+                    aria-pressed={chatOpen}
+                    onClick={() => (chatOpen ? closeChat() : setOpen(true))}
+                  >
+                    <MessageSquare className="size-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+              {shortViewport ? (
+                <div className="pt-1">
+                  <SidebarFooter compact />
+                </div>
+              ) : (
+                <div className="pt-3">
+                  <div
+                    aria-hidden
+                    className="via-border bg-linear-to-r from-transparent h-px to-transparent"
+                  />
+                  <div className="pt-3">
+                    <SidebarFooter />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-          <div className="pt-3">
-            <div
-              aria-hidden
-              className="via-border bg-linear-to-r from-transparent h-px to-transparent"
-            />
-            <div className="pt-3">
-              <SidebarFooter />
-            </div>
-          </div>
-        </div>
+          }
+        />
       </aside>
       <main className="flex-1 overflow-y-auto">
         <Outlet />

@@ -20,6 +20,10 @@ const fundPillClass =
   'focus-visible:outline-ring inline-flex h-8 items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-4 text-[13px] font-medium text-rose-600 transition-colors hover:bg-rose-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 [&_svg]:size-4 dark:text-rose-400'
 const aboutPillClass =
   'focus-visible:outline-ring inline-flex h-8 items-center rounded-full px-4 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2'
+const fundPillCompactClass =
+  'focus-visible:outline-ring inline-flex h-7 items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 [&_svg]:size-3.5 dark:text-rose-400'
+const aboutPillCompactClass =
+  'focus-visible:outline-ring inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-subtle hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2'
 
 /** Family assistants listed in the footer; every row links to its site. */
 const FAMILY_LINKS: {
@@ -37,66 +41,120 @@ const FAMILY_LINKS: {
  * Sidebar footer project block: family branding, the three family
  * assistants, About and Fund actions plus the version. Presentational
  * glue on library primitives — copy comes from i18n, channels from
- * config (ADR-006 keeps this app-side).
+ * config (ADR-006 keeps this app-side). `compact` (short viewports)
+ * drops the branding + family panel and slims the pills so the nav list
+ * keeps the space.
  */
-export function SidebarFooter() {
+export function SidebarFooter({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [fundOpen, setFundOpen] = useState(false)
 
   return (
     <div className="flex flex-col items-center gap-2.5">
-      <a
-        href={NEURONECTION_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="focus-visible:outline-ring flex items-center gap-1.5 self-start text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2"
-      >
-        <span>{t('footer.partOf')}</span>
-        <NeuronectionMark size={16} />
-        <NeuronectionWordmark height={14} />
-      </a>
-      <div className="bg-surface w-full rounded-md px-2 pb-1.5 pt-2">
-        <p className="text-muted-foreground px-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider">
-          {t('footer.moreFromFamily')}
-        </p>
-        {FAMILY_LINKS.map(({ name, Mark, href, current }) => (
-          <a
-            key={href}
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`${name} ${t('footer.assistant')}`}
-            className="focus-visible:outline-ring hover:bg-subtle group flex items-center gap-2 rounded-sm px-1.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            <Mark size={16} />
-            <span
-              className={`w-12 text-left ${
-                current ? 'text-foreground font-bold' : 'text-foreground font-medium'
-              }`}
+      {!compact && (
+        <a
+          href={NEURONECTION_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="focus-visible:outline-ring flex items-center gap-1.5 self-start text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          <span>{t('footer.partOf')}</span>
+          <NeuronectionMark size={16} />
+          <NeuronectionWordmark height={14} />
+        </a>
+      )}
+      {!compact && (
+        <div className="bg-surface w-full rounded-md px-2 pb-1.5 pt-2">
+          <p className="text-muted-foreground px-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider">
+            {t('footer.moreFromFamily')}
+          </p>
+          {FAMILY_LINKS.map(({ name, Mark, href, current }) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${name} ${t('footer.assistant')}`}
+              className="focus-visible:outline-ring hover:bg-subtle group flex items-center gap-2 rounded-sm px-1.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              {name}
+              <Mark size={16} />
+              <span
+                className={`w-12 text-left ${
+                  current ? 'text-foreground font-bold' : 'text-foreground font-medium'
+                }`}
+              >
+                {name}
+              </span>
+              <span className="text-muted-foreground font-medium">{t('footer.assistant')}</span>
+              <ArrowUpRight
+                aria-hidden
+                className="text-muted-foreground group-hover:text-primary ml-auto size-3.5 transition-colors"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      {compact ? (
+        <>
+          <div className="flex w-full items-center justify-between">
+            <a
+              href={NEURONECTION_URL}
+              target="_blank"
+              rel="noreferrer"
+              title={t('footer.partOfFamily', 'Part of Neuronection')}
+              aria-label={t('footer.partOfFamily', 'Part of Neuronection')}
+              className="focus-visible:outline-ring flex flex-col items-center gap-1 text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              <NeuronectionMark size={20} />
+              <NeuronectionWordmark height={7} />
+            </a>
+            <span className="text-muted-foreground text-xs font-medium">
+              {t('footer.version', { version: packageJson.version })}
             </span>
-            <span className="text-muted-foreground font-medium">{t('footer.assistant')}</span>
-            <ArrowUpRight
-              aria-hidden
-              className="text-muted-foreground group-hover:text-primary ml-auto size-3.5 transition-colors"
-            />
-          </a>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setFundOpen(true)} className={fundPillClass}>
-          <Heart />
-          {t('footer.fund')}
-        </button>
-        <button type="button" onClick={() => void navigate({ to: '/about' })} className={aboutPillClass}>
-          {t('nav.about')}
-        </button>
-      </div>
-      <p className="text-muted-foreground text-xs font-medium">
-        {t('footer.version', { version: packageJson.version })}
-      </p>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFundOpen(true)}
+              className={fundPillCompactClass}
+            >
+              <Heart />
+              {t('footer.fund')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void navigate({ to: '/about' })}
+              className={aboutPillCompactClass}
+            >
+              {t('nav.about')}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFundOpen(true)}
+            className={fundPillClass}
+          >
+            <Heart />
+            {t('footer.fund')}
+          </button>
+          <button
+            type="button"
+            onClick={() => void navigate({ to: '/about' })}
+            className={aboutPillClass}
+          >
+            {t('nav.about')}
+          </button>
+        </div>
+      )}
+      {!compact && (
+        <p className="text-muted-foreground text-xs font-medium">
+          {t('footer.version', { version: packageJson.version })}
+        </p>
+      )}
 
       <Modal open={fundOpen} onOpenChange={setFundOpen}>
         <ModalContent size="sm" aria-describedby={undefined}>

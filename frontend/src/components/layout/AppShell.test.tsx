@@ -136,6 +136,36 @@ describe('AppShell rail', () => {
     expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
   })
 
+  test('short viewports: footer drops to a compact variant — family panel hidden, pills stay', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('max-height'),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      })),
+    )
+    try {
+      renderShell()
+      expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
+      // the family projects panel and the branding line go…
+      expect(screen.queryByText('More from the family')).not.toBeInTheDocument()
+      expect(screen.queryByText(/^Part of/)).not.toBeInTheDocument()
+      // …the Fund/About pills and the version stay
+      expect(screen.getByRole('button', { name: 'Fund' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'About' })).toBeInTheDocument()
+      expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
+      // the Neuronection mark sits on the same row (left) linking to the site
+      expect(screen.getByLabelText('Part of Neuronection')).toBeInTheDocument()
+      // the profile/theme controls stay too
+      expect(screen.getByTitle('Profiles')).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   test('course switcher lists courses and picking one activates the course and navigates', async () => {
     renderShell()
     const switcher = await screen.findByRole('button', { name: 'Current course' })

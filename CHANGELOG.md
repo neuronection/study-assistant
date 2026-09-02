@@ -5,6 +5,12 @@ All notable changes to **Study Assistant** are documented here.
 ## [Unreleased]
 
 ### Added
+- **Compact sidebar on short viewports** — at ≤720px window height the
+  nav drops to the library's new `SidebarNav` `compact` density and the
+  footer drops to a compact variant (Neuronection mark + wordmark link,
+  smaller Fund/About pills, version; the family panel hides) so every
+  nav item stays reachable (library change pending the next
+  `@neuronection/assistant-ui` release).
 - **Sidebar footer project block** — "Part of Neuronection" (mark + wordmark
   link), the three family assistants (Health / Career / Study — library
   marks, aligned names, external links, the current app emphasized), Fund +

@@ -23,6 +23,7 @@
   },
   "footer": {
     "partOf": "Part of",
+    "partOfFamily": "Part of Neuronection",
     "moreFromFamily": "More from the family",
     "assistant": "Assistant",
     "fund": "Fund",
