@@ -63,6 +63,7 @@ def test_build_script_syntax_and_targets() -> None:
 
 def test_release_workflow_covers_tag_and_artifacts() -> None:
     workflow = _read(".github/workflows/release.yml")
+    assert "packages: write" in workflow, "release workflow must grant packages:write for GHCR"
     for needle in (
         'tags: ["v*"]',
         "ubuntu-22.04",
