@@ -78,5 +78,6 @@ Read `docs/STATUS.md` → confirm phase scope → read the relevant plan doc →
 verify (suite above) → update docs (`sa-docs-sync`) → commit. Use the `sa-dev` skill for
 feature work and bug fixes, `sa-migration` for any schema/Alembic change, and
 `sa-plan` when authoring or revising a planning round. When multiple agent sessions run
-concurrently, each works in its own git worktree per `sa-dev` §2 (env bootstrap,
-merge-back via fast-forward only, Alembic renumbering for the later branch).
+concurrently, each works in its own git worktree per `family-dev` §2 (worktree
+bootstrap commands in `sa-dev` §2, merge-back via fast-forward only, Alembic
+renumbering for the later branch per `family-migration`).
