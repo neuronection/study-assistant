@@ -32,7 +32,7 @@ jobs:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data
       - name: OpenAPI schema drift guard
         run: |
-          uv run --directory backend python scripts/export-openapi.py
+          uv run --directory backend python ../scripts/export-openapi.py
           git diff --exit-code -- frontend/openapi.json
 
   frontend:
