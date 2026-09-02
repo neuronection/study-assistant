@@ -1,8 +1,5 @@
 import { Outlet, useLocation, Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import {
-  BarChart3,
-  BookOpen,
-  Bot,
   Check,
   ChevronDown,
   ChevronRight,
@@ -30,6 +27,7 @@ import { ActivityButton } from './ActivityPopover'
 import { ProfileDialog } from './ProfileDialog'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { Popover } from '@/components/ui/popover'
+import { SidebarNav } from '@/components/ui/sidebar-nav'
 import { ChatPanel } from '@/features/chat/ChatPanel'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
@@ -40,6 +38,7 @@ import { fuzzyFilter } from '@/lib/fuzzy'
 
 import { cn } from '@/lib/utils'
 import { storageKeys } from '@/lib/constants'
+import { PRIMARY_NAV, resolveActiveId } from '@/config/nav'
 
 const DESTINATIONS: Array<{
   key: string
@@ -52,14 +51,6 @@ const DESTINATIONS: Array<{
   { key: 'notes', icon: NotebookPen, labelKey: 'nav.destNotes', tab: 'notes' },
   { key: 'practice', icon: Dumbbell, labelKey: 'nav.destPractice', tab: 'practice' },
 ]
-
-const NAV_ITEMS = [
-  { to: '/', icon: Home, labelKey: 'nav.home', exact: true },
-  { to: '/courses', icon: GraduationCap, labelKey: 'nav.courses', exact: false },
-  { to: '/chat', icon: Bot, labelKey: 'nav.chat', exact: false },
-  { to: '/library', icon: BookOpen, labelKey: 'nav.library', exact: false },
-  { to: '/scores', icon: BarChart3, labelKey: 'nav.scores', exact: false },
-] as const
 
 function CourseDot({ color }: { color: string | null }) {
   return (
@@ -455,29 +446,17 @@ export function AppShell() {
             </Link>
           )}
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3" aria-label={t('nav.primary')}>
-          {NAV_ITEMS.map((item) => {
-            const active = item.exact
-              ? location.pathname === item.to
-              : location.pathname.startsWith(item.to)
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'focus-visible:outline-ring flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-                  active
-                    ? 'bg-surface font-medium'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <item.icon className="size-4" aria-hidden />
-                {t(item.labelKey)}
-              </Link>
-            )
-          })}
-        </nav>
+        <SidebarNav
+          items={PRIMARY_NAV.map(({ to, icon, labelKey }) => ({
+            id: to,
+            label: t(labelKey),
+            icon,
+          }))}
+          activeId={resolveActiveId(location.pathname)}
+          onNavigate={(id) => void navigate({ to: id })}
+          labels={{ navAria: t('nav.primary') }}
+          className="w-full flex-1 border-r-0 bg-transparent"
+        />
         <div className="space-y-2 border-t border-border p-3">
           <Link
             to="/settings"

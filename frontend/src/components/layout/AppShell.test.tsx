@@ -121,9 +121,11 @@ describe('AppShell rail', () => {
     expect(screen.queryByRole('link', { name: 'Quiz' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Exercises' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Notes' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Scores' })).toBeInTheDocument()
+    // primary nav entries are controlled buttons (SidebarNav) — the router
+    // stays app-side; Settings stays a footer link
+    expect(screen.getByRole('button', { name: 'Scores' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tutor' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Tutor' })).toBeInTheDocument()
   })
 
   test('course switcher lists courses and picking one activates the course and navigates', async () => {
@@ -195,10 +197,11 @@ describe('AppShell rail', () => {
     )
   })
 
-  test('primary navigation keeps a Courses link to the management page', async () => {
+  test('primary navigation routes Courses through onNavigate', async () => {
     renderShell()
     expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Courses' })).toHaveAttribute('href', '/courses')
+    await fireEvent.click(screen.getByRole('button', { name: 'Courses' }))
+    expect(navigate).toHaveBeenCalledWith({ to: '/courses' })
   })
 
   test('switcher popover always links to the Courses page', async () => {

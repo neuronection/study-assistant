@@ -28,6 +28,12 @@ All notable changes to **Study Assistant** are documented here.
     flashcards with 2 due, exam date in 14 days, concept with coverage).
 
 ### Changed
+
+- **App shell nav on the shared library primitive** — the primary
+  sidebar navigation is now `SidebarNav` from `@neuronection/assistant-ui`
+  (keyboard navigation, `aria-current`, family-standard visuals), driven
+  by the new `config/nav.ts` registry with a tested `resolveActiveId`
+  helper. Part of the family nav primitives program (ADR-0007).
 - **Plan 48 — local-first AI engines (ADR-105)** — llama.cpp and LM Studio
   presets (keyless like Ollama); `GET /providers/detect-local` probes local
   engines with shape validation and skips already-configured base URLs; the
