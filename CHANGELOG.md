@@ -4,13 +4,14 @@ All notable changes to **Study Assistant** are documented here.
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-09-02
+
 ### Added
 - **Compact sidebar on short viewports** — at ≤720px window height the
   nav drops to the library's new `SidebarNav` `compact` density and the
   footer drops to a compact variant (Neuronection mark + wordmark link,
   smaller Fund/About pills, version; the family panel hides) so every
-  nav item stays reachable (library change pending the next
-  `@neuronection/assistant-ui` release).
+  nav item stays reachable.
 - **Sidebar footer project block** — "Part of Neuronection" (mark + wordmark
   link), the three family assistants (Health / Career / Study — library
   marks, aligned names, external links, the current app emphasized), Fund +
@@ -18,8 +19,31 @@ All notable changes to **Study Assistant** are documented here.
   popup reuses the library `SponsorCard` (Buy Me a Coffee + GitHub star
   channels in `config/funding.tsx`, also wired into the About page). Copy
   lives in the app locale — the library stays presentational per ADR-006.
-- **`@neuronection/assistant-ui` ^0.16.0** — compact SponsorCard redesign,
-  clickable current-app FamilyBadge, `SidebarNav.secondaryItems`.
+- **`@neuronection/assistant-ui` ^0.17.0** — `SidebarNav` `compact` density,
+  compact SponsorCard redesign, clickable current-app FamilyBadge,
+  `SidebarNav.secondaryItems`.
+
+### Changed
+
+- **Sidebar nav structure** — Settings is now a pinned `secondaryItems`
+  entry on the library `SidebarNav` (replacing the hand-rolled footer
+  link) and the About link becomes the footer block's About pill;
+  `/about` itself is unchanged. `frontend/package.json` now carries the
+  app version (propagated by `version_manager.toml` on every bump).
+- **App shell nav on the shared library primitive** — the primary
+  sidebar navigation is now `SidebarNav` from `@neuronection/assistant-ui`
+  (keyboard navigation, `aria-current`, family-standard visuals), driven
+  by the new `config/nav.ts` registry with a tested `resolveActiveId`
+  helper. Part of the family nav primitives program (ADR-0007).
+- **Dev-link commit guard** — commits are blocked while an
+  assistant-ui dev-link is active: `scripts/check-dev-link.sh` runs as a
+  pre-commit hook (enable once per clone with
+  `git config core.hooksPath scripts/githooks`) and in CI, failing when
+  `pnpm-workspace.yaml` carries a `link:` override for the library.
+
+## [v0.4.0] - 2026-09-02
+
+### Added
 - **Plan 50 — sharing & OSS readiness** — four slices, four commits:
   - **`ca-course/v2` course bundles (ADR-109)** — bundles now carry the full
     learning state: flashcards with FSRS schedules (review log opt-in),
@@ -44,16 +68,6 @@ All notable changes to **Study Assistant** are documented here.
 
 ### Changed
 
-- **Sidebar nav structure** — Settings is now a pinned `secondaryItems`
-  entry on the library `SidebarNav` (replacing the hand-rolled footer
-  link) and the About link becomes the footer block's About pill;
-  `/about` itself is unchanged. `frontend/package.json` now carries the
-  app version (propagated by `version_manager.toml` on every bump).
-- **App shell nav on the shared library primitive** — the primary
-  sidebar navigation is now `SidebarNav` from `@neuronection/assistant-ui`
-  (keyboard navigation, `aria-current`, family-standard visuals), driven
-  by the new `config/nav.ts` registry with a tested `resolveActiveId`
-  helper. Part of the family nav primitives program (ADR-0007).
 - **Plan 48 — local-first AI engines (ADR-105)** — llama.cpp and LM Studio
   presets (keyless like Ollama); `GET /providers/detect-local` probes local
   engines with shape validation and skips already-configured base URLs; the
