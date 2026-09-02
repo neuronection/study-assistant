@@ -1,6 +1,37 @@
 # Plan 48 — Local-first AI engines: llama.cpp / LM Studio presets, local embeddings, onboarding detection (user request 2026-08-31)
 
-Status: planned (2026-08-31, user-approved) · Phase: post-1.0 · Suggested order: A → B → C → D
+Status: **A/B/D COMPLETE + C verified against live Ollama (2026-09-01, worktree
+`feat/plan48-local-ai-engines`)** · llama.cpp/LM Studio/audio matrix rows pending
+the user's engines · Phase: post-1.0 · Suggested order: A → B → C → D
+
+## As-built (2026-09-01)
+
+- **A**: `llama_cpp`/`lm_studio` presets added; blank-key pin tests
+  (`test_local_engines.py`); Test-connection row item was already satisfied by
+  plan 56-B2 (`POST /providers/{id}/test` + library `ConnectionTestRow`).
+- **B**: `GET /providers/detect-local` + `LocalEngineHitOut`; probe =
+  OpenAI-shape-validated `/v1/models` GET, httpx `Timeout(1.5, connect=0.3)`
+  (revision applied: fast connect probe + longer read); configured base URLs
+  skipped (revision applied: no duplicate offers); shared `LocalEngines`
+  component in wizard Provider step (auto-probe once) + ProvidersTab empty
+  state; Defaults step all-local hint. OpenAPI regenerated
+  (`LocalEngineHitOut` born generated).
+- **C (live, Ollama :11434)**: detect 41 models → dedupe after add; blank-key
+  create + real discovery; chat turn streamed via gateway (`qwen3.5:2b`,
+  reasoning → trace.thinking); vision OCR raw probe (`qwen3-vl:4b`,
+  `image_url` data URI → correct LaTeX-ish transcription); embeddings
+  end-to-end (`nomic-embed-text-v2-moe:latest` — cap corrected via registry
+  PATCH per plan-56 flow: name heuristic guesses `text` for `embed-text` ids →
+  embeddings default → chunk vectors → hybrid search). **Fix landed:
+  `GatewayEmbedder` now records `ai_interactions` rows via
+  `LLMGateway.record_usage` (+ embedder inherits gateway transport) — it had
+  bypassed the ledger since plan 37.** Pending: llama.cpp, LM Studio,
+  whisper/dictation rows (engines not running).
+- **D**: `docs/usage/local-ai.md` (engine table, wizard path, verified matrix,
+  capability-guess guide), README "Runs fully local" bullet, `docs/ai.md`
+  intro + Provider row, STATUS changelog + open-issues ADR-011 note.
+- Gates: backend ruff/mypy clean, 820 tests; frontend lint/typecheck/test/build
+  green, 827 tests.
 
 ## Context
 
@@ -45,10 +76,11 @@ key handling.
   `lm_studio` (`http://localhost:1234/v1`, name "LM Studio (local)"); Ollama stays.
   Local presets: API key optional (empty allowed — keyring write skipped when blank;
   today a blank key on openai_compatible may already work — pin it with a test).
-- `infer_caps` already detects `-vl`/`llava`/`gemma3` vision names and whisper STT
-  names — extend hints with common local vision families (`qwen`+`vl` covers qwen-vl;
-  add `minicpm-v`, `moondream`) and embeddings names (`nomic`, `minilm`, `gte`) so
-  discovery labels local models correctly.
+- ~~`infer_caps` hint extensions~~ **dropped (revision 2026-08-31, user decision):**
+  name-based cap parsing is an unwinnable arms race — inference stays a cheap
+  initial guess, and wrong guesses are corrected at import time by the
+  expandable add/edit UX of the library `model-registry` module (**plan 56**,
+  ADR-131/132). No hint list grows here.
 - Frontend: provider-create preset picker (shared `useProviderCreate` /
   `ProviderCreateFields`) gains the two presets — this is data, not new UI.
 - **Provider "Test connection" row** (revision 2026-08-31): the Settings provider
@@ -59,11 +91,11 @@ key handling.
   a one-click probe beats a failed chat turn as the first signal.
 
 **Accept.** Settings → Add provider → "llama.cpp (local)" with the prefilled URL and
-empty key → models discover, caps look right.
+empty key → models discover; any wrong caps are correctable at add time (plan 56
+registry UX; until then via the existing manual-add correction).
 
 **Tests.** Backend: preset registry contents, blank-key provider create + gateway
-resolve without keyring entry, `infer_caps` additions. Frontend: preset picker shows
-the new entries.
+resolve without keyring entry. Frontend: preset picker shows the new entries.
 
 ## B — Local engine detection in onboarding + settings (ADR-105)
 

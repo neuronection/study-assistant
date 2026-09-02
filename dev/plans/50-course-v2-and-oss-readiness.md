@@ -1,6 +1,38 @@
 # Plan 50 — ca-course/v2 bundles, skill packs, e2e smoke, OSS readiness (user request 2026-08-31)
 
-Status: planned (2026-08-31, user-approved) · Phase: post-1.0 · Suggested order: A → B → C → D (C's harness unblocks CI confidence for everything else)
+Status: **COMPLETE (2026-09-02, worktree `feat/plan50-course-v2-oss`, 4 commits
+1a7e122/d0ffda5/adee278/e22492d)** · Phase: post-1.0 · Suggested order: A → B → C → D (as built)
+
+## As-built (2026-09-02)
+
+- **A (1a7e122)**: v2 exporter + dual v1/v2 importer; `cards.json` (FSRS
+  schedules + review log behind `include_history`), `patterns.json`
+  (discovered only), `history.json` (attempts/answers/sessions/step_attempts/
+  help events), `note-versions.json`, `exam_date`, question ids; import
+  enqueues postprocess per material (job ids in response); validation covers
+  the new sections; round-trip byte-stability pinned across fresh machines
+  (same-DB re-imports drift by ids — test mirrors real sharing).
+- **B (d0ffda5)**: `ca-skills/v1` export (system-scope versions only) + staged
+  import preview/commit with replace/rename/skip; new service
+  `services/platform/skill_packs.py`, endpoints `POST /skills/export` +
+  `POST /skills/packs/import`; SkillsTab per-row Export + Import pack dialog.
+  Gotcha recorded: httpx drops a URL query string when `params=` is passed —
+  test clients must pass all query args via `params`.
+- **C (adee278)**: Playwright harness (`frontend/e2e/`) — global setup builds
+  SPA, spawns real backend (temp data dir) + mock OpenAI-compatible provider
+  (quiz JSON / CALC tool line / embeddings); specs S1 boot+wizard, S2
+  upload+search, S3 quiz run+score, S4 chat turn with prompt-grammar tool
+  card; CI `e2e` job + release-gate step. Hard-won harness rules: spawn
+  children `detached` with stdio to log FILES (inherit keeps pipes open and
+  hangs the runner), teardown kills the process GROUP (`kill -TERM -pid`;
+  plain pid kill orphans uv's python child; `/bin/sh` kill has no `--`),
+  vitest `exclude` + eslint `ignores` cover `e2e/`, chat spec runs before the
+  course specs (no course bound → no citation-repair path).
+- **D (e22492d)**: SECURITY.md, issue/PR templates, About family links,
+  enriched sample course (3-question quiz, 6 cards/2 due, exam_date, concept
+  coverage), getting-started docs; README badges were already dynamic.
+- Gates: backend ruff/mypy clean · 829 tests; frontend lint/typecheck/829
+  tests/build · e2e 4/4 green.
 
 ## Context
 
