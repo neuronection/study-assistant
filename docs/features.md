@@ -246,8 +246,17 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 ## Quizzes
 
 - ✅ Types: single, multi (partial credit), true/false, type-in text, numeric
-  (tolerance), equation (MathLive input) — C1/C2/C6 (block-format stems render
-  markdown+math)
+  (tolerance), equation (MathLive input), **numberline (plan 51-A, ADR-112)** —
+  C1/C2/C6 (block-format stems render markdown+math)
+- ✅ **Number-line answers (C21, plan 51-A)**: the `numberline` question type and
+  exercise-step kind answer by clicking/dragging on an interactive number line —
+  place points, shade one or more intervals (open/closed endpoints toggled per
+  end, draggable), replayed exactly after grading and carried in the attempt
+  report for review. Grading is deterministic region math (`math/regions.py`):
+  point tolerance, interval containment, boundary-kind strictness, Dice-style
+  partial credit for partial shading (see math-verification.md). Generators may
+  propose numberline questions (validators enforce the payload schema + domain
+  bounds; repair loop); `caq/v1` round-trips them
 - ✅ Generation: count/difficulty controls, course/node scope; deterministic
   validators enforce the full metadata taxonomy (concepts, skill, bloom, difficulty,
   expected time, misconceptions) — questions enter the bank tagged or flagged
@@ -299,7 +308,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   prompt embedding the schema and every validator rule — doc 11 authoring kit
 - ✅ Score page: History tab + mistake notebook — H2b first cut
 - — Cloze/match/order (C3), composite follow-through (C16), essay rubrics (C17),
-  handwriting input (C18), table fill (C19), practice/exam UI differences (C10),
+  table fill (C19), practice/exam UI differences (C10),
   adaptive difficulty (C11), item analysis (C15)
 
 ## Exercises & tutor

@@ -3,6 +3,12 @@ import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 import type { HintResult } from './exercises'
 
+export interface QuizQuestionInput {
+  widget: string
+  min?: number
+  max?: number
+}
+
 export interface QuizQuestion {
   id: number
   type: string
@@ -13,6 +19,7 @@ export interface QuizQuestion {
   skill: string | null
   expected_time_sec: number | null
   flag: string
+  input: QuizQuestionInput | null
 }
 
 export interface QuizActivity {

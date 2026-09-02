@@ -70,6 +70,7 @@ class QuestionOut(BaseModel):
     skill: str | None
     expected_time_sec: int | None
     flag: str
+    input: dict[str, Any] | None = None
 
 
 class ActivityOut(BaseModel):
@@ -157,6 +158,8 @@ class ReportAnswerOut(BaseModel):
     partial_credit: float | None
     error_tags: list[str]
     stem_excerpt: str
+    question_type: str | None = None
+    response: Any | None = None
 
 
 class AttemptReportOut(BaseModel):
@@ -179,6 +182,19 @@ def _activity_out(activity: Activity, question_count: int) -> ActivityOut:
     )
 
 
+def _question_input(question: Question) -> dict[str, Any] | None:
+    if question.type != "numberline":
+        return None
+    domain = (question.answer or {}).get("domain")
+    if not isinstance(domain, dict):
+        return None
+    dmin = domain.get("min")
+    dmax = domain.get("max")
+    if not isinstance(dmin, (int, float)) or not isinstance(dmax, (int, float)):
+        return None
+    return {"widget": "numberline", "min": dmin, "max": dmax}
+
+
 def _question_out(question: Question) -> QuestionOut:
     return QuestionOut(
         id=question.id,
@@ -190,6 +206,7 @@ def _question_out(question: Question) -> QuestionOut:
         skill=question.skill,
         expected_time_sec=question.expected_time_sec,
         flag=question.flag,
+        input=_question_input(question),
     )
 
 
@@ -358,6 +375,8 @@ def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
         return answer.get("index")
     if qtype == "multi":
         return answer.get("indices")
+    if qtype == "numberline":
+        return {key: answer[key] for key in ("domain", "points", "intervals") if key in answer}
     return answer.get("value")
 
 
@@ -1102,6 +1121,9 @@ def attempt_report(
     rows = []
     for answer in answers:
         question = session.get(Question, answer.question_id)
+        response_value = None
+        if isinstance(answer.response, dict):
+            response_value = answer.response.get("value")
         rows.append(
             {
                 "question_id": answer.question_id,
@@ -1111,6 +1133,8 @@ def attempt_report(
                 "stem_excerpt": (
                     question.stem[0].get("md", "")[:80] if question and question.stem else ""
                 ),
+                "question_type": question.type if question else None,
+                "response": response_value,
             }
         )
     return {

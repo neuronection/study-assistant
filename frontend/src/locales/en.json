@@ -834,7 +834,16 @@
     "copied": "Copied"
   },
   "widgets": {
-    "numberlineHint": "Click to mark points"
+    "numberlineHint": "Click to mark points",
+    "numberline": {
+      "mode": "Answer mode",
+      "mode_points": "Points",
+      "mode_interval": "Interval",
+      "clear": "Clear",
+      "aria": "Interactive number line",
+      "hint_points": "Click the line to place a point; click a point to remove it.",
+      "hint_interval": "Click twice to shade an interval. Click an endpoint to toggle open/closed, drag it to move, click the shaded bar to remove it."
+    }
   },
   "entityMenu": {
     "generate": "Generate",
@@ -1621,7 +1630,8 @@
       "truefalse": "True / False",
       "text": "Typed answer",
       "numeric": "Numeric",
-      "equation": "Equation"
+      "equation": "Equation",
+      "numberline": "Number line"
     },
     "topicLabel": "Topic",
     "topicInfo": "An optional focus topic. When set, every generated question or step targets that concept; leave empty to cover the whole scope.",
@@ -1637,7 +1647,8 @@
       "truefalse": "A statement graded true or false.",
       "text": "A typed short answer, compared exactly (after normalization).",
       "numeric": "A numeric answer graded with tolerance.",
-      "equation": "A math expression graded by equivalence (SymPy), so 2x and x*2 are both correct."
+      "equation": "A math expression graded by equivalence (SymPy), so 2x and x*2 are both correct.",
+      "numberline": "Shade intervals and place points on an interactive number line; graded deterministically with boundary and tolerance checks."
     },
     "exerciseKindInfo": {
       "multi_step": "A guided multi-step problem: the tutor helps you through it with a hint ladder and independence score.",

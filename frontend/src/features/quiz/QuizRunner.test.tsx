@@ -209,6 +209,62 @@ describe('QuizRunner', () => {
     expect(finishQuizAttempt).toHaveBeenCalledWith(9)
   })
 
+  test('numberline: click places a point and submits the region payload', async () => {
+    const rect = {
+      left: 0,
+      right: 560,
+      top: 0,
+      bottom: 92,
+      width: 560,
+      height: 92,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect
+    vi.spyOn(SVGElement.prototype, 'getBoundingClientRect').mockReturnValue(rect)
+    quizQuestions.mockResolvedValue([
+      {
+        id: 7,
+        type: 'numberline',
+        stem: [{ type: 'text', md: 'Shade the solution set of $x > 1$.' }],
+        options: null,
+        difficulty: 2,
+        bloom: 'understand',
+        skill: 'conceptual',
+        expected_time_sec: 60,
+        flag: 'ok',
+        input: { widget: 'numberline', min: 0, max: 10 },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: 9, score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: true,
+      partial_credit: 1,
+      graded_by: 'deterministic',
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+    })
+
+    renderRunner()
+    expect(await screen.findByText(/Shade the solution set/)).toBeInTheDocument()
+    await waitFor(() => expect(startQuizAttempt).toHaveBeenCalled())
+
+    const svg = document.querySelector('svg[role="img"]')
+    expect(svg).not.toBeNull()
+    const submit = getButton(/submit/i)
+    expect(submit.disabled).toBe(true)
+    fireEvent.click(svg!, { clientX: 26 + 0.3 * 508, clientY: 46 })
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    const [attemptId, questionId, response] = submitQuizAnswer.mock.calls[0]
+    expect(attemptId).toBe(9)
+    expect(questionId).toBe(7)
+    expect(response).toEqual({ points: [{ value: 3 }], intervals: [] })
+    vi.mocked(SVGElement.prototype.getBoundingClientRect).mockRestore()
+  })
+
   test('wrong answer shows incorrect verdict', async () => {
     quizQuestions.mockResolvedValue([QUESTIONS[0]])
     startQuizAttempt.mockResolvedValue({ id: 10, score: null })

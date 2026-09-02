@@ -12,7 +12,15 @@ export interface ExerciseInfo {
 }
 
 export interface ExerciseStepInput {
-  widget: 'matching' | 'ordering' | 'categorize' | 'fill_blank' | 'math' | 'essay' | 'lines'
+  widget:
+    | 'matching'
+    | 'ordering'
+    | 'categorize'
+    | 'fill_blank'
+    | 'math'
+    | 'essay'
+    | 'lines'
+    | 'numberline'
   kind?: string
   lefts?: string[]
   rights?: { index: number; label: string }[]
@@ -21,6 +29,8 @@ export interface ExerciseStepInput {
   prompt_md?: string
   blank_count?: number
   lines?: string[]
+  min?: number
+  max?: number
 }
 
 export interface ExerciseStepInfo {
@@ -135,7 +145,7 @@ export interface StepCheck {
 
 export async function submitStepAnswer(
   sessionId: number,
-  response: string | unknown[],
+  response: unknown,
   state?: Record<string, unknown> | null,
 ): Promise<StepCheck> {
   const apiResponse = await apiFetch(`/api/v1/exercises/sessions/${sessionId}/answer`, {

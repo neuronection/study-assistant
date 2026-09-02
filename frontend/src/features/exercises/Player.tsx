@@ -7,6 +7,11 @@ import { Link, useNavigate, useParams, useRouterState } from '@tanstack/react-ro
 
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import {
+  NumberlineAnswer,
+  numberlinePayloadComplete,
+  type NumberlinePayload,
+} from '@/components/answers/NumberlineAnswer'
+import {
   ExerciseStructuralInput,
   isStructuralInput,
   structuralResponseComplete,
@@ -52,6 +57,7 @@ export function Player({ exerciseId }: { exerciseId: number }) {
   const [session, setSession] = useState<ExerciseSessionInfo | null>(null)
   const [answer, setAnswer] = useState('')
   const [structural, setStructural] = useState<StructuralResponse | null>(null)
+  const [numberline, setNumberline] = useState<NumberlinePayload | null>(null)
   const [widgetState, setWidgetState] = useState<Record<string, unknown>>({})
   const [check, setCheck] = useState<StepCheck | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
@@ -73,7 +79,9 @@ export function Player({ exerciseId }: { exerciseId: number }) {
       const step = list[Math.min(session?.current_step_idx ?? 0, list.length - 1)]
       const payload = isStructuralInput(step.input) && structural !== null
         ? structural
-        : answer
+        : step.input?.widget === 'numberline' && numberline !== null
+          ? numberline
+          : answer
       const state = Object.keys(widgetState).length > 0 ? widgetState : undefined
       return state !== undefined
         ? submitStepAnswer(session!.id, payload, state)
@@ -94,7 +102,10 @@ export function Player({ exerciseId }: { exerciseId: number }) {
 
   const ask = useMutation({
     mutationFn: () => {
-      const pending = answer.trim() || (structural !== null ? JSON.stringify(structural) : '')
+      const pending =
+        answer.trim() ||
+        (structural !== null ? JSON.stringify(structural) : '') ||
+        (numberline !== null ? JSON.stringify(numberline) : '')
       return askAboutExerciseSession(session!.id, pending || null)
     },
     onSuccess: (result) =>
@@ -172,13 +183,16 @@ export function Player({ exerciseId }: { exerciseId: number }) {
 
   const step = list[Math.min(session?.current_step_idx ?? 0, list.length - 1)]
   const structuralStep = isStructuralInput(step.input)
+  const numberlineStep = step.input?.widget === 'numberline'
   const rubricStep =
     step.input != null &&
     (['essay', 'lines'].includes(step.input.widget) ||
       step.input.kind === 'correct_solution')
-  const canSubmit = structuralStep
-    ? structuralResponseComplete(step.input!, structural)
-    : answer.trim().length > 0
+  const canSubmit = numberlineStep
+    ? numberlinePayloadComplete(numberline)
+    : structuralStep
+      ? structuralResponseComplete(step.input!, structural)
+      : answer.trim().length > 0
   const nextHintLevel = Math.min(hints.length + 1, 5)
 
   return (
@@ -232,7 +246,22 @@ export function Player({ exerciseId }: { exerciseId: number }) {
                 }
               />
 
-              {structuralStep ? (
+              {numberlineStep ? (
+                <div
+                  className={cn(
+                    'space-y-2',
+                    check && 'pointer-events-none opacity-70'
+                  )}
+                >
+                  <NumberlineAnswer
+                    min={step.input?.min ?? 0}
+                    max={step.input?.max ?? 10}
+                    value={numberline}
+                    onChange={setNumberline}
+                    disabled={check !== null}
+                  />
+                </div>
+              ) : structuralStep ? (
                 <div
                   className={cn(
                     'space-y-2',
@@ -351,6 +380,7 @@ export function Player({ exerciseId }: { exerciseId: number }) {
                       setSession(check.session)
                       setAnswer('')
                       setStructural(null)
+                      setNumberline(null)
                       setWidgetState({})
                       setCheck(null)
                       setHints([])

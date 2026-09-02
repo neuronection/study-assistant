@@ -544,6 +544,8 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
         "partial_credit",
         "error_tags",
         "stem_excerpt",
+        "question_type",
+        "response",
     }
 
     dry = quiz_client.post(

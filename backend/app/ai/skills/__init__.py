@@ -58,13 +58,18 @@ QUIZGEN_SYSTEM = (
     "Respond with ONLY a JSON object:\n"
     '{\n  "questions": [\n'
     "    {\n"
-    '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation",\n'
+    '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
+    '| "numberline",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
     "truefalse: {\"value\": true|false}, text: {\"value\": str, \"accept\": [str]}, "
     "numeric: {\"value\": number, \"tolerance\": number, \"relative\": bool}, "
-    "equation: {\"value\": str (LaTeX/sympy-parseable)},\n"
+    "equation: {\"value\": str (LaTeX/sympy-parseable)}, "
+    "numberline: {\"domain\": {\"min\": number, \"max\": number}, "
+    "\"points\": [{\"value\": number}], "
+    "\"intervals\": [{\"lo\": number, \"hi\": number, \"lo_closed\": bool, "
+    "\"hi_closed\": bool}], \"tolerance\": number (optional)},\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'
@@ -77,7 +82,10 @@ QUIZGEN_SYSTEM = (
     "Rules: exactly the requested count and type mix; stems self-contained; distractors "
     "plausible but clearly wrong; math must be correct; every question cites nothing "
     "(citations are internal). Explanations may reference context items by their "
-    "listed handles (e.g. [M12]) exactly as given."
+    "listed handles (e.g. [M12]) exactly as given. "
+    "For numberline questions the stem states the task (inequality, interval or "
+    "solution set), the domain must be wide enough that every expected point/interval "
+    "end lies strictly inside it, and the expected answer marks the full solution set."
 )
 
 EXGEN_SYSTEM = (
@@ -93,8 +101,11 @@ EXGEN_SYSTEM = (
     '  "difficulty": 1-5,\n'
     '  "steps": [\n'
     '    {"prompt_md": str (what to compute in this step),\n'
-    '     "expected_kind": "math" | "numeric",\n'
-    '     "expected_value": str (math: LaTeX/sympy-parseable; numeric: plain number),\n'
+    '     "expected_kind": "math" | "numeric" | "numberline",\n'
+    '     "expected_value": str (math: LaTeX/sympy-parseable; numeric: plain number; '
+    "numberline: the answer object {domain, points, intervals} with points as "
+    "[{\"value\": number}] and intervals as [{\"lo\": number, \"hi\": number, "
+    "\"lo_closed\": bool, \"hi_closed\": bool}]),\n"
     '     "tolerance": number (numeric only, optional),\n'
     '     "widgets": [ {"type":"widget","widget":<name>,"id":str,"props":{...}} ]\n'
     "       (optional interactive UI for this step — see the widget grammar in the user "

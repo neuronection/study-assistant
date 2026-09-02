@@ -9,6 +9,11 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { DrawCanvas, strokesToPng, type Stroke } from '@/components/canvas/DrawCanvas'
 import { FocusShell, useFocusContext } from '@/components/layout/FocusShell'
 import { MathInput } from '@/components/math/MathInput'
+import {
+  NumberlineAnswer,
+  numberlinePayloadComplete,
+  type NumberlinePayload,
+} from '@/components/answers/NumberlineAnswer'
 import type { Block } from '@/components/blocks/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -60,6 +65,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   const [index, setIndex] = useState(0)
   const [choice, setChoice] = useState<number | number[] | boolean | null>(null)
   const [typed, setTyped] = useState('')
+  const [numberline, setNumberline] = useState<NumberlinePayload | null>(null)
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
@@ -123,6 +129,9 @@ export function QuizRunner({ activityId }: { activityId: number }) {
     const current = questionsForAttempt.order[index]
     if (!current) {
       return null
+    }
+    if (current.type === 'numberline') {
+      return numberline
     }
     if (current.type === 'single' || current.type === 'truefalse' || current.type === 'multi') {
       if (current.type === 'multi' && Array.isArray(choice)) {
@@ -266,6 +275,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
     !submit.isPending &&
     ((question.type === 'multi' && Array.isArray(choice) && choice.length > 0) ||
       ((question.type === 'single' || question.type === 'truefalse') && choice !== null) ||
+      (question.type === 'numberline' && numberlinePayloadComplete(numberline)) ||
       ((question.type === 'text' || question.type === 'numeric' || question.type === 'equation') &&
         typed.trim().length > 0))
 
@@ -421,6 +431,16 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                     </button>
                   ))}
                 </div>
+              ) : null}
+
+              {question.type === 'numberline' && question.input?.widget === 'numberline' ? (
+                <NumberlineAnswer
+                  min={question.input.min ?? 0}
+                  max={question.input.max ?? 10}
+                  value={numberline}
+                  onChange={setNumberline}
+                  disabled={feedback !== null}
+                />
               ) : null}
 
               {question.type === 'equation' ? (
@@ -631,6 +651,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                       setIndex(index + 1)
                       setChoice(null)
                       setTyped('')
+                      setNumberline(null)
                       setFeedback(null)
                       setHints([])
                       setStartedAt(Date.now())

@@ -18,6 +18,7 @@ from ..domain.models import (
     ReviewLog,
     StepAttempt,
 )
+from ..math.regions import grade_regions
 from ..pipelines.exgen import ExgenError, ExgenService
 from ..services.knowledge.context import ContextBundle, ContextError, ContextParams, ContextResolver
 from ..services.knowledge.tree import TreeError, TreeService
@@ -671,6 +672,18 @@ def get_exercise(exercise_id: int, session: Session = Depends(get_session)) -> E
     return _exercise_out(exercise, count)
 
 
+def _numberline_input(spec: dict[str, Any]) -> dict[str, Any] | None:
+    value = spec.get("value")
+    domain = value.get("domain") if isinstance(value, dict) else None
+    if not isinstance(domain, dict):
+        return None
+    dmin = domain.get("min")
+    dmax = domain.get("max")
+    if not isinstance(dmin, (int, float)) or not isinstance(dmax, (int, float)):
+        return None
+    return {"widget": "numberline", "min": dmin, "max": dmax}
+
+
 @router.get("/{exercise_id}/steps", response_model=list[StepOut])
 def exercise_steps(
     exercise_id: int, session: Session = Depends(get_session)
@@ -688,6 +701,8 @@ def exercise_steps(
             widget: dict[str, Any] | None = public_input(kind, spec, step.id)
         elif isinstance(kind, str) and kind in RUBRIC_KINDS:
             widget = rubric_public_input(kind, spec)
+        elif isinstance(kind, str) and kind == "numberline":
+            widget = _numberline_input(spec)
         else:
             widget = None
         result.append(
@@ -761,6 +776,21 @@ def submit_step_answer(
     rubric_assessment: dict[str, Any] | None = None
     if isinstance(spec.get("kind"), str) and spec["kind"] in STRUCT_KINDS:
         correct, stage = check_structural(spec["kind"], spec, body.response)
+        error_class = None
+    elif isinstance(spec.get("kind"), str) and spec["kind"] == "numberline":
+        value = spec.get("value")
+        if not isinstance(value, dict):
+            raise HTTPException(status_code=422, detail="step has no numberline answer")
+        expected = dict(value)
+        if spec.get("tolerance") is not None:
+            expected["tolerance"] = spec["tolerance"]
+        result = grade_regions(expected, body.response)
+        correct = result.correct
+        stage = (
+            "numberline: correct"
+            if correct
+            else "numberline: " + "; ".join(result.feedback)
+        )
         error_class = None
     elif isinstance(spec.get("kind"), str) and spec["kind"] in RUBRIC_KINDS:
         if not isinstance(body.response, str) or not body.response.strip():

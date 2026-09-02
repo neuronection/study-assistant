@@ -5899,6 +5899,10 @@ export interface components {
             flag: string;
             /** Id */
             id: number;
+            /** Input */
+            input?: {
+                [key: string]: unknown;
+            } | null;
             /** Options */
             options: {
                 [key: string]: unknown;
@@ -6022,6 +6026,10 @@ export interface components {
             partial_credit: number | null;
             /** Question Id */
             question_id: number;
+            /** Question Type */
+            question_type?: string | null;
+            /** Response */
+            response?: unknown | null;
             /** Stem Excerpt */
             stem_excerpt: string;
         };

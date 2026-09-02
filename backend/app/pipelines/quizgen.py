@@ -9,13 +9,22 @@ from ..ai.skills import QUIZGEN_SYSTEM
 from ..ai.structured import QuizgenOut
 from ..domain.models import Activity, Question
 from ..math.equivalence import expressions_equivalent
+from ..math.regions import validate_region_answer
 from ..services.knowledge.context import ContextBundle
 
 QUIZGEN_TASK = "quizgen"
 QUIZGEN_SKILL = "quiz.generate"
 MAX_REPAIR_ROUNDS = 2
 
-QUESTION_TYPES = ("single", "multi", "truefalse", "text", "numeric", "equation")
+QUESTION_TYPES = (
+    "single",
+    "multi",
+    "truefalse",
+    "text",
+    "numeric",
+    "equation",
+    "numberline",
+)
 SKILLS = ("conceptual", "procedural", "applied", "notation")
 BLOOMS = ("remember", "understand", "apply", "analyze", "evaluate", "create")
 
@@ -73,6 +82,10 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
             problems.append(f"q{index}: numeric answer needs numeric value")
     elif qtype == "equation" and not str(answer.get("value", "")).strip():
         problems.append(f"q{index}: equation answer needs value")
+    elif qtype == "numberline":
+        problems.extend(
+            f"q{index}: {problem}" for problem in validate_region_answer(answer)
+        )
 
     if not str(draft.get("explanation_md", "")).strip():
         problems.append(f"q{index}: missing explanation")

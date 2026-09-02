@@ -75,7 +75,32 @@ tutor. It is not a prompt-level request.
 | single, truefalse, multi (partial credit), text (normalized match) | direct | `deterministic` |
 | numeric | absolute/relative tolerance | `deterministic` |
 | equation (incl. MathLive input, exercise steps) | equivalence chain | `symPy` |
+| numberline (quiz type + exercise step kind) | region grading (`app/math/regions.py`, below) | `deterministic` |
 | unsupported type | — | `config` (fails safe) |
 
 Error classification for tutor steps: parse failure → `misread`, else
 `procedural`/`conceptual` by the question's skill axis.
+
+## Region grading — number-line answers (`app/math/regions.py`)
+
+The `numberline` question type (plan 51-A, ADR-112) accepts an interactive
+payload of placed points and shaded intervals:
+`{points: [{value}], intervals: [{lo, hi, lo_closed, hi_closed}]}`. Grading is
+pure geometry — no LLM anywhere in the verify path:
+
+- **Points** match by nearest-within-tolerance (greedy, one-to-one).
+- **Intervals** match exactly when both ends are within tolerance *and* both
+  boundary kinds (open/closed) are equal; boundary-kind strictness is part of
+  the concept (open vs closed endpoints of a solution set).
+- **Partial credit** is the Dice coefficient of the shaded mass:
+  `2 × (interval-overlap + exact-interval length + matched points) / (expected
+  mass + actual mass)` — a positionally-correct interval with the wrong
+  boundary type earns nothing (the strictness above), extras drag the score
+  down, and disjoint regions score 0.
+- **Tolerance** comes from the question (`tolerance` field) and defaults to
+  0.5% of the displayed range — wide enough that every snapped click/drag on
+  the number-line widget always grades, still fully deterministic. Generators
+  may tighten it.
+- **Error tags** (`boundary_kind`, `missed_region`, `extra_region`,
+  `missed_point`, `extra_point`) flow into the mistake notebook like any other
+  graded answer; the attempt report carries the exact payload for replay.

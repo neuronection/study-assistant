@@ -7488,6 +7488,18 @@
             "title": "Id",
             "type": "integer"
           },
+          "input": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input"
+          },
           "options": {
             "anyOf": [
               {
@@ -7872,6 +7884,26 @@
           "question_id": {
             "title": "Question Id",
             "type": "integer"
+          },
+          "question_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Type"
+          },
+          "response": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response"
           },
           "stem_excerpt": {
             "title": "Stem Excerpt",

@@ -9,6 +9,7 @@ from ..ai.structured import ExerciseOut
 from ..ai.widgets import EXGEN_WIDGET_DOC, validate_widget_block
 from ..domain.models import Exercise, ExerciseStep
 from ..math.equivalence import expressions_equivalent, parse_math
+from ..math.regions import validate_region_answer
 from ..services.knowledge.context import ContextBundle
 from ..services.study.exercise_kinds import RUBRIC_KINDS, STRUCTURAL_KINDS
 from ..services.study.exercise_rubric import validate_rubric_payload
@@ -95,8 +96,8 @@ def _step_problems(step: dict[str, Any], index: int) -> list[str]:
         return problems
     kind = step.get("expected_kind")
     value = step.get("expected_value")
-    if kind not in ("math", "numeric"):
-        problems.append(f"{label}: expected_kind must be math or numeric")
+    if kind not in ("math", "numeric", "numberline"):
+        problems.append(f"{label}: expected_kind must be math, numeric or numberline")
         return problems
     if value is None or not str(value).strip():
         problems.append(f"{label}: missing expected_value")
@@ -106,6 +107,16 @@ def _step_problems(step: dict[str, Any], index: int) -> list[str]:
             parse_math(str(value))
         except Exception:
             problems.append(f"{label}: expected_value does not parse as math ({value!r})")
+    elif kind == "numberline":
+        if not isinstance(value, dict):
+            problems.append(
+                f"{label}: numberline expected_value must be the answer object "
+                "{domain, points, intervals}"
+            )
+        else:
+            problems.extend(
+                f"{label}: {problem}" for problem in validate_region_answer(value)
+            )
     else:
         try:
             float(str(value))
@@ -312,7 +323,11 @@ class ExgenService:
         for index, step in enumerate(draft.get("steps", [])):
             expected: dict[str, Any] = {
                 "kind": step.get("expected_kind"),
-                "value": str(step.get("expected_value", "")),
+                "value": (
+                    step.get("expected_value")
+                    if step.get("expected_kind") == "numberline"
+                    else str(step.get("expected_value", ""))
+                ),
             }
             if step.get("tolerance") is not None:
                 expected["tolerance"] = step.get("tolerance")
