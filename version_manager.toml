@@ -8,8 +8,11 @@ name = "Study Assistant"
 file = "backend/app/__init__.py"
 pattern = '__version__\s*=\s*"(?P<version>[^"]+)"'
 
-# Changelog lives in docs/STATUS.md (same-commit discipline) — nothing extra
-# is staged at release time.
+# CHANGELOG rides the release commit per the family docs-sync discipline.
+# The exported OpenAPI schema embeds the app version (info.version), so the
+# regenerated schema is staged with the release commit too (see the release
+# runbook: bump → regenerate → amend → release --push).
 
 [release]
 tag_prefix = "v"
+docs = ["CHANGELOG.md", "frontend/openapi.json"]
