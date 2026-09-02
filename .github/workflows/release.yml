@@ -196,6 +196,8 @@ jobs:
     name: Docker image (GHCR)
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    env:
+      DOCKER_BUILD_RECORD_UPLOAD: false
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -232,6 +234,7 @@ jobs:
         with:
           merge-multiple: true
           path: release
+          pattern: "{linux-packages,windows-executable}"
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
