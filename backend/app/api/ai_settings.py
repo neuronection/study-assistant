@@ -107,6 +107,7 @@ def create_provider(
     body: ProviderCreate, session: Session = Depends(get_session)
 ) -> ProviderOut:
     service = ProvidersService(session)
+    provider: Provider | None = None
     try:
         provider = service.create(
             name=body.name,
@@ -119,8 +120,12 @@ def create_provider(
         remote = service.discover(provider)
         service.record_status(provider, ok=True, error=None, model_count=len(remote))
     except ProviderError as error:
+        session.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
     except Exception as error:
+        if provider is None:
+            session.rollback()
+            raise HTTPException(status_code=422, detail=str(error)) from error
         service.record_status(provider, ok=False, error=str(error)[:300])
     session.commit()
     return _provider_out(service, provider)
