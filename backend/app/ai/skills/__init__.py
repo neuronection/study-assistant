@@ -59,7 +59,7 @@ QUIZGEN_SYSTEM = (
     '{\n  "questions": [\n'
     "    {\n"
     '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
-    '| "numberline" | "table_fill" | "composite" | "graph_read",\n'
+    '| "numberline" | "table_fill" | "composite" | "graph_read" | "code",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
@@ -87,7 +87,14 @@ QUIZGEN_SYSTEM = (
     "\"tolerance\": number (optional)} — the app renders the curve and computes "
     "the expected reading itself, so NEVER invent values; the stem asks the "
     "student to read the graph (e.g. \"What is f(2)?\" or \"Click where f "
-    "reaches its maximum on the shown domain\"),\n"
+    "reaches its maximum on the shown domain\"), "
+    "code: {\"starter_code\": str (skeleton with the function signature), "
+    "\"reference_solution\": str (complete working Python), \"tests\": "
+    "[{\"call\": str (expression calling the student's function, e.g. "
+    "is_palindrome('abba')), \"expected\": <JSON value>, \"expected_stdout\": "
+    "str (optional)}], \"timeout_ms\": int (optional)} — the student's code "
+    "runs in an in-page Python sandbox (never on the server); propose code "
+    "questions only when the material or topic is about programming\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'

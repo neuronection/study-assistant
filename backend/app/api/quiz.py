@@ -22,6 +22,7 @@ from ..domain.models import (
     Question,
     QuizHelpEvent,
 )
+from ..math.code import code_public_input
 from ..math.composite import composite_public_input
 from ..math.tables import table_public_input
 from ..ocr.notes_ocr import NotesOcrEngine
@@ -203,6 +204,8 @@ def _question_input(question: Question) -> dict[str, Any] | None:
         if mode in ("value", "point"):
             return {"widget": "graph_read", "mode": mode}
         return None
+    if question.type == "code":
+        return code_public_input(question.answer or {})
     return None
 
 
@@ -388,6 +391,12 @@ def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
         return answer.get("indices")
     if qtype in ("numberline", "table_fill", "composite", "graph_read"):
         return answer
+    if qtype == "code":
+        return {
+            key: answer[key]
+            for key in ("starter_code", "tests", "timeout_ms")
+            if key in answer
+        }
     return answer.get("value")
 
 

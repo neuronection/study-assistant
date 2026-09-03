@@ -97,6 +97,13 @@
     "writeMode": "Write instead",
     "hideWriteMode": "Hide writing",
     "recognize": "Recognize",
+    "codeEditorLabel": "Your code",
+    "codeRun": "Run tests",
+    "codeRunHint": "Run your code against the visible test cases, then submit.",
+    "codePassed": "{{passed}}/{{total}} passing",
+    "codePass": "pass",
+    "codeFail": "fail",
+    "codeGot": "got",
     "interpretedAs": "Interpreted as — pick the right one (OCR proposes, you decide):",
     "noMathFound": "No math found in the handwriting.",
     "print": "Print",
@@ -1648,7 +1655,8 @@
       "numberline": "Number line",
       "table_fill": "Table fill",
       "composite": "Multi-part",
-      "graph_read": "Graph reading"
+      "graph_read": "Graph reading",
+      "code": "Code"
     },
     "topicLabel": "Topic",
     "topicInfo": "An optional focus topic. When set, every generated question or step targets that concept; leave empty to cover the whole scope.",
@@ -1668,7 +1676,8 @@
       "numberline": "Shade intervals and place points on an interactive number line; graded deterministically with boundary and tolerance checks.",
       "table_fill": "Complete a grid cell by cell; each cell is graded with its own checker (exact, tolerance or SymPy) for partial credit.",
       "composite": "One multi-part problem; a later part answered correctly from your earlier answer earns follow-through credit.",
-      "graph_read": "Read a value off a generated curve or click the point asked for; the curve and the expected reading are computed by the app."
+      "graph_read": "Read a value off a generated curve or click the point asked for; the curve and the expected reading are computed by the app.",
+      "code": "Write Python code that runs in your browser against visible test cases — nothing is executed on a server."
     },
     "exerciseKindInfo": {
       "multi_step": "A guided multi-step problem: the tutor helps you through it with a hint ladder and independence score.",

@@ -76,6 +76,10 @@ tutor. It is not a prompt-level request.
 | numeric | absolute/relative tolerance | `deterministic` |
 | equation (incl. MathLive input, exercise steps) | equivalence chain | `symPy` |
 | numberline (quiz type + exercise step kind) | region grading (`app/math/regions.py`, below) | `deterministic` |
+| table_fill | per-cell checkers (`app/math/tables.py`) | `deterministic` |
+| composite (follow-through) | per-part checkers + SymPy relation recompute (`app/math/composite.py`) | `deterministic` |
+| graph_read | computed-value tolerance / nearest-point match (`app/math/graphs.py`) | `deterministic` |
+| code | in-page Pyodide run; backend re-verifies each captured output against the stored test (`app/math/code.py`) | `deterministic` |
 | unsupported type | — | `config` (fails safe) |
 
 Error classification for tutor steps: parse failure → `misread`, else

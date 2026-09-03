@@ -287,6 +287,20 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   validators prove any declared value matches the computed data. The chart
   rides the stem as a standard `chart` block; the response (reading or clicked
   point) replays via the attempt report
+- ✅ **Code-execution questions (C14, plan 51-D, ADR-115)**: the `code` type
+  runs the student's Python **in Pyodide (CPython → WASM) inside the
+  webview** — no server-side execution path exists at all, identical in desktop
+  and web modes, offline-capable (the runtime is bundled as a lazy chunk).
+  Visible test cases (call expression → expected JSON value / stdout); the
+  runner executes the code once, evaluates each call with stdout capture, and
+  compares in-page (number tolerance, string normalization); the submitted
+  per-case payload is **re-verified by the backend** against the stored tests
+  (partial credit = passing cases). Generators may propose code questions
+  (validators: 1–10 tests, call + expected per test, reference solution
+  required; the reference solution stays server-side and is never exported to
+  `caq`). Known limits: Pyodide stdlib + bundled packages only; no hard
+  execution timeout without cross-origin isolation (infinite loops freeze the
+  tab — documented)
 - ✅ Generation: count/difficulty controls, course/node scope; deterministic
   validators enforce the full metadata taxonomy (concepts, skill, bloom, difficulty,
   expected time, misconceptions) — questions enter the bank tagged or flagged

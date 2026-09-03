@@ -57,6 +57,7 @@ const QUIZ_TYPES = [
   'table_fill',
   'composite',
   'graph_read',
+  'code',
 ] as const
 
 type ExerciseKind = (typeof EXERCISE_KINDS)[number]

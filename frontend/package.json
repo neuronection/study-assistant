@@ -40,6 +40,7 @@
     "mathlive": "^0.110.0",
     "mermaid": "^11.16.1",
     "plotly.js-dist-min": "^3.7.0",
+    "pyodide": "^314.0.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.11",

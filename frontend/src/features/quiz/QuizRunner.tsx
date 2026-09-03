@@ -27,6 +27,12 @@ import {
   type GraphReadResponse,
 } from '@/components/answers/GraphReadAnswer'
 import {
+  CodeAnswer,
+  codeResponseComplete,
+  isCodeInput,
+  type CodeRunPayload,
+} from '@/components/answers/CodeAnswer'
+import {
   TableFillAnswer,
   isTableFillInput,
   tableGridComplete,
@@ -86,6 +92,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   const [tableGrid, setTableGrid] = useState<string[][] | null>(null)
   const [compositeParts, setCompositeParts] = useState<string[] | null>(null)
   const [graphResponse, setGraphResponse] = useState<GraphReadResponse | null>(null)
+  const [codeResponse, setCodeResponse] = useState<CodeRunPayload | null>(null)
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
@@ -161,6 +168,9 @@ export function QuizRunner({ activityId }: { activityId: number }) {
     }
     if (current.type === 'graph_read') {
       return graphResponse
+    }
+    if (current.type === 'code') {
+      return codeResponse
     }
     if (current.type === 'single' || current.type === 'truefalse' || current.type === 'multi') {
       if (current.type === 'multi' && Array.isArray(choice)) {
@@ -315,6 +325,9 @@ export function QuizRunner({ activityId }: { activityId: number }) {
         graphResponse !== null &&
         (('value' in graphResponse && graphResponse.value !== undefined) ||
           ('index' in graphResponse && graphResponse.index !== undefined))) ||
+      (question.type === 'code' &&
+        isCodeInput(question.input) &&
+        codeResponseComplete(codeResponse, question.input)) ||
       ((question.type === 'text' || question.type === 'numeric' || question.type === 'equation') &&
         typed.trim().length > 0))
 
@@ -507,6 +520,15 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                   xs={chartXs(chartFigureFromStem(question.stem as { type: string }[]))}
                   response={graphResponse}
                   onChange={setGraphResponse}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
+              {question.type === 'code' && isCodeInput(question.input) ? (
+                <CodeAnswer
+                  input={question.input}
+                  response={codeResponse}
+                  onChange={setCodeResponse}
                   disabled={feedback !== null}
                 />
               ) : null}
@@ -723,6 +745,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                       setTableGrid(null)
                       setCompositeParts(null)
                       setGraphResponse(null)
+                      setCodeResponse(null)
                       setFeedback(null)
                       setHints([])
                       setStartedAt(Date.now())

@@ -319,7 +319,7 @@ describe('GenerateDialog', () => {
     await waitFor(() => expect(generateQuiz).toHaveBeenCalled())
     expect(generateQuiz).toHaveBeenCalledWith(
       expect.objectContaining({
-        question_types: ['multi', 'truefalse', 'text', 'numeric', 'equation', 'numberline', 'table_fill', 'composite', 'graph_read'],
+        question_types: ['multi', 'truefalse', 'text', 'numeric', 'equation', 'numberline', 'table_fill', 'composite', 'graph_read', 'code'],
         shuffle: true,
         course_id: 3,
       })
@@ -340,7 +340,7 @@ describe('GenerateDialog', () => {
 
   test('practice mode disables generate when nothing is selected', async () => {
     renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
-    const allTypes = await screen.findAllByRole('button', { name: /single choice|multiple select|true \/ false|typed answer|numeric|equation|number line|table fill|multi-part|graph/i })
+    const allTypes = await screen.findAllByRole('button', { name: /single choice|multiple select|true \/ false|typed answer|numeric|equation|number line|table fill|multi-part|graph|code/i })
     for (const chip of allTypes) {
       fireEvent.click(chip)
     }
@@ -350,7 +350,7 @@ describe('GenerateDialog', () => {
 
   test('practice mode sends quiz when no exercise kinds chosen and vice versa', async () => {
     renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
-    const allTypes = await screen.findAllByRole('button', { name: /single choice|multiple select|true \/ false|typed answer|numeric|equation|number line|table fill|multi-part|graph/i })
+    const allTypes = await screen.findAllByRole('button', { name: /single choice|multiple select|true \/ false|typed answer|numeric|equation|number line|table fill|multi-part|graph|code/i })
     for (const chip of allTypes) {
       fireEvent.click(chip)
     }

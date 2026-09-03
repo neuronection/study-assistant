@@ -12,6 +12,12 @@ export interface QuizQuestionPart {
   type: string
 }
 
+export interface QuizQuestionTest {
+  call: string
+  expected?: unknown
+  expected_stdout?: string | null
+}
+
 export interface QuizQuestionInput {
   widget: string
   min?: number
@@ -20,6 +26,9 @@ export interface QuizQuestionInput {
   row_labels?: string[]
   cells?: QuizQuestionCell[][]
   parts?: QuizQuestionPart[]
+  starter_code?: string
+  tests?: QuizQuestionTest[]
+  mode?: string
 }
 
 export interface QuizQuestion {
