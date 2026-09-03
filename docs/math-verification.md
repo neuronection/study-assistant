@@ -127,3 +127,19 @@ proven before the exercise is ever banked:
   with a missing or non-equivalent fix is incorrect with feedback naming which
   half failed. Legacy pick-only responses stay deterministic. The rubric LLM
   path remains only as the fallback for malformed responses.
+
+## Table-fill per-cell grading (`app/math/tables.py`, plan 51-F)
+
+The `table_fill` question type grades a grid cell by cell, reusing the flat
+kinds' checkers per cell — no LLM anywhere:
+
+- Cell kinds: `text` (normalized match, optional `accept` alternatives),
+  `numeric` (float match with per-cell `tolerance`, default 1e-6),
+  `equation` (equivalence chain), `locked` (pre-filled display text, never
+  graded — the value is public in `QuestionOut.input`).
+- Partial credit = `correct fillable cells / fillable cells` (exact match →
+  1.0); wrong cells tag `wrong_cell`, malformed payloads score 0 with
+  `malformed`.
+- Validators (generation + caq import): headers/rows non-empty and aligned
+  (≤8 columns, ≤10 rows), every fillable value parses for its kind, ≥1
+  fillable cell; drafts failing these go to the standard repair loop.

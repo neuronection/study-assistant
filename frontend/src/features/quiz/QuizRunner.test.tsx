@@ -265,6 +265,59 @@ describe('QuizRunner', () => {
     vi.mocked(SVGElement.prototype.getBoundingClientRect).mockRestore()
   })
 
+  test('table_fill: fill a cell and submit the grid', async () => {
+    quizQuestions.mockResolvedValue([
+      {
+        id: 8,
+        type: 'table_fill',
+        stem: [{ type: 'text', md: 'Complete the truth table.' }],
+        options: null,
+        difficulty: 2,
+        bloom: 'apply',
+        skill: 'conceptual',
+        expected_time_sec: 90,
+        flag: 'ok',
+        input: {
+          widget: 'table_fill',
+          headers: ['p', 'q', 'p and q'],
+          row_labels: ['row 1'],
+          cells: [
+            [
+              { kind: 'locked', text: 'true' },
+              { kind: 'locked', text: 'true' },
+              { kind: 'text' },
+            ],
+          ],
+        },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: 9, score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: true,
+      partial_credit: 1,
+      graded_by: 'deterministic',
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+    })
+
+    renderRunner()
+    expect(await screen.findByText(/Complete the truth table/)).toBeInTheDocument()
+    await waitFor(() => expect(startQuizAttempt).toHaveBeenCalled())
+
+    const submit = getButton(/submit/i)
+    expect(submit.disabled).toBe(true)
+    const input = screen.getAllByRole('textbox')[0] as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'true' } })
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    const [attemptId, questionId, response] = submitQuizAnswer.mock.calls[0]
+    expect(attemptId).toBe(9)
+    expect(questionId).toBe(8)
+    expect(response).toEqual([['', '', 'true']])
+  })
+
   test('wrong answer shows incorrect verdict', async () => {
     quizQuestions.mockResolvedValue([QUESTIONS[0]])
     startQuizAttempt.mockResolvedValue({ id: 10, score: null })

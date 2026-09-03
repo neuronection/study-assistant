@@ -59,7 +59,7 @@ QUIZGEN_SYSTEM = (
     '{\n  "questions": [\n'
     "    {\n"
     '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
-    '| "numberline",\n'
+    '| "numberline" | "table_fill",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
@@ -69,7 +69,12 @@ QUIZGEN_SYSTEM = (
     "numberline: {\"domain\": {\"min\": number, \"max\": number}, "
     "\"points\": [{\"value\": number}], "
     "\"intervals\": [{\"lo\": number, \"hi\": number, \"lo_closed\": bool, "
-    "\"hi_closed\": bool}], \"tolerance\": number (optional)},\n"
+    "\"hi_closed\": bool}], \"tolerance\": number (optional)}, "
+    "table_fill: {\"headers\": [str], \"rows\": [{\"label\": str, \"cells\": "
+    "[{\"kind\": \"text\" | \"numeric\" | \"equation\" | \"locked\", "
+    "\"value\": str, \"tolerance\": number (numeric, optional)}]}]} "
+    "(cells align with headers; \"locked\" cells hold fixed display text, "
+    "every other cell carries its expected answer),\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'
@@ -85,7 +90,11 @@ QUIZGEN_SYSTEM = (
     "listed handles (e.g. [M12]) exactly as given. "
     "For numberline questions the stem states the task (inequality, interval or "
     "solution set), the domain must be wide enough that every expected point/interval "
-    "end lies strictly inside it, and the expected answer marks the full solution set."
+    "end lies strictly inside it, and the expected answer marks the full solution set. "
+    "For table_fill questions the stem explains the table; keep tables 2-4 columns "
+    "and 2-5 rows, mark pre-filled cells as \"locked\", and give every fillable cell "
+    "the exact expected answer for its declared kind (numeric cells may carry a "
+    "tolerance)."
 )
 
 EXGEN_SYSTEM = (

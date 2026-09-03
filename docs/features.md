@@ -257,6 +257,14 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   partial credit for partial shading (see math-verification.md). Generators may
   propose numberline questions (validators enforce the payload schema + domain
   bounds; repair loop); `caq/v1` round-trips them
+- ✅ **Table / matrix completion (C19, plan 51-F)**: the `table_fill` question
+  type answers a grid cell by cell — headers + row labels, pre-filled `"locked"`
+  cells shown read-only, fillable cells typed per their declared kind
+  (text = normalized match + accept list, numeric = tolerance, equation =
+  SymPy equivalence). Grading is per-cell deterministic with partial credit =
+  fraction of correct cells; generators propose tables (validators: alignment,
+  kinds, parseable values, ≥1 fillable cell; repair loop) and `caq/v1`
+  round-trips them; the filled grid replays in the attempt report
 - ✅ Generation: count/difficulty controls, course/node scope; deterministic
   validators enforce the full metadata taxonomy (concepts, skill, bloom, difficulty,
   expected time, misconceptions) — questions enter the bank tagged or flagged
@@ -308,7 +316,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   prompt embedding the schema and every validator rule — doc 11 authoring kit
 - ✅ Score page: History tab + mistake notebook — H2b first cut
 - — Cloze/match/order (C3), composite follow-through (C16), essay rubrics (C17),
-  table fill (C19), practice/exam UI differences (C10),
+  practice/exam UI differences (C10),
   adaptive difficulty (C11), item analysis (C15)
 
 ## Exercises & tutor

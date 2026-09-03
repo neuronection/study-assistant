@@ -22,6 +22,7 @@ from ..domain.models import (
     Question,
     QuizHelpEvent,
 )
+from ..math.tables import table_public_input
 from ..ocr.notes_ocr import NotesOcrEngine
 from ..pipelines.qpkg import build_qpkg, read_qpkg
 from ..pipelines.quizgen import (
@@ -183,16 +184,18 @@ def _activity_out(activity: Activity, question_count: int) -> ActivityOut:
 
 
 def _question_input(question: Question) -> dict[str, Any] | None:
-    if question.type != "numberline":
-        return None
-    domain = (question.answer or {}).get("domain")
-    if not isinstance(domain, dict):
-        return None
-    dmin = domain.get("min")
-    dmax = domain.get("max")
-    if not isinstance(dmin, (int, float)) or not isinstance(dmax, (int, float)):
-        return None
-    return {"widget": "numberline", "min": dmin, "max": dmax}
+    if question.type == "numberline":
+        domain = (question.answer or {}).get("domain")
+        if not isinstance(domain, dict):
+            return None
+        dmin = domain.get("min")
+        dmax = domain.get("max")
+        if not isinstance(dmin, (int, float)) or not isinstance(dmax, (int, float)):
+            return None
+        return {"widget": "numberline", "min": dmin, "max": dmax}
+    if question.type == "table_fill":
+        return table_public_input(question.answer or {})
+    return None
 
 
 def _question_out(question: Question) -> QuestionOut:
@@ -375,8 +378,8 @@ def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
         return answer.get("index")
     if qtype == "multi":
         return answer.get("indices")
-    if qtype == "numberline":
-        return {key: answer[key] for key in ("domain", "points", "intervals") if key in answer}
+    if qtype in ("numberline", "table_fill"):
+        return answer
     return answer.get("value")
 
 

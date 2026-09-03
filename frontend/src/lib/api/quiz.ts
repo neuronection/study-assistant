@@ -3,10 +3,18 @@ import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 import type { HintResult } from './exercises'
 
+export interface QuizQuestionCell {
+  kind: string
+  text?: string
+}
+
 export interface QuizQuestionInput {
   widget: string
   min?: number
   max?: number
+  headers?: string[]
+  row_labels?: string[]
+  cells?: QuizQuestionCell[][]
 }
 
 export interface QuizQuestion {

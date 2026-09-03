@@ -10,6 +10,7 @@ from ..ai.structured import QuizgenOut
 from ..domain.models import Activity, Question
 from ..math.equivalence import expressions_equivalent
 from ..math.regions import validate_region_answer
+from ..math.tables import validate_table_answer
 from ..services.knowledge.context import ContextBundle
 
 QUIZGEN_TASK = "quizgen"
@@ -24,6 +25,7 @@ QUESTION_TYPES = (
     "numeric",
     "equation",
     "numberline",
+    "table_fill",
 )
 SKILLS = ("conceptual", "procedural", "applied", "notation")
 BLOOMS = ("remember", "understand", "apply", "analyze", "evaluate", "create")
@@ -85,6 +87,10 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     elif qtype == "numberline":
         problems.extend(
             f"q{index}: {problem}" for problem in validate_region_answer(answer)
+        )
+    elif qtype == "table_fill":
+        problems.extend(
+            f"q{index}: {problem}" for problem in validate_table_answer(answer)
         )
 
     if not str(draft.get("explanation_md", "")).strip():

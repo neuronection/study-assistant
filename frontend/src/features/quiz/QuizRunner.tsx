@@ -14,6 +14,11 @@ import {
   numberlinePayloadComplete,
   type NumberlinePayload,
 } from '@/components/answers/NumberlineAnswer'
+import {
+  TableFillAnswer,
+  isTableFillInput,
+  tableGridComplete,
+} from '@/components/answers/TableFillAnswer'
 import type { Block } from '@/components/blocks/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -66,6 +71,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   const [choice, setChoice] = useState<number | number[] | boolean | null>(null)
   const [typed, setTyped] = useState('')
   const [numberline, setNumberline] = useState<NumberlinePayload | null>(null)
+  const [tableGrid, setTableGrid] = useState<string[][] | null>(null)
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
@@ -132,6 +138,9 @@ export function QuizRunner({ activityId }: { activityId: number }) {
     }
     if (current.type === 'numberline') {
       return numberline
+    }
+    if (current.type === 'table_fill') {
+      return tableGrid
     }
     if (current.type === 'single' || current.type === 'truefalse' || current.type === 'multi') {
       if (current.type === 'multi' && Array.isArray(choice)) {
@@ -276,6 +285,9 @@ export function QuizRunner({ activityId }: { activityId: number }) {
     ((question.type === 'multi' && Array.isArray(choice) && choice.length > 0) ||
       ((question.type === 'single' || question.type === 'truefalse') && choice !== null) ||
       (question.type === 'numberline' && numberlinePayloadComplete(numberline)) ||
+      (question.type === 'table_fill' &&
+        isTableFillInput(question.input) &&
+        tableGridComplete(tableGrid, question.input)) ||
       ((question.type === 'text' || question.type === 'numeric' || question.type === 'equation') &&
         typed.trim().length > 0))
 
@@ -439,6 +451,15 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                   max={question.input.max ?? 10}
                   value={numberline}
                   onChange={setNumberline}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
+              {question.type === 'table_fill' && isTableFillInput(question.input) ? (
+                <TableFillAnswer
+                  input={question.input}
+                  value={tableGrid}
+                  onChange={setTableGrid}
                   disabled={feedback !== null}
                 />
               ) : null}
@@ -652,6 +673,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                       setChoice(null)
                       setTyped('')
                       setNumberline(null)
+                      setTableGrid(null)
                       setFeedback(null)
                       setHints([])
                       setStartedAt(Date.now())

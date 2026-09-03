@@ -54,6 +54,7 @@ const QUIZ_TYPES = [
   'numeric',
   'equation',
   'numberline',
+  'table_fill',
 ] as const
 
 type ExerciseKind = (typeof EXERCISE_KINDS)[number]
