@@ -8,6 +8,10 @@ export interface QuizQuestionCell {
   text?: string
 }
 
+export interface QuizQuestionPart {
+  type: string
+}
+
 export interface QuizQuestionInput {
   widget: string
   min?: number
@@ -15,6 +19,7 @@ export interface QuizQuestionInput {
   headers?: string[]
   row_labels?: string[]
   cells?: QuizQuestionCell[][]
+  parts?: QuizQuestionPart[]
 }
 
 export interface QuizQuestion {

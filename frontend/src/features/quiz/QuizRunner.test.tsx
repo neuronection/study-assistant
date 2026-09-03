@@ -318,6 +318,49 @@ describe('QuizRunner', () => {
     expect(response).toEqual([['', '', 'true']])
   })
 
+  test('composite: fill parts and submit the response array', async () => {
+    quizQuestions.mockResolvedValue([
+      {
+        id: 11,
+        type: 'composite',
+        stem: [{ type: 'text', md: '(a) Solve $3x = 9$. (b) Compute $x^2$ using (a).' }],
+        options: null,
+        difficulty: 3,
+        bloom: 'apply',
+        skill: 'procedural',
+        expected_time_sec: 120,
+        flag: 'ok',
+        input: { widget: 'composite', parts: [{ type: 'numeric' }, { type: 'numeric' }] },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: 9, score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: true,
+      partial_credit: 1,
+      graded_by: 'deterministic',
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+    })
+
+    renderRunner()
+    expect(await screen.findByText(/Solve/)).toBeInTheDocument()
+    await waitFor(() => expect(startQuizAttempt).toHaveBeenCalled())
+
+    const submit = getButton(/submit/i)
+    expect(submit.disabled).toBe(true)
+    const partA = screen.getByLabelText('Part (a) answer') as HTMLInputElement
+    fireEvent.change(partA, { target: { value: '3' } })
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    const partB = screen.getByLabelText('Part (b) answer') as HTMLInputElement
+    fireEvent.change(partB, { target: { value: '9' } })
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    const [, questionId, response] = submitQuizAnswer.mock.calls[0]
+    expect(questionId).toBe(11)
+    expect(response).toEqual(['3', '9'])
+  })
+
   test('wrong answer shows incorrect verdict', async () => {
     quizQuestions.mockResolvedValue([QUESTIONS[0]])
     startQuizAttempt.mockResolvedValue({ id: 10, score: null })

@@ -265,6 +265,18 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   fraction of correct cells; generators propose tables (validators: alignment,
   kinds, parseable values, ≥1 fillable cell; repair loop) and `caq/v1`
   round-trips them; the filled grid replays in the attempt report
+- ✅ **Composite questions with follow-through credit (C16, plan 51-E)**: the
+  `composite` type is one multi-part problem (2–4 ordered parts, each
+  text/numeric/equation). Each part grades deterministically; when a part
+  declares a `follow_through` relation (a SymPy expression over the prior
+  parts' answers, symbols `a`/`b`/`c`), a later part answered correctly **from
+  your earlier answer** earns credit flagged *follow-through* even when the
+  earlier part was wrong. Validators prove at generation time that the relation
+  is parseable, only references prior parts, reproduces the declared value from
+  the declared answers, and still evaluates from a perturbed answer (repair
+  loop); `caq/v1` round-trips the parts; the per-part feedback
+  ("(a): incorrect, (b): correct (follow-through)") renders in the runner and
+  the response rides the attempt report
 - ✅ Generation: count/difficulty controls, course/node scope; deterministic
   validators enforce the full metadata taxonomy (concepts, skill, bloom, difficulty,
   expected time, misconceptions) — questions enter the bank tagged or flagged
@@ -315,7 +327,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ "Author with AI" prompt builder: topic/count/types/difficulty → copyable
   prompt embedding the schema and every validator rule — doc 11 authoring kit
 - ✅ Score page: History tab + mistake notebook — H2b first cut
-- — Cloze/match/order (C3), composite follow-through (C16), essay rubrics (C17),
+- — Cloze/match/order (C3), essay rubrics (C17),
   practice/exam UI differences (C10),
   adaptive difficulty (C11), item analysis (C15)
 

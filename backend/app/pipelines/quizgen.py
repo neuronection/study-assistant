@@ -8,6 +8,7 @@ from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import QUIZGEN_SYSTEM
 from ..ai.structured import QuizgenOut
 from ..domain.models import Activity, Question
+from ..math.composite import validate_composite_answer
 from ..math.equivalence import expressions_equivalent
 from ..math.regions import validate_region_answer
 from ..math.tables import validate_table_answer
@@ -26,6 +27,7 @@ QUESTION_TYPES = (
     "equation",
     "numberline",
     "table_fill",
+    "composite",
 )
 SKILLS = ("conceptual", "procedural", "applied", "notation")
 BLOOMS = ("remember", "understand", "apply", "analyze", "evaluate", "create")
@@ -91,6 +93,10 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     elif qtype == "table_fill":
         problems.extend(
             f"q{index}: {problem}" for problem in validate_table_answer(answer)
+        )
+    elif qtype == "composite":
+        problems.extend(
+            f"q{index}: {problem}" for problem in validate_composite_answer(answer)
         )
 
     if not str(draft.get("explanation_md", "")).strip():

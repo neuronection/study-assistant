@@ -849,6 +849,9 @@
     },
     "tablefill": {
       "cell": "Cell {{row}}, column {{column}}"
+    },
+    "composite": {
+      "part": "Part ({{label}}) answer"
     }
   },
   "entityMenu": {
@@ -1638,7 +1641,8 @@
       "numeric": "Numeric",
       "equation": "Equation",
       "numberline": "Number line",
-      "table_fill": "Table fill"
+      "table_fill": "Table fill",
+      "composite": "Multi-part"
     },
     "topicLabel": "Topic",
     "topicInfo": "An optional focus topic. When set, every generated question or step targets that concept; leave empty to cover the whole scope.",
@@ -1656,7 +1660,8 @@
       "numeric": "A numeric answer graded with tolerance.",
       "equation": "A math expression graded by equivalence (SymPy), so 2x and x*2 are both correct.",
       "numberline": "Shade intervals and place points on an interactive number line; graded deterministically with boundary and tolerance checks.",
-      "table_fill": "Complete a grid cell by cell; each cell is graded with its own checker (exact, tolerance or SymPy) for partial credit."
+      "table_fill": "Complete a grid cell by cell; each cell is graded with its own checker (exact, tolerance or SymPy) for partial credit.",
+      "composite": "One multi-part problem; a later part answered correctly from your earlier answer earns follow-through credit."
     },
     "exerciseKindInfo": {
       "multi_step": "A guided multi-step problem: the tutor helps you through it with a hint ladder and independence score.",

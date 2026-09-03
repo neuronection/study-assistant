@@ -143,3 +143,21 @@ kinds' checkers per cell — no LLM anywhere:
 - Validators (generation + caq import): headers/rows non-empty and aligned
   (≤8 columns, ≤10 rows), every fillable value parses for its kind, ≥1
   fillable cell; drafts failing these go to the standard repair loop.
+
+## Composite follow-through (`app/math/composite.py`, plan 51-E)
+
+Multi-part questions grade per part with the flat checkers, plus one
+determinism-first trick — **follow-through credit**:
+
+- A part may declare `follow_through`: a SymPy expression over the prior
+  parts' answers (symbols `a`, `b`, `c` = parts 1, 2, 3).
+- **Generation-time proofs**: the relation must parse, reference only prior
+  parts, reproduce the part's declared value when the declared prior answers
+  are substituted, and still evaluate from a perturbed prior answer — any
+  failure sends the draft to repair.
+- **Grading**: a part whose prior parts were answered wrong is re-checked
+  against the relation recomputed from the *student's* prior values — a correct
+  derivation from a wrong value earns the part, flagged `follow_through`
+  (overall correctness still requires every part). Grading itself never calls
+  an LLM: text = normalized match, numeric = tolerance, equation = equivalence
+  chain (on both the declared and the recomputed expectation).

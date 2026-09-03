@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ...domain.models import Question
+from ...math.composite import grade_composite
 from ...math.equivalence import equivalent
 from ...math.regions import grade_regions
 from ...math.tables import grade_table_fill
@@ -144,6 +145,17 @@ def grade_table(response: Any, answer: dict[str, Any]) -> GradeResult:
     )
 
 
+def grade_composite_question(response: Any, answer: dict[str, Any]) -> GradeResult:
+    result = grade_composite(answer, response)
+    return GradeResult(
+        correct=result["correct"],
+        partial_credit=result["partial_credit"],
+        graded_by="deterministic",
+        feedback=[{"type": "text", "md": line} for line in result["feedback"]],
+        error_tags=list(result["error_tags"]),
+    )
+
+
 def grade(question: Question, response: Any) -> GradeResult:
     answer = question.answer or {}
     graders = {
@@ -155,6 +167,7 @@ def grade(question: Question, response: Any) -> GradeResult:
         "equation": lambda: grade_equation(response, answer, question.sympy_check),
         "numberline": lambda: grade_numberline(response, answer),
         "table_fill": lambda: grade_table(response, answer),
+        "composite": lambda: grade_composite_question(response, answer),
     }
     grader = graders.get(question.type)
     if grader is None:

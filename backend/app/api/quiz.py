@@ -22,6 +22,7 @@ from ..domain.models import (
     Question,
     QuizHelpEvent,
 )
+from ..math.composite import composite_public_input
 from ..math.tables import table_public_input
 from ..ocr.notes_ocr import NotesOcrEngine
 from ..pipelines.qpkg import build_qpkg, read_qpkg
@@ -195,6 +196,8 @@ def _question_input(question: Question) -> dict[str, Any] | None:
         return {"widget": "numberline", "min": dmin, "max": dmax}
     if question.type == "table_fill":
         return table_public_input(question.answer or {})
+    if question.type == "composite":
+        return composite_public_input(question.answer or {})
     return None
 
 
@@ -378,7 +381,7 @@ def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
         return answer.get("index")
     if qtype == "multi":
         return answer.get("indices")
-    if qtype in ("numberline", "table_fill"):
+    if qtype in ("numberline", "table_fill", "composite"):
         return answer
     return answer.get("value")
 

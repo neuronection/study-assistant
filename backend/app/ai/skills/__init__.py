@@ -59,7 +59,7 @@ QUIZGEN_SYSTEM = (
     '{\n  "questions": [\n'
     "    {\n"
     '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
-    '| "numberline" | "table_fill",\n'
+    '| "numberline" | "table_fill" | "composite",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
@@ -74,7 +74,13 @@ QUIZGEN_SYSTEM = (
     "[{\"kind\": \"text\" | \"numeric\" | \"equation\" | \"locked\", "
     "\"value\": str, \"tolerance\": number (numeric, optional)}]}]} "
     "(cells align with headers; \"locked\" cells hold fixed display text, "
-    "every other cell carries its expected answer),\n"
+    "every other cell carries its expected answer), "
+    "composite: {\"parts\": [{\"type\": \"text\" | \"numeric\" | \"equation\", "
+    "\"value\": str, \"tolerance\": number (numeric, optional), "
+    "\"follow_through\": str (sympy expression over the prior parts' answers, "
+    "using the symbols a, b, c for parts 1, 2, 3 — optional; must reproduce "
+    "this part's value when the declared prior answers are substituted)}]} "
+    "(2-4 ordered sub-questions forming one multi-part problem),\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'
