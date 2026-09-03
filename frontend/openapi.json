@@ -4014,7 +4014,8 @@
       "ItemFlag": {
         "enum": [
           "ok",
-          "review"
+          "review",
+          "elo_outlier"
         ],
         "title": "ItemFlag",
         "type": "string"

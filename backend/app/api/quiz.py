@@ -42,6 +42,7 @@ from ..services.knowledge.context import (
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.chat import ChatService
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study.elo import EloService, rating_to_difficulty
 from ..services.study.grading import grade
 from ..services.study.inbox import InboxService
 from ..services.study.patterns import ErrorPatternService
@@ -268,6 +269,11 @@ def generate_quiz(
     title_topic = body.topic
     if title_topic is None and node is not None and not node.is_root:
         title_topic = node.title
+    if body.difficulty is None and (body.topic or (node is not None and not node.is_root)):
+        focus_concept = body.topic or (node.title if node is not None else None)
+        rating = EloService(session).student_rating(profile.id, focus_concept or "", body.skill)
+        if rating is not None:
+            body.difficulty = rating_to_difficulty(rating)
     activity = Activity(
         profile_id=profile.id,
         course_id=body.course_id,
@@ -870,6 +876,16 @@ def submit_answer(
                 question_id=question.id,
                 error_tags=error_tags or None,
             )
+        )
+    if attempt.mode != AttemptMode.EXAM:
+        EloService(session).record(
+            profile.id,
+            question,
+            score=(
+                result.partial_credit
+                if result.partial_credit
+                else (1.0 if result.correct else 0.0)
+            ),
         )
     session.commit()
     return FeedbackOut(

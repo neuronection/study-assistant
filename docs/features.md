@@ -351,9 +351,20 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ "Author with AI" prompt builder: topic/count/types/difficulty → copyable
   prompt embedding the schema and every validator rule — doc 11 authoring kit
 - ✅ Score page: History tab + mistake notebook — H2b first cut
+- ✅ **Adaptive difficulty via item-level Elo (C11, plan 51-H)**: every graded
+  practice answer updates a deterministic Elo pair — the question's rating
+  (seeded from its declared difficulty, `item_stats.rating`) and the student's
+  rating for each concept×skill cell it touches (`concept_skill_ratings`); K
+  declines from 32 to 8 with attempt count, exam attempts are excluded
+  server-side. Consumers: focused quiz generation targets the student's cell
+  rating (concept/skill focus without an explicit difficulty derives the
+  target difficulty from the rating), and item analysis flags
+  `elo_outlier` questions whose live rating drifts ≥200 points from their
+  declared-difficulty seed after ≥10 attempts — too-hard/too-easy detection
+  for the bank. Low-attempt questions keep wide uncertainty (no flag, and
+  targeting falls back to the requested difficulty)
 - — Cloze/match/order (C3), essay rubrics (C17),
-  practice/exam UI differences (C10),
-  adaptive difficulty (C11), item analysis (C15)
+  practice/exam UI differences (C10), item analysis (C15)
 
 ## Exercises & tutor
 

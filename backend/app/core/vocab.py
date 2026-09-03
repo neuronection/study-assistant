@@ -125,6 +125,7 @@ class SpeedQuadrant(StrVocab):
 class ItemFlag(StrVocab):
     OK = "ok"
     REVIEW = "review"
+    ELO_OUTLIER = "elo_outlier"
 
 
 class WsTopic:

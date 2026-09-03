@@ -23,6 +23,7 @@ from ...domain.models import (
     StudyGoal,
     utcnow,
 )
+from ...services.study.elo import is_elo_outlier
 
 MIN_CELL_N = 3
 ITEM_FLAG_MIN_N = 20
@@ -624,6 +625,12 @@ def materialize(session: Session, profile_id: int) -> None:
         stat.flag = item["flag"]
         stat.updated_at = utcnow()
         question = session.get(Question, item["question_id"])
+        if (
+            question is not None
+            and stat.flag == ItemFlag.OK
+            and is_elo_outlier(stat.rating, stat.rating_count, question.difficulty)
+        ):
+            stat.flag = ItemFlag.ELO_OUTLIER
         if question is not None and item["flag"] == ItemFlag.REVIEW:
             question.flag = ItemFlag.REVIEW
     session.flush()

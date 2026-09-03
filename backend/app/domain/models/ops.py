@@ -186,7 +186,28 @@ class ItemStat(Base):
     avg_time_ratio: Mapped[float | None] = mapped_column(Float)
     distractor_selection: Mapped[dict[str, int] | None] = mapped_column(JSON)
     flag: Mapped[str] = mapped_column(String(10), default="ok")
+    rating: Mapped[float | None] = mapped_column(Float)
+    rating_count: Mapped[int | None] = mapped_column(Integer)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+class ConceptSkillRating(Base):
+    __tablename__ = "concept_skill_ratings"
+    __table_args__ = (
+        Index(
+            "uq_concept_skill_ratings",
+            "profile_id",
+            "concept",
+            "skill",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"))
+    concept: Mapped[str] = mapped_column(String(200))
+    skill: Mapped[str] = mapped_column(String(20))
+    rating: Mapped[float | None] = mapped_column(Float)
+    rating_count: Mapped[int | None] = mapped_column(Integer)
 
 class StudyGoal(Base):
     __tablename__ = "study_goals"

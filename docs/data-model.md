@@ -300,6 +300,12 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0051 (plan 51, ADR-125)**: item-level Elo — `item_stats.rating` +
+  `item_stats.rating_count` (nullable; seeded lazily from the question's
+  difficulty) and the new `concept_skill_ratings` table
+  (profile_id/concept/skill unique, `rating`/`rating_count`) for the student's
+  per-cell rating — kept separate from `concept_skill_stats` because
+  materialize deletes-and-rebuilds that table. Downgrade drops both.
 - **0049 (plan 47, ADR-104)**: `materials.duration_sec` + `materials.bitrate_kbps`
   nullable columns — read with mutagen at upload for audio/video materials
   (no ffmpeg, containers pass through to the provider). Downgrade drops both.

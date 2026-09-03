@@ -100,6 +100,9 @@ from .ops import (
     AiModel as AiModel,
 )
 from .ops import (
+    ConceptSkillRating as ConceptSkillRating,
+)
+from .ops import (
     ConceptSkillStat as ConceptSkillStat,
 )
 from .ops import (

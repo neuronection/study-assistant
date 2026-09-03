@@ -4830,7 +4830,7 @@ export interface components {
          * ItemFlag
          * @enum {string}
          */
-        ItemFlag: "ok" | "review";
+        ItemFlag: "ok" | "review" | "elo_outlier";
         /** ItemStatOut */
         ItemStatOut: {
             /** Avg Time Ms */
