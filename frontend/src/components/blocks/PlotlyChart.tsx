@@ -9,7 +9,13 @@ function prefersReducedMotion(): boolean {
   )
 }
 
-export function PlotlyChart({ figure }: { figure: Record<string, unknown> }) {
+export function PlotlyChart({
+  figure,
+  onPointClick,
+}: {
+  figure: Record<string, unknown>
+  onPointClick?: (x: number, y: number) => void
+}) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [failed, setFailed] = useState(false)
@@ -41,6 +47,18 @@ export function PlotlyChart({ figure }: { figure: Record<string, unknown> }) {
           displayModeBar: false,
           responsive: true,
         }).then(() => {
+          if (cancelled) return
+          if (onPointClick) {
+            const plotlyElement = element as unknown as {
+              on: (event: string, cb: (event: { points: { x: number; y: number }[] }) => void) => void
+              removeAllListeners: (event: string) => void
+            }
+            plotlyElement.removeAllListeners?.('plotly_click')
+            plotlyElement.on('plotly_click', (event) => {
+              const point = event?.points?.[0]
+              if (point) onPointClick(point.x, point.y)
+            })
+          }
           if (cancelled || typeof ResizeObserver === 'undefined') return
           observer = new ResizeObserver(() => Plotly.Plots.resize(element))
           observer.observe(element)
@@ -54,7 +72,7 @@ export function PlotlyChart({ figure }: { figure: Record<string, unknown> }) {
       observer?.disconnect()
       purge?.()
     }
-  }, [figure])
+  }, [figure, onPointClick])
 
   if (failed) {
     return (

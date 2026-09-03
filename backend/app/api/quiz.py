@@ -198,6 +198,11 @@ def _question_input(question: Question) -> dict[str, Any] | None:
         return table_public_input(question.answer or {})
     if question.type == "composite":
         return composite_public_input(question.answer or {})
+    if question.type == "graph_read":
+        mode = (question.answer or {}).get("mode")
+        if mode in ("value", "point"):
+            return {"widget": "graph_read", "mode": mode}
+        return None
     return None
 
 
@@ -381,7 +386,7 @@ def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
         return answer.get("index")
     if qtype == "multi":
         return answer.get("indices")
-    if qtype in ("numberline", "table_fill", "composite"):
+    if qtype in ("numberline", "table_fill", "composite", "graph_read"):
         return answer
     return answer.get("value")
 

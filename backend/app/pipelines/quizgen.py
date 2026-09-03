@@ -10,6 +10,13 @@ from ..ai.structured import QuizgenOut
 from ..domain.models import Activity, Question
 from ..math.composite import validate_composite_answer
 from ..math.equivalence import expressions_equivalent
+from ..math.graphs import (
+    build_graph_data,
+    graph_domain,
+    graph_figure,
+    materialize_graph_answer,
+    validate_graph_answer,
+)
 from ..math.regions import validate_region_answer
 from ..math.tables import validate_table_answer
 from ..services.knowledge.context import ContextBundle
@@ -28,6 +35,7 @@ QUESTION_TYPES = (
     "numberline",
     "table_fill",
     "composite",
+    "graph_read",
 )
 SKILLS = ("conceptual", "procedural", "applied", "notation")
 BLOOMS = ("remember", "understand", "apply", "analyze", "evaluate", "create")
@@ -97,6 +105,10 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     elif qtype == "composite":
         problems.extend(
             f"q{index}: {problem}" for problem in validate_composite_answer(answer)
+        )
+    elif qtype == "graph_read":
+        problems.extend(
+            f"q{index}: {problem}" for problem in validate_graph_answer(answer)
         )
 
     if not str(draft.get("explanation_md", "")).strip():
@@ -240,17 +252,31 @@ class QuizgenService:
                 used = registry.parse(str(explanation_md))
                 if used:
                     explanation_block["mentions"] = [entry.as_dict() for entry in used]
+            answer = draft.get("answer", {})
+            stem_blocks: list[dict[str, Any]] = [
+                {"type": "text", "md": draft.get("stem_md", "")}
+            ]
+            if draft["type"] == "graph_read":
+                answer, _problems = materialize_graph_answer(answer)
+                try:
+                    x_min, x_max, samples = graph_domain(answer)
+                    xs, ys = build_graph_data(
+                        str(answer.get("expression", "")), x_min, x_max, samples
+                    )
+                    stem_blocks.append({"type": "chart", "plotly": graph_figure(xs, ys)})
+                except Exception:
+                    pass
             questions.append(
                 Question(
                     activity_id=activity.id,
                     type=draft["type"],
-                    stem=[{"type": "text", "md": draft.get("stem_md", "")}],
+                    stem=stem_blocks,
                     options=(
                         [{"type": "text", "md": option} for option in draft["options_md"]]
                         if draft.get("options_md")
                         else None
                     ),
-                    answer=draft.get("answer", {}),
+                    answer=answer,
                     explanation=[explanation_block],
                     difficulty=float(draft.get("difficulty", 3) or 3),
                     bloom=draft.get("bloom"),

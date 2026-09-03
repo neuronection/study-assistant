@@ -277,6 +277,16 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   loop); `caq/v1` round-trips the parts; the per-part feedback
   ("(a): incorrect, (b): correct (follow-through)") renders in the runner and
   the response rides the attempt report
+- ✅ **Graph-reading answers (C5, plan 51-G)**: the `graph_read` type renders a
+  **server-computed curve** in the stem (deterministic SymPy evaluation over a
+  domain — never model-authored numbers) and asks the student to read it:
+  *read-a-value* (numeric answer with tolerance, e.g. "What is f(2)?") or
+  *click-a-point* (click the chart, graded by nearest data point — plotly click
+  events). The model authors only the expression, domain and target x; the
+  expected value/tolerance/data-point index are **computed by the backend** and
+  validators prove any declared value matches the computed data. The chart
+  rides the stem as a standard `chart` block; the response (reading or clicked
+  point) replays via the attempt report
 - ✅ Generation: count/difficulty controls, course/node scope; deterministic
   validators enforce the full metadata taxonomy (concepts, skill, bloom, difficulty,
   expected time, misconceptions) — questions enter the bank tagged or flagged

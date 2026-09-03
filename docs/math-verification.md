@@ -161,3 +161,25 @@ determinism-first trick — **follow-through credit**:
   (overall correctness still requires every part). Grading itself never calls
   an LLM: text = normalized match, numeric = tolerance, equation = equivalence
   chain (on both the declared and the recomputed expectation).
+
+## Graph-reading answers (`app/math/graphs.py`, plan 51-G)
+
+The `graph_read` type inverts the usual trust model — the model proposes only
+the *stimulus* (an expression of x, the plotted domain and the target x), and
+every graded number is computed in code:
+
+- **Data + chart**: `build_graph_data` evaluates the expression (SymPy →
+  lambdify) over an evenly spaced grid (20–400 samples) and refuses
+  non-finite values; the curve rides the stem as a standard plotly `chart`
+  block.
+- **Expected answers are computed, never authored**: value mode stores
+  `value = f(point_x)` (SymPy evalf, 6 decimals) and a tolerance (declared or
+  2% of the curve's y-span); point mode stores the nearest-sample index to
+  `point_x`.
+- **Validators**: expression parses and is finite over the whole grid,
+  domain sane, target inside the domain; a *declared* value/index (e.g. from
+  caq import) must match the recomputed computation — mismatch → repair.
+- **Grading**: value mode = numeric tolerance against the computed value;
+  point mode = exact nearest-sample index from the plotly click. No LLM in any
+  grading path; image-region hotspot/label variants (arbitrary diagrams) are
+  deferred until an image-authoring surface exists (plan as-built note).

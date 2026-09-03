@@ -59,7 +59,7 @@ QUIZGEN_SYSTEM = (
     '{\n  "questions": [\n'
     "    {\n"
     '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
-    '| "numberline" | "table_fill" | "composite",\n'
+    '| "numberline" | "table_fill" | "composite" | "graph_read",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
@@ -80,7 +80,14 @@ QUIZGEN_SYSTEM = (
     "\"follow_through\": str (sympy expression over the prior parts' answers, "
     "using the symbols a, b, c for parts 1, 2, 3 — optional; must reproduce "
     "this part's value when the declared prior answers are substituted)}]} "
-    "(2-4 ordered sub-questions forming one multi-part problem),\n"
+    "(2-4 ordered sub-questions forming one multi-part problem), "
+    "graph_read: {\"expression\": str (a function of x, sympy-parseable), "
+    "\"x_min\": number, \"x_max\": number, \"mode\": \"value\" | \"point\", "
+    "\"point_x\": number (the x the question asks about, inside the domain), "
+    "\"tolerance\": number (optional)} — the app renders the curve and computes "
+    "the expected reading itself, so NEVER invent values; the stem asks the "
+    "student to read the graph (e.g. \"What is f(2)?\" or \"Click where f "
+    "reaches its maximum on the shown domain\"),\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'

@@ -20,6 +20,13 @@ import {
   isCompositeInput,
 } from '@/components/answers/CompositeAnswer'
 import {
+  GraphReadAnswer,
+  chartFigureFromStem,
+  chartXs,
+  isGraphReadInput,
+  type GraphReadResponse,
+} from '@/components/answers/GraphReadAnswer'
+import {
   TableFillAnswer,
   isTableFillInput,
   tableGridComplete,
@@ -78,6 +85,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   const [numberline, setNumberline] = useState<NumberlinePayload | null>(null)
   const [tableGrid, setTableGrid] = useState<string[][] | null>(null)
   const [compositeParts, setCompositeParts] = useState<string[] | null>(null)
+  const [graphResponse, setGraphResponse] = useState<GraphReadResponse | null>(null)
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
@@ -150,6 +158,9 @@ export function QuizRunner({ activityId }: { activityId: number }) {
     }
     if (current.type === 'composite') {
       return compositeParts
+    }
+    if (current.type === 'graph_read') {
+      return graphResponse
     }
     if (current.type === 'single' || current.type === 'truefalse' || current.type === 'multi') {
       if (current.type === 'multi' && Array.isArray(choice)) {
@@ -300,6 +311,10 @@ export function QuizRunner({ activityId }: { activityId: number }) {
       (question.type === 'composite' &&
         isCompositeInput(question.input) &&
         compositeResponseComplete(compositeParts, question.input)) ||
+      (question.type === 'graph_read' &&
+        graphResponse !== null &&
+        (('value' in graphResponse && graphResponse.value !== undefined) ||
+          ('index' in graphResponse && graphResponse.index !== undefined))) ||
       ((question.type === 'text' || question.type === 'numeric' || question.type === 'equation') &&
         typed.trim().length > 0))
 
@@ -481,6 +496,17 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                   input={question.input}
                   value={compositeParts}
                   onChange={setCompositeParts}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
+              {question.type === 'graph_read' && isGraphReadInput(question.input) ? (
+                <GraphReadAnswer
+                  figure={chartFigureFromStem(question.stem as { type: string }[]) ?? {}}
+                  mode={question.input.mode}
+                  xs={chartXs(chartFigureFromStem(question.stem as { type: string }[]))}
+                  response={graphResponse}
+                  onChange={setGraphResponse}
                   disabled={feedback !== null}
                 />
               ) : null}
@@ -696,6 +722,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
                       setNumberline(null)
                       setTableGrid(null)
                       setCompositeParts(null)
+                      setGraphResponse(null)
                       setFeedback(null)
                       setHints([])
                       setStartedAt(Date.now())
