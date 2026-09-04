@@ -419,6 +419,23 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   fallback inside the gateway) is never double-retried. Failures bubble to the
   job handler, which emits `turn_error` exactly like the legacy path.
 
+## Family event vocabulary (Phase 6.2)
+
+Chat turns emit the **family event vocabulary** additively alongside the
+legacy WS event names, on the same `chat:{session_id}` topic — one pure
+mapper (`app/agui/family.py`), applied to every legacy event regardless of
+engine: `stream_start` → `flow_started` (flow `chat`, run_id, canonical
+steps thinking/tools/answer) · `phase` → `node_started` · `tool_call` →
+`node_finished` (`tool:{phase}` id, outcome + result detail) ·
+`stream_delta` → `delta` (`kind: reasoning` when reasoning) ·
+`assistant_message` → `flow_finished` (result ref = message id) ·
+`turn_error` → `flow_failed` (retryable false). `stream_interrupted` has no
+family equivalent and maps to nothing. Event names are the closed
+`FlowEvent` StrEnum (`core/vocab.py`). Legacy names stay the chat panel's
+contract (its handler ignores unknown types); the family stream feeds
+`FlowStatusCard` surfaces — adopted first in the shared editor's AI helper
+(Phase 6.3), with `TraceTimeline` unchanged for the rich chat view.
+
 ## Features built on the gateway
 
 | Feature | Task | Flow |

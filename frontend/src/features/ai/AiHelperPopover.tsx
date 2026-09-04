@@ -4,7 +4,6 @@ import type { Editor } from '@tiptap/react'
 import {
   Check,
   FileText,
-  Loader2,
   MoveDown,
   RotateCcw,
   Sparkles,
@@ -20,6 +19,7 @@ import {
 import { LazyMarkdownEditor } from '@/components/editor/LazyMarkdownEditor'
 import { MarkdownPreview } from '@/components/editor/MarkdownPreview'
 import { Button } from '@/components/ui/button'
+import { FlowStatusCard, type FlowStep } from '@/components/ui/flow-status'
 import { FloatingPanel } from './FloatingPanel'
 import { cn } from '@/lib/utils'
 
@@ -324,29 +324,35 @@ export function AiHelperPopover({
     )
   }
 
+  const flowTitle = t('editor.ai.flowTitle', { title: context.title })
+
+  const flowSteps = (transformRunning: boolean): FlowStep[] => [
+    {
+      id: 'transform',
+      label: t('editor.ai.stepTransform'),
+      status: transformRunning ? 'running' : 'failed',
+    },
+    { id: 'review', label: t('editor.ai.stepReview'), status: 'pending' },
+  ]
+
   const renderRunningView = () => (
     <div className="flex min-h-0 flex-1 flex-col space-y-2">
-      <p className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs">
-        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-        {t('editor.ai.generating')}
-      </p>
+      <FlowStatusCard
+        title={flowTitle}
+        steps={flowSteps(true)}
+        status="running"
+        onCancel={() => void transform.stop()}
+        labels={{ cancel: t('editor.ai.stop') }}
+        className="shrink-0"
+      />
       <div className="bg-subtle border-primary/40 text-foreground min-h-0 w-full flex-1 overflow-y-auto rounded-md border p-2 text-xs leading-relaxed whitespace-pre-wrap">
         {transform.result}
         <span className="animate-pulse after:content-['▍']" aria-hidden />
       </div>
-      <div className="flex shrink-0 items-center justify-between">
+      <div className="flex shrink-0 items-center">
         <span className="text-muted-foreground text-[11px]">
           {t('editor.ai.streaming')}
         </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => void transform.stop()}
-        >
-          <X className="size-3.5" aria-hidden />
-          {t('editor.ai.stop')}
-        </Button>
       </div>
     </div>
   )
@@ -409,16 +415,19 @@ export function AiHelperPopover({
 
   const renderErrorView = () => (
     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-      <p className="text-warning text-sm" role="alert">
-        {transform.error}
-      </p>
+      <FlowStatusCard
+        title={flowTitle}
+        steps={flowSteps(false)}
+        status="failed"
+        error={{
+          code: 'editor_ai_error',
+          message: transform.error ?? t('editor.ai.flowFailed'),
+          retryable: paramsRef.current !== null,
+        }}
+        onRetry={retry}
+        labels={{ retry: t('editor.ai.retry') }}
+      />
       <div className="flex justify-end gap-1">
-        {paramsRef.current !== null ? (
-          <Button type="button" size="sm" variant="outline" onClick={retry}>
-            <RotateCcw className="size-3.5" aria-hidden />
-            {t('editor.ai.retry')}
-          </Button>
-        ) : null}
         <Button type="button" size="sm" variant="ghost" onClick={discard}>
           {t('editor.ai.discard')}
         </Button>

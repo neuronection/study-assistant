@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from ..agui.family import to_family_events
 from ..agui.state import apply_patch
 from ..ai.gateway import ProviderError
 from ..ai.mentions import registry_from_json
@@ -911,6 +912,10 @@ def make_chat_turn_handler(
 
             def emit(event: dict[str, Any]) -> None:
                 bus.publish_threadsafe(WsTopic.chat(chat_session.id), event)
+                for family_event in to_family_events(event):
+                    bus.publish_threadsafe(
+                        WsTopic.chat(chat_session.id), family_event
+                    )
 
             stop_event = _register_stop_event(chat_session.id)
             try:

@@ -36,6 +36,16 @@ class ChatEngine(StrVocab):
     GRAPH = "graph"
 
 
+class FlowEvent(StrVocab):
+    FLOW_STARTED = "flow_started"
+    NODE_STARTED = "node_started"
+    NODE_FINISHED = "node_finished"
+    DELTA = "delta"
+    INTERRUPT = "interrupt"
+    FLOW_FINISHED = "flow_finished"
+    FLOW_FAILED = "flow_failed"
+
+
 class MaterialKind(StrVocab):
     PDF = "pdf"
     IMAGE = "image"

@@ -5,6 +5,19 @@ All notable changes to **Study Assistant** are documented here.
 ## [Unreleased]
 
 ### Added
+- **Family event vocabulary + `FlowStatusCard` adoption (family
+  AI-alignment migration Phase 6, plan 10 §6.2/6.3).** Chat turns now emit
+  the family event vocabulary (`flow_started`/`node_started`/
+  `node_finished`/`delta`/`flow_finished`/`flow_failed`) additively
+  alongside the legacy WS names on `chat:{id}` — one pure mapper
+  (`app/agui/family.py`, closed `FlowEvent` StrEnum) applied to both chat
+  engines; legacy consumers are untouched (unknown types are ignored).
+  The shared editor's ✨ AI helper adopts the library's new
+  `FlowStatusCard` (`@neuronection/assistant-ui` ^0.18.0, shim
+  `components/ui/flow-status.ts`): the running state shows the
+  Transform → Review flow card with Cancel (replacing the duplicate Stop
+  button), and failures render the card's retryable-failed state with Retry.
+  `TraceTimeline` stays for the rich chat view.
 - **Chat-turn graph engine (family AI-alignment migration, plan 10 Phase 5,
   ADR-0008).** The chat turn is now also available as a checkpointed LangGraph
   `StateGraph` (`backend/app/ai/graphs/chat_turn.py`):

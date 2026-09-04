@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Editor } from '@tiptap/react'
 
@@ -284,5 +284,51 @@ describe('AiHelperPopover', () => {
     renderPopover(null)
     openHelper()
     expect(screen.getByRole('button', { name: 'Apply to whole note' })).not.toBeNull()
+  })
+
+  test('a running transform renders the flow status card with cancel', async () => {
+    startEditorTransform.mockResolvedValue({ job_id: 12 })
+    getEditorTransformJob.mockResolvedValue({
+      status: 'running',
+      result_md: '',
+      error: null,
+      problems: [],
+      rounds: 0,
+    })
+    renderPopover({ from: 1, to: 12 })
+    openHelper()
+    fireEvent.click(screen.getByRole('button', { name: 'Explain' }))
+    await waitFor(() =>
+      expect(document.body.querySelector('[data-status="running"]')).not.toBeNull()
+    )
+    const card = document.body.querySelector('[data-status="running"]') as HTMLElement
+    expect(within(card).getAllByText('Transform').length).toBeGreaterThan(0)
+    expect(within(card).getAllByText('Review').length).toBeGreaterThan(0)
+    expect(within(card).getByText('1/2')).not.toBeNull()
+    expect(within(card).getByRole('button', { name: 'Stop' })).not.toBeNull()
+  })
+
+  test('a failed transform renders the flow status card with retry', async () => {
+    startEditorTransform.mockResolvedValue({ job_id: 13 })
+    getEditorTransformJob.mockResolvedValue({
+      status: 'running',
+      result_md: '',
+      error: null,
+      problems: [],
+      rounds: 0,
+    })
+    renderPopover({ from: 1, to: 12 })
+    openHelper()
+    fireEvent.click(screen.getByRole('button', { name: 'Explain' }))
+    await waitFor(() => expect(startEditorTransform).toHaveBeenCalled())
+    act(() => {
+      transformHandler?.({ type: 'editor_error', message: 'model exploded' })
+    })
+    await waitFor(() =>
+      expect(document.body.querySelector('[data-status="failed"]')).not.toBeNull()
+    )
+    expect(screen.getByRole('button', { name: 'Retry' })).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(startEditorTransform).toHaveBeenCalledTimes(2))
   })
 })

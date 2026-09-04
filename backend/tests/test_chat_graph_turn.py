@@ -267,10 +267,15 @@ def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
     )
     assert [event["type"] for event in events] == [
         "stream_start",
+        "flow_started",
         "phase",
+        "node_started",
         "assistant_message",
+        "flow_finished",
     ]
-    assert events[1]["phase"] == "thinking"
+    assert events[1]["flow"] == "chat"
+    assert events[2]["phase"] == "thinking"
+    assert events[3]["id"] == "thinking"
     assert messages[-1]["trace"]["repair_rounds"] == 0
     assert thread_ids(tmp_path / "checkpoints.db") == [str(h.session_id)]
 
@@ -294,6 +299,9 @@ def test_graph_matches_legacy_event_contract(
     graph = run(tmp_path / "graph", ChatEngine.GRAPH, migrated_db_template)
     assert graph == legacy
     assert streamed_text(graph) == "Hello from the model."
+    family_types = [event["type"] for event in graph if "flow" in event]
+    assert "flow_started" in family_types
+    assert family_types[-1] == "flow_finished"
 
 
 def test_graph_tool_round_matches_legacy(
@@ -402,9 +410,10 @@ def test_graph_stop_mid_stream_persists_prefix(tmp_path: Path) -> None:
     assert stored == "" or stored.startswith("chunk 0 ")
     assert "chunk 399" not in stored
     assert messages[-1]["trace"]["stream_interrupted"] is True
-    assert [event["type"] for event in events][-2:] == [
+    assert [event["type"] for event in events][-3:] == [
         "stream_interrupted",
         "assistant_message",
+        "flow_finished",
     ]
     assert events[0]["type"] in ("stream_start", "stream_interrupted")
 
