@@ -2,15 +2,19 @@
 
 Runs the graph on the process event loop (the checkpointer's aiosqlite
 connection is bound there) while the `chat_turn` job handler blocks its
-worker thread, and consumes `astream_events(version="v3")`:
+worker thread, and consumes the raw stable streaming API
+`astream(stream_mode=["updates", "messages"])` (integrator ruling 2026-09-04;
+`astream_events(version="v3")` stays beta on the pinned langgraph — swapping
+it in later is a one-file change confined to this adapter):
 
-- raw `messages` channel events → `stream_delta` WS events (text and
-  reasoning deltas in exact arrival order, tool lines filtered by the same
-  line grammar as the legacy engine, 30 ms flush throttle),
-- `values` snapshots → round-boundary flush of the pending delta line,
-- the final output → the persisted `assistant_message` payload captured by
-  the `finalize` node, emitted after the stream ends so token deltas always
-  precede it on the wire.
+- `messages` tuples (`AIMessageChunk`, metadata) → `stream_delta` WS events
+  (text and reasoning deltas in exact arrival order, tool lines filtered by
+  the same line grammar as the legacy engine, 30 ms flush throttle),
+- `updates` (per-node state deltas) → round-boundary flush of the pending
+  delta line, capture of the `finalize` node's persisted event payload, and
+  the reserved `__interrupt__` mapping point,
+- the captured payload is emitted after the stream ends so token deltas
+  always precede `assistant_message` (and `stream_interrupted`) on the wire.
 
 The external WS EventBus contract (`stream_start`, `phase`, `stream_delta`,
 `tool_call`, `stream_interrupted`, `assistant_message`, `turn_error`) and the
@@ -140,28 +144,33 @@ class ChatTurnEngine:
             "recursion_limit": RECURSION_LIMIT,
         }
         pump = _DeltaPump(emit, deps.started)
-        stream = await graph.astream_events(
-            {"session_id": chat_session.id}, config, version="v3"
-        )
+        final_events: list[dict[str, Any]] = []
+        message_id: int | None = None
         try:
-            async for event in stream:
-                method = str(event.get("method"))
-                if method == "messages":
-                    self._on_messages_event(pump, event)
-                elif method == "values":
+            async for mode, payload in graph.astream(
+                {"session_id": chat_session.id},
+                config,
+                stream_mode=["updates", "messages"],
+            ):
+                if mode == "messages":
+                    self._on_messages_chunk(pump, payload)
+                elif mode == "updates":
                     pump.flush_round_end()
-            output: dict[str, Any] = await stream.output()
+                    update = payload.get("finalize") if isinstance(payload, dict) else None
+                    if isinstance(update, dict):
+                        captured = update.get("final_events") or []
+                        final_events = list(captured)
+                        message_id = update.get("message_id")
+                    if isinstance(payload, dict) and "__interrupt__" in payload:
+                        logger.info(
+                            "chat_turn_interrupted",
+                            session_id=chat_session.id,
+                            thread_id=str(chat_session.id),
+                        )
         finally:
             pump.flush()
-        if await stream.interrupted():
-            logger.info(
-                "chat_turn_interrupted",
-                session_id=chat_session.id,
-                thread_id=str(chat_session.id),
-            )
-        for event in output.get("final_events") or []:
+        for event in final_events:
             emit(event)
-        message_id = output.get("message_id")
         if message_id is None:
             raise ChatError("graph turn produced no message")
         message: ChatMessage | None = session.get(ChatMessage, int(message_id))
@@ -169,15 +178,13 @@ class ChatTurnEngine:
             raise ChatError("graph turn message vanished")
         return message
 
-    def _on_messages_event(self, pump: _DeltaPump, event: dict[str, Any]) -> None:
-        params = event.get("params") or {}
-        data = params.get("data")
-        payload = data[0] if isinstance(data, (list, tuple)) and data else data
-        if not isinstance(payload, AIMessageChunk):
+    def _on_messages_chunk(self, pump: _DeltaPump, payload: Any) -> None:
+        chunk = payload[0] if isinstance(payload, (list, tuple)) and payload else payload
+        if not isinstance(chunk, AIMessageChunk):
             return
-        reasoning = reasoning_from_message(payload)
+        reasoning = reasoning_from_message(chunk)
         if reasoning:
             pump.on_reasoning(reasoning)
-        text = text_from_content(payload.content)
+        text = text_from_content(chunk.content)
         if text:
             pump.on_text(text)

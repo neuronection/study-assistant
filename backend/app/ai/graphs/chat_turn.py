@@ -16,8 +16,8 @@ persistence are the same plain code the legacy engine uses
 `finalize_turn`), so the two engines cannot drift. `stream_start`, `phase`,
 and `tool_call` WS events are emitted from nodes through the injected
 `Emitter` (legacy-semantic payloads with no LangGraph projection); token
-deltas flow through `astream_events(version="v3")` messages events and are
-mapped onto `stream_delta` by `chat_turn_adapter`.
+deltas flow through the raw `astream(stream_mode=["updates", "messages"])`
+messages mode and are mapped onto `stream_delta` by `chat_turn_adapter`.
 
 Fault tolerance is layered over the gateway's own retries: the graph retries
 only raw transport leaks (`httpx.HTTPError`) — `ProviderError` has already

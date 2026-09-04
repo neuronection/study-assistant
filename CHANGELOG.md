@@ -23,8 +23,10 @@ All notable changes to **Study Assistant** are documented here.
   `data_dir/checkpoints.db` for desktop, `AsyncPostgresSaver` for a future
   server mode), opened once in the app lifespan with `thread_id` = chat
   session id, and pruned at boot (`SA_CHECKPOINT_TTL_DAYS`, default 14).
-  Token deltas flow through LangGraph event streaming
-  (`astream_events(version="v3")` messages events). Node fault tolerance is
+  Token deltas flow through the raw stable streaming API
+  (`astream(stream_mode=["updates", "messages"])` — integrator ruling
+  2026-09-04; the v3 event-streaming swap is a one-file adapter change).
+  Node fault tolerance is
   layered over the gateway's own retries (graph retries only raw transport
   leaks; per-node hang-guard timeout). `TaskRunner` single-call tasks are
   untouched.

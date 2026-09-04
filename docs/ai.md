@@ -390,16 +390,21 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   bodies run via `asyncio.to_thread` (LangGraph node timeouts require async
   nodes; the thread hop also preserves the callback context that feeds
   token streaming).
-- **Streaming**: the adapter (`graphs/chat_turn_adapter.py`) consumes LangGraph
-  **event streaming** (`astream_events(version="v3")` on the app's event loop):
-  raw `messages` channel events (`AIMessageChunk` text/reasoning parts in exact
-  arrival order) map onto throttled `stream_delta` WS events with the same
-  tool-line filter as the legacy engine; `values` snapshots flush the pending
-  line at round boundaries; `stream.interrupts` is the future mapping point for
-  `interrupt()`-based proposals (today's proposals remain the fence protocol —
-  external contract frozen). `stream_start`/`phase`/`tool_call` carry
-  legacy-semantic payloads with no LangGraph projection, so nodes emit them
-  through the same `Emitter` the legacy path uses. `thread_id` = chat session id.
+- **Streaming**: the adapter (`graphs/chat_turn_adapter.py`) consumes the raw
+  stable streaming API `astream(stream_mode=["updates", "messages"])` on the
+  app's event loop (integrator ruling 2026-09-04 — `astream_events(version=
+  "v3")` is still beta on the pinned langgraph; swapping it in later is a
+  one-file change confined to the adapter): `messages` tuples
+  (`AIMessageChunk`, metadata) map onto throttled `stream_delta` WS events
+  with the same tool-line filter as the legacy engine, text and reasoning in
+  exact arrival order; `updates` flush the pending line at round boundaries
+  and carry the `finalize` node's persisted event payload (emitted after the
+  stream ends so deltas always precede it on the wire) plus the reserved
+  `__interrupt__` mapping point for `interrupt()`-based proposals (today's
+  proposals remain the fence protocol — external contract frozen).
+  `stream_start`/`phase`/`tool_call` carry legacy-semantic payloads with no
+  LangGraph projection, so nodes emit them through the same `Emitter` the
+  legacy path uses. `thread_id` = chat session id.
 - **Checkpointer** (dual-mode): dialect-picked in `graphs/checkpointer.py` —
   `AsyncSqliteSaver` on `data_dir/checkpoints.db` (desktop) or
   `AsyncPostgresSaver` (server mode, URI required). It is opened once in the
