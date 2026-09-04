@@ -191,6 +191,14 @@ def drain_until(
 
 
 def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Engine-agnostic event comparison.
+
+    Keeps the legacy WS contract plus the family flow endpoints; derived
+    family events (delta/node_*) mirror the legacy events 1:1 via the
+    unit-tested mapper and add only noise. Delta chunk boundaries are
+    timing-dependent (throttle windows), so consecutive same-kind deltas
+    coalesce into one.
+    """
     stripped = [
         {
             key: value
@@ -198,29 +206,22 @@ def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if key not in ("elapsed_ms", "run_id", "start_ms", "duration_ms")
         }
         for event in events
+        if event.get("type") not in ("delta", "node_started", "node_finished")
     ]
     coalesced: list[dict[str, Any]] = []
     for event in stripped:
-        kind = event.get("type")
-        if kind == "stream_delta" and coalesced:
-            previous = coalesced[-1]
-            same_kind = (previous.get("kind") == "reasoning") == (
-                event.get("kind") == "reasoning"
-            )
-            if previous.get("type") == "stream_delta" and same_kind:
-                previous["delta"] += event.get("delta", "")
-                continue
-        if kind == "delta" and coalesced:
-            previous = coalesced[-1]
-            same_kind = (previous.get("kind") == "reasoning") == (
-                event.get("kind") == "reasoning"
-            )
-            if previous.get("type") == "delta" and same_kind:
-                previous["text"] += event.get("text", "")
-                continue
+        previous = coalesced[-1] if coalesced else None
+        if (
+            event.get("type") == "stream_delta"
+            and previous is not None
+            and previous.get("type") == "stream_delta"
+            and (previous.get("kind") == "reasoning")
+            == (event.get("kind") == "reasoning")
+        ):
+            previous["delta"] += event.get("delta", "")
+            continue
         coalesced.append(event)
-    stripped = coalesced
-    for event in stripped:
+    for event in coalesced:
         if event.get("type") == "assistant_message":
             trace = event.get("trace") or {}
             event["trace"] = {
@@ -240,7 +241,7 @@ def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 }
                 for tool_call in message.get("tool_calls") or []
             ]
-    return stripped
+    return coalesced
 
 
 def thread_ids(checkpoints_path: Path) -> list[str]:
