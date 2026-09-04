@@ -2,7 +2,7 @@
 
 All notable changes to **Study Assistant** are documented here.
 
-## [Unreleased]
+## [v0.5.1] - 2026-09-04
 
 ### Changed
 - **Chat-turn engine cutover (family AI-alignment Phase 8, plan 10).**
