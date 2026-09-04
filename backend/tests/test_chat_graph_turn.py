@@ -199,6 +199,27 @@ def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for event in events
     ]
+    coalesced: list[dict[str, Any]] = []
+    for event in stripped:
+        kind = event.get("type")
+        if kind == "stream_delta" and coalesced:
+            previous = coalesced[-1]
+            same_kind = (previous.get("kind") == "reasoning") == (
+                event.get("kind") == "reasoning"
+            )
+            if previous.get("type") == "stream_delta" and same_kind:
+                previous["delta"] += event.get("delta", "")
+                continue
+        if kind == "delta" and coalesced:
+            previous = coalesced[-1]
+            same_kind = (previous.get("kind") == "reasoning") == (
+                event.get("kind") == "reasoning"
+            )
+            if previous.get("type") == "delta" and same_kind:
+                previous["text"] += event.get("text", "")
+                continue
+        coalesced.append(event)
+    stripped = coalesced
     for event in stripped:
         if event.get("type") == "assistant_message":
             trace = event.get("trace") or {}
