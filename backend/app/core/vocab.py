@@ -31,6 +31,11 @@ class JobType(StrVocab):
     IMAGE_OCR = "image_ocr"
 
 
+class ChatEngine(StrVocab):
+    LEGACY = "legacy"
+    GRAPH = "graph"
+
+
 class MaterialKind(StrVocab):
     PDF = "pdf"
     IMAGE = "image"

@@ -4,6 +4,31 @@ All notable changes to **Study Assistant** are documented here.
 
 ## [Unreleased]
 
+### Added
+- **Chat-turn graph engine (family AI-alignment migration, plan 10 Phase 5,
+  ADR-0008).** The chat turn is now also available as a checkpointed LangGraph
+  `StateGraph` (`backend/app/ai/graphs/chat_turn.py`):
+  `retrieve → contract_guard → agent_round ⇄ → validate_repair → finalize`,
+  mirroring the legacy `ChatService.answer_streaming` loop node-for-node —
+  native tool calling with in-memory degradation to the prompt grammar,
+  per-kind tool budgets (math 2 / READ 3 / STATE 3 / resource 5), the
+  deterministic contract repair loop, and byte-identical WS event payloads
+  (`stream_start` / `phase` / `stream_delta` / `tool_call` /
+  `stream_interrupted` / `assistant_message` / `turn_error`) and the AG-UI
+  mapping on top. The engine is selected by `SA_CHAT_ENGINE=legacy|graph`
+  (default `legacy` — nothing flips); context assembly, contracts, and
+  persistence are shared helpers (`prepare_turn_context`,
+  `prepare_turn_contract`, `finalize_turn`) so the two engines cannot drift.
+  Checkpointing is dialect-picked (`AsyncSqliteSaver` on
+  `data_dir/checkpoints.db` for desktop, `AsyncPostgresSaver` for a future
+  server mode), opened once in the app lifespan with `thread_id` = chat
+  session id, and pruned at boot (`SA_CHECKPOINT_TTL_DAYS`, default 14).
+  Token deltas flow through LangGraph event streaming
+  (`astream_events(version="v3")` messages events). Node fault tolerance is
+  layered over the gateway's own retries (graph retries only raw transport
+  leaks; per-node hang-guard timeout). `TaskRunner` single-call tasks are
+  untouched.
+
 ## [v0.5.0] - 2026-09-02
 
 ### Added

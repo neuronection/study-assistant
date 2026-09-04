@@ -10,6 +10,10 @@ class EventBus:
         self._subscribers: dict[str, set[asyncio.Queue[Event]]] = defaultdict(set)
         self._loop: asyncio.AbstractEventLoop | None = None
 
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop | None:
+        return self._loop
+
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
 

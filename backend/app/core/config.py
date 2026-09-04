@@ -6,6 +6,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .vocab import ChatEngine
 from .working_dir import read_override
 
 APP_DIR_NAME = "StudyAssistant"
@@ -73,10 +74,16 @@ class Settings(BaseSettings):
     backup_keep_weekly: int = Field(default=8, ge=0, le=104)
     backup_sync_dir: Path | None = None
     jobs_done_ttl_days: int = Field(default=14, ge=1)
+    chat_engine: ChatEngine = ChatEngine.LEGACY
+    checkpoint_ttl_days: int = Field(default=14, ge=1)
 
     @property
     def db_path(self) -> Path:
         return self.data_dir / "app.db"
+
+    @property
+    def checkpoints_path(self) -> Path:
+        return self.data_dir / "checkpoints.db"
 
     @property
     def inbox_dir(self) -> Path:

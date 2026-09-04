@@ -364,6 +364,56 @@ per-chat ✦ toggle in the chat header, migration 0039): when off, chat retrieva
 search only and the live query-embedding call is skipped (query text stays local). The suite
 runs with sockets blocked (a conftest guard) so no test can touch the network.
 
+## Chat-turn graph engine (`app/ai/graphs/` — family AI-alignment Phase 5)
+
+The chat turn exists as **two engines behind one flag** (`SA_CHAT_ENGINE=legacy|graph`,
+default `legacy` — zero behavior change on the default path). The graph engine
+(`app/ai/graphs/chat_turn.py`, ADR-0008 / family plan 10 Phase 5) mirrors
+`ChatService.answer_streaming` as a checkpointed LangGraph `StateGraph`:
+
+    retrieve → contract_guard → agent_round ⇄ (tool rounds) → validate_repair → finalize
+
+A custom StateGraph (not `create_agent`): the turn interleaves **two tool modes**
+(native `.bind_tools()` plus the degraded prompt-line grammar, remembered
+in-memory per model), per-kind budgets (math 2 / READ 3 / STATE 3 / resource 5
+per turn), and the deterministic contract repair loop — none of which agent
+middleware can host. Single-call tasks stay on `TaskRunner` by design.
+
+- **Shared helpers, no drift**: context assembly, contract selection, and
+  persistence live in `ChatService.prepare_turn_context` /
+  `prepare_turn_contract` / `finalize_turn`, called by *both* engines — the
+  external contract (WS events, proposal cards, message rows, `ai_interactions`
+  ledger) is identical by construction; a test runs both engines over the same
+  scripted model and asserts the normalized event sequences are equal.
+- **Nodes call the gateway only** for model I/O; retrieval, deterministic
+  tools, contracts, and persistence are plain code called from nodes. Node
+  bodies run via `asyncio.to_thread` (LangGraph node timeouts require async
+  nodes; the thread hop also preserves the callback context that feeds
+  token streaming).
+- **Streaming**: the adapter (`graphs/chat_turn_adapter.py`) consumes LangGraph
+  **event streaming** (`astream_events(version="v3")` on the app's event loop):
+  raw `messages` channel events (`AIMessageChunk` text/reasoning parts in exact
+  arrival order) map onto throttled `stream_delta` WS events with the same
+  tool-line filter as the legacy engine; `values` snapshots flush the pending
+  line at round boundaries; `stream.interrupts` is the future mapping point for
+  `interrupt()`-based proposals (today's proposals remain the fence protocol —
+  external contract frozen). `stream_start`/`phase`/`tool_call` carry
+  legacy-semantic payloads with no LangGraph projection, so nodes emit them
+  through the same `Emitter` the legacy path uses. `thread_id` = chat session id.
+- **Checkpointer** (dual-mode): dialect-picked in `graphs/checkpointer.py` —
+  `AsyncSqliteSaver` on `data_dir/checkpoints.db` (desktop) or
+  `AsyncPostgresSaver` (server mode, URI required). It is opened once in the
+  app lifespan (never per request), `setup()` runs at boot, and boot-time
+  pruning deletes threads whose latest checkpoint is older than
+  `SA_CHECKPOINT_TTL_DAYS` (default 14) — checkpoints grow unboundedly
+  otherwise. Checkpoint state is resumable runtime state only; chat messages
+  stay in `app.db`.
+- **Fault tolerance**: `set_node_defaults` layers a per-node hang-guard timeout
+  and a retry policy that only retries raw transport leaks (`httpx.HTTPError`)
+  over the gateway's own retries — `ProviderError` (already retried with
+  fallback inside the gateway) is never double-retried. Failures bubble to the
+  job handler, which emits `turn_error` exactly like the legacy path.
+
 ## Features built on the gateway
 
 | Feature | Task | Flow |

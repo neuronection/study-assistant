@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +15,8 @@ from . import __version__
 from .ai.describe import GatewayDescriber
 from .ai.embeddings import GatewayEmbedder
 from .ai.gateway import LLMGateway
+from .ai.graphs.chat_turn_adapter import ChatTurnEngine
+from .ai.graphs.checkpointer import open_checkpointer, prune_checkpoints
 from .ai.tasks import TASK_DEFS
 from .api import ws as ws_router
 from .api.chat import make_chat_turn_handler
@@ -23,7 +25,7 @@ from .core.config import Settings, get_settings
 from .core.events import EventBus
 from .core.logging import setup_logging
 from .core.profile_context import reset_active_profile, set_active_profile
-from .core.vocab import WsTopic
+from .core.vocab import ChatEngine, WsTopic
 from .jobs.runner import JobRunner
 from .ocr.gateway_ocr import GatewayOcr
 from .pipelines.drawing_ocr import make_drawing_ocr_handler
@@ -75,16 +77,29 @@ def _run_migrations(engine: Engine) -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     bus: EventBus = app.state.bus
     bus.bind_loop(asyncio.get_running_loop())
-    jobs: JobRunner = app.state.jobs
-    jobs.start()
-    scheduler: ScanScheduler = app.state.scans
-    scheduler.start()
-    backups: BackupScheduler = app.state.backups
-    backups.start()
-    yield
-    backups.stop()
-    scheduler.stop()
-    jobs.stop()
+    async with AsyncExitStack() as stack:
+        if app.state.settings.chat_engine == ChatEngine.GRAPH:
+            app.state.checkpointer = await stack.enter_async_context(
+                open_checkpointer(
+                    app.state.engine.dialect.name,
+                    app.state.settings.checkpoints_path,
+                )
+            )
+            app.state.chat_turns = ChatTurnEngine(app.state.checkpointer, bus)
+            prune_checkpoints(
+                app.state.settings.checkpoints_path,
+                app.state.settings.checkpoint_ttl_days,
+            )
+        jobs: JobRunner = app.state.jobs
+        jobs.start()
+        scheduler: ScanScheduler = app.state.scans
+        scheduler.start()
+        backups: BackupScheduler = app.state.backups
+        backups.start()
+        yield
+        backups.stop()
+        scheduler.stop()
+        jobs.stop()
     app.state.engine.dispose()
 
 
@@ -208,6 +223,12 @@ def create_app(
             return None
         return WsTopic.chat(chat_session_id)
 
+    def _turn_engine() -> ChatTurnEngine | None:
+        engine: ChatTurnEngine | None = getattr(app.state, "chat_turns", None)
+        if engine is None or settings.chat_engine != ChatEngine.GRAPH:
+            return None
+        return engine
+
     app.state.jobs = JobRunner(
         app.state.session_factory,
         app.state.bus,
@@ -217,7 +238,10 @@ def create_app(
                 app.state.embedder.embed, app.state.describer.describe
             ),
             "chat_turn": make_chat_turn_handler(
-                app.state.gateway, app.state.embedder, app.state.bus
+                app.state.gateway,
+                app.state.embedder,
+                app.state.bus,
+                turn_engine_provider=_turn_engine,
             ),
             "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
             "image_ocr": make_image_ocr_handler(app.state.gateway, app.state.blobs),

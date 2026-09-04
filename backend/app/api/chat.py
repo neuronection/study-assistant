@@ -1,6 +1,7 @@
 import copy
 import json
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Literal
 
@@ -877,7 +878,12 @@ def stop_session_turn(
     return {"stopped": event is not None}
 
 
-def make_chat_turn_handler(gateway: Any, embedder: Any, bus: EventBus) -> JobHandler:
+def make_chat_turn_handler(
+    gateway: Any,
+    embedder: Any,
+    bus: EventBus,
+    turn_engine_provider: Callable[[], Any] | None = None,
+) -> JobHandler:
     def handler(session: Session, job: Any, report: Any) -> None:
         payload: dict[str, Any] = job.payload or {}
         chat_session = session.get(ChatSession, payload.get("chat_session_id"))
@@ -908,7 +914,17 @@ def make_chat_turn_handler(gateway: Any, embedder: Any, bus: EventBus) -> JobHan
 
             stop_event = _register_stop_event(chat_session.id)
             try:
-                service.answer_streaming(chat_session, pending, emit, stop=stop_event)
+                turn_engine = (
+                    turn_engine_provider() if turn_engine_provider is not None else None
+                )
+                if turn_engine is not None:
+                    turn_engine.run(
+                        session, service, gateway, chat_session, pending, emit, stop_event
+                    )
+                else:
+                    service.answer_streaming(
+                        chat_session, pending, emit, stop=stop_event
+                    )
             except Exception as error:
                 emit(
                     {

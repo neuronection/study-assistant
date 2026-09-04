@@ -23,7 +23,8 @@ without touching app code.
 │      ├─ ai/          gateway (LangChain chat models behind LLMGateway),   │
 │      │              providers/tasks, chat_models, types,                  │
 │      │               embeddings, tools, contracts registry,          │
-│      │               task runner + shared parsing helpers            │
+│      │               task runner + shared parsing helpers,           │
+│      │               graphs/ (LangGraph chat-turn engine + checkpointer) │
 │      ├─ math/        equivalence chain, hint-leak guard              │
 │      ├─ ocr/         OcrEngine interface + task-routed implementation│
 │      ├─ jobs/        durable runner (jobs table, worker thread)      │

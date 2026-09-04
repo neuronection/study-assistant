@@ -2,6 +2,7 @@ import json
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
@@ -99,6 +100,31 @@ EXERCISE_GUARD_RULE = (
 Emitter = Callable[[dict[str, Any]], None]
 
 
+@dataclass
+class TurnPrep:
+    """Everything a chat turn needs before the first model call.
+
+    Built once per turn by `ChatService.prepare_turn_context` +
+    `prepare_turn_contract` and consumed by both the legacy `answer_streaming`
+    loop and the LangGraph chat-turn engine, so context assembly, contract
+    selection, and persistence cannot drift between engines.
+    """
+
+    history: list[ChatMessage]
+    chunks: list[dict[str, Any]]
+    sources_block: str
+    registry: MentionRegistry
+    guard_rule_text: str | None
+    proposals_enabled: bool
+    dismissal_note: bool
+    context: dict[str, Any]
+    question: str
+    system_base: str = ""
+    contract: list[Constraint] = field(default_factory=list)
+    skill_version_id: int | None = None
+    turn_warning: str | None = None
+
+
 class ChatError(ValueError):
     pass
 
@@ -107,7 +133,7 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def _flatten_prompt(messages: list[Message]) -> str:
+def flatten_prompt(messages: list[Message]) -> str:
     return "\n".join(
         f"{message.role}: {message.content}" for message in messages
     )
@@ -877,6 +903,9 @@ class ChatService:
         messages.append(Message(role="user", content=current))
         return messages
 
+    def native_tools_enabled(self, course_id: int | None = None) -> bool:
+        return self._use_native_tools(course_id)
+
     def _use_native_tools(self, course_id: int | None = None) -> bool:
         try:
             from ...ai.chat_models import use_native_tools
@@ -885,14 +914,9 @@ class ChatService:
         except Exception:
             return False
 
-    def answer_streaming(
-        self,
-        chat_session: ChatSession,
-        user_message: ChatMessage,
-        emit: Emitter,
-        stop: threading.Event | None = None,
-    ) -> ChatMessage:
-        started = time.monotonic()
+    def prepare_turn_context(
+        self, chat_session: ChatSession, user_message: ChatMessage
+    ) -> TurnPrep:
         path = self.messages(chat_session.id)
         target_index = next(
             (index for index, row in enumerate(path) if row.id == user_message.id),
@@ -947,25 +971,64 @@ class ChatService:
             "mention_refs": registry.refs(),
             "proposals_enabled": proposals_enabled,
         }
+        if guard is not None:
+            context.update(guard)
+        if exercise_guard is not None:
+            context.update(exercise_guard)
+        return TurnPrep(
+            history=history,
+            chunks=chunks,
+            sources_block=sources_block,
+            registry=registry,
+            guard_rule_text=guard_rule_text,
+            proposals_enabled=proposals_enabled,
+            dismissal_note=dismissal_note,
+            context=context,
+            question=user_message.blocks[0]["md"],
+            turn_warning=turn_warning,
+        )
+
+    def prepare_turn_contract(
+        self, chat_session: ChatSession, prep: TurnPrep
+    ) -> None:
         skill_version_id: int | None = None
         skills = SkillService(self._session)
         version = skills.resolve(CHAT_SKILL, course_id=chat_session.course_id)
         if version is not None:
             system_base, _user = skills.render(
-                version, {"user_question": user_message.blocks[0]["md"]}
+                version, {"user_question": prep.question}
             )
             contract = skills.constraints(version, {})
             skill_version_id = version.id
         else:
             system_base = CHAT_ANSWER_SYSTEM
             contract = list(CHAT_ANSWER_CONTRACT)
-        if guard is not None:
-            context.update(guard)
-        if exercise_guard is not None:
-            context.update(exercise_guard)
-        if guard is not None or exercise_guard is not None:
+        if prep.guard_rule_text is not None:
             contract.append(Constraint("no_answer_reveal"))
+        prep.system_base = system_base
+        prep.contract = contract
+        prep.skill_version_id = skill_version_id
         self._session.commit()
+
+    def answer_streaming(
+        self,
+        chat_session: ChatSession,
+        user_message: ChatMessage,
+        emit: Emitter,
+        stop: threading.Event | None = None,
+    ) -> ChatMessage:
+        started = time.monotonic()
+        prep = self.prepare_turn_context(chat_session, user_message)
+        self.prepare_turn_contract(chat_session, prep)
+        history = prep.history
+        sources_block = prep.sources_block
+        registry = prep.registry
+        guard_rule_text = prep.guard_rule_text
+        proposals_enabled = prep.proposals_enabled
+        dismissal_note = prep.dismissal_note
+        context = prep.context
+        system_base = prep.system_base
+        contract = prep.contract
         model_name: str | None = None
         prompt_snapshot = ""
         feedback_text = ""
@@ -1072,7 +1135,7 @@ class ChatService:
                         dismissal_note=dismissal_note,
                     )
                 )
-                prompt_snapshot = _flatten_prompt(messages)
+                prompt_snapshot = flatten_prompt(messages)
                 buffer: list[str] = []
                 delta_buf: list[str] = []
                 reasoning_buf: list[str] = []
@@ -1336,6 +1399,48 @@ class ChatService:
                 break
             feedback_text = validation.feedback()
             final_output = output
+        return self.finalize_turn(
+            chat_session,
+            user_message,
+            prep,
+            started=started,
+            run_id=run_id,
+            model_name=model_name,
+            prompt_snapshot=prompt_snapshot,
+            final_output=final_output,
+            final_tool_calls=final_tool_calls,
+            reads=reads,
+            repair_rounds=attempt,
+            trace_rounds=trace_rounds,
+            reasoning_parts=reasoning_parts,
+            stream_interruption=stream_interruption,
+            validation=validation,
+            emit=emit,
+        )
+
+    def finalize_turn(
+        self,
+        chat_session: ChatSession,
+        user_message: ChatMessage,
+        prep: TurnPrep,
+        *,
+        started: float,
+        run_id: str,
+        model_name: str | None,
+        prompt_snapshot: str,
+        final_output: str,
+        final_tool_calls: list[dict[str, Any]],
+        reads: list[dict[str, Any]],
+        repair_rounds: int,
+        trace_rounds: list[dict[str, Any]],
+        reasoning_parts: list[str],
+        stream_interruption: str | None,
+        validation: ValidationResult | None,
+        emit: Emitter,
+    ) -> ChatMessage:
+        chunks = prep.chunks
+        registry = prep.registry
+        proposals_enabled = prep.proposals_enabled
         finalize_started = time.monotonic()
         if validation is not None and validation.advisories:
             logger.info(
@@ -1351,7 +1456,7 @@ class ChatService:
             "latency_ms": latency_ms,
             "input_tokens": _estimate_tokens(prompt_snapshot),
             "output_tokens": _estimate_tokens(final_output),
-            "repair_rounds": attempt,
+            "repair_rounds": repair_rounds,
             "rounds": trace_rounds,
         }
         if reasoning_parts:
@@ -1363,7 +1468,7 @@ class ChatService:
                 {
                     "type": "stream_interrupted",
                     "detail": stream_interruption,
-                    "elapsed_ms": elapsed_ms(),
+                    "elapsed_ms": latency_ms,
                 }
             )
         self._log_interaction(
@@ -1372,7 +1477,7 @@ class ChatService:
             prompt_snapshot,
             final_output,
             latency_ms,
-            skill_version_id=skill_version_id,
+            skill_version_id=prep.skill_version_id,
         )
 
         citations = _extract_citations(final_output, chunks)
@@ -1396,7 +1501,7 @@ class ChatService:
             tool_calls=final_tool_calls or None,
             blocks=parse_answer_blocks(final_output),
             trace=trace,
-            warnings=[turn_warning] if turn_warning is not None else None,
+            warnings=[prep.turn_warning] if prep.turn_warning is not None else None,
         )
         message.parent_id = user_message.id
         user_message.active_child_id = message.id
