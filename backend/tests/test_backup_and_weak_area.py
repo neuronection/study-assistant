@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.ai.gateway import LLMGateway, Message, ResolvedModel
 from app.core.config import Settings
 from app.main import create_app
+from app.services.platform.backup import DB_NAME
 
 WEAK_AREA_QUIZ = json.dumps(
     {
@@ -129,6 +131,11 @@ def test_weak_area_quiz_generation_focuses_topic() -> None:
 
 
 def test_backup_export_restore_round_trip() -> None:
+    import io
+    import sqlite3
+    import tempfile
+    import zipfile
+
     source = make_client([])
     with source:
         note = source.post(
@@ -145,7 +152,33 @@ def test_backup_export_restore_round_trip() -> None:
         assert exported.headers["content-disposition"].endswith('.zip"')
         package = exported.content
 
-    target = make_client([])
+    def db_titles(db_bytes: bytes) -> list[str]:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as handle:
+            handle.write(db_bytes)
+            snapshot_path = Path(handle.name)
+        connection = sqlite3.connect(snapshot_path)
+        try:
+            return [
+                row[0]
+                for row in connection.execute("SELECT title FROM notes").fetchall()
+            ]
+        finally:
+            connection.close()
+            snapshot_path.unlink(missing_ok=True)
+
+    with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        exported_db = archive.read(DB_NAME)
+    assert "Survivor note" in db_titles(exported_db), "export snapshot lacks the note"
+
+    target_dir = Path(tempfile.mkdtemp(prefix="ca-p7s2-t-"))
+    target_app = create_app(
+        Settings(data_dir=target_dir, log_level="WARNING"),
+        gateway=ScriptedGateway([]),
+        embedder=NoAI(),  # type: ignore[arg-type]
+        describer=NoAI(),  # type: ignore[arg-type]
+    )
+    target = TestClient(target_app)
+    target_db = Path(target_app.state.settings.db_path)
     with target:
         restored = target.post(
             "/api/v1/backup/restore",
@@ -156,7 +189,14 @@ def test_backup_export_restore_round_trip() -> None:
 
         listing = target.get("/api/v1/notes")
         titles = [entry["title"] for entry in listing.json()["items"]]
-        assert "Survivor note" in titles
+        if "Survivor note" not in titles:
+            raise AssertionError(
+                "restored target lost the note: "
+                f"api_titles={titles!r} "
+                f"restored_file_titles={db_titles(target_db.read_bytes())!r} "
+                f"export_titles={db_titles(exported_db)!r} "
+                f"restore_response={restored.json()!r}"
+            )
 
 
 def test_restore_rejects_garbage() -> None:
