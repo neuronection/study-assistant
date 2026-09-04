@@ -15,6 +15,7 @@ from test_chat_api import (
 
 from app.ai.gateway import Message, StreamChunk
 from app.core.config import Settings
+from app.core.vocab import ChatEngine
 from app.main import create_app
 
 
@@ -38,7 +39,7 @@ def recording_client(tmp_path: object) -> Iterator[
 ]:
     gateway = ScriptedGateway([])
     app = create_app(
-        Settings(data_dir=tmp_path, log_level="WARNING"),  # type: ignore[arg-type]
+        Settings(data_dir=tmp_path, log_level="WARNING", chat_engine=ChatEngine.LEGACY),  # type: ignore[arg-type]
         gateway=gateway,
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]
@@ -105,7 +106,7 @@ def test_trace_is_persisted_and_returned(recording_client: Any) -> None:
 def test_reasoning_is_captured_but_kept_out_of_the_answer(tmp_path: object) -> None:
     gateway = ReasoningGateway(["The derivative is $2x$ [1]."])
     app = create_app(
-        Settings(data_dir=tmp_path, log_level="WARNING"),  # type: ignore[arg-type]
+        Settings(data_dir=tmp_path, log_level="WARNING", chat_engine=ChatEngine.LEGACY),  # type: ignore[arg-type]
         gateway=gateway,
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]
@@ -131,7 +132,7 @@ def test_repair_round_is_recorded(tmp_path: object) -> None:
         ["no citation here", "Here is a cited answer [1]."]
     )
     app = create_app(
-        Settings(data_dir=tmp_path, log_level="WARNING"),  # type: ignore[arg-type]
+        Settings(data_dir=tmp_path, log_level="WARNING", chat_engine=ChatEngine.LEGACY),  # type: ignore[arg-type]
         gateway=gateway,
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]

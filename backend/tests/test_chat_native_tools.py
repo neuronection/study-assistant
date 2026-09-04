@@ -66,10 +66,11 @@ def make_native_app(tmp_path: object, gateway: NativeGateway) -> Any:
     from test_chat_api import NoDescriber, NoEmbedder
 
     from app.core.config import Settings
+    from app.core.vocab import ChatEngine
     from app.main import create_app
 
     app = create_app(
-        Settings(data_dir=tmp_path, log_level="WARNING"),  # type: ignore[arg-type]
+        Settings(data_dir=tmp_path, log_level="WARNING", chat_engine=ChatEngine.LEGACY),  # type: ignore[arg-type]
         gateway=gateway,
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]
@@ -237,10 +238,11 @@ def test_native_tool_call_ws_event_emitted(tmp_path: object) -> None:
     from test_chat_api import NoDescriber, NoEmbedder
 
     from app.core.config import Settings
+    from app.core.vocab import ChatEngine
     from app.main import create_app
 
     app = create_app(
-        Settings(data_dir=tmp_path, log_level="WARNING"),  # type: ignore[arg-type]
+        Settings(data_dir=tmp_path, log_level="WARNING", chat_engine=ChatEngine.LEGACY),  # type: ignore[arg-type]
         gateway=gateway,
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]
@@ -391,11 +393,12 @@ def test_pre_stream_failure_persists_no_empty_message_and_fires_turn_error(
     from test_chat_api import NoDescriber, NoEmbedder
 
     from app.core.config import Settings
+    from app.core.vocab import ChatEngine
     from app.main import create_app
 
     gateway = FailingGateway()
     app = create_app(
-        Settings(data_dir=tmp_path, log_level="WARNING"),  # type: ignore[arg-type]
+        Settings(data_dir=tmp_path, log_level="WARNING", chat_engine=ChatEngine.LEGACY),  # type: ignore[arg-type]
         gateway=gateway,
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]

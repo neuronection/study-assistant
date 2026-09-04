@@ -31,6 +31,7 @@ import asyncio
 import json
 import threading
 import time
+from collections.abc import Callable
 from typing import Any, cast
 from uuid import uuid4
 
@@ -114,6 +115,7 @@ class ChatTurnDeps:
         stop: threading.Event | None,
         chat_session: ChatSession,
         user_message: ChatMessage,
+        on_round_stream_end: Callable[[], None] | None = None,
     ) -> None:
         self.service = service
         self.gateway = gateway
@@ -124,6 +126,7 @@ class ChatTurnDeps:
         self.started = time.monotonic()
         self.prep: TurnPrep | None = None
         self.validation: ValidationResult | None = None
+        self.on_round_stream_end = on_round_stream_end
 
     def elapsed_ms(self) -> int:
         return int((time.monotonic() - self.started) * 1000)
@@ -245,6 +248,8 @@ def _consume_stream(
             )
             return buffer, native_raw, reasoning, DEGRADED
         raise
+    if deps.on_round_stream_end is not None:
+        deps.on_round_stream_end()
     return buffer, native_raw, reasoning, None
 
 

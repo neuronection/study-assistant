@@ -4,6 +4,18 @@ All notable changes to **Study Assistant** are documented here.
 
 ## [Unreleased]
 
+### Changed
+- **Chat-turn engine cutover (family AI-alignment Phase 8, plan 10).**
+  `SA_CHAT_ENGINE` now defaults to `graph` — chat turns run on the
+  checkpointed LangGraph engine by default (soaked: paced-token live-server
+  soak with legacy-shadow diffing — event-order parity modulo the ratified
+  D1; Playwright e2e smoke green on the default engine; full suites green).
+  `legacy` remains available as rollback and pins the legacy streaming
+  presentation tests; the legacy loop is deleted in a later release after
+  one clean graph-default release. D2 (proposals → `interrupt()`) stays
+  reserved — the adapter hook is in place, the semantics change rides a
+  later proposals PR.
+
 ### Added
 - **Family event vocabulary + `FlowStatusCard` adoption (family
   AI-alignment migration Phase 6, plan 10 §6.2/6.3).** Chat turns now emit

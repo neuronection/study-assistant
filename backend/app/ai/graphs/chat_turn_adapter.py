@@ -144,6 +144,7 @@ class ChatTurnEngine:
             "recursion_limit": RECURSION_LIMIT,
         }
         pump = _DeltaPump(emit, deps.started)
+        deps.on_round_stream_end = pump.flush_round_end
         final_events: list[dict[str, Any]] = []
         message_id: int | None = None
         try:

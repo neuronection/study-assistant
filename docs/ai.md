@@ -367,7 +367,9 @@ runs with sockets blocked (a conftest guard) so no test can touch the network.
 ## Chat-turn graph engine (`app/ai/graphs/` — family AI-alignment Phase 5)
 
 The chat turn exists as **two engines behind one flag** (`SA_CHAT_ENGINE=legacy|graph`,
-default `legacy` — zero behavior change on the default path). The graph engine
+default `graph` since the Phase 8 cutover; `legacy` remains as rollback and
+pins the legacy streaming-presentation tests — the legacy loop is deleted in
+a later release). The graph engine
 (`app/ai/graphs/chat_turn.py`, ADR-0008 / family plan 10 Phase 5) mirrors
 `ChatService.answer_streaming` as a checkpointed LangGraph `StateGraph`:
 

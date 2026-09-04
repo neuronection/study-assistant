@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     backup_keep_weekly: int = Field(default=8, ge=0, le=104)
     backup_sync_dir: Path | None = None
     jobs_done_ttl_days: int = Field(default=14, ge=1)
-    chat_engine: ChatEngine = ChatEngine.LEGACY
+    chat_engine: ChatEngine = ChatEngine.GRAPH
     checkpoint_ttl_days: int = Field(default=14, ge=1)
 
     @property

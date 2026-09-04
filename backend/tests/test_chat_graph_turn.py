@@ -241,17 +241,26 @@ def streamed_text(events: list[dict[str, Any]]) -> str:
     )
 
 
-def test_chat_engine_flag_defaults_to_legacy(tmp_path: Path) -> None:
+def test_chat_engine_flag_defaults_to_graph(tmp_path: Path) -> None:
     assert make_settings(tmp_path).chat_engine == ChatEngine.GRAPH
-    assert Settings(data_dir=tmp_path).chat_engine == ChatEngine.LEGACY
-    app = create_app(
+    assert Settings(data_dir=tmp_path).chat_engine == ChatEngine.GRAPH
+    legacy_app = create_app(
         make_settings(tmp_path / "legacy-app", ChatEngine.LEGACY),
         gateway=ScriptedGateway(["unused"]),
         embedder=NoEmbedder(),  # type: ignore[arg-type]
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
-    assert getattr(app.state, "chat_turns", None) is None
+    assert getattr(legacy_app.state, "chat_turns", None) is None
     assert not (tmp_path / "legacy-app" / "checkpoints.db").exists()
+    graph_app = create_app(
+        make_settings(tmp_path / "graph-app"),
+        gateway=ScriptedGateway(["unused"]),
+        embedder=NoEmbedder(),  # type: ignore[arg-type]
+        describer=NoDescriber(),  # type: ignore[arg-type]
+    )
+    with TestClient(graph_app):
+        assert getattr(graph_app.state, "chat_turns", None) is not None
+        assert (tmp_path / "graph-app" / "checkpoints.db").exists()
 
 
 def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
