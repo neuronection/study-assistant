@@ -2,7 +2,7 @@
 
 All notable changes to **Study Assistant** are documented here.
 
-## [Unreleased]
+## [v0.5.2] - 2026-09-04
 
 ### Added
 - **Batch "Save extracted text as material" from multi-select (plan 57).**
@@ -11,6 +11,12 @@ All notable changes to **Study Assistant** are documented here.
   one batch request (`POST /materials/derive`) creates a standalone Markdown
   material per source that has extracted text; files without an extraction
   are skipped and reported in the summary notice, never blocking the batch.
+
+### Test infrastructure
+- **Self-diagnosing backup restore round-trip test** — on failure it now
+  reports the API listing, the restored database file's contents, and the
+  export snapshot's contents side by side (CI-only flake diagnosis; no
+  product change).
 
 ### Changed
 - **Filesystem-style derive naming.** Derived materials drop the
