@@ -190,6 +190,7 @@ class MaterialOut(BaseModel):
     blob_sha: str | None
     provenance: dict[str, Any] | None = None
     created_at: datetime
+    has_extraction: bool = False
 
 
 class UploadWarningOut(BaseModel):

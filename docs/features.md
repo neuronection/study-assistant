@@ -23,6 +23,15 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   workspace, the opened node is linked too (merged, no duplicates);
   content-hash dedup applies — an identical existing material is returned
   instead (`deduped`, left untouched); the original is never modified.
+  **Filesystem-style naming (plan 57): the derived material is named after
+  its source (`report.pdf` → `report.md`) — the source's own title doesn't
+  collide; any *other* material with the same name in the target folder does,
+  and gets a zero-padded counter (`report_01.md`, `report_02.md`).**
+  **Batch verb (plan 57): right-click one/many selected files in the Library
+  or a node's Materials tab → Save as material / Save N as materials — one
+  `POST /materials/derive` request, per-source outcomes (`created` / `deduped`
+  / `skipped: no extraction`), sources without an extraction never block the
+  batch; listings carry `has_extraction` so the menu item gates precisely.**
   **Drawings come along (plan 29, ADR-064): the derived material copies the
   source's drawings and remaps `ca-drawing://` ids so it is self-contained.**
 - ✅ **Material drawings (plan 29, ADR-064)**: text/markdown materials own

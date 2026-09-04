@@ -92,7 +92,8 @@ def test_derive_creates_markdown_material_from_extraction(
     derived_id = body["material"]["id"]
     assert derived_id != source_id
     assert body["material"]["kind"] == "md"
-    assert body["material"]["title"] == "scan.pdf (extracted)"
+    assert body["material"]["title"] == "scan.pdf"
+    assert body["material"]["filename"] == "scan.pdf.md"
     assert body["material"]["provenance"] == {
         "source": "derived",
         "from_material_id": source_id,
@@ -160,7 +161,7 @@ def test_derive_after_edit_creates_distinct_material(client: TestClient) -> None
     assert second.status_code == 201
     assert second.json()["deduped"] is False
     assert second.json()["material"]["id"] != first.json()["material"]["id"]
-    assert second.json()["material"]["title"] == "evolve (extracted 2)"
+    assert second.json()["material"]["title"] == "evolve_01"
 
 
 def test_derive_rejects_unknown_material(client: TestClient) -> None:
@@ -411,7 +412,153 @@ def test_derive_sanitizes_path_separators_in_title(client: TestClient) -> None:
 
     derived = client.post(f"/api/v1/materials/{source_id}/derive", json={})
     assert derived.status_code == 201
-    assert derived.json()["material"]["title"] == "a-b-c (extracted)"
+    assert derived.json()["material"]["title"] == "a-b-c"
+
+
+def test_derive_uses_counter_suffix_on_title_collision(client: TestClient) -> None:
+    course_id = make_course(client)
+    source = upload_text(client, "first report content", "report.txt", course_id)
+    source_id = source["material"]["id"]
+    other = upload_text(client, "unrelated report content", "other.txt", course_id)
+    other_id = other["material"]["id"]
+    renamed = client.patch(f"/api/v1/materials/{other_id}", json={"title": "report"})
+    assert renamed.status_code == 200
+
+    first = client.post(f"/api/v1/materials/{source_id}/derive", json={})
+    assert first.status_code == 201
+    assert first.json()["material"]["title"] == "report_01"
+
+    edited = client.patch(
+        f"/api/v1/materials/{source_id}/extraction",
+        json={"markdown": "second derivation of the same report"},
+    )
+    assert edited.status_code == 200
+
+    second = client.post(f"/api/v1/materials/{source_id}/derive", json={})
+    assert second.status_code == 201
+    assert second.json()["material"]["title"] == "report_02"
+
+
+def test_batch_derive_mixed_outcomes(client: TestClient) -> None:
+    course_id = make_course(client)
+    fresh = upload_text(client, "fresh extraction", "fresh.txt", course_id)
+    fresh_id = fresh["material"]["id"]
+    duplicate = upload_text(client, "stable content", "dup2.txt", course_id)
+    duplicate_id = duplicate["material"]["id"]
+    pre = client.post(f"/api/v1/materials/{duplicate_id}/derive", json={})
+    assert pre.status_code == 201
+    factory = session_factory(client)
+    with factory() as session:
+        from app.domain.models import Profile
+
+        profile = session.scalars(select(Profile)).first()
+        assert profile is not None
+        pending = Material(
+            profile_id=profile.id,
+            course_id=course_id,
+            kind="pdf",
+            title="pending",
+            filename="pending.pdf",
+            status="pending",
+        )
+        session.add(pending)
+        session.commit()
+        pending_id = pending.id
+
+    response = client.post(
+        "/api/v1/materials/derive",
+        json={"material_ids": [fresh_id, duplicate_id, pending_id]},
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["created"] == 1
+    assert body["deduped"] == 1
+    assert body["skipped"] == 1
+    by_source = {result["material_id"]: result for result in body["results"]}
+    assert by_source[fresh_id]["outcome"] == "created"
+    assert by_source[fresh_id]["job_id"] is not None
+    assert by_source[fresh_id]["material"]["title"] == "fresh"
+    assert by_source[duplicate_id]["outcome"] == "deduped"
+    assert by_source[duplicate_id]["material"]["id"] == pre.json()["material"]["id"]
+    assert by_source[duplicate_id]["job_id"] is None
+    assert by_source[pending_id]["outcome"] == "skipped"
+    assert by_source[pending_id]["material"] is None
+
+
+def test_batch_derive_resolves_in_batch_name_collisions(client: TestClient) -> None:
+    course_id = make_course(client)
+    first = upload_text(client, "first notes body", "notes-a.txt", course_id)
+    second = upload_text(client, "second notes body", "notes-b.txt", course_id)
+    first_id = first["material"]["id"]
+    second_id = second["material"]["id"]
+    renamed = client.patch(f"/api/v1/materials/{second_id}", json={"title": "notes"})
+    assert renamed.status_code == 200
+    renamed_first = client.patch(
+        f"/api/v1/materials/{first_id}", json={"title": "notes"}
+    )
+    assert renamed_first.status_code == 200
+
+    response = client.post(
+        "/api/v1/materials/derive",
+        json={"material_ids": [first_id, second_id]},
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["created"] == 2
+    titles = sorted(result["material"]["title"] for result in body["results"])
+    assert titles == ["notes_01", "notes_02"]
+
+
+def test_batch_derive_rejects_empty_selection(client: TestClient) -> None:
+    response = client.post("/api/v1/materials/derive", json={"material_ids": []})
+    assert response.status_code == 422
+
+
+def test_material_list_reports_has_extraction(client: TestClient) -> None:
+    course_id = make_course(client)
+    source = upload_text(client, "extracted content", "listed.txt", course_id)
+    source_id = source["material"]["id"]
+    factory = session_factory(client)
+    with factory() as session:
+        from app.domain.models import Profile
+
+        profile = session.scalars(select(Profile)).first()
+        assert profile is not None
+        pending = Material(
+            profile_id=profile.id,
+            course_id=course_id,
+            kind="pdf",
+            title="bare",
+            filename="bare.pdf",
+            status="pending",
+        )
+        session.add(pending)
+        session.commit()
+        pending_id = pending.id
+
+    listing = client.get(
+        "/api/v1/materials", params={"course_id": course_id}
+    ).json()
+    flags = {entry["id"]: entry["has_extraction"] for entry in listing}
+    assert flags[source_id] is True
+    assert flags[pending_id] is False
+
+
+def test_workspace_materials_report_has_extraction(client: TestClient) -> None:
+    course_id = make_course(client)
+    source = upload_text(client, "workspace content", "workspace.txt", course_id)
+    source_id = source["material"]["id"]
+    tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
+    root_id = int(tree[0]["id"])
+    assigned = client.post(
+        f"/api/v1/nodes/{root_id}/materials", json={"material_id": source_id}
+    )
+    assert assigned.status_code == 201
+
+    workspace = client.get(f"/api/v1/nodes/{root_id}/workspace").json()
+    entries = workspace["materials"]
+    match = [entry for entry in entries if entry["material_id"] == source_id]
+    assert match and match[0]["has_extraction"] is True
 
 
 def test_derived_extraction_is_version_one_with_edited_by_user_unset(

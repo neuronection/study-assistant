@@ -20,6 +20,7 @@ export interface Material {
   blob_sha: string | null
   provenance?: { source?: string; kind?: string; model?: string | null } | null
   created_at: string
+  has_extraction?: boolean
 }
 
 export interface Extraction {
@@ -316,6 +317,17 @@ export async function deriveMaterial(
     }),
   })
   return json<UploadResult>(response)
+}
+
+export type DeriveBatchResult = Schemas['MaterialBatchDeriveOut']
+
+export async function deriveMaterials(ids: number[]): Promise<DeriveBatchResult> {
+  const response = await apiFetch('/api/v1/materials/derive', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ material_ids: ids }),
+  })
+  return json<DeriveBatchResult>(response)
 }
 
 export async function deleteMaterial(id: number): Promise<void> {

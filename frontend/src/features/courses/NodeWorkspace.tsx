@@ -81,6 +81,7 @@ import {
   createTextMaterial,
   deallocateMaterial,
   deallocateNodeFolder,
+  deriveMaterials,
   moveNote,
   deleteNote,
   draftNodeNote,
@@ -1105,6 +1106,26 @@ function MaterialsTab({
     onSuccess: () => void refresh(),
   })
 
+  const [deriveNotice, setDeriveNotice] = useState<string | null>(null)
+  const derive = useMutation({
+    mutationFn: (ids: number[]) => deriveMaterials(ids),
+    onSuccess: (result) => {
+      void refresh()
+      const parts: string[] = []
+      if (result.created > 0) {
+        parts.push(t('library.deriveBatchSaved', { count: result.created }))
+      }
+      if (result.deduped > 0) {
+        parts.push(t('library.deriveBatchDeduped', { count: result.deduped }))
+      }
+      if (result.skipped > 0) {
+        parts.push(t('library.deriveBatchSkipped', { count: result.skipped }))
+      }
+      setDeriveNotice(parts.join(' · '))
+    },
+    onError: (error: Error) => setDeriveNotice(error.message),
+  })
+
   const onCreateText = async (
     filename: string,
     content: string,
@@ -1283,6 +1304,28 @@ function MaterialsTab({
         key: 'open',
         label: t('common.open'),
         onSelect: () => onOpenMaterial(entry.material_id),
+      })
+    }
+    const selectedIds = [...selection.selected]
+      .filter((key) => key.startsWith('m'))
+      .map((key) => Number(key.slice(1)))
+    const pool =
+      multi && selection.selected.has(`m${entry.material_id}`)
+        ? selectedIds
+        : [entry.material_id]
+    const derivable = pool.filter((id) =>
+      (workspace.materials ?? []).some(
+        (candidate) => candidate.material_id === id && candidate.has_extraction
+      )
+    )
+    if (derivable.length > 0) {
+      items.push({
+        key: 'derive',
+        label: multi
+          ? t('library.deriveMany', { count: derivable.length })
+          : t('library.deriveMaterial'),
+        disabled: derive.isPending,
+        onSelect: () => derive.mutate(derivable),
       })
     }
     items.push({
@@ -1470,6 +1513,11 @@ function MaterialsTab({
         {createError !== null ? (
           <p className="text-warning text-xs" role="alert">
             {createError}
+          </p>
+        ) : null}
+        {deriveNotice !== null ? (
+          <p className="text-muted-foreground text-xs" role="status">
+            {deriveNotice}
           </p>
         ) : null}
       </div>

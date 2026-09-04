@@ -26,6 +26,7 @@ import {
   createTextMaterial,
   deleteFolder,
   deleteMaterial,
+  deriveMaterials,
   getFolderDeleteInfo,
   ingestSourceFile,
   listCourses,
@@ -280,6 +281,24 @@ export function LibraryPage() {
     },
     onSuccess: () => {
       refreshMaterials()
+    },
+    onError: (error: Error) => setNotice(error.message),
+  })
+  const deriveMutation = useMutation({
+    mutationFn: (ids: number[]) => deriveMaterials(ids),
+    onSuccess: (result) => {
+      refreshMaterials()
+      const parts: string[] = []
+      if (result.created > 0) {
+        parts.push(t('library.deriveBatchSaved', { count: result.created }))
+      }
+      if (result.deduped > 0) {
+        parts.push(t('library.deriveBatchDeduped', { count: result.deduped }))
+      }
+      if (result.skipped > 0) {
+        parts.push(t('library.deriveBatchSkipped', { count: result.skipped }))
+      }
+      setNotice(parts.join(' · '))
     },
     onError: (error: Error) => setNotice(error.message),
   })
@@ -918,6 +937,9 @@ export function LibraryPage() {
         REINGESTABLE_KINDS.has(entry.kind) &&
         entry.blob_sha !== null
     )
+    const derivable = selected.flatMap((entry) =>
+      entry !== undefined && entry.has_extraction ? [entry.id] : []
+    )
     const items: ContextMenuItem[] = []
     if (!multi) {
       items.push({
@@ -956,6 +978,16 @@ export function LibraryPage() {
           onSelect: () => jobRetryMutation.mutate({ materialId: id }),
         })
       }
+    }
+    if (derivable.length > 0) {
+      items.push({
+        key: 'derive',
+        label: multi
+          ? t('library.deriveMany', { count: derivable.length })
+          : t('library.deriveMaterial'),
+        disabled: deriveMutation.isPending,
+        onSelect: () => deriveMutation.mutate(derivable),
+      })
     }
     items.push(
       {

@@ -1770,6 +1770,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/materials/derive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Derive Materials Batch */
+        post: operations["derive_materials_batch_api_v1_materials_derive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials/text": {
         parameters: {
             query?: never;
@@ -4281,6 +4298,20 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * DeriveOutcome
+         * @enum {string}
+         */
+        DeriveOutcome: "created" | "deduped" | "skipped";
+        /** DeriveResultOut */
+        DeriveResultOut: {
+            /** Job Id */
+            job_id?: number | null;
+            material?: components["schemas"]["MaterialOut"] | null;
+            /** Material Id */
+            material_id: number;
+            outcome: components["schemas"]["DeriveOutcome"];
+        };
         /** DesktopDropsIn */
         DesktopDropsIn: {
             /** Paths */
@@ -4939,6 +4970,22 @@ export interface components {
             /** Node Id */
             node_id: number;
         };
+        /** MaterialBatchDeriveIn */
+        MaterialBatchDeriveIn: {
+            /** Material Ids */
+            material_ids: number[];
+        };
+        /** MaterialBatchDeriveOut */
+        MaterialBatchDeriveOut: {
+            /** Created */
+            created: number;
+            /** Deduped */
+            deduped: number;
+            /** Results */
+            results: components["schemas"]["DeriveResultOut"][];
+            /** Skipped */
+            skipped: number;
+        };
         /** MaterialCopyIn */
         MaterialCopyIn: {
             /** Folder Id */
@@ -5030,6 +5077,11 @@ export interface components {
             folder_id: number | null;
             /** Group Id */
             group_id: number | null;
+            /**
+             * Has Extraction
+             * @default false
+             */
+            has_extraction: boolean;
             /** Id */
             id: number;
             kind: components["schemas"]["MaterialKind"];
@@ -6942,6 +6994,8 @@ export interface components {
             auto_assigned: boolean | null;
             /** Confidence */
             confidence: number | null;
+            /** Has Extraction */
+            has_extraction: boolean;
             kind: components["schemas"]["MaterialKind"];
             /** Material Id */
             material_id: number;
@@ -10758,6 +10812,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialUploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    derive_materials_batch_api_v1_materials_derive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialBatchDeriveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialBatchDeriveOut"];
                 };
             };
             /** @description Validation Error */

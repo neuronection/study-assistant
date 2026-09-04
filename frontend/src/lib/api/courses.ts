@@ -283,6 +283,7 @@ export interface WorkspaceMaterial {
   auto_assigned: boolean | null
   confidence: number | null
   provenance?: { source?: string } | null
+  has_extraction: boolean
   via_folder_id: number | null
   via_folder_name: string | null
 }

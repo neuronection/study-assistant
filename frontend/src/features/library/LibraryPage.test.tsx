@@ -44,6 +44,7 @@ const allocateMaterial = vi.fn()
 const allocateNodeFolder = vi.fn()
 const courseTree = vi.fn()
 const reingestMaterialMock = vi.fn()
+const deriveMaterialsMock = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -85,6 +86,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
     courseTree: (...args: unknown[]) => courseTree(...(args as [number])),
     reingestMaterial: (...args: unknown[]) =>
       reingestMaterialMock(...(args as [number])),
+    deriveMaterials: (...args: unknown[]) =>
+      deriveMaterialsMock(...(args as [number[]])),
     apiFetch: (...args: unknown[]) => apiFetchMock(...(args as [])),
   }
 })
@@ -689,6 +692,68 @@ describe('LibraryPage', () => {
     await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledTimes(2))
     expect(reingestMaterialMock).toHaveBeenCalledWith(7)
     expect(reingestMaterialMock).toHaveBeenCalledWith(8)
+  })
+
+  test('right-click offers save-as-material for files with extracted text', async () => {
+    deriveMaterialsMock.mockResolvedValue({
+      results: [
+        {
+          material_id: 7,
+          outcome: 'created',
+          material: { ...MATERIAL, id: 21, title: 'chain-rule', kind: 'md' },
+          job_id: 31,
+        },
+      ],
+      created: 1,
+      deduped: 0,
+      skipped: 0,
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([{ ...MATERIAL, has_extraction: true }])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', { name: 'Save as material' })
+    fireEvent.click(item)
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    expect(await screen.findByText('Saved 1 material')).toBeInTheDocument()
+  })
+
+  test('multi-selection derive counts only rows with extracted text', async () => {
+    deriveMaterialsMock.mockResolvedValue({
+      results: [],
+      created: 1,
+      deduped: 0,
+      skipped: 1,
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([
+      { ...MATERIAL, has_extraction: true },
+      { ...MATERIAL, id: 8, title: 'limits.pdf', filename: 'limits.pdf' },
+    ])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.mouseDown(tile)
+    const otherTile = (await screen.findByText('limits.pdf')).closest('button')!
+    fireEvent.mouseDown(otherTile, { ctrlKey: true })
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', { name: 'Save 1 as materials' })
+    fireEvent.click(item)
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    expect(await screen.findByText('Saved 1 material · 1 skipped (no extracted text)')).toBeInTheDocument()
+  })
+
+  test('no save-as-material item when nothing selected has an extraction', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([MATERIAL])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.contextMenu(tile)
+    await screen.findByRole('menuitem', { name: 'Cut' })
+    expect(screen.queryByRole('menuitem', { name: 'Save as material' })).toBeNull()
   })
 
   test('link node navigates via browse, shows pending, ingests', async () => {

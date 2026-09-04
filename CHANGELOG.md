@@ -2,6 +2,24 @@
 
 All notable changes to **Study Assistant** are documented here.
 
+## [Unreleased]
+
+### Added
+- **Batch "Save extracted text as material" from multi-select (plan 57).**
+  Right-clicking one or many selected files in the Library or a node's
+  Materials tab now offers **Save as material** / **Save N as materials** —
+  one batch request (`POST /materials/derive`) creates a standalone Markdown
+  material per source that has extracted text; files without an extraction
+  are skipped and reported in the summary notice, never blocking the batch.
+
+### Changed
+- **Filesystem-style derive naming.** Derived materials drop the
+  "(extracted)" suffix: `report.pdf` saves as `report.md`. The source's own
+  title no longer collides (like `report.pdf` + `report.md` on disk); any
+  *other* material with the same name in the target folder resolves to a
+  zero-padded counter (`report_01`, `report_02`, …). Content-hash dedup is
+  unchanged — an identical extraction still returns the existing material.
+
 ## [v0.5.1] - 2026-09-04
 
 ### Changed

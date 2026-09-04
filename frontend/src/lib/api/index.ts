@@ -275,6 +275,7 @@ export {
   deleteMaterial,
   deleteMaterialDrawing,
   deriveMaterial,
+  deriveMaterials,
   editExtraction,
   getExtractionVersion,
   getMaterial,

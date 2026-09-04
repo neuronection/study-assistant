@@ -91,6 +91,12 @@ class Capability(StrVocab):
     AUDIO = "audio"
 
 
+class DeriveOutcome(StrVocab):
+    CREATED = "created"
+    DEDUPED = "deduped"
+    SKIPPED = "skipped"
+
+
 class ProvenanceKind(StrVocab):
     AI_COMPOSED = "ai-composed"
     DERIVED = "derived"

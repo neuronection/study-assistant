@@ -282,6 +282,7 @@ class WorkspaceMaterialOut(BaseModel):
     auto_assigned: bool | None
     confidence: float | None
     provenance: dict[str, Any] | None
+    has_extraction: bool
     via_folder_id: int | None
     via_folder_name: str | None
 

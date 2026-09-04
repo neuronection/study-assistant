@@ -2458,6 +2458,53 @@
         "title": "DeletedItemOut",
         "type": "object"
       },
+      "DeriveOutcome": {
+        "enum": [
+          "created",
+          "deduped",
+          "skipped"
+        ],
+        "title": "DeriveOutcome",
+        "type": "string"
+      },
+      "DeriveResultOut": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaterialOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/DeriveOutcome"
+          }
+        },
+        "required": [
+          "material_id",
+          "outcome"
+        ],
+        "title": "DeriveResultOut",
+        "type": "object"
+      },
       "DesktopDropsIn": {
         "properties": {
           "paths": {
@@ -4344,6 +4391,55 @@
         "title": "MaterialAssignedOut",
         "type": "object"
       },
+      "MaterialBatchDeriveIn": {
+        "properties": {
+          "material_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Material Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "material_ids"
+        ],
+        "title": "MaterialBatchDeriveIn",
+        "type": "object"
+      },
+      "MaterialBatchDeriveOut": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "deduped": {
+            "title": "Deduped",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DeriveResultOut"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "results",
+          "created",
+          "deduped",
+          "skipped"
+        ],
+        "title": "MaterialBatchDeriveOut",
+        "type": "object"
+      },
       "MaterialCopyIn": {
         "properties": {
           "folder_id": {
@@ -4663,6 +4759,11 @@
               }
             ],
             "title": "Group Id"
+          },
+          "has_extraction": {
+            "default": false,
+            "title": "Has Extraction",
+            "type": "boolean"
           },
           "id": {
             "title": "Id",
@@ -10689,6 +10790,10 @@
             ],
             "title": "Confidence"
           },
+          "has_extraction": {
+            "title": "Has Extraction",
+            "type": "boolean"
+          },
           "kind": {
             "$ref": "#/components/schemas/MaterialKind"
           },
@@ -10767,6 +10872,7 @@
           "auto_assigned",
           "confidence",
           "provenance",
+          "has_extraction",
           "via_folder_id",
           "via_folder_name"
         ],
@@ -16564,6 +16670,47 @@
           }
         },
         "summary": "Compose Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/derive": {
+      "post": {
+        "operationId": "derive_materials_batch_api_v1_materials_derive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialBatchDeriveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialBatchDeriveOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Derive Materials Batch",
         "tags": [
           "materials"
         ]

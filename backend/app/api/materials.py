@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError, TaskUnassigned
-from ..core.vocab import MaterialKind, MaterialStatus
+from ..core.vocab import DeriveOutcome, MaterialKind, MaterialStatus
 from ..domain.models import Extraction, Material, MaterialDrawing
 from ..jobs.runner import JobRunner
 from ..services.content.drawings import (
@@ -72,6 +72,24 @@ class MaterialDeriveIn(BaseModel):
     node_id: int | None = None
 
 
+class MaterialBatchDeriveIn(BaseModel):
+    material_ids: list[int] = Field(min_length=1, max_length=200)
+
+
+class DeriveResultOut(BaseModel):
+    material_id: int
+    outcome: DeriveOutcome
+    material: MaterialOut | None = None
+    job_id: int | None = None
+
+
+class MaterialBatchDeriveOut(BaseModel):
+    results: list[DeriveResultOut]
+    created: int
+    deduped: int
+    skipped: int
+
+
 REINGESTABLE_KINDS = frozenset(
     {"pdf", "md", "txt", "image", "docx", "pptx", "epub", "html", "audio", "video"}
 )
@@ -81,7 +99,7 @@ def _service(request: Request, session: Session) -> MaterialsService:
     return MaterialsService(session, request.app.state.blobs)
 
 
-def _to_out(material: Material) -> MaterialOut:
+def _to_out(material: Material, has_extraction: bool = False) -> MaterialOut:
     return MaterialOut(
         id=material.id,
         title=material.title,
@@ -96,6 +114,7 @@ def _to_out(material: Material) -> MaterialOut:
         blob_sha=material.blob_sha,
         provenance=material.provenance,
         created_at=material.created_at,
+        has_extraction=has_extraction,
     )
 
 
@@ -121,7 +140,7 @@ def _material_detail(
     extraction = service.latest_extraction(material.id)
     card = service.index_card(material.id)
     return MaterialDetailOut(
-        material=_to_out(material),
+        material=_to_out(material, has_extraction=extraction is not None),
         extraction=(
             ExtractionOut(
                 id=extraction.id,
@@ -463,7 +482,19 @@ def list_materials(
         folder_id=folder_id,
         unfiled=unfiled,
     )
-    return [_to_out(material) for material in materials]
+    extraction_ids: set[int] = set()
+    if materials:
+        extraction_ids = set(
+            session.scalars(
+                select(Extraction.material_id).where(
+                    Extraction.material_id.in_([m.id for m in materials])
+                )
+            )
+        )
+    return [
+        _to_out(material, has_extraction=material.id in extraction_ids)
+        for material in materials
+    ]
 
 
 class LinkBreadcrumbOut(BaseModel):
@@ -540,7 +571,9 @@ def rename_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(material)
+    return _to_out(
+        material, has_extraction=service.latest_extraction(material.id) is not None
+    )
 
 
 @router.post("/{material_id}/reingest", response_model=MaterialUploadOut)
@@ -563,7 +596,11 @@ def reingest_material(
     job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
     return MaterialUploadOut(
-        material=_to_out(material), job_id=job_id, deduped=False
+        material=_to_out(
+            material, has_extraction=service.latest_extraction(material.id) is not None
+        ),
+        job_id=job_id,
+        deduped=False,
     )
 
 
@@ -584,7 +621,9 @@ def move_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(material)
+    return _to_out(
+        material, has_extraction=service.latest_extraction(material.id) is not None
+    )
 
 
 @router.post("/{material_id}/copy", response_model=MaterialOut, status_code=201)
@@ -604,7 +643,35 @@ def copy_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(copy)
+    return _to_out(
+        copy, has_extraction=service.latest_extraction(copy.id) is not None
+    )
+
+
+@router.post("/derive", response_model=MaterialBatchDeriveOut, status_code=201)
+def derive_materials_batch(
+    request: Request,
+    body: MaterialBatchDeriveIn,
+    session: Session = Depends(get_session),
+) -> MaterialBatchDeriveOut:
+    service = _service(request, session)
+    results = service.derive_batch(body.material_ids, request.app.state.jobs)
+    session.commit()
+    out = [
+        DeriveResultOut(
+            material_id=result["material_id"],
+            outcome=result["outcome"],
+            material=_to_out(result["material"]) if result["material"] else None,
+            job_id=result["job_id"],
+        )
+        for result in results
+    ]
+    return MaterialBatchDeriveOut(
+        results=out,
+        created=sum(1 for result in out if result.outcome == DeriveOutcome.CREATED),
+        deduped=sum(1 for result in out if result.outcome == DeriveOutcome.DEDUPED),
+        skipped=sum(1 for result in out if result.outcome == DeriveOutcome.SKIPPED),
+    )
 
 
 @router.post("/{material_id}/derive", response_model=MaterialUploadOut, status_code=201)

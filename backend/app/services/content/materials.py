@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ...core.vocab import MaterialKind
+from ...core.vocab import DeriveOutcome, MaterialKind
 from ...domain.models import (
     Blob,
     Chunk,
@@ -284,6 +284,29 @@ class MaterialsService:
     def _copy_title(self, base_title: str, folder_id: int | None, course_id: int) -> str:
         return self._unique_title(base_title, "copy", folder_id, course_id)
 
+    def _unique_derive_title(
+        self, base_title: str, folder_id: int | None, course_id: int, exclude_id: int
+    ) -> str:
+        taken = set(
+            self._session.scalars(
+                select(Material.title).where(
+                    Material.course_id == course_id,
+                    Material.folder_id == folder_id,
+                    Material.id != exclude_id,
+                )
+            )
+        )
+        base = base_title[:296]
+        if base not in taken:
+            return base
+        counter = 1
+        while True:
+            suffix = f"_{counter:02d}"
+            candidate = f"{base[: 300 - len(suffix)]}{suffix}"
+            if candidate not in taken:
+                return candidate
+            counter += 1
+
     def copy(
         self, material: Material, folder_id: int | None, runner: JobRunner
     ) -> Material:
@@ -375,7 +398,9 @@ class MaterialsService:
                 raise ValueError("node belongs to a different course")
             target_node_ids.add(node_id)
         base_title = material.title.replace("/", "-").replace("\\", "-").strip() or "material"
-        title = self._unique_title(base_title, "extracted", folder_id, material.course_id)
+        title = self._unique_derive_title(
+            base_title, folder_id, material.course_id, exclude_id=material.id
+        )
         derived, deduped = self.create_text(
             profile_id=material.profile_id,
             course_id=material.course_id,
@@ -452,6 +477,39 @@ class MaterialsService:
             )
         self._session.flush()
         return derived, False
+
+    def derive_batch(
+        self, material_ids: list[int], runner: JobRunner
+    ) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        for material_id in material_ids:
+            material = self._session.get(Material, material_id)
+            skipped: dict[str, Any] = {
+                "material_id": material_id,
+                "outcome": DeriveOutcome.SKIPPED,
+                "material": None,
+                "job_id": None,
+            }
+            if material is None:
+                results.append(skipped)
+                continue
+            extraction = self.latest_extraction(material.id)
+            if extraction is None or not extraction.markdown.strip():
+                results.append(skipped)
+                continue
+            derived, deduped = self.derive(material, None, None)
+            job_id: int | None = None
+            if not deduped:
+                job_id = self.queue_ingest(derived, runner)
+            results.append(
+                {
+                    "material_id": material_id,
+                    "outcome": DeriveOutcome.DEDUPED if deduped else DeriveOutcome.CREATED,
+                    "material": derived,
+                    "job_id": job_id,
+                }
+            )
+        return results
 
     def _find_duplicate(
         self,

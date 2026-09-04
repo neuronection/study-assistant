@@ -74,6 +74,7 @@ const assignCourseTask = vi.fn()
 const listCourseTaskDefaults = vi.fn()
 const assignCourseTaskDefault = vi.fn()
 const listModels = vi.fn()
+const deriveMaterialsMock = vi.fn()
 
 interface NavigateCall {
   to: string
@@ -221,6 +222,8 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
         ...(args as [number, string, number | null, number | null])
       ),
     listModels: () => listModels(),
+    deriveMaterials: (...args: unknown[]) =>
+      deriveMaterialsMock(...(args as [number[]])),
   }
 })
 
@@ -338,6 +341,7 @@ const NODE_WS = {
       rationale: null,
       auto_assigned: false,
       confidence: null,
+      has_extraction: true,
       via_folder_id: null,
       via_folder_name: null,
     },
@@ -1567,6 +1571,30 @@ describe('NodeWorkspace', () => {
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chain rule/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
     await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(11, 7))
+  })
+
+  test('materials tab right-click saves extracted text as a material', async () => {
+    primeDefaults()
+    deriveMaterialsMock.mockResolvedValue({
+      results: [
+        {
+          material_id: 7,
+          outcome: 'created',
+          material: null,
+          job_id: 41,
+        },
+      ],
+      created: 1,
+      deduped: 0,
+      skipped: 0,
+    })
+    renderWorkspace('/courses/3/n/5?tab=materials')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Save as material' }))
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    expect(await screen.findByText('Saved 1 material')).toBeInTheDocument()
   })
 
   test('materials tab shows assigned folders as folder rows with unassign', async () => {

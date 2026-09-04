@@ -122,7 +122,9 @@ Clicking a material opens a dedicated page with three views:
   re-indexes search and re-embeds automatically. **Save as material** creates a standalone Markdown
   file from the (edited) extraction — useful once the QA is done and you no
   longer need the original scan: the new material is a normal `.md` file with
-  its own copy of the content, titled `"<original> (extracted)"`. It also
+  its own copy of the content, named after the original (`report.pdf` saves as
+  `report.md`; if that name is taken by different content, a counter is
+  appended: `report_01.md`, `report_02.md`, …). It also
   appears everywhere the original was assigned: the original's chapter/section
   assignments are copied, and if you save from inside a node's workspace the
   new material is assigned to that node as well. Deriving twice
@@ -130,6 +132,12 @@ Clicking a material opens a dedicated page with three views:
   already exists" instead); the original material is never modified or deleted.
   If the source had drawings, they come along (copied, with their references
   re-pointed) so the saved material is self-contained.
+
+You don't need to open a file to save its extracted text: in the Library and
+in a node's **Materials** tab, right-click one or more selected files and
+choose **Save as material** (multi-selections show **Save N as materials**).
+Files without extracted text yet (still processing or failed) are skipped and
+reported, never blocking the rest.
 - **Original** — the untouched uploaded file (PDF/image viewer).
 - **Side-by-side** — original ⇄ extraction for OCR QA.
 

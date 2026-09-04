@@ -13,6 +13,7 @@ from ...domain.models import (
     Concept,
     Course,
     Exercise,
+    Extraction,
     FsrsState,
     Material,
     MaterialFolder,
@@ -844,6 +845,15 @@ class TreeService:
                 )
             )
         }
+        extraction_ids: set[int] = set()
+        if relevant_material_ids:
+            extraction_ids = set(
+                self._session.scalars(
+                    select(Extraction.material_id).where(
+                        Extraction.material_id.in_(relevant_material_ids)
+                    )
+                )
+            )
 
         node_folder_links = folder_links_by_node(self._session, [node.id])[node.id]
         node_folder_ids = [link.folder_id for link in node_folder_links]
@@ -866,6 +876,7 @@ class TreeService:
                 "auto_assigned": link.auto_assigned if link is not None else None,
                 "confidence": link.confidence if link is not None else None,
                 "provenance": material.provenance if material else None,
+                "has_extraction": material_id in extraction_ids,
                 "via_folder_id": via.id if via is not None else None,
                 "via_folder_name": via.name if via is not None else None,
             }
