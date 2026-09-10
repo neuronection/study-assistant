@@ -235,6 +235,12 @@ jobs:
           merge-multiple: true
           path: release
           pattern: "{linux-packages,windows-executable}"
+      - name: Create stable-name download aliases
+        working-directory: release
+        run: |
+          cp StudyAssistant-*-windows-x64.exe StudyAssistant-windows-x64.exe
+          cp StudyAssistant-*-x86_64.AppImage StudyAssistant-x86_64.AppImage
+          cp studyassistant_*_amd64.deb studyassistant_amd64.deb
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
