@@ -16,3 +16,8 @@ Release history from before the public launch lives in the
 ### Changed
 
 ### Fixed
+
+- Graph chat engine: round-close straggler dropping now applies only to tool
+  rounds, so a final answer's trailing token chunks are no longer dropped when
+  the round-end flush races the merged token queue (regression from the
+  2026-09-09 tool-call leak fix; could truncate streamed answers under load).

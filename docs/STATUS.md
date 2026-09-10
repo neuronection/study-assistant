@@ -1107,6 +1107,19 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-10 — **fix(ai): tool-free chat rounds no longer drop their queued
+  tail chunks.** The 2026-09-09 `_DeltaPump` straggler fix closed the pump on
+  every round, so in a single-/final-round turn the chunks still sitting in
+  LangGraph's merged queue at round end were dropped as same-step stragglers —
+  CI flaked (`test_stream_deltas_are_coalesced`: `joined` ended mid-word) and
+  live answers could lose their tail until `assistant_message` replaced the
+  stream. `on_round_stream_end` now carries `had_tools` (native `native_raw` /
+  legacy `extract_tool_calls`, mirroring the node's own round classification)
+  and only tool rounds close the pump; tool-free rounds flush and stay open,
+  preserving the tool-call leak fix. Unit tests pin both behaviors
+  (`test_round_close_drops_straggler_delta`,
+  `test_tool_free_round_close_keeps_straggler_delta`).
+
 - 2026-09-09 — **fix(ai): graph chat engine no longer leaks a round's final token
   chunk after a tool call.** `tool_call`/`phase` events are emitted directly to
   the WS bus from the graph node, while token deltas detour through LangGraph's

@@ -127,7 +127,7 @@ class ChatTurnDeps:
         stop: threading.Event | None,
         chat_session: ChatSession,
         user_message: ChatMessage,
-        on_round_stream_end: Callable[[], None] | None = None,
+        on_round_stream_end: Callable[[bool], None] | None = None,
     ) -> None:
         self.service = service
         self.gateway = gateway
@@ -268,7 +268,12 @@ def _consume_stream(
             return buffer, native_raw, reasoning, DEGRADED
         raise
     if deps.on_round_stream_end is not None:
-        deps.on_round_stream_end()
+        had_tools = (
+            bool(native_raw)
+            if state["native_tools"]
+            else bool(extract_tool_calls("".join(buffer)))
+        )
+        deps.on_round_stream_end(had_tools)
     return buffer, native_raw, reasoning, None
 
 

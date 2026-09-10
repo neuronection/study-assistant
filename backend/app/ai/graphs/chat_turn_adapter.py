@@ -47,12 +47,15 @@ class _DeltaPump:
 
     Rounds are closed by `close_round` (wired as `on_round_stream_end`, which
     the graph calls from the node's worker thread after the gateway stream is
-    fully consumed). A closed pump discards further text — LangGraph's merged
+    fully consumed). Only tool rounds close: LangGraph's merged
     `updates`/`messages` queue can deliver a round's final token chunk after
     that round's `tool_call` already hit the wire (tool_call is emitted
     directly, deltas detour through the queue), and such a straggler would
-    otherwise leak as answer text. The adapter reopens the pump when a chunk
-    from a later `langgraph_step` arrives (next round / next node execution).
+    otherwise leak as answer text. Closing a tool-free round would drop its
+    legitimate tail the same way (CI flake: `test_stream_deltas_are_coalesced`
+    lost the answer's last chunk), so tool-free rounds only flush and stay
+    open. The adapter reopens a closed pump when a chunk from a later
+    `langgraph_step` arrives (next round / next node execution).
     """
 
     def __init__(self, emit: Emitter, started: float) -> None:
@@ -84,9 +87,9 @@ class _DeltaPump:
         self._reason_buf.append(text)
         self._maybe_flush()
 
-    def close_round(self) -> None:
+    def close_round(self, had_tools: bool) -> None:
         self.flush_round_end()
-        self.closed = True
+        self.closed = had_tools
 
     def reopen(self) -> None:
         self.closed = False

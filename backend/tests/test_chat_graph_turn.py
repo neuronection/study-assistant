@@ -358,7 +358,7 @@ def test_round_close_drops_straggler_delta(tmp_path: Path) -> None:
         engine._on_messages_chunk(pump, (AIMessageChunk(content=text), {"langgraph_step": step}))
 
     feed("CALC 2", 4)
-    pump.close_round()
+    pump.close_round(True)
     feed("*21\n", 4)
     assert pump.closed
     assert [event for event in emitted if event["type"] == "stream_delta"] == []
@@ -371,6 +371,29 @@ def test_round_close_drops_straggler_delta(tmp_path: Path) -> None:
         event["delta"] for event in emitted if event["type"] == "stream_delta"
     )
     assert deltas == "The answer is $42$.\n"
+
+
+def test_tool_free_round_close_keeps_straggler_delta(tmp_path: Path) -> None:
+    """Closing a tool-free round must not arm straggler dropping: its queued
+    tail chunks are legitimate answer text (CI flake: a single-round answer
+    lost its last chunk to the close). The round still flushes its pending
+    line but the pump stays open."""
+    emitted: list[dict[str, Any]] = []
+    engine = ChatTurnEngine(None, None)  # type: ignore[arg-type]
+    pump = _DeltaPump(emitted.append, started=time.monotonic())
+
+    def feed(text: str, step: int) -> None:
+        engine._on_messages_chunk(pump, (AIMessageChunk(content=text), {"langgraph_step": step}))
+
+    feed("The answer is ", 2)
+    pump.close_round(False)
+    assert not pump.closed
+    feed("word " * 120, 2)
+    pump.flush_round_end()
+    deltas = "".join(
+        event["delta"] for event in emitted if event["type"] == "stream_delta"
+    )
+    assert deltas == "The answer is " + "word " * 120
 
 
 def test_graph_repair_round_records_phases(
