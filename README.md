@@ -13,9 +13,16 @@
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
 
-<!-- NEURONECTION:BADGE:START -->
-[![Neuronection](https://img.shields.io/badge/part_of_the-Neuronection_family-4F46E5)](https://neuronection.com)
-<!-- NEURONECTION:BADGE:END -->
+  <p>
+    <small>Part of</small><br>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/neuronection-dark.svg">
+      <img src="https://neuronection.com/logos/neuronection.svg" height="30" alt="">
+    </picture>&nbsp;&nbsp;&nbsp;<picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/neuronection-wordmark-dark.svg">
+      <img src="https://neuronection.com/logos/neuronection-wordmark.svg" height="30" alt="Neuronection — one ecosystem, four guides">
+    </picture>
+  </p>
 
 **Website**: [neuronection.com](https://neuronection.com) · **Repository**: [neuronection/study-assistant](https://github.com/neuronection/study-assistant)
 
@@ -33,13 +40,18 @@
 - [Features](#features)
 - [Math you can trust](#math-you-can-trust)
 - [Quick start](#quick-start)
+  - [Install from the latest release](#install-from-the-latest-release)
   - [Run as a web service (Docker)](#run-as-a-web-service-docker)
+  - [Run from source (developers)](#run-from-source-developers)
+  - [Connect an AI provider](#connect-an-ai-provider)
 - [Architecture at a glance](#architecture-at-a-glance)
 - [Documentation](#documentation)
 - [Tech stack](#tech-stack)
 - [Scope & limitations](#scope--limitations)
 - [Status & roadmap](#status--roadmap)
+- [Community & support](#community--support)
 - [Contributing](#contributing)
+- [Security](#security)
 - [License](#license)
 
 ---
@@ -191,7 +203,37 @@ Study Assistant is built math-first, so trust is engineered rather than promised
 
 ## Quick start
 
-### Run from source (Linux/macOS/Windows)
+### Install from the latest release
+
+Download the installer for your platform — the links always fetch the
+latest build:
+
+| Platform | File | Link |
+|---|---|---|
+| Windows | `StudyAssistant-windows-x64.exe` | [download](https://github.com/neuronection/study-assistant/releases/latest/download/StudyAssistant-windows-x64.exe) |
+| Linux (AppImage) | `StudyAssistant-x86_64.AppImage` | [download](https://github.com/neuronection/study-assistant/releases/latest/download/StudyAssistant-x86_64.AppImage) |
+| Linux (deb) | `studyassistant_amd64.deb` | [download](https://github.com/neuronection/study-assistant/releases/latest/download/studyassistant_amd64.deb) |
+
+All installers and older versions: [Releases](https://github.com/neuronection/study-assistant/releases/latest).
+
+### Run as a web service (Docker)
+
+Self-host the web app on a server with the family-standard standalone stack
+(backend image + nginx; SQLite stays by design — all state lives in one
+volume):
+
+```bash
+docker compose -f docker/docker-compose.standalone.yml up -d --build
+# → http://localhost
+```
+
+TLS-terminating config, backups, and ops scripts (`scripts/run-docker.sh`,
+`scripts/update-docker.sh`) are covered in [docker/README.md](docker/README.md).
+Pre-built images are published on GHCR with every release
+(`STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag>`). Note: SQLite + a single data
+volume mean one backend replica — horizontal scale is out of scope by design.
+
+### Run from source (developers)
 
 Prerequisites: **Python 3.12+** with [uv](https://docs.astral.sh/uv/), **Node 20+** with
 pnpm (`corepack enable pnpm`). On Linux the desktop shell additionally needs GTK build
@@ -213,23 +255,6 @@ pnpm webapp                               # build + serve + open http://127.0.0.
 uvicorn + Vite with hot reload on `localhost:5173`; `pnpm app` opens the pywebview
 desktop window. All modes accept `--reset` to wipe local data. Override the port with
 `SA_PORT`.
-
-### Run as a web service (Docker)
-
-Self-host the web app on a server with the family-standard standalone stack
-(backend image + nginx; SQLite stays by design — all state lives in one
-volume):
-
-```bash
-docker compose -f docker/docker-compose.standalone.yml up -d --build
-# → http://localhost
-```
-
-TLS-terminating config, backups, and ops scripts (`scripts/run-docker.sh`,
-`scripts/update-docker.sh`) are covered in [docker/README.md](docker/README.md).
-Pre-built images are published on GHCR with every release
-(`STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag>`). Note: SQLite + a single data
-volume mean one backend replica — horizontal scale is out of scope by design.
 
 ### Connect an AI provider
 
@@ -288,6 +313,7 @@ Deep dive: [docs/architecture.md](docs/architecture.md).
 - [AI layer](docs/ai.md) · [Data model](docs/data-model.md) · [Import/export](docs/import-export.md)
 - [Packaging](docs/usage/packaging.md) — deb / AppImage / Windows exe
 - [Current status](docs/STATUS.md) — single source of truth for what exists
+- [Changelog](CHANGELOG.md) — every user-visible change
 
 ## Tech stack
 
@@ -329,6 +355,12 @@ next steps: AI-compose quality & scale (plan 70 direction), golden OCR eval
 fixtures, and the post-1.0 backlog (local OCR adapter, Tauri shell, audio/video
 ingestion, plugins, graph-sketch grading).
 
+## Community & support
+
+Questions: [Discord](https://discord.com/invite/SZCXNTwv) ·
+Bugs & feature requests: [Issues](https://github.com/neuronection/study-assistant/issues) ·
+Support development: [Buy Me a Coffee](https://buymeacoffee.com/neuronection)
+
 ## Contributing
 
 Contributions are welcome. Set up a dev environment via
@@ -341,6 +373,11 @@ pnpm verify:frontend                      # eslint + tsc + vitest + build
 
 Docs are part of the change: `docs/STATUS.md` is updated in the same commit as any
 behavior change (see `AGENTS.md` for the workflow).
+
+## Security
+
+Found a vulnerability? Do not open a public issue — see
+[SECURITY.md](SECURITY.md) for the private disclosure process.
 
 <!-- NEURONECTION:ECOSYSTEM:START -->
 ---
