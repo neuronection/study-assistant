@@ -17,7 +17,7 @@
 [![Neuronection](https://img.shields.io/badge/part_of_the-Neuronection_family-4F46E5)](https://neuronection.com)
 <!-- NEURONECTION:BADGE:END -->
 
-**Repository**: [neuronection/study-assistant](https://github.com/neuronection/study-assistant)
+**Website**: [neuronection.com](https://neuronection.com) · **Repository**: [neuronection/study-assistant](https://github.com/neuronection/study-assistant)
 
 </div>
 
@@ -399,7 +399,7 @@ Created and maintained by [Ilias Chatzopoulos](https://github.com/constLiakos)
 · [info@neuronection.com](mailto:info@neuronection.com)
 
 [neuronection.com](https://neuronection.com) — one ecosystem, four guides
-· [♥ Sponsor development](https://github.com/sponsors/constLiakos) · star what you use
+· [♥ Support development](https://buymeacoffee.com/neuronection) · star what you use
 
 </div>
 <!-- NEURONECTION:ECOSYSTEM:END -->
