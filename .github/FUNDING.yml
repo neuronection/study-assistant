@@ -1,0 +1,8 @@
+# GitHub funding — renders the "Buy Me a Coffee" button in the repo sidebar.
+# Buy Me a Coffee is the only active funding channel:
+#   https://buymeacoffee.com/neuronection
+# Do NOT add a `github:` (Sponsors) entry — Sponsors is not enabled for the
+# account; a dead entry renders a broken sponsor button. If Sponsors is ever
+# enabled, add `github: [constLiakos]` AND the sponsor link back to
+# ECOSYSTEM.md in the same commit (docs-sync discipline).
+buy_me_a_coffee: neuronection
