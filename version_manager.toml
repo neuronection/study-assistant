@@ -1,0 +1,26 @@
+# Study Assistant — version manager config
+# The script (scripts/version_manager.py) is config-driven; edit this file,
+# not the script.
+
+[project]
+name = "Study Assistant"
+
+[version]
+file = "backend/app/__init__.py"
+pattern = '__version__\s*=\s*"(?P<version>[^"]+)"'
+
+[[propagate]]
+name = "Frontend package.json"
+file = "frontend/package.json"
+type = "json"
+field = "version"
+
+# CHANGELOG rides the release commit (docs and code change together).
+# The exported OpenAPI schema embeds the app version (info.version), so the
+# regenerated schema is staged with the release commit too (release flow:
+# bump → regenerate → amend → release; local commit + tag by
+# default, --push only when explicitly asked).
+
+[release]
+tag_prefix = "v"
+docs = ["CHANGELOG.md", "frontend/openapi.json"]

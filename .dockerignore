@@ -1,0 +1,28 @@
+# Build context: repository root (see `context` in docker-compose.standalone.yml).
+# Keeps secrets and dev artifacts out of the image.
+
+.git
+.github
+.devcontainer
+.vscode
+.idea
+
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+
+dev/
+docs/
+packaging/
+node_modules
+**/node_modules
+.venv
+backend/.venv
+backend/tests
+backend/build
+backend/dist
+frontend/dist
+**/.env
+**/.env.*

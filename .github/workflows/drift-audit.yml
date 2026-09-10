@@ -1,0 +1,41 @@
+name: assistant-ui drift audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run assistant-ui drift audit
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/neuronection/assistant-ui/main/scripts/audit-usage.mjs -o /tmp/audit-usage.mjs
+          set +e
+          node /tmp/audit-usage.mjs ./frontend/src > /tmp/audit-report.txt 2>&1
+          status=$?
+          set -e
+          if [ $status -eq 0 ]; then
+            echo "No drift found"
+            exit 0
+          fi
+          existing=$(gh issue list --state open --search 'in:title "assistant-ui drift detected"' --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/audit-report.txt
+          else
+            gh issue create \
+              --title "assistant-ui drift detected" \
+              --body-file /tmp/audit-report.txt \
+              --label "tech-debt"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

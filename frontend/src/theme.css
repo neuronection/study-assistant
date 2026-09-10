@@ -1,0 +1,47 @@
+/*
+ * App identity for @neuronection/assistant-ui — bridges the app's own
+ * palette (index.css) onto the family `--as-*` tokens, for both themes.
+ * ThemeToggle toggles `.dark` on <html>; the remaps below follow it.
+ * Loaded last: library styles.css → index.css → theme.css.
+ */
+
+:root {
+  --as-primary: var(--primary);
+  --as-primary-fg: var(--primary-foreground);
+  --as-secondary: var(--subtle);
+  --as-secondary-fg: var(--foreground);
+  --as-surface: var(--surface);
+  --as-surface-raised: oklch(1 0 0);
+  --as-border: var(--border);
+  --as-fg: var(--foreground);
+  --as-muted: var(--subtle);
+  --as-muted-fg: var(--muted-foreground);
+  --as-focus-ring: var(--ring);
+  --as-radius: var(--radius);
+}
+
+.dark {
+  --as-primary: var(--primary);
+  --as-primary-fg: var(--primary-foreground);
+  --as-secondary: var(--subtle);
+  --as-secondary-fg: var(--foreground);
+  --as-surface: var(--surface);
+  --as-surface-raised: var(--subtle);
+  --as-border: var(--border);
+  --as-fg: var(--foreground);
+  --as-muted: var(--subtle);
+  --as-muted-fg: var(--muted-foreground);
+  --as-success: var(--success);
+  --as-success-fg: oklch(0.16 0.02 152);
+  --as-warning: var(--warning);
+  --as-warning-fg: oklch(0.2 0.02 78);
+  --as-danger: var(--danger);
+  --as-danger-fg: oklch(0.16 0.02 27);
+  --as-ai: oklch(0.7 0.2 293);
+  --as-ai-fg: oklch(0.15 0.03 293);
+  --as-focus-ring: var(--ring);
+  --as-overlay: oklch(0 0 0 / 0.7);
+  --as-shadow-1: 0 1px 2px 0 oklch(0 0 0 / 0.4);
+  --as-shadow-2: 0 4px 6px -1px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.4);
+  --as-shadow-3: 0 10px 15px -3px oklch(0 0 0 / 0.5), 0 4px 6px -4px oklch(0 0 0 / 0.4);
+}

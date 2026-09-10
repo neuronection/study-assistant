@@ -1,0 +1,35 @@
+# translations.toml — repo-specific facts for check_translations.py
+# (edit this file, not the script). Secrets live in .env — never here.
+
+[project]
+name = "Study Assistant"
+
+[source]
+locale = "en"
+
+[dictionaries]
+dir = "frontend/src/locales"
+format = "json"
+# locales: omit to auto-detect <locale>.json files in dir (en.json = source).
+# Only en.json exists today; the vitest i18n-audit test remains the code-level
+# gate. Drop in el.json/de.json and the gate + --fix pick them up automatically.
+
+[prompts]
+dir = "scripts/translations/prompts"            # family files + repo-local *.local.* overrides
+
+[llm]
+temperature = 0.3
+timeout = 60
+max_tokens = 4096
+batch_size = 20
+concurrency = 3
+retries = 3
+
+[gate]
+fail_on_extra = true
+
+[locales.el]
+name = "Greek"
+
+[locales.de]
+name = "German"

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Blocks commits while an assistant-ui dev-link override is active.
+# Enable once per clone: git config core.hooksPath scripts/githooks
+exec "$(dirname "$0")/../check-dev-link.sh"

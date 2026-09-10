@@ -1,0 +1,78 @@
+# Study Assistant — standalone self-hosted stack (app + nginx).
+#
+# Canonical single-host web deployment: Docker Compose is the process
+# supervisor, nginx routes traffic and terminates TLS. Mirrors Health and
+# Career Assistant's docker-compose.standalone.yml.
+#
+# SQLite is the datastore by design (local-first, ADR-backed): there is no
+# Postgres service. ALL persistent state (database, blobs, cache, backups)
+# lives under SA_DATA_DIR — mount the `data` volume to persist it. Scale
+# horizontally is NOT supported with SQLite: run exactly one replica.
+#
+#   docker compose -f docker/docker-compose.standalone.yml up -d --build
+#
+# TLS: mount docker/nginx-TLS.conf over nginx.conf, uncomment the 443
+# mapping, and provide certs (see docker/README.md → TLS). HTTP-only by
+# default — fine for loopback/VPN, not for the open internet.
+
+name: study-assistant
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-10m}"
+    max-file: "${LOG_MAX_FILE:-3}"
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ${STUDY_IMAGE:-study-assistant:local}
+    restart: unless-stopped
+    init: true
+    environment:
+      SA_DEBUG: "0"
+      SA_PORT: 8000
+      SA_HOST: 0.0.0.0
+      SA_DATA_DIR: /data
+      SA_SPA_DIST: /app/frontend/dist
+    volumes:
+      - data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3); sys.exit(0 if r.status < 500 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+    networks:
+      - study-assistant-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: study-assistant-nginx
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      # Uncomment when serving TLS (see nginx-TLS.conf):
+      # - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # TLS variant (also swap the conf mount above):
+      # - ./nginx-TLS.conf:/etc/nginx/conf.d/default.conf:ro
+      # - ./certs/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
+      # - ./certs/privkey.pem:/etc/nginx/certs/privkey.pem:ro
+    logging: *default-logging
+    networks:
+      - study-assistant-network
+
+volumes:
+  data:
+
+networks:
+  study-assistant-network:
+    driver: bridge

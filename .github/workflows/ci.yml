@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install GTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgirepository1.0-dev libcairo2-dev
+      - run: uv sync --frozen
+      - run: uv run --directory backend ruff check .
+      - run: uv run --directory backend mypy .
+      - run: uv run --directory backend pytest
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
+      - run: uv run --directory backend alembic upgrade head
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data
+      - name: OpenAPI schema drift guard
+        run: |
+          uv run --directory backend python ../scripts/export-openapi.py
+          git diff --exit-code -- frontend/openapi.json
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: assistant-ui dev-link guard (never commit manifest edits)
+        run: scripts/check-dev-link.sh
+      - run: pnpm install --frozen-lockfile
+      - name: Generated API types drift guard
+        run: |
+          pnpm --filter frontend exec openapi-typescript openapi.json -o src/lib/api-schema.d.ts
+          git diff --exit-code -- frontend/src/lib/api-schema.d.ts
+      - run: pnpm --filter frontend lint
+      - run: pnpm --filter frontend typecheck
+      - run: pnpm --filter frontend test
+      - run: pnpm --filter frontend build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install GTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgirepository1.0-dev libcairo2-dev
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: uv sync --frozen
+      - run: pnpm --filter frontend exec playwright install --with-deps chromium
+      - run: pnpm --filter frontend e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-artifacts
+          path: frontend/test-results/
+  docs-sync:
+    name: Docs sync (CHANGELOG gate)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: User-visible changes must update CHANGELOG.md
+        run: |
+          BASE="$(git merge-base HEAD "origin/${{ github.event.pull_request.base.ref }}")"
+          scripts/check-changelog.sh "$BASE"

@@ -1,0 +1,1421 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+
+import { LibraryPage } from './LibraryPage'
+import { MaterialDetailPage } from './MaterialDetailPage'
+import { useWorkspaceStore } from '@/lib/workspace-store'
+import { getWindowDropTarget, clearWindowDropTarget } from '@/lib/window-drop-store'
+import { storageKeys } from '@/lib/constants'
+
+const listMaterials = vi.fn()
+const getMaterial = vi.fn()
+const getFolderLinks = vi.fn()
+const uploadMaterial = vi.fn()
+const listFolders = vi.fn()
+const createFolder = vi.fn()
+const renameFolder = vi.fn()
+const deleteFolder = vi.fn()
+const getFolderDeleteInfo = vi.fn()
+const unlinkFolder = vi.fn()
+const editExtraction = vi.fn()
+const searchMock = vi.fn()
+const listSources = vi.fn()
+const scanSource = vi.fn()
+const listCourses = vi.fn()
+const getMaterialLinks = vi.fn()
+const listStudyStates = vi.fn()
+const setStudyState = vi.fn()
+const browseSource = vi.fn()
+const ingestSourceFile = vi.fn()
+const relinkSource = vi.fn()
+const revealSource = vi.fn()
+const addSource = vi.fn()
+const createTextMaterial = vi.fn()
+const updateTextMaterial = vi.fn()
+const renameMaterial = vi.fn()
+const deleteMaterial = vi.fn()
+const listFsDirs = vi.fn()
+const apiFetchMock = vi.fn()
+const moveMaterial = vi.fn()
+const copyMaterial = vi.fn()
+const moveFolder = vi.fn()
+const allocateMaterial = vi.fn()
+const allocateNodeFolder = vi.fn()
+const courseTree = vi.fn()
+const reingestMaterialMock = vi.fn()
+const deriveMaterialsMock = vi.fn()
+
+vi.mock('@/lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api')>()
+  return {
+    ...actual,
+    listMaterials: (...args: unknown[]) => listMaterials(...(args as [])),
+    getMaterial: (...args: unknown[]) => getMaterial(...(args as [number])),
+    getFolderLinks: (...args: unknown[]) => getFolderLinks(...(args as [number])),
+    uploadMaterial: (...args: unknown[]) => uploadMaterial(...(args as [])),
+    listFolders: (...args: unknown[]) => listFolders(...(args as [])),
+    createFolder: (...args: unknown[]) => createFolder(...(args as [])),
+    renameFolder: (...args: unknown[]) => renameFolder(...(args as [number, string])),
+    deleteFolder: (...args: unknown[]) => deleteFolder(...(args as [number])),
+    getFolderDeleteInfo: (...args: unknown[]) => getFolderDeleteInfo(...(args as [number])),
+    unlinkFolder: (...args: unknown[]) => unlinkFolder(...(args as [number])),
+    editExtraction: (...args: unknown[]) => editExtraction(...(args as [number, string])),
+    search: (...args: unknown[]) => searchMock(...(args as [string])),
+    listSources: () => listSources(),
+    scanSource: (...args: unknown[]) => scanSource(...(args as [number])),
+    listCourses: () => listCourses(),
+    getMaterialLinks: (...args: unknown[]) => getMaterialLinks(...(args as [number])),
+    listStudyStates: () => listStudyStates(),
+    setStudyState: (...args: unknown[]) => setStudyState(...(args as [])),
+    browseSource: (...args: unknown[]) => browseSource(...(args as [])),
+    ingestSourceFile: (...args: unknown[]) => ingestSourceFile(...(args as [])),
+    relinkSource: (...args: unknown[]) => relinkSource(...(args as [])),
+    revealSource: (...args: unknown[]) => revealSource(...(args as [number])),
+    addSource: (...args: unknown[]) => addSource(...(args as [])),
+    createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
+    updateTextMaterial: (...args: unknown[]) => updateTextMaterial(...(args as [])),
+    renameMaterial: (...args: unknown[]) => renameMaterial(...(args as [])),
+    deleteMaterial: (...args: unknown[]) => deleteMaterial(...(args as [number])),
+    listFsDirs: (...args: unknown[]) => listFsDirs(...(args as [])),
+    moveMaterial: (...args: unknown[]) => moveMaterial(...(args as [number, number | null])),
+    copyMaterial: (...args: unknown[]) => copyMaterial(...(args as [number, number | null])),
+    moveFolder: (...args: unknown[]) => moveFolder(...(args as [number, number | null])),
+    allocateMaterial: (...args: unknown[]) => allocateMaterial(...(args as [number, number])),
+    allocateNodeFolder: (...args: unknown[]) =>
+      allocateNodeFolder(...(args as [number, number])),
+    courseTree: (...args: unknown[]) => courseTree(...(args as [number])),
+    reingestMaterial: (...args: unknown[]) =>
+      reingestMaterialMock(...(args as [number])),
+    deriveMaterials: (...args: unknown[]) =>
+      deriveMaterialsMock(...(args as [number[]])),
+    apiFetch: (...args: unknown[]) => apiFetchMock(...(args as [])),
+  }
+})
+
+const wsHandlers = new Map<string, (payload: unknown) => void>()
+const wsSubscribe = vi.fn((topic: string, handler: (payload: unknown) => void) => {
+  wsHandlers.set(topic, handler)
+  return () => {
+    wsHandlers.delete(topic)
+  }
+})
+
+vi.mock('@/lib/ws-client', () => ({
+  getWsClient: () => ({
+    subscribe: wsSubscribe,
+  }),
+}))
+
+vi.mock('@/components/editor/LazyMarkdownEditor', () => ({
+  LazyMarkdownEditor: ({
+    value,
+    onChange,
+    ariaLabel,
+  }: {
+    value: string
+    onChange: (markdown: string) => void
+    ariaLabel: string
+  }) => (
+    <input
+      aria-label={ariaLabel}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
+}))
+
+const COURSES = [
+  {
+    id: 3,
+    title: 'Calculus I',
+    subject: null,
+    level: null,
+    description: null,
+    color: null,
+    archived_at: null,
+    material_count: 2,
+  },
+]
+
+const FOLDERS = [
+  { id: 11, name: 'Lectures', path: 'Lectures', course_id: 3, parent_id: null, created_at: '', source_id: null },
+  {
+    id: 12,
+    name: 'Week 1',
+    path: 'Lectures/Week 1',
+    course_id: 3,
+    parent_id: 11,
+    created_at: '',
+    source_id: null,
+  },
+  {
+    id: 13,
+    name: 'My Lectures',
+    path: 'My Lectures',
+    course_id: 3,
+    parent_id: null,
+    created_at: '',
+    source_id: 77,
+  },
+]
+
+const MATERIAL = {
+  id: 7,
+  title: 'chain-rule.pdf',
+  kind: 'pdf',
+  status: 'ready',
+  filename: 'chain-rule.pdf',
+  mime: 'application/pdf',
+  pages: 1,
+  course_id: 3,
+  group_id: null,
+  folder_id: null,
+  blob_sha: 'a'.repeat(64),
+  created_at: '2026-08-18T00:00:00Z',
+}
+
+const DETAIL = {
+  material: MATERIAL,
+  extraction: {
+    id: 1,
+    material_id: 7,
+    version: 1,
+    extractor: 'pymupdf',
+    markdown: 'the **chain rule**',
+    blocks: [{ type: 'text', md: 'the **chain rule**' }],
+  },
+  index_card: null,
+}
+
+function makeRouter(initial: string) {
+  const rootRoute = createRootRoute()
+  const libraryRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/library',
+    validateSearch: (search: Record<string, unknown>): { course?: number; folder?: number } => ({
+      course: typeof search.course === 'number' ? search.course : undefined,
+      folder: typeof search.folder === 'number' ? search.folder : undefined,
+    }),
+    component: LibraryPage,
+  })
+  const materialRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/library/$materialId',
+    validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
+      tab: typeof search.tab === 'string' ? search.tab : undefined,
+    }),
+    component: MaterialDetailPage,
+  })
+  const courseRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/courses/$courseId',
+    component: () => <div>course page</div>,
+  })
+  const nodeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/courses/$courseId/n/$nodeId',
+    component: () => <div>node page</div>,
+  })
+  return createRouter({
+    routeTree: rootRoute.addChildren([
+      libraryRoute,
+      materialRoute,
+      courseRoute,
+      nodeRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: [initial] }),
+  })
+}
+
+function renderAt(initial: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = makeRouter(initial)
+  return render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  )
+}
+
+afterEach(() => {
+  useWorkspaceStore.getState().setCourse(null)
+  window.localStorage.clear()
+  clearWindowDropTarget()
+  vi.clearAllMocks()
+})
+
+describe('LibraryPage', () => {
+  test('root shows course cards', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listSources.mockResolvedValue([])
+    renderAt('/library')
+    expect(await screen.findByText('Calculus I')).toBeInTheDocument()
+    expect(screen.getByText('1 course')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Grid view' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /upload/i })).not.toBeInTheDocument()
+  })
+
+  test('navigating into a course shows folders and unfiled materials', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    expect(await screen.findByText('Lectures')).toBeInTheDocument()
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(undefined, 3, true))
+    expect(await screen.findByText('2 folders · 1 materials')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Upload$/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New…' })).toBeInTheDocument()
+  })
+
+  test('shows placement badges on linked folders and materials', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([
+      { ...FOLDERS[0], node_link_count: 2 },
+      { ...FOLDERS[1], parent_id: null, path: 'Week 1', node_link_count: 0 },
+    ])
+    listMaterials.mockResolvedValue([{ ...MATERIAL, link_count: 1 }])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    expect(await screen.findByText('Lectures')).toBeInTheDocument()
+    expect(await screen.findByTitle('2 placements in the course tree')).toBeInTheDocument()
+    expect(await screen.findByTitle('1 placement in the course tree')).toBeInTheDocument()
+    const plainFolder = screen.getByRole('button', { name: 'Week 1' })
+    expect(plainFolder.querySelector('[title^="1 placement"], [title^="2 placements"]')).toBeNull()
+  })
+
+  test('context menu opens linked locations for a material and navigates', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([{ ...MATERIAL, link_count: 2 }])
+    listSources.mockResolvedValue([])
+    getMaterialLinks.mockResolvedValue([
+      {
+        node_id: 44,
+        owner_title: 'Node',
+        breadcrumb: [
+          { id: 1, title: 'Calculus I' },
+          { id: 44, title: 'Node' },
+        ],
+        is_course_level: false,
+        course_id: 3,
+        course_title: 'Calculus I',
+        auto_assigned: true,
+        rationale: 'weak concept',
+        via_folder: null,
+      },
+      {
+        node_id: 1,
+        owner_title: 'Calculus I',
+        breadcrumb: [{ id: 1, title: 'Calculus I' }],
+        is_course_level: true,
+        course_id: 3,
+        course_title: 'Calculus I',
+        auto_assigned: false,
+        rationale: null,
+        via_folder: { id: 11, name: 'Lectures' },
+      },
+      {
+        node_id: 44,
+        owner_title: 'Node',
+        breadcrumb: [
+          { id: 1, title: 'Calculus I' },
+          { id: 44, title: 'Node' },
+        ],
+        is_course_level: false,
+        course_id: 3,
+        course_title: 'Calculus I',
+        auto_assigned: false,
+        rationale: null,
+        via_folder: { id: 11, name: 'Lectures' },
+      },
+    ])
+    renderAt('/library?course=3')
+    fireEvent.contextMenu(await screen.findByText('chain-rule.pdf'))
+    fireEvent.click(await screen.findByText('Linked locations'))
+    expect(await screen.findAllByText('Calculus I › Node')).toHaveLength(1)
+    expect(screen.getByText('Auto')).toBeInTheDocument()
+    expect(screen.getByText('via Lectures')).toBeInTheDocument()
+    expect(screen.getByText('weak concept')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Calculus I › Node'))
+    expect(await screen.findByText('node page')).toBeInTheDocument()
+    expect(getMaterialLinks).toHaveBeenCalledWith(7)
+  })
+
+  test('linked locations dialog shows the empty state', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    getMaterialLinks.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.contextMenu(await screen.findByText('chain-rule.pdf'))
+    fireEvent.click(await screen.findByText('Linked locations'))
+    expect(
+      await screen.findByText('Not placed in the course tree yet')
+    ).toBeInTheDocument()
+  })
+
+  test('context menu opens linked locations for a folder and navigates', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([{ ...FOLDERS[0], node_link_count: 1 }])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    getFolderLinks.mockResolvedValue([
+      {
+        node_id: 44,
+        owner_title: 'Node',
+        breadcrumb: [
+          { id: 1, title: 'Calculus I' },
+          { id: 44, title: 'Node' },
+        ],
+        is_course_level: false,
+        course_id: 3,
+        course_title: 'Calculus I',
+        auto_assigned: false,
+        rationale: 'lecture set',
+      },
+    ])
+    renderAt('/library?course=3')
+    fireEvent.contextMenu(await screen.findByText('Lectures'))
+    fireEvent.click(await screen.findByText('Linked locations'))
+    expect(await screen.findByText('lecture set')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Calculus I › Node'))
+    expect(await screen.findByText('node page')).toBeInTheDocument()
+    expect(getFolderLinks).toHaveBeenCalledWith(11)
+  })
+
+  test('workspace store course is applied on entry', async () => {
+    useWorkspaceStore.getState().setCourse(3)
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    renderAt('/library')
+    await waitFor(() => expect(listFolders).toHaveBeenCalledWith(3))
+    expect(await screen.findByRole('button', { name: 'New…' })).toBeInTheDocument()
+  })
+
+  test('uploading from the pane menu sends files to the current folder and refreshes', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    uploadMaterial.mockResolvedValue({
+      material: MATERIAL,
+      job_id: null,
+      deduped: false,
+    })
+    renderAt('/library?course=3&folder=11')
+    expect(await screen.findByRole('button', { name: 'New…' })).toBeEnabled()
+
+    const uploadInputs = screen.getAllByLabelText('Upload files')
+    expect(uploadInputs.length).toBeGreaterThan(0)
+    fireEvent.change(uploadInputs[0], {
+      target: { files: [new File(['data'], 'sheet.pdf', { type: 'application/pdf' })] },
+    })
+    await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
+    expect(uploadMaterial.mock.calls[0][1]).toBe(3)
+    expect(uploadMaterial.mock.calls[0][2]).toBe(11)
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(11))
+  })
+
+  test('upload banner tracks the ingest job over WS and clears after completion', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    uploadMaterial.mockResolvedValue({
+      material: MATERIAL,
+      job_id: 9,
+      deduped: false,
+    })
+    renderAt('/library?course=3&folder=11')
+    expect(await screen.findByRole('button', { name: 'New…' })).toBeEnabled()
+
+    fireEvent.change(screen.getAllByLabelText('Upload files')[0], {
+      target: { files: [new File(['data'], 'sheet.pdf', { type: 'application/pdf' })] },
+    })
+    await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(wsSubscribe).toHaveBeenCalledWith('jobs:9', expect.any(Function))
+    )
+    expect(wsHandlers.get('jobs:9')).toBeDefined()
+    expect(screen.getAllByText('0%').length).toBeGreaterThan(0)
+
+    act(() => wsHandlers.get('jobs:9')?.({ progress: 40, stage: 'ocr', status: 'running' }))
+    expect(screen.getAllByText('40%').length).toBeGreaterThan(0)
+
+    act(() => wsHandlers.get('jobs:9')?.({ progress: 100, stage: 'finalizing', status: 'done' }))
+    expect(screen.getAllByText('100%').length).toBeGreaterThan(0)
+    await waitFor(
+      () => expect(screen.queryByText('100%')).not.toBeInTheDocument(),
+      { timeout: 3000 }
+    )
+  })
+
+  test('pane menu upload entries trigger the file and folder pickers', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.click(await screen.findByRole('button', { name: 'New…' }))
+
+    expect(await screen.findByRole('menuitem', { name: 'Upload files…' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Upload$/ })).not.toBeInTheDocument()
+
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Upload files…' }))
+    expect(clickSpy).toHaveBeenCalled()
+    clickSpy.mockClear()
+
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'New…' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Upload folder…' }))
+    expect(clickSpy).toHaveBeenCalled()
+    clickSpy.mockRestore()
+  })
+
+  test('folder navigation and breadcrumbs', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.doubleClick(await screen.findByText('Lectures'))
+    expect(await screen.findByText('Week 1')).toBeInTheDocument()
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(11))
+    expect(screen.getByText('Calculus I')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Calculus I'))
+    await waitFor(() => expect(listMaterials).toHaveBeenCalledWith(undefined, 3, true))
+  })
+
+  test('single click selects without opening; double click opens the material', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    getMaterial.mockResolvedValue(DETAIL)
+    getMaterialLinks.mockResolvedValue([])
+    listStudyStates.mockResolvedValue({})
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByText('chain-rule.pdf'))
+    fireEvent.click(screen.getByText('chain-rule.pdf'), { detail: 1 })
+    expect(
+      await screen.findByText('1 item selected — click to clear')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'chain-rule.pdf' })).not.toBeInTheDocument()
+
+    fireEvent.doubleClick(screen.getByText('chain-rule.pdf'))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'chain-rule.pdf' })).toBeInTheDocument()
+    )
+  })
+
+  test('Enter opens the single selected folder', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    expect(await screen.findByText('Lectures')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByText('Lectures'))
+    expect(
+      await screen.findByText('1 item selected — click to clear')
+    ).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(await screen.findByText('Week 1')).toBeInTheDocument()
+  })
+
+  test('grid and list toggle persists', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.click(await screen.findByRole('button', { name: 'List view' }))
+    await waitFor(() =>
+      expect(window.localStorage.getItem(storageKeys.libraryView)).toBe('list')
+    )
+  })
+
+  test('folder context menu rename and delete', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS.slice(0, 1))
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    renameFolder.mockResolvedValue(FOLDERS[0])
+    deleteFolder.mockResolvedValue(undefined)
+    getFolderDeleteInfo.mockResolvedValue({ subfolders: 0, materials: 0, node_links: [] })
+    renderAt('/library?course=3')
+    const folderTile = await screen.findByText('Lectures')
+    fireEvent.contextMenu(folderTile.closest('button')!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename folder' }))
+    const input = await screen.findByDisplayValue('Lectures')
+    expect(input.tagName).toBe('TEXTAREA')
+    fireEvent.change(input, { target: { value: 'Lects' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(renameFolder).toHaveBeenCalledWith(11, 'Lects'))
+
+    fireEvent.contextMenu((await screen.findByText('Lectures')).closest('button')!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename folder' }))
+    const multiline = await screen.findByDisplayValue('Lectures')
+    fireEvent.change(multiline, { target: { value: 'Lecture\nNotes' } })
+    fireEvent.submit(multiline.closest('form')!)
+    await waitFor(() => expect(renameFolder).toHaveBeenCalledWith(11, 'Lecture Notes'))
+
+    fireEvent.contextMenu((await screen.findByText('Lectures')).closest('button')!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete folder' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete folder and contents' }))
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(11, true))
+  })
+
+  test('folder delete refusal surfaces the backend message', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS.slice(0, 1))
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    getFolderDeleteInfo.mockResolvedValue({ subfolders: 0, materials: 0, node_links: [] })
+    deleteFolder.mockRejectedValue(
+      new Error('folder is assigned to nodes — unassign it there first')
+    )
+    renderAt('/library?course=3')
+    const folderTile = (await screen.findByText('Lectures')).closest('button')!
+    fireEvent.contextMenu(folderTile)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete folder' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete folder and contents' }))
+    expect(
+      await screen.findByText('folder is assigned to nodes — unassign it there first')
+    ).toBeInTheDocument()
+  })
+
+  test('assigned folder delete shows linked paths and force-deletes via dialog', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS.slice(0, 1))
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    getFolderDeleteInfo.mockResolvedValue({
+      subfolders: 1,
+      materials: 1,
+      node_links: [
+        {
+          node_id: 14,
+          owner_title: 'Limits',
+          breadcrumb: [
+            { id: 2, title: 'Calculus' },
+            { id: 14, title: 'Limits' },
+          ],
+          is_course_level: false,
+          course_title: 'Calculus',
+          folder_count: 1,
+          material_count: 0,
+        },
+      ],
+    })
+    deleteFolder.mockResolvedValue(undefined)
+    renderAt('/library?course=3')
+    const folderTile = (await screen.findByText('Lectures')).closest('button')!
+    fireEvent.contextMenu(folderTile)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete folder' })
+    expect(await within(dialog).findByText('Calculus / Limits')).toBeInTheDocument()
+    expect(await within(dialog).findByText('1 folder')).toBeInTheDocument()
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Delete folder and contents' })
+    )
+    await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith(11, true))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  })
+
+  test('search replaces the pane with results', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    searchMock.mockResolvedValue({
+      query: 'limits',
+      hits: [{ material_id: 7, title: 'chain-rule.pdf', snippet: '…chain rule…', score: 0.5 }],
+    })
+    renderAt('/library?course=3')
+    fireEvent.click(await screen.findByRole('button', { name: 'Search' }))
+    const input = await screen.findByPlaceholderText('Search all materials…')
+    fireEvent.change(input, { target: { value: 'limits' } })
+    expect(await screen.findByText('…chain rule…')).toBeInTheDocument()
+    expect(screen.getAllByText('1 result').length).toBeGreaterThan(0)
+  })
+
+  test('zero courses shows the workspace gate', async () => {
+    listCourses.mockResolvedValue([])
+    renderAt('/library')
+    expect(await screen.findByText('No course yet')).toBeInTheDocument()
+  })
+
+  test('pane context menu offers create, upload and link actions', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    const pane = await renderAtPane('/library?course=3')
+    fireEvent.contextMenu(pane)
+    for (const label of [
+      'New folder',
+      'New text file',
+      'New Markdown file',
+      'Upload files…',
+      'Upload folder…',
+      'Add linked folder…',
+    ]) {
+      expect(await screen.findByRole('menuitem', { name: label })).toBeInTheDocument()
+    }
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
+  test('pane context menu opens when right-clicking the empty-state text', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    renderAt('/library?course=3')
+    const text = await screen.findByText(
+      'No materials here yet — drop in a PDF to get started.'
+    )
+    fireEvent.contextMenu(text)
+    for (const label of [
+      'New folder',
+      'New text file',
+      'New Markdown file',
+      'Upload files…',
+      'Upload folder…',
+      'Add linked folder…',
+    ]) {
+      expect(await screen.findByRole('menuitem', { name: label })).toBeInTheDocument()
+    }
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
+  test('registers the window drop target while a course is open', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    renderAt('/library?course=3')
+    await screen.findByRole('button', { name: 'New…' })
+    await waitFor(() => expect(getWindowDropTarget()?.label).toBe('Calculus I'))
+    expect(getWindowDropTarget()?.upload()).not.toBeNull()
+  })
+
+  test('clears the window drop target without a course', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    renderAt('/library')
+    await screen.findByText('Calculus I')
+    expect(getWindowDropTarget()).toBeNull()
+  })
+
+  test('plus button opens the same create menu as right-click', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.click(await screen.findByRole('button', { name: 'New…' }))
+    for (const label of [
+      'New folder',
+      'New text file',
+      'New Markdown file',
+      'Upload files…',
+      'Upload folder…',
+      'Add linked folder…',
+    ]) {
+      expect(await screen.findByRole('menuitem', { name: label })).toBeInTheDocument()
+    }
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
+  test('new text file dialog creates a file', async () => {
+    createTextMaterial.mockResolvedValue({
+      materialId: 7,
+      content: '$x^2$ rules',
+      refToReal: {},
+      jobId: null,
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    const pane = await renderAtPane('/library?course=3')
+    fireEvent.contextMenu(pane)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'New Markdown file' }))
+    const nameInput = await screen.findByPlaceholderText('File name')
+    fireEvent.change(nameInput, { target: { value: 'derivation' } })
+    const contentBox = screen.getByLabelText('File content (markdown + LaTeX)')
+    fireEvent.change(contentBox, { target: { value: '$x^2$ rules' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(createTextMaterial).toHaveBeenCalledWith({
+        course_id: 3,
+        folder_id: null,
+        filename: 'derivation.md',
+        content: '$x^2$ rules',
+        description: '',
+        drawings: [],
+      })
+    )
+  })
+
+  test('material context menu renames and deletes', async () => {
+    renameMaterial.mockResolvedValue({ ...MATERIAL, title: 'Renamed' })
+    deleteMaterial.mockResolvedValue(undefined)
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([MATERIAL])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.contextMenu(tile)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }))
+    const input = await screen.findByDisplayValue('chain-rule.pdf')
+    fireEvent.change(input, { target: { value: 'Renamed' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(renameMaterial).toHaveBeenCalledWith(7, 'Renamed'))
+
+    fireEvent.contextMenu((await screen.findByText('chain-rule.pdf')).closest('button')!)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
+  })
+
+  test('right-click on an unselected file offers re-ingest without its name', async () => {
+    reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([MATERIAL])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', {
+      name: 'Re-ingest this file (OCR again)',
+    })
+    expect(screen.queryByRole('menuitem', { name: /chain-rule/ })).toBeNull()
+    fireEvent.click(item)
+    await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledWith(7))
+  })
+
+  test('right-click on a multi-selection re-ingests every file-backed row', async () => {
+    reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([
+      MATERIAL,
+      { ...MATERIAL, id: 8, title: 'limits.pdf', filename: 'limits.pdf' },
+    ])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.mouseDown(tile)
+    const otherTile = (await screen.findByText('limits.pdf')).closest('button')!
+    fireEvent.mouseDown(otherTile, { ctrlKey: true })
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', {
+      name: 'Re-ingest 2 files (OCR again)',
+    })
+    fireEvent.click(item)
+    await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledTimes(2))
+    expect(reingestMaterialMock).toHaveBeenCalledWith(7)
+    expect(reingestMaterialMock).toHaveBeenCalledWith(8)
+  })
+
+  test('right-click offers save-as-material for files with extracted text', async () => {
+    deriveMaterialsMock.mockResolvedValue({
+      results: [
+        {
+          material_id: 7,
+          outcome: 'created',
+          material: { ...MATERIAL, id: 21, title: 'chain-rule', kind: 'md' },
+          job_id: 31,
+        },
+      ],
+      created: 1,
+      deduped: 0,
+      skipped: 0,
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([{ ...MATERIAL, has_extraction: true }])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', { name: 'Save as material' })
+    fireEvent.click(item)
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    expect(await screen.findByText('Saved 1 material')).toBeInTheDocument()
+  })
+
+  test('multi-selection derive counts only rows with extracted text', async () => {
+    deriveMaterialsMock.mockResolvedValue({
+      results: [],
+      created: 1,
+      deduped: 0,
+      skipped: 1,
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([
+      { ...MATERIAL, has_extraction: true },
+      { ...MATERIAL, id: 8, title: 'limits.pdf', filename: 'limits.pdf' },
+    ])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.mouseDown(tile)
+    const otherTile = (await screen.findByText('limits.pdf')).closest('button')!
+    fireEvent.mouseDown(otherTile, { ctrlKey: true })
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', { name: 'Save 1 as materials' })
+    fireEvent.click(item)
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    expect(await screen.findByText('Saved 1 material · 1 skipped (no extracted text)')).toBeInTheDocument()
+  })
+
+  test('no save-as-material item when nothing selected has an extraction', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([MATERIAL])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
+    fireEvent.contextMenu(tile)
+    await screen.findByRole('menuitem', { name: 'Cut' })
+    expect(screen.queryByRole('menuitem', { name: 'Save as material' })).toBeNull()
+  })
+
+  test('link node navigates via browse, shows pending, ingests', async () => {
+    browseSource.mockResolvedValue({
+      source_id: 77,
+      label: 'My Lectures',
+      path: '/home/you/lectures',
+      subdir: '',
+      missing_target: false,
+      subdirs: [{ name: 'week1' }],
+      materials: [
+        {
+          id: 9,
+          title: 'board.png',
+          kind: 'image',
+          status: 'ready',
+          filename: 'board.png',
+          relpath: 'board.png',
+        },
+      ],
+      uningested: [
+        { name: 'new-scan.pdf', relpath: 'new-scan.pdf', size_bytes: 10, mtime: 1 },
+      ],
+    })
+    ingestSourceFile.mockResolvedValue({
+      material_id: 12,
+      job_id: null,
+      deduped: false,
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.doubleClick(await screen.findByText('My Lectures'))
+    expect(await screen.findByText('week1')).toBeInTheDocument()
+    expect(await screen.findByText('board.png')).toBeInTheDocument()
+    expect(await screen.findByText('new-scan.pdf')).toBeInTheDocument()
+    expect(await screen.findByText('1 folders · 1 materials · 1 pending')).toBeInTheDocument()
+    await waitFor(() => expect(browseSource).toHaveBeenCalledWith(77, ''))
+    fireEvent.click(screen.getByRole('button', { name: 'Ingest 1 file' }))
+    await waitFor(() =>
+      expect(ingestSourceFile).toHaveBeenCalledWith(77, 'new-scan.pdf')
+    )
+  })
+
+  test('link node context menu rescans and unlinks', async () => {
+    browseSource.mockResolvedValue({
+      source_id: 77,
+      label: 'My Lectures',
+      path: '/home/you/lectures',
+      subdir: '',
+      missing_target: false,
+      subdirs: [],
+      materials: [],
+      uningested: [],
+    })
+    scanSource.mockResolvedValue({
+      stats: { new: 0, updated: 0, unchanged: 0, missing: 0 },
+      queued_jobs: 0,
+    })
+    unlinkFolder.mockResolvedValue(undefined)
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('My Lectures')).closest('button')!
+    fireEvent.contextMenu(tile)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rescan' }))
+    await waitFor(() => expect(scanSource).toHaveBeenCalledWith(77))
+
+    fireEvent.contextMenu(tile)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Unlink' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlink' }))
+    await waitFor(() => expect(unlinkFolder).toHaveBeenCalledWith(13))
+  })
+
+  test('dangling link shows missing target and relink dialog', async () => {
+    browseSource.mockResolvedValue({
+      source_id: 77,
+      label: 'My Lectures',
+      path: '/gone/lectures',
+      subdir: '',
+      missing_target: true,
+      subdirs: [],
+      materials: [],
+      uningested: [],
+    })
+    relinkSource.mockResolvedValue({
+      id: 77,
+      label: 'My Lectures',
+      path: '/new/lectures',
+      recursive: true,
+      include_globs: null,
+      course_id: 3,
+      enabled: true,
+      material_count: 0,
+      last_scanned_at: null,
+    })
+    listFsDirs.mockResolvedValue({
+      path: '/home/you',
+      parent: '/home',
+      home: '/home/you',
+      dirs: [{ name: 'lectures', path: '/home/you/lectures' }],
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([])
+    renderAt('/library?course=3')
+    fireEvent.click(await screen.findByText('My Lectures'))
+    expect(
+      await screen.findByText('Target folder is missing: /gone/lectures')
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Re-link/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    fireEvent.click(await within(dialog).findByText('lectures'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Choose' }))
+    await waitFor(() => expect(relinkSource).toHaveBeenCalledWith(77, '/home/you/lectures'))
+  })
+
+  test('add linked folder opens the picker and creates a source', async () => {
+    addSource.mockResolvedValue({
+      id: 78,
+      label: 'lectures',
+      path: '/home/you/lectures',
+      recursive: true,
+      include_globs: null,
+      course_id: 3,
+      enabled: true,
+      material_count: 0,
+      last_scanned_at: null,
+    })
+    listFsDirs.mockImplementation((path?: string) => {
+      if (path === '/home/you/lectures') {
+        return Promise.resolve({
+          path: '/home/you/lectures',
+          parent: '/home/you',
+          home: '/home/you',
+          dirs: [],
+        })
+      }
+      return Promise.resolve({
+        path: path ?? '/home/you',
+        parent: path ? path.split('/').slice(0, -1).join('/') || null : null,
+        home: '/home/you',
+        dirs: [{ name: 'lectures', path: '/home/you/lectures' }],
+      })
+    })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    const pane = await renderAtPane('/library?course=3')
+    fireEvent.contextMenu(pane)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Add linked folder…' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(await within(dialog).findByText('lectures'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Choose' }))
+    await waitFor(() =>
+      expect(addSource).toHaveBeenCalledWith({
+        label: 'lectures',
+        path: '/home/you/lectures',
+        course_id: 3,
+      })
+    )
+  })
+
+  test('folder picker breadcrumbs navigate the filesystem path', async () => {
+    listFsDirs.mockImplementation((path?: string) =>
+      Promise.resolve({
+        path: path ?? '/home/you/lectures',
+        parent: '/home/you',
+        home: '/home/you/lectures',
+        dirs: [],
+      })
+    )
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    const pane = await renderAtPane('/library?course=3')
+    fireEvent.contextMenu(pane)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Add linked folder…' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByText('lectures')).toBeInTheDocument()
+    expect(within(dialog).getByText('you')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByText('you'))
+    await waitFor(() => expect(listFsDirs).toHaveBeenCalledWith('/home/you'))
+    fireEvent.click(within(dialog).getByText('/'))
+    await waitFor(() => expect(listFsDirs).toHaveBeenCalledWith('/'))
+  })
+  test('marquee drag over the pane selects items and the footer counts them', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    const rectSpy = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockReturnValue({
+        left: 0, top: 0, right: 400, bottom: 400, width: 400, height: 400, x: 0, y: 0,
+        toJSON: () => ({}),
+      } as DOMRect)
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    const pane = document.querySelector('[data-marquee-surface]') as HTMLElement
+    fireEvent.mouseDown(pane, { clientX: 0, clientY: 0, button: 0 })
+    fireEvent.mouseMove(window, { clientX: 200, clientY: 200 })
+    fireEvent.mouseUp(window, { clientX: 200, clientY: 200 })
+
+    expect(await screen.findByText(/3 items selected/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/3 items selected/))
+    expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+    rectSpy.mockRestore()
+  })
+
+  test('cut then paste into a folder moves the material', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    moveMaterial.mockResolvedValue(MATERIAL)
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Cut' }))
+
+    fireEvent.contextMenu(screen.getByText('Lectures'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Paste into folder' }))
+
+    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith(7, 11))
+  })
+
+  test('copy then paste into a folder duplicates the material', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    copyMaterial.mockResolvedValue(MATERIAL)
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy' }))
+
+    fireEvent.contextMenu(screen.getByText('Lectures'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Paste into folder' }))
+
+    await waitFor(() => expect(copyMaterial).toHaveBeenCalledWith(7, 11))
+    expect(moveMaterial).not.toHaveBeenCalled()
+  })
+
+  test('keyboard delete removes the selection after confirm', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByText('chain-rule.pdf'))
+    fireEvent.keyDown(window, { key: 'Delete' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+
+    await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
+  })
+
+  test('ctrl+x then ctrl+v moves the selection into the open folder', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    moveMaterial.mockResolvedValue(MATERIAL)
+    renderAt('/library?course=3&folder=11')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByText('chain-rule.pdf'))
+    fireEvent.keyDown(window, { key: 'x', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+
+    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith(7, 11))
+  })
+
+  test('dropping a dragged material onto a folder moves it there', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    moveMaterial.mockResolvedValue(MATERIAL)
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    const payload = JSON.stringify({ folderIds: [], materialIds: [7] })
+    const dataTransfer = {
+      types: ['application/x-ca-item'],
+      getData: (mime: string) =>
+        mime === 'application/x-ca-item' ? payload : '',
+      setData: vi.fn(),
+      effectAllowed: '',
+    }
+    const material = screen.getByText('chain-rule.pdf').closest('[data-selectable-id]')
+    expect(material).not.toBeNull()
+    fireEvent.dragStart(material as Element, { dataTransfer })
+    const folder = screen.getByText('Lectures').closest('button')
+    expect(folder).not.toBeNull()
+    fireEvent.dragOver(folder as Element, { dataTransfer })
+    fireEvent.drop(folder as Element, { dataTransfer })
+
+    await waitFor(() => expect(moveMaterial).toHaveBeenCalledWith(7, 11))
+  })
+
+  test('assign to node assigns every selected material', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    courseTree.mockResolvedValue([
+      {
+        id: 50,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 51,
+            title: 'Chapter 1',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    allocateMaterial.mockResolvedValue(undefined)
+    renderAt('/library?course=3')
+    expect(await screen.findByText('chain-rule.pdf')).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Assign to node…' }))
+
+    fireEvent.click(await screen.findByRole('treeitem', { name: /Chapter 1/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
+
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(51, 7))
+    await waitFor(() =>
+      expect(screen.getByText('Assigned to node')).toBeInTheDocument()
+    )
+  })
+
+  test('assign folder to node assigns the whole folder selection', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue(FOLDERS)
+    listMaterials.mockResolvedValue([MATERIAL])
+    listSources.mockResolvedValue([])
+    courseTree.mockResolvedValue([
+      {
+        id: 50,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 51,
+            title: 'Chapter 1',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    allocateNodeFolder.mockResolvedValue(undefined)
+    renderAt('/library?course=3')
+    expect(await screen.findByText('Lectures')).toBeInTheDocument()
+
+    fireEvent.contextMenu(screen.getByText('Lectures'))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Assign folder to node…' }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Assign folder to node' })
+    ).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('treeitem', { name: /Chapter 1/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
+
+    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith(51, 11))
+    await waitFor(() =>
+      expect(screen.getByText('Assigned to node')).toBeInTheDocument()
+    )
+  })
+})
+
+async function renderAtPane(initial: string): Promise<HTMLElement> {
+  renderAt(initial)
+  const pane = await screen.findByText('No materials here yet — drop in a PDF to get started.')
+  return pane.parentElement as HTMLElement
+}
+
+describe('MaterialDetailPage', () => {
+  test('shows header, chips and default extraction tab', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    getMaterial.mockResolvedValue(DETAIL)
+    getMaterialLinks.mockResolvedValue([
+      {
+        node_id: 21,
+        owner_title: 'Limit intuition',
+        breadcrumb: [
+          { id: 1, title: 'Calculus I' },
+          { id: 2, title: 'Limits' },
+          { id: 21, title: 'Limit intuition' },
+        ],
+        is_course_level: false,
+        course_id: 3,
+        course_title: 'Calculus I',
+        auto_assigned: true,
+        rationale: 'why',
+        via_folder: null,
+      },
+    ])
+    listStudyStates.mockResolvedValue({ '7': { status: 'reading', progress: 0.4 } })
+    renderAt('/library/7')
+    expect(await screen.findByRole('heading', { name: 'chain-rule.pdf' })).toBeInTheDocument()
+    expect(screen.getAllByText('Calculus I').length).toBeGreaterThan(1)
+    expect(screen.getByText('Assigned: Limits · Limit intuition')).toBeInTheDocument()
+    expect(screen.getByText('Version 1 · extracted by pymupdf')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Switch view' })).toHaveTextContent(
+      'Extraction'
+    )
+  })
+
+  test('folder-derived assignment shows a via-folder chip', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    getMaterial.mockResolvedValue(DETAIL)
+    getMaterialLinks.mockResolvedValue([
+      {
+        node_id: 21,
+        owner_title: 'Limit intuition',
+        breadcrumb: [
+          { id: 1, title: 'Calculus I' },
+          { id: 2, title: 'Limits' },
+          { id: 21, title: 'Limit intuition' },
+        ],
+        is_course_level: false,
+        course_id: 3,
+        course_title: 'Calculus I',
+        auto_assigned: false,
+        rationale: null,
+        via_folder: { id: 11, name: 'Lectures' },
+      },
+    ])
+    listStudyStates.mockResolvedValue({})
+    renderAt('/library/7')
+    expect(
+      await screen.findByText('Assigned via “Lectures”: Limits · Limit intuition')
+    ).toBeInTheDocument()
+  })
+
+  test('text files use the view dropdown; description lives in the info popover (plan 62-E)', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    getMaterial.mockResolvedValue({
+      ...DETAIL,
+      material: {
+        ...MATERIAL,
+        kind: 'txt',
+        mime: 'text/plain',
+        description: 'lecture transcript',
+      },
+    })
+    getMaterialLinks.mockResolvedValue([])
+    listStudyStates.mockResolvedValue({})
+    renderAt('/library/7?tab=original')
+    expect(await screen.findByRole('button', { name: 'Switch view' })).toHaveTextContent(
+      'Formatted'
+    )
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Switch view' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Raw text' }))
+    expect(await screen.findByText('the **chain rule**')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Material description' }))
+    expect(await screen.findByText('lecture transcript')).toBeInTheDocument()
+  })
+
+  test('original and side-by-side views switch via the view menu', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    getMaterial.mockResolvedValue(DETAIL)
+    getMaterialLinks.mockResolvedValue([])
+    listStudyStates.mockResolvedValue({})
+    renderAt('/library/7?tab=original')
+    expect(await screen.findByTitle('chain-rule.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Switch view' })).toHaveTextContent(
+      'Original'
+    )
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Switch view' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Side-by-side' }))
+    const originals = await screen.findAllByTitle('chain-rule.pdf')
+    expect(originals.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('chain rule').length).toBeGreaterThan(0)
+  })
+
+  test('study state buttons update status', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    getMaterial.mockResolvedValue(DETAIL)
+    getMaterialLinks.mockResolvedValue([])
+    listStudyStates.mockResolvedValue({})
+    setStudyState.mockResolvedValue({ status: 'studied', progress: 1 })
+    renderAt('/library/7')
+    const trigger = await screen.findByRole('button', { name: 'Reading status' })
+    fireEvent.pointerDown(trigger)
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Studied' }))
+    await waitFor(() => expect(setStudyState).toHaveBeenCalledWith(7, 'studied'))
+  })
+})

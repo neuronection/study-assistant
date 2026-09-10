@@ -1,0 +1,97 @@
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+
+  .print-root {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    padding: 0;
+  }
+
+  .print-root .print-page {
+    page-break-after: always;
+  }
+
+  .print-root .print-page:last-child {
+    page-break-after: auto;
+  }
+
+  .print-root .no-print {
+    display: none !important;
+  }
+
+  .print-answer-line {
+    border-bottom: 1px solid #000;
+    min-height: 2.2em;
+  }
+
+  .print-question {
+    page-break-inside: avoid;
+    margin-bottom: 1.4em;
+  }
+
+  .print-cut-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+  }
+
+  .print-cut-card {
+    border: 1px dashed #444;
+    padding: 1em;
+    min-height: 5.5cm;
+    page-break-inside: avoid;
+  }
+
+  .print-cut-card .print-cut-divider {
+    border-top: 1px dashed #444;
+    margin: 0.75em 0;
+  }
+
+  .print-cover {
+    border-bottom: 1px solid #000;
+    margin-bottom: 1.25em;
+    padding-bottom: 0.5em;
+  }
+
+  .print-cover h1 {
+    font-size: 16pt;
+    margin: 0 0 0.25em 0;
+  }
+
+  .print-cover p {
+    margin: 0;
+    font-size: 10pt;
+    color: #333;
+  }
+
+  .katex {
+    font-size: 1.05em;
+  }
+}
+
+.print-root {
+  background: white;
+  color: black;
+  max-width: 21cm;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+@media print {
+  .print-root {
+    padding: 0;
+  }
+}

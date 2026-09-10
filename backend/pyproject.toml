@@ -1,0 +1,85 @@
+[project]
+name = "studyassistant"
+description = "AI-powered, local-first desktop study workbench"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.14",
+    "fastapi>=0.115",
+    "httpx>=0.28",
+    "jinja2>=3.1",
+    "keyring>=25",
+    "langchain-anthropic>=1.6,<2",
+    "langchain-core>=1.6,<2",
+    "langchain-google-genai>=4.3,<5",
+    "langchain-openai>=1.6,<2",
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-postgres>=3,<4",
+    "langgraph-checkpoint-sqlite>=3,<4",
+    "pymupdf>=1.24",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "pygobject>=3.50,<3.51 ; sys_platform == 'linux'",
+    "python-multipart>=0.0.20",
+    "pywebview>=5.3",
+    "sqlalchemy>=2.0.36",
+    "structlog>=24.4",
+    "sympy>=1.13",
+    "uvicorn[standard]>=0.34",
+    "sqlite-vec>=0.1.9",
+    "mcp>=1.7",
+    "pillow>=11",
+    "html2text>=2025.4.15",
+    "mammoth>=1.12.1",
+    "python-pptx>=1.0.2",
+    "ebooklib>=0.20",
+    "mutagen>=1.48.1",
+]
+dynamic = ["version"]
+
+[project.scripts]
+studyassistant = "app.shell:run"
+
+[dependency-groups]
+dev = [
+    "filelock>=3.32.3",
+    "httpx>=0.28",
+    "mypy>=1.14",
+    "pyinstaller>=6.0",
+    "pytest>=8.3",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "app/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "studyassistant"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header"]
+
+[tool.mypy]
+strict = true
+exclude = ["^dist/"]
+
+[[tool.mypy.overrides]]
+module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-n auto"

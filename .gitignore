@@ -1,0 +1,65 @@
+# Local-only developer areas (plans, agent sessions) — never part of the repo
+dev/
+.opencode/
+.claude/
+.agent/
+scripts/translations/prompts/**/*.local.*
+
+# Secrets — local env files and key material stay on the machine
+.env
+.env.*.local
+*.pem
+*.key
+secrets.json
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+release/
+out/
+target/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.vite/
+
+# Generated code and tooling caches
+*.tsbuildinfo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage*/
+.nyc_output/
+
+# Runtime state and OS noise
+*.log
+*.db
+*.db-shm
+*.db-wal
+*.sqlite*
+.DS_Store
+Thumbs.db
+.assistant-ui-dev-link.json
+
+# Packaging artifacts (built installers)
+backend/build/
+packaging/_build/
+packaging/_deb/
+packaging/_appimage/
+packaging/*.deb
+packaging/*.AppImage
+
+# Editor state
+.idea/
+.vscode/
+
+# Backup / conflict leftovers
+*.bak
+*.bak.*
+*.orig
+*.rej

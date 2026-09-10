@@ -1,0 +1,29 @@
+name: AI architecture alignment
+
+# ADR-0008 family gate — vendored copy of dev's check-ai-alignment.sh
+# (must stay byte-identical; drift is caught by dev's verify-wiring.sh).
+# MODE: strict — this repo is already aligned with the family standard.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'scripts/check-ai-alignment.sh'
+      - '.github/workflows/ai-alignment.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'scripts/check-ai-alignment.sh'
+      - '.github/workflows/ai-alignment.yml'
+  workflow_dispatch:
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run AI alignment gate
+        run: bash scripts/check-ai-alignment.sh --self --mode strict
