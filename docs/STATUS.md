@@ -6,6 +6,28 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 75 slice A — node-targeted uploads (2026-09-15, plan 75 in progress):**
+`POST /materials` gains optional `node_id` — the upload assigns the material
+to that node in the same request (`StructureService.assign`, rationale
+"uploaded here"), **including dedupe hits** (dedupe-always-assigns: a
+re-upload to a different node links the existing material instead of dropping
+the intent; cross-course node → 422; no `node_id` → behavior unchanged). The
+response echoes `node_id`. Frontend: `useMaterialUpload` takes
+`getTargetNodeId` and passes it for **top-level items only** (folder-structure
+uploads keep the folder-link placement path); NodeWorkspace drops its
+post-upload `allocateMaterial` call (single-call upload), MaterialPickerDialog
+uploads target the dialog's node. OpenAPI regenerated. Backend 1,104 green
+(+4), ruff/mypy clean; frontend 1,175 green (+4 net), lint/typecheck/build/
+i18n green.
+
+**Plan 75 — Material placement & discovery (2026-09-15, user-approved;
+ADRs 177-180):** five slices — A node-targeted uploads, B folder→node
+mirroring, C "Needs placement" surface over plan 70-B's unassigned endpoint
+(definition pinned: via-folder counts as placed), D deterministic placement
+suggestions (token-overlap, `matched_on` evidence), E linked-source subdir
+mirroring + scan `new_relpaths` (migration 0058). Plan doc:
+`dev/plans/75-material-placement-and-discovery.md` (local-only).
+
 **Plan 72 COMPLETE — slices A–F: AI sees the course tree (2026-09-09,
 user-approved; ADRs 160–163):** the LLM now always has the tree around
 whatever it's working on. **A:** legacy chat engine removed (graph turn is

@@ -144,6 +144,85 @@ def test_same_file_two_courses_two_materials(client: TestClient, text_pdf: bytes
     assert second["deduped"] is False
 
 
+def _add_child_node(client: TestClient, course_id: int, title: str = "Chapter 1") -> int:
+    root = client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    created = client.post(
+        f"/api/v1/courses/{course_id}/nodes",
+        json={"course_id": course_id, "parent_id": root["id"], "title": title},
+    )
+    assert created.status_code == 201, created.text
+    return int(created.json()["id"])
+
+
+def test_upload_with_node_id_assigns(client: TestClient, text_pdf: bytes) -> None:
+    course_id = make_course(client)
+    node_id = _add_child_node(client, course_id)
+    response = client.post(
+        "/api/v1/materials",
+        params={"course_id": course_id, "node_id": node_id},
+        files={"file": ("placed.pdf", text_pdf, "application/pdf")},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["node_id"] == node_id
+    material_id = body["material"]["id"]
+    workspace = client.get(f"/api/v1/nodes/{node_id}/workspace").json()
+    members = [entry["material_id"] for entry in workspace["materials"]]
+    assert material_id in members
+
+
+def test_upload_dedupe_still_assigns_node(
+    client: TestClient, text_pdf: bytes
+) -> None:
+    course_id = make_course(client)
+    first = upload(client, text_pdf, "chain.pdf", course_id)
+    first_node = _add_child_node(client, course_id, "Windows")
+    second_node = _add_child_node(client, course_id, "Integration")
+    assert client.post(
+        f"/api/v1/nodes/{first_node}/materials",
+        json={"material_id": first["material"]["id"]},
+    ).status_code == 201
+    response = client.post(
+        "/api/v1/materials",
+        params={"course_id": course_id, "node_id": second_node},
+        files={"file": ("chain-renamed.pdf", text_pdf, "application/pdf")},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["deduped"] is True
+    assert body["material"]["id"] == first["material"]["id"]
+    assert body["node_id"] == second_node
+    listing = client.get("/api/v1/materials").json()
+    assert len(listing) == 1
+    detail = client.get(
+        f"/api/v1/materials/{first['material']['id']}/links"
+    ).json()
+    node_ids = {link["node_id"] for link in detail}
+    assert {first_node, second_node} <= node_ids
+
+
+def test_upload_node_from_other_course_rejected(
+    client: TestClient, text_pdf: bytes
+) -> None:
+    course_id = make_course(client)
+    other_course = make_course(client, "Other")
+    foreign_node = _add_child_node(client, other_course)
+    response = client.post(
+        "/api/v1/materials",
+        params={"course_id": course_id, "node_id": foreign_node},
+        files={"file": ("foreign-node.pdf", text_pdf, "application/pdf")},
+    )
+    assert response.status_code == 422
+    assert "not" in response.json()["detail"]
+
+
+def test_upload_without_node_unchanged(client: TestClient, text_pdf: bytes) -> None:
+    course_id = make_course(client)
+    body = upload(client, text_pdf, "plain.pdf", course_id)
+    assert body["node_id"] is None
+    assert body["deduped"] is False
+
+
 def test_scanned_pdf_fails_with_clear_ocr_message(client: TestClient) -> None:
     course_id = make_course(client)
     doc = fitz.open()

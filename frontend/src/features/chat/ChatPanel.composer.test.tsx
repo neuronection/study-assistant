@@ -198,6 +198,7 @@ describe('ChatPanel composer extras (plan 40C)', () => {
         expect.any(File),
         7,
         501,
+        null,
       )
     })
     const sent = uploadMaterial.mock.calls[0][0] as File

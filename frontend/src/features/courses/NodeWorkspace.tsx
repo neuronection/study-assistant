@@ -1248,16 +1248,13 @@ function MaterialsTab({
 
   const upload = useMaterialUpload({
     courseId: Number(courseId),
+    getTargetNodeId: () => currentId,
     onFolderCreated: async (folder) => {
       await allocateNodeFolder(currentId, folder.id)
       await refresh()
       await queryClient.invalidateQueries({ queryKey: ['folders'] })
     },
-    onUploaded: async (result, item) => {
-      if (item.relativePath) {
-        return
-      }
-      await allocateMaterial(currentId, result.material.id)
+    onUploaded: async () => {
       await refresh()
     },
   })

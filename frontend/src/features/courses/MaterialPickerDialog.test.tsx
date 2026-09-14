@@ -297,6 +297,7 @@ describe('MaterialPickerDialog', () => {
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
     expect(uploadMaterial.mock.calls[0][1]).toBe(1)
     expect(uploadMaterial.mock.calls[0][2]).toBe(10)
+    expect(uploadMaterial.mock.calls[0][3]).toBe(7)
     expect(await screen.findByText('1 material selected')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^assign material$/i }))

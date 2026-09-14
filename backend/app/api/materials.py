@@ -31,7 +31,7 @@ from ..services.content.materials import (
     accepted_suffixes,
     purge_material,
 )
-from ..services.knowledge.courses import StructureService
+from ..services.knowledge.courses import CourseError, StructureService
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.profiles import ensure_default_profile
 from .courses_schemas import ViaFolderOut
@@ -209,6 +209,7 @@ async def upload_material(
     file: UploadFile,
     course_id: int,
     folder_id: int | None = None,
+    node_id: int | None = None,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
     data = await file.read()
@@ -234,6 +235,15 @@ async def upload_material(
         ) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    if node_id is not None:
+        try:
+            StructureService(session).assign(
+                node_id,
+                material.id,
+                rationale="uploaded here",
+            )
+        except CourseError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
     job_id: int | None = None
     if not deduped:
         job_id = service.queue_ingest(material, request.app.state.jobs)
@@ -245,6 +255,7 @@ async def upload_material(
         material=_to_out(material),
         job_id=job_id,
         deduped=deduped,
+        node_id=node_id,
         warnings=[UploadWarningOut(**warning)] if warning else [],
     )
 

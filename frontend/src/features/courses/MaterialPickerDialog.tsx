@@ -227,6 +227,7 @@ export function MaterialPickerDialog({
     courseId,
     getFolderId: () =>
       location.kind === 'folder' && location.folderId !== null ? location.folderId : null,
+    getTargetNodeId: () => (canAssignFolders ? (nodeId as number | null) : null),
     onUploaded: (result) =>
       setSelected((current) => new Map(current).set(result.material.id, result.material.title)),
   })

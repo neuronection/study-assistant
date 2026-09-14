@@ -213,6 +213,7 @@ class MaterialUploadOut(BaseModel):
     material: MaterialOut
     job_id: int | None
     deduped: bool
+    node_id: int | None = None
     warnings: list[UploadWarningOut] = Field(default_factory=list)
 
 

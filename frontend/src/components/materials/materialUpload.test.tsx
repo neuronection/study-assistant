@@ -72,17 +72,25 @@ let held: MaterialUploadController | null = null
 function Harness({
   courseId,
   getFolderId,
+  getTargetNodeId,
   onUploaded,
   onFolderCreated,
   variant = 'block',
 }: {
   courseId: number | null
   getFolderId?: () => number | null
+  getTargetNodeId?: () => number | null
   onUploaded?: (result: UploadResult) => void
   onFolderCreated?: (folder: Folder) => void
   variant?: 'block' | 'row'
 }) {
-  const upload = useMaterialUpload({ courseId, getFolderId, onUploaded, onFolderCreated })
+  const upload = useMaterialUpload({
+    courseId,
+    getFolderId,
+    getTargetNodeId,
+    onUploaded,
+    onFolderCreated,
+  })
   held = upload
   return <MaterialUploadDropzone upload={upload} variant={variant} />
 }
@@ -208,6 +216,35 @@ describe('useMaterialUpload', () => {
     const folderByCall = uploadMaterial.mock.calls.map((call) => call[2])
     expect(folderByCall).toEqual([101, 102, 103])
     expect(uploadMaterial).toHaveBeenCalledTimes(3)
+  })
+
+  test('a target node is passed top-level items only; folder-structure items stay folder-placed', async () => {
+    listFolders.mockResolvedValue([])
+    createFolder.mockImplementation(async (name: string, parentId: number | null) =>
+      folder(101, name, parentId)
+    )
+    uploadMaterial.mockResolvedValue(RESULT(1, 'x.pdf'))
+    renderHarness({ courseId: 1, getTargetNodeId: () => 77 })
+
+    await act(async () => {
+      await held?.uploadFiles([file('top.pdf'), file('nested.pdf', 'pack/nested.pdf')])
+    })
+
+    expect(uploadMaterial).toHaveBeenCalledTimes(2)
+    expect(uploadMaterial.mock.calls[0]).toEqual([expect.anything(), 1, null, 77])
+    expect(uploadMaterial.mock.calls[1]).toEqual([expect.anything(), 1, 101, null])
+  })
+
+  test('no node param is sent without getTargetNodeId', async () => {
+    listFolders.mockResolvedValue([])
+    uploadMaterial.mockResolvedValue(RESULT(1, 'x.pdf'))
+    renderHarness({ courseId: 1 })
+
+    await act(async () => {
+      await held?.uploadFiles([file('top.pdf')])
+    })
+
+    expect(uploadMaterial.mock.calls[0]).toEqual([expect.anything(), 1, null, null])
   })
 
   test('existing folder chains are reused without createFolder calls', async () => {

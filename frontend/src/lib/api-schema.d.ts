@@ -5584,6 +5584,8 @@ export interface components {
             /** Job Id */
             job_id: number | null;
             material: components["schemas"]["MaterialOut"];
+            /** Node Id */
+            node_id?: number | null;
             /** Warnings */
             warnings?: components["schemas"]["UploadWarningOut"][];
         };
@@ -11907,6 +11909,7 @@ export interface operations {
             query: {
                 course_id: number;
                 folder_id?: number | null;
+                node_id?: number | null;
             };
             header?: never;
             path?: never;

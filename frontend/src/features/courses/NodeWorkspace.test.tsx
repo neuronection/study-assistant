@@ -1338,14 +1338,14 @@ describe('NodeWorkspace', () => {
     expect(await screen.findByTestId('reextract-mode-text')).toBeInTheDocument()
   })
 
-  test('materials tab uploads land in the course library and are assigned to the node', async () => {
+  test('materials tab uploads place at the node in the single upload call', async () => {
     primeDefaults()
     uploadMaterial.mockResolvedValue({
       material: { id: 77, title: 'problems.pdf', kind: 'pdf', status: 'pending' },
       job_id: null,
       deduped: false,
+      node_id: 5,
     })
-    allocateMaterial.mockResolvedValue({ node_id: 5, material_id: 77 })
     renderWorkspace('/courses/3/n/5?tab=materials')
     await screen.findByRole('button', { name: /chain-rule\.pdf/i })
     const input = screen.getByLabelText('Upload files')
@@ -1355,7 +1355,8 @@ describe('NodeWorkspace', () => {
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
     expect(uploadMaterial.mock.calls[0][1]).toBe(3)
     expect(uploadMaterial.mock.calls[0][2]).toBeNull()
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(5, 77))
+    expect(uploadMaterial.mock.calls[0][3]).toBe(5)
+    await waitFor(() => expect(allocateMaterial).not.toHaveBeenCalled())
   })
 
   test('empty materials tab offers an upload dropzone at course root', async () => {

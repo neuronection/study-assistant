@@ -5338,6 +5338,17 @@
           "material": {
             "$ref": "#/components/schemas/MaterialOut"
           },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
           "warnings": {
             "items": {
               "$ref": "#/components/schemas/UploadWarningOut"
@@ -18473,6 +18484,22 @@
                 }
               ],
               "title": "Folder Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Node Id"
             }
           }
         ],

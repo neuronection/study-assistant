@@ -125,12 +125,14 @@ async function ensureFolderPath(
 export function useMaterialUpload({
   courseId,
   getFolderId,
+  getTargetNodeId,
   nameFile,
   onUploaded,
   onFolderCreated,
 }: {
   courseId: number | null
   getFolderId?: () => number | null | Promise<number | null>
+  getTargetNodeId?: () => number | null | Promise<number | null>
   nameFile?: (item: UploadItem, folderId: number | null, courseId: number) => Promise<string> | string
   onUploaded?: (result: UploadResult, item: UploadItem) => void | Promise<void>
   onFolderCreated?: (folder: Folder) => void | Promise<void>
@@ -154,6 +156,7 @@ export function useMaterialUpload({
       setWarnings([])
       setUploading(true)
       const baseFolderId = (await getFolderId?.()) ?? null
+      const targetNodeId = (await getTargetNodeId?.()) ?? null
       const cache: FolderCache = new Map()
       indexFolders(await listFolders(courseId), cache)
       let foldersCreated = false
@@ -188,7 +191,8 @@ export function useMaterialUpload({
             .filter((segment) => segment.length > 0)
           const folderId = segments.length > 0 ? await folderTarget(segments) : baseFolderId
           const named = (await nameFile?.(item, folderId, courseId)) ?? item.file.name
-          const result = await uploadMaterial(withName(item.file, named), courseId, folderId)
+          const nodeId = segments.length > 0 ? null : targetNodeId
+          const result = await uploadMaterial(withName(item.file, named), courseId, folderId, nodeId)
           for (const warning of result.warnings ?? []) {
             setWarnings((current) => [
               ...current,
@@ -209,7 +213,7 @@ export function useMaterialUpload({
       setCurrentName(null)
       return results
     },
-    [courseId, getFolderId, nameFile, onUploaded, onFolderCreated, queryClient]
+    [courseId, getFolderId, getTargetNodeId, nameFile, onUploaded, onFolderCreated, queryClient]
   )
 
   const clearErrors = useCallback(() => setErrors([]), [])

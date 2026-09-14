@@ -80,6 +80,7 @@ export interface UploadResult {
   material: Material
   job_id: number | null
   deduped: boolean
+  node_id?: number | null
   warnings?: UploadWarning[]
 }
 
@@ -93,13 +94,17 @@ export interface SearchHitDto {
 export async function uploadMaterial(
   file: File,
   courseId: number,
-  folderId: number | null = null
+  folderId: number | null = null,
+  nodeId: number | null = null
 ): Promise<UploadResult> {
   const form = new FormData()
   form.append('file', file)
   const params = new URLSearchParams({ course_id: String(courseId) })
   if (folderId !== null) {
     params.set('folder_id', String(folderId))
+  }
+  if (nodeId !== null) {
+    params.set('node_id', String(nodeId))
   }
   const response = await apiFetch(`/api/v1/materials?${params.toString()}`, {
     method: 'POST',

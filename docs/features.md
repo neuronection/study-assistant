@@ -9,7 +9,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   plain text; content-hash dedup **per course** (re-upload to the same course =
   cache hit; the same file in two courses = two materials, one blob on disk) —
   B1/B2/B3/B8; **every material belongs to exactly one course (no global library,
-  ADR-036; uploads require a course)** — Phase 8A
+  ADR-036; uploads require a course)** — Phase 8A; **uploads accept `node_id`**
+  (assignment ride-along in the same request, dedupe hits still assigned — plan 75-A)
 - ✅ Versioned extractions; originals kept forever in the content-addressed blob
   store; `GET /api/v1/blobs/{sha}` serves them — B4
 - ✅ Side-by-side original ⇄ extraction QA editor (**rich Tiptap editor since
