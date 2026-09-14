@@ -1,3 +1,4 @@
+import tempfile
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -60,7 +61,7 @@ class BlockedFakeGateway(LLMGateway):
 
 @contextmanager
 def make_client(gateway: BlockedFakeGateway) -> Iterator[TestClient]:
-    tmp = Path("/tmp") / f"ca-reextract-{int(time.time() * 1000) % 10_000_000}"
+    tmp = Path(tempfile.mkdtemp(prefix="ca-reextract-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(settings, gateway=gateway, ocr=GatewayOcr(gateway))
     with TestClient(app) as client:
@@ -307,3 +308,110 @@ def test_forced_ocr_cancels_between_pages() -> None:
         clear_cancel(int(job_id))
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         assert detail["material"]["status"] != "failed"
+
+
+def mixed_pdf() -> bytes:
+    doc = fitz.open()
+    page1 = doc.new_page()
+    lines = [
+        "The derivative of sin(x) with respect to x is cos(x). This follows",
+        "from the limit of the difference quotient applied to the sine function,",
+        "and together with the chain rule it lets us differentiate compositions.",
+    ]
+    y = 72
+    for line in lines:
+        page1.insert_text((72, y), line)
+        y += 14
+    page2 = doc.new_page()
+    page2.insert_text((72, 72), " ".join(f"(cid:{index})" for index in range(40)))
+    return bytes(doc.tobytes())
+
+
+def test_auto_hybrid_routes_only_weak_pages_to_ocr() -> None:
+    gateway = BlockedFakeGateway("```markdown\n# OCR page\n\n$e^{i\\pi} = -1$\n```")
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        upload = upload_pdf(client, course_id, mixed_pdf())
+        material_id = upload["material"]["id"]
+        assert wait_status(client, material_id) == "ready"
+        calls_after_upload = len(gateway.calls) >= 1
+        assert calls_after_upload, "upload auto-ingest should OCR the garbage page"
+        version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"][
+            "version"
+        ]
+        assert version == 1
+
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={})
+        assert reingest.status_code == 200
+
+        def settled() -> tuple[str, int]:
+            detail = client.get(f"/api/v1/materials/{material_id}").json()
+            extraction = detail.get("extraction")
+            if extraction is None or extraction["version"] <= version:
+                return "", 0
+            return str(extraction["extractor"]), int(extraction["version"])
+
+        wait_until(lambda: settled()[0] != "", timeout=30.0)
+        extractor, _version = settled()
+        assert extractor == "hybrid"
+        assert len(gateway.calls) == calls_after_upload + 1
+
+        markdown = client.get(f"/api/v1/materials/{material_id}").json()["extraction"][
+            "markdown"
+        ]
+        assert "derivative of sin(x)" in markdown
+        assert "$e^{i\\pi} = -1$" in markdown
+        assert markdown.index("derivative of sin(x)") < markdown.index("# OCR page")
+
+
+def test_auto_degrades_to_text_when_ocr_unassigned() -> None:
+    gateway = BlockedFakeGateway("never reached", error=TaskUnassigned("ocr"))
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        upload = upload_pdf(client, course_id, mixed_pdf())
+        material_id = upload["material"]["id"]
+        assert wait_status(client, material_id) == "ready"
+        assert len(gateway.calls) == 1
+
+        version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"][
+            "version"
+        ]
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={})
+        assert reingest.status_code == 200
+
+        def settled_degraded() -> bool:
+            detail = client.get(f"/api/v1/materials/{material_id}").json()
+            extraction = detail.get("extraction")
+            return extraction is not None and extraction["version"] > version
+
+        wait_until(settled_degraded, timeout=30.0)
+        detail = client.get(f"/api/v1/materials/{material_id}").json()
+        assert detail["material"]["status"] == "ready"
+        assert detail["extraction"]["extractor"] == "pymupdf:degraded"
+        markdown = detail["extraction"]["markdown"]
+        assert "derivative of sin(x)" in markdown
+        assert "OCR page" not in markdown
+        assert len(gateway.calls) == 2
+
+
+def test_forced_ocr_without_ocr_provider_fails_honestly() -> None:
+    gateway = BlockedFakeGateway("never", error=TaskUnassigned("ocr"))
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        upload = upload_pdf(client, course_id, text_pdf())
+        material_id = upload["material"]["id"]
+        assert wait_status(client, material_id) == "ready"
+
+        reingest = client.post(
+            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
+        )
+        assert reingest.status_code == 200
+
+        def settled_failed() -> bool:
+            detail = client.get(f"/api/v1/materials/{material_id}").json()
+            return str(detail["material"]["status"]) == "failed"
+
+        wait_until(settled_failed, timeout=30.0)
+        detail = client.get(f"/api/v1/materials/{material_id}").json()
+        assert detail["material"]["status"] == "failed"
+

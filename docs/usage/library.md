@@ -105,17 +105,19 @@ cards; entering one scopes everything to it.
   25 MB) — use a local whisper server or split the file. Re-ingest
   re-transcribes into a new version (handy after switching to a better model).
 - **How a file is extracted — modes (plan 74)**: PDFs offer three extraction
-  modes, chosen per re-ingest — **Auto** (automatic choice: use the PDF's own
-  text layer, falling back to OCR when no text layer exists), **Text layer**
-  (never OCR — fast and free, uses only the PDF's own text even if it is
-  thin), and **OCR every page** (the vision model transcribes each page; the
-  fallback choice when the text layer is there but mangled — e.g. formulas
-  garbled by the text extraction — at the cost of model calls). Image files
-  are always OCR'd; other kinds have no mode choice. Options not applicable
-  to a file's kind are refused with an honest message. Every re-extract lands
-  as a new extraction version (History keeps and restores old ones); the
-  version meta shows which engine ran (`pymupdf`, `pymupdf:forced`, `ocr`,
-  `ocr:forced`).
+  modes, chosen per re-ingest — **Auto** (smart per-page choice: pages with
+  healthy text are read directly, while pages that are too thin, garbled
+  `(cid:…)` glyph junk, or figure-dominated go through the OCR task),
+  **Text layer** (never OCR — fast and free, uses only the PDF's own text
+  even if it is thin), and **OCR every page** (the vision model transcribes
+  each page; the fallback choice when the text layer is there but mangled —
+  e.g. formulas garbled by the text extraction — at the cost of model calls).
+  Image files are always OCR'd; other kinds have no mode choice. Options not
+  applicable to a file's kind are refused with an honest message. Every
+  re-extract lands as a new extraction version (History keeps and restores
+  old ones); the version meta shows which engine ran (`pymupdf`, `hybrid`,
+  `ocr`, or a `:forced`/`:degraded` variant — degraded = no vision model was
+  connected, so weak pages kept their (imperfect) text).
 - **Anything else is refused at the door** — uploading an unsupported type
   (`.doc`, `.rtf`, `.pages`, …) shows an instant "unsupported file type"
   message instead of creating a broken file. Legacy binary formats are not

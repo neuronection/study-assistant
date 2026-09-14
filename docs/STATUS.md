@@ -94,6 +94,28 @@ never auto-applied), and opt-in linked-source subdirectory mirroring
 doc: `dev/plans/75-material-placement-and-discovery.md` (local-only).
 
 **Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
+control" — A+B LANDED (2026-09-15, ADR-172/173/175):** slice B upgraded `auto`
+PDF extraction to a per-page hybrid engine. New `app/pipelines/pdf_pages.py`:
+deterministic per-page scoring — thin text (below the page floor,
+`MIN_TEXT_CHARS_PER_PAGE`), garbage glyphs (`(cid:NNN)` markers + U+FFFD over
+1% of page chars), figure-dominant (image ≥ half the page area with <200 chars
+of text) — routed to the vision model page-by-page, healthy pages keeping
+pymupdf text, spliced in page order; the whole-doc ≥50-chars/page
+`has_text_layer` rule and the doc-level average are deleted. Extractors:
+all-text `pymupdf`, all-OCR `ocr`, mixed `hybrid`. Refined as-built: the
+provider-less degraded fallback (`pymupdf:degraded`) applies **only when a
+text spine exists** — a fully-scanned doc without a vision model still fails
+honestly (was: any doc without provider + no text layer failed; now mixed
+docs succeed degraded). Existing suites re-pointed
+(`test_ingest_pdf` off `has_text_layer` onto `plan_pages` outcomes +
+`score_page` boundary reasons; image-at-half-page figure case pinned).
+`test_reextract_modes.py` +3 (auto hybrid routes only weak pages with splice
+order + per-run call counts, auto degrade on mixed doc, forced-ocr-without-
+provider honesty) — file starts up via unique `tempfile.mkdtemp` dirs (was a
+millisecond-suffixed tmp name that collided under 16-way xdist). Backend
+1,097 green (+5), ruff/mypy clean.
+
+**Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
 control" — A LANDED (2026-09-15, ADR-172):** slice A shipped extraction
 modes end to end. `ExtractionMode` StrEnum (`auto|text|ocr`) +
 `EXTRACTION_MODES` + `applicable_extraction_modes(kind)` (mapping total over

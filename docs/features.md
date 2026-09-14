@@ -712,12 +712,27 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   `{"mode": "auto" | "text" | "ocr"}` (`ReingestOptionsIn`): `text` = use the
   PDF's own text layer even when thin (extractor `pymupdf:forced`), `ocr` =
   force the vision model over every rasterized page (extractor `ocr:forced`),
-  `auto` = the automatic text-layer choice (unchanged). Applicability is
+  `auto` = the smart per-page choice. Applicability is
   server-computed and exposed per material (`MaterialOut.reextract_modes`,
   computed from kind: pdf gets all three, images get auto/ocr, everything
   else auto only) — non-applicable modes are refused with a 422 naming the
   allowed ones. Cancel-safe: OCR loops check the cancel flag between pages, so
   a long forced-OCR run aborts mid-flight instead of after completion.
+- ✅ **Per-page hybrid auto extraction (plan 74 B, ADR-173/175)**: `auto` no
+  longer trusts a text layer on a whole-document average (the old
+  50-chars/page rule). Each page is scored deterministically (`pdf_pages.py`)
+  — thin text (below the page floor), garbled glyph pages (`(cid:NNN)`
+  markers, U+FFFD replacement chars over 1% of the page), and
+  figure-dominated pages (image covering ≥ half the page with little text)
+  are routed to the vision model; healthy pages keep their extracted text;
+  results are spliced in page order. Mixed documents extract as `hybrid`
+  (visible in version meta), all-text as `pymupdf`, all-OCR as `ocr`. If no
+  vision model is assigned, `auto` degrades to plain text **only when the
+  document has a text spine** (extractor `pymupdf:degraded`, honestly
+  labeled); a fully-scanned document without a provider still fails with the
+  honest "OCR task unassigned" message. Huffman-garbage sub-layers
+  (≥50 chars/page of `(cid:…)` runs) that the old heuristic trusted now
+  correctly re-OCR.
 - ✅ **Viewer block copy actions + math-viewer fidelity (plan 63, ADR-140/141)**:
 - ✅ **AI block fixer (plan 64, ADR-142)**: broken mermaid/math blocks in the
   editor show a ✨ **Fix with AI** affordance (on the failed block and inside both

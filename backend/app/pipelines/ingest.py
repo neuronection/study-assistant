@@ -25,8 +25,8 @@ from .convert import (
     epub_to_markdown,
     pptx_to_markdown,
 )
+from .pdf_pages import plan_pages
 
-MIN_TEXT_CHARS_PER_PAGE = 50
 OCR_RASTER_DPI = 150
 
 
@@ -42,18 +42,20 @@ def rasterize_pages(data: bytes, dpi: int = OCR_RASTER_DPI) -> list[tuple[bytes,
     return pages
 
 
-def extract_pdf_text(data: bytes) -> tuple[str, int, bool]:
+def _open_pdf(data: bytes) -> fitz.Document:
     try:
-        doc = fitz.open(stream=data, filetype="pdf")
+        return fitz.open(stream=data, filetype="pdf")
     except Exception as error:
         raise JobError(f"cannot open PDF: {error}") from error
+
+
+def extract_pdf_text(data: bytes) -> tuple[str, int]:
+    doc = _open_pdf(data)
     pages: list[str] = []
     for page in doc:
         pages.append(page.get_text("text"))
-    total_chars = sum(len(page.strip()) for page in pages)
-    has_text_layer = total_chars >= MIN_TEXT_CHARS_PER_PAGE * max(1, len(pages))
     markdown = "\n\n".join(page.strip() for page in pages if page.strip())
-    return markdown, len(pages), has_text_layer
+    return markdown, len(pages)
 
 
 def _embedded_ocr_text(material: Material) -> str:
@@ -197,7 +199,7 @@ def make_ingest_handler(
             if material.kind == MaterialKind.PDF:
                 if mode == ExtractionMode.TEXT:
                     report(30, "extracting pdf text")
-                    text_markdown, pages, _ = extract_pdf_text(data)
+                    text_markdown, pages = extract_pdf_text(data)
                     markdown = text_markdown
                     _store_extraction(
                         session,
@@ -218,21 +220,83 @@ def make_ingest_handler(
                         pages=len(pages_data),
                     )
                 else:
-                    report(30, "extracting pdf text")
-                    text_markdown, pages, has_text_layer = extract_pdf_text(data)
-                    if has_text_layer:
-                        report(60, "building extraction")
-                        markdown = text_markdown
+                    report(30, "scanning pdf pages")
+                    doc = _open_pdf(data)
+                    planned = plan_pages(doc)
+                    pages = len(planned)
+                    text_parts = [
+                        text.strip() for decision, text in planned if decision.use_text
+                    ]
+                    weak_ordinals = [
+                        ordinal
+                        for ordinal, (decision, _text) in enumerate(planned)
+                        if not decision.use_text
+                    ]
+                    if not weak_ordinals:
+                        markdown = "\n\n".join(text_parts)
                         _store_extraction(
-                            session, material, extractor="pymupdf", markdown=markdown, pages=pages
+                            session,
+                            material,
+                            extractor="pymupdf",
+                            markdown=markdown,
+                            pages=pages,
                         )
+                        report(60, "building extraction")
                     else:
                         material.pages = pages
                         session.commit()
-                        markdown = ocr_images(rasterize_pages(data), 30, 50)
-                        _store_extraction(
-                            session, material, extractor="ocr", markdown=markdown, pages=pages
-                        )
+                        ocr_parts: dict[int, str] = {}
+                        if ocr is None:
+                            degraded = True
+                        else:
+                            degraded = False
+                            for index, ordinal in enumerate(weak_ordinals):
+                                if is_cancel_requested(job.id):
+                                    raise JobCancelled(f"job {job.id} cancelled during ocr")
+                                pix = doc[ordinal].get_pixmap(dpi=OCR_RASTER_DPI)
+                                try:
+                                    page_result = ocr.ocr_image(
+                                        bytes(pix.tobytes("png")), "image/png", session=session
+                                    )
+                                except TaskUnassigned:
+                                    degraded = True
+                                    break
+                                if page_result.markdown:
+                                    ocr_parts[ordinal] = page_result.markdown
+                                report(
+                                    30 + 40 * (index + 1) // len(weak_ordinals),
+                                    f"ocr page {index + 1}/{len(weak_ordinals)}",
+                                )
+                        if degraded:
+                            if not text_parts:
+                                raise JobError(
+                                    "OCR task unassigned — connect a provider and assign "
+                                    "a vision model in Settings"
+                                )
+                            markdown = "\n\n".join(text_parts)
+                            _store_extraction(
+                                session,
+                                material,
+                                extractor="pymupdf:degraded",
+                                markdown=markdown,
+                                pages=pages,
+                            )
+                        else:
+                            assembled = [
+                                ocr_parts.get(ordinal, text.strip())
+                                if not decision.use_text
+                                else text.strip()
+                                for ordinal, (decision, text) in enumerate(planned)
+                            ]
+                            markdown = "\n\n".join(part for part in assembled if part)
+                            _store_extraction(
+                                session,
+                                material,
+                                extractor="hybrid" if text_parts else "ocr",
+                                markdown=markdown,
+                                pages=pages,
+                            )
+                        report(60, "building extraction")
             elif material.kind in (MaterialKind.MD, MaterialKind.TXT):
                 report(60, "building extraction")
                 markdown = data.decode("utf-8", errors="replace")
