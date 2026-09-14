@@ -733,6 +733,17 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   honest "OCR task unassigned" message. Huffman-garbage sub-layers
   (≥50 chars/page of `(cid:…)` runs) that the old heuristic trusted now
   correctly re-OCR.
+- ✅ **OCR prompt governance + page context (plan 74 C, ADR-176)**: page-OCR
+  runs through the seeded **`ocr.page` skill** — the gateway resolves the
+  active skill version once per ingest job and threads it as the system
+  prompt (byte-identical to the previous hardcoded constant; falling back to
+  that constant when the skill row is missing). Editing the skill in
+  Settings → Skills immediately changes page OCR (it is a normal versioned
+  skill now — the duplicate constant in `gateway_ocr.py` is gone, one source).
+  The document title rides along as page context
+  (`Transcribe this page. Document: {title}`) so short pages (captions,
+  formulas alone on a page) are transcribed with framing. Handwriting/
+  drawing OCR keeps its own `notes.transcribe` skill and path.
 - ✅ **Viewer block copy actions + math-viewer fidelity (plan 63, ADR-140/141)**:
 - ✅ **AI block fixer (plan 64, ADR-142)**: broken mermaid/math blocks in the
   editor show a ✨ **Fix with AI** affordance (on the failed block and inside both

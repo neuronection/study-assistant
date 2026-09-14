@@ -18,6 +18,7 @@ class OcrEngine(ABC):
         mime: str,
         *,
         context: str = "",
+        instruction: str | None = None,
         session: Session | None = None,
     ) -> OcrPageResult:
         raise NotImplementedError

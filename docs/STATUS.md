@@ -94,6 +94,24 @@ never auto-applied), and opt-in linked-source subdirectory mirroring
 doc: `dev/plans/75-material-placement-and-discovery.md` (local-only).
 
 **Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
+control" — A+B+C LANDED (2026-09-15, ADR-172/173/175/176):** slice C wired the
+seeded `ocr.page` skill into the OCR path — the plan's context claim ("prompt
+hardcoded, not a skill") was wrong-as-built: the skill seed already existed
+(`ai/skills` `OCR_PAGE_SYSTEM`, byte-identical to the gateway constant) but
+nothing resolved it. Now `GatewayOcr.ocr_image` takes an optional
+`instruction` (ABC signature widened), the ingest handler resolves
+`SkillService.resolve("ocr.page")` **once per job** and threads it as the
+system prompt (skill-version edits in Settings now change page OCR), the
+duplicated local constant is gone (single source in `ai/skills`), and the
+document title rides as page `context` (`Transcribe this page. Document:
+{title}`) — the dormant `context` parameter awakened for document framing.
+Drawings/notes OCR keep their own `notes.transcribe` path.
+`test_reextract_modes.py` +3 (activated skill-version template reaches the
+model, seed-template default parity, document-context threading through the
+TextPart scan). Backend green, ruff/mypy clean. Remaining: D (Re-extract
+dialog + three surfaces).
+
+**Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
 control" — A+B LANDED (2026-09-15, ADR-172/173/175):** slice B upgraded `auto`
 PDF extraction to a per-page hybrid engine. New `app/pipelines/pdf_pages.py`:
 deterministic per-page scoring — thin text (below the page floor,

@@ -163,6 +163,14 @@ def make_ingest_handler(
         if data is None:
             raise JobError("blob content missing from store")
 
+        from ..services.platform.skills import SkillService
+
+        page_instruction: str | None = None
+        if ocr is not None:
+            skill = SkillService(session).resolve("ocr.page")
+            page_instruction = skill.system_template if skill is not None else None
+        document_context = f"Document: {material.title}"
+
         def ocr_images(images: list[tuple[bytes, str]], base_progress: int, span: int) -> str:
             if ocr is None:
                 raise JobError(
@@ -173,7 +181,13 @@ def make_ingest_handler(
                 if is_cancel_requested(job.id):
                     raise JobCancelled(f"job {job.id} cancelled during ocr")
                 try:
-                    result = ocr.ocr_image(image_data, mime, session=session)
+                    result = ocr.ocr_image(
+                        image_data,
+                        mime,
+                        context=document_context,
+                        instruction=page_instruction,
+                        session=session,
+                    )
                 except TaskUnassigned as error:
                     raise JobError(str(error)) from error
                 parts.append(result.markdown)
@@ -256,7 +270,11 @@ def make_ingest_handler(
                                 pix = doc[ordinal].get_pixmap(dpi=OCR_RASTER_DPI)
                                 try:
                                     page_result = ocr.ocr_image(
-                                        bytes(pix.tobytes("png")), "image/png", session=session
+                                        bytes(pix.tobytes("png")),
+                                        "image/png",
+                                        context=document_context,
+                                        instruction=page_instruction,
+                                        session=session,
                                     )
                                 except TaskUnassigned:
                                     degraded = True

@@ -415,3 +415,95 @@ def test_forced_ocr_without_ocr_provider_fails_honestly() -> None:
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         assert detail["material"]["status"] == "failed"
 
+
+def test_ocr_page_skill_edit_reaches_the_vision_model() -> None:
+    gateway = BlockedFakeGateway("```markdown\n# Scanned\n```")
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        upload = upload_pdf(client, course_id, text_pdf())
+        material_id = upload["material"]["id"]
+        assert wait_status(client, material_id) == "ready"
+
+        save = client.post(
+            "/api/v1/skills/ocr.page/versions",
+            json={"scope_type": "system", "system_template": "SPECIAL OCR MARKER PROMPT"},
+        )
+        assert save.status_code == 201, save.text
+        version_id = save.json()["id"]
+        activate = client.post(f"/api/v1/skills/ocr.page/versions/{version_id}/activate")
+        assert activate.status_code == 200, activate.text
+
+        reingest = client.post(
+            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
+        )
+        assert reingest.status_code == 200
+
+        def marker_sent() -> bool:
+            return any(
+                message.content == "SPECIAL OCR MARKER PROMPT"
+                for call in gateway.calls
+                for message in call
+                if message.role == "system"
+            )
+
+        wait_until(marker_sent, timeout=30.0)
+        assert marker_sent()
+
+
+def test_ocr_prompt_defaults_to_skill_seed_template() -> None:
+    from app.ai.skills import OCR_PAGE_SYSTEM
+
+    gateway = BlockedFakeGateway("```markdown\n# Scanned\n```")
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        upload = upload_pdf(client, course_id, text_pdf())
+        material_id = upload["material"]["id"]
+        assert wait_status(client, material_id) == "ready"
+
+        reingest = client.post(
+            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
+        )
+        assert reingest.status_code == 200
+
+        def seed_sent() -> bool:
+            return any(
+                message.content == OCR_PAGE_SYSTEM
+                for call in gateway.calls
+                for message in call
+                if message.role == "system"
+            )
+
+        wait_until(seed_sent, timeout=30.0)
+        assert seed_sent()
+
+
+def test_ocr_document_context_threaded_to_gateway() -> None:
+    gateway = BlockedFakeGateway("```markdown\n# Scanned\n```")
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        data = text_pdf("ignored by forced ocr")
+        upload = upload_pdf(client, course_id, data, name="Calculus Lecture.pdf")
+        material_id = upload["material"]["id"]
+        title = client.get(f"/api/v1/materials/{material_id}").json()["material"]["title"]
+        assert title
+
+        reingest = client.post(
+            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
+        )
+        assert reingest.status_code == 200
+
+        def context_sent() -> bool:
+            from app.ai.gateway import TextPart
+
+            return any(
+                f"Document: {title}" in part.text
+                for call in gateway.calls
+                for message in call
+                if message.role == "user"
+                for part in message.content
+                if isinstance(part, TextPart)
+            )
+
+        wait_until(context_sent, timeout=30.0)
+        assert context_sent()
+

@@ -3,22 +3,11 @@ import re
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ImagePart, LLMGateway, Message, TextPart
+from ..ai.skills import OCR_PAGE_SYSTEM
 from .base import OcrEngine, OcrPageResult
 from .imaging import ocr_image_max_edge, prepare_ocr_image
 
 OCR_TASK = "ocr"
-
-OCR_SYSTEM_PROMPT = (
-    "You are a precise OCR engine for study material. Transcribe the given page image to "
-    "GitHub-flavored markdown.\n"
-    "Rules:\n"
-    "- If the page contains mathematics, render it as LaTeX: inline $...$, display "
-    "$$...$$; otherwise keep plain text.\n"
-    "- Diagrams/flows: emit a ```mermaid fenced block approximating the structure.\n"
-    "- Tables: GFM pipe tables.\n"
-    "- Preserve reading order and headings (# levels).\n"
-    "- Output ONLY the transcription, no commentary."
-)
 
 _FENCE_RE = re.compile(r"^```(?:markdown|md)?\s*\n(.*)\n```\s*$", re.DOTALL)
 
@@ -38,6 +27,7 @@ class GatewayOcr(OcrEngine):
         mime: str,
         *,
         context: str = "",
+        instruction: str | None = None,
         session: Session | None = None,
     ) -> OcrPageResult:
         payload, payload_mime = prepare_ocr_image(
@@ -47,7 +37,7 @@ class GatewayOcr(OcrEngine):
         text = self._gateway.generate(
             OCR_TASK,
             [
-                Message(role="system", content=OCR_SYSTEM_PROMPT),
+                Message(role="system", content=instruction or OCR_PAGE_SYSTEM),
                 Message(
                     role="user",
                     content=[

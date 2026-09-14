@@ -354,7 +354,13 @@ written in the image (LaTeX for any math that is present, plain text otherwise, 
 reading order), never describe the image, empty output when nothing is legible.
 The page-OCR prompt (`ocr.page` / `ocr` task) uses the same conditional rule
 ("if the page contains mathematics, render it as LaTeX") — neither prompt assumes
-the content is math.
+the content is math. **(plan 74 C, ADR-176)** the OCR engine now *resolves*
+this seeded skill — `SkillService.resolve("ocr.page")` once per ingest job,
+threaded into `GatewayOcr` as the system prompt (same hardcoded text as the
+seed as fallback; always win when a version is active), and the document
+title is threaded as page `context` (`Transcribe this page. Document: {title}`).
+Editing `ocr.page` in Settings changes page OCR; the notes/drawing paths
+(`notes.transcribe`) are unchanged.
 
 **OCR payload efficiency (plan 46, ADR-102)**: every image sent to a vision task
 passes through `app/ocr/imaging.prepare_ocr_image` at the engine boundary — the
