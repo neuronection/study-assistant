@@ -4,6 +4,7 @@ from typing import Required, TypedDict
 class IngestPayload(TypedDict, total=False):
     material_id: Required[int]
     blob_sha: str | None
+    mode: str
 
 
 class PostprocessPayload(TypedDict, total=False):

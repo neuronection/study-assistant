@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
-from ..core.vocab import MaterialKind, MaterialStatus
+from ..core.vocab import MaterialKind, MaterialStatus, applicable_extraction_modes
 
 MODEL_CAPS = ("text", "vision", "tools", "embeddings", "audio")
 
@@ -196,6 +196,11 @@ class MaterialOut(BaseModel):
     tags: list[str] = []
     starred: bool = False
     link_count: int = 0
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def reextract_modes(self) -> list[str]:
+        return [mode.value for mode in applicable_extraction_modes(self.kind)]
 
 
 class UploadWarningOut(BaseModel):

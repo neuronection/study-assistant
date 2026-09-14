@@ -4932,6 +4932,11 @@ export interface components {
             /** Markdown */
             markdown: string;
         };
+        /**
+         * ExtractionMode
+         * @enum {string}
+         */
+        ExtractionMode: "auto" | "text" | "ocr";
         /** ExtractionOut */
         ExtractionOut: {
             /** Blocks */
@@ -5540,6 +5545,8 @@ export interface components {
             provenance?: {
                 [key: string]: unknown;
             } | null;
+            /** Reextract Modes */
+            readonly reextract_modes: string[];
             /**
              * Starred
              * @default false
@@ -6632,6 +6639,10 @@ export interface components {
             skill?: string | null;
             /** Title Key */
             title_key?: string | null;
+        };
+        /** ReingestOptionsIn */
+        ReingestOptionsIn: {
+            mode?: components["schemas"]["ExtractionMode"] | null;
         };
         /** RelinkIn */
         RelinkIn: {
@@ -12621,7 +12632,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReingestOptionsIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

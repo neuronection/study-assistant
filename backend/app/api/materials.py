@@ -10,7 +10,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError, TaskUnassigned
-from ..core.vocab import DeriveOutcome, MaterialKind, MaterialStatus
+from ..core.vocab import (
+    DeriveOutcome,
+    ExtractionMode,
+    MaterialKind,
+    MaterialStatus,
+    applicable_extraction_modes,
+)
 from ..domain.models import Extraction, Material, MaterialDrawing, MaterialLink, utcnow
 from ..jobs.runner import JobRunner
 from ..services.content.diffs import unified_text_diff
@@ -99,6 +105,10 @@ class MaterialBatchDeriveOut(BaseModel):
 REINGESTABLE_KINDS = frozenset(
     {"pdf", "md", "txt", "image", "docx", "pptx", "epub", "html", "audio", "video"}
 )
+
+
+class ReingestOptionsIn(BaseModel):
+    mode: ExtractionMode | None = None
 
 
 def _service(request: Request, session: Session) -> MaterialsService:
@@ -763,6 +773,7 @@ def update_material(
 def reingest_material(
     request: Request,
     material_id: int,
+    options: ReingestOptionsIn | None = None,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
     service = _service(request, session)
@@ -776,7 +787,18 @@ def reingest_material(
         )
     if material.blob_sha is None:
         raise HTTPException(status_code=422, detail="material has no stored file to re-ingest")
-    job_id = service.queue_ingest(material, request.app.state.jobs)
+    mode = ExtractionMode.AUTO if options is None or options.mode is None else options.mode
+    applicable = applicable_extraction_modes(MaterialKind(material.kind))
+    if mode not in applicable:
+        allowed = ", ".join(item.value for item in applicable)
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"extraction mode '{mode.value}' is not applicable to kind '{material.kind}' "
+                f"(allowed: {allowed})"
+            ),
+        )
+    job_id = service.queue_ingest(material, request.app.state.jobs, mode=mode.value)
     session.commit()
     return MaterialUploadOut(
         material=_to_out(

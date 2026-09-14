@@ -4,9 +4,13 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, TaskUnassigned
-from ..core.vocab import MaterialKind, MaterialStatus, ProvenanceKind
+from ..core.vocab import ExtractionMode, MaterialKind, MaterialStatus, ProvenanceKind
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
-from ..jobs.cancellation import JobCancelled, ensure_target_exists, is_cancel_requested
+from ..jobs.cancellation import (
+    JobCancelled,
+    ensure_target_exists,
+    is_cancel_requested,
+)
 from ..jobs.payloads import IngestPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
@@ -144,6 +148,10 @@ def make_ingest_handler(
         material = session.get(Material, material_id)
         if material is None:
             raise JobError(f"material {material_id} not found")
+        try:
+            mode = ExtractionMode(payload.get("mode") or ExtractionMode.AUTO.value)
+        except ValueError as error:
+            raise JobError(f"ingest payload has invalid mode: {error}") from error
 
         material.status = MaterialStatus.PROCESSING
         session.commit()
@@ -160,6 +168,8 @@ def make_ingest_handler(
                 )
             parts: list[str] = []
             for index, (image_data, mime) in enumerate(images):
+                if is_cancel_requested(job.id):
+                    raise JobCancelled(f"job {job.id} cancelled during ocr")
                 try:
                     result = ocr.ocr_image(image_data, mime, session=session)
                 except TaskUnassigned as error:
@@ -185,21 +195,44 @@ def make_ingest_handler(
             converted_kind: str | None = None
             store: ImageStore | None = None
             if material.kind == MaterialKind.PDF:
-                report(30, "extracting pdf text")
-                text_markdown, pages, has_text_layer = extract_pdf_text(data)
-                if has_text_layer:
-                    report(60, "building extraction")
+                if mode == ExtractionMode.TEXT:
+                    report(30, "extracting pdf text")
+                    text_markdown, pages, _ = extract_pdf_text(data)
                     markdown = text_markdown
                     _store_extraction(
-                        session, material, extractor="pymupdf", markdown=markdown, pages=pages
+                        session,
+                        material,
+                        extractor="pymupdf:forced",
+                        markdown=markdown,
+                        pages=pages,
+                    )
+                elif mode == ExtractionMode.OCR:
+                    report(30, "rasterizing pdf")
+                    pages_data = rasterize_pages(data)
+                    markdown = ocr_images(pages_data, 30, 50)
+                    _store_extraction(
+                        session,
+                        material,
+                        extractor="ocr:forced",
+                        markdown=markdown,
+                        pages=len(pages_data),
                     )
                 else:
-                    material.pages = pages
-                    session.commit()
-                    markdown = ocr_images(rasterize_pages(data), 30, 50)
-                    _store_extraction(
-                        session, material, extractor="ocr", markdown=markdown, pages=pages
-                    )
+                    report(30, "extracting pdf text")
+                    text_markdown, pages, has_text_layer = extract_pdf_text(data)
+                    if has_text_layer:
+                        report(60, "building extraction")
+                        markdown = text_markdown
+                        _store_extraction(
+                            session, material, extractor="pymupdf", markdown=markdown, pages=pages
+                        )
+                    else:
+                        material.pages = pages
+                        session.commit()
+                        markdown = ocr_images(rasterize_pages(data), 30, 50)
+                        _store_extraction(
+                            session, material, extractor="ocr", markdown=markdown, pages=pages
+                        )
             elif material.kind in (MaterialKind.MD, MaterialKind.TXT):
                 report(60, "building extraction")
                 markdown = data.decode("utf-8", errors="replace")

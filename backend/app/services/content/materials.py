@@ -20,6 +20,7 @@ from ...domain.models import (
     TreeNode,
 )
 from ...jobs.cancellation import cancel_jobs_for_material
+from ...jobs.payloads import IngestPayload
 from ...jobs.runner import JobRunner
 from ...pipelines.chunking import chunk_markdown
 from ...storage import vectors
@@ -539,10 +540,11 @@ class MaterialsService:
             query = query.where(Material.id != exclude_id)
         return self._session.scalars(query.order_by(Material.id)).first()
 
-    def queue_ingest(self, material: Material, runner: JobRunner) -> int:
-        job = JobRunner.enqueue(
-            self._session, "ingest", {"material_id": material.id, "blob_sha": material.blob_sha}
-        )
+    def queue_ingest(self, material: Material, runner: JobRunner, mode: str | None = None) -> int:
+        payload: IngestPayload = {"material_id": material.id, "blob_sha": material.blob_sha}
+        if mode is not None:
+            payload["mode"] = mode
+        job = JobRunner.enqueue(self._session, "ingest", payload)
         runner.wake()
         return job.id
 

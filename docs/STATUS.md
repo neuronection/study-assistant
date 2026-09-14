@@ -63,6 +63,71 @@ compose through quizgen-derived SymPy validators, and a cancellable `compose`
 job with an async endpoint + single-job GET (ADRs 156–158 reserved). Plan doc:
 `dev/plans/70-compose-quality-and-scale.md` (local-only).
 
+**Also planned (user-approved 2026-09-11) — plan 73 "Material discovery,
+references & integrations" (amended same day: three-tier integration
+model, ADR-170):** link materials (URL references as first-class
+materials with `source_url` + per-course dedupe), a URL parser registry with
+YouTube transcript ingest (yt-dlp, captions-first; transcribe-task fallback),
+a discovery provider registry (web / YouTube / site-filtered SearXNG presets
+such as Khan Academy — no first-party ToS-restricted platform code),
+`material_suggestions` tracking (suggested/saved/dismissed) with a Discover
+dialog in the workspace/library, **Tier 1 declarative external web sources**
+(RSS/Atom, YouTube channel/playlist, site-filtered search — deterministic
+scheduler landing new items as suggestions only, fully LLM-free), a chat
+`DISCOVER` tool (context-built `here` queries; Tier 3) with a HITL
+`attach_link` proposal, and **Tier 2 custom connectors via a FastMCP MCP
+client bridge invoked deterministically by services** (discovery + parse
+contracts; importable in-process scripts rejected — ADR-168).
+ADRs 164–171 reserved. Plan doc: `dev/plans/73-material-discovery-and-integrations.md`
+(local-only).
+
+**Also planned (user-approved 2026-09-15) — plan 75 "Material placement &
+discovery":** node-targeted uploads (`node_id` on `POST /materials`, with
+dedupe-always-assigns semantics so re-uploads place the existing material),
+idempotent folder→node mirroring (reuse title-matched nodes, folder links
+carry whole subtrees — including files added later), a "Needs placement"
+review surface over plan 70-B's `GET /courses/{id}/materials/unassigned`,
+deterministic explainable placement suggestions (token-overlap scoring over
+node titles/objectives + index-card topics + concepts, `matched_on` evidence,
+never auto-applied), and opt-in linked-source subdirectory mirroring
+(migration 0058) with per-file scan surfacing. ADRs 177–180 reserved. Plan
+doc: `dev/plans/75-material-placement-and-discovery.md` (local-only).
+
+**Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
+control" — A LANDED (2026-09-15, ADR-172):** slice A shipped extraction
+modes end to end. `ExtractionMode` StrEnum (`auto|text|ocr`) +
+`EXTRACTION_MODES` + `applicable_extraction_modes(kind)` (mapping total over
+MaterialKind) in `core/vocab.py`; `IngestPayload` gained `mode` (parsed
+honestly in the handler); `POST /materials/{id}/reingest` accepts
+`ReingestOptionsIn{mode?}` — non-applicable modes are a 422 naming the
+allowed ones; forced modes implemented against the current whole-doc rule
+(`text` → `pymupdf:forced` even when thin, `ocr` → `ocr:forced` over every
+rasterized page; auto unchanged until slice B); OCR loops now check the
+cancel flag **between pages** (long forced runs abort mid-flight — was only
+noticed after the loop); `MaterialOut.reextract_modes` is a computed field
+from the one server-side applicability function (API truth for the UI — the
+frontend's drifted local 4-kind set dies in slice D). Remaining: slices B
+(per-page hybrid auto), C (`ocr.page` skill pack), D (Re-extract dialog +
+three surfaces). OpenAPI + types regenerated. `test_reextract_modes.py` (9:
+matrix, forced-ocr/text reingests incl. version-gated settle, 422s,
+reextract_modes out + OpenAPI, between-pages cancellation). Backend 1,092
+green (+11), ruff/mypy clean.
+
+**Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
+control":** extraction modes (`auto|text|ocr`, closed vocab with per-kind
+server-side applicability) threaded through `reingest` options + the typed
+ingest payload; **auto** PDF extraction upgraded from the whole-doc
+50-chars/page text-layer rule to per-page hybrid with deterministic quality
+scoring (garbage-glyph/`(cid:)` detection, image-area coverage; provider-less
+degraded fallback so vision stays an optimization, never a requirement); the
+page-OCR prompt becomes the `ocr.page` system skill pack with document-context
+threading; and one shared **Re-extract dialog** mounted in the material view ⋯
+menu, the Library right-click and the course Materials tab, gated on
+API-truth `MaterialOut.reextract_modes` (closing the existing 4-vs-10
+frontend/backend reingestable-kinds drift). Zero migrations. ADRs 172–176
+reserved. Plan doc: `dev/plans/74-extraction-quality-and-control.md`
+(local-only).
+
 **Plan 72 slice A — legacy chat engine removed (2026-09-09, user-approved;
 ADR-163):** the LangGraph turn graph is now the **only** chat-turn engine —
 `ChatEngine`/`SA_CHAT_ENGINE`/`chat_engine` setting and the main.py selection

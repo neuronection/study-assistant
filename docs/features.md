@@ -707,6 +707,17 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   see *Task activity* usage page. Library context menus gain **Re-ingest …
   (OCR again)** (single/multi, `POST /materials/{id}/reingest`) and **Retry failed
   AI tasks for this file** when that material has failed retriable jobs.
+- ✅ **Extraction modes (plan 74 A, ADR-172)**: re-ingest now accepts an
+  extraction **mode** — `POST /materials/{id}/reingest` body
+  `{"mode": "auto" | "text" | "ocr"}` (`ReingestOptionsIn`): `text` = use the
+  PDF's own text layer even when thin (extractor `pymupdf:forced`), `ocr` =
+  force the vision model over every rasterized page (extractor `ocr:forced`),
+  `auto` = the automatic text-layer choice (unchanged). Applicability is
+  server-computed and exposed per material (`MaterialOut.reextract_modes`,
+  computed from kind: pdf gets all three, images get auto/ocr, everything
+  else auto only) — non-applicable modes are refused with a 422 naming the
+  allowed ones. Cancel-safe: OCR loops check the cancel flag between pages, so
+  a long forced-OCR run aborts mid-flight instead of after completion.
 - ✅ **Viewer block copy actions + math-viewer fidelity (plan 63, ADR-140/141)**:
 - ✅ **AI block fixer (plan 64, ADR-142)**: broken mermaid/math blocks in the
   editor show a ✨ **Fix with AI** affordance (on the failed block and inside both

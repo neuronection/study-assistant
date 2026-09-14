@@ -64,6 +64,23 @@ class MaterialStatus(StrVocab):
     MISSING = "missing"
 
 
+class ExtractionMode(StrVocab):
+    AUTO = "auto"
+    TEXT = "text"
+    OCR = "ocr"
+
+
+EXTRACTION_MODES: tuple[str, ...] = tuple(mode.value for mode in ExtractionMode)
+
+
+def applicable_extraction_modes(kind: MaterialKind) -> tuple[ExtractionMode, ...]:
+    if kind == MaterialKind.PDF:
+        return (ExtractionMode.AUTO, ExtractionMode.TEXT, ExtractionMode.OCR)
+    if kind == MaterialKind.IMAGE:
+        return (ExtractionMode.AUTO, ExtractionMode.OCR)
+    return (ExtractionMode.AUTO,)
+
+
 class AttemptMode(StrVocab):
     PRACTICE = "practice"
     EXAM = "exam"

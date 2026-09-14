@@ -3388,6 +3388,15 @@
         "title": "ExtractionEdit",
         "type": "object"
       },
+      "ExtractionMode": {
+        "enum": [
+          "auto",
+          "text",
+          "ocr"
+        ],
+        "title": "ExtractionMode",
+        "type": "string"
+      },
       "ExtractionOut": {
         "properties": {
           "blocks": {
@@ -5194,6 +5203,14 @@
             ],
             "title": "Provenance"
           },
+          "reextract_modes": {
+            "items": {
+              "type": "string"
+            },
+            "readOnly": true,
+            "title": "Reextract Modes",
+            "type": "array"
+          },
           "starred": {
             "default": false,
             "title": "Starred",
@@ -5227,7 +5244,8 @@
           "group_id",
           "folder_id",
           "blob_sha",
-          "created_at"
+          "created_at",
+          "reextract_modes"
         ],
         "title": "MaterialOut",
         "type": "object"
@@ -8727,6 +8745,22 @@
           "evidence"
         ],
         "title": "RecommendationOut",
+        "type": "object"
+      },
+      "ReingestOptionsIn": {
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ReingestOptionsIn",
         "type": "object"
       },
       "RelinkIn": {
@@ -19480,6 +19514,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ReingestOptionsIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Options"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
