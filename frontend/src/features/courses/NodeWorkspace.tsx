@@ -55,6 +55,7 @@ import { MaterialList } from '@/components/materials/MaterialList'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
+import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
@@ -1073,6 +1074,7 @@ function MaterialsTab({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [reExtractTarget, setReExtractTarget] = useState<number | null>(null)
   const [view, setView] = useStoredView(storageKeys.materialsView, 'list')
   const [menu, setMenu] = useState<{
     x: number
@@ -1335,6 +1337,18 @@ function MaterialsTab({
           : t('library.deriveMaterial'),
         disabled: derive.isPending,
         onSelect: () => derive.mutate(derivable),
+      })
+    }
+    if (
+      !multi &&
+      (entry.reextract_modes?.length ?? 0) > 1 &&
+      entry.status !== 'pending' &&
+      entry.status !== 'processing'
+    ) {
+      items.push({
+        key: 're-extract',
+        label: t('reextract.menuEntry'),
+        onSelect: () => setReExtractTarget(entry.material_id),
       })
     }
     items.push({
@@ -1625,6 +1639,16 @@ function MaterialsTab({
         />
       ) : null}
 
+      {reExtractTarget !== null ? (
+        <ReExtractDialog
+          materialId={reExtractTarget}
+          open
+          onClose={() => setReExtractTarget(null)}
+          onSuccess={async () => {
+            await refresh()
+          }}
+        />
+      ) : null}
       {pickerOpen ? (
         <MaterialPickerDialog
           courseId={Number(courseId)}

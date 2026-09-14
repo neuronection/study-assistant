@@ -77,6 +77,7 @@ const MATERIAL = {
     course_id: 2,
     title: 'Chain rule worksheet',
     status: 'ready',
+    reextract_modes: ['auto', 'text', 'ocr'],
   },
   extraction: null,
   index_card: null,
@@ -287,6 +288,26 @@ describe('MaterialDetailBody take-notes', () => {
     await openMoreMaterialActions()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Print' }))
     expect(await screen.findByTestId('markdown-print-doc')).toBeInTheDocument()
+  })
+
+  test('⋯ menu offers Re-extract for mode-bearing materials and opens the dialog', async () => {
+    getMaterial.mockResolvedValue(EXTRACTION_FIXTURE)
+    renderBody()
+    await openMoreMaterialActions()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Re-extract…' }))
+    expect(await screen.findByTestId('reextract-dialog')).toBeInTheDocument()
+    expect(screen.getByTestId('reextract-mode-text')).toBeInTheDocument()
+  })
+
+  test('⋯ menu omits Re-extract for materials without mode choice (plan 74-D)', async () => {
+    getMaterial.mockResolvedValue({
+      ...EXTRACTION_FIXTURE,
+      material: { ...EXTRACTION_FIXTURE.material, reextract_modes: ['auto'] },
+    })
+    renderBody()
+    await openMoreMaterialActions()
+    expect(await screen.findByRole('menuitem', { name: 'Export .md' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Re-extract…' })).toBeNull()
   })
 
   test('History opens the extraction history dialog (plan 62-E)', async () => {

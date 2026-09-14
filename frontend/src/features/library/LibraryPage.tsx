@@ -85,6 +85,7 @@ import { NewTextFileDialog, type TextFileCreateInput, type TextFileSaveInput } f
 import { ViewToggle, type LibraryView } from '@/components/ui/ViewToggle'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
+import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
@@ -111,7 +112,13 @@ interface LinkState {
 
 const VIEW_KEY = storageKeys.libraryView
 
-const REINGESTABLE_KINDS = new Set(['pdf', 'md', 'txt', 'image'])
+function fileBackedKind(entry: { blob_sha: string | null; reextract_modes?: string[] }): boolean {
+  return entry.blob_sha !== null && (entry.reextract_modes?.length ?? 0) > 0
+}
+
+function selectableModes(entry: { reextract_modes?: string[] }): number {
+  return entry.reextract_modes?.length ?? 0
+}
 
 function readStoredView(): LibraryView {
   try {
@@ -530,6 +537,7 @@ export function LibraryPage() {
   const clipboardItem = useClipboardStore((state) => state.item)
   const [assignOpen, setAssignOpen] = useState(false)
   const [askMaterialsOpen, setAskMaterialsOpen] = useState<Material[] | null>(null)
+  const [reExtractTarget, setReExtractTarget] = useState<number | null>(null)
   const [linkedTarget, setLinkedTarget] = useState<LinkedLocationsTarget | null>(null)
   const [assignFoldersOpen, setAssignFoldersOpen] = useState(false)
   const [dropTarget, setDropTarget] = useState<number | null>(null)
@@ -978,10 +986,7 @@ export function LibraryPage() {
       (materials.data ?? []).find((entry) => entry.id === mid)
     )
     const fileBacked = selected.filter(
-      (entry) =>
-        entry !== undefined &&
-        REINGESTABLE_KINDS.has(entry.kind) &&
-        entry.blob_sha !== null
+      (entry) => entry !== undefined && fileBackedKind(entry),
     )
     const derivable = selected.flatMap((entry) =>
       entry !== undefined && entry.has_extraction ? [entry.id] : []
@@ -1021,14 +1026,26 @@ export function LibraryPage() {
       })
     }
     if (fileBacked.length > 0) {
+      const singleModeTarget =
+        !multi &&
+        fileBacked.length === 1 &&
+        fileBacked[0] !== undefined &&
+        selectableModes(fileBacked[0]) > 1
+          ? fileBacked[0]
+          : null
       items.push({
         key: 'reingest',
-        label:
-          fileBacked.length === 1
+        label: singleModeTarget
+          ? t('reextract.menuEntry')
+          : fileBacked.length === 1
             ? t('jobs.reingestOne')
             : t('jobs.reingestMany', { count: fileBacked.length }),
         disabled: reingestMutation.isPending,
         onSelect: () => {
+          if (singleModeTarget) {
+            setReExtractTarget(singleModeTarget.id)
+            return
+          }
           const ids = fileBacked.flatMap((entry) =>
             entry !== undefined ? [entry.id] : []
           )
@@ -1970,6 +1987,13 @@ className={cn(
         <AskMaterialsDialog
           materials={askMaterialsOpen}
           onClose={() => setAskMaterialsOpen(null)}
+        />
+      ) : null}
+      {reExtractTarget !== null ? (
+        <ReExtractDialog
+          materialId={reExtractTarget}
+          open
+          onClose={() => setReExtractTarget(null)}
         />
       ) : null}
       {linkedTarget !== null ? (

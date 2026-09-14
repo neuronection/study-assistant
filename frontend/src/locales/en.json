@@ -2206,5 +2206,21 @@
     "urlLabel": "Page URL",
     "courseLabel": "Course",
     "importAction": "Import"
+  },
+  "reextract": {
+    "title": "Re-extract",
+    "hint": "Choose how “{{title}}” is transcribed. Each run adds a new version; previous ones stay restorable in History.",
+    "loading": "Loading material…",
+    "modeAuto": "Auto",
+    "modeAutoDesc": "Smart per-page choice — healthy text pages read directly, weak pages go through OCR.",
+    "modeText": "Text layer only",
+    "modeTextDesc": "Uses the PDF's own text without OCR — fast and free, but thin for mangled formulas.",
+    "modeOcr": "OCR every page",
+    "modeOcrDesc": "The vision model transcribes each page — best for math PDFs and scans.",
+    "ocrCost_one": "{{count}} vision-model page",
+    "ocrCost_other": "{{count}} vision-model pages",
+    "busyHint": "Currently extracting — wait for the running extraction to finish first.",
+    "confirm": "Re-extract",
+    "menuEntry": "Re-extract…"
   }
 }

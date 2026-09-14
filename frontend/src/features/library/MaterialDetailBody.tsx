@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   NotebookPen,
   Printer,
+  RefreshCw,
   Star,
   X,
 } from 'lucide-react'
@@ -14,6 +15,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { InfoButton } from '@/components/ui/InfoButton'
+import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
 import { exportMarkdownWithDrawings } from '@/components/materials/exportMarkdown'
 import { MarkdownPrintDoc } from '@/components/print/MarkdownPrintDoc'
 import { Button } from '@/components/ui/button'
@@ -84,6 +86,7 @@ export function MaterialDetailBody({
   const navigate = useNavigate()
   const [printing, setPrinting] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [reExtractOpen, setReExtractOpen] = useState(false)
   const [derived, setDerived] = useState<{
     id: number
     title: string
@@ -243,6 +246,11 @@ export function MaterialDetailBody({
           onClose={() => setHistoryOpen(false)}
         />
       ) : null}
+      <ReExtractDialog
+        materialId={materialId}
+        open={reExtractOpen}
+        onClose={() => setReExtractOpen(false)}
+      />
       <StudyPaneHeader
         title={showTitle ? material.title : null}
         meta={
@@ -433,6 +441,16 @@ export function MaterialDetailBody({
                   pending: derive.isPending,
                   onSelect: () => derive.mutate(),
                 },
+                ...((detail.data?.material.reextract_modes?.length ?? 1) > 1
+                  ? [
+                      {
+                        key: 're-extract',
+                        label: t('reextract.menuEntry'),
+                        icon: RefreshCw,
+                        onSelect: () => setReExtractOpen(true),
+                      },
+                    ]
+                  : []),
                 ...(material.provenance?.kind === 'mindmap'
                   ? []
                   : [

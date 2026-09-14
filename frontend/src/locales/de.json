@@ -2206,5 +2206,21 @@
     "urlLabel": "Seiten-URL",
     "courseLabel": "Kurs",
     "importAction": "Importieren"
+  },
+  "reextract": {
+    "title": "Erneut extrahieren",
+    "hint": "Wähle, wie „{{title}}“ transkribiert wird. Jeder Durchlauf erzeugt eine neue Version; frühere bleiben in der Historie wiederherstellbar.",
+    "loading": "Material wird geladen…",
+    "modeAuto": "Automatisch",
+    "modeAutoDesc": "Klug pro Seite — gesunde Textseiten direkt, schwache Seiten über OCR.",
+    "modeText": "Nur Textebene",
+    "modeTextDesc": "Nutzt den eigenen PDF-Text ohne OCR — schnell und kostenlos, aber dünn bei zerstörten Formeln.",
+    "modeOcr": "OCR auf jeder Seite",
+    "modeOcrDesc": "Das Sprachmodell transkribiert jede Seite — ideal für Mathe-PDFs und Scans.",
+    "ocrCost_one": "{{count}} Vision-Modell-Seite",
+    "ocrCost_other": "{{count}} Vision-Modell-Seiten",
+    "busyHint": "Extraktion läuft bereits — warte zuerst auf den laufenden Durchlauf.",
+    "confirm": "Erneut extrahieren",
+    "menuEntry": "Erneut extrahieren…"
   }
 }

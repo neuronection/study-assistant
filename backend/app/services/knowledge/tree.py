@@ -8,7 +8,7 @@ from sqlalchemy import text as sa_text
 from sqlalchemy import update as sa_update
 from sqlalchemy.orm import Session
 
-from ...core.vocab import StudyStatus
+from ...core.vocab import MaterialKind, StudyStatus, applicable_extraction_modes
 from ...domain.models import (
     Activity,
     ChatSession,
@@ -971,6 +971,14 @@ class TreeService:
                 "auto_assigned": link.auto_assigned if link is not None else None,
                 "confidence": link.confidence if link is not None else None,
                 "provenance": material.provenance if material else None,
+                "reextract_modes": (
+                    [
+                        mode.value
+                        for mode in applicable_extraction_modes(MaterialKind(material.kind))
+                    ]
+                    if material is not None and material.blob_sha is not None
+                    else []
+                ),
                 "has_extraction": material_id in extraction_ids,
                 "via_folder_id": via.id if via is not None else None,
                 "via_folder_name": via.name if via is not None else None,

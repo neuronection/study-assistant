@@ -94,6 +94,35 @@ never auto-applied), and opt-in linked-source subdirectory mirroring
 doc: `dev/plans/75-material-placement-and-discovery.md` (local-only).
 
 **Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
+control" — COMPLETE: A+B+C+D LANDED (2026-09-15, ADRs 172–176):** slice D
+shipped the **Re-extract dialog** (`components/materials/ReExtractDialog.tsx`,
+one component, three mounts) — radio option cards built from the API-truth
+`reextract_modes` (Auto · Text layer · OCR every page with descriptions; the
+OCR card shows the page-count cost line + "requires an OCR model" hint),
+confirm disabled honestly while the material is `pending`/`processing`
+(double-enqueue honesty — reingest keeps no server-side in-flight guard by
+design, so dialog-level gating + versioned history carry the race), errors
+surfaced inline, en/de/el complete (`reextract.*` + `reextract.menuEntry`};
+`pnpm i18n` green). Entry points: **material view** ⋯ "More material actions"
+gains Re-extract (MaterialDetailBody, only when modes > 1},
+**Library** right-click single mode-bearing file → "Re-extract…" opens the
+dialog while non-mode kinds keep the direct one-click Re-ingest; multi-select
+Re-ingest unchanged **and** the local 4-kind `REINGESTABLE_KINDS` set is
+deleted — gating now reads `reextract_modes` + `blob_sha` (ADR-174 closes the
+4-vs-10 drift; as-built refinement: the old set also gated *file-backed*
+multi/retry semantics, preserved via modes>0 && blob rather than modes>1)…
+**course Materials tab** context menu gains Re-extract for single
+mode-bearing rows (workspace payload grew `reextract_modes`, computed with
+the same per-kind function, gated on `blob_sha`; hand `WorkspaceMaterial`
+type gained the field — the term dict is untyped in the schema, so no OpenAPI
+surface change). Vitest: ReExtractDialog suite (5: mode cards + cost line,
+applicability filter, confirm posts `{mode:'ocr'}`, processing disables,
+honest 422), Library re-pointed (pdf → dialog, txt → direct, multi unchanged,
+no local kind set), MaterialDetailBody gating (+2), MaterialsTab (+1).
+Frontend 1,173 green (+9), lint/typecheck/build/i18n green; backend
+e2e-untouched (vitest-only decision recorded in the plan).
+
+**Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
 control" — A+B+C LANDED (2026-09-15, ADR-172/173/175/176):** slice C wired the
 seeded `ocr.page` skill into the OCR path — the plan's context claim ("prompt
 hardcoded, not a skill") was wrong-as-built: the skill seed already existed

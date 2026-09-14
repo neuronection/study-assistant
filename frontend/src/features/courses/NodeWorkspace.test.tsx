@@ -368,6 +368,7 @@ const NODE_WS = {
       rationale: null,
       auto_assigned: false,
       confidence: null,
+      reextract_modes: ['auto', 'text', 'ocr'],
       has_extraction: true,
       via_folder_id: null,
       via_folder_name: null,
@@ -1302,6 +1303,39 @@ describe('NodeWorkspace', () => {
     fireEvent.contextMenu(row)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from node' }))
     await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith(5, 7))
+  })
+
+  test('materials tab right-click on a pdf offers Re-extract and opens the dialog', async () => {
+    primeDefaults()
+    getMaterial.mockImplementation((id: number) =>
+      Promise.resolve({
+        material: {
+          id,
+          title: 'chain-rule.pdf',
+          kind: 'pdf',
+          status: 'ready',
+          filename: 'chain-rule.pdf',
+          mime: 'application/pdf',
+          pages: 4,
+          course_id: 3,
+          group_id: null,
+          folder_id: null,
+          blob_sha: 'b'.repeat(64),
+          created_at: '2026-09-01T00:00:00Z',
+          reextract_modes: ['auto', 'text', 'ocr'],
+        },
+        extraction: null,
+        index_card: null,
+        drawings: [],
+        images: [],
+      }),
+    )
+    renderWorkspace('/courses/3/n/5?tab=materials')
+    const row = await screen.findByRole('button', { name: /chain-rule\.pdf/i })
+    fireEvent.contextMenu(row)
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Re-extract…' }))
+    expect(await screen.findByTestId('reextract-dialog')).toBeInTheDocument()
+    expect(await screen.findByTestId('reextract-mode-text')).toBeInTheDocument()
   })
 
   test('materials tab uploads land in the course library and are assigned to the node', async () => {

@@ -174,6 +174,7 @@ const MATERIAL = {
   folder_id: null,
   blob_sha: 'a'.repeat(64),
   created_at: '2026-08-18T00:00:00Z',
+  reextract_modes: ['auto', 'text', 'ocr'],
 }
 
 const DETAIL = {
@@ -792,7 +793,7 @@ describe('LibraryPage', () => {
     await waitFor(() => expect(deleteMaterial).toHaveBeenCalledWith(7))
   })
 
-  test('right-click on an unselected file offers re-ingest without its name', async () => {
+  test('right-click on an unselected mode-bearing file offers Re-extract without its name', async () => {
     reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([])
@@ -801,9 +802,28 @@ describe('LibraryPage', () => {
     const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!
     fireEvent.contextMenu(tile)
     const item = await screen.findByRole('menuitem', {
-      name: 'Re-ingest this file (OCR again)',
+      name: 'Re-extract…',
     })
     expect(screen.queryByRole('menuitem', { name: /chain-rule/ })).toBeNull()
+    fireEvent.click(item)
+    expect(reingestMaterialMock).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('reextract-dialog')).toBeInTheDocument()
+    expect(await screen.findByTestId('reextract-mode-ocr')).toBeInTheDocument()
+  })
+
+  test('right-click on a mode-less file re-ingests directly', async () => {
+    reingestMaterialMock.mockResolvedValue({ job_id: 9, material_id: 7, deduped: false })
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([
+      { ...MATERIAL, kind: 'txt', filename: 'notes.txt', title: 'notes.txt', reextract_modes: ['auto'] },
+    ])
+    renderAt('/library?course=3')
+    const tile = (await screen.findByText('notes.txt')).closest('button')!
+    fireEvent.contextMenu(tile)
+    const item = await screen.findByRole('menuitem', {
+      name: 'Re-ingest this file (OCR again)',
+    })
     fireEvent.click(item)
     await waitFor(() => expect(reingestMaterialMock).toHaveBeenCalledWith(7))
   })
@@ -814,7 +834,13 @@ describe('LibraryPage', () => {
     listFolders.mockResolvedValue([])
     listMaterials.mockResolvedValue([
       MATERIAL,
-      { ...MATERIAL, id: 8, title: 'limits.pdf', filename: 'limits.pdf' },
+      {
+        ...MATERIAL,
+        id: 8,
+        title: 'limits.pdf',
+        filename: 'limits.pdf',
+        reextract_modes: ['auto', 'text', 'ocr'],
+      },
     ])
     renderAt('/library?course=3')
     const tile = (await screen.findByText('chain-rule.pdf')).closest('button')!

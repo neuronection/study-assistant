@@ -25,6 +25,7 @@ export interface Material {
   tags?: string[]
   starred?: boolean
   link_count?: number
+  reextract_modes?: string[]
 }
 
 export interface Extraction {
@@ -278,9 +279,14 @@ export async function updateTextMaterial(params: {
   return { materialId: params.materialId, content, refToReal, jobId: null }
 }
 
-export async function reingestMaterial(materialId: number): Promise<UploadResult> {
+export async function reingestMaterial(
+  materialId: number,
+  options?: { mode: components['schemas']['ExtractionMode'] },
+): Promise<UploadResult> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/reingest`, {
     method: 'POST',
+    headers: options ? { 'Content-Type': 'application/json' } : undefined,
+    body: options ? JSON.stringify(options) : undefined,
   })
   if (!response.ok) {
     throw new Error(`re-ingest failed (${response.status})`)
