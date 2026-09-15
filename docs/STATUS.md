@@ -6,6 +6,22 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Fix — viewer raw-math regression for display math inside list items
+(2026-09-15, user-reported, material 93):** `normalizeMathFences` reflowed
+single-line `$$…$$` display spans into bare `$$⏎content⏎$$` fences, but kept
+the opener's list indentation on the first line only — micromark's flow math
+rejects the mixed-indent closing fence, so the span parsed as an empty math
+node and everything up to the next fence leaked out as raw text (red KaTeX
+error spans in the Formatted viewer; the editor never runs this transform,
+hence the viewer/editor mismatch). Fix: the canonical reflow now preserves
+the line's whitespace prefix on every emitted line (dedenting inner lines
+that already carry it) and leaves spans untouched when the line prefix
+contains non-whitespace (blockquotes) — column-0 behavior unchanged. Verified
+against the full material-93 payload (47 blocks, zero `katex-error`, 36
+display + 208 inline spans). Frontend tests: 2 new fidelity cases + a
+BlockRenderer regression for indented display math; full frontend gate green,
+backend untouched.
+
 **Plan 75 COMPLETE — A–E (2026-09-15, user-approved; ADRs 177–180).** The
 round: **A** node-targeted uploads (`node_id` on `POST /materials`,
 dedupe-always-assigns); **B** folder→node mirroring (idempotent,

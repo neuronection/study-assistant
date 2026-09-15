@@ -59,4 +59,21 @@ describe('normalizeMathFences', () => {
     const md = 'see: $$x\ny$$ here'
     expect(normalizeMathFences(md)).toBe(md)
   })
+
+  test('indented single-line display math keeps its indent when canonicalized', () => {
+    expect(normalizeMathFences('* item:\n  $$f(x)=1$$\n  tail')).toBe(
+      '* item:\n  $$\n  f(x)=1\n  $$\n  tail'
+    )
+  })
+
+  test('indented multi-line display math keeps its indent when canonicalized', () => {
+    expect(normalizeMathFences('* item:\n  $$f(x)=1\n  g(x)=2$$')).toBe(
+      '* item:\n  $$\n  f(x)=1\n  g(x)=2\n  $$'
+    )
+  })
+
+  test('non-whitespace line prefix (blockquote) leaves the span untouched', () => {
+    const md = '> $$f(x)=1$$ tail'
+    expect(normalizeMathFences(md)).toBe(md)
+  })
 })

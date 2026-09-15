@@ -298,4 +298,24 @@ describe('BlockRenderer', () => {
     expect(document.querySelector('.katex-display')).not.toBeNull()
   })
 
+  test('display math indented inside a list item renders without leaking raw latex (material 93)', () => {
+    const md = [
+      '### Θέμα',
+      '* **Ορισμός [M44]:** Η παράγωγος της $f(x)$:',
+      '  $$f\'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$$',
+      '  Η παράγωγος ($f\'(x) > 0 \\implies$ αύξουσα) [M44].',
+      '* **Κανόνες [M44], [M56]:**',
+      '  * Γραμμικότητα: $(af(x) + bg(x))\' = a f\'(x) + b g\'(x)$',
+    ].join('\n')
+    render(<BlockRenderer blocks={[{ type: 'text', md }]} />)
+    expect(document.querySelector('.katex-display')).not.toBeNull()
+    expect(document.querySelector('.katex-error')).toBeNull()
+    const rawLeak = Array.from(document.querySelectorAll('p, li')).find((el) => {
+      const clone = el.cloneNode(true) as HTMLElement
+      clone.querySelectorAll('.katex').forEach((node) => node.remove())
+      return /\\lim|\\frac|\$\$/.test(clone.textContent ?? '')
+    })
+    expect(rawLeak).toBeUndefined()
+  })
+
 })

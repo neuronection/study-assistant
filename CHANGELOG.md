@@ -17,6 +17,11 @@ Release history from before the public launch lives in the
 
 ### Fixed
 
+- Viewer: display math indented inside list items no longer leaks raw LaTeX as
+  red KaTeX errors — the `$$…$$` fence canonicalization now preserves the
+  line's indentation instead of emitting a mixed-indent closing fence that
+  remark-math rejects (`normalizeMathFences`).
+
 ## [v0.8.1] - 2026-09-10
 
 ### Added

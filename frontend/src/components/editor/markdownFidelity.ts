@@ -211,21 +211,26 @@ export function normalizeMathFences(md: string): string {
       return span
     }
     const inner = span.slice(2, -2).split(MATH_NEWLINE).join('\n')
-    const atLineStart = md.slice(md.lastIndexOf('\n', start) + 1, start).trim() === ''
+    const prefix = md.slice(md.lastIndexOf('\n', start) + 1, start)
+    if (prefix.trim() !== '') {
+      return span
+    }
+    const reflow = (content: string) =>
+      `$$\n${prefix}${content
+        .replace(/^\n+/, '')
+        .replace(/\n+$/, '')
+        .split('\n')
+        .map((line) => (prefix && line.startsWith(prefix) ? line.slice(prefix.length) : line))
+        .join(`\n${prefix}`)}\n${prefix}$$`
     if (inner.includes('\n')) {
-      if (!atLineStart) {
-        return span
-      }
-      return `$$\n${inner.replace(/^\n+/, '').replace(/\n+$/, '')}\n$$`
+      return reflow(inner)
     }
     const lineEnd = md.indexOf('\n', start)
     const stop = lineEnd === -1 ? md.length : lineEnd
-    const alone =
-      atLineStart && md.slice(start + span.length, stop).trim() === ''
-    if (!alone) {
+    if (md.slice(start + span.length, stop).trim() !== '') {
       return span
     }
-    return `$$\n${inner.trim()}\n$$`
+    return reflow(inner.trim())
   })
 }
 
