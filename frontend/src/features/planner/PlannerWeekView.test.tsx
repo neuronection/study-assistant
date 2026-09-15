@@ -66,9 +66,9 @@ describe('PlannerWeekView', () => {
     ) as HTMLElement | null
     expect(today).not.toBeNull()
     expect(today!.className).toContain('border-primary')
-    expect(today.textContent).toContain('midweek task')
-    expect(today.textContent).not.toContain('outside week')
-    expect(today.textContent).toContain('planner.weekday_wed')
+    expect(today!.textContent).toContain('midweek task')
+    expect(today!.textContent).not.toContain('outside week')
+    expect(today!.textContent).toContain('planner.weekday_wed')
   })
 
   test('overdue items get the warning border, done items strike through', () => {
@@ -108,8 +108,8 @@ describe('PlannerWeekView', () => {
       '[data-day="2026-09-18"]'
     ) as HTMLElement | null
     expect(friday).not.toBeNull()
-    fireEvent.dragOver(friday)
-    fireEvent.drop(friday, {
+    fireEvent.dragOver(friday!)
+    fireEvent.drop(friday!, {
       dataTransfer: { getData: () => '9' },
     })
     expect(onMove).toHaveBeenCalledTimes(1)

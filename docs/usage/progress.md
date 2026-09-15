@@ -80,6 +80,14 @@ highlighted — drag a card onto any other day to reschedule it (the same drag
 works in both views). Overdue items get a warning left border; checked-off
 items render struck-through.
 
+### Review reminders
+
+Home shows a strip whenever cards are due or tasks are overdue — one tap takes
+you to the review queue. Optionally, Settings → **Review reminders** lets the
+app send a browser notification (at most one summary every 30 minutes, only
+while the app is open and notifications are allowed). Off by default; if your
+browser blocks notifications, the settings hint tells you how to allow them.
+
 ### Calendar export (ICS)
 
 **ICS** in the tab header downloads the course plan as a calendar file: every

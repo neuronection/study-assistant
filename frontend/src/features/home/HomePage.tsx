@@ -15,6 +15,7 @@ import { ErrorBanner } from '@/components/ErrorBanner'
 import { useRequiredCourse } from '@/components/workspace/CoursePicker'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 import { useCaptureStore } from '@/lib/capture-store'
+import { useNotifications } from '@/components/layout/NotificationBell'
 import {
   createChatSession,
   createSampleCourse,
@@ -389,6 +390,40 @@ function ExamCard() {
   )
 }
 
+function ReviewNudgeStrip() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { data } = useNotifications()
+  if (!data || (data.due_cards === 0 && data.plan_overdue_count === 0)) {
+    return null
+  }
+  return (
+    <div className="border-primary/30 bg-primary/5 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+      <Layers className="text-primary size-4 shrink-0" aria-hidden />
+      <span className="text-foreground text-sm">
+        {data.due_cards > 0
+          ? t('home.cardsDue', { count: data.due_cards })
+          : null}
+        {data.due_cards > 0 && data.plan_overdue_count > 0
+          ? t('home.stripJoin')
+          : null}
+        {data.plan_overdue_count > 0
+          ? t('home.overdueTasks', { count: data.plan_overdue_count })
+          : null}
+      </span>
+      <Button
+        size="sm"
+        variant="outline"
+        className="ml-auto"
+        onClick={() => void navigate({ to: '/review' })}
+      >
+        <Target aria-hidden />
+        {t('today.reviewNow')}
+      </Button>
+    </div>
+  )
+}
+
 function NextBestActions() {
   const { t } = useTranslation()
   const recs = useQuery({ queryKey: ['recommendations'], queryFn: () => getRecommendations() })
@@ -687,6 +722,7 @@ export function HomePage() {
           <CardTitle className="text-sm">{t('home.nextAction')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <ReviewNudgeStrip />
           <ExamCard />
           <NextBestActions />
           <UpcomingPlanStrip />

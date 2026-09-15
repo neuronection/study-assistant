@@ -710,7 +710,10 @@
     "exploreTopic": "Scratchpad öffnen",
     "genesisTopic": "Erstelle einen Kurs zu einem Thema",
     "emptyCourses": "Noch keine Kurse — Materialien und Import kommen in Phase 1.",
-    "studyTime": "Lernzeit"
+    "studyTime": "Lernzeit",
+    "cardsDue": "{{count}} Karten fällig",
+    "overdueTasks": "{{count}} überfällige Aufgaben",
+    "stripJoin": " · "
   },
   "planner": {
     "upcomingTitle": "Plan für diese Woche",
@@ -1015,7 +1018,13 @@
     "packImportTitle": "Skill-Paket importieren",
     "packImportHint": "Wähle eine ca-skills/v1-JSON-Datei aus. Bei gleichnamigen Skills wirst du gefragt, ob du sie ersetzen (neue Version), umbenennen oder überspringen möchtest.",
     "packPickFile": "Paketdatei (.json)",
-    "packVersions": "{{count}} Versionen"
+    "packVersions": "{{count}} Versionen",
+    "remindersTitle": "Wiederholungs-Erinnerungen",
+    "remindersDescription": "Sanfter Hinweis, wenn Karten fällig sind — nur während die App geöffnet ist.",
+    "remindersToggle": "An fällige Karten erinnern",
+    "remindersHint": "Standardmäßig aus. Maximal eine Zusammenfassung pro 30 Minuten; Browser-Benachrichtigungen müssen erlaubt sein.",
+    "remindersDenied": "Browser-Benachrichtigungen sind für diese App blockiert — zuerst in den Browser-Einstellungen erlauben.",
+    "remindersUnsupported": "Diese Umgebung unterstützt keine Browser-Benachrichtigungen."
   },
   "genesis": {
     "title": "Kurs erstellen",
@@ -2319,5 +2328,9 @@
     "exams": "Prüfungen",
     "daysLeft": "· {{days}} T.",
     "moreOverdue": "+{{count}} weitere überfällig"
+  },
+  "nudges": {
+    "title": "{{count}} Karten fällig",
+    "body": "Eine kurze Wiederholung hält den Streak am Leben."
   }
 }

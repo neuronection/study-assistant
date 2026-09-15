@@ -710,7 +710,10 @@
     "exploreTopic": "Open the Scratchpad",
     "genesisTopic": "Generate a course from a topic",
     "emptyCourses": "No courses yet — materials and ingestion arrive in Phase 1.",
-    "studyTime": "Study time"
+    "studyTime": "Study time",
+    "cardsDue": "{{count}} cards due",
+    "overdueTasks": "{{count}} overdue tasks",
+    "stripJoin": " · "
   },
   "planner": {
     "upcomingTitle": "This week's plan",
@@ -1053,7 +1056,13 @@
     "packCreated": "Created: {{keys}}",
     "packReplaced": "Updated with new versions: {{keys}}",
     "packRenamed": "Renamed {{from}} → {{to}}",
-    "packSkipped": "Skipped {{key}} — {{reason}}"
+    "packSkipped": "Skipped {{key}} — {{reason}}",
+    "remindersTitle": "Review reminders",
+    "remindersDescription": "Get a gentle nudge when cards are due — only while the app is open.",
+    "remindersToggle": "Remind me about due cards",
+    "remindersHint": "Off by default. Fires at most one summary notification every 30 minutes; browser notifications must be allowed.",
+    "remindersDenied": "Browser notifications are blocked for this app — allow them in your browser settings first.",
+    "remindersUnsupported": "This environment does not support browser notifications."
   },
   "spike": {
     "title": "Rendering spike",
@@ -2319,5 +2328,9 @@
     "exams": "Exams",
     "daysLeft": "· {{days}}d",
     "moreOverdue": "+{{count}} more overdue"
+  },
+  "nudges": {
+    "title": "{{count}} cards due",
+    "body": "A short review keeps the streak alive."
   }
 }

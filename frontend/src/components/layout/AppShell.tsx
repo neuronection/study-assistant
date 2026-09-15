@@ -45,6 +45,7 @@ import { ChatPanel } from '@/features/chat/ChatPanel'
 import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { useDueCount } from '@/features/review/useDueCount'
+import { useReviewNudgeInterval } from '@/lib/review-nudges'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import {
   getScratchpad,
@@ -342,6 +343,7 @@ export function AppShell() {
   const palette = useCommandPaletteOpen()
   const shortViewport = useIsShortViewport()
   const dueCount = useDueCount()
+  useReviewNudgeInterval()
   const courseList = courses.data ?? []
   const profileList = profiles.data ?? []
   const activeCourse = courseList.find((course) => course.id === courseId) ?? null

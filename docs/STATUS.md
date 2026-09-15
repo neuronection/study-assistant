@@ -323,6 +323,28 @@ favorites, snap-to-notes, quick-capture hotkey, extra languages all shipped in
 plans 67/69); plan 49's doc copied into the app-repo `dev/plans/`. Also noted:
 `tests/evals/` still does not exist — populate the golden sets before/during 49.
 
+**Feature — review nudges (plan 68-C, ADR-153, 2026-09-15):** the review
+nudge surfaces the plan promised, re-scoped after plan 49-B shipped the rail
+badge. **Home strip**: when the `GET /notifications` aggregate reports due
+cards or overdue tasks, Home renders a highlighted strip — "N cards due ·
+M overdue tasks" — with a one-tap **Review now** button deep-linking to
+`/review` (hidden at zero: no nagging). **Opt-in browser notifications**:
+Settings → General gains **Review reminders** (`useReviewNudgeSetting` +
+`useReviewNudgeInterval` in `lib/review-nudges.ts`, opt-in flag in
+localStorage `ca-review-nudges`) — enabling requests browser permission and,
+once granted, an app-wide 30-minute interval fires **at most one** summary
+notification ("7 cards due") when the aggregate reports due cards, only while
+the document is visible or focused; clicking focuses the app and opens
+`/review`. Feature-detected: unsupported environments show an honest hint and
+the toggle never enables; denied permission shows the unblock hint. The rail
+Review badge from plan 49-B remains the always-visible passive surface; one
+`/notifications` fetch powers the bell and the strip. Tests:
+`review-nudges.test.tsx` (6: default-off, grant+persist, denied stays off,
+unsupported honest fallback, one-per-interval firing incl. 30-min pacing, zero
+due → silent) + HomePage strip covered via the aggregate mock. Backend 1,147
+green, frontend 1,243 green. **Plan 68 (reminders, calendar & review nudges)
+COMPLETE 2026-09-15 (A, B, C).**
+
 **Feature — planner week view + ICS export (plan 68-B, ADR-152, 2026-09-15):**
 the planner leaves the list. The Planner tab gains a **List ⇄ Week** segmented
 toggle (app-side — the library `ViewToggle` stays grid|list-typed) rendering a
@@ -1445,6 +1467,7 @@ Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit �
 
 | Module | Status | Notes |
 |---|---|---|
+| **Review nudges (plan 68-C)** | done | Home strip ("N cards due · M overdue tasks" → /review, hidden at zero) over the shared `/notifications` query + opt-in browser notifications (`lib/review-nudges.ts`: `useReviewNudgeSetting` permission handshake + persisted `ca-review-nudges` flag in Settings → General; `useReviewNudgeInterval` 30-min single summary while visible/focused, click → focus + /review; unsupported/denied honest states, ADR-153). Tests: `review-nudges.test.tsx` |
 | **Planner week view + ICS (plan 68-B)** | done | List⇄Week segmented toggle (`features/planner/PlannerWeekView.tsx`: Mon–Sun grid, today highlight, drag-between-days, overdue/done styling, layout re-flow) + `GET /courses/{id}/plan.ics` (`build_course_ics` in `services/study/planner.py`: all-day VEVENTs, stable UIDs, STATUS:CANCELLED for week-fresh done items, exam event, CRLF + folding + escaping, ADR-152). Tests: `test_plan_ics.py`, `PlannerWeekView.test.tsx` |
 | **Notification center (plan 68-A)** | done | `GET /notifications` computed aggregate (no table, ADR-151: due cards + ≤10 due reviews + today/overdue plan rows + ≤3 exam countdowns) + `NotificationBell` in the rail footer (library PopoverButton/Badge/EmptyState; animated count dot; localStorage seen-marker `ca-notifications-seen`; focus + 5-min polling; mark-seen on close). Tests: `test_notifications_api.py`, `NotificationBell.test.tsx` |
 | **Exam timing (plan 49-C)** | done | `activities.time_limit_sec` + `attempts.deadline_at` (0060, ADR-108); generate picker + Practice-tab Time-limit editor (`features/quiz/TimeLimitDialog.tsx`, `PATCH /quiz/activities/{id}/time-limit`); server enforcement in `api/quiz.py` (`_auto_submit_if_expired` + shared `_finish_attempt`, 422 `attempt_closed`, lazy sweep on report/finish); `CountdownChip` in FocusShell's new `chip` slot with server-offset correction; auto-submit summary banner. Tests: `test_quiz_time_limits.py`, `CountdownChip.test.tsx`, `TimeLimitDialog.test.tsx` |
@@ -1565,6 +1588,13 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-15 — **feat(nudges): review nudges (plan 68-C, ADR-153).** Home
+  strip with due-card/overdue counts and one-tap Review now (hidden at zero);
+  opt-in browser notifications in Settings → General — permission handshake,
+  30-min single-summary interval while the app is visible, honest
+  unsupported/denied states; click focuses the app and opens /review. Rail
+  badge from plan 49-B unchanged. Frontend 1,243 green (+6). **Plan 68
+  COMPLETE (A: notification center, B: week view + ICS, C: nudges).**
 - 2026-09-15 — **feat(planner): week view + ICS export (plan 68-B, ADR-152).**
   Planner tab gains a List⇄Week toggle rendering a Mon–Sun grid (today
   highlighted, overdue borders, struck-through done items, spring re-flow) with

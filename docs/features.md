@@ -851,6 +851,10 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Minutes-or-questions goals (H10): daily goal gains a unit
   (answers | minutes); streak counts any qualifying day — ≥1 answer/card review
   or ≥5 minutes of tracked study time
+- ✅ Review nudges: Home strip (due cards + overdue tasks → /review, hidden at
+  zero) and opt-in browser notifications (Settings → General; ≤1 summary per
+  30 min while the app is open; feature-detected with honest fallbacks) —
+  plan 68-C
 - ✅ Planner week view + ICS: List⇄Week toggle (Mon–Sun grid, today highlight,
   drag-between-days, overdue/done styling) and a server-rendered
   `GET /courses/{id}/plan.ics` calendar export with stable UIDs (re-import
