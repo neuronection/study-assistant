@@ -1,0 +1,474 @@
+{
+  "version": 1,
+  "description": "Golden set: quizgen deterministic question-validation contract (plan 49 eval duty). Exact problem strings are load-bearing: wording changes must be deliberate.",
+  "cases": [
+    {
+      "name": "single choice valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "single",
+        "answer": {
+          "index": 0
+        },
+        "options_md": [
+          "2x",
+          "x^2",
+          "x"
+        ]
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "single choice needs integer index",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "single",
+        "answer": {
+          "index": "first"
+        },
+        "options_md": [
+          "a",
+          "b"
+        ]
+      },
+      "expect_problems": [
+        "q0: single answer needs integer index"
+      ]
+    },
+    {
+      "name": "single choice index out of range",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "single",
+        "answer": {
+          "index": 5
+        },
+        "options_md": [
+          "a",
+          "b"
+        ]
+      },
+      "expect_problems": [
+        "q0: answer index out of range"
+      ]
+    },
+    {
+      "name": "multi choice valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "multi",
+        "answer": {
+          "indices": [
+            0,
+            2
+          ]
+        },
+        "options_md": [
+          "2",
+          "3",
+          "4"
+        ]
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "multi choice missing indices",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "multi",
+        "answer": {},
+        "options_md": [
+          "a",
+          "b"
+        ]
+      },
+      "expect_problems": [
+        "q0: multi answer needs indices list"
+      ]
+    },
+    {
+      "name": "truefalse valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "truefalse",
+        "answer": {
+          "value": true
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "truefalse non-boolean",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "truefalse",
+        "answer": {
+          "value": "yes"
+        }
+      },
+      "expect_problems": [
+        "q0: truefalse answer must be true/false"
+      ]
+    },
+    {
+      "name": "numeric valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "numeric",
+        "answer": {
+          "value": 4,
+          "tolerance": 1e-06
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "numeric non-numeric",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "numeric",
+        "answer": {
+          "value": "four"
+        }
+      },
+      "expect_problems": [
+        "q0: numeric answer needs numeric value"
+      ]
+    },
+    {
+      "name": "equation valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "equation",
+        "answer": {
+          "value": "2x"
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "text valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "text",
+        "answer": {
+          "value": "power rule"
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "numberline valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "numberline",
+        "answer": {
+          "domain": {
+            "min": 0,
+            "max": 10
+          },
+          "points": [
+            3
+          ]
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "table_fill valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "table_fill",
+        "answer": {
+          "headers": [
+            "x",
+            "f(x)"
+          ],
+          "rows": [
+            {
+              "label": "row 1",
+              "cells": [
+                {
+                  "kind": "locked",
+                  "value": "1"
+                },
+                {
+                  "kind": "numeric",
+                  "value": "2"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "composite valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "composite",
+        "answer": {
+          "parts": [
+            {
+              "type": "numeric",
+              "value": "4"
+            },
+            {
+              "type": "text",
+              "value": "yes"
+            }
+          ]
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "graph_read valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "graph_read",
+        "answer": {
+          "expression": "x^2",
+          "mode": "value",
+          "x_min": -2,
+          "x_max": 2,
+          "point_x": 1
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "code valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "code",
+        "answer": {
+          "reference_solution": "def f(x):\n    return 2*x",
+          "tests": [
+            {
+              "call": "f(2)",
+              "expected": "4"
+            }
+          ],
+          "timeout_ms": 2000
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "empty stem rejected",
+      "draft": {
+        "stem_md": "   ",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "truefalse",
+        "answer": {
+          "value": true
+        }
+      },
+      "expect_problems": [
+        "q0: empty stem"
+      ]
+    },
+    {
+      "name": "unknown type rejected",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "poetry",
+        "answer": {
+          "value": "5-7-5"
+        }
+      },
+      "expect_problems": [
+        "q0: unknown type 'poetry'"
+      ]
+    },
+    {
+      "name": "missing answer object rejected",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "truefalse",
+        "answer": null
+      },
+      "expect_problems": [
+        "q0: missing answer object",
+        "q0: truefalse answer must be true/false"
+      ]
+    },
+    {
+      "name": "too many concepts",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "truefalse",
+        "answer": {
+          "value": true
+        }
+      },
+      "expect_problems": [
+        "q0: more than 3 concepts (atomic tagging)"
+      ]
+    }
+  ]
+}

@@ -100,6 +100,7 @@ export function FocusShell({
   ariaLabel,
   context,
   meta,
+  chip,
   onClose,
   overlay = false,
   contentClassName,
@@ -110,6 +111,7 @@ export function FocusShell({
   ariaLabel?: string
   context?: FocusContextInfo | null
   meta?: ReactNode
+  chip?: ReactNode
   onClose?: () => void
   overlay?: boolean
   contentClassName?: string
@@ -158,6 +160,7 @@ export function FocusShell({
           {context ? <ContextBreadcrumb context={context} /> : null}
           <h1 className="truncate text-lg font-semibold">{title}</h1>
         </div>
+        {chip ? <div className="shrink-0">{chip}</div> : null}
         {overlay ? (
           <Button
             variant="ghost"

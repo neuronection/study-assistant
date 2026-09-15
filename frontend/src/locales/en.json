@@ -143,7 +143,11 @@
     "confirmDeleteSelection_one": "Delete {{count}} quiz?",
     "confirmDeleteSelection_other": "Delete {{count}} quizzes?",
     "shuffleLabel": "Shuffle",
-    "shuffleHint": "Randomize question and answer order for this attempt"
+    "shuffleHint": "Randomize question and answer order for this attempt",
+    "timeRemaining": "Time remaining",
+    "timeUp": "Time's up",
+    "autoSubmitted": "Time's up — the attempt was auto-submitted and graded with the answers given by the deadline.",
+    "timeLimit": "Time limit…"
   },
   "exercises": {
     "title": "Exercises",
@@ -2054,7 +2058,11 @@
       "explain": "Explain in your own words; graded by an AI rubric.",
       "error_spot": "Spot the error in a worked solution.",
       "correct_solution": "Fix the flawed line in a worked solution."
-    }
+    },
+    "timeLimitLabel": "Time limit",
+    "timeLimitNone": "No limit",
+    "timeLimitOption": "{{minutes}} min",
+    "timeLimitCustom": "Custom"
   },
   "ai": {
     "mentions": {

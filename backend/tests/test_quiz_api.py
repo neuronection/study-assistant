@@ -535,6 +535,7 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
         "activity_id",
         "mode",
         "started_at",
+        "deadline_at",
         "finished_at",
         "score",
     }

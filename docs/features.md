@@ -499,8 +499,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   declared-difficulty seed after ≥10 attempts — too-hard/too-easy detection
   for the bank. Low-attempt questions keep wide uncertainty (no flag, and
   targeting falls back to the requested difficulty)
-- — Cloze/match/order (C3), essay rubrics (C17),
-  practice/exam UI differences (C10), item analysis (C15)
+- ✅ Quiz time limits (C10 completion, plan 49-C): `activities.time_limit_sec` +
+  server-computed `attempts.deadline_at`; generate picker (none/30/60/90/120/custom)
+  and a Practice-tab ⋯ Time limit editor; countdown chip in the runner
+  (server-offset corrected), auto-submit at the deadline mark with an honest
+  summary, post-deadline answers rejected `attempt_closed`, lazy sweep on read.
+  Cloze/match/order (C3) and essay rubrics (C17) remain open (item analysis
+  C15 shipped as first cut, see analytics)
 
 ## Exercises & tutor
 

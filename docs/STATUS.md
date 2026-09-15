@@ -6,6 +6,28 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — exam timing (plan 49-C, ADR-108, 2026-09-15):** quizzes can now
+carry a **server-enforced clock**. Migration **0060** adds
+`activities.time_limit_sec` (nullable) and `attempts.deadline_at`
+(server-computed at attempt start — the client clock is untrusted).
+`POST /quiz/generate` accepts `time_limit_sec` (60–14400 s) and
+`PATCH /quiz/activities/{id}/time-limit` edits/clears it later (Practice tab ⋯
+→ *Time limit…*, `features/quiz/TimeLimitDialog.tsx` presets 30/60/90/120 +
+custom). Enforcement: `submit_answer` and `request_quiz_hint` auto-submit the
+attempt on the first touch after expiry and reject the action with
+422 `attempt_closed`; `finish` and `attempt_report` run the same lazy sweep —
+finished_at is stamped at the **deadline mark**, not the sweep moment, and no
+background timer exists (local-first). Runner UX: `CountdownChip` in a new
+FocusShell `chip` slot renders remaining time offset-corrected
+(`started_at − Date.now()` snapshot, local tick, amber at ≤60 s, red at
+expiry), fires the finish on expiry, and the summary carries an honest
+"Time's up — auto-submitted" banner; submit errors on `attempt_closed` route
+to the same flow. Exam mode keeps its help lock; the limit applies to practice
+and exam alike. AttemptOut gained `deadline_at`, ActivityOut `time_limit_sec`
+(`pnpm api:types` regenerated). Tests: `test_quiz_time_limits.py` (6) +
+`CountdownChip.test.tsx` (5) + `TimeLimitDialog.test.tsx` (3); backend 1,137
+green, frontend 1,237 green, lint/typecheck/build/i18n green.
+
 **Feature — global Review queue (plan 49-B, ADR-107, 2026-09-15):** the
 FSRS queue is no longer trapped per course. New `GET /review/due`
 (`api/review.py`) aggregates due cards (due-or-unscheduled, scratch courses
@@ -300,6 +322,17 @@ copies reconciled (stale "unpulled" backlog corrected: URL importer, tags/
 favorites, snap-to-notes, quick-capture hotkey, extra languages all shipped in
 plans 67/69); plan 49's doc copied into the app-repo `dev/plans/`. Also noted:
 `tests/evals/` still does not exist — populate the golden sets before/during 49.
+
+**Plan 49 (study experience) COMPLETE (2026-09-15; A, B, C):** **A** —
+`study_sessions` (0059, ADR-106) + focus timer + minutes-or-answers goals;
+**B** — global cross-course Review queue (`/review`, ADR-107); **C** —
+server-enforced quiz time limits (0060, ADR-108). Eval duty also landed:
+`backend/tests/evals/` now exists with the first golden set
+(`golden/quizgen_validation.json` — 20 cases pinning the deterministic
+question-validation contract, exact problem strings load-bearing) run by
+`pytest tests/evals/` (2 tests: golden match + type coverage); future
+model-quality golden sets join the directory. Next in the approved order:
+**plan 68**.
 
 **Next (planned) — plan 70 "Compose quality & scale":** deterministic coverage
 accounting + `needs_review` gate for AI-composed material, orphan-material
@@ -1371,6 +1404,7 @@ Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit �
 
 | Module | Status | Notes |
 |---|---|---|
+| **Exam timing (plan 49-C)** | done | `activities.time_limit_sec` + `attempts.deadline_at` (0060, ADR-108); generate picker + Practice-tab Time-limit editor (`features/quiz/TimeLimitDialog.tsx`, `PATCH /quiz/activities/{id}/time-limit`); server enforcement in `api/quiz.py` (`_auto_submit_if_expired` + shared `_finish_attempt`, 422 `attempt_closed`, lazy sweep on report/finish); `CountdownChip` in FocusShell's new `chip` slot with server-offset correction; auto-submit summary banner. Tests: `test_quiz_time_limits.py`, `CountdownChip.test.tsx`, `TimeLimitDialog.test.tsx` |
 | **Global Review queue (plan 49-B)** | done | `GET /review/due` (per-course groups + due counts, scratch excluded) + `/review` page (`features/review/`: `ReviewPage` + course-agnostic `ReviewQueue` with keyboard 1–4, progress bar, course chips, batch flow) + rail badge (`useDueCount` over the same endpoint); Practice tab cards segment embeds the same queue course-scoped with its print sheet (`features/practice/FlashcardPrintSheet`); `features/flashcards/` dissolved. Tests: `test_review_api.py`, `ReviewQueue.test.tsx`, `ReviewPage.test.tsx` |
 | **Study time tracking + focus timer (plan 49-A)** | done | `study_sessions` table (0059, ADR-106) + `api/study_sessions.py` (`POST` start/resume, `PATCH` heartbeat/end with `last_beat + 120 s` clamp, `GET /summary`) + `services/study/sessions.py` (resume window 120 s, 12 h cap) + `lib/use-study-session.ts` auto-sessions on quiz/exercise/note/read surfaces + `components/layout/FocusTimer.tsx` floating pill (`lib/focus-timer-store.ts`) with 25/5, 50/10, custom presets and break flow; analytics: `daily_rollups.study_seconds`, minutes-or-answers goals (`study_goals.unit`/`minutes_per_day`), streak = answers/cards or ≥5 min sessions; Home Study-time card + study-aware heatmap. Tests: `test_study_sessions.py`, `use-study-session.test.tsx`, `FocusTimer.test.tsx` |
 | **Working directory (plan 45)** | done | The app data directory (db/blobs/backups/cache) is a first-class setting. Backend: `core/working_dir.py` (pointer file in `SA_CONFIG_DIR`, default `<platform config dir>/StudyAssistant/working-dir.txt`), `Settings.data_dir` factory = pointer → platform default (`SA_DATA_DIR`/`.env` still wins), `api/config.py` — `GET /config/working-dir` (`path`/`default_path`/`custom`/`restart_pending`), `POST /config/working-dir/validate` (absolute, writable, empty **or** existing SA dir with `app.db`; reasons `relative_path`/`already_current`/`inside_current`/`contains_current`/`not_a_directory`/`not_writable`/`not_empty`/`invalid_path`; writability probed with a temp file, creatable paths via nearest existing ancestor), `PUT` (validate + write pointer; applies on restart), `DELETE` (clear). Frontend: shared `features/settings/WorkingDirEditor` (validate feedback, Save gated on a validated changed path, Use-default, Restore-default, restart-pending banner + Undo) in **Settings → Data** (top card) and **wizard step 2** (now 8 steps). No live rebind, no auto-copy — moving data = backup/restore (`usage/getting-started.md`). Tests: `test_working_dir.py` (8) + `WorkingDirEditor.test.tsx` (4) |
@@ -1488,6 +1522,17 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-15 — **feat(quiz): server-enforced exam timing (plan 49-C, ADR-108).**
+  Migration 0060 (`activities.time_limit_sec`, `attempts.deadline_at`);
+  time-limit picker at generation + ⋯ Time-limit editor in the Practice tab;
+  deadline computed at attempt start, auto-submit at the deadline mark on the
+  first endpoint touch after expiry (answer/hint → 422 `attempt_closed`,
+  report/finish → lazy sweep); runner countdown chip (server-offset corrected,
+  amber/red states) with honest "Time's up" summary; exam help-lock unchanged.
+  Backend 1,137 green (+6), frontend 1,237 green (+8). Eval duty: seeded
+  `backend/tests/evals/` with the first golden set (quizgen validation
+  contract, 20 cases + type-coverage check) — `pytest tests/evals/` is now a
+  runnable gate (backend 1,139 green with it).
 - 2026-09-15 — **feat(review): cross-course Review queue (plan 49-B, ADR-107).**
   `GET /review/due` groups due cards by course with counts and a per-course
   first batch; `/review` page + rail entry with live due-count badge; the

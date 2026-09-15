@@ -97,6 +97,17 @@
             "title": "Question Count",
             "type": "integer"
           },
+          "time_limit_sec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Sec"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -337,6 +348,17 @@
             "title": "Activity Id",
             "type": "integer"
           },
+          "deadline_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline At"
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -377,6 +399,7 @@
           "activity_id",
           "mode",
           "started_at",
+          "deadline_at",
           "finished_at",
           "score"
         ],
@@ -8871,6 +8894,25 @@
         "title": "QuizRename",
         "type": "object"
       },
+      "QuizTimeLimit": {
+        "properties": {
+          "time_limit_sec": {
+            "anyOf": [
+              {
+                "maximum": 14400.0,
+                "minimum": 60.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Sec"
+          }
+        },
+        "title": "QuizTimeLimit",
+        "type": "object"
+      },
       "ReadOut": {
         "properties": {
           "chars": {
@@ -13337,6 +13379,19 @@
               }
             ],
             "title": "Skill"
+          },
+          "time_limit_sec": {
+            "anyOf": [
+              {
+                "maximum": 14400.0,
+                "minimum": 60.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Sec"
           },
           "topic": {
             "anyOf": [
@@ -23219,6 +23274,58 @@
           }
         },
         "summary": "Quiz Questions",
+        "tags": [
+          "quiz"
+        ]
+      }
+    },
+    "/api/v1/quiz/activities/{activity_id}/time-limit": {
+      "patch": {
+        "operationId": "set_quiz_time_limit_api_v1_quiz_activities__activity_id__time_limit_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "activity_id",
+            "required": true,
+            "schema": {
+              "title": "Activity Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizTimeLimit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Quiz Time Limit",
         "tags": [
           "quiz"
         ]

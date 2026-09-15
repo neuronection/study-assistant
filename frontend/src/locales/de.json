@@ -93,7 +93,11 @@
     "confirmDeleteSelection_one": "{{count}} Quiz löschen?",
     "confirmDeleteSelection_other": "{{count}} Quizze löschen?",
     "shuffleLabel": "Mischen",
-    "shuffleHint": "Fragen und Antworten für diesen Versuch zufällig anordnen"
+    "shuffleHint": "Fragen und Antworten für diesen Versuch zufällig anordnen",
+    "timeRemaining": "Verbleibende Zeit",
+    "timeUp": "Zeit abgelaufen",
+    "autoSubmitted": "Zeit abgelaufen — der Versuch wurde automatisch abgegeben und mit den bis zum Limit gegebenen Antworten gewertet.",
+    "timeLimit": "Zeitlimit…"
   },
   "app": {
     "name": "Study Assistant"
@@ -2054,7 +2058,11 @@
     "shuffleInfo": "Fragenreihenfolge und, wenn möglich, Antwortoptionen zufällig anordnen. Auswahlindizes werden den gespeicherten Antworten wieder zugeordnet, damit die Bewertung exakt bleibt.",
     "exerciseFormatInfo": "Jede ausgewählte Übungsart erzeugt eine Übung dieser Art. Wähle mehrere aus, um eine gemischte Auswahl zu erstellen.",
     "stepCountInfo": "Wie viele Schritte jede generierte Übung hat. Geführte Übungen führen dich mit Hinweisen Schritt für Schritt durch diese.",
-    "difficultyInfo": "Schwierigkeitsgrad der generierten Inhalte. Bei „Gemischt“ kann die KI den Schwierigkeitsgrad für jedes Element variieren."
+    "difficultyInfo": "Schwierigkeitsgrad der generierten Inhalte. Bei „Gemischt“ kann die KI den Schwierigkeitsgrad für jedes Element variieren.",
+    "timeLimitLabel": "Zeitlimit",
+    "timeLimitNone": "Kein Limit",
+    "timeLimitOption": "{{minutes}} Min.",
+    "timeLimitCustom": "Benutzerdefiniert"
   },
   "ai": {
     "badge": {

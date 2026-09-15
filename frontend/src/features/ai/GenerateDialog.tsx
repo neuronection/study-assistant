@@ -73,6 +73,8 @@ interface MaterialOption {
   inScope: boolean
 }
 
+const TIME_LIMIT_PRESETS = [30, 60, 90, 120]
+
 export function GenerateDialog({
   task,
   courseId,
@@ -118,8 +120,10 @@ export function GenerateDialog({
     initial?.composeKind ?? 'study_guide'
   )
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
+
   const [count, setCount] = useState(initial?.count ?? 8)
   const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 0)
+  const [timeLimitMin, setTimeLimitMin] = useState(0)
   const [stepCount, setStepCount] = useState(initial?.stepCount ?? 4)
   const [exerciseKind, setExerciseKind] = useState<ExerciseKind>(
     initial?.exerciseKind ?? 'multi_step'
@@ -363,6 +367,7 @@ export function GenerateDialog({
           count,
           difficulty: difficulty > 0 ? difficulty : null,
           topic: topic.trim() || null,
+          time_limit_sec: timeLimitMin > 0 ? timeLimitMin * 60 : null,
           ...(quizTypes.length > 0
             ? { question_types: [...quizTypes], shuffle }
             : {}),
@@ -721,20 +726,60 @@ export function GenerateDialog({
                   </select>
                 </label>
                 {task === 'quiz' ? (
-                  <label className="flex flex-1 flex-col gap-1 text-xs">
-                    {t('generate.countLabel')}
-                    <select
-                      className="bg-surface border-border rounded-md border px-2 py-1.5 text-xs"
-                      value={count}
-                      onChange={(event) => setCount(Number(event.target.value))}
-                    >
-                      {[5, 8, 10, 15, 20].map((value) => (
-                        <option key={value} value={value}>
-                          {t('quiz.countOption', { count: value })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <>
+                    <label className="flex flex-1 flex-col gap-1 text-xs">
+                      {t('generate.countLabel')}
+                      <select
+                        className="bg-surface border-border rounded-md border px-2 py-1.5 text-xs"
+                        value={count}
+                        onChange={(event) => setCount(Number(event.target.value))}
+                      >
+                        {[5, 8, 10, 15, 20].map((value) => (
+                          <option key={value} value={value}>
+                            {t('quiz.countOption', { count: value })}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-1 flex-col gap-1 text-xs">
+                      {t('generate.timeLimitLabel')}
+                      <select
+                        className="bg-surface border-border rounded-md border px-2 py-1.5 text-xs"
+                        value={
+                          TIME_LIMIT_PRESETS.includes(timeLimitMin) || timeLimitMin === 0
+                            ? timeLimitMin
+                            : -1
+                        }
+                        onChange={(event) => {
+                          const value = Number(event.target.value)
+                          setTimeLimitMin(value === -1 ? 25 : value)
+                        }}
+                      >
+                        <option value={0}>{t('generate.timeLimitNone')}</option>
+                        {TIME_LIMIT_PRESETS.map((value) => (
+                          <option key={value} value={value}>
+                            {t('generate.timeLimitOption', { minutes: value })}
+                          </option>
+                        ))}
+                        <option value={-1}>{t('generate.timeLimitCustom')}</option>
+                      </select>
+                      {!TIME_LIMIT_PRESETS.includes(timeLimitMin) && timeLimitMin !== 0 ? (
+                        <input
+                          type="number"
+                          min={1}
+                          max={240}
+                          value={timeLimitMin}
+                          aria-label={t('generate.timeLimitCustom')}
+                          onChange={(event) =>
+                            setTimeLimitMin(
+                              Math.min(240, Math.max(1, Number(event.target.value) || 1))
+                            )
+                          }
+                          className="bg-surface border-border rounded-md border px-2 py-1 text-center text-xs"
+                        />
+                      ) : null}
+                    </label>
+                  </>
                 ) : (
                   <label className="flex flex-1 flex-col gap-1 text-xs">
                     {t('exercises.stepCountLabel')}

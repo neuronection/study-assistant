@@ -21,6 +21,7 @@ import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
 import { FlashcardPrintSheet } from '@/features/practice/FlashcardPrintSheet'
 import { ReviewQueue } from '@/features/review/ReviewQueue'
 import { ImportDialog } from '@/features/quiz/ImportDialog'
+import { TimeLimitDialog } from '@/features/quiz/TimeLimitDialog'
 import { useCurrentOrigin } from '@/lib/origin'
 import { useSelection } from '@/lib/useSelection'
 import { useConfirm } from '@/lib/use-confirm'
@@ -40,6 +41,7 @@ import {
   renameExercise,
   renameQuiz,
   reviewFlashcard,
+  setQuizTimeLimit,
   similarExercise,
   type QuizActivity,
 } from '@/lib/api'
@@ -117,6 +119,7 @@ export function PracticeTab({
   const [renaming, setRenaming] = useState<
     { kind: 'quiz' | 'exercise'; id: number; title: string } | null
   >(null)
+  const [timing, setTiming] = useState<{ id: number; limit: number | null } | null>(null)
   const [showCardsGenerate, setShowCardsGenerate] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -420,6 +423,14 @@ export function PracticeTab({
           },
         },
         {
+          key: 'timeLimit',
+          label: t('quiz.timeLimit'),
+          onSelect: () => {
+            const quiz = (quizzes.data ?? []).find((entry) => entry.id === quizId)
+            setTiming({ id: quizId, limit: quiz?.time_limit_sec ?? null })
+          },
+        },
+        {
           key: 'rename',
           label: t('common.rename'),
           onSelect: () => {
@@ -679,6 +690,20 @@ export function PracticeTab({
           confirmLabel={t('moveToNode.confirm')}
           onDone={onMoveDone}
           onClose={() => setMoveTarget(false)}
+        />
+      ) : null}
+
+      {timing !== null ? (
+        <TimeLimitDialog
+          title={t('quiz.timeLimit')}
+          currentSec={timing.limit}
+          onConfirm={(limit) => {
+            setQuizTimeLimit(timing.id, limit)
+              .then(() => queryClient.invalidateQueries({ queryKey: ['quizzes'] }))
+              .catch(() => {})
+            setTiming(null)
+          }}
+          onClose={() => setTiming(null)}
         />
       ) : null}
 

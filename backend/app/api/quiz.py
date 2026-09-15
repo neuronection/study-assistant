@@ -1,6 +1,7 @@
 import base64
 import json
 import time
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
@@ -21,6 +22,7 @@ from ..domain.models import (
     Mistake,
     Question,
     QuizHelpEvent,
+    utcnow,
 )
 from ..math.code import code_public_input
 from ..math.composite import composite_public_input
@@ -61,6 +63,7 @@ class GenerateIn(ContextParams):
     skill: str | None = Field(default=None, max_length=20)
     question_types: list[str] | None = None
     shuffle: bool = False
+    time_limit_sec: int | None = Field(default=None, ge=60, le=14400)
 
 
 class QuestionOut(BaseModel):
@@ -83,6 +86,7 @@ class ActivityOut(BaseModel):
     course_id: int | None
     node_id: int | None
     question_count: int
+    time_limit_sec: int | None = None
 
 
 class AnswerIn(BaseModel):
@@ -107,6 +111,7 @@ class AttemptOut(BaseModel):
     activity_id: int
     mode: str
     started_at: str
+    deadline_at: str | None
     finished_at: str | None
     score: float | None
 
@@ -182,6 +187,7 @@ def _activity_out(activity: Activity, question_count: int) -> ActivityOut:
         course_id=activity.course_id,
         node_id=activity.node_id,
         question_count=question_count,
+        time_limit_sec=activity.time_limit_sec,
     )
 
 
@@ -283,6 +289,7 @@ def generate_quiz(
             if title_topic
             else f"Quiz · {time.strftime('%Y-%m-%d %H:%M')}"
         ),
+        time_limit_sec=body.time_limit_sec,
         config={
             "count": body.count,
             "difficulty": body.difficulty,
@@ -710,6 +717,32 @@ def move_quiz(
     return _activity_out(activity, count)
 
 
+class QuizTimeLimit(BaseModel):
+    time_limit_sec: int | None = Field(default=None, ge=60, le=14400)
+
+
+@router.patch("/activities/{activity_id}/time-limit", response_model=ActivityOut)
+def set_quiz_time_limit(
+    activity_id: int, body: QuizTimeLimit, session: Session = Depends(get_session)
+) -> ActivityOut:
+    profile = ensure_default_profile(session)
+    activity = session.scalar(
+        select(Activity).where(
+            Activity.id == activity_id, Activity.profile_id == profile.id
+        )
+    )
+    if activity is None:
+        raise HTTPException(status_code=404, detail="quiz not found")
+    activity.time_limit_sec = body.time_limit_sec
+    session.commit()
+    count = len(
+        session.scalars(
+            select(Question.id).where(Question.activity_id == activity.id)
+        ).all()
+    )
+    return _activity_out(activity, count)
+
+
 @router.delete("/activities/{activity_id}", response_model=QuizDeletedOut)
 def delete_quiz(activity_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
@@ -801,9 +834,51 @@ def start_attempt(
     if mode not in (AttemptMode.PRACTICE, AttemptMode.EXAM):
         raise HTTPException(status_code=422, detail="mode must be practice or exam")
     attempt = Attempt(activity_id=activity_id, mode=mode)
+    if activity.time_limit_sec is not None:
+        attempt.deadline_at = utcnow() + timedelta(seconds=activity.time_limit_sec)
     session.add(attempt)
     session.commit()
     return _attempt_out(attempt)
+
+
+def _iso_or_none(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.isoformat()
+
+
+
+def _finish_attempt(
+    session: Session, attempt: Attempt, activity: Activity, finished_at: datetime | None = None
+) -> Attempt:
+    if attempt.finished_at is not None:
+        return attempt
+    answers = list(
+        session.scalars(select(Answer).where(Answer.attempt_id == attempt.id))
+    )
+    total = len(
+        session.scalars(select(Question.id).where(Question.activity_id == activity.id)).all()
+    )
+    score = 0.0
+    for answer in answers:
+        score += answer.partial_credit or 0.0
+    attempt.score = round(score / total, 4) if total else 0.0
+    attempt.finished_at = finished_at if finished_at is not None else utcnow()
+    return attempt
+
+
+def _auto_submit_if_expired(session: Session, attempt: Attempt, activity: Activity) -> bool:
+    if attempt.finished_at is not None or attempt.deadline_at is None:
+        return False
+    deadline = attempt.deadline_at
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    if utcnow() <= deadline:
+        return False
+    _finish_attempt(session, attempt, activity, finished_at=deadline)
+    return True
 
 
 def _attempt_out(attempt: Attempt) -> AttemptOut:
@@ -811,8 +886,9 @@ def _attempt_out(attempt: Attempt) -> AttemptOut:
         id=attempt.id,
         activity_id=attempt.activity_id,
         mode=attempt.mode,
-        started_at=attempt.started_at.isoformat(),
-        finished_at=attempt.finished_at.isoformat() if attempt.finished_at else None,
+        started_at=_iso_or_none(attempt.started_at) or "",
+        deadline_at=_iso_or_none(attempt.deadline_at),
+        finished_at=_iso_or_none(attempt.finished_at),
         score=attempt.score,
     )
 
@@ -833,6 +909,9 @@ def submit_answer(
         raise HTTPException(status_code=404, detail="attempt not found")
     if attempt.finished_at is not None:
         raise HTTPException(status_code=422, detail="attempt already finished")
+    if _auto_submit_if_expired(session, attempt, activity):
+        session.commit()
+        raise HTTPException(status_code=422, detail="attempt_closed")
     question = session.get(Question, body.question_id)
     if question is None or question.activity_id != activity.id:
         raise HTTPException(status_code=404, detail="question not in this quiz")
@@ -962,13 +1041,16 @@ def request_quiz_hint(
     session: Session = Depends(get_session),
 ) -> QuizHintOut:
     profile = ensure_default_profile(session)
-    attempt, _activity, question = _load_attempt_question(
+    attempt, activity, question = _load_attempt_question(
         session, attempt_id, profile.id, question_id
     )
     if attempt.mode == AttemptMode.EXAM:
         raise HTTPException(status_code=422, detail="help is disabled in exam mode")
     if attempt.finished_at is not None:
         raise HTTPException(status_code=422, detail="attempt already finished")
+    if _auto_submit_if_expired(session, attempt, activity):
+        session.commit()
+        raise HTTPException(status_code=422, detail="attempt_closed")
     prior_levels = list(
         session.scalars(
             select(QuizHelpEvent.level).where(
@@ -1148,19 +1230,8 @@ def finish_attempt(
         raise HTTPException(status_code=404, detail="attempt not found")
     if attempt.finished_at is not None:
         return _attempt_out(attempt)
-    answers = list(
-        session.scalars(select(Answer).where(Answer.attempt_id == attempt.id))
-    )
-    total = len(
-        session.scalars(select(Question.id).where(Question.activity_id == activity.id)).all()
-    )
-    score = 0.0
-    for answer in answers:
-        score += answer.partial_credit or 0.0
-    attempt.score = round(score / total, 4) if total else 0.0
-    from ..domain.models import utcnow
-
-    attempt.finished_at = utcnow()
+    _auto_submit_if_expired(session, attempt, activity)
+    _finish_attempt(session, attempt, activity)
     session.commit()
     return _attempt_out(attempt)
 
@@ -1176,6 +1247,8 @@ def attempt_report(
     activity = session.get(Activity, attempt.activity_id)
     if activity is None or activity.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="attempt not found")
+    if _auto_submit_if_expired(session, attempt, activity):
+        session.commit()
     answers = list(
         session.scalars(
             select(Answer).where(Answer.attempt_id == attempt.id).order_by(Answer.id)

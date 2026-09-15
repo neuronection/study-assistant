@@ -416,6 +416,7 @@ export {
   recognizeHandwriting,
   renameQuiz,
   requestQuizHint,
+  setQuizTimeLimit,
   startQuizAttempt,
   submitQuizAnswer,
 } from './quiz'

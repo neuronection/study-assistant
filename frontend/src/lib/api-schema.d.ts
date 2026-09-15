@@ -3167,6 +3167,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quiz/activities/{activity_id}/time-limit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set Quiz Time Limit */
+        patch: operations["set_quiz_time_limit_api_v1_quiz_activities__activity_id__time_limit_patch"];
+        trace?: never;
+    };
     "/api/v1/quiz/attempts": {
         parameters: {
             query?: never;
@@ -4041,6 +4058,8 @@ export interface components {
             node_id: number | null;
             /** Question Count */
             question_count: number;
+            /** Time Limit Sec */
+            time_limit_sec?: number | null;
             /** Title */
             title: string;
             /** Type */
@@ -4125,6 +4144,8 @@ export interface components {
         AttemptOut: {
             /** Activity Id */
             activity_id: number;
+            /** Deadline At */
+            deadline_at: string | null;
             /** Finished At */
             finished_at: string | null;
             /** Id */
@@ -6833,6 +6854,11 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** QuizTimeLimit */
+        QuizTimeLimit: {
+            /** Time Limit Sec */
+            time_limit_sec?: number | null;
+        };
         /** ReadOut */
         ReadOut: {
             /** Chars */
@@ -8263,6 +8289,8 @@ export interface components {
             shuffle: boolean;
             /** Skill */
             skill?: string | null;
+            /** Time Limit Sec */
+            time_limit_sec?: number | null;
             /** Topic */
             topic?: string | null;
         };
@@ -15100,6 +15128,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_quiz_time_limit_api_v1_quiz_activities__activity_id__time_limit_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizTimeLimit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"];
                 };
             };
             /** @description Validation Error */

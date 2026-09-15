@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
 import { ArrowRight, Check, ClipboardList, HelpCircle, Loader2, MessageSquare, PenTool, Shuffle, Sparkles, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 
@@ -39,6 +39,7 @@ import {
   tableGridComplete,
 } from '@/components/answers/TableFillAnswer'
 import type { Block } from '@/components/blocks/types'
+import { CountdownChip } from '@/features/quiz/CountdownChip'
 import { QuizPrintPaper } from '@/features/quiz/QuizPrintPaper'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -115,6 +116,8 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
+  const [serverOffsetMs, setServerOffsetMs] = useState(0)
+  const [timeUp, setTimeUp] = useState(false)
   const [startedAt, setStartedAt] = useState<number>(Date.now())
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -210,6 +213,13 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
     onSuccess: (started) => {
       setAttempt(started)
       setStartedAt(Date.now())
+      setServerOffsetMs(Date.parse(started.started_at) - Date.now())
+      if (started.deadline_at !== null) {
+        const remainingMs = Date.parse(started.deadline_at) - (Date.now() + (Date.parse(started.started_at) - Date.now()))
+        if (remainingMs <= 0) {
+          setTimeUp(true)
+        }
+      }
     },
   })
 
@@ -230,7 +240,14 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
         usedWrite ? strokes : undefined
       ),
     onSuccess: (result) => setFeedback(result),
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      if (err.message.includes('attempt_closed')) {
+        setTimeUp(true)
+        finish.mutate()
+        return
+      }
+      setError(err.message)
+    },
   })
 
   const recognize = useMutation({
@@ -257,6 +274,11 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
     mutationFn: () => finishQuizAttempt(attempt!.id),
     onSuccess: (finished) => setScore(finished.score ?? 0),
   })
+
+  const handleExpire = useCallback(() => {
+    setTimeUp(true)
+    finish.mutate()
+  }, [finish])
 
   const hint = useMutation({
     mutationFn: (level: number) =>
@@ -286,6 +308,11 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
             <CardTitle className="text-center text-base">{t('quiz.summaryTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
+            {timeUp ? (
+              <p className="border-danger/40 bg-danger/10 text-danger w-full rounded-lg border px-3 py-2 text-center text-sm font-medium">
+                {t('quiz.autoSubmitted')}
+              </p>
+            ) : null}
             <div className="relative flex size-36 items-center justify-center rounded-full border-8"
               style={{ borderColor: percent >= 70 ? 'var(--success)' : percent >= 40 ? 'var(--warning)' : 'var(--danger)' }}
             >
@@ -368,6 +395,15 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
       title={activity.data?.title ?? t('quiz.summaryTitle')}
       context={context}
       onClose={goBack}
+      chip={
+        attempt?.deadline_at ? (
+          <CountdownChip
+            deadlineIso={attempt.deadline_at}
+            offsetMs={serverOffsetMs}
+            onExpire={handleExpire}
+          />
+        ) : null
+      }
       meta={
         <>
           <span>{t('quiz.metaQuestions', { count: list.length })}</span>

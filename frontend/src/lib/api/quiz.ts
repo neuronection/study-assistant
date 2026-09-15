@@ -51,6 +51,7 @@ export interface QuizActivity {
   course_id: number | null
   node_id: number | null
   question_count: number
+  time_limit_sec: number | null
 }
 
 export async function generateQuiz(body: {
@@ -63,6 +64,7 @@ export async function generateQuiz(body: {
   skill?: string | null
   question_types?: string[]
   shuffle?: boolean
+  time_limit_sec?: number | null
 } & GenerateContext): Promise<QuizActivity> {
   const response = await apiFetch('/api/v1/quiz/generate', {
     method: 'POST',
@@ -146,8 +148,24 @@ export interface QuizAttempt {
   activity_id: number
   mode: string
   started_at: string
+  deadline_at: string | null
   finished_at: string | null
   score: number | null
+}
+
+export async function setQuizTimeLimit(
+  activityId: number,
+  timeLimitSec: number | null
+): Promise<QuizActivity> {
+  const response = await apiFetch(
+    `/api/v1/quiz/activities/${activityId}/time-limit`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ time_limit_sec: timeLimitSec }),
+    }
+  )
+  return json<QuizActivity>(response)
 }
 
 export async function startQuizAttempt(activityId: number, mode = 'practice'): Promise<QuizAttempt> {

@@ -305,6 +305,10 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0060 (plan 49-C, ADR-108)**: `activities.time_limit_sec` (nullable int) and
+  `attempts.deadline_at` (nullable timestamp, server-computed at attempt start
+  from the quiz's limit) — server-enforced quiz timing. Downgrade drops both
+  columns.
 - **0059 (plan 49-A, ADR-106)**: `study_sessions` table (profile FK indexed,
   nullable course FK, nullable `node_id`, `kind` focus|quiz|exercise|review|
   read|note, `source` timer|auto|manual, nullable `entity_ref` for resume

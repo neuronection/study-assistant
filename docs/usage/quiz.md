@@ -64,6 +64,24 @@ After submitting you get the verdict plus the explanation; wrong multiple-choice
 answers are tagged with the misconception they represent (you'll see these again in
 the mistake notebook).
 
+## Time limits
+
+Any quiz can carry a **time limit** — exam mode is not required, the limit is a
+property of the quiz itself. Set one when **generating** (the *Time limit* picker
+in the Quiz group: none, 30/60/90/120 min, or a custom length) or later via the
+quiz's **⋯ → Time limit…** menu in the Practice tab.
+
+The deadline is **server-computed at attempt start** — your device's clock can't
+extend the run. While an attempt is open the runner shows a countdown chip
+(amber in the last minute); when time expires the attempt is **auto-submitted
+with the answers given by the deadline** and the summary says so honestly.
+Answers sent after the deadline are rejected (`attempt_closed`). No background
+timer is needed: if you close the app and return, the first read of the attempt
+sweeps it.
+
+Exam mode is unchanged: help stays locked in exam attempts, and the time limit
+applies to practice and exam attempts alike.
+
 ## Help inside a question (practice mode)
 
 Practice attempts have the same hint ladder as exercises, scoped to the current
