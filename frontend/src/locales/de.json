@@ -735,7 +735,18 @@
     "kind_study": "Lernen",
     "kind_practice": "Üben",
     "kind_review": "Wiederholung",
-    "kind_milestone": "Meilenstein"
+    "kind_milestone": "Meilenstein",
+    "viewList": "Liste",
+    "viewWeek": "Woche",
+    "downloadIcs": "Kalender herunterladen (ICS)",
+    "weekView": "Wochenansicht",
+    "weekday_mon": "Mo",
+    "weekday_tue": "Di",
+    "weekday_wed": "Mi",
+    "weekday_thu": "Do",
+    "weekday_fri": "Fr",
+    "weekday_sat": "Sa",
+    "weekday_sun": "So"
   },
   "courseSettings": {
     "sub_tasks": "Aufgaben",

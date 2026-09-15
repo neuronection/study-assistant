@@ -19,6 +19,7 @@ export const storageKeys = {
   materialsView: 'ca-materials-view',
   notesView: 'ca-notes-view',
   practiceView: 'ca-practice-view',
+  plannerView: 'ca-planner-view',
   treeSidebarOpen: 'ca-tree-sidebar-open',
   notificationsSeen: 'ca-notifications-seen',
 } as const

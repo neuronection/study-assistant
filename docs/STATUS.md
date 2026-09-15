@@ -323,6 +323,27 @@ favorites, snap-to-notes, quick-capture hotkey, extra languages all shipped in
 plans 67/69); plan 49's doc copied into the app-repo `dev/plans/`. Also noted:
 `tests/evals/` still does not exist — populate the golden sets before/during 49.
 
+**Feature — planner week view + ICS export (plan 68-B, ADR-152, 2026-09-15):**
+the planner leaves the list. The Planner tab gains a **List ⇄ Week** segmented
+toggle (app-side — the library `ViewToggle` stays grid|list-typed) rendering a
+Mon–Sun grid with today highlighted, plan cards placed by `due_date`,
+overdue items with a warning left border, done items struck-through at 60%
+opacity, `layout` spring re-flow on drag, and horizontal scroll on narrow
+panes; the existing HTML5 drag rescheduling works across week columns
+(same `text/plan-item` payload as the list view). Calendar interop without a
+server (ADR-152): `GET /courses/{id}/plan.ics` server-renders
+`text/calendar` (CRLF, RFC fold at 75 octets, `,;\\` and newline escaping) —
+plan items become all-day VEVENTs on their due date with stable UIDs
+(`planitem-<id>@studyassistant.local`) so re-import updates instead of
+duplicating, done items ride along as `STATUS:CANCELLED` only within the
+past week, and the exam date becomes an all-day VEVENT; `X-WR-CALNAME` carries
+the course title. Download via the header **ICS** button. Tests:
+`test_plan_ics.py` (4: UID/VTOD round-trip + exam event, escaping + 75-octet
+folding, done-window semantics via a direct-DB aged `done_at`, 404) +
+`PlannerWeekView.test.tsx` (4: Monday-start week math incl. TZ-correct day
+formatting, today highlight + placement, overdue/done styling, cross-column
+drop). Backend 1,147 green, frontend 1,241 green.
+
 **Feature — notification center (plan 68-A, ADR-151, 2026-09-15):** the app
 now tells you what needs you. New computed aggregate `GET /notifications`
 (`api/notifications.py`, typed response, nothing persisted — ADR-151):
@@ -1424,6 +1445,7 @@ Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit �
 
 | Module | Status | Notes |
 |---|---|---|
+| **Planner week view + ICS (plan 68-B)** | done | List⇄Week segmented toggle (`features/planner/PlannerWeekView.tsx`: Mon–Sun grid, today highlight, drag-between-days, overdue/done styling, layout re-flow) + `GET /courses/{id}/plan.ics` (`build_course_ics` in `services/study/planner.py`: all-day VEVENTs, stable UIDs, STATUS:CANCELLED for week-fresh done items, exam event, CRLF + folding + escaping, ADR-152). Tests: `test_plan_ics.py`, `PlannerWeekView.test.tsx` |
 | **Notification center (plan 68-A)** | done | `GET /notifications` computed aggregate (no table, ADR-151: due cards + ≤10 due reviews + today/overdue plan rows + ≤3 exam countdowns) + `NotificationBell` in the rail footer (library PopoverButton/Badge/EmptyState; animated count dot; localStorage seen-marker `ca-notifications-seen`; focus + 5-min polling; mark-seen on close). Tests: `test_notifications_api.py`, `NotificationBell.test.tsx` |
 | **Exam timing (plan 49-C)** | done | `activities.time_limit_sec` + `attempts.deadline_at` (0060, ADR-108); generate picker + Practice-tab Time-limit editor (`features/quiz/TimeLimitDialog.tsx`, `PATCH /quiz/activities/{id}/time-limit`); server enforcement in `api/quiz.py` (`_auto_submit_if_expired` + shared `_finish_attempt`, 422 `attempt_closed`, lazy sweep on report/finish); `CountdownChip` in FocusShell's new `chip` slot with server-offset correction; auto-submit summary banner. Tests: `test_quiz_time_limits.py`, `CountdownChip.test.tsx`, `TimeLimitDialog.test.tsx` |
 | **Global Review queue (plan 49-B)** | done | `GET /review/due` (per-course groups + due counts, scratch excluded) + `/review` page (`features/review/`: `ReviewPage` + course-agnostic `ReviewQueue` with keyboard 1–4, progress bar, course chips, batch flow) + rail badge (`useDueCount` over the same endpoint); Practice tab cards segment embeds the same queue course-scoped with its print sheet (`features/practice/FlashcardPrintSheet`); `features/flashcards/` dissolved. Tests: `test_review_api.py`, `ReviewQueue.test.tsx`, `ReviewPage.test.tsx` |
@@ -1543,6 +1565,13 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-15 — **feat(planner): week view + ICS export (plan 68-B, ADR-152).**
+  Planner tab gains a List⇄Week toggle rendering a Mon–Sun grid (today
+  highlighted, overdue borders, struck-through done items, spring re-flow) with
+  drag-between-days in both views, and `GET /courses/{id}/plan.ics` renders the
+  plan + exam as an all-day-event calendar with stable UIDs so re-imports
+  update instead of duplicating. Backend 1,147 green (+4), frontend 1,241
+  green (+4).
 - 2026-09-15 — **feat(notifications): notification center (plan 68-A, ADR-151).**
   `GET /notifications` computed aggregate (due cards, ≤10 due reviews with
   courses, today/overdue plan rows, ≤3 exam countdowns — zero new tables);

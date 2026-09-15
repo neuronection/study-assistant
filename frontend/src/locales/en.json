@@ -735,7 +735,18 @@
     "kind_study": "Study",
     "kind_practice": "Practice",
     "kind_review": "Review",
-    "kind_milestone": "Milestone"
+    "kind_milestone": "Milestone",
+    "viewList": "List",
+    "viewWeek": "Week",
+    "downloadIcs": "Download calendar (ICS)",
+    "weekView": "Week view",
+    "weekday_mon": "Mon",
+    "weekday_tue": "Tue",
+    "weekday_wed": "Wed",
+    "weekday_thu": "Thu",
+    "weekday_fri": "Fri",
+    "weekday_sat": "Sat",
+    "weekday_sun": "Sun"
   },
   "genesis": {
     "title": "Generate a course",

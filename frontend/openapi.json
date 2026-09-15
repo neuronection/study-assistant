@@ -16494,6 +16494,46 @@
         ]
       }
     },
+    "/api/v1/courses/{course_id}/plan.ics": {
+      "get": {
+        "operationId": "export_course_plan_ics_api_v1_courses__course_id__plan_ics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Course Plan Ics",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/api/v1/courses/{course_id}/plan/generate": {
       "post": {
         "operationId": "generate_course_plan_api_v1_courses__course_id__plan_generate_post",

@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Loader2, Plus, Printer, Sparkles, Trash2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { CalendarClock, Check, Download, Loader2, Plus, Printer, Sparkles, Trash2, TrendingDown, TrendingUp, Minus, CalendarDays, List } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { SegmentedControl } from '@/components/motion/SegmentedControl'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,14 +11,17 @@ import { Spinner } from '@/components/ui/spinner'
 import { getExamStatus } from '@/lib/api'
 import { Stagger, StaggerItem } from '@/components/motion/Stagger'
 import { PlannerWeekSheet } from './PlannerWeekSheet'
+import { PlannerWeekView } from './PlannerWeekView'
 import {
   createPlanItem,
   deletePlanItem,
   generatePlan,
   listPlanItems,
+  planIcsUrl,
   updatePlanItem,
   type PlanItem,
 } from '@/lib/api'
+import { storageKeys } from '@/lib/constants'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +30,18 @@ const KIND_STYLES: Record<string, string> = {
   practice: 'bg-warning/15 text-warning',
   review: 'bg-success/15 text-success',
   milestone: 'bg-danger/15 text-danger',
+}
+
+type PlannerView = 'list' | 'week'
+
+function readPlannerView(): PlannerView {
+  try {
+    return window.localStorage.getItem(storageKeys.plannerView) === 'week'
+      ? 'week'
+      : 'list'
+  } catch {
+    return 'list'
+  }
 }
 
 function todayIso(): string {
@@ -58,6 +75,15 @@ export function PlannerTab({ courseId }: { courseId: string }) {
   const [newDate, setNewDate] = useState(todayIso())
   const [error, setError] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
+  const [view, setView] = useState<PlannerView>(readPlannerView)
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKeys.plannerView, view)
+    } catch {
+      return
+    }
+  }, [view])
 
   const plan = useQuery({
     queryKey: ['plan', courseId],
@@ -168,6 +194,23 @@ export function PlannerTab({ courseId }: { courseId: string }) {
               {t('today.readiness')} {readiness.readiness}
             </span>
           ) : null}
+          <SegmentedControl
+            items={[
+              { value: 'list', label: t('planner.viewList'), icon: List },
+              { value: 'week', label: t('planner.viewWeek'), icon: CalendarDays },
+            ]}
+            value={view}
+            onChange={(next) => setView(next as PlannerView)}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            title={t('planner.downloadIcs')}
+            onClick={() => window.open(planIcsUrl(Number(courseId)), '_blank')}
+          >
+            <Download aria-hidden />
+            ICS
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setPrinting(true)}>
             <Printer aria-hidden />
             {t('planner.printWeek')}
@@ -225,6 +268,13 @@ export function PlannerTab({ courseId }: { courseId: string }) {
       ) : null}
       {plan.isLoading ? (
         <Spinner label={t('library.loading')} />
+      ) : view === 'week' ? (
+        <PlannerWeekView
+          items={plan.data ?? []}
+          todayIso={todayIso()}
+          onMove={(item, day) => reschedule.mutate({ item, dueDate: day })}
+          onToggleDone={(item) => toggleDone.mutate({ item, done: item.done_at === null })}
+        />
       ) : grouped.days.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t('planner.empty')}</p>
       ) : (

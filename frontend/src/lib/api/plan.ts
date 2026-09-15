@@ -60,3 +60,7 @@ export async function listUpcomingItems(days = 7): Promise<UpcomingItem[]> {
   const response = await apiFetch(`/api/v1/plan/upcoming?days=${days}`)
   return json<UpcomingItem[]>(response)
 }
+
+export function planIcsUrl(courseId: number): string {
+  return `/api/v1/courses/${courseId}/plan.ics`
+}

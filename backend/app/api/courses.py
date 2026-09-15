@@ -56,7 +56,7 @@ from ..services.study.organizer import (
     review_node,
     review_report_markdown,
 )
-from ..services.study.planner import PlannerError, generate_plan
+from ..services.study.planner import PlannerError, build_course_ics, generate_plan
 from .courses_schemas import (
     ConceptDraftOut,
     ConceptGraphOut,
@@ -326,6 +326,24 @@ def _item_out(item: PlanItem) -> PlanItemOut:
         origin=PlanItemOrigin(item.origin),
         sort_key=item.sort_key,
     )
+
+@router.get("/courses/{course_id}/plan.ics")
+def export_course_plan_ics(
+    course_id: int, session: Session = Depends(get_session)
+) -> Response:
+    profile = ensure_default_profile(session)
+    course = session.get(Course, course_id)
+    if course is None or course.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="course not found")
+    ics = build_course_ics(session, course)
+    return Response(
+        content=ics,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="plan-{course_id}.ics"'
+        },
+    )
+
 
 @router.get("/courses/{course_id}/plan", response_model=list[PlanItemOut])
 def list_course_plan(

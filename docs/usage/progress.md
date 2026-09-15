@@ -72,6 +72,23 @@ onto another day to reschedule it, or use the +1-day button. Add your own items
 with **Add item**. The Home screen shows the coming week across all courses
 under **This week's plan**.
 
+### Week view
+
+Toggle the planner between **List** and **Week** (the segmented control in the
+tab header). The week view lays out Monday–Sunday as a grid with today
+highlighted — drag a card onto any other day to reschedule it (the same drag
+works in both views). Overdue items get a warning left border; checked-off
+items render struck-through.
+
+### Calendar export (ICS)
+
+**ICS** in the tab header downloads the course plan as a calendar file: every
+plan item becomes an all-day event on its due date (done items appear only for
+the past week, marked cancelled), and the exam date becomes an all-day event.
+The file carries stable event IDs, so re-importing after moving items *updates*
+the existing events instead of duplicating them — import it into Google
+Calendar, GNOME Calendar, Outlook or anything that reads ICS.
+
 Tips:
 - Set the exam date in the course's **Settings** tab first — the planner paces
   toward it and refuses dates in the past.

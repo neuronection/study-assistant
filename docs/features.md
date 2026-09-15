@@ -851,6 +851,10 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Minutes-or-questions goals (H10): daily goal gains a unit
   (answers | minutes); streak counts any qualifying day — ≥1 answer/card review
   or ≥5 minutes of tracked study time
+- ✅ Planner week view + ICS: List⇄Week toggle (Mon–Sun grid, today highlight,
+  drag-between-days, overdue/done styling) and a server-rendered
+  `GET /courses/{id}/plan.ics` calendar export with stable UIDs (re-import
+  updates, never duplicates) incl. the exam date as an all-day event — plan 68-B
 - ✅ Notification center: 🔔 bell in the sidebar footer over a computed
   `GET /notifications` aggregate — due-card count, today/overdue plan rows,
   exam countdowns; grouped popover deep-links to the review queue / planner;

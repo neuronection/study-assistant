@@ -62,6 +62,8 @@ export type {
   StudySessionSummary,
 } from './study-sessions'
 
+export { planIcsUrl } from './plan'
+
 export { getReviewDue } from './review'
 
 export type { DueCourseGroup, ReviewDue } from './review'

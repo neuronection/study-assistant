@@ -245,3 +245,99 @@ def node_title(session: Session, node_id: int | None) -> str | None:
         return None
     node = session.get(TreeNode, node_id)
     return node.title if node is not None else None
+
+
+ICS_DONE_WINDOW_DAYS = 7
+ICS_PRODID = "-//Study Assistant//Plan//EN"
+
+
+def _ics_escape(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+    return escaped.replace("\r\n", "\\n").replace("\n", "\\n")
+
+
+def _ics_fold(line: str) -> list[str]:
+    octets = line
+    lines: list[str] = []
+    while len(octets.encode("utf-8")) > 75:
+        cut = 75
+        while cut > 1 and len(octets[:cut].encode("utf-8")) > 75:
+            cut -= 1
+        lines.append(octets[:cut])
+        octets = " " + octets[cut:]
+    lines.append(octets)
+    return lines
+
+
+def _ics_all_day_event(
+    *, uid: str, stamp: str, day: date, summary: str, status: str, description: str | None
+) -> list[str]:
+    start = day.strftime("%Y%m%d")
+    end = (day + timedelta(days=1)).strftime("%Y%m%d")
+    lines = [
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{stamp}",
+        f"DTSTART;VALUE=DATE:{start}",
+        f"DTEND;VALUE=DATE:{end}",
+        f"SUMMARY:{_ics_escape(summary)}",
+        f"STATUS:{status}",
+    ]
+    if description:
+        lines.append(f"DESCRIPTION:{_ics_escape(description)}")
+    lines.append("END:VEVENT")
+    return lines
+
+
+def build_course_ics(session: Session, course: Course) -> str:
+    now = utcnow()
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    done_cutoff = (now - timedelta(days=ICS_DONE_WINDOW_DAYS)).date()
+
+    items = list(
+        session.scalars(
+            select(PlanItem)
+            .where(
+                PlanItem.course_id == course.id,
+                (PlanItem.done_at.is_(None)) | (PlanItem.done_at >= done_cutoff),
+            )
+            .order_by(PlanItem.due_date, PlanItem.id)
+        )
+    )
+    events: list[str] = []
+    for item in items:
+        events.extend(
+            _ics_all_day_event(
+                uid=f"planitem-{item.id}@studyassistant.local",
+                stamp=stamp,
+                day=item.due_date,
+                summary=item.title,
+                status="CANCELLED" if item.done_at is not None else "CONFIRMED",
+                description=item.detail,
+            )
+        )
+    if course.exam_date is not None:
+        events.extend(
+            _ics_all_day_event(
+                uid=f"exam-{course.id}@studyassistant.local",
+                stamp=stamp,
+                day=course.exam_date,
+                summary=f"Exam: {course.title}",
+                status="CONFIRMED",
+                description=None,
+            )
+        )
+
+    body_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        f"PRODID:{ICS_PRODID}",
+        "CALSCALE:GREGORIAN",
+        f"X-WR-CALNAME:{_ics_escape(course.title)}",
+        *events,
+        "END:VCALENDAR",
+    ]
+    folded: list[str] = []
+    for line in body_lines:
+        folded.extend(_ics_fold(line))
+    return "\r\n".join(folded) + "\r\n"

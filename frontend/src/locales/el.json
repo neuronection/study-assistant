@@ -735,7 +735,18 @@
     "keep": "Διατήρηση",
     "discard": "Απόρριψη",
     "pushOneDay": "Μεταφορά για την επόμενη ημέρα",
-    "delete": "Διαγραφή"
+    "delete": "Διαγραφή",
+    "viewList": "Λίστα",
+    "viewWeek": "Εβδομάδα",
+    "downloadIcs": "Λήψη ημερολογίου (ICS)",
+    "weekView": "Εβδομαδιαία προβολή",
+    "weekday_mon": "Δευ",
+    "weekday_tue": "Τρί",
+    "weekday_wed": "Τετ",
+    "weekday_thu": "Πέμ",
+    "weekday_fri": "Παρ",
+    "weekday_sat": "Σάβ",
+    "weekday_sun": "Κυρ"
   },
   "genesis": {
     "title": "Δημιουργία μαθήματος",
