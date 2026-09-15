@@ -6,6 +6,23 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — compose orphan-material awareness (plan 70-B, 2026-09-16):**
+composing at a node/subtree no longer silently ignores never-placed course
+materials. `ContextSpec.include_unassigned` (default off) merges the plan-75-C
+unassigned set (`placement.unassigned_materials`: ready, visible at no node,
+not a folder member) into the node/subtree candidate set with the ordinary
+exclude/composed subtraction applied; course scope ignores the flag.
+`POST /materials/compose` accepts `include_unassigned` (ComposeIn; OpenAPI +
+types regenerated). The GenerateDialog compose task queries
+`GET /courses/{id}/materials/unassigned` at node/subtree scope and shows an
+opt-in notice — "N materials … not placed at any topic yet", a checkbox
+(default off) to also draw on them, and a link to the course Materials tab for
+placing them properly; chat's `compose_material` proposal untouched (non-goal).
+Tests: `test_compose_coverage.py` (+1: ready-orphans merge, pending excluded,
+off-by-default), `test_compose.py` (+1: flag reaches the prompt manifest via
+the endpoint, 409 semantics intact). Backend 1,158 green, frontend 1,248
+green, lint/typecheck/build/i18n green.
+
 **Feature — compose coverage accounting + needs_review gate (plan 70-A,
 ADR-157, 2026-09-16):** AI compose is now honest about its inputs. The context
 engine measures retrieval coverage deterministically — `ContextBundle.coverage`

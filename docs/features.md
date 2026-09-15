@@ -231,6 +231,12 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   and shows a review warning when coverage stays thin (`needs_review` — also
   finally surfaced for formula sheets); regenerating with better coverage
   clears the flag
+- ✅ **Compose orphan-material awareness (plan 70-B, 2026-09-16)**: the compose
+  builder (node/subtree scope) lists unplaced course materials ("N materials
+  in this course are not placed at any topic yet.") with an opt-in checkbox to
+  also draw on them (`include_unassigned`, default off) and a link to the
+  course Materials tab for placing them; the coverage note includes them when
+  checked
 - ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
   provider (Settings → Providers → Web search; Tavily-compatible or SearXNG,
   API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**

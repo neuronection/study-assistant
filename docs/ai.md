@@ -305,6 +305,17 @@ searchable, citable, assignable, printable — not throwaway artifacts.
   warning whenever `needs_review` is set (finally giving formula_sheet's
   dormant flag a UI consumer). Regenerating with recovered coverage clears
   the stale flag; never LLM self-assessment (ADR-157).
+- **Orphan-material awareness (plan 70-B)**: `ContextSpec.include_unassigned`
+  (default off) merges course materials with **no placement anywhere** — the
+  plan-75-C definition (`services/knowledge/placement.unassigned_materials`:
+  ready material visible at no node by direct link and not a folder member) —
+  into the node/subtree candidate set; course scope already includes
+  everything and ignores the flag. `POST /materials/compose` accepts
+  `include_unassigned`; the GenerateDialog's compose task queries
+  `GET /courses/{id}/materials/unassigned` at node/subtree scope and shows an
+  opt-in notice (checkbox off by default) with a link to the course Materials
+  tab for placing them properly. Chat's `compose_material` proposal is
+  untouched.
 - **Kinds**: study guide, summary sheet, practice set, error recap, mindmap
   (a markdown outline rendered as an interactive, collapsible mindmap via
   `markmap` in `MindmapViewer`). Mindmap branches are selectable and open an

@@ -2086,7 +2086,10 @@
     "composedTitle": "„{{title}}“ ist bereit.",
     "needsReviewWarning": "Wenige Quellen abgedeckt – Teile dieses Dokuments spiegeln möglicherweise nicht alle Materialien im Umfang wider. Bitte prüfen, bevor Sie sich darauf verlassen.",
     "coverageNote": "Erstellt aus {{covered}} von {{total}} Materialien – {{missing}} wurden nicht abgerufen.",
-    "openComposed": "Dokument öffnen"
+    "openComposed": "Dokument öffnen",
+    "unassignedNotice": "{{count}} Materialien in diesem Kurs sind noch keinem Thema zugeordnet.",
+    "unassignedCheckbox": "Die {{count}} nicht zugeordneten Materialien einbeziehen",
+    "unassignedLink": "Zuerst im Materialien-Tab des Kurses zuordnen"
   },
   "ai": {
     "badge": {

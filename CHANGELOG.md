@@ -13,6 +13,10 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Compose orphan-material awareness: when composing at a topic, materials
+  that were uploaded but never placed anywhere are no longer silently
+  ignored — the dialog offers an opt-in checkbox to also draw on them, with a
+  shortcut to the course materials tab for placing them properly. (plan 70-B)
 - Compose coverage honesty: AI-composed documents now measure how much of the
   scope's material retrieval actually surfaced (deterministic accounting, a
   diversified second retrieval round when a large scope is thinly covered)

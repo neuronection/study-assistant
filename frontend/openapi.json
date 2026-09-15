@@ -1198,6 +1198,11 @@
             "title": "Include Material Ids",
             "type": "array"
           },
+          "include_unassigned": {
+            "default": false,
+            "title": "Include Unassigned",
+            "type": "boolean"
+          },
           "instructions": {
             "anyOf": [
               {

@@ -19,6 +19,7 @@ import {
   generateFlashcards,
   generateQuiz,
   getNodeArtifacts,
+  getUnassignedMaterials,
   listMaterials,
   listNotes,
   nodeWorkspace,
@@ -162,6 +163,7 @@ export function GenerateDialog({
   const [conceptIds, setConceptIds] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
   const [composed, setComposed] = useState<Material | null>(null)
+  const [includeUnassigned, setIncludeUnassigned] = useState(false)
   const courseIdForRequest = courseId ?? pickedCourse
   const composeHasContext = task !== 'flashcards'
 
@@ -187,6 +189,15 @@ export function GenerateDialog({
       courseIdForRequest !== null &&
       (showContextSections || source === 'material') &&
       (scope === 'course' || !atRoot || source === 'material'),
+  })
+
+  const unassigned = useQuery({
+    queryKey: ['materials', 'unassigned', courseIdForRequest],
+    queryFn: () => getUnassignedMaterials(courseIdForRequest as number),
+    enabled:
+      task === 'compose' &&
+      courseIdForRequest !== null &&
+      !(atRoot || scope === 'course'),
   })
 
   const materialOptions: MaterialOption[] = useMemo(() => {
@@ -392,6 +403,7 @@ export function GenerateDialog({
           title: topic.trim() || null,
           instructions: instructions.trim() || null,
           regenerate: existing !== null || composed !== null ? true : undefined,
+          include_unassigned: includeUnassigned || undefined,
           ...context,
         }).then(
           (result) => result.material as unknown as GenerateResult
@@ -573,6 +585,34 @@ export function GenerateDialog({
                     className="text-primary hover:underline"
                   >
                     {t('generate.openExisting')}
+                  </a>
+                </div>
+              ) : null}
+              {!(atRoot || scope === 'course') &&
+              (unassigned.data?.count ?? 0) > 0 ? (
+                <div className="bg-subtle border-border space-y-2 rounded-md border px-3 py-2 text-xs">
+                  <p className="text-muted-foreground">
+                    {t('generate.unassignedNotice', {
+                      count: unassigned.data?.count ?? 0,
+                    })}
+                  </p>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={includeUnassigned}
+                      onChange={(event) =>
+                        setIncludeUnassigned(event.target.checked)
+                      }
+                    />
+                    {t('generate.unassignedCheckbox', {
+                      count: unassigned.data?.count ?? 0,
+                    })}
+                  </label>
+                  <a
+                    href={`/courses/${courseIdForRequest}?tab=materials`}
+                    className="text-primary hover:underline"
+                  >
+                    {t('generate.unassignedLink')}
                   </a>
                 </div>
               ) : null}

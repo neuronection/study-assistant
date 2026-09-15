@@ -2086,7 +2086,10 @@
     "composedTitle": "\"{{title}}\" is ready.",
     "needsReviewWarning": "Thin source coverage — parts of this document may not reflect every material in scope. Review it before relying on it.",
     "coverageNote": "Built from {{covered}} of {{total}} materials — {{missing}} weren't retrieved.",
-    "openComposed": "Open document"
+    "openComposed": "Open document",
+    "unassignedNotice": "{{count}} materials in this course are not placed at any topic yet.",
+    "unassignedCheckbox": "Also draw on the {{count}} unassigned materials",
+    "unassignedLink": "Place them first in the course materials tab"
   },
   "ai": {
     "mentions": {

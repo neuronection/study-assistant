@@ -15,6 +15,7 @@ const nodeWorkspace = vi.fn()
 const conceptGraph = vi.fn()
 const listCourses = vi.fn()
 const getNodeArtifacts = vi.fn()
+const getUnassignedMaterials = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -31,6 +32,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     conceptGraph: (courseId: number) => conceptGraph(courseId),
     listCourses: () => listCourses(),
     getNodeArtifacts: (id: number, kind?: string) => getNodeArtifacts(id, kind),
+    getUnassignedMaterials: (courseId: number) => getUnassignedMaterials(courseId),
   }
 })
 
@@ -156,6 +158,7 @@ describe('GenerateDialog', () => {
       reviews: [],
       artifact: null,
     })
+    getUnassignedMaterials.mockReset().mockResolvedValue({ count: 0, materials: [] })
     testHooks.materialIds = [7]
     testHooks.noteEntries = [{ id: 11, title: 'My note' }]
   })
@@ -263,6 +266,70 @@ describe('GenerateDialog', () => {
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
     expect(await screen.findByTestId('needs-review-warning')).toBeInTheDocument()
     expect(screen.queryByTestId('coverage-note')).not.toBeInTheDocument()
+  })
+
+  test('unassigned materials notice stays opt-in and forwards the flag', async () => {
+    getUnassignedMaterials.mockResolvedValue({
+      count: 3,
+      materials: [{ id: 41, title: 'Orphan' }],
+    })
+    composeMaterial.mockResolvedValue({
+      material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
+      job_id: 5,
+      deduped: false,
+    })
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    expect(
+      await screen.findByText(/3 materials in this course are not placed/i)
+    ).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /place them first/i })
+    expect(link).toHaveAttribute('href', '/courses/3?tab=materials')
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /compose/i }))
+    await waitFor(() => expect(composeMaterial).toHaveBeenCalled())
+    expect(composeMaterial).toHaveBeenCalledWith(
+      expect.objectContaining({ include_unassigned: true })
+    )
+  })
+
+  test('unassigned notice defaults off and hides at course scope', async () => {
+    getUnassignedMaterials.mockResolvedValue({
+      count: 3,
+      materials: [{ id: 41, title: 'Orphan' }],
+    })
+    composeMaterial.mockResolvedValue({
+      material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
+      job_id: 5,
+      deduped: false,
+    })
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    expect(
+      await screen.findByText(/3 materials in this course are not placed/i)
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+
+    fireEvent.change(screen.getByLabelText('Scope'), {
+      target: { value: 'course' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/not placed at any topic/i)
+      ).not.toBeInTheDocument()
+    )
+
+    fireEvent.change(screen.getByLabelText('Scope'), {
+      target: { value: 'subtree' },
+    })
+    expect(
+      await screen.findByText(/3 materials in this course are not placed/i)
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /compose/i }))
+    await waitFor(() => expect(composeMaterial).toHaveBeenCalled())
+    expect(composeMaterial).toHaveBeenCalledWith(
+      expect.not.objectContaining({ include_unassigned: true })
+    )
   })
 
   test('quiz preset at a node: scope, preview, and excluded materials flow to the request', async () => {

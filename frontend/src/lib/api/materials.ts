@@ -661,6 +661,7 @@ export async function composeMaterial(body: {
   concept_ids?: number[]
   context_hint?: string | null
   regenerate?: boolean
+  include_unassigned?: boolean
 }): Promise<ComposedMaterial> {
   const response = await apiFetch('/api/v1/materials/compose', {
     method: 'POST',

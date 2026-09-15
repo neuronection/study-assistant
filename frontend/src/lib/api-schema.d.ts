@@ -4432,6 +4432,11 @@ export interface components {
             extra_md?: string | null;
             /** Include Material Ids */
             include_material_ids?: number[];
+            /**
+             * Include Unassigned
+             * @default false
+             */
+            include_unassigned: boolean;
             /** Instructions */
             instructions?: string | null;
             /**

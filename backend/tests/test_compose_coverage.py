@@ -3,8 +3,9 @@ from typing import Any
 
 from pytest import fixture
 from sqlalchemy.orm import Session
+from test_chat_api import ScriptedGateway
 
-from app.domain.models import Course, Material, Profile, TreeNode
+from app.domain.models import Course, Material, MaterialLink, Profile, TreeNode
 from app.pipelines.compose import ComposeService
 from app.services.knowledge.context import (
     COVERAGE_GATE,
@@ -16,7 +17,6 @@ from app.services.knowledge.context import (
     coverage_report,
 )
 from app.storage.blobs import BlobStore
-from test_chat_api import ScriptedGateway
 
 LONG_DOC = (
     "# Study guide\n\n"
@@ -286,6 +286,80 @@ def test_compose_regenerate_replaces_stale_flag(
         "missing_ids": material_ids[5:],
     }
     assert "needs_review" not in provenance
+
+
+def test_include_unassigned_merges_ready_orphans(
+    db_session: Session, monkeypatch: Any
+) -> None:
+    profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 2)
+    for material_id in material_ids:
+        db_session.add(
+            MaterialLink(
+                course_id=course_id,
+                node_id=node_id,
+                material_id=material_id,
+            )
+        )
+    db_session.flush()
+    orphan_ids: list[int] = []
+    for index in range(3):
+        material = Material(
+            profile_id=profile_id,
+            course_id=course_id,
+            kind="doc",
+            title=f"Orphan {index}",
+            filename=f"orphan-{index}.txt",
+            status="ready",
+        )
+        db_session.add(material)
+        db_session.flush()
+        orphan_ids.append(int(material.id))
+    db_session.add(
+        Material(
+            profile_id=profile_id,
+            course_id=course_id,
+            kind="doc",
+            title="Pending orphan",
+            filename="pending.txt",
+            status="pending",
+        )
+    )
+    db_session.flush()
+    captured: dict[str, Any] = {}
+
+    def fake_retrieve(
+        session: Session, query: str, embed_query: Any, **kwargs: Any
+    ) -> list[dict[str, Any]]:
+        captured["material_ids"] = kwargs.get("material_ids")
+        return []
+
+    monkeypatch.setattr(
+        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
+    )
+    resolver = ContextResolver(db_session, lambda query: None)
+    bundle = resolver.resolve(
+        ContextSpec(
+            course_id=course_id,
+            node_id=node_id,
+            scope=ContextScope.node,
+            include_unassigned=True,
+        )
+    )
+    assert captured["material_ids"] is not None
+    assert sorted(captured["material_ids"]) == sorted(material_ids + orphan_ids)
+    titles = {str(entry["title"]) for entry in bundle.materials}
+    assert "Orphan 0" in titles
+    assert "Pending orphan" not in titles
+
+    bundle_off = resolver.resolve(
+        ContextSpec(
+            course_id=course_id,
+            node_id=node_id,
+            scope=ContextScope.node,
+        )
+    )
+    assert captured["material_ids"] == material_ids
+    assert len(bundle_off.materials) == 2
 
 
 @fixture

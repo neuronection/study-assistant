@@ -20,6 +20,7 @@ from ...domain.models import (
 )
 from ..content.folders import folder_links_by_node, folder_member_ids
 from ..search import EmbedQuery, retrieve_chunks_hybrid
+from .placement import unassigned_materials
 from .tree import subtree_material_ids
 
 RETRIEVAL_EXCLUDED_KINDS = {"node_review"}
@@ -73,6 +74,7 @@ class ContextSpec(BaseModel):
     max_chunks: int = Field(default=12, ge=0, le=32)
     chunk_chars: int = Field(default=1000, ge=200, le=4000)
     exclude_ai_composed: bool = False
+    include_unassigned: bool = False
 
 
 class ContextParams(BaseModel):
@@ -398,6 +400,13 @@ class ContextResolver:
             merged = (set(base) | set(spec.include_material_ids)) - set(
                 spec.exclude_material_ids
             )
+            if spec.include_unassigned:
+                merged |= {
+                    int(material.id)
+                    for material in unassigned_materials(
+                        self._session, spec.course_id
+                    )
+                }
             merged -= excluded
             if spec.exclude_ai_composed:
                 composed = set(

@@ -285,6 +285,7 @@ class ComposeIn(BaseModel):
     concept_ids: list[int] = Field(default_factory=list)
     context_hint: str | None = Field(default=None, max_length=2000)
     regenerate: bool = False
+    include_unassigned: bool = False
 
 
 @router.post("/compose", response_model=MaterialUploadOut)
@@ -315,6 +316,7 @@ def compose_material(
                 hint=body.context_hint,
                 query=body.title or body.instructions or "study material",
                 exclude_ai_composed=True,
+                include_unassigned=body.include_unassigned,
             )
         )
     except ContextError as error:

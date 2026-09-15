@@ -285,6 +285,62 @@ def test_extraction_version_history_roundtrip(
         assert missing.status_code == 404
 
 
+def test_compose_include_unassigned_flag_reaches_prompt(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, gateway, _app = client
+    with test_client:
+        course_id = make_course(test_client)
+        material_id = add_material(test_client, "src.txt", "chain rule source", course_id)
+        node_id = make_node(test_client, course_id, "Ch3")
+        linked = test_client.post(
+            f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
+        )
+        assert linked.status_code < 400, linked.text
+        orphan_id = add_material(
+            test_client, "orphan.txt", "orphaned integration notes", course_id
+        )
+        unassigned = test_client.get(
+            f"/api/v1/courses/{course_id}/materials/unassigned"
+        ).json()
+        assert unassigned["count"] == 1
+        assert unassigned["materials"][0]["id"] == orphan_id
+
+        gateway.responses.append(LONG_DOC)
+        without = test_client.post(
+            "/api/v1/materials/compose",
+            json={
+                "course_id": course_id,
+                "node_id": node_id,
+                "kind": "study_guide",
+                "title": "Guide",
+            },
+        )
+        assert without.status_code == 200, without.text
+        prompt_without = "\n".join(
+            str(message.content) for message in gateway.calls[-1]
+        )
+        assert f"[M{orphan_id}]" not in prompt_without
+
+        gateway.responses.append(LONG_DOC)
+        with_flag = test_client.post(
+            "/api/v1/materials/compose",
+            json={
+                "course_id": course_id,
+                "node_id": node_id,
+                    "kind": "study_guide",
+                    "title": "Guide",
+                    "regenerate": True,
+                    "include_unassigned": True,
+            },
+        )
+        assert with_flag.status_code == 200, with_flag.text
+        prompt_with = "\n".join(
+            str(message.content) for message in gateway.calls[-1]
+        )
+        assert f"[M{orphan_id}]" in prompt_with
+
+
 COMPOSE_PROPOSAL = (
     "```proposal\n"
     + json.dumps(
