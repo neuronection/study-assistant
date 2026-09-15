@@ -17,6 +17,9 @@ Release history from before the public launch lives in the
 
 ### Fixed
 
+- Viewer drawer: the material body is now the single scroll owner — the overlay
+  panel no longer keeps a second, competing scrollbar (the inner one previously
+  had only a few pixels of travel while the panel did the real scrolling).
 - Viewer: display math indented inside list items no longer leaks raw LaTeX as
   red KaTeX errors — the `$$…$$` fence canonicalization now preserves the
   line's indentation instead of emitting a mixed-indent closing fence that

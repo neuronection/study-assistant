@@ -208,6 +208,22 @@ describe('FocusShell', () => {
     expect(screen.queryByRole('button', { name: 'Expand to full width' })).not.toBeInTheDocument()
   })
 
+  test('overlay owns height as a flex column; the content area is the single scroll fallback', async () => {
+    renderInRouter(
+      <FocusShell title="Material" overlay onClose={() => {}}>
+        <p>overlay-content</p>
+      </FocusShell>
+    )
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog.className).toContain('flex h-full flex-col overflow-hidden')
+    expect(dialog.className).not.toContain('overflow-y-auto')
+    const header = dialog.firstElementChild as HTMLElement
+    expect(header.className).toContain('shrink-0')
+    expect(header.className).not.toContain('sticky')
+    const content = dialog.lastElementChild as HTMLElement
+    expect(content.className).toContain('min-h-0 flex-1 overflow-y-auto')
+  })
+
   test('useFocusContext resolves course and node titles from the tree', async () => {
     courseTree.mockResolvedValue(TREE)
     renderApp('/probe')

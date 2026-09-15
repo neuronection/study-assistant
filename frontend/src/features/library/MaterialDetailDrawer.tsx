@@ -32,7 +32,7 @@ export function MaterialDetailDrawer({
       context={context}
       onClose={onClose}
     >
-      <div className="flex h-full flex-col gap-3">
+      <div className="flex h-full min-h-0 flex-col gap-3">
         <MaterialDetailBody
           materialId={materialId}
           activeTab={tab}

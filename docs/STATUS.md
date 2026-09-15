@@ -6,6 +6,22 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Fix — double scrollbar in the material viewer drawer (2026-09-15,
+user-reported):** the FocusShell overlay panel was itself the scroll container
+(`h-full overflow-y-auto`) while `MaterialDetailBody`'s content area also
+declared `flex-1 min-h-0 overflow-y-auto` — the panel scrolled the real
+content (measured 4,849 px of travel) and the body's inner scrollbar had only
+7 px of travel, so two scrollbars moved for one gesture. The overlay is now a
+bounded flex column (`overflow-hidden` panel, non-sticky `shrink-0` header,
+`min-h-0 flex-1 overflow-y-auto p-6` content area), making the hosted body
+the single scroll owner — same fix shape the split study pane already had.
+Verified with a Playwright probe against a long seeded guide (drawer: exactly
+one scrollable element before/after; split pane unchanged) plus a structural
+FocusShell regression test; the note editor overlay (the other overlay
+consumer) is bounded as its `h-full min-h-0` wrapper and the library
+RichTextEditor's internal `h-full overflow-y-auto` scroller always intended.
+Frontend 1,201 green, lint/typecheck/build green; backend untouched.
+
 **Fix — viewer raw-math regression for display math inside list items
 (2026-09-15, user-reported, material 93):** `normalizeMathFences` reflowed
 single-line `$$…$$` display spans into bare `$$⏎content⏎$$` fences, but kept

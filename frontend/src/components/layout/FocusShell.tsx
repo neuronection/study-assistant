@@ -228,7 +228,7 @@ export function FocusShell({
           role="dialog"
           aria-modal="true"
           aria-label={ariaLabel ?? (typeof title === 'string' ? title : undefined)}
-          className="bg-surface border-border absolute top-0 right-0 h-full overflow-y-auto border-l shadow-xl outline-none transition-[width,right] duration-200 ease-out motion-reduce:transition-none"
+          className="bg-surface border-border absolute top-0 right-0 flex h-full flex-col overflow-hidden border-l shadow-xl outline-none transition-[width,right] duration-200 ease-out motion-reduce:transition-none"
           style={{
             right: chatInset,
             width: maximized
@@ -236,10 +236,8 @@ export function FocusShell({
               : `max(16rem, min(760px, calc(100vw - 2rem - ${chatInset}px)))`,
           }}
         >
-          <div className="border-border bg-surface sticky top-0 z-10 border-b p-4">
-            {header}
-          </div>
-          <div className="p-6">{children}</div>
+          <div className="border-border bg-surface shrink-0 border-b p-4">{header}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
         </div>
       </div>
     )
