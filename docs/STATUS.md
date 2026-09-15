@@ -6,6 +6,20 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 75 slice B — folder→node mirroring (2026-09-15):** new
+`StructureService.mirror_folder` + `POST /nodes/{id}/mirror-folder`
+({folder_id, recursive}) — child folders become child nodes under the
+mirrored parent (title-match reuse, case-insensitive, idempotent: reruns
+reuse nodes and folder links), each mirrored folder is folder-linked so its
+files (present **and future**) attach implicitly; mirroring stops at node
+depth 4 (`MAX_DEPTH`, same cap as manual nodes) and reports deeper levels in
+`skipped_folders` instead of truncating silently. UI: NodeWorkspace materials
+tab folder ⋯ menu gains "Mirror folder structure into nodes" with an honest
+counts notice (created/reused + skipped note). OpenAPI regenerated. Backend
+1,109 green (+5), frontend 1,177 green (+2), full gate green (ADR-177 table
+row shares the commit; ADR-178 mechanic recorded plan-side as slice B's
+decision).
+
 **Plan 75 slice A — node-targeted uploads (2026-09-15, plan 75 in progress):**
 `POST /materials` gains optional `node_id` — the upload assigns the material
 to that node in the same request (`StructureService.assign`, rationale
@@ -27,6 +41,17 @@ mirroring, C "Needs placement" surface over plan 70-B's unassigned endpoint
 suggestions (token-overlap, `matched_on` evidence), E linked-source subdir
 mirroring + scan `new_relpaths` (migration 0058). Plan doc:
 `dev/plans/75-material-placement-and-discovery.md` (local-only).
+
+**Also planned (user-approved 2026-09-15) — plan 76 "Materials tab in-tab
+folder browsing":** one shared `MaterialBrowser` listing component (folders +
+materials, grid/list toggle, breadcrumbs — killing `WorkspaceFolderItem` and
+the Library's Re-inlined grid classes), folder drill-down **inside** the
+Materials tab via `?tab=materials&folder=<id>` (full folder contents from the
+standard library endpoints, `LibraryBreadcrumbs` crumbs, stale-id fallback),
+linked-source folders browsable in the tab (`browseSource` + component-local
+subdir, mirroring the Library's `linkState` grammar), and an "Open in library"
+escape hatch at any depth. ADRs 181–183 reserved. Plan doc:
+`dev/plans/76-materials-tab-folder-browsing.md` (local-only).
 
 **Plan 72 COMPLETE — slices A–F: AI sees the course tree (2026-09-09,
 user-approved; ADRs 160–163):** the LLM now always has the tree around

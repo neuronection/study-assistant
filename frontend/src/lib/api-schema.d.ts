@@ -2477,6 +2477,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nodes/{node_id}/mirror-folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mirror Folder */
+        post: operations["mirror_folder_api_v1_nodes__node_id__mirror_folder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nodes/{node_id}/move": {
         parameters: {
             query?: never;
@@ -5717,6 +5734,29 @@ export interface components {
         MindmapEditOut: {
             /** Markdown */
             markdown: string;
+        };
+        /** MirrorFolderIn */
+        MirrorFolderIn: {
+            /** Folder Id */
+            folder_id: number;
+            /** Rationale */
+            rationale?: string | null;
+            /**
+             * Recursive
+             * @default true
+             */
+            recursive: boolean;
+        };
+        /** MirrorFolderOut */
+        MirrorFolderOut: {
+            /** Created Nodes */
+            created_nodes: number;
+            /** Folder Links */
+            folder_links: number;
+            /** Reused Nodes */
+            reused_nodes: number;
+            /** Skipped Folders */
+            skipped_folders?: string[];
         };
         /** MistakeListItemOut */
         MistakeListItemOut: {
@@ -13201,6 +13241,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mirror_folder_api_v1_nodes__node_id__mirror_folder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MirrorFolderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MirrorFolderOut"];
+                };
             };
             /** @description Validation Error */
             422: {

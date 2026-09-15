@@ -389,3 +389,128 @@ def test_course_materials_and_workspace_response_shapes(
     )
     assert deleted.status_code == 200
     assert deleted.json() == {"status": "deleted", "course_id": course_id}
+
+
+def _folder(client: TestClient, name: str, course_id: int, parent_id: int | None = None) -> int:
+    created = client.post(
+        "/api/v1/folders", json={"name": name, "course_id": course_id, "parent_id": parent_id}
+    )
+    assert created.status_code == 201, created.text
+    return int(created.json()["id"])
+
+
+def _mirror(client: TestClient, node_id: int, folder_id: int) -> dict[str, Any]:
+    response = client.post(f"/api/v1/nodes/{node_id}/mirror-folder", json={"folder_id": folder_id})
+    assert response.status_code == 201, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+def test_mirror_folder_writes_tree_and_folder_links(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Mirror"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    pack = _folder(course_client, "Calculus", course_id)
+    week1 = _folder(course_client, "Week 1", course_id, pack)
+    _folder(course_client, "Week 2", course_id, pack)
+    _folder(course_client, "inner", course_id, week1)
+    material_id = add_material(course_client, "m.txt", course_id)
+    assert course_client.patch(
+        f"/api/v1/materials/{material_id}/move", json={"folder_id": week1}
+    ).status_code == 200
+
+    result = _mirror(course_client, root["id"], pack)
+    assert result["created_nodes"] == 3
+    assert result["reused_nodes"] == 0
+    assert result["folder_links"] == 4
+    assert result["skipped_folders"] == []
+
+    tree = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
+    weeks = tree[0]["children"]
+    assert [child["title"] for child in weeks] == ["Week 1", "Week 2"]
+    assert [child["title"] for child in weeks[0]["children"]] == ["inner"]
+
+    workspace = course_client.get(f"/api/v1/nodes/{weeks[0]['id']}/workspace").json()
+    assert material_id in workspace["folder_material_ids"]
+    links = course_client.get(f"/api/v1/materials/{material_id}/links").json()
+    via_nodes = {
+        entry["node_id"] for entry in links if entry["via_folder"] is not None
+    }
+    assert weeks[0]["id"] in via_nodes
+
+
+def test_mirror_folder_is_idempotent(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Mirror again"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    pack = _folder(course_client, "Algebra", course_id)
+    _folder(course_client, "Basics", course_id, pack)
+
+    first = _mirror(course_client, root["id"], pack)
+    second = _mirror(course_client, root["id"], pack)
+    assert first["created_nodes"] == 1
+    assert second["created_nodes"] == 0
+    assert second["reused_nodes"] == 1
+    assert second["folder_links"] == 2
+    tree = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
+    assert [child["title"] for child in tree[0]["children"]] == ["Basics"]
+
+
+def test_mirror_reuses_existing_same_title_nodes(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Reuse"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    course_client.post(
+        f"/api/v1/courses/{course_id}/nodes",
+        json={"course_id": course_id, "parent_id": root["id"], "title": "chapter 1"},
+    )
+    pack = _folder(course_client, "Unrelated", course_id)
+    _folder(course_client, "Chapter 1", course_id, pack)
+    _folder(course_client, "Section A", course_id, pack)
+
+    result = _mirror(course_client, root["id"], pack)
+    assert result["reused_nodes"] == 1
+    assert result["created_nodes"] == 1
+    assert result["folder_links"] == 3
+    tree = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
+    titles = [child["title"] for child in tree[0]["children"]]
+    assert titles == ["chapter 1", "Section A"]
+
+
+def _node_chain(client: TestClient, course_id: int, root_id: int, levels: list[str]) -> int:
+    parent = root_id
+    for title in levels:
+        node = client.post(
+            f"/api/v1/courses/{course_id}/nodes",
+            json={"course_id": course_id, "parent_id": parent, "title": title},
+        )
+        assert node.status_code == 201, node.text
+        parent = int(node.json()["id"])
+    return parent
+
+
+def test_mirror_skips_deeper_than_node_depth(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Deep"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    deep_node = _node_chain(course_client, course_id, root["id"], ["A", "B", "C", "D"])
+    leaf = _folder(course_client, "L1", course_id)
+    _folder(course_client, "L2", course_id, leaf)
+
+    result = _mirror(course_client, deep_node, leaf)
+    assert result["created_nodes"] == 0
+    assert result["folder_links"] == 1
+    assert result["skipped_folders"] == ["L1/L2"]
+    tree = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
+    deep_node_children = tree[0]["children"][0]["children"][0]["children"][0]["children"][0][
+        "children"
+    ]
+    assert deep_node_children == []
+
+
+def test_mirror_folder_not_in_course_rejected(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "One"}).json()["id"]
+    other_id = course_client.post("/api/v1/courses", json={"title": "Two"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    foreign = _folder(course_client, "Foreign", other_id)
+    response = course_client.post(
+        f"/api/v1/nodes/{root['id']}/mirror-folder", json={"folder_id": foreign}
+    )
+    assert response.status_code == 422
+    assert "not in this course" in response.json()["detail"]

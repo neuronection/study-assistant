@@ -48,7 +48,7 @@ from ..content.folders import (
     subtree_folder_ids,
 )
 from ..content.materials import purge_material
-from .tree import TreeService
+from .tree import MAX_DEPTH, TreeService
 
 OUTLINE_TASK = "outline"
 
@@ -571,6 +571,83 @@ class StructureService:
         self._session.add(link)
         self._session.flush()
         return link
+
+    def mirror_folder(
+        self,
+        node_id: int,
+        folder_id: int,
+        *,
+        recursive: bool = True,
+        rationale: str | None = None,
+    ) -> dict[str, Any]:
+        node = self._session.get(TreeNode, node_id)
+        if node is None:
+            raise CourseError("node not found")
+        folder = self._session.get(MaterialFolder, folder_id)
+        if folder is None or folder.course_id != node.course_id:
+            raise CourseError("folder not in this course")
+        created = 0
+        reused = 0
+        folder_links = 0
+        skipped: list[str] = []
+
+        def child_folders(parent_id: int) -> list[MaterialFolder]:
+            return list(
+                self._session.scalars(
+                    select(MaterialFolder)
+                    .where(MaterialFolder.parent_id == parent_id)
+                    .order_by(MaterialFolder.name)
+                )
+            )
+
+        def existing_child_titles(parent_node_id: int) -> dict[str, int]:
+            titles: dict[str, int] = {}
+            for child in self._session.scalars(
+                select(TreeNode).where(TreeNode.parent_id == parent_node_id)
+            ):
+                titles.setdefault(child.title.casefold(), child.id)
+            return titles
+
+        def mirror(parent_folder_id: int, parent_node_id: int) -> None:
+            nonlocal created, reused, folder_links
+            for child in child_folders(parent_folder_id):
+                if node_depth(parent_node_id) >= MAX_DEPTH:
+                    skipped.append(child.path)
+                    continue
+                titles = existing_child_titles(parent_node_id)
+                existing_id = titles.get(child.name.casefold())
+                if existing_id is None:
+                    created_node = self._tree.create_node(
+                        node.course_id,
+                        parent_node_id,
+                        child.name,
+                    )
+                    created += 1
+                    child_node_id = created_node.id
+                else:
+                    reused += 1
+                    child_node_id = existing_id
+                self.assign_folder(child_node_id, child.id, rationale=rationale)
+                folder_links += 1
+                if recursive:
+                    mirror(child.id, child_node_id)
+
+        def node_depth(n: int) -> int:
+            found = self._session.get(TreeNode, n)
+            assert found is not None
+            return found.depth
+
+        self.assign_folder(node_id, folder_id, rationale=rationale)
+        folder_links += 1
+        if recursive:
+            mirror(folder_id, node_id)
+        self._session.flush()
+        return {
+            "created_nodes": created,
+            "reused_nodes": reused,
+            "folder_links": folder_links,
+            "skipped_folders": skipped[:20],
+        }
 
     def unassign_folder(self, node_id: int, folder_id: int) -> bool:
         existing = self._session.scalars(

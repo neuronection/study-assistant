@@ -280,6 +280,7 @@ export {
   allocateMaterial,
   allocateNodeFolder,
   assignCourseMaterial,
+  mirrorFolder,
   composeMaterial,
   copyMaterial,
   createTextFile,

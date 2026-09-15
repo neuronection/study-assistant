@@ -213,6 +213,19 @@ class FolderAllocationIn(BaseModel):
     rationale: str | None = None
 
 
+class MirrorFolderIn(BaseModel):
+    folder_id: int
+    recursive: bool = True
+    rationale: str | None = None
+
+
+class MirrorFolderOut(BaseModel):
+    created_nodes: int
+    reused_nodes: int
+    folder_links: int
+    skipped_folders: list[str] = Field(default_factory=list)
+
+
 class OutlineCommit(BaseModel):
     chapters: list[dict[str, Any]]
 
@@ -920,6 +933,25 @@ def unassign_folder_materials(
     _load_node(session, node_id)
     _structure(session).unassign_folder(node_id, folder_id)
     session.commit()
+
+
+@router.post(
+    "/nodes/{node_id}/mirror-folder",
+    status_code=201,
+    response_model=MirrorFolderOut,
+)
+def mirror_folder(
+    node_id: int, body: MirrorFolderIn, session: Session = Depends(get_session)
+) -> dict[str, Any]:
+    _load_node(session, node_id)
+    try:
+        result = _structure(session).mirror_folder(
+            node_id, body.folder_id, recursive=body.recursive, rationale=body.rationale
+        )
+    except CourseError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    return result
 
 
 @router.get(

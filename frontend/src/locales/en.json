@@ -1517,6 +1517,13 @@
     "folderMembers_one": "{{count}} material in this folder joins this node",
     "folderMembers_other": "{{count}} materials in this folder join this node",
     "unassignFolder": "Unassign folder",
+    "mirrorFolder": "Mirror folder structure into nodes",
+    "mirrorCreated_one": "{{count}} node created",
+    "mirrorCreated_other": "{{count}} nodes created",
+    "mirrorReused_one": "{{count}} node reused",
+    "mirrorReused_other": "{{count}} nodes reused",
+    "mirrorNone": "Nothing new to mirror",
+    "mirrorSkipped": "{{count}} deeper level(s) stay in their folders — everything inside remains assigned",
     "viaFolderTitle": "Assigned via folder “{{name}}” — move the file out of the folder or unassign the folder to remove it"
   },
   "materialPicker": {

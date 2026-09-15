@@ -5760,6 +5760,65 @@
         "title": "MindmapEditOut",
         "type": "object"
       },
+      "MirrorFolderIn": {
+        "properties": {
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "integer"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "recursive": {
+            "default": true,
+            "title": "Recursive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "folder_id"
+        ],
+        "title": "MirrorFolderIn",
+        "type": "object"
+      },
+      "MirrorFolderOut": {
+        "properties": {
+          "created_nodes": {
+            "title": "Created Nodes",
+            "type": "integer"
+          },
+          "folder_links": {
+            "title": "Folder Links",
+            "type": "integer"
+          },
+          "reused_nodes": {
+            "title": "Reused Nodes",
+            "type": "integer"
+          },
+          "skipped_folders": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped Folders",
+            "type": "array"
+          }
+        },
+        "required": [
+          "created_nodes",
+          "reused_nodes",
+          "folder_links"
+        ],
+        "title": "MirrorFolderOut",
+        "type": "object"
+      },
       "MistakeListItemOut": {
         "properties": {
           "activity_id": {
@@ -20371,6 +20430,58 @@
           }
         },
         "summary": "Unassign Material",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/v1/nodes/{node_id}/mirror-folder": {
+      "post": {
+        "operationId": "mirror_folder_api_v1_nodes__node_id__mirror_folder_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MirrorFolderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MirrorFolderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mirror Folder",
         "tags": [
           "courses"
         ]

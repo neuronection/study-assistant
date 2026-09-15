@@ -97,6 +97,7 @@ import {
   getCourse,
   getMaterial,
   getNodeArtifacts,
+  mirrorFolder as mirrorFolderApi,
   listChatSessions,
   listNoteTags,
   listNotes,
@@ -1366,6 +1367,33 @@ function MaterialsTab({
     return items
   }
 
+  const mirrorFolder = useMutation({
+    mutationFn: ({ folderId }: { folderId: number }) =>
+      mirrorFolderApi(currentId, folderId),
+    onSuccess: () => void refresh(),
+  })
+
+  const mirrorFeedback = (
+    created: number,
+    reused: number,
+    skipped: string[],
+  ): void => {
+    const parts: string[] = []
+    if (created > 0) {
+      parts.push(t('workspace.mirrorCreated', { count: created }))
+    }
+    if (reused > 0) {
+      parts.push(t('workspace.mirrorReused', { count: reused }))
+    }
+    if (parts.length === 0) {
+      parts.push(t('workspace.mirrorNone'))
+    }
+    if (skipped.length > 0) {
+      parts.push(t('workspace.mirrorSkipped', { count: skipped.length }))
+    }
+    setDeriveNotice(parts.join(' · '))
+  }
+
   const folderMenuItems = (folder: WorkspaceFolder): ContextMenuItem[] => {
     const multi = selection.selected.size > 1
     const items: ContextMenuItem[] = [
@@ -1378,6 +1406,22 @@ function MaterialsTab({
         key: 'assign',
         label: t('workspace.assignSelection'),
         onSelect: () => setAssignOpen(true),
+      },
+      {
+        key: 'mirror',
+        label: t('workspace.mirrorFolder'),
+        onSelect: () =>
+          mirrorFolder.mutate(
+            { folderId: folder.folder_id },
+            {
+              onSuccess: (result) =>
+                mirrorFeedback(
+                  result.created_nodes,
+                  result.reused_nodes,
+                  result.skipped_folders,
+                ),
+            },
+          ),
       },
     ]
     if (multi) {

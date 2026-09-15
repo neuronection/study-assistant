@@ -151,6 +151,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 
 ## Courses & structure
 
+- ✅ **Folder→node mirroring (plan 75-B, 2026-09-15)**: a library folder tree
+  becomes a node subtree — `POST /nodes/{id}/mirror-folder` reuses
+  title-matched child nodes (case-insensitive, idempotent reruns) or creates
+  them, folder-links each mirrored folder (its files attach implicitly,
+  including files added later), caps at node depth 4 and reports deeper
+  levels as `skipped_folders`; NodeWorkspace materials-tab folder menu
+  "Mirror folder structure into nodes" shows created/reused + skipped counts
 - ✅ Course workspace selector in the nav rail (**2026-08-26 consolidation**): one
   **course hub** under a logo header (gradient mark + wordmark, links home) — a
   popover switcher ("Select a course" placeholder when nothing is picked; rows with

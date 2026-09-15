@@ -64,6 +64,7 @@ const deallocateNodeFolder = vi.fn()
 const uploadMaterial = vi.fn()
 const allocateMaterial = vi.fn()
 const allocateNodeFolder = vi.fn()
+const mirrorFolder = vi.fn()
 const listFolders = vi.fn()
 const createFolder = vi.fn()
 const createTextMaterial = vi.fn()
@@ -234,6 +235,7 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     allocateMaterial: (...args: unknown[]) => allocateMaterial(...(args as [number, number])),
     allocateNodeFolder: (...args: unknown[]) =>
       allocateNodeFolder(...(args as [number, number])),
+    mirrorFolder: (...args: unknown[]) => mirrorFolder(...(args as [number, number])),
     listFolders: (...args: unknown[]) => listFolders(...(args as [number?])),
     createFolder: (...args: unknown[]) => createFolder(...(args as [string, number | null, number])),
     createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
@@ -1914,6 +1916,85 @@ describe('NodeWorkspace', () => {
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Unassign folder' }))
     await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith(5, 10))
+  })
+
+  test('materials tab folder menu mirrors the folder structure into nodes', async () => {
+    primeDefaults()
+    mirrorFolder.mockResolvedValue({
+      created_nodes: 2,
+      reused_nodes: 0,
+      folder_links: 3,
+      skipped_folders: [],
+    })
+    nodeWorkspace.mockImplementation((id: number) =>
+      Promise.resolve(
+        id === 1
+          ? ROOT_WS
+          : {
+              ...NODE_WS,
+              folders: [
+                {
+                  folder_id: 10,
+                  name: 'Lectures',
+                  source_id: null,
+                  member_count: 2,
+                  rationale: null,
+                  auto_assigned: false,
+                },
+              ],
+            }
+      )
+    )
+    renderWorkspace('/courses/3/n/5?tab=materials')
+    const row = await screen.findByTitle('2 materials in this folder join this node')
+    fireEvent.contextMenu(row)
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Mirror folder structure into nodes' })
+    )
+    await waitFor(() => expect(mirrorFolder).toHaveBeenCalledWith(5, 10))
+    expect(
+      await screen.findByText('2 nodes created')
+    ).toBeInTheDocument()
+  })
+
+  test('materials tab mirroring reports reused and skipped counts honestly', async () => {
+    primeDefaults()
+    mirrorFolder.mockResolvedValue({
+      created_nodes: 0,
+      reused_nodes: 1,
+      folder_links: 2,
+      skipped_folders: ['pack/a/b/c'],
+    })
+    nodeWorkspace.mockImplementation((id: number) =>
+      Promise.resolve(
+        id === 1
+          ? ROOT_WS
+          : {
+              ...NODE_WS,
+              folders: [
+                {
+                  folder_id: 10,
+                  name: 'Lectures',
+                  source_id: null,
+                  member_count: 2,
+                  rationale: null,
+                  auto_assigned: false,
+                },
+              ],
+            }
+      )
+    )
+    renderWorkspace('/courses/3/n/5?tab=materials')
+    const row = await screen.findByTitle('2 materials in this folder join this node')
+    fireEvent.contextMenu(row)
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Mirror folder structure into nodes' })
+    )
+    expect(
+      await screen.findByText(/1 node reused/)
+    ).toBeInTheDocument()
+    const notice = await screen.findByText(/deeper level/)
+    expect(notice.textContent).toContain('1')
   })
 
   test('materials tab bulk unassign removes selected materials and folders', async () => {

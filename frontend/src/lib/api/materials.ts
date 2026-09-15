@@ -549,6 +549,26 @@ export async function allocateNodeFolder(
   await json<unknown>(response)
 }
 
+export interface MirrorFolderResult {
+  created_nodes: number
+  reused_nodes: number
+  folder_links: number
+  skipped_folders: string[]
+}
+
+export async function mirrorFolder(
+  nodeId: number,
+  folderId: number,
+  recursive = true
+): Promise<MirrorFolderResult> {
+  const response = await apiFetch(`/api/v1/nodes/${nodeId}/mirror-folder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folder_id: folderId, recursive }),
+  })
+  return json<MirrorFolderResult>(response)
+}
+
 export async function deallocateNodeFolder(
   nodeId: number,
   folderId: number
