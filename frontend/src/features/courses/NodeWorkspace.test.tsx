@@ -68,6 +68,8 @@ const mirrorFolder = vi.fn()
 const getUnassignedMaterials = vi.fn()
 const getPlacementSuggestions = vi.fn()
 const listFolders = vi.fn()
+const browseSource = vi.fn()
+const ingestSourceFile = vi.fn()
 const createFolder = vi.fn()
 const createTextMaterial = vi.fn()
 const updateTextMaterial = vi.fn()
@@ -243,6 +245,10 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     getPlacementSuggestions: (...args: unknown[]) =>
       getPlacementSuggestions(...(args as [number, number[]])),
     listFolders: (...args: unknown[]) => listFolders(...(args as [number?])),
+    browseSource: (...args: unknown[]) =>
+      browseSource(...(args as [number, string])),
+    ingestSourceFile: (...args: unknown[]) =>
+      ingestSourceFile(...(args as [number, string])),
     createFolder: (...args: unknown[]) => createFolder(...(args as [string, number | null, number])),
     createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
     updateTextMaterial: (...args: unknown[]) => updateTextMaterial(...(args as [])),
@@ -448,6 +454,21 @@ function primeDefaults() {
   )
   courseTree.mockResolvedValue(TREE)
   listFolders.mockResolvedValue([])
+  browseSource.mockResolvedValue({
+    source_id: 77,
+    label: 'Source',
+    path: '/src',
+    subdir: '',
+    missing_target: false,
+    enabled: true,
+    scan_interval_sec: null,
+    last_scan_error: null,
+    last_scanned_at: null,
+    subdirs: [],
+    materials: [],
+    uningested: [],
+  })
+  ingestSourceFile.mockResolvedValue({ material_id: 1, job_id: null, deduped: false })
   createFolder.mockImplementation(async (name: string, parentId: number | null) => ({
     id: 900 + createFolder.mock.calls.length,
     name,
@@ -1859,7 +1880,7 @@ describe('NodeWorkspace', () => {
     expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
   })
 
-  test('linked-source assigned folder opens its library source', async () => {
+  test('linked-source assigned folder browses its source in the tab (plan 76 C)', async () => {
     primeDefaults()
     nodeWorkspace.mockImplementation((id: number) =>
       Promise.resolve(
@@ -1880,9 +1901,95 @@ describe('NodeWorkspace', () => {
             }
       )
     )
+    listFolders.mockResolvedValue([
+      {
+        id: 10,
+        name: 'Lectures',
+        path: '/Lectures',
+        course_id: 3,
+        parent_id: null,
+        source_id: 77,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ])
+    browseSource.mockResolvedValue({
+      source_id: 77,
+      label: 'Lecture vault',
+      path: '/vault',
+      subdir: '',
+      missing_target: false,
+      enabled: true,
+      scan_interval_sec: 300,
+      last_scan_error: null,
+      last_scanned_at: null,
+      subdirs: [{ name: 'week-1' }],
+      materials: [
+        {
+          id: 55,
+          title: 'intro-scan.pdf',
+          kind: 'pdf',
+          status: 'ready',
+          filename: 'intro-scan.pdf',
+          relpath: 'intro-scan.pdf',
+        },
+      ],
+      uningested: [
+        { name: 'new-notes.txt', relpath: 'new-notes.txt', size_bytes: 12, mtime: 1 },
+      ],
+    })
     renderWorkspace('/courses/3/n/5?tab=materials')
     const row = await screen.findByTitle('2 materials in this folder join this node')
     fireEvent.doubleClick(row)
+    await waitFor(() =>
+      expect(routerHolder.current!.state.location.search).toMatchObject({
+        tab: 'materials',
+        folder: 10,
+      })
+    )
+    expect(await screen.findByText('intro-scan.pdf')).toBeInTheDocument()
+    expect(browseSource).toHaveBeenCalledWith(77, '')
+    expect(screen.getByText('week-1')).toBeInTheDocument()
+    expect(screen.getByText('new-notes.txt')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('week-1'))
+    await waitFor(() => expect(browseSource).toHaveBeenCalledWith(77, 'week-1'))
+  })
+
+  test('linked-source browse offers open-in-library at the crumb row (plan 76 C)', async () => {
+    primeDefaults()
+    nodeWorkspace.mockImplementation((id: number) =>
+      Promise.resolve(
+        id === 1
+          ? ROOT_WS
+          : {
+              ...NODE_WS,
+              folders: [
+                {
+                  folder_id: 10,
+                  name: 'Lectures',
+                  source_id: 77,
+                  member_count: 2,
+                  rationale: null,
+                  auto_assigned: false,
+                },
+              ],
+            }
+      )
+    )
+    listFolders.mockResolvedValue([
+      {
+        id: 10,
+        name: 'Lectures',
+        path: '/Lectures',
+        course_id: 3,
+        parent_id: null,
+        source_id: 77,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ])
+    renderWorkspace('/courses/3/n/5?tab=materials&folder=10')
+    const button = await screen.findByRole('button', { name: /Open in library/i })
+    fireEvent.click(button)
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ClipboardList,
   Dumbbell,
+  ExternalLink,
   FolderClosed,
   GitBranch,
   Layers,
@@ -53,6 +54,7 @@ import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
 import { isKeyboardClick, useSelection } from '@/lib/useSelection'
 import { MaterialBrowser, type MaterialFolderSpec } from '@/components/materials/MaterialBrowser'
 import { type Crumb } from '@/features/library/LibraryBreadcrumbs'
+import { KindIcon } from '@/features/library/KindIcon'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
@@ -81,6 +83,7 @@ import {
   addNodeConcept,
   allocateMaterial,
   allocateNodeFolder,
+  browseSource,
   conceptGraph,
   courseTree,
   createChatSession,
@@ -90,6 +93,7 @@ import {
   deallocateMaterial,
   deallocateNodeFolder,
   deriveMaterials,
+  ingestSourceFile,
   moveNote,
   deleteNote,
   draftNodeNote,
@@ -1006,7 +1010,7 @@ function MaterialsTab({
   const [browseMenu, setBrowseMenu] = useState<{
     x: number
     y: number
-    material: Material
+    material: { id: number; title: string }
   } | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [textDialog, setTextDialog] = useState<'txt' | 'md' | null>(null)
@@ -1034,7 +1038,19 @@ function MaterialsTab({
   const allFolders = useMemo(() => allFoldersQuery.data ?? [], [allFoldersQuery.data])
   const browseFolder =
     folderId !== null ? (allFolders.find((entry) => entry.id === folderId) ?? null) : null
-  const browseActive = folderId !== null && allFoldersQuery.data !== undefined && browseFolder !== null
+  const linkedSourceId = browseFolder?.source_id ?? null
+  const [sourceSubdir, setSourceSubdir] = useState('')
+  useEffect(() => {
+    setSourceSubdir('')
+  }, [folderId])
+  const sourceBrowseQuery = useQuery({
+    queryKey: ['source-browse', linkedSourceId, sourceSubdir],
+    queryFn: () => browseSource(linkedSourceId as number, sourceSubdir),
+    enabled: linkedSourceId !== null,
+  })
+  const sourceBrowse = linkedSourceId !== null ? (sourceBrowseQuery.data ?? null) : null
+  const browseActive =
+    folderId !== null && allFoldersQuery.data !== undefined && browseFolder !== null
   const browseSubfolders = useMemo(
     () =>
       browseActive
@@ -1052,6 +1068,29 @@ function MaterialsTab({
     if (!browseActive || browseFolder === null) {
       return []
     }
+    const items: Crumb[] = [
+      {
+        key: 'materials-root',
+        label: t('workspace.materialsCrumbRoot'),
+        onClick: onCloseFolder,
+      },
+    ]
+    if (linkedSourceId !== null) {
+      items.push({
+        key: `f${browseFolder.id}`,
+        label: browseFolder.name,
+        onClick: sourceSubdir === '' ? undefined : () => setSourceSubdir(''),
+      })
+      const parts = sourceSubdir ? sourceSubdir.split('/') : []
+      parts.forEach((part, index) => {
+        items.push({
+          key: `sub-${index}-${part}`,
+          label: part,
+          onClick: () => setSourceSubdir(parts.slice(0, index + 1).join('/')),
+        })
+      })
+      return items
+    }
     const chain: Folder[] = []
     let walker: Folder | null = browseFolder
     while (walker !== null) {
@@ -1059,7 +1098,7 @@ function MaterialsTab({
       walker = allFolders.find((entry) => entry.id === walker?.parent_id) ?? null
     }
     return [
-      { key: 'materials-root', label: t('workspace.materialsCrumbRoot'), onClick: onCloseFolder },
+      ...items,
       ...chain.map((entry) => ({
         key: `f${entry.id}`,
         label: entry.name,
@@ -1075,7 +1114,16 @@ function MaterialsTab({
               },
       })),
     ]
-  }, [browseActive, browseFolder, allFolders, t, onCloseFolder, onOpenFolder])
+  }, [
+    browseActive,
+    browseFolder,
+    allFolders,
+    t,
+    onCloseFolder,
+    onOpenFolder,
+    linkedSourceId,
+    sourceSubdir,
+  ])
   const [suggestions, setSuggestions] = useState<PlacementSuggestion[] | null>(null)
   const [suggestPending, setSuggestPending] = useState(false)
   const suggestPlacementsMutation = async (): Promise<void> => {
@@ -1122,6 +1170,21 @@ function MaterialsTab({
         : browseMaterials,
     [browseMaterials, normalizedQuery]
   )
+  const linkedMaterials = useMemo(
+    () =>
+      normalizedQuery
+        ? fuzzyFilter(sourceBrowse?.materials ?? [], normalizedQuery, (entry) => entry.title)
+        : (sourceBrowse?.materials ?? []),
+    [sourceBrowse, normalizedQuery]
+  )
+  const ingestLinked = useMutation({
+    mutationFn: ({ sourceId, relpath }: { sourceId: number; relpath: string }) =>
+      ingestSourceFile(sourceId, relpath),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['source-browse'] })
+    },
+    onError: (error: Error) => setCreateError(error.message),
+  })
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['node-workspace', String(currentId)] })
@@ -1223,12 +1286,21 @@ function MaterialsTab({
   const materialOrder = useMemo(
     () =>
       browseActive
-        ? [
-            ...browseSubfolders.map((entry) => `f${entry.id}`),
-            ...visibleBrowseMaterials.map((entry) => `m${entry.id}`),
-          ]
+        ? linkedSourceId !== null
+          ? linkedMaterials.map((entry) => `m${entry.id}`)
+          : [
+              ...browseSubfolders.map((entry) => `f${entry.id}`),
+              ...visibleBrowseMaterials.map((entry) => `m${entry.id}`),
+            ]
         : workspace.materials.map((entry) => `m${entry.material_id}`),
-    [browseActive, browseSubfolders, visibleBrowseMaterials, workspace.materials]
+    [
+      browseActive,
+      linkedSourceId,
+      linkedMaterials,
+      browseSubfolders,
+      visibleBrowseMaterials,
+      workspace.materials,
+    ]
   )
   const selection = useSelection(materialOrder)
   const selectedMaterialIds = useMemo(
@@ -1338,8 +1410,28 @@ function MaterialsTab({
     [navigate, courseId]
   )
 
+  const openInLibraryCrumb =
+    browseActive && browseFolder !== null ? (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => openBrowseFolderInLibrary(browseFolder)}
+      >
+        <ExternalLink aria-hidden />
+        {t('workspace.openFolderInLibrary')}
+      </Button>
+    ) : undefined
+
   const folderSpecs: MaterialFolderSpec[] = useMemo(() => {
     if (browseActive) {
+      if (linkedSourceId !== null) {
+        return (sourceBrowse?.subdirs ?? []).map((entry) => ({
+          key: `sub-${entry.name}`,
+          name: entry.name,
+          onOpen: () =>
+            setSourceSubdir(sourceSubdir ? `${sourceSubdir}/${entry.name}` : entry.name),
+        }))
+      }
       return browseSubfolders.map((entry) => ({
         key: `f${entry.id}`,
         name: entry.name,
@@ -1363,10 +1455,7 @@ function MaterialsTab({
       title: t('workspace.folderMembers', { count: folder.member_count }),
       selectionState: selection.selected.has(`f${folder.folder_id}`) ? 'selected' : 'none',
       onPointerDown: (event) => selection.pointerDown(`f${folder.folder_id}`, event),
-      onOpen: () =>
-        folder.source_id !== null
-          ? openFolderInLibrary(folder)
-          : onOpenFolder(folder.folder_id),
+      onOpen: () => onOpenFolder(folder.folder_id),
       onContextMenu: (event) => openFolderContextMenu(event, folder),
       gridMeta: (
         <span className="text-muted-foreground text-[10px]">{folder.member_count}</span>
@@ -1389,15 +1478,80 @@ function MaterialsTab({
     }))
   }, [
     browseActive,
+    linkedSourceId,
+    sourceBrowse,
+    sourceSubdir,
     browseSubfolders,
     selection,
     onOpenFolder,
-    openFolderInLibrary,
     visibleFolders,
     t,
     unassignFolder,
     openFolderContextMenu,
   ])
+
+  const renderLinkedEntry = (entry: {
+    id: number
+    title: string
+    kind: string
+    status: string
+  }) => {
+    const key = `m${entry.id}`
+    return view === 'grid' ? (
+      <MaterialTile
+        key={entry.id}
+        data-selectable-id={key}
+        material={{
+          id: entry.id,
+          title: entry.title,
+          kind: entry.kind,
+          status: entry.status,
+        }}
+        selectionState={selection.selected.has(key) ? 'selected' : 'none'}
+        className="w-full"
+        onMouseDown={(event) => selection.pointerDown(key, event)}
+        onClick={(event) => {
+          if (isKeyboardClick(event)) {
+            onOpenMaterial(entry.id)
+          }
+        }}
+        onDoubleClick={() => onOpenMaterial(entry.id)}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          setBrowseMenu({
+            x: event.clientX,
+            y: event.clientY,
+            material: entry,
+          })
+        }}
+      />
+    ) : (
+      <div key={entry.id} data-selectable-id={key}>
+        <MaterialRow
+          material={{
+            id: entry.id,
+            title: entry.title,
+            kind: entry.kind,
+            status: entry.status,
+          }}
+          selectionState={selection.selected.has(key) ? 'selected' : 'none'}
+          onMouseDown={(event) => selection.pointerDown(key, event)}
+          onOpen={() => onOpenMaterial(entry.id)}
+          action={
+            <span className="text-muted-foreground shrink-0 text-xs">{entry.kind}</span>
+          }
+          onContextMenu={(event) => {
+            event.preventDefault()
+            setBrowseMenu({
+              x: event.clientX,
+              y: event.clientY,
+              material: entry,
+            })
+          }}
+        />
+      </div>
+    )
+  }
 
   const renderBrowseEntry = (entry: Material) => {
     const key = `m${entry.id}`
@@ -1857,7 +2011,93 @@ function MaterialsTab({
           </div>
         ) : null}
         {browseActive ? (
-          folderMaterialsQuery.isLoading ? (
+          linkedSourceId !== null ? (
+            sourceBrowseQuery.isLoading || sourceBrowse === null ? (
+              <p className="text-muted-foreground py-2 text-center text-sm">
+                {t('library.loading')}
+              </p>
+            ) : (
+              <MaterialBrowser
+                view={view}
+                folders={folderSpecs}
+                crumbs={browseCrumbs}
+                crumbsExtra={openInLibraryCrumb}
+                className={view === 'grid' ? 'gap-2' : 'gap-1'}
+              >
+                {createError !== null ? (
+                  <p className="text-warning col-span-full p-2 text-xs" role="alert">
+                    {createError}
+                  </p>
+                ) : null}
+                {sourceBrowse.missing_target ? (
+                  <p className="text-danger col-span-full flex flex-wrap items-center gap-2 p-2 text-xs">
+                    <span>
+                      {t('library.targetMissing', { path: sourceBrowse.path })}
+                    </span>
+                  </p>
+                ) : null}
+                {sourceBrowse.last_scan_error ? (
+                  <p
+                    className="text-warning col-span-full p-2 text-xs"
+                    title={sourceBrowse.last_scan_error}
+                  >
+                    {t('library.scanError', { message: sourceBrowse.last_scan_error })}
+                  </p>
+                ) : null}
+                {linkedMaterials.map(renderLinkedEntry)}
+                {sourceBrowse.uningested.map((entry) => (
+                  <button
+                    key={entry.relpath}
+                    type="button"
+                    className={cn(
+                      'group border-border flex cursor-pointer select-none flex-col items-center gap-2 rounded-lg border border-dashed p-3 text-center transition-colors hover:bg-subtle',
+                      view === 'list' &&
+                        'flex w-full flex-row items-center gap-2 rounded-md px-3 py-2 text-left text-sm'
+                    )}
+                    title={t('library.ingestHint')}
+                    onClick={() =>
+                      ingestLinked.mutate({
+                        sourceId: linkedSourceId as number,
+                        relpath: entry.relpath,
+                      })
+                    }
+                  >
+                    <KindIcon
+                      kind="doc"
+                      className="text-muted-foreground/60 shrink-0"
+                    />
+                    <span
+                      className={cn(
+                        'text-xs',
+                        view === 'grid' ? 'line-clamp-2' : 'min-w-0 flex-1 truncate'
+                      )}
+                    >
+                      {entry.name}
+                    </span>
+                    <span className="bg-warning/15 text-warning shrink-0 rounded-full px-2 py-0.5 text-[10px]">
+                      {t('library.pendingIngest')}
+                    </span>
+                  </button>
+                ))}
+                {!sourceBrowse.missing_target &&
+                sourceBrowse.subdirs.length === 0 &&
+                linkedMaterials.length === 0 &&
+                sourceBrowse.uningested.length === 0 ? (
+                  normalizedQuery ? (
+                    <p className="text-muted-foreground py-2 text-center text-sm">
+                      {t('workspace.noSearchResults')}
+                    </p>
+                  ) : (
+                    <EmptyState
+                      icon={FolderClosed}
+                      compact
+                      title={t('workspace.folderEmpty')}
+                    />
+                  )
+                ) : null}
+              </MaterialBrowser>
+            )
+          ) : folderMaterialsQuery.isLoading ? (
             <p className="text-muted-foreground py-2 text-center text-sm">
               {t('library.loading')}
             </p>
@@ -1870,7 +2110,12 @@ function MaterialsTab({
               <EmptyState icon={FolderClosed} compact title={t('workspace.folderEmpty')} />
             )
           ) : (
-            <MaterialBrowser view={view} folders={folderSpecs} crumbs={browseCrumbs}>
+            <MaterialBrowser
+              view={view}
+              folders={folderSpecs}
+              crumbs={browseCrumbs}
+              crumbsExtra={openInLibraryCrumb}
+            >
               {visibleBrowseMaterials.map(renderBrowseEntry)}
             </MaterialBrowser>
           )

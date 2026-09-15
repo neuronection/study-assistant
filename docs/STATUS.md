@@ -93,6 +93,25 @@ suggestions (token-overlap, `matched_on` evidence), E linked-source subdir
 mirroring + scan `new_relpaths` (migration 0058). Plan doc:
 `dev/plans/75-material-placement-and-discovery.md` (local-only).
 
+**Plan 76 COMPLETE — slices A–C: in-tab folder browsing (2026-09-15,
+user-approved; ADRs 181–183):** **C** closed the round — linked-source folders
+(`source_id`) now browse **inside** the Materials tab over the shared
+`browseSource()` query (subdirs deepen component-local state per the Library's
+`linkState` grammar, materials open the drawer, uningested files get one-click
+ingest, `missing_target`/`last_scan_error` render honestly; subdirs are
+navigation-only), and an **Open in library** outline button rides the crumb row
+in every browse mode, deep-linking `/library?course=&folder=&source=` at any
+depth. A: shared `MaterialBrowser` (`components/materials/`) — one folder
+tile/row item + grid/list container + crumbs slot — renders folders in both the
+Library and the tab (`WorkspaceFolderItem` and the Library's hand-rolled folder
+buttons + local class strings deleted). B: folder drill-down via
+`?tab=materials&folder=<id>` with **full folder contents** from the standard
+endpoints, breadcrumbs, stale-id fallback, drawer opening, and
+Open/Open-in-library/Assign menus; root write affordances hide while browsing.
+i18n en/de/el (`materialsCrumbRoot`, `folderEmpty`). Backend untouched-green
+(1,119, ruff/mypy clean); frontend 1,196 green (+14 over the round),
+lint/typecheck/build/`pnpm i18n` green.
+
 **Plan 76 slice B — in-tab folder drill-down (2026-09-15; ADR-181):** the
 Materials tab now browses folders **in place**: double-click an assigned folder
 → `?tab=materials&folder=<id>` (tab stays; back/forward + deep links free via
@@ -118,17 +137,6 @@ hand-rolled folder buttons + local `tileBase`/`rowBase` strings and the tab's
 `folderTileClass`/`folderRowClass`; inline rename form rides a `render` spec).
 Groundwork for in-tab folder drill-down (slices B–C). Frontend 1,188 green (+6),
 lint/typecheck/build green; backend untouched.
-
-**Also planned (user-approved 2026-09-15) — plan 76 "Materials tab in-tab
-folder browsing":** one shared `MaterialBrowser` listing component (folders +
-materials, grid/list toggle, breadcrumbs — killing `WorkspaceFolderItem` and
-the Library's Re-inlined grid classes), folder drill-down **inside** the
-Materials tab via `?tab=materials&folder=<id>` (full folder contents from the
-standard library endpoints, `LibraryBreadcrumbs` crumbs, stale-id fallback),
-linked-source folders browsable in the tab (`browseSource` + component-local
-subdir, mirroring the Library's `linkState` grammar), and an "Open in library"
-escape hatch at any depth. ADRs 181–183 reserved. Plan doc:
-`dev/plans/76-materials-tab-folder-browsing.md` (local-only).
 
 **Plan 72 COMPLETE — slices A–F: AI sees the course tree (2026-09-09,
 user-approved; ADRs 160–163):** the LLM now always has the tree around

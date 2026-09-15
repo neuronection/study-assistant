@@ -84,6 +84,15 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   locations / cut / copy / assign-to-node / rename / delete with purge),
   folders (open / cut / paste-into / linked locations / rename / delete),
   links (open / rescan / reveal / rename / unlink); inline rename on tiles
+- ✅ **In-tab folder browsing (plan 76, ADRs 181–183, 2026-09-15)**: the course
+  Materials tab drills into folders in place via `?tab=materials&folder=<id>`
+  (back/forward + deep links), showing the folder's **full contents** —
+  subfolders + materials from the standard library endpoints (shared
+  `MaterialBrowser` component with the Library), breadcrumbs with a Materials
+  root crumb, honest stale-id fallback, drawer opening for folder materials,
+  and Open / Open-in-library / Assign-to-node menus; linked-source folders
+  browse over `browseSource` with subdirectory state, one-click ingest of
+  pending files, and an "Open in library" crumb-row button in every browse mode
 - ✅ **Needs placement (plan 75-C, 2026-09-15)**: `GET
   /courses/{id}/materials/unassigned` lists ready course materials visible at
   no node (direct link absent **and** not a member of any linked folder; cap
