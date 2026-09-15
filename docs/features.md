@@ -851,6 +851,11 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Minutes-or-questions goals (H10): daily goal gains a unit
   (answers | minutes); streak counts any qualifying day — ≥1 answer/card review
   or ≥5 minutes of tracked study time
+- ✅ Notification center: 🔔 bell in the sidebar footer over a computed
+  `GET /notifications` aggregate — due-card count, today/overdue plan rows,
+  exam countdowns; grouped popover deep-links to the review queue / planner;
+  count-dot clears via a localStorage seen-marker (nothing persisted
+  server-side) — plan 68-A
 - ✅ Global Review queue: cross-course due API (`GET /review/due`, grouped by
   course) behind a first-class `/review` page — rail entry with a live due-count
   badge, per-card course chips, keyboard 1–4 rating, progress bar, and honest

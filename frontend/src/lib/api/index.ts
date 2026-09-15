@@ -66,6 +66,15 @@ export { getReviewDue } from './review'
 
 export type { DueCourseGroup, ReviewDue } from './review'
 
+export { getNotifications } from './notifications'
+
+export type {
+  DueReviewEntry,
+  ExamEntry,
+  Notifications,
+  PlanEntry,
+} from './notifications'
+
 export type {
   ChatAttachmentInput,
   ChatAttachmentKind,

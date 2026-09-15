@@ -2916,6 +2916,34 @@
         "title": "DueCourseGroupOut",
         "type": "object"
       },
+      "DueReviewEntryOut": {
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "kind",
+          "course_id",
+          "course_title"
+        ],
+        "title": "DueReviewEntryOut",
+        "type": "object"
+      },
       "EditIn": {
         "properties": {
           "content": {
@@ -3117,6 +3145,34 @@
           "last_seen_at"
         ],
         "title": "ErrorTagStatOut",
+        "type": "object"
+      },
+      "ExamEntryOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "exam_date": {
+            "title": "Exam Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "course_title",
+          "exam_date",
+          "days_left"
+        ],
+        "title": "ExamEntryOut",
         "type": "object"
       },
       "ExamStatusOut": {
@@ -7365,6 +7421,53 @@
         "title": "NotesPage",
         "type": "object"
       },
+      "NotificationsOut": {
+        "properties": {
+          "due_cards": {
+            "title": "Due Cards",
+            "type": "integer"
+          },
+          "due_reviews": {
+            "items": {
+              "$ref": "#/components/schemas/DueReviewEntryOut"
+            },
+            "title": "Due Reviews",
+            "type": "array"
+          },
+          "exams": {
+            "items": {
+              "$ref": "#/components/schemas/ExamEntryOut"
+            },
+            "title": "Exams",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "plan_overdue_count": {
+            "title": "Plan Overdue Count",
+            "type": "integer"
+          },
+          "plan_today": {
+            "items": {
+              "$ref": "#/components/schemas/PlanEntryOut"
+            },
+            "title": "Plan Today",
+            "type": "array"
+          }
+        },
+        "required": [
+          "due_cards",
+          "due_reviews",
+          "plan_today",
+          "plan_overdue_count",
+          "exams",
+          "generated_at"
+        ],
+        "title": "NotificationsOut",
+        "type": "object"
+      },
       "OnboardingStateOut": {
         "properties": {
           "defaults_set": {
@@ -7830,6 +7933,48 @@
           "suggestions"
         ],
         "title": "PlacementSuggestionsOut",
+        "type": "object"
+      },
+      "PlanEntryOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "due_date": {
+            "title": "Due Date",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PlanItemKind"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "title",
+          "kind",
+          "course_id",
+          "course_title",
+          "due_date",
+          "overdue"
+        ],
+        "title": "PlanEntryOut",
         "type": "object"
       },
       "PlanGenerateOut": {
@@ -22205,6 +22350,27 @@
         "summary": "Get Note Version",
         "tags": [
           "notes"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "notifications_api_v1_notifications_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Notifications",
+        "tags": [
+          "notifications"
         ]
       }
     },

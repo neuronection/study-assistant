@@ -2804,6 +2804,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notifications */
+        get: operations["notifications_api_v1_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/onboarding/sample": {
         parameters: {
             query?: never;
@@ -4916,6 +4933,17 @@ export interface components {
             /** Due Count */
             due_count: number;
         };
+        /** DueReviewEntryOut */
+        DueReviewEntryOut: {
+            /** Card Id */
+            card_id: number;
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Kind */
+            kind: string;
+        };
         /** EditIn */
         EditIn: {
             /** Content */
@@ -5012,6 +5040,17 @@ export interface components {
             total: number;
             /** Trend */
             trend: number;
+        };
+        /** ExamEntryOut */
+        ExamEntryOut: {
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Days Left */
+            days_left: number;
+            /** Exam Date */
+            exam_date: string;
         };
         /** ExamStatusOut */
         ExamStatusOut: {
@@ -6368,6 +6407,21 @@ export interface components {
             /** Next Cursor */
             next_cursor: string | null;
         };
+        /** NotificationsOut */
+        NotificationsOut: {
+            /** Due Cards */
+            due_cards: number;
+            /** Due Reviews */
+            due_reviews: components["schemas"]["DueReviewEntryOut"][];
+            /** Exams */
+            exams: components["schemas"]["ExamEntryOut"][];
+            /** Generated At */
+            generated_at: string;
+            /** Plan Overdue Count */
+            plan_overdue_count: number;
+            /** Plan Today */
+            plan_today: components["schemas"]["PlanEntryOut"][];
+        };
         /** OnboardingStateOut */
         OnboardingStateOut: {
             /** Defaults Set */
@@ -6528,6 +6582,22 @@ export interface components {
         PlacementSuggestionsOut: {
             /** Suggestions */
             suggestions: components["schemas"]["PlacementSuggestionOut"][];
+        };
+        /** PlanEntryOut */
+        PlanEntryOut: {
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Due Date */
+            due_date: string;
+            /** Item Id */
+            item_id: number;
+            kind: components["schemas"]["PlanItemKind"];
+            /** Overdue */
+            overdue: boolean;
+            /** Title */
+            title: string;
         };
         /** PlanGenerateOut */
         PlanGenerateOut: {
@@ -14355,6 +14425,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    notifications_api_v1_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationsOut"];
                 };
             };
         };

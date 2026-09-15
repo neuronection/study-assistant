@@ -2298,5 +2298,15 @@
     "allClearBody": "Your spaced-repetition queue is clear — new cards will surface as they come due.",
     "batchDone": "Batch cleared.",
     "loadNext": "Load next batch"
+  },
+  "notifications": {
+    "label": "Notifications",
+    "empty": "Nothing needs you right now.",
+    "dueNow": "Due now",
+    "dueCards": "{{count}} cards due",
+    "plan": "Plan",
+    "exams": "Exams",
+    "daysLeft": "· {{days}}d",
+    "moreOverdue": "+{{count}} more overdue"
   }
 }

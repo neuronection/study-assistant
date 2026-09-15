@@ -2298,5 +2298,15 @@
     "allClearBody": "Deine Spaced-Repetition-Warteschlange ist leer — neue Karten erscheinen, sobald sie fällig werden.",
     "batchDone": "Charge abgearbeitet.",
     "loadNext": "Nächste Charge laden"
+  },
+  "notifications": {
+    "label": "Benachrichtigungen",
+    "empty": "Im Moment braucht dich nichts.",
+    "dueNow": "Jetzt fällig",
+    "dueCards": "{{count}} Karten fällig",
+    "plan": "Plan",
+    "exams": "Prüfungen",
+    "daysLeft": "· {{days}} T.",
+    "moreOverdue": "+{{count}} weitere überfällig"
   }
 }

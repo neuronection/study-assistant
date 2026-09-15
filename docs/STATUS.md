@@ -323,6 +323,26 @@ favorites, snap-to-notes, quick-capture hotkey, extra languages all shipped in
 plans 67/69); plan 49's doc copied into the app-repo `dev/plans/`. Also noted:
 `tests/evals/` still does not exist — populate the golden sets before/during 49.
 
+**Feature — notification center (plan 68-A, ADR-151, 2026-09-15):** the app
+now tells you what needs you. New computed aggregate `GET /notifications`
+(`api/notifications.py`, typed response, nothing persisted — ADR-151):
+`due_cards` total (scratch-excluded, due-or-unscheduled), `due_reviews`
+(≤10 with course titles), `plan_today` (open items due today or overdue,
+overdue-flagged, ≤10) + `plan_overdue_count`, `exams` (≤3 from the shared
+`exam_status` reader, days-left chips) and `generated_at`. Frontend: a 🔔
+`NotificationBell` in the AppShell rail footer (library `PopoverButton`/`Badge`)
+with an animated count dot — the count is `due_cards + open plan rows`; the
+popover groups **Due now** (→ `/review`), **Plan** (overdue in red, row click →
+the course's Planner tab) and **Exams**; the library `EmptyState` renders the
+honest "nothing needs you" state. "Seen" is a client-side localStorage
+timestamp (`ca-notifications-seen`, lib/constants) — the dot re-appears only
+when the actionable total exceeds the last seen value, and a guard keeps the
+pre-first-fetch `0` from wiping the marker (caught by test). Poll: window
+focus + 5-minute interval; mark-seen on popover close. Tests:
+`test_notifications_api.py` (4: aggregate content, review clearance, done-item
+invisibility, scratch exclusion) + `NotificationBell.test.tsx` (4). Backend
+1,143 green, frontend 1,237 green, lint/typecheck/build/i18n green.
+
 **Plan 49 (study experience) COMPLETE (2026-09-15; A, B, C):** **A** —
 `study_sessions` (0059, ADR-106) + focus timer + minutes-or-answers goals;
 **B** — global cross-course Review queue (`/review`, ADR-107); **C** —
@@ -1404,6 +1424,7 @@ Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit �
 
 | Module | Status | Notes |
 |---|---|---|
+| **Notification center (plan 68-A)** | done | `GET /notifications` computed aggregate (no table, ADR-151: due cards + ≤10 due reviews + today/overdue plan rows + ≤3 exam countdowns) + `NotificationBell` in the rail footer (library PopoverButton/Badge/EmptyState; animated count dot; localStorage seen-marker `ca-notifications-seen`; focus + 5-min polling; mark-seen on close). Tests: `test_notifications_api.py`, `NotificationBell.test.tsx` |
 | **Exam timing (plan 49-C)** | done | `activities.time_limit_sec` + `attempts.deadline_at` (0060, ADR-108); generate picker + Practice-tab Time-limit editor (`features/quiz/TimeLimitDialog.tsx`, `PATCH /quiz/activities/{id}/time-limit`); server enforcement in `api/quiz.py` (`_auto_submit_if_expired` + shared `_finish_attempt`, 422 `attempt_closed`, lazy sweep on report/finish); `CountdownChip` in FocusShell's new `chip` slot with server-offset correction; auto-submit summary banner. Tests: `test_quiz_time_limits.py`, `CountdownChip.test.tsx`, `TimeLimitDialog.test.tsx` |
 | **Global Review queue (plan 49-B)** | done | `GET /review/due` (per-course groups + due counts, scratch excluded) + `/review` page (`features/review/`: `ReviewPage` + course-agnostic `ReviewQueue` with keyboard 1–4, progress bar, course chips, batch flow) + rail badge (`useDueCount` over the same endpoint); Practice tab cards segment embeds the same queue course-scoped with its print sheet (`features/practice/FlashcardPrintSheet`); `features/flashcards/` dissolved. Tests: `test_review_api.py`, `ReviewQueue.test.tsx`, `ReviewPage.test.tsx` |
 | **Study time tracking + focus timer (plan 49-A)** | done | `study_sessions` table (0059, ADR-106) + `api/study_sessions.py` (`POST` start/resume, `PATCH` heartbeat/end with `last_beat + 120 s` clamp, `GET /summary`) + `services/study/sessions.py` (resume window 120 s, 12 h cap) + `lib/use-study-session.ts` auto-sessions on quiz/exercise/note/read surfaces + `components/layout/FocusTimer.tsx` floating pill (`lib/focus-timer-store.ts`) with 25/5, 50/10, custom presets and break flow; analytics: `daily_rollups.study_seconds`, minutes-or-answers goals (`study_goals.unit`/`minutes_per_day`), streak = answers/cards or ≥5 min sessions; Home Study-time card + study-aware heatmap. Tests: `test_study_sessions.py`, `use-study-session.test.tsx`, `FocusTimer.test.tsx` |
@@ -1522,6 +1543,13 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-15 — **feat(notifications): notification center (plan 68-A, ADR-151).**
+  `GET /notifications` computed aggregate (due cards, ≤10 due reviews with
+  courses, today/overdue plan rows, ≤3 exam countdowns — zero new tables);
+  🔔 bell in the rail footer with animated count dot, grouped popover
+  (Due now → /review, Plan → planner, Exams chips), honest empty state,
+  localStorage seen-marker with count-based re-alert, focus + 5-min polling.
+  Backend 1,143 green (+4), frontend 1,237 green (+4).
 - 2026-09-15 — **feat(quiz): server-enforced exam timing (plan 49-C, ADR-108).**
   Migration 0060 (`activities.time_limit_sec`, `attempts.deadline_at`);
   time-limit picker at generation + ⋯ Time-limit editor in the Practice tab;

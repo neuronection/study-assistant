@@ -35,6 +35,7 @@ import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
 import { UrlImportDialog } from '@/components/capture/UrlImportDialog'
 import { WindowDropOverlay } from './WindowDropOverlay'
 import { ActivityButton } from './ActivityPopover'
+import { NotificationBell } from './NotificationBell'
 import { ProfileDialog } from './ProfileDialog'
 import { SidebarFooter } from './SidebarFooter'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
@@ -520,8 +521,9 @@ export function AppShell() {
               </button>
               <div className="flex items-center justify-between pt-1">
                 <ThemeToggle />
-                <div className="flex items-center gap-1">
-                  <ActivityButton />
+              <div className="flex items-center gap-1">
+                <NotificationBell />
+                <ActivityButton />
                   <button
                     type="button"
                     className={cn(
