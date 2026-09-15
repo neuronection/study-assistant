@@ -58,6 +58,7 @@ class SourcesError(ValueError):
 class ScanReport:
     stats: dict[str, int]
     skipped: list[str] = field(default_factory=list)
+    new_relpaths: list[str] = field(default_factory=list)
 
 
 def _iter_files(root: Path, recursive: bool, globs: list[str]) -> list[Path]:
@@ -73,6 +74,10 @@ def _iter_files(root: Path, recursive: bool, globs: list[str]) -> list[Path]:
             continue
         files.append(path)
     return files
+
+
+def _source_relpath(source: MaterialSource, path: Path) -> str:
+    return path.relative_to(Path(source.path)).as_posix()
 
 
 def _content_hash(path: Path) -> str:
@@ -155,6 +160,7 @@ class SourcesService:
         include_globs: list[str] | None = None,
         course_id: int | None = None,
         scan_interval_sec: int | None = None,
+        mirror_subdirs: bool = False,
     ) -> MaterialSource:
         if course_id is None:
             raise SourcesError("a course is required for a linked source")
@@ -174,6 +180,7 @@ class SourcesService:
             include_globs=include_globs or list(DEFAULT_GLOBS),
             course_id=course_id,
             scan_interval_sec=scan_interval_sec,
+            mirror_subdirs=mirror_subdirs,
         )
         self._session.add(source)
         self._session.flush()
@@ -253,6 +260,7 @@ class SourcesService:
             "subdir": (subdir or "").strip().strip("/"),
             "missing_target": target is None,
             "enabled": source.enabled,
+            "mirror_subdirs": source.mirror_subdirs,
             "scan_interval_sec": source.scan_interval_sec,
             "last_scan_error": source.last_scan_error,
             "last_scanned_at": (
@@ -384,6 +392,8 @@ class SourcesService:
         }
         stats = {"new": 0, "updated": 0, "unchanged": 0, "missing": 0, "moved": 0, "skipped": 0}
         skipped: list[str] = []
+        mirror_map = self.mirror_subdirs(source) if source.mirror_subdirs else {}
+        new_relpaths: list[str] = []
         globs = list(source.include_globs or DEFAULT_GLOBS)
         seen: set[str] = set()
         for path in _iter_files(root, source.recursive, globs):
@@ -443,9 +453,11 @@ class SourcesService:
                     stats["unchanged"] += 1
                 continue
             self._create_material(
-                profile_id, source, path, stat, content_hash
+                profile_id, source, path, stat, content_hash,
+                folder_id=mirror_map.get(str(path.parent)),
             )
             stats["new"] += 1
+            new_relpaths.append(_source_relpath(source, path))
 
         for known_path, material in known.items():
             if known_path not in seen and not Path(str(known_path)).is_file():
@@ -455,7 +467,84 @@ class SourcesService:
         source.last_scanned_at = utcnow()
         source.last_scan_error = None
         self._session.flush()
-        return ScanReport(stats=stats, skipped=skipped)
+        return ScanReport(stats=stats, skipped=skipped, new_relpaths=new_relpaths[:20])
+
+    def mirror_subdirs(self, source: MaterialSource) -> dict[str, int | None]:
+        folder = self._link_folder(source.id)
+        if folder is None:
+            return {}
+        mapping: dict[str, int | None] = {}
+        root_str = str(Path(source.path))
+
+        def child_folders(parent_id: int) -> dict[str, MaterialFolder]:
+            return {
+                child.name: child
+                for child in self._session.scalars(
+                    select(MaterialFolder).where(
+                        MaterialFolder.parent_id == parent_id,
+                        MaterialFolder.source_id.is_(None),
+                    )
+                )
+            }
+
+        def walk(source_dir: Path, folder: MaterialFolder) -> None:
+            try:
+                entries = sorted(os.scandir(source_dir), key=lambda entry: entry.name.lower())
+            except OSError:
+                return
+            for entry in entries:
+                if entry.is_symlink() or not entry.is_dir():
+                    continue
+                existing = child_folders(folder.id).get(entry.name)
+                if existing is None:
+                    conflicting = self._session.scalars(
+                        select(MaterialFolder.id).where(
+                            MaterialFolder.course_id == source.course_id,
+                            MaterialFolder.path == f"{folder.path}/{entry.name}",
+                        )
+                    ).first()
+                    if conflicting is not None:
+                        continue
+                    existing = MaterialFolder(
+                        profile_id=source.profile_id,
+                        course_id=source.course_id,
+                        parent_id=folder.id,
+                        name=entry.name,
+                        path=f"{folder.path}/{entry.name}",
+                        source_id=None,
+                    )
+                    self._session.add(existing)
+                    self._session.flush()
+                mapping[str(Path(source_dir) / entry.name)] = existing.id
+                walk(Path(entry.path), existing)
+
+        walk(Path(root_str.rstrip(os.sep)), folder)
+        return mapping
+
+    def backfill_mirrored_folders(self, profile_id: int, source_id: int) -> dict[str, int]:
+        source = self._get(profile_id, source_id)
+        root = Path(source.path)
+        if not root.is_dir():
+            raise SourcesError(f"not a directory: {root}")
+        mapping = self.mirror_subdirs(source)
+        updated = 0
+        for material in self._session.scalars(
+            select(Material).where(
+                Material.profile_id == profile_id,
+                Material.source_id == source.id,
+                Material.folder_id.is_(None),
+                Material.external_path.is_not(None),
+            )
+        ):
+            path = Path(str(material.external_path))
+            if path.parent == root:
+                continue
+            target = mapping.get(str(path.parent))
+            if target is not None:
+                material.folder_id = target
+                updated += 1
+        self._session.flush()
+        return {"backfilled": updated, "mirrored_dirs": len(mapping)}
 
     def _store_blob(self, path: Path) -> str:
         data = path.read_bytes()
@@ -483,6 +572,7 @@ class SourcesService:
         stat: Any,
         content_hash: str,
         kind: str | None = None,
+        folder_id: int | None = None,
     ) -> Material:
         if kind is None:
             kind = detect_kind(path.name)
@@ -501,6 +591,7 @@ class SourcesService:
             external_path=str(path),
             file_mtime=stat.st_mtime,
             file_size=stat.st_size,
+            folder_id=folder_id,
         )
         self._session.add(material)
         self._session.flush()

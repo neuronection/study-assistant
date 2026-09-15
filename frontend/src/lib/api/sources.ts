@@ -83,13 +83,22 @@ export interface LinkedSource {
   include_globs: string[] | null
   course_id: number
   enabled: boolean
+  mirror_subdirs?: boolean
   material_count: number
   last_scanned_at: string | null
 }
 
 export interface ScanResult {
-  stats: { new: number; updated: number; unchanged: number; missing: number }
+  stats: {
+    new: number
+    updated: number
+    unchanged: number
+    missing: number
+    backfilled?: number
+    mirrored_dirs?: number
+  }
   queued_jobs: number
+  new_relpaths?: string[]
 }
 
 export async function listSources(): Promise<LinkedSource[]> {
@@ -113,6 +122,25 @@ export async function addSource(body: {
 
 export async function scanSource(sourceId: number): Promise<ScanResult> {
   const response = await apiFetch(`/api/v1/sources/${sourceId}/scan`, { method: 'POST' })
+  return json<ScanResult>(response)
+}
+
+export async function setSourceMirror(
+  sourceId: number,
+  mirrorSubdirs: boolean
+): Promise<LinkedSource> {
+  const response = await apiFetch(`/api/v1/sources/${sourceId}/mirror`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mirror_subdirs: mirrorSubdirs }),
+  })
+  return json<LinkedSource>(response)
+}
+
+export async function mirrorBackfillSource(sourceId: number): Promise<ScanResult> {
+  const response = await apiFetch(`/api/v1/sources/${sourceId}/mirror-backfill`, {
+    method: 'POST',
+  })
   return json<ScanResult>(response)
 }
 

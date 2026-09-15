@@ -433,3 +433,89 @@ def test_fs_dirs_picker(client: TestClient, tmp_path: Path) -> None:
 
     bad = client.get("/api/v1/fs/dirs", params={"path": "/nonexistent-dir-xyz"})
     assert bad.status_code == 422
+
+
+def test_scan_mirrors_subdirs_and_scopes_folder_membership(
+    client: TestClient, tmp_path: Path
+) -> None:
+    course_id = make_course(client, "Mirrored")
+    target = tmp_path / "sync"
+    (target / "Week 1").mkdir(parents=True)
+    (target / "Week 1" / "lecture.md").write_text("# Week one")
+    (target / "root-file.md").write_text("# root")
+    source_id = add_source(client, course_id, target, "Sync")
+
+    client.patch(f"/api/v1/sources/{source_id}/mirror", json={"mirror_subdirs": True})
+    scan = client.post(f"/api/v1/sources/{source_id}/scan").json()
+    assert scan["stats"]["new"] == 2
+    assert sorted(scan["new_relpaths"]) == ["Week 1/lecture.md", "root-file.md"]
+
+    folders = folders_in(client, course_id)
+    week = next(folder for folder in folders if folder["name"] == "Sync")
+    week_child = next(entry for entry in folders if entry["name"] == "Week 1")
+    assert week_child["parent_id"] == week["id"]
+
+    materials = client.get(
+        "/api/v1/materials", params={"course_id": course_id}
+    ).json()
+    lecture = next(entry for entry in materials if entry["filename"] == "lecture.md")
+    plain = next(entry for entry in materials if entry["filename"] == "root-file.md")
+    assert lecture["folder_id"] == week_child["id"]
+    assert plain["folder_id"] is None
+
+    rescan = client.post(f"/api/v1/sources/{source_id}/scan").json()
+    assert rescan["stats"]["new"] == 0
+    assert rescan["stats"]["unchanged"] == 2
+    mirrored = client.get(
+        "/api/v1/folders", params={"course_id": course_id}
+    ).json()
+    assert [entry["name"] for entry in mirrored].count("Week 1") == 1
+
+
+def test_scan_without_mirroring_stays_flat(client: TestClient, tmp_path: Path) -> None:
+    course_id = make_course(client, "Flat")
+    target = tmp_path / "flat"
+    (target / "Sub").mkdir(parents=True)
+    (target / "Sub" / "deep.md").write_text("# deep")
+    source_id = add_source(client, course_id, target, "Flat")
+    scan = client.post(f"/api/v1/sources/{source_id}/scan").json()
+    assert scan["stats"]["new"] == 1
+    listing = client.get(
+        "/api/v1/folders", params={"course_id": course_id}
+    ).json()
+    assert [entry["name"] for entry in listing] == ["Flat"]
+
+
+def test_mirror_backfill_assigns_existing_files(client: TestClient, tmp_path: Path) -> None:
+    course_id = make_course(client, "Backfill")
+    target = tmp_path / "back"
+    (target / "Chapter 1").mkdir(parents=True)
+    (target / "Chapter 1" / "old.md").write_text("# old")
+    source_id = add_source(client, course_id, target, "Backfill")
+    first = client.post(f"/api/v1/sources/{source_id}/scan").json()
+    assert first["stats"]["new"] == 1
+    materials = client.get(
+        "/api/v1/materials", params={"course_id": course_id}
+    ).json()
+    assert materials[0]["folder_id"] is None
+
+    backfill = client.post(f"/api/v1/sources/{source_id}/mirror-backfill").json()
+    assert backfill["stats"]["backfilled"] == 1
+    assert backfill["stats"]["mirrored_dirs"] >= 1
+    after = client.get(
+        "/api/v1/materials", params={"course_id": course_id}
+    ).json()
+    assert after[0]["folder_id"] is not None
+
+
+def test_source_mirror_flag_round_trips(client: TestClient, tmp_path: Path) -> None:
+    course_id = make_course(client, "Flag")
+    target = tmp_path / "flagdir"
+    target.mkdir()
+    source_id = add_source(client, course_id, target, "Flag")
+    sources = client.get("/api/v1/sources").json()
+    assert sources[0]["mirror_subdirs"] is False
+    patched = client.patch(
+        f"/api/v1/sources/{source_id}/mirror", json={"mirror_subdirs": True}
+    ).json()
+    assert patched["mirror_subdirs"] is True

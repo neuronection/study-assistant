@@ -9359,6 +9359,13 @@
       },
       "ScanResult": {
         "properties": {
+          "new_relpaths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "New Relpaths",
+            "type": "array"
+          },
           "queued_jobs": {
             "title": "Queued Jobs",
             "type": "integer"
@@ -9695,6 +9702,19 @@
           }
         },
         "title": "SessionUpdate",
+        "type": "object"
+      },
+      "SetMirrorIn": {
+        "properties": {
+          "mirror_subdirs": {
+            "title": "Mirror Subdirs",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mirror_subdirs"
+        ],
+        "title": "SetMirrorIn",
         "type": "object"
       },
       "SetWorkingDirOut": {
@@ -10156,6 +10176,11 @@
             "title": "Label",
             "type": "string"
           },
+          "mirror_subdirs": {
+            "default": false,
+            "title": "Mirror Subdirs",
+            "type": "boolean"
+          },
           "path": {
             "maxLength": 1000,
             "minLength": 1,
@@ -10281,6 +10306,11 @@
           "material_count": {
             "title": "Material Count",
             "type": "integer"
+          },
+          "mirror_subdirs": {
+            "default": false,
+            "title": "Mirror Subdirs",
+            "type": "boolean"
           },
           "path": {
             "title": "Path",
@@ -24604,6 +24634,100 @@
           }
         },
         "summary": "Ingest Source File",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/mirror": {
+      "patch": {
+        "operationId": "set_source_mirror_api_v1_sources__source_id__mirror_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMirrorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Source Mirror",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/mirror-backfill": {
+      "post": {
+        "operationId": "mirror_backfill_source_api_v1_sources__source_id__mirror_backfill_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mirror Backfill Source",
         "tags": [
           "sources"
         ]

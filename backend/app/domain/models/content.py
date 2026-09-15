@@ -390,6 +390,7 @@ class MaterialSource(Base):
     include_globs: Mapped[list[str] | None] = mapped_column(JSON)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    mirror_subdirs: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

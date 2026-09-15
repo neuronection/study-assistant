@@ -3768,6 +3768,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sources/{source_id}/mirror": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set Source Mirror */
+        patch: operations["set_source_mirror_api_v1_sources__source_id__mirror_patch"];
+        trace?: never;
+    };
+    "/api/v1/sources/{source_id}/mirror-backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mirror Backfill Source */
+        post: operations["mirror_backfill_source_api_v1_sources__source_id__mirror_backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sources/{source_id}/reveal": {
         parameters: {
             query?: never;
@@ -6905,6 +6939,8 @@ export interface components {
         };
         /** ScanResult */
         ScanResult: {
+            /** New Relpaths */
+            new_relpaths?: string[];
             /** Queued Jobs */
             queued_jobs: number;
             /** Skipped */
@@ -7007,6 +7043,11 @@ export interface components {
             title?: string | null;
             /** Use Embeddings */
             use_embeddings?: boolean | null;
+        };
+        /** SetMirrorIn */
+        SetMirrorIn: {
+            /** Mirror Subdirs */
+            mirror_subdirs: boolean;
         };
         /** SetWorkingDirOut */
         SetWorkingDirOut: {
@@ -7152,6 +7193,11 @@ export interface components {
             include_globs?: string[] | null;
             /** Label */
             label: string;
+            /**
+             * Mirror Subdirs
+             * @default false
+             */
+            mirror_subdirs: boolean;
             /** Path */
             path: string;
             /**
@@ -7193,6 +7239,11 @@ export interface components {
             last_scanned_at: string | null;
             /** Material Count */
             material_count: number;
+            /**
+             * Mirror Subdirs
+             * @default false
+             */
+            mirror_subdirs: boolean;
             /** Path */
             path: string;
             /** Recursive */
@@ -16090,6 +16141,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestFileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_source_mirror_api_v1_sources__source_id__mirror_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetMirrorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mirror_backfill_source_api_v1_sources__source_id__mirror_backfill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResult"];
                 };
             };
             /** @description Validation Error */

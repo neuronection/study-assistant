@@ -1658,6 +1658,13 @@
     "scan": "scannen",
     "unlink": "Verknüpfung aufheben",
     "scanResult": "Scan: {{added}} neu, {{updated}} geändert, {{missing}} fehlen",
+    "newFiles": "Neu: {{files}}",
+    "mirrorToggleOn": "Unterordner als Ordner spiegeln",
+    "mirrorNow": "Jetzt spiegeln",
+    "mirrorEnabled": "Unterordner-Spiegelung aktiviert",
+    "mirrorDisabled": "Unterordner-Spiegelung ausgeschaltet",
+    "mirrorBackfilled_one": "Spiegel-Nachtrag: {{count}} Datei in ihrem Ordner einsortiert",
+    "mirrorBackfilled_other": "Spiegel-Nachtrag: {{count}} Dateien in ihren Ordnern einsortiert",
     "needsCourse": "Wähle in der Seitenleiste einen Kurs aus, um einen Ordner zu verknüpfen."
   },
   "chapter": {

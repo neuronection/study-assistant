@@ -23,6 +23,7 @@ class SourceBrowseOut(BaseModel):
     subdir: str
     missing_target: bool
     enabled: bool
+    mirror_subdirs: bool = False
     scan_interval_sec: int | None
     last_scan_error: str | None
     last_scanned_at: str | None
@@ -61,6 +62,11 @@ class SourceIn(BaseModel):
     include_globs: list[str] | None = None
     course_id: int
     scan_interval_sec: int | None = Field(default=None, ge=15)
+    mirror_subdirs: bool = False
+
+
+class SetMirrorIn(BaseModel):
+    mirror_subdirs: bool
 
 
 class SourceOut(BaseModel):
@@ -71,6 +77,7 @@ class SourceOut(BaseModel):
     include_globs: list[str] | None
     course_id: int
     enabled: bool
+    mirror_subdirs: bool = False
     scan_interval_sec: int | None = None
     last_scan_error: str | None = None
     material_count: int
@@ -86,6 +93,7 @@ def _source_out(session: Session, source: MaterialSource, material_count: int = 
         include_globs=source.include_globs,
         course_id=source.course_id,
         enabled=source.enabled,
+        mirror_subdirs=getattr(source, "mirror_subdirs", False) or False,
         scan_interval_sec=source.scan_interval_sec,
         last_scan_error=source.last_scan_error,
         material_count=material_count,
@@ -99,6 +107,7 @@ class ScanResult(BaseModel):
     stats: dict[str, int]
     queued_jobs: int
     skipped: list[str] = Field(default_factory=list)
+    new_relpaths: list[str] = Field(default_factory=list)
 
 
 @router.get("", response_model=list[SourceOut])
@@ -135,6 +144,7 @@ def add_source(
             include_globs=body.include_globs,
             course_id=body.course_id,
             scan_interval_sec=body.scan_interval_sec,
+            mirror_subdirs=body.mirror_subdirs,
         )
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -232,6 +242,44 @@ def relink_source(
     return _source_out(session, source)
 
 
+@router.patch("/{source_id}/mirror", response_model=SourceOut)
+def set_source_mirror(
+    source_id: int,
+    body: SetMirrorIn,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> SourceOut:
+    profile = ensure_default_profile(session)
+    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    source = service._get(profile.id, source_id)
+    source.mirror_subdirs = body.mirror_subdirs
+    session.commit()
+    return _source_out(session, source)
+
+
+@router.post("/{source_id}/mirror-backfill", response_model=ScanResult)
+def mirror_backfill_source(
+    source_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> ScanResult:
+    profile = ensure_default_profile(session)
+    service = SourcesService(session, request.app.state.settings.blobs_dir)
+    try:
+        source = service._get(profile.id, source_id)
+        source.mirror_subdirs = True
+        result = service.backfill_mirrored_folders(profile.id, source_id)
+    except SourcesError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    queued = _enqueue_ingests(session, source_id)
+    session.commit()
+    request.app.state.jobs.wake()
+    return ScanResult(
+        stats={"backfilled": result["backfilled"], "mirrored_dirs": result["mirrored_dirs"]},
+        queued_jobs=queued,
+    )
+
+
 @router.post("/{source_id}/reveal", status_code=204)
 def reveal_source(
     source_id: int,
@@ -298,4 +346,9 @@ def scan_source(
     queued = _enqueue_ingests(session, source_id)
     session.commit()
     request.app.state.jobs.wake()
-    return ScanResult(stats=report.stats, queued_jobs=queued, skipped=report.skipped)
+    return ScanResult(
+        stats=report.stats,
+        queued_jobs=queued,
+        skipped=report.skipped,
+        new_relpaths=report.new_relpaths,
+    )

@@ -6,6 +6,29 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 75 COMPLETE — A–E (2026-09-15, user-approved; ADRs 177–180).** The
+round: **A** node-targeted uploads (`node_id` on `POST /materials`,
+dedupe-always-assigns); **B** folder→node mirroring (idempotent,
+`MAX_DEPTH`-capped with honest `skipped_folders`); **C** unassigned discovery
+(`services/knowledge/placement.py`, `GET /courses/{id}/materials/unassigned`
+with the via-folder-counts-as-placed definition — plan 70-B coordination
+recorded, compose wiring left to 70) + "Needs placement" surfaces in the
+course Materials tab and the Library; **D** deterministic placement
+suggestions (`POST /courses/{id}/placement-suggestions`, token-overlap +
+containment with `matched_on` evidence chips, assign-on-click, no LLM);
+**E** linked-source subdirectory mirroring (migration **0058**
+`material_sources.mirror_subdirs`, opt-in per source; scan mirrors subdirs
+and tags new files, root folder stays flat, mirrored children scope by the
+ordinary path walk — no `folder_member_ids` change needed, deviation from
+the plan's feared flatness noted in data-model) + `Mirror now` backfill
+endpoint + scan `new_relpaths` surfacing. UI: source menu gains mirror
+toggle + Mirror-now; scan notice lists new paths. E2E: mirrored folders are
+plain folders — folder links route them like any folder. Backend 1,119
+green (+4), ruff/mypy clean; frontend 1,182 green, lint/typecheck/build/
+`pnpm i18n` green. Docs: features.md, data-model.md. ADR-178's expected
+membership bug resolution recorded in docs/data-model.md. Plan doc:
+`dev/plans/75-material-placement-and-discovery.md` (local-only).
+
 **Plan 75 slice D — deterministic placement suggestions (2026-09-15):** new
 `placement.py::suggest_placements` — token-overlap scoring between the
 material's title + index-card topics/key-terms and each non-root node's

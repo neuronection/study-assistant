@@ -305,6 +305,16 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0058 (plan 75-E, ADR-180)**: `material_sources.mirror_subdirs` boolean
+  (server_default false) — opt-in linked-source subdirectory mirroring; when
+  on, scan mirrors the source's subdirectory tree into the linked folder's
+  children (title-match reuse, plain-library child folders with `source_id`
+  NULL) and tags new materials with their folder (`materials.folder_id`);
+  root linked-folder membership stays flat ("whole source") while mirrored
+  child folders scope membership by the ordinary path-subtree walk — no
+  change to `folder_member_ids` needed (review finding: the expected
+  source-folder flatness bug does not apply to child folders). Downgrade
+  drops the column (mirrored folders and assignments remain user data).
 - **0057 (plan 67-D, ADR-149)**: `materials.tags` JSON (list[str], notes-style
   normalized via the shared `normalize_tags`) + `materials.starred` boolean
   (server_default false) + partial index `ix_materials_starred` where

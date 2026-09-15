@@ -267,6 +267,8 @@ export type {
   MaterialLinkInfo,
   MindmapEditResult,
   PendingDrawing,
+  PlacementCandidate,
+  PlacementSuggestion,
   SearchHitDto,
   TextFileEditState,
   UploadResult,
@@ -477,6 +479,8 @@ export {
   listSources,
   relinkSource,
   revealSource,
+  setSourceMirror,
+  mirrorBackfillSource,
   scanInbox,
   scanSource,
 } from './sources'

@@ -37,19 +37,21 @@ import {
   retryJob,
   reingestMaterial,
   listFolders,
-  listMaterials,
-  getUnassignedMaterials,
-  moveFolder,
-  moveMaterial,
-  relinkSource,
-  renameFolder,
-  renameMaterial,
-  revealSource,
-  scanSource,
-  search,
-  unlinkFolder,
-  updateTextMaterial,
-} from '@/lib/api'
+   listMaterials,
+   getUnassignedMaterials,
+   moveFolder,
+   moveMaterial,
+   relinkSource,
+   renameFolder,
+   renameMaterial,
+   revealSource,
+   scanSource,
+   setSourceMirror,
+   mirrorBackfillSource,
+   search,
+   unlinkFolder,
+   updateTextMaterial,
+ } from '@/lib/api'
 import type {
   Folder,
   FolderDeleteInfo,
@@ -420,14 +422,46 @@ export function LibraryPage() {
   const scanMutation = useMutation({
     mutationFn: (sourceId: number) => scanSource(sourceId),
     onSuccess: async (result) => {
+      const extra =
+        result.new_relpaths && result.new_relpaths.length > 0
+          ? ' · ' + t('sources.newFiles', { files: result.new_relpaths.join(', ') })
+          : ''
       setNotice(
         t('sources.scanResult', {
           added: result.stats.new,
           updated: result.stats.updated,
           missing: result.stats.missing,
+        }) + extra
+      )
+      await refreshMaterials()
+      await refreshFolders()
+      await queryClient.invalidateQueries({ queryKey: ['sources'] })
+    },
+    onError: (error: Error) => setNotice(error.message),
+  })
+  const toggleMirrorMutation = useMutation({
+    mutationFn: ({ sourceId, mirror }: { sourceId: number; mirror: boolean }) =>
+      setSourceMirror(sourceId, mirror),
+    onSuccess: async (source) => {
+      setNotice(
+        source.mirror_subdirs
+          ? t('sources.mirrorEnabled')
+          : t('sources.mirrorDisabled')
+      )
+      await queryClient.invalidateQueries({ queryKey: ['sources'] })
+    },
+    onError: (error: Error) => setNotice(error.message),
+  })
+  const mirrorBackfillMutation = useMutation({
+    mutationFn: (sourceId: number) => mirrorBackfillSource(sourceId),
+    onSuccess: async (result) => {
+      setNotice(
+        t('sources.mirrorBackfilled', {
+          count: result.stats.backfilled ?? 0,
         })
       )
       await refreshMaterials()
+      await refreshFolders()
       await queryClient.invalidateQueries({ queryKey: ['sources'] })
     },
     onError: (error: Error) => setNotice(error.message),
@@ -882,6 +916,20 @@ export function LibraryPage() {
           key: 'rescan',
           label: t('library.rescan'),
           onSelect: () => scanMutation.mutate(entry.source_id as number),
+        },
+        {
+          key: 'mirror-toggle',
+          label: t('sources.mirrorToggleOn'),
+          onSelect: () =>
+            toggleMirrorMutation.mutate({
+              sourceId: entry.source_id as number,
+              mirror: true,
+            }),
+        },
+        {
+          key: 'mirror-now',
+          label: t('sources.mirrorNow'),
+          onSelect: () => mirrorBackfillMutation.mutate(entry.source_id as number),
         },
         {
           key: 'reveal',

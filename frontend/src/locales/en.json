@@ -1590,6 +1590,13 @@
     "scan": "scan",
     "unlink": "unlink",
     "scanResult": "Scan: {{added}} new, {{updated}} changed, {{missing}} missing",
+    "newFiles": "New: {{files}}",
+    "mirrorToggleOn": "Mirror subdirectories as folders",
+    "mirrorNow": "Mirror now",
+    "mirrorEnabled": "Subdirectory mirroring turned on",
+    "mirrorDisabled": "Subdirectory mirroring turned off",
+    "mirrorBackfilled_one": "Mirror backfill: {{count}} file placed in its folder",
+    "mirrorBackfilled_other": "Mirror backfill: {{count}} files placed in their folders",
     "needsCourse": "Pick a course in the rail to link a folder."
   },
   "skills": {
