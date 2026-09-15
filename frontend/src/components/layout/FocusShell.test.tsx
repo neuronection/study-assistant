@@ -142,9 +142,8 @@ describe('FocusShell', () => {
     )
     const dialog = await screen.findByRole('dialog')
     const expand = screen.getByRole('button', { name: 'Expand to full width' })
-    expect(dialog.style.width).toMatch(/max\(16rem, min\(760px/)
+    expect(dialog.style.width).toMatch(/min\(760px, max\(16rem/)
     expect(dialog.style.width).toContain('-0px')
-    expect(dialog.style.right).toBe('0px')
     expect(expand).toHaveAttribute('aria-pressed', 'false')
 
     fireEvent.click(expand)
@@ -159,11 +158,11 @@ describe('FocusShell', () => {
       'aria-pressed',
       'false'
     )
-    expect(dialog.style.width).toMatch(/max\(16rem, min\(760px/)
+    expect(dialog.style.width).toMatch(/min\(760px, max\(16rem/)
     expect(dialog.style.width).toContain('-0px')
   })
 
-  test('overlay yields to the docked chat: panel and backdrop inset by the live width (plan 61-C)', async () => {
+  test('overlay yields to the docked chat: backdrop insets by the live width, panel stays inside it (plan 61-C)', async () => {
     renderInRouter(
       <FocusShell title="Material" overlay onClose={() => {}}>
         <p>overlay-content</p>
@@ -171,20 +170,21 @@ describe('FocusShell', () => {
     )
     const dialog = await screen.findByRole('dialog')
     useChatStore.setState({ open: true, width: 468 })
-    await waitFor(() => expect(dialog.style.right).toBe('468px'))
-    expect(dialog.style.width).toMatch(/max\(16rem, min\(760px/)
+    const backdrop = dialog.parentElement as HTMLElement
+    await waitFor(() => expect(backdrop.style.right).toBe('468px'))
+    expect(dialog.style.width).toMatch(/min\(760px, max\(16rem/)
     expect(dialog.style.width).toContain('-468px')
-    expect((dialog.parentElement as HTMLElement).style.right).toBe('468px')
+    expect(dialog.style.width).toContain('-468px + 100vw')
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand to full width' }))
     expect(dialog.style.width).toBe('calc(100vw - 468px)')
 
     useChatStore.getState().setChatWidth(500)
-    await waitFor(() => expect(dialog.style.right).toBe('500px'))
+    await waitFor(() => expect(backdrop.style.right).toBe('500px'))
     expect(dialog.style.width).toBe('calc(100vw - 500px)')
 
     useChatStore.setState({ open: false })
-    await waitFor(() => expect(dialog.style.right).toBe('0px'))
+    await waitFor(() => expect(backdrop.style.right).toBe('0px'))
     expect(dialog.style.width).toBe('calc(100vw - 0px)')
   })
 
@@ -197,7 +197,9 @@ describe('FocusShell', () => {
     )
     const dialog = await screen.findByRole('dialog')
     useChatStore.setState({ open: true, width: 384 })
-    await waitFor(() => expect(dialog.style.right).toBe('384px'))
+    await waitFor(() =>
+      expect((dialog.parentElement as HTMLElement).style.right).toBe('384px')
+    )
     fireEvent.click(dialog.parentElement!)
     expect(onClose).toHaveBeenCalledTimes(1)
   })

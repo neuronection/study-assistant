@@ -17,6 +17,10 @@ Release history from before the public launch lives in the
 
 ### Fixed
 
+- Viewer drawer: no longer clipped off the left edge of the window while the
+  chat side panel is docked — the overlay panel was double-inset by the chat
+  width (once in the backdrop, once in the panel). It now sits flush against
+  the chat dock and clamps to the available width on narrow windows.
 - Viewer drawer: the material body is now the single scroll owner — the overlay
   panel no longer keeps a second, competing scrollbar (the inner one previously
   had only a few pixels of travel while the panel did the real scrolling).

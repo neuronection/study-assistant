@@ -6,6 +6,23 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Fix — viewer drawer clipped off-screen when the chat dock is open
+(2026-09-15, user-reported):** the FocusShell overlay panel was positioned
+`right: chatInset` *inside* a backdrop that is itself inset `right: chatInset`
+— a double inset that shoved the panel left by the chat width (measured:
+panel at −248..512 px in a 1280 px window; entirely off-screen at 545 px), so
+the viewer's left edge was cut off whenever the chatbot side panel was open.
+The panel now sits `right: 0` within the backdrop (flush against the chat
+dock; `right` dropped from the inline style, transition narrowed to width)
+and its width is clamped to the backdrop
+(`min(760px, max(16rem, 100vw−2rem−chat), 100vw−chat)`), so it degrades to
+the available sliver on narrow windows instead of overflowing. Chat-closed
+geometry is unchanged. Verified with a Playwright probe (chat open: panel
+136..896 at 1280 px, 0..161 at 545 px — fully visible, flush to the dock);
+the plan-61-C chat-dock tests now pin the corrected geometry (backdrop inset,
+panel inside it). Frontend 1,201 green, lint/typecheck/build green; backend
+untouched.
+
 **Fix — double scrollbar in the material viewer drawer (2026-09-15,
 user-reported):** the FocusShell overlay panel was itself the scroll container
 (`h-full overflow-y-auto`) while `MaterialDetailBody`'s content area also

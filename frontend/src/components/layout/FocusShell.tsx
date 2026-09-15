@@ -228,12 +228,11 @@ export function FocusShell({
           role="dialog"
           aria-modal="true"
           aria-label={ariaLabel ?? (typeof title === 'string' ? title : undefined)}
-          className="bg-surface border-border absolute top-0 right-0 flex h-full flex-col overflow-hidden border-l shadow-xl outline-none transition-[width,right] duration-200 ease-out motion-reduce:transition-none"
+          className="bg-surface border-border absolute top-0 right-0 flex h-full flex-col overflow-hidden border-l shadow-xl outline-none transition-[width] duration-200 ease-out motion-reduce:transition-none"
           style={{
-            right: chatInset,
             width: maximized
               ? `calc(100vw - ${chatInset}px)`
-              : `max(16rem, min(760px, calc(100vw - 2rem - ${chatInset}px)))`,
+              : `min(760px, max(16rem, calc(100vw - 2rem - ${chatInset}px)), calc(100vw - ${chatInset}px))`,
           }}
         >
           <div className="border-border bg-surface shrink-0 border-b p-4">{header}</div>
