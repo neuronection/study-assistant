@@ -2,12 +2,16 @@
 
 Spaced-repetition review with FSRS scheduling, fed by your own material.
 
-Card review lives in the workspace **Practice tab → Flashcards segment**
-(open a node → Practice, then flip the small *Quizzes & exercises / Flashcards*
-switcher): the review queue is scoped to that node and its children, and the
-segment's own action bar covers generating cards plus **Anki import/export**.
-Old `?tab=cards` links and `/flashcards` URLs still land here; there is no global
-flashcards page — everything is course-scoped.
+Card review lives in two places. The workspace **Practice tab → Flashcards
+segment** (open a node → Practice, then flip the small
+*Quizzes & exercises / Flashcards* switcher) queues that node and its children,
+and the segment's own action bar covers generating cards plus **Anki
+import/export**. The global **Review** page (sidebar → **Review**, with a
+due-count badge) clears due cards across **all courses** in one keyboard
+session: cards carry their course chip, `1–4` rate (space reveals), a progress
+bar tracks the batch, and time spent logs into your study-time analytics.
+Old `?tab=cards` links and `/flashcards` URLs still land in the course
+workspace.
 
 ## Generating cards
 

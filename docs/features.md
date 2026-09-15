@@ -846,6 +846,12 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Minutes-or-questions goals (H10): daily goal gains a unit
   (answers | minutes); streak counts any qualifying day — ≥1 answer/card review
   or ≥5 minutes of tracked study time
+- ✅ Global Review queue: cross-course due API (`GET /review/due`, grouped by
+  course) behind a first-class `/review` page — rail entry with a live due-count
+  badge, per-card course chips, keyboard 1–4 rating, progress bar, and honest
+  all-clear state; the per-course Practice cards segment embeds the same
+  course-agnostic `ReviewQueue` (one review implementation, two scopes) — H3
+  dashboard promise (plan 49-B)
 - ✅ Diagnostics: concepts×skills weakness matrix (sample-size aware), error-pattern
   profile with 7-day trend, speed–accuracy quadrants — doc 10 §3.3
 - ✅ Recommendations v1 with evidence lines (read/drill/review/challenge),

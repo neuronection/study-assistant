@@ -146,13 +146,7 @@ function ActionButton({
       <Button
         size="sm"
         variant="outline"
-        onClick={() =>
-          navigate(
-            required.courseId !== null
-              ? { to: '/courses/$courseId', params: { courseId: String(required.courseId) }, search: { tab: 'cards' } }
-              : { to: '/courses' },
-          )
-        }
+        onClick={() => void navigate({ to: '/review' })}
       >
         <Layers aria-hidden />
         {t('today.reviewNow')}
@@ -673,7 +667,16 @@ export function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{data?.due_cards ?? 0}</p>
-              <CardDescription>{t('today.dueReviewsHint')}</CardDescription>
+              <CardDescription className="flex items-center gap-1">
+                {t('today.dueReviewsHint')}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => void navigate({ to: '/review' })}
+                >
+                  {t('today.reviewNow')}
+                </button>
+              </CardDescription>
             </CardContent>
           </Card>
         </motion.div>

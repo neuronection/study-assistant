@@ -21,6 +21,7 @@ from . import (
     plan,
     profiles,
     quiz,
+    review,
     search,
     skills,
     sources,
@@ -38,6 +39,7 @@ api_router.include_router(folders.router)
 api_router.include_router(courses.router)
 api_router.include_router(chat.router)
 api_router.include_router(quiz.router)
+api_router.include_router(review.router)
 api_router.include_router(exercises.router)
 api_router.include_router(notes.router)
 api_router.include_router(flashcards.router)

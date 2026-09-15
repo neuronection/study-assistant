@@ -82,7 +82,7 @@ def _aware(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=UTC)
 
 
-def _card_out(card: Exercise, state: FsrsState | None) -> CardOut:
+def card_out(card: Exercise, state: FsrsState | None) -> CardOut:
     parts = card_parts(card)
     source, source_ref = card_source(card)
     return CardOut(
@@ -210,7 +210,7 @@ def generate_cards(
         ) from error
     session.commit()
     return [
-        _card_out(
+        card_out(
             card,
             session.scalar(select(FsrsState).where(FsrsState.card_id == card.id)),
         )
@@ -242,7 +242,7 @@ def create_card(
         source="manual",
     )
     session.commit()
-    return _card_out(card, None)
+    return card_out(card, None)
 
 
 @router.get("", response_model=list[CardOut])
@@ -269,7 +269,7 @@ def list_cards(
         .limit(200)
     )
     return [
-        _card_out(card, state) for card, state in session.execute(statement).all()
+        card_out(card, state) for card, state in session.execute(statement).all()
     ]
 
 
@@ -299,7 +299,7 @@ def due_cards(
         max(1, min(limit, 100))
     )
     return [
-        _card_out(card, state) for card, state in session.execute(statement).all()
+        card_out(card, state) for card, state in session.execute(statement).all()
     ]
 
 

@@ -4,6 +4,7 @@
   },
   "nav": {
     "home": "Home",
+    "review": "Review",
     "chat": "Tutor",
     "library": "Library",
     "scores": "Scores",
@@ -1281,6 +1282,8 @@
     "dueCount_one": "{{count}} card due",
     "dueCount_other": "{{count}} cards due",
     "reveal": "Show answer",
+    "progress": "{{reviewed}}/{{total}}",
+    "batchDone": "Batch cleared",
     "rateAgain": "Again",
     "rateHard": "Hard",
     "rateGood": "Good",
@@ -2277,5 +2280,15 @@
     "focusDone": "{{minutes}} min focused!",
     "takeBreak": "Break {{minutes}} min",
     "dismiss": "Dismiss"
+  },
+  "review": {
+    "title": "Review",
+    "loading": "Checking your queues…",
+    "subtitle": "{{count}} cards due across your courses",
+    "allClear": "Nothing due right now",
+    "allClearTitle": "All caught up",
+    "allClearBody": "Your spaced-repetition queue is clear — new cards will surface as they come due.",
+    "batchDone": "Batch cleared.",
+    "loadNext": "Load next batch"
   }
 }

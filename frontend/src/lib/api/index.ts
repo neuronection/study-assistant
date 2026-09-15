@@ -62,6 +62,10 @@ export type {
   StudySessionSummary,
 } from './study-sessions'
 
+export { getReviewDue } from './review'
+
+export type { DueCourseGroup, ReviewDue } from './review'
+
 export type {
   ChatAttachmentInput,
   ChatAttachmentKind,

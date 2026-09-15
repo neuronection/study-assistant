@@ -16,6 +16,7 @@ import { MaterialDetailPage } from '@/features/library/MaterialDetailPage'
 import { ExercisePlayerRoute } from '@/features/exercises/Player'
 import { NoteFocusPage } from '@/features/notes/NoteFocusPage'
 import { ChatPage } from '@/features/chat/ChatPage'
+import { ReviewPage } from '@/features/review/ReviewPage'
 import { QuizRunner } from '@/features/quiz/QuizRunner'
 import { ScoresPage } from '@/features/scores/ScoresPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
@@ -31,6 +32,12 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => <HomePage />,
+})
+
+const reviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/review',
+  component: () => <ReviewPage />,
 })
 
 const chatRoute = createRoute({
@@ -276,6 +283,7 @@ const aboutRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  reviewRoute,
   chatRoute.addChildren([chatIndexRoute, chatDetailRoute]),
   coursesRoute,
   courseDetailRoute,

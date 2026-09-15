@@ -100,6 +100,7 @@
   },
   "nav": {
     "home": "Startseite",
+    "review": "Wiederholung",
     "chat": "Tutor",
     "library": "Bibliothek",
     "scores": "Ergebnisse",
@@ -1281,6 +1282,8 @@
     "dueCount_one": "{{count}} Lernkarte fällig",
     "dueCount_other": "{{count}} Lernkarten fällig",
     "reveal": "Antwort anzeigen",
+    "progress": "{{reviewed}}/{{total}}",
+    "batchDone": "Charge abgearbeitet",
     "rateAgain": "Nochmal",
     "rateHard": "Schwer",
     "rateGood": "Gut",
@@ -2277,5 +2280,15 @@
     "focusDone": "{{minutes}} Min. fokussiert!",
     "takeBreak": "Pause {{minutes}} Min.",
     "dismiss": "Schließen"
+  },
+  "review": {
+    "title": "Wiederholung",
+    "loading": "Warteschlangen werden geprüft…",
+    "subtitle": "{{count}} Karten in deinen Kursen fällig",
+    "allClear": "Im Moment ist nichts fällig",
+    "allClearTitle": "Alles erledigt",
+    "allClearBody": "Deine Spaced-Repetition-Warteschlange ist leer — neue Karten erscheinen, sobald sie fällig werden.",
+    "batchDone": "Charge abgearbeitet.",
+    "loadNext": "Nächste Charge laden"
   }
 }

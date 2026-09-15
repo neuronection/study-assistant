@@ -6,6 +6,25 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — global Review queue (plan 49-B, ADR-107, 2026-09-15):** the
+FSRS queue is no longer trapped per course. New `GET /review/due`
+(`api/review.py`) aggregates due cards (due-or-unscheduled, scratch courses
+excluded) across the profile's courses, grouped per course with `due_count`
+and a `per_course`-capped first batch; `card_out` from `api/flashcards.py` is
+now the shared serializer. The rail gains a **Review** entry (library
+`SidebarNav` badge = live due count, light `useDueCount` query) next to Home;
+`/review` (`features/review/ReviewPage.tsx`) renders the aggregate with
+per-card course chips, keyboard 1–4 rating + space-to-reveal, an animated
+progress bar, a next-batch flow when the first batch empties, and an honest
+all-clear state; page time logs a `study_sessions` row (`kind=review`). The
+course-agnostic `ReviewQueue` is owned by `features/review/` — the Practice
+tab's cards segment embeds the same component, course/node-scoped (its own
+due query + print sheet moved to `features/practice/`), `features/flashcards/`
+dissolves. Home's due-reviews tile and the review recommendation now deep-link
+to `/review` (was: one course's practice tab). Frontend types regenerated via
+`pnpm api:types`. Tests: `test_review_api.py` (4) + `ReviewQueue.test.tsx` (4)
++ `ReviewPage.test.tsx` (3); frontend 1,228 green, backend 1,131 green.
+
 **Feature — study sessions + focus timer (plan 49-A, ADR-106, 2026-09-15):**
 time-on-study now exists. New `study_sessions` table (migration **0059**;
 kind focus|quiz|exercise|review|read|note, source timer|auto|manual,
@@ -1352,6 +1371,7 @@ Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit �
 
 | Module | Status | Notes |
 |---|---|---|
+| **Global Review queue (plan 49-B)** | done | `GET /review/due` (per-course groups + due counts, scratch excluded) + `/review` page (`features/review/`: `ReviewPage` + course-agnostic `ReviewQueue` with keyboard 1–4, progress bar, course chips, batch flow) + rail badge (`useDueCount` over the same endpoint); Practice tab cards segment embeds the same queue course-scoped with its print sheet (`features/practice/FlashcardPrintSheet`); `features/flashcards/` dissolved. Tests: `test_review_api.py`, `ReviewQueue.test.tsx`, `ReviewPage.test.tsx` |
 | **Study time tracking + focus timer (plan 49-A)** | done | `study_sessions` table (0059, ADR-106) + `api/study_sessions.py` (`POST` start/resume, `PATCH` heartbeat/end with `last_beat + 120 s` clamp, `GET /summary`) + `services/study/sessions.py` (resume window 120 s, 12 h cap) + `lib/use-study-session.ts` auto-sessions on quiz/exercise/note/read surfaces + `components/layout/FocusTimer.tsx` floating pill (`lib/focus-timer-store.ts`) with 25/5, 50/10, custom presets and break flow; analytics: `daily_rollups.study_seconds`, minutes-or-answers goals (`study_goals.unit`/`minutes_per_day`), streak = answers/cards or ≥5 min sessions; Home Study-time card + study-aware heatmap. Tests: `test_study_sessions.py`, `use-study-session.test.tsx`, `FocusTimer.test.tsx` |
 | **Working directory (plan 45)** | done | The app data directory (db/blobs/backups/cache) is a first-class setting. Backend: `core/working_dir.py` (pointer file in `SA_CONFIG_DIR`, default `<platform config dir>/StudyAssistant/working-dir.txt`), `Settings.data_dir` factory = pointer → platform default (`SA_DATA_DIR`/`.env` still wins), `api/config.py` — `GET /config/working-dir` (`path`/`default_path`/`custom`/`restart_pending`), `POST /config/working-dir/validate` (absolute, writable, empty **or** existing SA dir with `app.db`; reasons `relative_path`/`already_current`/`inside_current`/`contains_current`/`not_a_directory`/`not_writable`/`not_empty`/`invalid_path`; writability probed with a temp file, creatable paths via nearest existing ancestor), `PUT` (validate + write pointer; applies on restart), `DELETE` (clear). Frontend: shared `features/settings/WorkingDirEditor` (validate feedback, Save gated on a validated changed path, Use-default, Restore-default, restart-pending banner + Undo) in **Settings → Data** (top card) and **wizard step 2** (now 8 steps). No live rebind, no auto-copy — moving data = backup/restore (`usage/getting-started.md`). Tests: `test_working_dir.py` (8) + `WorkingDirEditor.test.tsx` (4) |
 | **First-run wizard (plan 44)** | done | Fresh install (no provider AND no course, server truth) auto-opens a full-screen wizard overlay over the AppShell; `GET /onboarding/state` (`has_provider`/`has_enabled_model`/`defaults_set`/`has_course`/`has_material`) is the gate + Done-summary aggregate. Core-7 steps (`features/onboarding/`): Welcome → **Provider** (shared `useProviderCreate`+`ProviderCreateFields` extracted from the Settings dialog; create advances automatically) → **Models** (enable toggles + Enable all over discovered models) → **Defaults** (text/vision/embeddings/audio selects over enabled+cap-matching models, TasksTab pattern) → **Course** (create via `POST /courses` or load `POST /onboarding/sample`, adopts real title from the refreshed list) → **Files** (`UploadDropzone` + `useMaterialUpload` on the created course; ingest continues in background) → **Done** (checklist from refetched state + Open-course/Go-to-Today CTAs). Fully skippable (Back / Skip for now / header X), dismissal in localStorage `ca-onboarding-done` (same `ca-*` convention), re-openable via `useWizardStore.openWizard()` from Settings→Providers empty state + Home onboarding card. Fetch error ⇒ never auto-open. Tests: `test_onboarding_state.py` (2) + `OnboardingWizard.test.tsx` (7) |
@@ -1468,6 +1488,15 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-15 — **feat(review): cross-course Review queue (plan 49-B, ADR-107).**
+  `GET /review/due` groups due cards by course with counts and a per-course
+  first batch; `/review` page + rail entry with live due-count badge; the
+  course-agnostic `ReviewQueue` serves both the page (course chips, keyboard
+  1–4, progress bar, next-batch flow, honest all-clear) and the Practice tab's
+  cards segment (course-scoped, print sheet stays there); `features/flashcards/`
+  dissolves; Home tile + review recommendation deep-link to `/review`; review
+  time logs `kind=review` sessions. Backend 1,131 green (+4), frontend 1,228
+  green (+7).
 - 2026-09-15 — **feat(study): study_sessions + focus timer (plan 49-A, ADR-106).**
   Migration 0059 adds `study_sessions` (kind/source StrEnums, nullable
   `entity_ref` with a 120 s resume window so remounts stay one row; gaps count

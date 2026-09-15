@@ -37,6 +37,7 @@ describe('resolveActiveId', () => {
   it('primary registry keeps its shape', () => {
     expect(PRIMARY_NAV.map((item) => item.to)).toEqual([
       '/',
+      '/review',
       '/courses',
       '/chat',
       '/library',

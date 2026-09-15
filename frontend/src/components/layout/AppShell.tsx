@@ -43,6 +43,7 @@ import { SidebarNav } from '@/components/ui/sidebar-nav'
 import { ChatPanel } from '@/features/chat/ChatPanel'
 import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
+import { useDueCount } from '@/features/review/useDueCount'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import {
   getScratchpad,
@@ -339,6 +340,7 @@ export function AppShell() {
   const [profilesOpen, setProfilesOpen] = useState(false)
   const palette = useCommandPaletteOpen()
   const shortViewport = useIsShortViewport()
+  const dueCount = useDueCount()
   const courseList = courses.data ?? []
   const profileList = profiles.data ?? []
   const activeCourse = courseList.find((course) => course.id === courseId) ?? null
@@ -434,6 +436,8 @@ export function AppShell() {
             id: to,
             label: t(labelKey),
             icon,
+            badge:
+              to === '/review' && dueCount > 0 ? String(dueCount) : undefined,
           }))}
           secondaryItems={[{ id: '/settings', label: t('nav.settings'), icon: Settings }]}
           activeId={resolveActiveId(location.pathname)}

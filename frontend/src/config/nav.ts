@@ -5,6 +5,7 @@ import {
   GraduationCap,
   Home,
   type LucideIcon,
+  RotateCcw,
 } from 'lucide-react'
 
 export interface AppNavItem {
@@ -17,6 +18,7 @@ export interface AppNavItem {
 /** Primary sidebar destinations — the single registry for the app shell. */
 export const PRIMARY_NAV: AppNavItem[] = [
   { to: '/', icon: Home, labelKey: 'nav.home', exact: true },
+  { to: '/review', icon: RotateCcw, labelKey: 'nav.review', exact: true },
   { to: '/courses', icon: GraduationCap, labelKey: 'nav.courses', exact: false },
   { to: '/chat', icon: Bot, labelKey: 'nav.chat', exact: false },
   { to: '/library', icon: BookOpen, labelKey: 'nav.library', exact: false },

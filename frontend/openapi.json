@@ -2850,6 +2850,49 @@
         "title": "DrillIn",
         "type": "object"
       },
+      "DueCourseGroupOut": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/CardOut"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "course_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Color"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "due_count": {
+            "title": "Due Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "course_id",
+          "course_title",
+          "course_color",
+          "due_count",
+          "cards"
+        ],
+        "title": "DueCourseGroupOut",
+        "type": "object"
+      },
       "EditIn": {
         "properties": {
           "content": {
@@ -9213,6 +9256,27 @@
           "retried"
         ],
         "title": "RetryFailedOut",
+        "type": "object"
+      },
+      "ReviewDueOut": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/DueCourseGroupOut"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "total_due": {
+            "title": "Total Due",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_due",
+          "groups"
+        ],
+        "title": "ReviewDueOut",
         "type": "object"
       },
       "ReviewFindingKind": {
@@ -23870,6 +23934,51 @@
         "summary": "Recognize Handwriting",
         "tags": [
           "quiz"
+        ]
+      }
+    },
+    "/api/v1/review/due": {
+      "get": {
+        "operationId": "review_due_api_v1_review_due_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "per_course",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Per Course",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDueOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Due",
+        "tags": [
+          "review"
         ]
       }
     },

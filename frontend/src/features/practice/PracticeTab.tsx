@@ -18,8 +18,9 @@ import { useStoredView } from '@/lib/useStoredView'
 import { GenerateDialog as AIGenerateDialog } from '@/features/ai/GenerateDialog'
 import { DrillsCard } from '@/features/exercises/DrillsCard'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
+import { FlashcardPrintSheet } from '@/features/practice/FlashcardPrintSheet'
+import { ReviewQueue } from '@/features/review/ReviewQueue'
 import { ImportDialog } from '@/features/quiz/ImportDialog'
-import { ReviewQueue } from '@/features/flashcards/ReviewQueue'
 import { useCurrentOrigin } from '@/lib/origin'
 import { useSelection } from '@/lib/useSelection'
 import { useConfirm } from '@/lib/use-confirm'
@@ -27,6 +28,7 @@ import {
   ankiExportUrl,
   deleteExercise,
   deleteQuiz,
+  dueFlashcards,
   importAnkiDeck,
   listExercises,
   listFlashcards,
@@ -37,6 +39,7 @@ import {
   quizExportUrl,
   renameExercise,
   renameQuiz,
+  reviewFlashcard,
   similarExercise,
   type QuizActivity,
 } from '@/lib/api'
@@ -130,6 +133,23 @@ export function PracticeTab({
   const flashcards = useQuery({
     queryKey: ['cards', 'node', currentId],
     queryFn: () => listFlashcards(undefined, currentId),
+  })
+  const dueCards = useQuery({
+    queryKey: ['cards-due', Number(courseId), currentId],
+    queryFn: () => dueFlashcards(20, Number(courseId), currentId),
+  })
+  const [printing, setPrinting] = useState(false)
+
+  const reviewCard = useMutation({
+    mutationFn: ({ cardId, rating }: { cardId: number; rating: number }) =>
+      reviewFlashcard(cardId, rating),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ['cards-due'] })
+      await queryClient.invalidateQueries({ queryKey: ['cards'] })
+      await queryClient.invalidateQueries({ queryKey: ['review-due'] })
+      await queryClient.invalidateQueries({ queryKey: ['overview'] })
+      void result
+    },
   })
 
   const importAnki = useMutation({
@@ -554,7 +574,30 @@ export function PracticeTab({
           {importMessage ? (
             <p className="text-muted-foreground px-1 text-xs">{importMessage}</p>
           ) : null}
-          <ReviewQueue nodeId={currentId} />
+          {printing ? (
+            <FlashcardPrintSheet
+              courseId={Number(courseId)}
+              nodeId={currentId}
+              autoPrint={false}
+              onBack={() => setPrinting(false)}
+            />
+          ) : (
+            <ReviewQueue
+              cards={dueCards.data ?? []}
+              busy={reviewCard.isPending}
+              onRate={(card, rating) => reviewCard.mutate({ cardId: card.id, rating })}
+              toolbar={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPrinting(true)}
+                  title={t('cards.printSheet')}
+                >
+                  {t('cards.printSheet')}
+                </Button>
+              }
+            />
+          )}
           <Stagger className="space-y-2">
           {(flashcards.data ?? []).map((card) => (
             <StaggerItem

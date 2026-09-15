@@ -3422,6 +3422,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review/due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review Due */
+        get: operations["review_due_api_v1_review_due_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/search": {
         parameters: {
             query?: never;
@@ -4864,6 +4881,19 @@ export interface components {
             course_id: number;
             /** Pattern */
             pattern: string;
+        };
+        /** DueCourseGroupOut */
+        DueCourseGroupOut: {
+            /** Cards */
+            cards: components["schemas"]["CardOut"][];
+            /** Course Color */
+            course_color: string | null;
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Due Count */
+            due_count: number;
         };
         /** EditIn */
         EditIn: {
@@ -6924,6 +6954,13 @@ export interface components {
         RetryFailedOut: {
             /** Retried */
             retried: number;
+        };
+        /** ReviewDueOut */
+        ReviewDueOut: {
+            /** Groups */
+            groups: components["schemas"]["DueCourseGroupOut"][];
+            /** Total Due */
+            total_due: number;
         };
         /**
          * ReviewFindingKind
@@ -15533,6 +15570,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecognizeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_due_api_v1_review_due_get: {
+        parameters: {
+            query?: {
+                per_course?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewDueOut"];
                 };
             };
             /** @description Validation Error */

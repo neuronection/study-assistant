@@ -1607,7 +1607,7 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getByRole('tab', { name: /flashcards/i }))
     expect(setsSegment).toHaveAttribute('aria-selected', 'false')
     expect(await screen.findByText('Power rule')).toBeInTheDocument()
-    expect(dueFlashcards).toHaveBeenCalledWith(20, undefined, 5)
+    expect(dueFlashcards).toHaveBeenCalledWith(20, 3, 5)
   })
 
   test('practice tab keeps quiz actions on the sets segment only', async () => {
@@ -1636,7 +1636,7 @@ describe('NodeWorkspace', () => {
     ])
     renderWorkspace('/courses/3/n/5?tab=cards')
     expect(await screen.findByText(/Power rule for/)).toBeInTheDocument()
-    expect(dueFlashcards).toHaveBeenCalledWith(20, undefined, 5)
+    expect(dueFlashcards).toHaveBeenCalledWith(20, 3, 5)
 
     fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
     expect(await screen.findByText('n times x to the n minus one')).toBeInTheDocument()
