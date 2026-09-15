@@ -52,6 +52,7 @@ import { type PopoverMenuItem } from '@/components/ui/popover-menu'
 import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
 import { isKeyboardClick, useSelection } from '@/lib/useSelection'
 import { MaterialBrowser, type MaterialFolderSpec } from '@/components/materials/MaterialBrowser'
+import { type Crumb } from '@/features/library/LibraryBreadcrumbs'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
@@ -100,8 +101,10 @@ import {
   getPlacementSuggestions,
   getUnassignedMaterials,
   mirrorFolder as mirrorFolderApi,
-  listChatSessions,
-  listNoteTags,
+   listChatSessions,
+   listFolders,
+   listMaterials,
+   listNoteTags,
   listNotes,
   nodeWorkspace,
   outlineCommit,
@@ -109,9 +112,10 @@ import {
   removeNodeConcept,
   reviewNode,
   updateNote,
-  type ComposeKind,
-  type ConceptDraft,
-  type Material,
+   type ComposeKind,
+   type ConceptDraft,
+   type Folder,
+   type Material,
   type NodeCounts,
   type NodeInfo,
   type OrganizerFinding,
@@ -964,12 +968,18 @@ function MaterialsTab({
   courseId,
   currentId,
   workspace,
+  folderId,
   onOpenMaterial,
+  onOpenFolder,
+  onCloseFolder,
 }: {
   courseId: string
   currentId: number
   workspace: NonNullable<ReturnType<typeof useWorkspaceQuery>['data']>
+  folderId: number | null
   onOpenMaterial: (materialId: number) => void
+  onOpenFolder: (folderId: number) => void
+  onCloseFolder: () => void
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -988,6 +998,16 @@ function MaterialsTab({
     y: number
     folder: WorkspaceFolder
   } | null>(null)
+  const [browseFolderMenu, setBrowseFolderMenu] = useState<{
+    x: number
+    y: number
+    folder: Folder
+  } | null>(null)
+  const [browseMenu, setBrowseMenu] = useState<{
+    x: number
+    y: number
+    material: Material
+  } | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [textDialog, setTextDialog] = useState<'txt' | 'md' | null>(null)
   const [folderDialog, setFolderDialog] = useState(false)
@@ -999,8 +1019,63 @@ function MaterialsTab({
   const unassigned = useQuery({
     queryKey: ['materials', 'unassigned', Number(courseId)],
     queryFn: () => getUnassignedMaterials(Number(courseId)),
-    enabled: workspace.node.is_root,
+    enabled: workspace.node.is_root && folderId === null,
   })
+  const allFoldersQuery = useQuery({
+    queryKey: ['folders', Number(courseId)],
+    queryFn: () => listFolders(Number(courseId)),
+    enabled: folderId !== null,
+  })
+  const folderMaterialsQuery = useQuery({
+    queryKey: ['materials', folderId, Number(courseId)],
+    queryFn: () => listMaterials(folderId as number),
+    enabled: folderId !== null,
+  })
+  const allFolders = useMemo(() => allFoldersQuery.data ?? [], [allFoldersQuery.data])
+  const browseFolder =
+    folderId !== null ? (allFolders.find((entry) => entry.id === folderId) ?? null) : null
+  const browseActive = folderId !== null && allFoldersQuery.data !== undefined && browseFolder !== null
+  const browseSubfolders = useMemo(
+    () =>
+      browseActive
+        ? allFolders
+            .filter((entry) => entry.parent_id === folderId)
+            .sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    [allFolders, browseActive, folderId]
+  )
+  const browseMaterials = useMemo(
+    () => (browseActive ? (folderMaterialsQuery.data ?? []) : []),
+    [browseActive, folderMaterialsQuery.data]
+  )
+  const browseCrumbs: Crumb[] = useMemo(() => {
+    if (!browseActive || browseFolder === null) {
+      return []
+    }
+    const chain: Folder[] = []
+    let walker: Folder | null = browseFolder
+    while (walker !== null) {
+      chain.unshift(walker)
+      walker = allFolders.find((entry) => entry.id === walker?.parent_id) ?? null
+    }
+    return [
+      { key: 'materials-root', label: t('workspace.materialsCrumbRoot'), onClick: onCloseFolder },
+      ...chain.map((entry) => ({
+        key: `f${entry.id}`,
+        label: entry.name,
+        onClick:
+          entry.id === browseFolder.id
+            ? undefined
+            : () => {
+                if (entry.parent_id === null) {
+                  onCloseFolder()
+                } else {
+                  onOpenFolder(entry.id)
+                }
+              },
+      })),
+    ]
+  }, [browseActive, browseFolder, allFolders, t, onCloseFolder, onOpenFolder])
   const [suggestions, setSuggestions] = useState<PlacementSuggestion[] | null>(null)
   const [suggestPending, setSuggestPending] = useState(false)
   const suggestPlacementsMutation = async (): Promise<void> => {
@@ -1039,6 +1114,13 @@ function MaterialsTab({
         ? fuzzyFilter(workspace.materials, normalizedQuery, (entry) => entry.title)
         : workspace.materials,
     [workspace.materials, normalizedQuery]
+  )
+  const visibleBrowseMaterials = useMemo(
+    () =>
+      normalizedQuery
+        ? fuzzyFilter(browseMaterials, normalizedQuery, (entry) => entry.title)
+        : browseMaterials,
+    [browseMaterials, normalizedQuery]
   )
 
   const refresh = async () => {
@@ -1139,8 +1221,14 @@ function MaterialsTab({
   })
 
   const materialOrder = useMemo(
-    () => workspace.materials.map((entry) => `m${entry.material_id}`),
-    [workspace.materials]
+    () =>
+      browseActive
+        ? [
+            ...browseSubfolders.map((entry) => `f${entry.id}`),
+            ...visibleBrowseMaterials.map((entry) => `m${entry.id}`),
+          ]
+        : workspace.materials.map((entry) => `m${entry.material_id}`),
+    [browseActive, browseSubfolders, visibleBrowseMaterials, workspace.materials]
   )
   const selection = useSelection(materialOrder)
   const selectedMaterialIds = useMemo(
@@ -1236,38 +1324,138 @@ function MaterialsTab({
     [navigate, courseId]
   )
 
-  const folderSpecs: MaterialFolderSpec[] = useMemo(
-    () =>
-      visibleFolders.map((folder) => ({
-        key: `f${folder.folder_id}`,
-        name: folder.name,
-        linked: folder.source_id !== null,
-        title: t('workspace.folderMembers', { count: folder.member_count }),
-        selectionState: selection.selected.has(`f${folder.folder_id}`) ? 'selected' : 'none',
-        onPointerDown: (event) => selection.pointerDown(`f${folder.folder_id}`, event),
-        onOpen: () => openFolderInLibrary(folder),
-        onContextMenu: (event) => openFolderContextMenu(event, folder),
-        gridMeta: (
-          <span className="text-muted-foreground text-[10px]">{folder.member_count}</span>
-        ),
-        trailing: (
-          <>
-            <span className="text-muted-foreground shrink-0 text-[10px]">
-              {folder.member_count}
-            </span>
-            <button
-              type="button"
-              className="text-muted-foreground hidden shrink-0 group-hover:block"
-              title={t('workspace.unassignFolder')}
-              onClick={() => unassignFolder.mutate(folder.folder_id)}
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
-          </>
-        ),
-      })),
-    [visibleFolders, selection, t, openFolderInLibrary, unassignFolder, openFolderContextMenu]
+  const openBrowseFolderInLibrary = useCallback(
+    (folder: Folder) => {
+      void navigate({
+        to: '/library',
+        search: {
+          course: Number(courseId),
+          folder: folder.id,
+          source: folder.source_id ?? undefined,
+        },
+      })
+    },
+    [navigate, courseId]
   )
+
+  const folderSpecs: MaterialFolderSpec[] = useMemo(() => {
+    if (browseActive) {
+      return browseSubfolders.map((entry) => ({
+        key: `f${entry.id}`,
+        name: entry.name,
+        linked: entry.source_id !== null,
+        selectionState: selection.selected.has(`f${entry.id}`) ? 'selected' : 'none',
+        onPointerDown: (event) => selection.pointerDown(`f${entry.id}`, event),
+        onOpen: () => onOpenFolder(entry.id),
+        onContextMenu: (event) => {
+          event.preventDefault()
+          if (!selection.selected.has(`f${entry.id}`)) {
+            selection.set([`f${entry.id}`])
+          }
+          setBrowseFolderMenu({ x: event.clientX, y: event.clientY, folder: entry })
+        },
+      }))
+    }
+    return visibleFolders.map((folder) => ({
+      key: `f${folder.folder_id}`,
+      name: folder.name,
+      linked: folder.source_id !== null,
+      title: t('workspace.folderMembers', { count: folder.member_count }),
+      selectionState: selection.selected.has(`f${folder.folder_id}`) ? 'selected' : 'none',
+      onPointerDown: (event) => selection.pointerDown(`f${folder.folder_id}`, event),
+      onOpen: () =>
+        folder.source_id !== null
+          ? openFolderInLibrary(folder)
+          : onOpenFolder(folder.folder_id),
+      onContextMenu: (event) => openFolderContextMenu(event, folder),
+      gridMeta: (
+        <span className="text-muted-foreground text-[10px]">{folder.member_count}</span>
+      ),
+      trailing: (
+        <>
+          <span className="text-muted-foreground shrink-0 text-[10px]">
+            {folder.member_count}
+          </span>
+          <button
+            type="button"
+            className="text-muted-foreground hidden shrink-0 group-hover:block"
+            title={t('workspace.unassignFolder')}
+            onClick={() => unassignFolder.mutate(folder.folder_id)}
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        </>
+      ),
+    }))
+  }, [
+    browseActive,
+    browseSubfolders,
+    selection,
+    onOpenFolder,
+    openFolderInLibrary,
+    visibleFolders,
+    t,
+    unassignFolder,
+    openFolderContextMenu,
+  ])
+
+  const renderBrowseEntry = (entry: Material) => {
+    const key = `m${entry.id}`
+    return view === 'grid' ? (
+      <MaterialTile
+        key={entry.id}
+        data-selectable-id={key}
+        material={{
+          id: entry.id,
+          title: entry.title,
+          kind: entry.kind,
+          status: entry.status,
+          aiComposed: entry.provenance?.source === 'ai-composed',
+        }}
+        selectionState={selection.selected.has(key) ? 'selected' : 'none'}
+        className="w-full"
+        onMouseDown={(event) => selection.pointerDown(key, event)}
+        onClick={(event) => {
+          if (isKeyboardClick(event)) {
+            onOpenMaterial(entry.id)
+          }
+        }}
+        onDoubleClick={() => onOpenMaterial(entry.id)}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          if (!selection.selected.has(key)) {
+            selection.set([key])
+          }
+          setBrowseMenu({ x: event.clientX, y: event.clientY, material: entry })
+        }}
+      />
+    ) : (
+      <div key={entry.id} data-selectable-id={key}>
+        <MaterialRow
+          material={{
+            id: entry.id,
+            title: entry.title,
+            kind: entry.kind,
+            status: entry.status,
+            aiComposed: entry.provenance?.source === 'ai-composed',
+          }}
+          selectionState={selection.selected.has(key) ? 'selected' : 'none'}
+          onMouseDown={(event) => selection.pointerDown(key, event)}
+          onOpen={() => onOpenMaterial(entry.id)}
+          action={
+            <span className="text-muted-foreground shrink-0 text-xs">{entry.kind}</span>
+          }
+          onContextMenu={(event) => {
+            event.preventDefault()
+            if (!selection.selected.has(key)) {
+              selection.set([key])
+            }
+            setBrowseMenu({ x: event.clientX, y: event.clientY, material: entry })
+          }}
+        />
+      </div>
+    )
+  }
 
   const entryMenu = (
     entry: WorkspaceMaterial,
@@ -1366,6 +1554,11 @@ function MaterialsTab({
     const items: ContextMenuItem[] = [
       {
         key: 'open',
+        label: t('common.open'),
+        onSelect: () => onOpenFolder(folder.folder_id),
+      },
+      {
+        key: 'open-in-library',
         label: t('workspace.openFolderInLibrary'),
         onSelect: () => openFolderInLibrary(folder),
       },
@@ -1497,6 +1690,8 @@ function MaterialsTab({
       clearBlocked={() =>
         menu !== null ||
         folderMenu !== null ||
+        browseFolderMenu !== null ||
+        browseMenu !== null ||
         paneMenu !== null ||
         textDialog !== null ||
         folderDialog ||
@@ -1520,41 +1715,47 @@ function MaterialsTab({
       }}
     >
       {createMenu.inputs}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          aria-haspopup="menu"
-          disabled={upload.uploading}
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect()
-            setPaneMenu({ x: rect.left, y: rect.bottom + 4 })
-          }}
-        >
-          {upload.uploading ? (
-            <Loader2 className="animate-spin" aria-hidden />
-          ) : (
-            <Plus aria-hidden />
-          )}
-          {t('library.create')}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
-          <BookOpen aria-hidden />
-          {t('workspace.assignMaterial')}
-        </Button>
-        {createError !== null ? (
-          <p className="text-warning text-xs" role="alert">
-            {createError}
-          </p>
-        ) : null}
-        {deriveNotice !== null ? (
-          <p className="text-muted-foreground text-xs" role="status">
-            {deriveNotice}
-          </p>
-        ) : null}
-      </div>
+      {!browseActive ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            aria-haspopup="menu"
+            disabled={upload.uploading}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              setPaneMenu({ x: rect.left, y: rect.bottom + 4 })
+            }}
+          >
+            {upload.uploading ? (
+              <Loader2 className="animate-spin" aria-hidden />
+            ) : (
+              <Plus aria-hidden />
+            )}
+            {t('library.create')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
+            <BookOpen aria-hidden />
+            {t('workspace.assignMaterial')}
+          </Button>
+          {createError !== null ? (
+            <p className="text-warning text-xs" role="alert">
+              {createError}
+            </p>
+          ) : null}
+          {deriveNotice !== null ? (
+            <p className="text-muted-foreground text-xs" role="status">
+              {deriveNotice}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">{t('chapter.nodeMaterials')}</h2>
+          <h2 className="text-sm font-semibold">
+            {browseActive && browseFolder !== null
+              ? browseFolder.name
+              : t('chapter.nodeMaterials')}
+          </h2>
           <div className="flex items-center gap-2">
             <ExpandableSearch
               value={materialQuery}
@@ -1655,7 +1856,25 @@ function MaterialsTab({
             </div>
           </div>
         ) : null}
-        {workspace.materials.length === 0 && workspace.folders.length === 0 ? (
+        {browseActive ? (
+          folderMaterialsQuery.isLoading ? (
+            <p className="text-muted-foreground py-2 text-center text-sm">
+              {t('library.loading')}
+            </p>
+          ) : browseSubfolders.length === 0 && visibleBrowseMaterials.length === 0 ? (
+            normalizedQuery ? (
+              <p className="text-muted-foreground py-2 text-center text-sm">
+                {t('workspace.noSearchResults')}
+              </p>
+            ) : (
+              <EmptyState icon={FolderClosed} compact title={t('workspace.folderEmpty')} />
+            )
+          ) : (
+            <MaterialBrowser view={view} folders={folderSpecs} crumbs={browseCrumbs}>
+              {visibleBrowseMaterials.map(renderBrowseEntry)}
+            </MaterialBrowser>
+          )
+        ) : workspace.materials.length === 0 && workspace.folders.length === 0 ? (
           <EmptyState
             icon={Upload}
             title={t('workspace.uploadEmptyLabel')}
@@ -1692,6 +1911,49 @@ function MaterialsTab({
           y={folderMenu.y}
           items={folderMenuItems(folderMenu.folder)}
           onClose={() => setFolderMenu(null)}
+        />
+      ) : null}
+      {browseFolderMenu !== null ? (
+        <ContextMenu
+          x={browseFolderMenu.x}
+          y={browseFolderMenu.y}
+          items={[
+            {
+              key: 'open',
+              label: t('common.open'),
+              onSelect: () => onOpenFolder(browseFolderMenu.folder.id),
+            },
+            {
+              key: 'open-in-library',
+              label: t('workspace.openFolderInLibrary'),
+              onSelect: () => openBrowseFolderInLibrary(browseFolderMenu.folder),
+            },
+            {
+              key: 'assign',
+              label: t('workspace.assignSelection'),
+              onSelect: () => setAssignOpen(true),
+            },
+          ]}
+          onClose={() => setBrowseFolderMenu(null)}
+        />
+      ) : null}
+      {browseMenu !== null ? (
+        <ContextMenu
+          x={browseMenu.x}
+          y={browseMenu.y}
+          items={[
+            {
+              key: 'open',
+              label: t('common.open'),
+              onSelect: () => onOpenMaterial(browseMenu.material.id),
+            },
+            {
+              key: 'assign',
+              label: t('workspace.assignSelection'),
+              onSelect: () => setAssignOpen(true),
+            },
+          ]}
+          onClose={() => setBrowseMenu(null)}
         />
       ) : null}
       {paneMenu !== null ? (
@@ -2415,6 +2677,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     note?: number
     material?: number
     study?: number | 'new'
+    folder?: number
   }
   const navigate = useNavigate()
   const from = useCurrentOrigin()
@@ -2532,6 +2795,52 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => {
       const rest = { ...prev }
       delete rest.material
+      return rest
+    }
+    if (nodeId !== undefined) {
+      void navigate({
+        to: '/courses/$courseId/n/$nodeId',
+        params: { courseId, nodeId },
+        search: nextSearch,
+      })
+    } else {
+      void navigate({ to: '/courses/$courseId', params: { courseId }, search: nextSearch })
+    }
+  }
+
+  const openFolderInView = (folderId: number) => {
+    const nextSearch = (
+      prev: {
+        tab?: string
+        note?: number
+        material?: number
+        study?: number | 'new'
+        folder?: number
+      },
+    ) => ({ ...prev, tab: 'materials' as const, folder: folderId })
+    if (nodeId !== undefined) {
+      void navigate({
+        to: '/courses/$courseId/n/$nodeId',
+        params: { courseId, nodeId },
+        search: nextSearch,
+      })
+    } else {
+      void navigate({ to: '/courses/$courseId', params: { courseId }, search: nextSearch })
+    }
+  }
+
+  const closeFolderView = () => {
+    const nextSearch = (
+      prev: {
+        tab?: string
+        note?: number
+        material?: number
+        study?: number | 'new'
+        folder?: number
+      },
+    ) => {
+      const rest = { ...prev }
+      delete rest.folder
       return rest
     }
     if (nodeId !== undefined) {
@@ -2834,7 +3143,10 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
           courseId={courseId}
           currentId={currentId}
           workspace={data}
+          folderId={search.folder ?? null}
           onOpenMaterial={openMaterialAt}
+          onOpenFolder={openFolderInView}
+          onCloseFolder={closeFolderView}
         />
       ) : null}
       {effectiveTab === 'notes' ? (

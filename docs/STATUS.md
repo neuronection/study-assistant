@@ -93,6 +93,20 @@ suggestions (token-overlap, `matched_on` evidence), E linked-source subdir
 mirroring + scan `new_relpaths` (migration 0058). Plan doc:
 `dev/plans/75-material-placement-and-discovery.md` (local-only).
 
+**Plan 76 slice B — in-tab folder drill-down (2026-09-15; ADR-181):** the
+Materials tab now browses folders **in place**: double-click an assigned folder
+→ `?tab=materials&folder=<id>` (tab stays; back/forward + deep links free via
+the shared `tabSearch`), showing the folder's **full contents** — subfolders +
+materials from the standard library endpoints (cache-shared query keys with the
+Library, zero backend changes), `LibraryBreadcrumbs` crumbs with a Materials
+root crumb, honest stale-id fallback to the tab root, drawer opening for folder
+materials, and Open / Open-in-library / Assign-to-node context menus. Root-only
+write affordances (upload/create/picker/needs-placement) hide while browsing;
+search + grid/list apply inside folders; linked-source folders keep their
+Library jump until slice C. i18n en/de/el (`materialsCrumbRoot`,
+`folderEmpty`). Frontend 1,195 green (+7), lint/typecheck/build/`pnpm i18n`
+green; backend untouched.
+
 **Plan 76 slice A — shared MaterialBrowser listing (2026-09-15, user-approved;
 ADR-182):** new app-level `components/materials/MaterialBrowser.tsx` — one
 `MaterialFolderItem` (grid/list, linked-source icon composite, selection/cut

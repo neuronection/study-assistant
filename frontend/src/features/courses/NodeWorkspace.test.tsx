@@ -1826,7 +1826,7 @@ describe('NodeWorkspace', () => {
     expect(screen.getByRole('button', { name: /Lectures/ })).toBeInTheDocument()
   })
 
-  test('double-clicking an assigned folder opens it in the library', async () => {
+  test('double-clicking an assigned folder drills in inside the tab (plan 76 B)', async () => {
     primeDefaults()
     nodeWorkspace.mockImplementation((id: number) =>
       Promise.resolve(
@@ -1851,13 +1851,12 @@ describe('NodeWorkspace', () => {
     const row = await screen.findByTitle('2 materials in this folder join this node')
     fireEvent.doubleClick(row)
     await waitFor(() =>
-      expect(navigateMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: '/library',
-          search: expect.objectContaining({ course: 3, folder: 10 }),
-        })
-      )
+      expect(routerHolder.current!.state.location.search).toMatchObject({
+        tab: 'materials',
+        folder: 10,
+      })
     )
+    expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
   })
 
   test('linked-source assigned folder opens its library source', async () => {
@@ -2509,5 +2508,156 @@ describe('NodeWorkspace', () => {
       '— unassigned —',
       'vision-pro',
     ])
+  })
+
+  describe('materials tab folder browsing (plan 76 B)', () => {
+    const FOLDERS = [
+      {
+        id: 901,
+        name: 'Lectures',
+        path: '/Lectures',
+        course_id: 3,
+        parent_id: null,
+        source_id: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+      {
+        id: 902,
+        name: 'Week 1',
+        path: '/Lectures/Week 1',
+        course_id: 3,
+        parent_id: 901,
+        source_id: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ]
+    const FOLDER_MATERIAL = {
+      id: 44,
+      title: 'limits-notes.md',
+      kind: 'md',
+      status: 'ready',
+      course_id: 3,
+      folder_id: 901,
+      created_at: '2026-09-01T00:00:00Z',
+      provenance: null,
+    }
+
+    function primeFolderWorkspace() {
+      primeDefaults()
+      nodeWorkspace.mockImplementation((id: number) =>
+        Promise.resolve(
+          id === 1
+            ? ROOT_WS
+            : {
+                ...NODE_WS,
+                folders: [
+                  {
+                    folder_id: 901,
+                    name: 'Lectures',
+                    source_id: null,
+                    member_count: 1,
+                    rationale: null,
+                    auto_assigned: false,
+                  },
+                ],
+                materials: [NODE_WS.materials[0]],
+              }
+        )
+      )
+    }
+
+    test('double-clicking an assigned folder drills in place under the same tab', async () => {
+      primeFolderWorkspace()
+      renderWorkspace('/courses/3/n/5?tab=materials')
+      const row = await screen.findByTitle('1 material in this folder joins this node')
+      fireEvent.doubleClick(row)
+      await waitFor(() =>
+        expect(routerHolder.current!.state.location.search).toMatchObject({
+          tab: 'materials',
+          folder: 901,
+        })
+      )
+      expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
+    })
+
+    test('folder view shows full folder contents with breadcrumbs', async () => {
+      primeFolderWorkspace()
+      listFolders.mockResolvedValue(FOLDERS)
+      listMaterials.mockImplementation((folderId: number) =>
+        Promise.resolve(folderId === 901 ? [FOLDER_MATERIAL] : [])
+      )
+      renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
+      expect(await screen.findByRole('button', { name: /limits-notes\.md/i })).toBeInTheDocument()
+      expect(screen.getByText('Week 1')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Materials' })).toBeInTheDocument()
+    })
+
+    test('clicking the root crumb leaves the folder view', async () => {
+      primeFolderWorkspace()
+      listFolders.mockResolvedValue(FOLDERS)
+      listMaterials.mockImplementation((folderId: number) =>
+        Promise.resolve(folderId === 901 ? [FOLDER_MATERIAL] : [])
+      )
+      renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
+      expect(await screen.findByRole('button', { name: /limits-notes\.md/i })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Materials' }))
+      await waitFor(() =>
+        expect(
+          (routerHolder.current!.state.location.search as { folder?: number }).folder
+        ).toBeUndefined()
+      )
+      expect(await screen.findByRole('button', { name: /chain-rule\.pdf/i })).toBeInTheDocument()
+    })
+
+    test('a subfolder click navigates deeper inside the tab', async () => {
+      primeFolderWorkspace()
+      listFolders.mockResolvedValue(FOLDERS)
+      listMaterials.mockResolvedValue([])
+      renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
+      const sub = await screen.findByText('Week 1')
+      fireEvent.doubleClick(sub)
+      await waitFor(() =>
+        expect(routerHolder.current!.state.location.search).toMatchObject({ folder: 902 })
+      )
+    })
+
+    test('a stale folder id falls back to the root view', async () => {
+      primeFolderWorkspace()
+      listFolders.mockResolvedValue([])
+      renderWorkspace('/courses/3/n/5?tab=materials&folder=404')
+      expect(await screen.findByRole('button', { name: /chain-rule\.pdf/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Materials' })).not.toBeInTheDocument()
+    })
+
+    test('a material inside a folder opens the drawer in place', async () => {
+      primeFolderWorkspace()
+      listFolders.mockResolvedValue(FOLDERS)
+      listMaterials.mockImplementation((folderId: number) =>
+        Promise.resolve(folderId === 901 ? [FOLDER_MATERIAL] : [])
+      )
+      renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
+      const row = await screen.findByRole('button', { name: /limits-notes\.md/i })
+      fireEvent.doubleClick(row)
+      await screen.findByRole('dialog')
+      await waitFor(() =>
+        expect(routerHolder.current!.state.location.search).toMatchObject({ material: 44 })
+      )
+    })
+
+    test('folder contents context menu offers open and open-in-library', async () => {
+      primeFolderWorkspace()
+      listFolders.mockResolvedValue(FOLDERS)
+      listMaterials.mockResolvedValue([])
+      renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
+      const sub = await screen.findByText('Week 1')
+      fireEvent.contextMenu(sub)
+      expect(
+        await screen.findByRole('menuitem', { name: 'Open in library' })
+      ).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Open' }))
+      await waitFor(() =>
+        expect(routerHolder.current!.state.location.search).toMatchObject({ folder: 902 })
+      )
+    })
   })
 })

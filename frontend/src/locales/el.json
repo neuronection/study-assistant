@@ -1520,6 +1520,8 @@
     "folderMembers_one": "{{count}} υλικό σε αυτόν τον φάκελο συνδέεται με αυτή την ενότητα",
     "folderMembers_other": "{{count}} υλικά σε αυτόν τον φάκελο συνδέονται με αυτή την ενότητα",
     "unassignFolder": "Κατάργηση ανάθεσης φακέλου",
+    "materialsCrumbRoot": "Υλικό",
+    "folderEmpty": "Αυτός ο φάκελος είναι άδειος",
     "mirrorFolder": "Αντανάκλαση δομής φακέλου σε κόμβους",
     "mirrorCreated_one": "Δημιουργήθηκαν {{count}} κόμβοι",
     "mirrorCreated_other": "Δημιουργήθηκαν {{count}} κόμβοι",

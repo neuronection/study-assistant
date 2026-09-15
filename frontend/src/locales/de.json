@@ -1500,6 +1500,8 @@
     "folderMembers_one": "{{count}} Material in diesem Ordner wird diesem Abschnitt zugeordnet",
     "folderMembers_other": "{{count}} Materialien in diesem Ordner werden diesem Abschnitt zugeordnet",
     "unassignFolder": "Ordnerzuweisung aufheben",
+    "materialsCrumbRoot": "Materialien",
+    "folderEmpty": "Dieser Ordner ist leer",
     "mirrorFolder": "Ordnerstruktur in Knoten spiegeln",
     "mirrorCreated_one": "{{count}} Knoten erstellt",
     "mirrorCreated_other": "{{count}} Knoten erstellt",

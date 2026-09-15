@@ -62,6 +62,7 @@ function tabSearch(search: Record<string, unknown>): {
   note?: number
   material?: number
   study?: number | 'new'
+  folder?: number
 } {
   const rawStudy = search.study
   let study: number | 'new' | undefined
@@ -72,11 +73,18 @@ function tabSearch(search: Record<string, unknown>): {
   } else if (typeof rawStudy === 'string' && /^\d+$/.test(rawStudy)) {
     study = Number(rawStudy)
   }
+  const rawFolder = search.folder
   return {
     tab: typeof search.tab === 'string' ? search.tab : undefined,
     note: typeof search.note === 'number' ? search.note : undefined,
     material: typeof search.material === 'number' ? search.material : undefined,
     study,
+    folder:
+      typeof rawFolder === 'number'
+        ? rawFolder
+        : typeof rawFolder === 'string' && /^\d+$/.test(rawFolder)
+          ? Number(rawFolder)
+          : undefined,
   }
 }
 
