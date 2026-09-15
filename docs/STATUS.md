@@ -237,6 +237,18 @@ ruff/mypy clean; frontend 1,164 green (+2 net, diff suites re-pointed to the
 formatted default), lint/typecheck/build/`pnpm i18n` green; library `pnpm
 verify` green (13 new tests, docs page, story, a11y row, changeset).
 
+**Planning record update (2026-09-15, docs-only):** the 2026-09-15 UI/UX audit
+(family dev repo `audits/AUDIT-2026-09-15-ui-navigation.md`) found plan **49
+(study experience — cross-course Review queue, `study_sessions` + focus timer,
+server-enforced exam timing; ADR-106…108)** was silently skipped when the
+2026-08-31 wave jumped 48 → 50 (verified: no `study_sessions`, no
+`features/review/`, review remains per-course). Re-queued as the **next
+feature round; execution order 49 → 68 → 70 → 73**. Both `dev/plans/` roadmap
+copies reconciled (stale "unpulled" backlog corrected: URL importer, tags/
+favorites, snap-to-notes, quick-capture hotkey, extra languages all shipped in
+plans 67/69); plan 49's doc copied into the app-repo `dev/plans/`. Also noted:
+`tests/evals/` still does not exist — populate the golden sets before/during 49.
+
 **Next (planned) — plan 70 "Compose quality & scale":** deterministic coverage
 accounting + `needs_review` gate for AI-composed material, orphan-material
 awareness (`include_unassigned` + unassigned discovery endpoint), `practice_set`
