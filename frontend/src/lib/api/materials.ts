@@ -198,6 +198,31 @@ export async function getUnassignedMaterials(courseId: number): Promise<Unassign
   return json<UnassignedMaterials>(response)
 }
 
+export interface PlacementCandidate {
+  node_id: number
+  node_title: string
+  breadcrumb: { id: number; title: string }[]
+  score: number
+  matched_on: string[]
+}
+
+export interface PlacementSuggestion {
+  material_id: number
+  candidates: PlacementCandidate[]
+}
+
+export async function getPlacementSuggestions(
+  courseId: number,
+  materialIds: number[]
+): Promise<{ suggestions: PlacementSuggestion[] }> {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/placement-suggestions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ material_ids: materialIds }),
+  })
+  return json<{ suggestions: PlacementSuggestion[] }>(response)
+}
+
 export async function createTextFile(body: {
   course_id: number
   folder_id?: number | null

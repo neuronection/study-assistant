@@ -66,6 +66,7 @@ const allocateMaterial = vi.fn()
 const allocateNodeFolder = vi.fn()
 const mirrorFolder = vi.fn()
 const getUnassignedMaterials = vi.fn()
+const getPlacementSuggestions = vi.fn()
 const listFolders = vi.fn()
 const createFolder = vi.fn()
 const createTextMaterial = vi.fn()
@@ -239,6 +240,8 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     mirrorFolder: (...args: unknown[]) => mirrorFolder(...(args as [number, number])),
     getUnassignedMaterials: (...args: unknown[]) =>
       getUnassignedMaterials(...(args as [number])),
+    getPlacementSuggestions: (...args: unknown[]) =>
+      getPlacementSuggestions(...(args as [number, number[]])),
     listFolders: (...args: unknown[]) => listFolders(...(args as [number?])),
     createFolder: (...args: unknown[]) => createFolder(...(args as [string, number | null, number])),
     createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
@@ -480,6 +483,7 @@ function primeDefaults() {
   })
   listNotes.mockResolvedValue({ items: [], next_cursor: null })
   getUnassignedMaterials.mockResolvedValue({ count: 0, materials: [] })
+  getPlacementSuggestions.mockResolvedValue({ suggestions: [] })
   getNodeArtifacts.mockResolvedValue({ cheat_sheet: null, reviews: [] })
   listNoteTags.mockResolvedValue([])
   getNote.mockImplementation((id: number) =>
@@ -2036,6 +2040,51 @@ describe('NodeWorkspace', () => {
     renderWorkspace('/courses/3/n/1?tab=materials')
     await screen.findByRole('button', { name: /chain-rule\.pdf/i })
     expect(screen.queryByTestId('needs-placement-strip')).not.toBeInTheDocument()
+  })
+
+  test('suggest for all renders candidate chips with matched tokens and assign on click', async () => {
+    primeDefaults()
+    getUnassignedMaterials.mockResolvedValue({
+      count: 1,
+      materials: [{ id: 51, title: 'integration by parts worked examples.pdf' }],
+    })
+    getPlacementSuggestions.mockResolvedValue({
+      suggestions: [
+        {
+          material_id: 51,
+          candidates: [
+            {
+              node_id: 11,
+              node_title: 'Integration techniques',
+              breadcrumb: [
+                { id: 1, title: 'Calculus I' },
+                { id: 11, title: 'Integration techniques' },
+              ],
+              score: 0.42,
+              matched_on: ['integration'],
+            },
+          ],
+        },
+      ],
+    })
+    allocateMaterial.mockResolvedValue(undefined)
+    nodeWorkspace.mockImplementation(() => Promise.resolve(ROOT_WS))
+    renderWorkspace('/courses/3/n/1?tab=materials')
+    fireEvent.click(await screen.findByTestId('needs-placement-strip'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Suggest for all' }))
+    await waitFor(() =>
+      expect(getPlacementSuggestions).toHaveBeenCalledWith(3, [51])
+    )
+    const chip = await screen.findByRole('button', {
+      name: 'Calculus I › Integration techniques',
+    })
+    expect(chip).toHaveAttribute('title', 'integration')
+    fireEvent.click(chip)
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(11, 51))
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Calculus I › Integration techniques' }))
+        .not.toBeInTheDocument()
+    )
   })
 
   test('materials tab bulk unassign removes selected materials and folders', async () => {

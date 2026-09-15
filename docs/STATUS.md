@@ -6,6 +6,19 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 75 slice D — deterministic placement suggestions (2026-09-15):** new
+`placement.py::suggest_placements` — token-overlap scoring between the
+material's title + index-card topics/key-terms and each non-root node's
+title/summary/objectives/concept names (Jaccard + 0.15 containment bonus,
+tree-order tie-break, unicode-normalizing tokenizer, cap 3 nodes/material,
+≤40 materials/request, no LLM). `POST /courses/{id}/placement-suggestions`
+returns per-material candidates with `score`, `matched_on` evidence, node
+breadcrumb (honest empty candidates for foreign/edge inputs). UI: the
+needs-placement panel gains "Suggest for all" filling inline candidate chips
+(parent › node + title-attribute token evidence); clicking a chip assigns
+through the same idempotent assign path and removes the row. i18n en/de/el.
+Backend 1,115 green (+3), frontend 1,182 green (+1), full gate green.
+
 **Plan 75 slice C — "Needs placement" unassigned review (2026-09-15):** new
 `services/knowledge/placement.py` (`unassigned_materials` with the pinned
 definition: ready material visible at **no** node by direct link **and** not

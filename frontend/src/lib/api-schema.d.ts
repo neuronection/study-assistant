@@ -1016,6 +1016,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/courses/{course_id}/placement-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Placement Suggestions */
+        post: operations["placement_suggestions_api_v1_courses__course_id__placement_suggestions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/courses/{course_id}/plan": {
         parameters: {
             query?: never;
@@ -6326,6 +6343,38 @@ export interface components {
             /** Course Id */
             course_id: number;
         };
+        /** PlacementCandidateOut */
+        PlacementCandidateOut: {
+            /** Breadcrumb */
+            breadcrumb: {
+                [key: string]: unknown;
+            }[];
+            /** Matched On */
+            matched_on: string[];
+            /** Node Id */
+            node_id: number;
+            /** Node Title */
+            node_title: string;
+            /** Score */
+            score: number;
+        };
+        /** PlacementSuggestionOut */
+        PlacementSuggestionOut: {
+            /** Candidates */
+            candidates: components["schemas"]["PlacementCandidateOut"][];
+            /** Material Id */
+            material_id: number;
+        };
+        /** PlacementSuggestionsIn */
+        PlacementSuggestionsIn: {
+            /** Material Ids */
+            material_ids: number[];
+        };
+        /** PlacementSuggestionsOut */
+        PlacementSuggestionsOut: {
+            /** Suggestions */
+            suggestions: components["schemas"]["PlacementSuggestionOut"][];
+        };
         /** PlanGenerateOut */
         PlanGenerateOut: {
             /** Created */
@@ -10030,6 +10079,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutlineDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    placement_suggestions_api_v1_courses__course_id__placement_suggestions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacementSuggestionsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacementSuggestionsOut"];
                 };
             };
             /** @description Validation Error */

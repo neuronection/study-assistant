@@ -1524,6 +1524,8 @@
     "needsPlacement_other": "{{count}} materials need placement",
     "assignNeedsPlacement": "Assign…",
     "needsPlacementCollapse": "Hide",
+    "suggestForAll": "Suggest for all",
+    "suggestPending": "Suggesting…",
     "mirrorFolder": "Mirror folder structure into nodes",
     "mirrorCreated_one": "{{count}} node created",
     "mirrorCreated_other": "{{count}} nodes created",

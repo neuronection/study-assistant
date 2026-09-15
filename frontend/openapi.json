@@ -7609,6 +7609,100 @@
         "title": "PatternProposeIn",
         "type": "object"
       },
+      "PlacementCandidateOut": {
+        "properties": {
+          "breadcrumb": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Breadcrumb",
+            "type": "array"
+          },
+          "matched_on": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Matched On",
+            "type": "array"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "node_title": {
+            "title": "Node Title",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_title",
+          "breadcrumb",
+          "score",
+          "matched_on"
+        ],
+        "title": "PlacementCandidateOut",
+        "type": "object"
+      },
+      "PlacementSuggestionOut": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/PlacementCandidateOut"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "material_id",
+          "candidates"
+        ],
+        "title": "PlacementSuggestionOut",
+        "type": "object"
+      },
+      "PlacementSuggestionsIn": {
+        "properties": {
+          "material_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 40,
+            "title": "Material Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "material_ids"
+        ],
+        "title": "PlacementSuggestionsIn",
+        "type": "object"
+      },
+      "PlacementSuggestionsOut": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PlacementSuggestionOut"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "suggestions"
+        ],
+        "title": "PlacementSuggestionsOut",
+        "type": "object"
+      },
       "PlanGenerateOut": {
         "properties": {
           "created": {
@@ -15668,6 +15762,58 @@
           }
         },
         "summary": "Outline Draft",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/v1/courses/{course_id}/placement-suggestions": {
+      "post": {
+        "operationId": "placement_suggestions_api_v1_courses__course_id__placement_suggestions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlacementSuggestionsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementSuggestionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Placement Suggestions",
         "tags": [
           "courses"
         ]

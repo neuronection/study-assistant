@@ -91,6 +91,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   and the Library course view lists them, each with an Assign… action reusing
   the node picker; the unassigned helper (plan 70-B amend: via-folder counts
   as placed) is the shared compose wiring per plan 70-B's coordination note
+- ✅ **Placement suggestions (plan 75-D, ADR-179, 2026-09-15)**: deterministic
+  suggest-for-all in the needs-placement panel — `POST
+  /courses/{id}/placement-suggestions` ranks candidate nodes by token
+  overlap (material title + index-card topics/key-terms vs node
+  titles/summaries/objectives/concepts; Jaccard + containment bonus, ≤3
+  candidates each), renders evidence chips (`matched_on` tokens as tooltip)
+  and places only on click — no LLM, works offline
 - ✅ **Placement references (plan 71, ADR-159)**: library items show a small
   `Link2`+count badge when placed in the course tree (materials: direct
   `material_links` only; folders: the folder's own `material_folder_links`) —

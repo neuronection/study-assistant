@@ -1511,6 +1511,8 @@
     "needsPlacement_other": "{{count}} Materialien brauchen Platzierung",
     "assignNeedsPlacement": "Zuweisen…",
     "needsPlacementCollapse": "Ausblenden",
+    "suggestForAll": "Für alle vorschlagen",
+    "suggestPending": "Vorschlagen…",
     "mirrorFolder": "Ordnerstruktur in Knoten spiegeln",
     "mirrorCreated_one": "{{count}} Knoten erstellt",
     "mirrorCreated_other": "{{count}} Knoten erstellt",

@@ -573,3 +573,71 @@ def test_unassigned_endpoint_excludes_not_ready(course_client: TestClient) -> No
         __import__("time").sleep(0.1)
     body = course_client.get(f"/api/v1/courses/{course_id}/materials/unassigned").json()
     assert body["count"] >= 1
+
+
+def _index_card_ready(client: TestClient, filename: str, course_id: int) -> int:
+    return add_material(client, filename, course_id)
+
+
+def test_placement_suggestions_rank_and_evidence(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Suggest"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    integration = course_client.post(
+        f"/api/v1/courses/{course_id}/nodes",
+        json={"course_id": course_id, "parent_id": root["id"], "title": "Integration techniques"},
+    ).json()
+    course_client.post(
+        f"/api/v1/courses/{course_id}/nodes",
+        json={"course_id": course_id, "parent_id": root["id"], "title": "Series overview"},
+    ).json()
+    loose = add_material(course_client, "integration by parts worked examples.txt", course_id)
+
+    result = course_client.post(
+        f"/api/v1/courses/{course_id}/placement-suggestions",
+        json={"material_ids": [loose]},
+    )
+    assert result.status_code == 200, result.text
+    body = result.json()
+    suggestions = body["suggestions"]
+    assert len(suggestions) == 1
+    candidates = suggestions[0]["candidates"]
+    assert candidates
+    assert candidates[0]["node_id"] == integration["id"]
+    assert candidates[0]["matched_on"]
+    assert 0 < candidates[0]["score"] <= 1.15
+    assert candidates[0]["breadcrumb"][0]["title"] == "Suggest"
+
+
+def test_placement_suggestions_empty_and_foreign(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "S-A"}).json()["id"]
+    no_nodes = course_client.post(
+        f"/api/v1/courses/{course_id}/placement-suggestions",
+        json={"material_ids": []},
+    )
+    assert no_nodes.status_code == 200
+    assert no_nodes.json() == {"suggestions": []}
+
+    other = course_client.post("/api/v1/courses", json={"title": "S-B"}).json()["id"]
+    foreign = add_material(course_client, "foreign notes.txt", other)
+    result = course_client.post(
+        f"/api/v1/courses/{course_id}/placement-suggestions",
+        json={"material_ids": [foreign]},
+    )
+    body = result.json()
+    assert result.status_code == 200
+    assert body["suggestions"][0]["candidates"] == []
+
+
+def test_placement_suggestions_caps_inputs(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "S-C"}).json()["id"]
+    assert course_client.post(
+        f"/api/v1/courses/{course_id}/placement-suggestions",
+        json={"material_ids": list(range(1, 41))},
+    ).status_code == 200
+    assert (
+        course_client.post(
+            f"/api/v1/courses/{course_id}/placement-suggestions",
+            json={"material_ids": list(range(1, 42))},
+        ).status_code
+        == 422
+    )

@@ -97,6 +97,7 @@ import {
   getCourse,
   getMaterial,
   getNodeArtifacts,
+  getPlacementSuggestions,
   getUnassignedMaterials,
   mirrorFolder as mirrorFolderApi,
   listChatSessions,
@@ -118,6 +119,7 @@ import {
   type WorkspaceChild,
   type WorkspaceFolder,
   type WorkspaceMaterial,
+  type PlacementSuggestion,
   type TextFileEditState,
   updateTextMaterial,
  } from '@/lib/api'
@@ -1102,6 +1104,20 @@ function MaterialsTab({
     queryFn: () => getUnassignedMaterials(Number(courseId)),
     enabled: workspace.node.is_root,
   })
+  const [suggestions, setSuggestions] = useState<PlacementSuggestion[] | null>(null)
+  const [suggestPending, setSuggestPending] = useState(false)
+  const suggestPlacementsMutation = async (): Promise<void> => {
+    setSuggestPending(true)
+    try {
+      const result = await getPlacementSuggestions(
+        Number(courseId),
+        (unassigned.data?.materials ?? []).map((entry) => entry.id),
+      )
+      setSuggestions(result.suggestions)
+    } finally {
+      setSuggestPending(false)
+    }
+  }
   const assignUnassigned = useMutation({
     mutationFn: async ({ nodeId, materialId }: { nodeId: number; materialId: number }) => {
       await allocateMaterial(nodeId, materialId)
@@ -1637,26 +1653,73 @@ function MaterialsTab({
             data-testid="needs-placement-panel"
             className="border-border space-y-1 rounded-md border border-dashed p-2"
           >
-            {(unassigned.data?.materials ?? []).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between gap-2 py-0.5">
-                <span className="min-w-0 flex-1 truncate text-xs">{entry.title}</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  data-testid={`needs-placement-assign-${entry.id}`}
-                  onClick={() => setUnassignedTarget(entry.id)}
-                >
-                  {t('workspace.assignNeedsPlacement')}
-                </Button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="text-muted-foreground text-left text-xs"
-              onClick={() => setUnassignedOpen(false)}
-            >
-              {t('workspace.needsPlacementCollapse')}
-            </button>
+            {(unassigned.data?.materials ?? []).map((entry) => {
+              const candidates =
+                suggestions?.find((item) => item.material_id === entry.id)
+                  ?.candidates ?? []
+              return (
+                <div key={entry.id} className="flex items-center justify-between gap-2 py-0.5">
+                  <span className="min-w-0 flex-1 truncate text-xs">{entry.title}</span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {candidates.map((candidate) => (
+                      <button
+                        key={candidate.node_id}
+                        type="button"
+                        title={candidate.matched_on.join(', ')}
+                        className="border-border hover:bg-subtle text-muted-foreground rounded-md border border-dashed px-1.5 py-0.5 text-[11px]"
+                        disabled={assignUnassigned.isPending}
+                        onClick={() =>
+                          assignUnassigned.mutate(
+                            { nodeId: candidate.node_id, materialId: entry.id },
+                            {
+                              onSuccess: () => setSuggestions(
+                                (current) =>
+                                  (current ?? []).filter(
+                                    (item) => item.material_id !== entry.id,
+                                  ),
+                              ),
+                            },
+                          )
+                        }
+                      >
+                        {candidate.breadcrumb.length > 1
+                          ? `${candidate.breadcrumb[candidate.breadcrumb.length - 2].title} › ${candidate.node_title}`
+                          : candidate.node_title}
+                      </button>
+                    ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid={`needs-placement-assign-${entry.id}`}
+                      onClick={() => setUnassignedTarget(entry.id)}
+                    >
+                      {t('workspace.assignNeedsPlacement')}
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                className="text-muted-foreground text-left text-xs"
+                onClick={() =>
+                  void suggestPlacementsMutation()
+                }
+                disabled={suggestPending}
+              >
+                {suggestPending
+                  ? t('workspace.suggestPending')
+                  : t('workspace.suggestForAll')}
+              </button>
+              <button
+                type="button"
+                className="text-muted-foreground text-left text-xs"
+                onClick={() => setUnassignedOpen(false)}
+              >
+                {t('workspace.needsPlacementCollapse')}
+              </button>
+            </div>
           </div>
         ) : null}
         {workspace.materials.length === 0 && workspace.folders.length === 0 ? (

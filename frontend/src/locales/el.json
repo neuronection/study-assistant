@@ -1531,6 +1531,8 @@
     "needsPlacement_other": "{{count}} υλικά χρειάζονται τοποθέτηση",
     "assignNeedsPlacement": "Ανάθεση…",
     "needsPlacementCollapse": "Απόκρυψη",
+    "suggestForAll": "Πρόταση για όλα",
+    "suggestPending": "Προτείνω…",
     "mirrorFolder": "Αντανάκλαση δομής φακέλου σε κόμβους",
     "mirrorCreated_one": "Δημιουργήθηκαν {{count}} κόμβοι",
     "mirrorCreated_other": "Δημιουργήθηκαν {{count}} κόμβοι",

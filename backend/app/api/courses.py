@@ -43,7 +43,10 @@ from ..services.knowledge.courses import (
     purge_course,
     scratch_content_count,
 )
-from ..services.knowledge.placement import unassigned_payload
+from ..services.knowledge.placement import (
+    suggest_placements,
+    unassigned_payload,
+)
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.profiles import ensure_default_profile
 from ..services.study.organizer import (
@@ -975,6 +978,30 @@ class UnassignedOut(BaseModel):
     materials: list[UnassignedMaterialOut]
 
 
+class PlacementSuggestionsIn(BaseModel):
+    material_ids: list[int] = Field(max_length=40)
+
+
+class PlacementCandidateOut(BaseModel):
+    node_id: int
+    node_title: str
+    breadcrumb: list[dict[str, Any]]
+    score: float
+    matched_on: list[str]
+
+
+class PlacementSuggestionsOut(BaseModel):
+    suggestions: list["PlacementSuggestionOut"]
+
+
+class PlacementSuggestionOut(BaseModel):
+    material_id: int
+    candidates: list[PlacementCandidateOut]
+
+
+PlacementSuggestionsOut.model_rebuild()
+
+
 @router.get(
     "/courses/{course_id}/materials/unassigned", response_model=UnassignedOut
 )
@@ -983,6 +1010,19 @@ def unassigned_course_materials(
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     return unassigned_payload(session, course_id)
+
+
+@router.post(
+    "/courses/{course_id}/placement-suggestions",
+    response_model=PlacementSuggestionsOut,
+)
+def placement_suggestions(
+    course_id: int, body: PlacementSuggestionsIn, session: Session = Depends(get_session)
+) -> dict[str, Any]:
+    _load_course(session, course_id)
+    return {
+        "suggestions": suggest_placements(session, course_id, body.material_ids)
+    }
 
 
 @router.post(
