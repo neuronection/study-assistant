@@ -84,6 +84,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   locations / cut / copy / assign-to-node / rename / delete with purge),
   folders (open / cut / paste-into / linked locations / rename / delete),
   links (open / rescan / reveal / rename / unlink); inline rename on tiles
+- ✅ **Needs placement (plan 75-C, 2026-09-15)**: `GET
+  /courses/{id}/materials/unassigned` lists ready course materials visible at
+  no node (direct link absent **and** not a member of any linked folder; cap
+  40) — the course Materials tab shows a collapsible "Needs placement" strip
+  and the Library course view lists them, each with an Assign… action reusing
+  the node picker; the unassigned helper (plan 70-B amend: via-folder counts
+  as placed) is the shared compose wiring per plan 70-B's coordination note
 - ✅ **Placement references (plan 71, ADR-159)**: library items show a small
   `Link2`+count badge when placed in the course tree (materials: direct
   `material_links` only; folders: the folder's own `material_folder_links`) —

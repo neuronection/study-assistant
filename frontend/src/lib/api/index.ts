@@ -296,6 +296,7 @@ export {
   getExtractionVersion,
   getMaterial,
   getMaterialLinks,
+  getUnassignedMaterials,
   listCourseMaterials,
   listExtractionVersions,
   listMaterials,

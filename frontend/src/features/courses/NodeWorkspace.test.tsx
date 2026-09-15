@@ -65,6 +65,7 @@ const uploadMaterial = vi.fn()
 const allocateMaterial = vi.fn()
 const allocateNodeFolder = vi.fn()
 const mirrorFolder = vi.fn()
+const getUnassignedMaterials = vi.fn()
 const listFolders = vi.fn()
 const createFolder = vi.fn()
 const createTextMaterial = vi.fn()
@@ -236,6 +237,8 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     allocateNodeFolder: (...args: unknown[]) =>
       allocateNodeFolder(...(args as [number, number])),
     mirrorFolder: (...args: unknown[]) => mirrorFolder(...(args as [number, number])),
+    getUnassignedMaterials: (...args: unknown[]) =>
+      getUnassignedMaterials(...(args as [number])),
     listFolders: (...args: unknown[]) => listFolders(...(args as [number?])),
     createFolder: (...args: unknown[]) => createFolder(...(args as [string, number | null, number])),
     createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
@@ -476,6 +479,7 @@ function primeDefaults() {
     hidden: false,
   })
   listNotes.mockResolvedValue({ items: [], next_cursor: null })
+  getUnassignedMaterials.mockResolvedValue({ count: 0, materials: [] })
   getNodeArtifacts.mockResolvedValue({ cheat_sheet: null, reviews: [] })
   listNoteTags.mockResolvedValue([])
   getNote.mockImplementation((id: number) =>
@@ -1995,6 +1999,43 @@ describe('NodeWorkspace', () => {
     ).toBeInTheDocument()
     const notice = await screen.findByText(/deeper level/)
     expect(notice.textContent).toContain('1')
+  })
+
+  test('course-level materials tab shows a needs-placement strip and assign flow', async () => {
+    primeDefaults()
+    getUnassignedMaterials.mockResolvedValue({
+      count: 2,
+      materials: [
+        { id: 51, title: 'orphan-a.pdf' },
+        { id: 52, title: 'orphan-b.pdf' },
+      ],
+    })
+    allocateMaterial.mockResolvedValue(undefined)
+    nodeWorkspace.mockImplementation(() => Promise.resolve(ROOT_WS))
+    renderWorkspace('/courses/3/n/1?tab=materials')
+    const strip = await screen.findByTestId('needs-placement-strip')
+    expect(strip.textContent).toContain('2 materials need placement')
+
+    fireEvent.click(strip)
+    expect(await screen.findByTestId('needs-placement-panel')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('needs-placement-assign-51'))
+    const placeDialog = await screen.findByRole('dialog', { name: 'Assign…' })
+    fireEvent.click(within(placeDialog).getByRole('treeitem', { name: 'Derivatives' }))
+    fireEvent.click(
+      within(placeDialog).getByRole('button', { name: 'Assign' })
+    )
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(expect.anything(), 51))
+    await waitFor(() =>
+      expect(getUnassignedMaterials).toHaveBeenCalled()
+    )
+  })
+
+  test('needs-placement strip is hidden when the course has nothing unassigned', async () => {
+    primeDefaults()
+    renderWorkspace('/courses/3/n/1?tab=materials')
+    await screen.findByRole('button', { name: /chain-rule\.pdf/i })
+    expect(screen.queryByTestId('needs-placement-strip')).not.toBeInTheDocument()
   })
 
   test('materials tab bulk unassign removes selected materials and folders', async () => {

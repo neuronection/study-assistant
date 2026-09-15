@@ -6,6 +6,21 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 75 slice C — "Needs placement" unassigned review (2026-09-15):** new
+`services/knowledge/placement.py` (`unassigned_materials` with the pinned
+definition: ready material visible at **no** node by direct link **and** not
+a member of any folder carrying a `MaterialFolderLink` — plan 70-B's wording
+amended at slice start per the coordination note) + `GET
+/courses/{id}/materials/unassigned` → `{count, materials:[{id,title}]}` (cap
+40). UI: the course Materials tab (root only) gains a collapsible
+"Needs placement" strip expanding to per-material Assign… rows (reusing
+`AssignToNodeDialog`); the Library course view shows the same list with
+assign actions — assigning anywhere shrinks the count (unassigned key rides
+the `['materials']` invalidations). Plan-70 coordination recorded: 70-B
+shrinks to compose wiring of this helper/endpoint. OpenAPI regenerated.
+Backend 1,112 green (+3), frontend 1,181 green (+4 net), i18n en/de/el green,
+full verification gate green.
+
 **Plan 75 slice B — folder→node mirroring (2026-09-15):** new
 `StructureService.mirror_folder` + `POST /nodes/{id}/mirror-folder`
 ({folder_id, recursive}) — child folders become child nodes under the

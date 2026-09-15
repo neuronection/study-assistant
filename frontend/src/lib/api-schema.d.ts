@@ -914,6 +914,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/courses/{course_id}/materials/unassigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unassigned Course Materials */
+        get: operations["unassigned_course_materials_api_v1_courses__course_id__materials_unassigned_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/courses/{course_id}/materials/{material_id}": {
         parameters: {
             query?: never;
@@ -7490,6 +7507,20 @@ export interface components {
             job_id: number;
             user_message: components["schemas"]["MessageOut"];
         };
+        /** UnassignedMaterialOut */
+        UnassignedMaterialOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
+        /** UnassignedOut */
+        UnassignedOut: {
+            /** Count */
+            count: number;
+            /** Materials */
+            materials: components["schemas"]["UnassignedMaterialOut"][];
+        };
         /** UningestedFileOut */
         UningestedFileOut: {
             /** Mtime */
@@ -9801,6 +9832,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialAssignedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unassigned_course_materials_api_v1_courses__course_id__materials_unassigned_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnassignedOut"];
                 };
             };
             /** @description Validation Error */

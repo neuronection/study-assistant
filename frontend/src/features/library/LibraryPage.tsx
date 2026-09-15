@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowUp,
+  ChevronRight,
   FolderClosed,
   GraduationCap,
   Link2,
@@ -37,6 +38,7 @@ import {
   reingestMaterial,
   listFolders,
   listMaterials,
+  getUnassignedMaterials,
   moveFolder,
   moveMaterial,
   relinkSource,
@@ -139,6 +141,7 @@ export function LibraryPage() {
   const courseId = searchParams.course ?? null
   const folderId = searchParams.folder ?? null
   const [view, setView] = useState<LibraryView>(readStoredView)
+  const [unassignedTarget, setUnassignedTarget] = useState<number | null>(null)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -221,6 +224,11 @@ export function LibraryPage() {
         : courseId !== null
           ? listMaterials(undefined, courseId, true)
           : Promise.resolve([]),
+    enabled: courseId !== null && linkState === null,
+  })
+  const unassigned = useQuery({
+    queryKey: ['materials', 'unassigned', courseId],
+    queryFn: () => getUnassignedMaterials(courseId as number),
     enabled: courseId !== null && linkState === null,
   })
   const [starredOnly, setStarredOnly] = useState(false)
@@ -592,6 +600,7 @@ export function LibraryPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tree'] })
       await queryClient.invalidateQueries({ queryKey: ['node-workspace'] })
+      await queryClient.invalidateQueries({ queryKey: ['materials'] })
       setNotice(t('library.assignedToNode'))
     },
     onError: (error: Error) => setNotice(error.message),
@@ -1481,6 +1490,31 @@ export function LibraryPage() {
             </button>
           </p>
         ) : null}
+        {courseId !== null && !inLink && (unassigned.data?.count ?? 0) > 0 ? (
+          <div className="text-warning w-full rounded-md border border-dashed p-2 text-xs">
+            <p className="flex w-full items-center">
+              {t('library.needsPlacement', { count: unassigned.data?.count ?? 0 })}
+            </p>
+            <ul className="text-warning/90 mt-1 w-full space-y-0.5">
+              {(unassigned.data?.materials ?? []).map((entry) => (
+                <li key={entry.id} className="flex w-full items-center justify-between">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`library-needs-placement-${entry.id}`}
+                    className="text-warning h-5 justify-start px-1"
+                    onClick={() => {
+                      setUnassignedTarget(entry.id)
+                    }}
+                  >
+                    <ChevronRight className="size-3 shrink-0" aria-hidden />
+                    {entry.title}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div
           ref={paneRef}
@@ -2018,6 +2052,22 @@ className={cn(
             })
           }}
           onClose={() => setAssignOpen(false)}
+        />
+      ) : null}
+      {unassignedTarget !== null && courseId !== null ? (
+        <AssignToNodeDialog
+          courseId={courseId}
+          title={t('library.needsPlacementTitle')}
+          countText={
+            (unassigned.data?.materials ?? []).find((entry) => entry.id === unassignedTarget)
+              ?.title ?? ''
+          }
+          confirmLabel={t('assignToNode.assign')}
+          onDone={async (nodeId) => {
+            setUnassignedTarget(null)
+            await assignMutation.mutateAsync({ nodeId, materialIds: [unassignedTarget] })
+          }}
+          onClose={() => setUnassignedTarget(null)}
         />
       ) : null}
       {assignFoldersOpen && courseId !== null ? (

@@ -183,6 +183,21 @@ export async function getMaterialLinks(materialId: number): Promise<MaterialLink
   return json<MaterialLinkInfo[]>(response)
 }
 
+export interface UnassignedMaterial {
+  id: number
+  title: string
+}
+
+export interface UnassignedMaterials {
+  count: number
+  materials: UnassignedMaterial[]
+}
+
+export async function getUnassignedMaterials(courseId: number): Promise<UnassignedMaterials> {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/materials/unassigned`)
+  return json<UnassignedMaterials>(response)
+}
+
 export async function createTextFile(body: {
   course_id: number
   folder_id?: number | null

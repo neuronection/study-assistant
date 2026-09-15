@@ -43,6 +43,7 @@ const copyMaterial = vi.fn()
 const moveFolder = vi.fn()
 const allocateMaterial = vi.fn()
 const allocateNodeFolder = vi.fn()
+const getUnassignedMaterials = vi.fn()
 const courseTree = vi.fn()
 const reingestMaterialMock = vi.fn()
 const deriveMaterialsMock = vi.fn()
@@ -86,6 +87,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
     allocateNodeFolder: (...args: unknown[]) =>
       allocateNodeFolder(...(args as [number, number])),
     courseTree: (...args: unknown[]) => courseTree(...(args as [number])),
+    getUnassignedMaterials: (...args: unknown[]) =>
+      getUnassignedMaterials(...(args as [number])),
     reingestMaterial: (...args: unknown[]) =>
       reingestMaterialMock(...(args as [number])),
     deriveMaterials: (...args: unknown[]) =>
@@ -1443,5 +1446,58 @@ describe('MaterialDetailPage', () => {
     fireEvent.pointerDown(trigger)
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Studied' }))
     await waitFor(() => expect(setStudyState).toHaveBeenCalledWith(7, 'studied'))
+  })
+})
+
+describe('LibraryPage needs placement', () => {
+  test('shows unassigned materials for the selected course and routes to the node picker', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    getUnassignedMaterials.mockResolvedValue({
+      count: 2,
+      materials: [
+        { id: 61, title: 'orphan-a.pdf' },
+        { id: 62, title: 'orphan-b.pdf' },
+      ],
+    })
+    courseTree.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [],
+      },
+    ])
+    allocateMaterial.mockResolvedValue(undefined)
+    renderAt('/library?course=3')
+    expect(await screen.findByTestId('library-needs-placement-61')).toBeInTheDocument()
+    expect(screen.getByTestId('library-needs-placement-62')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('library-needs-placement-61'))
+    const placeDialog = await screen.findByRole('dialog', {
+      name: 'Place unassigned material',
+    })
+    fireEvent.click(
+      await within(placeDialog).findByRole('treeitem', { name: /Calculus I/ })
+    )
+    fireEvent.click(within(placeDialog).getByRole('button', { name: 'Assign' }))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(3, 61))
+  })
+
+  test('no needs-placement block when everything is placed', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    getUnassignedMaterials.mockResolvedValue({ count: 0, materials: [] })
+    renderAt('/library?course=3')
+    await screen.findByText(/Calculus I/i)
+    expect(screen.queryByTestId('library-needs-placement-61')).not.toBeInTheDocument()
   })
 })

@@ -97,6 +97,7 @@ import {
   getCourse,
   getMaterial,
   getNodeArtifacts,
+  getUnassignedMaterials,
   mirrorFolder as mirrorFolderApi,
   listChatSessions,
   listNoteTags,
@@ -1094,6 +1095,23 @@ function MaterialsTab({
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number } | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [materialQuery, setMaterialQuery] = useState('')
+  const [unassignedOpen, setUnassignedOpen] = useState(false)
+  const [unassignedTarget, setUnassignedTarget] = useState<number | null>(null)
+  const unassigned = useQuery({
+    queryKey: ['materials', 'unassigned', Number(courseId)],
+    queryFn: () => getUnassignedMaterials(Number(courseId)),
+    enabled: workspace.node.is_root,
+  })
+  const assignUnassigned = useMutation({
+    mutationFn: async ({ nodeId, materialId }: { nodeId: number; materialId: number }) => {
+      await allocateMaterial(nodeId, materialId)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['materials'] })
+      await refresh()
+    },
+    onError: (error: Error) => setCreateError(error.message),
+  })
   const normalizedQuery = materialQuery.trim()
   const visibleFolders = useMemo(
     () =>
@@ -1599,6 +1617,48 @@ function MaterialsTab({
             <ViewToggle view={view} onChange={setView} />
           </div>
         </div>
+        {workspace.node.is_root &&
+        (unassigned.data?.count ?? 0) > 0 &&
+        !unassignedOpen ? (
+          <button
+            type="button"
+            data-testid="needs-placement-strip"
+            className="text-warning hover:bg-subtle flex w-full items-center justify-between rounded-md border border-dashed px-3 py-2 text-xs"
+            onClick={() => setUnassignedOpen(true)}
+          >
+            <span>
+              {t('workspace.needsPlacement', { count: unassigned.data?.count ?? 0 })}
+            </span>
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+          </button>
+        ) : null}
+        {unassignedOpen && workspace.node.is_root ? (
+          <div
+            data-testid="needs-placement-panel"
+            className="border-border space-y-1 rounded-md border border-dashed p-2"
+          >
+            {(unassigned.data?.materials ?? []).map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between gap-2 py-0.5">
+                <span className="min-w-0 flex-1 truncate text-xs">{entry.title}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-testid={`needs-placement-assign-${entry.id}`}
+                  onClick={() => setUnassignedTarget(entry.id)}
+                >
+                  {t('workspace.assignNeedsPlacement')}
+                </Button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-muted-foreground text-left text-xs"
+              onClick={() => setUnassignedOpen(false)}
+            >
+              {t('workspace.needsPlacementCollapse')}
+            </button>
+          </div>
+        ) : null}
         {workspace.materials.length === 0 && workspace.folders.length === 0 ? (
           <EmptyState
             icon={Upload}
@@ -1715,6 +1775,26 @@ function MaterialsTab({
           confirmLabel={t('assignToNode.assign')}
           onDone={(nodeId) => assignSelection.mutateAsync({ nodeId })}
           onClose={() => setAssignOpen(false)}
+        />
+      ) : null}
+      {unassignedTarget !== null ? (
+        <AssignToNodeDialog
+          courseId={Number(courseId)}
+          title={t('workspace.assignNeedsPlacement')}
+          countText={
+            (unassigned.data?.materials ?? []).find(
+              (entry) => entry.id === unassignedTarget,
+            )?.title ?? ''
+          }
+          confirmLabel={t('assignToNode.assign')}
+          onDone={async (nodeId) => {
+            await assignUnassigned.mutateAsync({
+              nodeId,
+              materialId: unassignedTarget,
+            })
+            setUnassignedTarget(null)
+          }}
+          onClose={() => setUnassignedTarget(null)}
         />
       ) : null}
     </MarqueeSurface>

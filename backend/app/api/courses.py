@@ -43,6 +43,7 @@ from ..services.knowledge.courses import (
     purge_course,
     scratch_content_count,
 )
+from ..services.knowledge.placement import unassigned_payload
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.profiles import ensure_default_profile
 from ..services.study.organizer import (
@@ -962,6 +963,26 @@ def course_materials(
 ) -> list[dict[str, Any]]:
     _load_course(session, course_id)
     return _structure(session).course_materials(course_id)
+
+
+class UnassignedMaterialOut(BaseModel):
+    id: int
+    title: str
+
+
+class UnassignedOut(BaseModel):
+    count: int
+    materials: list[UnassignedMaterialOut]
+
+
+@router.get(
+    "/courses/{course_id}/materials/unassigned", response_model=UnassignedOut
+)
+def unassigned_course_materials(
+    course_id: int, session: Session = Depends(get_session)
+) -> dict[str, Any]:
+    _load_course(session, course_id)
+    return unassigned_payload(session, course_id)
 
 
 @router.post(

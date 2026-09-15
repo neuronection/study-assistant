@@ -514,3 +514,62 @@ def test_mirror_folder_not_in_course_rejected(course_client: TestClient) -> None
     )
     assert response.status_code == 422
     assert "not in this course" in response.json()["detail"]
+
+
+def test_unassigned_endpoint_semantics(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Unassigned"}).json()["id"]
+    other_id = course_client.post("/api/v1/courses", json={"title": "Other"}).json()["id"]
+    root = course_client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
+    loose = add_material(course_client, "loose.txt", course_id)
+    placed = add_material(course_client, "placed.txt", course_id)
+    other = add_material(course_client, "other.txt", other_id)
+    assert course_client.post(
+        f"/api/v1/nodes/{root['id']}/materials", json={"material_id": placed}
+    ).status_code == 201
+    folder = _folder(course_client, "Pack", course_id)
+    in_folder = add_material(course_client, "infolder.txt", course_id)
+    client_move = course_client.patch(
+        f"/api/v1/materials/{in_folder}/move", json={"folder_id": folder}
+    )
+    assert client_move.status_code == 200
+    course_client.post(f"/api/v1/nodes/{root['id']}/folder-materials", json={"folder_id": folder})
+
+    listing = course_client.get(f"/api/v1/courses/{course_id}/materials/unassigned").json()
+    ids = [entry["id"] for entry in listing["materials"]]
+    assert listing["count"] == len(ids)
+    assert loose in ids
+    assert placed not in ids
+    assert in_folder not in ids
+    assert other not in ids
+
+
+def test_unassigned_endpoint_caps_at_40_and_counts(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Cap"}).json()["id"]
+    for index in range(42):
+        add_material(course_client, f"m{index}.txt", course_id)
+    listing = course_client.get(f"/api/v1/courses/{course_id}/materials/unassigned").json()
+    assert listing["count"] == 40
+    assert len(listing["materials"]) == 40
+
+
+def test_unassigned_endpoint_excludes_not_ready(course_client: TestClient) -> None:
+    course_id = course_client.post("/api/v1/courses", json={"title": "Pending"}).json()["id"]
+    add_material(course_client, "ready-one.txt", course_id)
+    upload = course_client.post(
+        "/api/v1/materials",
+        params={"course_id": course_id},
+        files={"file": ("big.mp3", b"x" * 200, "audio/mpeg")},
+    )
+    material_id = int(upload.json()["material"]["id"])
+
+    def is_ready() -> bool:
+        status: str = course_client.get(f"/api/v1/materials/{material_id}").json()[
+            "material"
+        ]["status"]
+        return status == "ready"
+
+    deadline = __import__("time").monotonic() + 20
+    while __import__("time").monotonic() < deadline and not is_ready():
+        __import__("time").sleep(0.1)
+    body = course_client.get(f"/api/v1/courses/{course_id}/materials/unassigned").json()
+    assert body["count"] >= 1
