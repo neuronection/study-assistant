@@ -13,6 +13,15 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Compose coverage honesty: AI-composed documents now measure how much of the
+  scope's material retrieval actually surfaced (deterministic accounting, a
+  diversified second retrieval round when a large scope is thinly covered)
+  and report it — the GenerateDialog result names the shortfall ("Built from
+  8 of 14 materials — 6 weren't retrieved.") and flags the document for
+  review when coverage stays thin. The same review flag is now surfaced for
+  formula sheets, whose "needs review" marker previously had no visible
+  consumer. (plan 70-A, ADR-157)
+
 ### Changed
 
 ### Fixed

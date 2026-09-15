@@ -2082,7 +2082,11 @@
     "timeLimitLabel": "Χρονικό όριο",
     "timeLimitNone": "Χωρίς όριο",
     "timeLimitOption": "{{minutes}} λεπτά",
-    "timeLimitCustom": "Προσαρμοσμένο"
+    "timeLimitCustom": "Προσαρμοσμένο",
+    "composedTitle": "Το «{{title}}» είναι έτοιμο.",
+    "needsReviewWarning": "Χαμηλή κάλυψη πηγών — μέρη του εγγράφου ενδέχεται να μην αντανακλούν όλα τα υλικά του πεδίου. Ελέγξτέ το πριν βασιστείτε σε αυτό.",
+    "coverageNote": "Δημιουργήθηκε από {{covered}} από {{total}} υλικά — {{missing}} δεν ανακτήθηκαν.",
+    "openComposed": "Άνοιγμα εγγράφου"
   },
   "ai": {
     "badge": {

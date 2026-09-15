@@ -161,6 +161,7 @@ export function GenerateDialog({
   const [showNotePicker, setShowNotePicker] = useState(false)
   const [conceptIds, setConceptIds] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [composed, setComposed] = useState<Material | null>(null)
   const courseIdForRequest = courseId ?? pickedCourse
   const composeHasContext = task !== 'flashcards'
 
@@ -390,7 +391,7 @@ export function GenerateDialog({
           kind: composeKind,
           title: topic.trim() || null,
           instructions: instructions.trim() || null,
-          regenerate: existing !== null ? true : undefined,
+          regenerate: existing !== null || composed !== null ? true : undefined,
           ...context,
         }).then(
           (result) => result.material as unknown as GenerateResult
@@ -409,6 +410,10 @@ export function GenerateDialog({
     onSuccess: async (result) => {
       setError(null)
       await invalidateKeys()
+      if (task === 'compose') {
+        setComposed(result as Material)
+        return
+      }
       onSuccess(result)
     },
     onError: (err: Error) => setError(err.message),
@@ -416,6 +421,13 @@ export function GenerateDialog({
 
   const toggle = (id: number, list: number[], setList: (next: number[]) => void) => {
     setList(list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
+  }
+
+  const coverage = composed?.provenance?.coverage ?? null
+  const finishComposed = () => {
+    const result = composed
+    setComposed(null)
+    if (result !== null) onSuccess(result)
   }
 
   const previewStats = preview.data?.stats
@@ -428,6 +440,54 @@ export function GenerateDialog({
           <p className="text-muted-foreground text-xs">{t(`generate.hint.${task}`)}</p>
         </CardHeader>
         <CardContent className="space-y-4">
+          {composed !== null ? (
+            <div className="space-y-3">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <Sparkles className="text-primary size-4" aria-hidden />
+                {t('generate.composedTitle', { title: composed.title })}
+              </p>
+              {composed.provenance?.needs_review ? (
+                <p
+                  className="border-warning/40 bg-warning/10 text-warning rounded-md border px-3 py-2 text-xs"
+                  data-testid="needs-review-warning"
+                >
+                  {t('generate.needsReviewWarning')}
+                </p>
+              ) : null}
+              {coverage !== null && coverage.covered < coverage.total ? (
+                <p
+                  className="text-muted-foreground text-xs"
+                  data-testid="coverage-note"
+                >
+                  {t('generate.coverageNote', {
+                    covered: coverage.covered,
+                    total: coverage.total,
+                    missing: coverage.total - coverage.covered,
+                  })}
+                </p>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={finishComposed}>
+                  {t('common.close')}
+                </Button>
+                <a
+                  href={`/library/${composed.id}`}
+                  className="text-primary text-sm hover:underline"
+                >
+                  {t('generate.openComposed')}
+                </a>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={generate.isPending}
+                  onClick={() => generate.mutate()}
+                >
+                  {t('generate.regenerateAction')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
           {courseId === null ? (
             <CourseSelectField value={pickedCourse} onChange={setPickedCourse} />
           ) : null}
@@ -1011,6 +1071,8 @@ export function GenerateDialog({
             </Button>
           </div>
           <ErrorBanner message={error} />
+            </>
+          )}
         </CardContent>
       </Card>
       {pickerMode !== null && courseIdForRequest !== null ? (

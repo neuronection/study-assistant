@@ -108,6 +108,7 @@ function renderDialog(props: {
   courseId?: number | null
   scopeNodeId?: number
   rootNodeId?: number
+  onSuccess?: (result: unknown) => void
 }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -118,7 +119,7 @@ function renderDialog(props: {
         scopeNodeId={props.scopeNodeId}
         rootNodeId={props.rootNodeId}
         onClose={() => undefined}
-        onSuccess={() => undefined}
+        onSuccess={props.onSuccess ?? (() => undefined)}
       />
     </QueryClientProvider>
   )
@@ -200,6 +201,68 @@ describe('GenerateDialog', () => {
     expect(composeMaterial).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'study_guide', regenerate: true })
     )
+  })
+
+  test('compose result names a coverage shortfall before closing', async () => {
+    const onSuccess = vi.fn()
+    composeMaterial.mockResolvedValue({
+      material: {
+        id: 77,
+        title: 'Guide',
+        provenance: {
+          source: 'ai-composed',
+          coverage: { total: 14, covered: 8, missing_ids: [1, 2, 3] },
+        },
+      },
+      job_id: 5,
+      deduped: false,
+    })
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1, onSuccess })
+    fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
+    expect(
+      await screen.findByTestId('coverage-note')
+    ).toHaveTextContent("Built from 8 of 14 materials — 6 weren't retrieved.")
+    expect(screen.queryByTestId('needs-review-warning')).not.toBeInTheDocument()
+    expect(onSuccess).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+    expect(onSuccess.mock.calls[0][0]).toMatchObject({ id: 77 })
+  })
+
+  test('compose result stays silent when every material was retrieved', async () => {
+    composeMaterial.mockResolvedValue({
+      material: {
+        id: 77,
+        title: 'Guide',
+        provenance: {
+          source: 'ai-composed',
+          coverage: { total: 14, covered: 14, missing_ids: [] },
+        },
+      },
+      job_id: 5,
+      deduped: false,
+    })
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
+    await screen.findByText(/"Guide" is ready\./)
+    expect(screen.queryByTestId('coverage-note')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('needs-review-warning')).not.toBeInTheDocument()
+  })
+
+  test('compose result flags needs_review from provenance', async () => {
+    composeMaterial.mockResolvedValue({
+      material: {
+        id: 77,
+        title: 'Formulas',
+        provenance: { source: 'ai-composed', needs_review: true },
+      },
+      job_id: 5,
+      deduped: false,
+    })
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
+    expect(await screen.findByTestId('needs-review-warning')).toBeInTheDocument()
+    expect(screen.queryByTestId('coverage-note')).not.toBeInTheDocument()
   })
 
   test('quiz preset at a node: scope, preview, and excluded materials flow to the request', async () => {

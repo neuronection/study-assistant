@@ -19,7 +19,13 @@ export interface Material {
   group_id: number | null
   folder_id: number | null
   blob_sha: string | null
-  provenance?: { source?: string; kind?: string; model?: string | null } | null
+  provenance?: {
+    source?: string
+    kind?: string
+    model?: string | null
+    coverage?: { total: number; covered: number; missing_ids: number[] } | null
+    needs_review?: boolean
+  } | null
   created_at: string
   has_extraction?: boolean
   tags?: string[]

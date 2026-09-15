@@ -856,6 +856,7 @@ describe('NodeWorkspace', () => {
         expect.objectContaining({ node_id: 5, kind: 'cheat_sheet' })
       )
     )
+    fireEvent.click(await screen.findByRole('button', { name: /close/i }))
     await waitFor(() => expect(getMaterial).toHaveBeenCalledWith(99))
     expect(await screen.findByText(/Power rule/)).toBeInTheDocument()
   })

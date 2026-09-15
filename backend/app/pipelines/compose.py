@@ -11,7 +11,11 @@ from ..ai.skills import COMPOSE_SYSTEM
 from ..core.vocab import ProvenanceKind
 from ..domain.models import Extraction, Material, MaterialLink, Note, TreeNode
 from ..services.content.materials import MaterialsService
-from ..services.knowledge.context import ContextBundle
+from ..services.knowledge.context import (
+    COVERAGE_GATE,
+    COVERAGE_MIN_MATERIALS,
+    ContextBundle,
+)
 from ..storage.blobs import BlobStore
 
 logger = structlog.get_logger(__name__)
@@ -343,15 +347,34 @@ class ComposeService:
                     needs_review = True
             markdown = markdown.strip()
         _math_lint_advisory(markdown)
+        coverage: dict[str, Any] | None = None
+        if context_bundle is not None:
+            report = context_bundle.coverage
+            if report["total"] > 0:
+                coverage = report
+                if (
+                    report["total"] >= COVERAGE_MIN_MATERIALS
+                    and report["covered"] / report["total"] < COVERAGE_GATE
+                ):
+                    logger.info(
+                        "compose_low_coverage",
+                        total=report["total"],
+                        covered=report["covered"],
+                    )
+                    needs_review = True
 
         services = MaterialsService(self._session, blobs)
         target_node_id = node.id if node is not None else node_id
         if existing is not None:
             services.edit_extraction(existing, markdown)
+            updated = dict(existing.provenance or {})
+            if coverage is not None:
+                updated["coverage"] = coverage
             if needs_review:
-                updated = dict(existing.provenance or {})
                 updated["needs_review"] = True
-                existing.provenance = updated
+            else:
+                updated.pop("needs_review", None)
+            existing.provenance = updated
             self._session.flush()
             return existing
         material, _duplicate = services.create_text(
@@ -365,6 +388,8 @@ class ComposeService:
             "kind": kind,
             "model": result.model_label,
         }
+        if coverage is not None:
+            provenance["coverage"] = coverage
         if needs_review:
             provenance["needs_review"] = True
         material.provenance = provenance

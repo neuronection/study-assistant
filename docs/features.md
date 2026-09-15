@@ -222,6 +222,15 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   knowledge when the node has no material; one-live-artifact per node,
   revision-aware regeneration that keeps the user's edits; also selectable in
   the compose builder like any other kind
+- ✅ **Compose coverage honesty (plan 70-A, ADR-157, 2026-09-16)**: AI-composed
+  documents now report how much of the scope's material they actually drew on —
+  deterministic coverage accounting over the retrieval manifest (≥ 8 materials
+  with < 50 % covered triggers one diversified second retrieval round before
+  giving up), recorded in the material's provenance; the GenerateDialog result
+  names the shortfall ("Built from 8 of 14 materials — 6 weren't retrieved.")
+  and shows a review warning when coverage stays thin (`needs_review` — also
+  finally surfaced for formula sheets); regenerating with better coverage
+  clears the flag
 - ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
   provider (Settings → Providers → Web search; Tavily-compatible or SearXNG,
   API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**

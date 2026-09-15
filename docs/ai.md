@@ -281,13 +281,30 @@ searchable, citable, assignable, printable — not throwaway artifacts.
   composition never grounds on a prior composition (compounding-hallucination
   guard). Chat retrieval keeps composed materials: they are your study docs.
 - **Provenance** (`materials.provenance` JSON, migration 0025):
-  `{source: "ai-composed", kind, model}` — surfaced on material payloads and
+  `{source: "ai-composed", kind, model}` plus optional `coverage` and
+  `needs_review` (plan 70-A, below) — surfaced on material payloads and
   rendered as the `AiBadge` in the library grid and workspace material rows.
   (Not-AI provenance sources exist too: `{source: "derived",
   from_material_id, from_version}` marks a user-triggered "Save as material"
   extraction copy — plan 26 — which carries no AI badge.)
 - **Math lint is advisory + sampled**: up to 5 LaTeX spans per document are
   parse-checked (`parse_math`); failures are logged, never blocking.
+- **Coverage accounting + `needs_review` gate (plan 70-A, ADR-157)**:
+  retrieval coverage is measured deterministically — `ContextBundle.coverage`
+  reports `{total, covered, missing_ids}` over the manifest's candidate
+  materials (covered = ≥1 retrieved chunk carries the material's id; zero LLM
+  involvement). When a scope holds **≥ 8 candidate materials** and the first
+  round covers **< 50 %**, the resolver runs one **diversified second round**
+  (query = node title + the node's concept names + first objectives; deduped
+  by chunk id; total capped at `max_chunks × 2`) before giving up. Compose
+  records the post-round coverage in `provenance.coverage` and the context
+  audit stats, and sets `provenance["needs_review"] = true` when coverage is
+  still < 50 % at ≥ 8 materials — the flag `formula_sheet` already used, now
+  surfaced **generally**: the GenerateDialog result state names the shortfall
+  ("Built from 8 of 14 materials — 6 weren't retrieved.") and shows a review
+  warning whenever `needs_review` is set (finally giving formula_sheet's
+  dormant flag a UI consumer). Regenerating with recovered coverage clears
+  the stale flag; never LLM self-assessment (ADR-157).
 - **Kinds**: study guide, summary sheet, practice set, error recap, mindmap
   (a markdown outline rendered as an interactive, collapsible mindmap via
   `markmap` in `MindmapViewer`). Mindmap branches are selectable and open an

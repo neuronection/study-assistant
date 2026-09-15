@@ -6,6 +6,29 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — compose coverage accounting + needs_review gate (plan 70-A,
+ADR-157, 2026-09-16):** AI compose is now honest about its inputs. The context
+engine measures retrieval coverage deterministically — `ContextBundle.coverage`
+(`{total, covered, missing_ids}`; covered = ≥1 retrieved chunk carries the
+material's id, zero LLM involvement) — and when a scope holds ≥ 8 candidate
+materials with < 50 % covered, the resolver runs one **diversified second
+round** (`_diversified_query`: node title + node concept names + first
+objectives; deduped by chunk id, total ≤ `max_chunks × 2`) before giving up.
+`ComposeService` records the post-round coverage in `provenance.coverage` +
+audit stats and sets `provenance["needs_review"]` when coverage is still < 50 %
+at ≥ 8 materials — the key `formula_sheet` already used, now surfaced
+generally in the GenerateDialog **result state** (dialog stays open after
+composing): the coverage note names the shortfall ("Built from 8 of 14
+materials — 6 weren't retrieved.") and a warning banner renders whenever
+`needs_review` is set — formula sheets' dormant flag finally has a UI
+consumer; regenerating with recovered coverage clears the stale flag. Sync
+endpoint contract unchanged (no schema/migration; provenance JSON only).
+Tests: `test_compose_coverage.py` (9: coverage split/stats, second-round
+boundary ≥8/<50 %/floor, provenance + gate + stale-flag replace);
+GenerateDialog result-state coverage (3). Backend 1,156 green, frontend 1,246
+green, lint/typecheck/build/i18n green. Plan doc:
+`dev/plans/70-compose-quality-and-scale.md` (local-only).
+
 **Feature — exam timing (plan 49-C, ADR-108, 2026-09-15):** quizzes can now
 carry a **server-enforced clock**. Migration **0060** adds
 `activities.time_limit_sec` (nullable) and `attempts.deadline_at`

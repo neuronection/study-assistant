@@ -2082,7 +2082,11 @@
     "timeLimitLabel": "Zeitlimit",
     "timeLimitNone": "Kein Limit",
     "timeLimitOption": "{{minutes}} Min.",
-    "timeLimitCustom": "Benutzerdefiniert"
+    "timeLimitCustom": "Benutzerdefiniert",
+    "composedTitle": "„{{title}}“ ist bereit.",
+    "needsReviewWarning": "Wenige Quellen abgedeckt – Teile dieses Dokuments spiegeln möglicherweise nicht alle Materialien im Umfang wider. Bitte prüfen, bevor Sie sich darauf verlassen.",
+    "coverageNote": "Erstellt aus {{covered}} von {{total}} Materialien – {{missing}} wurden nicht abgerufen.",
+    "openComposed": "Dokument öffnen"
   },
   "ai": {
     "badge": {

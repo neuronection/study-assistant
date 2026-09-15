@@ -14,6 +14,7 @@ from ...domain.models import (
     MaterialFolder,
     MaterialIndexCard,
     MaterialLink,
+    NodeConcept,
     Note,
     TreeNode,
 )
@@ -26,6 +27,27 @@ RETRIEVAL_EXCLUDED_KINDS = {"node_review"}
 NOTE_CHARS = 1500
 MANIFEST_MATERIALS_CAP = 30
 NODES_CAP = 24
+COVERAGE_MIN_MATERIALS = 8
+COVERAGE_GATE = 0.5
+DIVERSIFIED_CONCEPTS_CAP = 5
+DIVERSIFIED_OBJECTIVES_CAP = 3
+
+
+def coverage_report(
+    materials: list[dict[str, Any]], chunks: list[dict[str, Any]]
+) -> dict[str, Any]:
+    covered = {
+        int(chunk["material_id"])
+        for chunk in chunks
+        if chunk.get("material_id") is not None
+    }
+    ids = [int(entry["id"]) for entry in materials]
+    missing = [material_id for material_id in ids if material_id not in covered]
+    return {
+        "total": len(ids),
+        "covered": len(ids) - len(missing),
+        "missing_ids": missing,
+    }
 
 
 class ContextError(ValueError):
@@ -128,6 +150,10 @@ class ContextBundle:
         return not (
             self.chunks or self.notes or self.concepts or self.hints or self.node
         )
+
+    @property
+    def coverage(self) -> dict[str, Any]:
+        return coverage_report(self.materials, self.chunks)
 
     def _scope_section(self) -> str:
         lines: list[str] = []
@@ -250,6 +276,7 @@ class ContextBundle:
             "hints": len(self.hints),
             "approx_chars": len(self.render_prompt()),
             "retrieval_query": self.spec.query,
+            "coverage": self.coverage,
         }
 
 
@@ -548,6 +575,21 @@ class ContextResolver:
             )
         return nodes[:NODES_CAP]
 
+    def _diversified_query(self, spec: ContextSpec, node: TreeNode) -> str:
+        parts: list[str] = [node.title]
+        concept_names = self._session.execute(
+            select(Concept.name)
+            .join(NodeConcept, NodeConcept.concept_id == Concept.id)
+            .where(NodeConcept.node_id == node.id)
+            .order_by(Concept.id)
+            .limit(DIVERSIFIED_CONCEPTS_CAP)
+        ).scalars()
+        parts.extend(concept_names)
+        for objective in (node.objectives or [])[:DIVERSIFIED_OBJECTIVES_CAP]:
+            parts.append(objective)
+        query = "; ".join(part.strip() for part in parts if part and part.strip())
+        return query or spec.query or "course material overview"
+
     def resolve(
         self,
         spec: ContextSpec,
@@ -575,6 +617,20 @@ class ContextResolver:
                 use_embeddings=use_embeddings,
                 embedding_warning=embedding_warning,
             )
+            if len(materials) >= COVERAGE_MIN_MATERIALS:
+                report = coverage_report(materials, chunks)
+                if (
+                    report["total"] > 0
+                    and report["covered"] / report["total"] < COVERAGE_GATE
+                ):
+                    chunks = self._diversified_second_round(
+                        spec,
+                        node,
+                        material_ids,
+                        chunks,
+                        use_embeddings,
+                        embedding_warning,
+                    )
         return ContextBundle(
             spec,
             node=None if node.is_root else node,
@@ -587,3 +643,30 @@ class ContextResolver:
             hints=hints,
             nodes=nodes,
         )
+
+    def _diversified_second_round(
+        self,
+        spec: ContextSpec,
+        node: TreeNode,
+        material_ids: list[int] | None,
+        chunks: list[dict[str, Any]],
+        use_embeddings: bool,
+        embedding_warning: Callable[[str], None] | None,
+    ) -> list[dict[str, Any]]:
+        extra = retrieve_chunks_hybrid(
+            self._session,
+            self._diversified_query(spec, node),
+            self._embed_query,
+            course_id=spec.course_id,
+            material_ids=material_ids,
+            limit=spec.max_chunks * 2,
+            use_embeddings=use_embeddings,
+            embedding_warning=embedding_warning,
+        )
+        seen = {int(chunk["chunk_id"]) for chunk in chunks}
+        merged = list(chunks)
+        for chunk in extra:
+            if int(chunk["chunk_id"]) not in seen:
+                seen.add(int(chunk["chunk_id"]))
+                merged.append(chunk)
+        return merged[: spec.max_chunks * 2]
