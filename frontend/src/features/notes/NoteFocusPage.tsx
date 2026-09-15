@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
 import { getNote } from '@/lib/api'
+import { useStudySession } from '@/lib/use-study-session'
 import { useOriginBack } from '@/lib/origin'
 
 import { LazyNoteEditor } from './LazyNoteEditor'
@@ -14,6 +15,13 @@ export function NoteFocusPage() {
   const note = useQuery({
     queryKey: ['note', id],
     queryFn: () => getNote(id),
+  })
+  useStudySession({
+    kind: 'note',
+    entityRef: `note:${id}`,
+    courseId: note.data?.course_id ?? null,
+    nodeId: note.data?.node_id ?? null,
+    enabled: note.isSuccess,
   })
   const courseId = note.data?.course_id ?? null
   const nodeId = note.data?.node_id ?? null

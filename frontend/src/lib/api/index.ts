@@ -48,6 +48,20 @@ export {
   setDailyGoal,
 } from './analytics'
 
+export {
+  beatStudySession,
+  getStudySessionSummary,
+  startStudySession,
+} from './study-sessions'
+
+export type {
+  StudySessionDay,
+  StudySessionInfo,
+  StudySessionKind,
+  StudySessionSource,
+  StudySessionSummary,
+} from './study-sessions'
+
 export type {
   ChatAttachmentInput,
   ChatAttachmentKind,

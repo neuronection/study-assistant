@@ -186,3 +186,6 @@ from .study import (
 from .study import (
     StepAttempt as StepAttempt,
 )
+from .study import (
+    StudySession as StudySession,
+)

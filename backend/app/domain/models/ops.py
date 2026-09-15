@@ -172,6 +172,7 @@ class DailyRollup(Base):
     correct_n: Mapped[int] = mapped_column(Integer)
     cards_reviewed: Mapped[int] = mapped_column(Integer)
     minutes: Mapped[float] = mapped_column(Float)
+    study_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     xp: Mapped[int] = mapped_column(Integer)
 
 class ItemStat(Base):
@@ -216,6 +217,12 @@ class StudyGoal(Base):
         ForeignKey("profiles.id"), primary_key=True
     )
     answers_per_day: Mapped[int] = mapped_column(Integer, default=20)
+    unit: Mapped[str] = mapped_column(
+        String(10), default="answers", server_default="answers"
+    )
+    minutes_per_day: Mapped[int] = mapped_column(
+        Integer, default=30, server_default="30"
+    )
 
 class Skill(Base):
     __tablename__ = "skills"

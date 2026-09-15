@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..core.vocab import ItemFlag, RecommendationKind, SpeedLabel, SpeedQuadrant
+from ..core.vocab import GoalUnit, ItemFlag, RecommendationKind, SpeedLabel, SpeedQuadrant
 from ..services.platform import metrics
 from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
@@ -13,7 +13,9 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 class GoalIn(BaseModel):
-    answers_per_day: int = Field(ge=1, le=500)
+    unit: GoalUnit | None = None
+    answers_per_day: int | None = Field(default=None, ge=1, le=500)
+    minutes_per_day: int | None = Field(default=None, ge=1, le=1440)
 
 
 class DayActivityOut(BaseModel):
@@ -22,16 +24,20 @@ class DayActivityOut(BaseModel):
     correct_n: int
     cards_reviewed: int
     minutes: float
+    study_seconds: int
     xp: int
 
 
 class OverviewOut(BaseModel):
     today: DayActivityOut
-    goal: int
+    unit: GoalUnit
+    answers_per_day: int
+    minutes_per_day: int
     streak: int
     total_xp: int
     level: int
     due_cards: int
+    study_seconds_week: int
     history: list[DayActivityOut]
 
 
@@ -116,7 +122,9 @@ class ItemStatOut(BaseModel):
 
 
 class GoalOut(BaseModel):
+    unit: GoalUnit
     answers_per_day: int
+    minutes_per_day: int
 
 
 class MaterializeOut(BaseModel):
@@ -191,11 +199,21 @@ def items(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
 @router.put("/goal", response_model=GoalOut)
 def set_goal(
     body: GoalIn, session: Session = Depends(get_session)
-) -> dict[str, int]:
+) -> dict[str, Any]:
     profile = ensure_default_profile(session)
-    value = metrics.set_goal(session, profile.id, body.answers_per_day)
+    if body.unit is None and body.answers_per_day is None and body.minutes_per_day is None:
+        raise HTTPException(
+            status_code=422, detail="nothing to update: provide unit, answers or minutes"
+        )
+    result = metrics.set_goal(
+        session,
+        profile.id,
+        unit=body.unit,
+        answers_per_day=body.answers_per_day,
+        minutes_per_day=body.minutes_per_day,
+    )
     session.commit()
-    return {"answers_per_day": value}
+    return result
 
 
 @router.post("/materialize", response_model=MaterializeOut)

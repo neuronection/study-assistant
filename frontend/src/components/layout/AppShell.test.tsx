@@ -48,7 +48,10 @@ vi.mock('@tanstack/react-router', () => ({
     }
     return <a href={href}>{children}</a>
   },
-  useLocation: () => ({ pathname: '/' }),
+  useLocation: (options?: { select?: (location: { pathname: string }) => unknown }) =>
+    options?.select
+      ? options.select({ pathname: '/' })
+      : { pathname: '/' },
   useNavigate: () => navigate,
   useParams: () => ({}),
   useSearch: () => ({}),

@@ -3836,6 +3836,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/study-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Study Session */
+        post: operations["start_study_session_api_v1_study_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study-sessions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Study Session Summary */
+        get: operations["study_session_summary_api_v1_study_sessions_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/study-sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Beat Study Session */
+        patch: operations["beat_study_session_api_v1_study_sessions__session_id__patch"];
+        trace?: never;
+    };
     "/api/v1/study-states": {
         parameters: {
             query?: never;
@@ -4654,6 +4705,8 @@ export interface components {
             day: string;
             /** Minutes */
             minutes: number;
+            /** Study Seconds */
+            study_seconds: number;
             /** Xp */
             xp: number;
         };
@@ -5283,13 +5336,24 @@ export interface components {
         /** GoalIn */
         GoalIn: {
             /** Answers Per Day */
-            answers_per_day: number;
+            answers_per_day?: number | null;
+            /** Minutes Per Day */
+            minutes_per_day?: number | null;
+            unit?: components["schemas"]["GoalUnit"] | null;
         };
         /** GoalOut */
         GoalOut: {
             /** Answers Per Day */
             answers_per_day: number;
+            /** Minutes Per Day */
+            minutes_per_day: number;
+            unit: components["schemas"]["GoalUnit"];
         };
+        /**
+         * GoalUnit
+         * @enum {string}
+         */
+        GoalUnit: "answers" | "minutes";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -6311,19 +6375,24 @@ export interface components {
         };
         /** OverviewOut */
         OverviewOut: {
+            /** Answers Per Day */
+            answers_per_day: number;
             /** Due Cards */
             due_cards: number;
-            /** Goal */
-            goal: number;
             /** History */
             history: components["schemas"]["DayActivityOut"][];
             /** Level */
             level: number;
+            /** Minutes Per Day */
+            minutes_per_day: number;
             /** Streak */
             streak: number;
+            /** Study Seconds Week */
+            study_seconds_week: number;
             today: components["schemas"]["DayActivityOut"];
             /** Total Xp */
             total_xp: number;
+            unit: components["schemas"]["GoalUnit"];
         };
         /** PatternCreateIn */
         PatternCreateIn: {
@@ -7170,6 +7239,11 @@ export interface components {
             last_scanned_at: string | null;
             /** Materials */
             materials: components["schemas"]["SourceMaterialOut"][];
+            /**
+             * Mirror Subdirs
+             * @default false
+             */
+            mirror_subdirs: boolean;
             /** Missing Target */
             missing_target: boolean;
             /** Path */
@@ -7325,6 +7399,76 @@ export interface components {
         StopOut: {
             /** Stopped */
             stopped: boolean;
+        };
+        /** StudySessionBeatIn */
+        StudySessionBeatIn: {
+            /**
+             * Action
+             * @default heartbeat
+             * @enum {string}
+             */
+            action: "heartbeat" | "end";
+        };
+        /** StudySessionDayOut */
+        StudySessionDayOut: {
+            /** By Kind */
+            by_kind: {
+                [key: string]: number;
+            };
+            /** Day */
+            day: string;
+            /** Total Sec */
+            total_sec: number;
+        };
+        /**
+         * StudySessionKind
+         * @enum {string}
+         */
+        StudySessionKind: "focus" | "quiz" | "exercise" | "review" | "read" | "note";
+        /** StudySessionOut */
+        StudySessionOut: {
+            /** Course Id */
+            course_id: number | null;
+            /** Duration Sec */
+            duration_sec: number;
+            /** Ended At */
+            ended_at: string | null;
+            /** Entity Ref */
+            entity_ref: string | null;
+            /** Id */
+            id: number;
+            kind: components["schemas"]["StudySessionKind"];
+            /** Node Id */
+            node_id: number | null;
+            source: components["schemas"]["StudySessionSource"];
+            /** Started At */
+            started_at: string;
+        };
+        /**
+         * StudySessionSource
+         * @enum {string}
+         */
+        StudySessionSource: "timer" | "auto" | "manual";
+        /** StudySessionStartIn */
+        StudySessionStartIn: {
+            /** Course Id */
+            course_id?: number | null;
+            /** Entity Ref */
+            entity_ref?: string | null;
+            kind: components["schemas"]["StudySessionKind"];
+            /** Node Id */
+            node_id?: number | null;
+            /** @default auto */
+            source: components["schemas"]["StudySessionSource"];
+        };
+        /** StudySessionSummaryOut */
+        StudySessionSummaryOut: {
+            /** Days */
+            days: components["schemas"]["StudySessionDayOut"][];
+            /** Today Sec */
+            today_sec: number;
+            /** Week Sec */
+            week_sec: number;
         };
         /** StudyStateIn */
         StudyStateIn: {
@@ -16267,6 +16411,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScanResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_study_session_api_v1_study_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudySessionStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudySessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    study_session_summary_api_v1_study_sessions_summary_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudySessionSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    beat_study_session_api_v1_study_sessions__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudySessionBeatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudySessionOut"];
                 };
             };
             /** @description Validation Error */

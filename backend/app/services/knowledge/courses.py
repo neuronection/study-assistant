@@ -38,6 +38,7 @@ from ...domain.models import (
     Question,
     QuizHelpEvent,
     ReviewLog,
+    StudySession,
     TreeNode,
     utcnow,
 )
@@ -983,6 +984,9 @@ class StructureService:
 
 
 def purge_course(session: Session, course: Course) -> None:
+    session.execute(
+        delete(StudySession).where(StudySession.course_id == course.id)
+    )
     session_ids = list(
         session.scalars(
             select(ChatSession.id).where(ChatSession.course_id == course.id)

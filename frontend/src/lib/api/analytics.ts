@@ -92,16 +92,22 @@ export interface DailyEntry {
   correct_n: number
   cards_reviewed: number
   minutes: number
+  study_seconds: number
   xp: number
 }
 
+export type GoalUnit = 'answers' | 'minutes'
+
 export interface Overview {
   today: DailyEntry
-  goal: number
+  unit: GoalUnit
+  answers_per_day: number
+  minutes_per_day: number
   streak: number
   total_xp: number
   level: number
   due_cards: number
+  study_seconds_week: number
   history: DailyEntry[]
 }
 
@@ -110,13 +116,23 @@ export async function getOverview(): Promise<Overview> {
   return json<Overview>(response)
 }
 
-export async function setDailyGoal(answersPerDay: number): Promise<{ answers_per_day: number }> {
+export interface DailyGoal {
+  unit: GoalUnit
+  answers_per_day: number
+  minutes_per_day: number
+}
+
+export async function setDailyGoal(body: {
+  unit?: GoalUnit
+  answers_per_day?: number
+  minutes_per_day?: number
+}): Promise<DailyGoal> {
   const response = await apiFetch('/api/v1/analytics/goal', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ answers_per_day: answersPerDay }),
+    body: JSON.stringify(body),
   })
-  return json<{ answers_per_day: number }>(response)
+  return json<DailyGoal>(response)
 }
 
 export interface TaskCost {

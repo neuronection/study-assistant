@@ -24,6 +24,7 @@ from . import (
     search,
     skills,
     sources,
+    study_sessions,
     trash,
 )
 
@@ -41,6 +42,7 @@ api_router.include_router(exercises.router)
 api_router.include_router(notes.router)
 api_router.include_router(flashcards.router)
 api_router.include_router(analytics.router)
+api_router.include_router(study_sessions.router)
 api_router.include_router(backup.router)
 api_router.include_router(profiles.router)
 api_router.include_router(plan.router)

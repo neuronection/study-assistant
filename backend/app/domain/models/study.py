@@ -299,6 +299,25 @@ class ErrorPattern(Base):
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+class StudySession(Base):
+    __tablename__ = "study_sessions"
+    __table_args__ = (
+        Index("ix_study_sessions_profile_started", "profile_id", "started_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), index=True)
+    node_id: Mapped[int | None] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(20))
+    source: Mapped[str] = mapped_column(String(10))
+    entity_ref: Mapped[str | None] = mapped_column(String(120))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_beat: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    duration_sec: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class PlanItem(Base):
     __tablename__ = "plan_items"
     __table_args__ = (

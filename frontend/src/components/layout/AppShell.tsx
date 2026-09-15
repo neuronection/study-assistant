@@ -28,6 +28,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
+import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
@@ -567,6 +568,7 @@ export function AppShell() {
         </StudyChatProvider>
       ) : null}
       <CommandPalette open={palette.open} onClose={palette.close} />
+      <FocusTimer />
       <QuickCapture />
       <SnapIntoNote />
       <UrlImportDialog />

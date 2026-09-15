@@ -704,7 +704,8 @@
     "nextAction": "Next best action",
     "exploreTopic": "Open the Scratchpad",
     "genesisTopic": "Generate a course from a topic",
-    "emptyCourses": "No courses yet — materials and ingestion arrive in Phase 1."
+    "emptyCourses": "No courses yet — materials and ingestion arrive in Phase 1.",
+    "studyTime": "Study time"
   },
   "planner": {
     "upcomingTitle": "This week's plan",
@@ -1330,6 +1331,8 @@
     },
     "consistency": "Consistency",
     "heatmapLabel": "Daily activity heatmap",
+    "heatmapAnswers_one": "{{count}} answer",
+    "heatmapAnswers_other": "{{count}} answers",
     "noHistory": "Your activity heatmap builds up as you answer questions and review cards.",
     "coursesCount_one": "{{count}} course",
     "coursesCount_other": "{{count}} courses",
@@ -1345,7 +1348,12 @@
     "readinessTrend_flat": "→ steady",
     "readinessTrend_declining": "↓ declining",
     "weakest": "Weakest: {{concepts}}",
-    "examJump": "Go to {{node}}"
+    "examJump": "Go to {{node}}",
+    "studyWeek": "This week: {{time}}",
+    "goalUnit": "Goal unit",
+    "goalUnit_answers": "Answers",
+    "goalUnit_minutes": "Minutes",
+    "goalValue": "Goal value"
   },
   "onboarding": {
     "title": "Welcome to Study Assistant",
@@ -2247,5 +2255,27 @@
     "busyHint": "Currently extracting — wait for the running extraction to finish first.",
     "confirm": "Re-extract",
     "menuEntry": "Re-extract…"
+  },
+  "focusTimer": {
+    "focus": "Focus",
+    "open": "Start a focus timer",
+    "pickerLabel": "Focus timer presets",
+    "pickPreset": "Pick a focus preset",
+    "presetPair": "{{focus}} min + {{brk}} break",
+    "custom": "Custom",
+    "customFocus": "Focus minutes",
+    "customBreak": "Break minutes",
+    "start": "Start",
+    "running": "Focus session running",
+    "pausedLabel": "Paused",
+    "breakRunning": "Break running",
+    "breakOf": "Break · {{minutes}} min",
+    "pause": "Pause",
+    "resume": "Resume",
+    "giveUp": "Give up",
+    "details": "Timer details",
+    "focusDone": "{{minutes}} min focused!",
+    "takeBreak": "Break {{minutes}} min",
+    "dismiss": "Dismiss"
   }
 }

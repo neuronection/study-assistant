@@ -6,6 +6,39 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — study sessions + focus timer (plan 49-A, ADR-106, 2026-09-15):**
+time-on-study now exists. New `study_sessions` table (migration **0059**;
+kind focus|quiz|exercise|review|read|note, source timer|auto|manual,
+nullable `entity_ref`) is the single source of truth for time analytics —
+focus surfaces (quiz runner, exercise player, note editor, material reading
+drawer) auto-open `source=auto` sessions through `lib/use-study-session.ts`
+(one-minute heartbeat, end-on-unmount) and the backend **resumes an identical
+session ended ≤2 minutes ago**, so param-driven remounts (drawer churn,
+tab switches) stay one honest row. Idle semantics are honest by construction:
+a session's `ended_at` trails the last heartbeat and gaps count zero time — a
+crashed tab can undercount, never inflate. Endpoints: `POST /study-sessions`
+(start/resume), `PATCH /study-sessions/{id}` (heartbeat/end; explicit ends are
+clamped to `last_beat + 120 s`), `GET /study-sessions/summary?days=N`
+(per-day/per-kind totals) — all typed pydantic response models (ADR-130) with
+`pnpm api:types` regenerated. Course purge removes its sessions. Analytics
+(`services/platform/metrics.py` stays the single source): `daily_rollups`
+gains `study_seconds`, the streak counts any qualifying day (≥1 answer/card
+review **or ≥5 min sessions**), the daily goal gains a **unit**
+(answers | minutes — `study_goals.unit` + `minutes_per_day`, PUT
+`/analytics/goal` back-compat) and Home renders the ring in whichever unit is
+set; Home gains a **Study-time card** (today + this week) and the heatmap
+folds study minutes into its colors. **Focus timer (I18)**: a floating
+animated pill in AppShell (`components/layout/FocusTimer.tsx` + zustand
+`lib/focus-timer-store.ts`; survives route changes, not reloads) — 25/5,
+50/10 or custom presets, pause/resume/give-up, break offer on completion;
+focus blocks log `source=timer` sessions with the active route's course/node
+context. Vocabularies are StrEnums (`StudySessionKind`/`StudySessionSource`/
+`GoalUnit`, ADR-128). Tests: `test_study_sessions.py` (8: start/heartbeat/end,
+summary, resume window, purge, goal endpoints, streak math, rollup folding) +
+`use-study-session.test.tsx` (5) + `FocusTimer.test.tsx` (5) + HomePage
+goal-unit coverage; backend 1,135 green, frontend 1,214 green, lint/typecheck/
+build/i18n green, `pnpm api:types` in-tree.
+
 **Fix — viewer drawer clipped off-screen when the chat dock is open
 (2026-09-15, user-reported):** the FocusShell overlay panel was positioned
 `right: chatInset` *inside* a backdrop that is itself inset `right: chatInset`
@@ -1319,6 +1352,7 @@ Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit �
 
 | Module | Status | Notes |
 |---|---|---|
+| **Study time tracking + focus timer (plan 49-A)** | done | `study_sessions` table (0059, ADR-106) + `api/study_sessions.py` (`POST` start/resume, `PATCH` heartbeat/end with `last_beat + 120 s` clamp, `GET /summary`) + `services/study/sessions.py` (resume window 120 s, 12 h cap) + `lib/use-study-session.ts` auto-sessions on quiz/exercise/note/read surfaces + `components/layout/FocusTimer.tsx` floating pill (`lib/focus-timer-store.ts`) with 25/5, 50/10, custom presets and break flow; analytics: `daily_rollups.study_seconds`, minutes-or-answers goals (`study_goals.unit`/`minutes_per_day`), streak = answers/cards or ≥5 min sessions; Home Study-time card + study-aware heatmap. Tests: `test_study_sessions.py`, `use-study-session.test.tsx`, `FocusTimer.test.tsx` |
 | **Working directory (plan 45)** | done | The app data directory (db/blobs/backups/cache) is a first-class setting. Backend: `core/working_dir.py` (pointer file in `SA_CONFIG_DIR`, default `<platform config dir>/StudyAssistant/working-dir.txt`), `Settings.data_dir` factory = pointer → platform default (`SA_DATA_DIR`/`.env` still wins), `api/config.py` — `GET /config/working-dir` (`path`/`default_path`/`custom`/`restart_pending`), `POST /config/working-dir/validate` (absolute, writable, empty **or** existing SA dir with `app.db`; reasons `relative_path`/`already_current`/`inside_current`/`contains_current`/`not_a_directory`/`not_writable`/`not_empty`/`invalid_path`; writability probed with a temp file, creatable paths via nearest existing ancestor), `PUT` (validate + write pointer; applies on restart), `DELETE` (clear). Frontend: shared `features/settings/WorkingDirEditor` (validate feedback, Save gated on a validated changed path, Use-default, Restore-default, restart-pending banner + Undo) in **Settings → Data** (top card) and **wizard step 2** (now 8 steps). No live rebind, no auto-copy — moving data = backup/restore (`usage/getting-started.md`). Tests: `test_working_dir.py` (8) + `WorkingDirEditor.test.tsx` (4) |
 | **First-run wizard (plan 44)** | done | Fresh install (no provider AND no course, server truth) auto-opens a full-screen wizard overlay over the AppShell; `GET /onboarding/state` (`has_provider`/`has_enabled_model`/`defaults_set`/`has_course`/`has_material`) is the gate + Done-summary aggregate. Core-7 steps (`features/onboarding/`): Welcome → **Provider** (shared `useProviderCreate`+`ProviderCreateFields` extracted from the Settings dialog; create advances automatically) → **Models** (enable toggles + Enable all over discovered models) → **Defaults** (text/vision/embeddings/audio selects over enabled+cap-matching models, TasksTab pattern) → **Course** (create via `POST /courses` or load `POST /onboarding/sample`, adopts real title from the refreshed list) → **Files** (`UploadDropzone` + `useMaterialUpload` on the created course; ingest continues in background) → **Done** (checklist from refetched state + Open-course/Go-to-Today CTAs). Fully skippable (Back / Skip for now / header X), dismissal in localStorage `ca-onboarding-done` (same `ca-*` convention), re-openable via `useWizardStore.openWizard()` from Settings→Providers empty state + Home onboarding card. Fetch error ⇒ never auto-open. Tests: `test_onboarding_state.py` (2) + `OnboardingWizard.test.tsx` (7) |
 | **Job retry + task-activity rail** | done |`api/jobs.py` — `GET /jobs` (status/type filters, labels, errors, `material_id`, `retriable` flag, **+`stale` flag when the job's material/chat-session no longer exists**), `GET /jobs/summary` (queued/running/failed/done + `failed_retryable`, **+`failed_stale`**, **+`cancelled` (54-A)**), `GET /jobs/types`, `POST /jobs/{id}/retry`, `POST /jobs/retry-failed` (optional type filter); retriable = failed + handler registered + not `chat_turn`; retry resets to queued, wakes pool; **plan 39B (ADR-089): `DELETE /jobs/{id}` (204; done/failed only, queued/running → 422) + `DELETE /jobs/failed` bulk delete (optional `{types}` filter, covers non-retriable `chat_turn`; literal route declared before `/{job_id}`)**; **boot-time prune of done history (39C: `prune_done_jobs`, `SA_JOBS_DONE_TTL_DAYS` default 14)**. **Plan 54-A (ADR-126): terminal `cancelled` status — cancel-on-purge for queued jobs, cooperative cancel flags + report checkpoints for running ones, commit-time stale re-checks in ingest/postprocess/drawing_ocr (`app/jobs/cancellation.py`); cancelled rows are grey, non-retriable, excluded from the failure badge, deletable; JobsPage Cancelled tab + ActivityPopover cancelled chips; upload banner treats cancelled as terminal.** Frontend (39D): `/jobs` page per-row delete + header **Delete…** menu (*Delete all failed* incl. Type-filter scope, *Delete source-missing*) + `source removed` chips with retry hidden; activity popover per-row delete + **Delete all failed** icon + **Delete source-missing (N)**; `ActivityButton` (rail footer): red failure badge from summary polling, panel with failed/in-progress/done sections, per-row ⭯ retry + **Retry all N**, 2 s refresh while open, **View all tasks** link → new `/jobs` page (status tabs w/ counts, search, full errors expandable, status·stage chips, material deep links); 3 JobsPage tests; `usage/activity.md`. Plan 39D adds delete/stale UI affordances |
@@ -1434,6 +1468,19 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-15 — **feat(study): study_sessions + focus timer (plan 49-A, ADR-106).**
+  Migration 0059 adds `study_sessions` (kind/source StrEnums, nullable
+  `entity_ref` with a 120 s resume window so remounts stay one row; gaps count
+  zero time), `daily_rollups.study_seconds`, and `study_goals.unit`/
+  `minutes_per_day`. New `POST/PATCH/GET /study-sessions*` endpoints (typed
+  responses, OpenAPI regen); course purge removes sessions. `lib/
+  use-study-session.ts` auto-logs quiz/exercise/note/read surfaces (60 s
+  heartbeat, end-on-unmount); the I18 focus timer ships as a floating AppShell
+  pill (25/5, 50/10, custom; pause/resume/give-up; break offer) logging
+  `source=timer` sessions. Streak accepts ≥5 min session days; the daily goal
+  renders answers or minutes; Home gains a Study-time card and a study-aware
+  heatmap. Backend 1,135 green (+8 tests), frontend 1,214 green (+12), i18n
+  (en/de/el) complete.
 - 2026-09-10 — **fix(ai): tool-free chat rounds no longer drop their queued
   tail chunks.** The 2026-09-09 `_DeltaPump` straggler fix closed the pump on
   every round, so in a single-/final-round turn the chunks still sitting in

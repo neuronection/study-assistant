@@ -305,6 +305,14 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0059 (plan 49-A, ADR-106)**: `study_sessions` table (profile FK indexed,
+  nullable course FK, nullable `node_id`, `kind` focus|quiz|exercise|review|
+  read|note, `source` timer|auto|manual, nullable `entity_ref` for resume
+  matching, `started_at`/`ended_at`/`last_beat`, `duration_sec`; index on
+  (`profile_id`, `started_at`)) — the single source of truth for *time*
+  analytics. Also `daily_rollups.study_seconds` (server_default 0) and
+  `study_goals` gains `unit` (answers|minutes, default answers) and
+  `minutes_per_day` (default 30). Downgrade drops the columns and the table.
 - **0058 (plan 75-E, ADR-180)**: `material_sources.mirror_subdirs` boolean
   (server_default false) — opt-in linked-source subdirectory mirroring; when
   on, scan mirrors the source's subdirectory tree into the linked folder's

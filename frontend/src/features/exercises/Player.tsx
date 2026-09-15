@@ -42,6 +42,7 @@ import {
 import { practiceFallback, useOriginBack } from '@/lib/origin'
 
 import { cn } from '@/lib/utils'
+import { useStudySession } from '@/lib/use-study-session'
 
 export function Player({ exerciseId }: { exerciseId: number }) {
   const { t } = useTranslation()
@@ -56,6 +57,13 @@ export function Player({ exerciseId }: { exerciseId: number }) {
     queryFn: () => getExercise(exerciseId),
   })
   const context = useFocusContext(exercise.data?.course_id, exercise.data?.node_id)
+  useStudySession({
+    kind: 'exercise',
+    entityRef: `exercise:${exerciseId}`,
+    courseId: exercise.data?.course_id ?? null,
+    nodeId: exercise.data?.node_id ?? null,
+    enabled: exercise.isSuccess,
+  })
   const fallbackHref = practiceFallback(exercise.data?.course_id, exercise.data?.node_id)
   const goBack = useOriginBack(from, fallbackHref)
   const navigate = useNavigate()

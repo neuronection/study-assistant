@@ -174,7 +174,8 @@ def test_overview_goal_and_streak() -> None:
         body = overview.json()
         assert body["today"]["answers_n"] == 2
         assert body["today"]["correct_n"] == 1
-        assert body["goal"] == 20
+        assert body["unit"] == "answers"
+        assert body["answers_per_day"] == 20
         assert body["streak"] == 1
         assert body["due_cards"] == 0
         assert body["total_xp"] == 12
@@ -184,7 +185,7 @@ def test_overview_goal_and_streak() -> None:
         assert set_goal.status_code == 200
         assert set_goal.json()["answers_per_day"] == 5
         refreshed = client.get("/api/v1/analytics/overview").json()
-        assert refreshed["goal"] == 5
+        assert refreshed["answers_per_day"] == 5
 
 
 def test_recommendations_read_drill_review() -> None:

@@ -61,6 +61,7 @@ import { practiceFallback, useOriginBack } from '@/lib/origin'
 
 import { cn } from '@/lib/utils'
 import { storageKeys } from '@/lib/constants'
+import { useStudySession } from '@/lib/use-study-session'
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
@@ -92,6 +93,13 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
     queryFn: () => getQuiz(activityId),
   })
   const context = useFocusContext(activity.data?.course_id, activity.data?.node_id)
+  useStudySession({
+    kind: 'quiz',
+    entityRef: `activity:${activityId}`,
+    courseId: activity.data?.course_id ?? null,
+    nodeId: activity.data?.node_id ?? null,
+    enabled: activity.isSuccess,
+  })
   const fallbackHref = practiceFallback(activity.data?.course_id, activity.data?.node_id)
   const goBack = useOriginBack(from, fallbackHref)
   const openWorkspace = useOriginBack(undefined, fallbackHref)

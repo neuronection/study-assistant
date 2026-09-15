@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
-import { BookOpen, CalendarClock, Flame, GraduationCap, Layers, Loader2, MessageSquare, NotebookPen, Sparkles, Target } from 'lucide-react'
+import { BookOpen, CalendarClock, Clock3, Flame, GraduationCap, Layers, Loader2, MessageSquare, NotebookPen, Sparkles, Target } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from '@tanstack/react-router'
@@ -66,6 +66,16 @@ function GoalRing({ done, goal }: { done: number; goal: number }) {
       </div>
     </div>
   )
+}
+
+function formatStudyMinutes(totalSeconds: number): string {
+  const minutes = Math.round(totalSeconds / 60)
+  const hours = Math.floor(minutes / 60)
+  if (hours >= 1) {
+    const rest = minutes % 60
+    return rest > 0 ? `${hours} h ${rest} min` : `${hours} h`
+  }
+  return `${minutes} min`
 }
 
 function ActionButton({
@@ -448,26 +458,35 @@ function UpcomingPlanStrip() {
   )
 }
 
-function Heatmap({ days }: { days: { day: string; answers_n: number }[] }) {
+function Heatmap({
+  days,
+}: {
+  days: { day: string; answers_n: number; study_seconds: number }[]
+}) {
   const { t } = useTranslation()
-  const max = Math.max(1, ...days.map((entry) => entry.answers_n))
+  const intensity = (entry: { answers_n: number; study_seconds: number }): number =>
+    entry.answers_n + Math.round(entry.study_seconds / 60)
+  const max = Math.max(1, ...days.map(intensity))
   return (
     <div className="flex flex-wrap gap-1" aria-label={t('today.heatmapLabel')}>
-      {days.map((entry) => (
-        <div
-          key={entry.day}
-          title={`${entry.day}: ${entry.answers_n}`}
-          className={cn('rounded-sm', entry.answers_n === 0 && 'bg-subtle')}
-          style={{
-            width: 10,
-            height: 10,
-            backgroundColor:
-              entry.answers_n > 0
-                ? `color-mix(in srgb, var(--primary) ${Math.max(20, Math.round((entry.answers_n / max) * 100))}%, transparent)`
-                : undefined,
-          }}
-        />
-      ))}
+      {days.map((entry) => {
+        const level = intensity(entry)
+        return (
+          <div
+            key={entry.day}
+            title={`${entry.day}: ${t('today.heatmapAnswers', { count: entry.answers_n })} · ${formatStudyMinutes(entry.study_seconds)}`}
+            className={cn('rounded-sm', level === 0 && 'bg-subtle')}
+            style={{
+              width: 10,
+              height: 10,
+              backgroundColor:
+                level > 0
+                  ? `color-mix(in srgb, var(--primary) ${Math.max(20, Math.round((level / max) * 100))}%, transparent)`
+                  : undefined,
+            }}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -488,7 +507,8 @@ export function HomePage() {
   })
   const openCapture = useCaptureStore((state) => state.openCapture)
   const openWizard = useWizardStore((state) => state.openWizard)
-  const [goalEdit, setGoalEdit] = useState<number | null>(null)
+  const [goalUnitEdit, setGoalUnitEdit] = useState<'answers' | 'minutes' | null>(null)
+  const [goalValueEdit, setGoalValueEdit] = useState<number | null>(null)
   const [genesisOpen, setGenesisOpen] = useState(false)
 
   const sample = useMutation({
@@ -500,9 +520,13 @@ export function HomePage() {
   })
 
   const saveGoal = useMutation({
-    mutationFn: (value: number) => setDailyGoal(value),
+    mutationFn: (body: { unit: 'answers' | 'minutes'; value: number }) =>
+      body.unit === 'minutes'
+        ? setDailyGoal({ unit: 'minutes', minutes_per_day: body.value })
+        : setDailyGoal({ unit: 'answers', answers_per_day: body.value }),
     onSuccess: async () => {
-      setGoalEdit(null)
+      setGoalUnitEdit(null)
+      setGoalValueEdit(null)
       await queryClient.invalidateQueries({ queryKey: ['overview'] })
     },
   })
@@ -516,7 +540,11 @@ export function HomePage() {
         <BackendBadge />
       </header>
       <AnimatePresence initial={false}>
-        <motion.div key="cards" {...presets.enter} className="grid gap-4 sm:grid-cols-3">
+        <motion.div
+          key="cards"
+          {...presets.enter}
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
@@ -541,33 +569,98 @@ export function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center gap-3">
-              <GoalRing done={data?.today?.answers_n ?? 0} goal={data?.goal ?? 20} />
-              {goalEdit === null ? (
+              {data?.unit === 'minutes' ? (
+                <GoalRing
+                  done={Math.round((data?.today?.study_seconds ?? 0) / 60)}
+                  goal={data?.minutes_per_day ?? 30}
+                />
+              ) : (
+                <GoalRing done={data?.today?.answers_n ?? 0} goal={data?.answers_per_day ?? 20} />
+              )}
+              {goalUnitEdit === null || goalValueEdit === null ? (
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground text-xs underline"
-                  onClick={() => setGoalEdit(data?.goal ?? 20)}                >
+                  onClick={() => {
+                    setGoalUnitEdit(data?.unit ?? 'answers')
+                    setGoalValueEdit(
+                      data?.unit === 'minutes'
+                        ? (data?.minutes_per_day ?? 30)
+                        : (data?.answers_per_day ?? 20)
+                    )
+                  }}
+                >
                   {t('today.changeGoal')}
                 </button>
               ) : (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
+                  <div
+                    className="border-border bg-subtle flex overflow-hidden rounded-md text-[10px] font-medium"
+                    role="radiogroup"
+                    aria-label={t('today.goalUnit')}
+                  >
+                    {(['answers', 'minutes'] as const).map((unitOption) => (
+                      <button
+                        key={unitOption}
+                        type="button"
+                        role="radio"
+                        aria-checked={goalUnitEdit === unitOption}
+                        className={cn(
+                          'px-2 py-1 transition-colors',
+                          goalUnitEdit === unitOption
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        onClick={() => {
+                          setGoalUnitEdit(unitOption)
+                          setGoalValueEdit(
+                            unitOption === 'minutes'
+                              ? (data?.minutes_per_day ?? 30)
+                              : (data?.answers_per_day ?? 20)
+                          )
+                        }}
+                      >
+                        {t(`today.goalUnit_${unitOption}`)}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="number"
                     min={1}
-                    max={500}
+                    max={goalUnitEdit === 'minutes' ? 1440 : 500}
                     className="bg-surface border-border w-20 rounded-md border px-2 py-1 text-xs"
-                    value={goalEdit}
-                    onChange={(event) => setGoalEdit(Number(event.target.value))}
+                    value={goalValueEdit}
+                    onChange={(event) => setGoalValueEdit(Number(event.target.value))}
+                    aria-label={t('today.goalValue')}
                   />
-                <button
+                  <button
                     type="button"
                     className="text-primary text-xs underline"
-                    onClick={() => goalEdit && saveGoal.mutate(goalEdit)}
+                    onClick={() =>
+                      goalValueEdit > 0 && saveGoal.mutate({ unit: goalUnitEdit, value: goalValueEdit })
+                    }
                   >
                     {t('today.saveGoal')}
                   </button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Clock3 className="text-primary size-4" aria-hidden />
+                {t('home.studyTime')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {formatStudyMinutes(data?.today?.study_seconds ?? 0)}
+              </p>
+              <CardDescription>
+                {t('today.studyWeek', { time: formatStudyMinutes(data?.study_seconds_week ?? 0) })}
+              </CardDescription>
             </CardContent>
           </Card>
 

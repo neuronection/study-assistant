@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { FocusShell, useFocusContext } from '@/components/layout/FocusShell'
 import { getMaterial } from '@/lib/api'
+import { useStudySession } from '@/lib/use-study-session'
 
 import { MaterialDetailBody, type DetailTab } from './MaterialDetailBody'
 
@@ -24,6 +25,13 @@ export function MaterialDetailDrawer({
   })
   const material = detail.data?.material
   const context = useFocusContext(material?.course_id, undefined)
+  useStudySession({
+    kind: 'read',
+    entityRef: `material:${materialId}`,
+    courseId: material?.course_id ?? null,
+    nodeId: null,
+    enabled: detail.isSuccess,
+  })
 
   return (
     <FocusShell

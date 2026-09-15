@@ -10,9 +10,18 @@ nothing is a guess.
   30 days: days left, how many nodes you've studied, a pace line ("≈2
   nodes/day to finish" — turns red when that pace can't realistically get you
   there) and a jump button to the first node you haven't touched.
-- **Streak** — consecutive days with at least one answer or card review. No
-  shaming: a broken streak just resets the number.
-- **Daily goal** — answers per day (change it inline). The ring fills as you go.
+- **Streak** — consecutive days with any qualifying activity: at least one
+  answer or card review, **or five minutes of tracked study time**. Reading a
+  chapter or running a focus block keeps the streak alive without a single
+  answer. No shaming: a broken streak just resets the number.
+- **Daily goal** — answers per day **or minutes per day**, whichever unit you
+  pick (toggle it inline in the goal card). The ring fills as you go.
+- **Study time** — how long you actually studied today and this week. Time is
+  tracked automatically while a focus surface is open (quiz runner, exercise
+  player, note editor, the material reading drawer) and by the **focus timer**
+  — the floating pill in the bottom corner (25/5 and 50/10 presets, or a custom
+  length). Only open-surface time counts: closed or crashed tabs stop counting
+  at the last heartbeat, so tracked time never inflates.
 - **Due reviews** — flashcards waiting in your spaced-repetition queue.
 - **Next best action** — ranked suggestions, each with its evidence:
   - *Review due cards* when your FSRS queue is waiting.
@@ -22,7 +31,8 @@ nothing is a guess.
   - *Challenge* a concept you're strong on but haven't touched in over a week —
     same one-tap generation, harder band.
   One tap takes you to the right screen.
-- **Consistency heatmap** — the last 90 days; darker means more answers.
+- **Consistency heatmap** — the last 90 days; darker means more activity
+  (answers plus tracked study minutes).
 
 Practice attempts feed these signals; **exam attempts are excluded** (they measure
 the exam, not your learning).

@@ -12,6 +12,7 @@ const listCourses = vi.fn()
 const generateQuiz = vi.fn()
 const createChatSession = vi.fn()
 const listUpcomingItems = vi.fn()
+const setDailyGoal = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -25,6 +26,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     createChatSession: (courseId: number, nodeId: number | null, title?: string) =>
       createChatSession(courseId, nodeId, title),
     listUpcomingItems: (days?: number) => listUpcomingItems(days),
+    setDailyGoal: (body: unknown) => setDailyGoal(body),
   }
 })
 
@@ -45,16 +47,25 @@ function renderHome() {
 }
 
 const OVERVIEW = {
-  today: { day: '2026-08-19', answers_n: 8, correct_n: 6, cards_reviewed: 3, minutes: 12, xp: 75 },
-  goal: 10,
+  today: { day: '2026-08-19', answers_n: 8, correct_n: 6, cards_reviewed: 3, minutes: 12, study_seconds: 1320, xp: 75 },
+  unit: 'answers',
+  answers_per_day: 10,
+  minutes_per_day: 30,
   streak: 4,
   total_xp: 1200,
   level: 4,
   due_cards: 6,
+  study_seconds_week: 5400,
   history: [
-    { day: '2026-08-18', answers_n: 5, correct_n: 4, cards_reviewed: 0, minutes: 6, xp: 48 },
-    { day: '2026-08-19', answers_n: 8, correct_n: 6, cards_reviewed: 3, minutes: 12, xp: 75 },
+    { day: '2026-08-18', answers_n: 5, correct_n: 4, cards_reviewed: 0, minutes: 6, study_seconds: 0, xp: 48 },
+    { day: '2026-08-19', answers_n: 8, correct_n: 6, cards_reviewed: 3, minutes: 12, study_seconds: 1320, xp: 75 },
   ],
+}
+
+const MINUTES_OVERVIEW = {
+  ...OVERVIEW,
+  unit: 'minutes',
+  today: { ...OVERVIEW.today, study_seconds: 900 },
 }
 
 describe('HomePage (Today screen)', () => {
@@ -121,6 +132,7 @@ describe('HomePage (Today screen)', () => {
     createChatSession.mockReset()
     listUpcomingItems.mockReset()
     listUpcomingItems.mockResolvedValue([])
+    setDailyGoal.mockReset()
     listCourses.mockResolvedValue([])
     getExamStatus.mockResolvedValue([])
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
@@ -165,6 +177,38 @@ describe('HomePage (Today screen)', () => {
     expect(screen.getByText('80%')).toBeInTheDocument()
     expect(screen.getByText('8/10')).toBeInTheDocument()
     expect(screen.getByText('6')).toBeInTheDocument()
+  })
+
+  test('renders the study-time card with today and this week', async () => {
+    getOverview.mockResolvedValue(OVERVIEW)
+    getRecommendations.mockResolvedValue([])
+    renderHome()
+    expect(await screen.findByText('Study time')).toBeInTheDocument()
+    expect(await screen.findByText('22 min')).toBeInTheDocument()
+    expect(screen.getByText('This week: 1 h 30 min')).toBeInTheDocument()
+  })
+
+  test('goal ring switches to minutes under the minutes unit', async () => {
+    getOverview.mockResolvedValue(MINUTES_OVERVIEW)
+    getRecommendations.mockResolvedValue([])
+    renderHome()
+    expect(await screen.findByText('15/30')).toBeInTheDocument()
+    expect(screen.queryByText('80%')).not.toBeInTheDocument()
+  })
+
+  test('goal editor switches unit and saves the minutes goal', async () => {
+    getOverview.mockResolvedValue(OVERVIEW)
+    getRecommendations.mockResolvedValue([])
+    setDailyGoal.mockResolvedValue({ unit: 'minutes', answers_per_day: 10, minutes_per_day: 45 })
+    renderHome()
+    fireEvent.click(await screen.findByText('change'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Minutes' }))
+    const input = screen.getByRole('spinbutton', { name: 'Goal value' })
+    fireEvent.change(input, { target: { value: '45' } })
+    fireEvent.click(screen.getByText('save'))
+    await waitFor(() =>
+      expect(setDailyGoal).toHaveBeenCalledWith({ unit: 'minutes', minutes_per_day: 45 })
+    )
   })
 
   test('lists next-best actions with evidence lines', async () => {
@@ -305,6 +349,7 @@ describe('HomePage exam card', () => {
     createChatSession.mockReset()
     listUpcomingItems.mockReset()
     listUpcomingItems.mockResolvedValue([])
+    setDailyGoal.mockReset()
     listCourses.mockResolvedValue([])
     getExamStatus.mockResolvedValue([])
     getOverview.mockResolvedValue(OVERVIEW)

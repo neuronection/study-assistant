@@ -86,6 +86,26 @@ class AttemptMode(StrVocab):
     EXAM = "exam"
 
 
+class StudySessionKind(StrVocab):
+    FOCUS = "focus"
+    QUIZ = "quiz"
+    EXERCISE = "exercise"
+    REVIEW = "review"
+    READ = "read"
+    NOTE = "note"
+
+
+class StudySessionSource(StrVocab):
+    TIMER = "timer"
+    AUTO = "auto"
+    MANUAL = "manual"
+
+
+class GoalUnit(StrVocab):
+    ANSWERS = "answers"
+    MINUTES = "minutes"
+
+
 class ComposeKind(StrVocab):
     STUDY_GUIDE = "study_guide"
     SUMMARY_SHEET = "summary_sheet"

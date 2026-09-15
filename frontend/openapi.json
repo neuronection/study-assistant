@@ -2352,6 +2352,10 @@
             "title": "Minutes",
             "type": "number"
           },
+          "study_seconds": {
+            "title": "Study Seconds",
+            "type": "integer"
+          },
           "xp": {
             "title": "Xp",
             "type": "integer"
@@ -2363,6 +2367,7 @@
           "correct_n",
           "cards_reviewed",
           "minutes",
+          "study_seconds",
           "xp"
         ],
         "title": "DayActivityOut",
@@ -4125,15 +4130,42 @@
       "GoalIn": {
         "properties": {
           "answers_per_day": {
-            "maximum": 500.0,
-            "minimum": 1.0,
-            "title": "Answers Per Day",
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers Per Day"
+          },
+          "minutes_per_day": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Per Day"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoalUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": [
-          "answers_per_day"
-        ],
         "title": "GoalIn",
         "type": "object"
       },
@@ -4142,13 +4174,30 @@
           "answers_per_day": {
             "title": "Answers Per Day",
             "type": "integer"
+          },
+          "minutes_per_day": {
+            "title": "Minutes Per Day",
+            "type": "integer"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/GoalUnit"
           }
         },
         "required": [
-          "answers_per_day"
+          "unit",
+          "answers_per_day",
+          "minutes_per_day"
         ],
         "title": "GoalOut",
         "type": "object"
+      },
+      "GoalUnit": {
+        "enum": [
+          "answers",
+          "minutes"
+        ],
+        "title": "GoalUnit",
+        "type": "string"
       },
       "HTTPValidationError": {
         "properties": {
@@ -7423,12 +7472,12 @@
       },
       "OverviewOut": {
         "properties": {
-          "due_cards": {
-            "title": "Due Cards",
+          "answers_per_day": {
+            "title": "Answers Per Day",
             "type": "integer"
           },
-          "goal": {
-            "title": "Goal",
+          "due_cards": {
+            "title": "Due Cards",
             "type": "integer"
           },
           "history": {
@@ -7442,8 +7491,16 @@
             "title": "Level",
             "type": "integer"
           },
+          "minutes_per_day": {
+            "title": "Minutes Per Day",
+            "type": "integer"
+          },
           "streak": {
             "title": "Streak",
+            "type": "integer"
+          },
+          "study_seconds_week": {
+            "title": "Study Seconds Week",
             "type": "integer"
           },
           "today": {
@@ -7452,15 +7509,21 @@
           "total_xp": {
             "title": "Total Xp",
             "type": "integer"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/GoalUnit"
           }
         },
         "required": [
           "today",
-          "goal",
+          "unit",
+          "answers_per_day",
+          "minutes_per_day",
           "streak",
           "total_xp",
           "level",
           "due_cards",
+          "study_seconds_week",
           "history"
         ],
         "title": "OverviewOut",
@@ -10091,6 +10154,11 @@
             "title": "Materials",
             "type": "array"
           },
+          "mirror_subdirs": {
+            "default": false,
+            "title": "Mirror Subdirs",
+            "type": "boolean"
+          },
           "missing_target": {
             "title": "Missing Target",
             "type": "boolean"
@@ -10552,6 +10620,223 @@
           "stopped"
         ],
         "title": "StopOut",
+        "type": "object"
+      },
+      "StudySessionBeatIn": {
+        "properties": {
+          "action": {
+            "default": "heartbeat",
+            "enum": [
+              "heartbeat",
+              "end"
+            ],
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "title": "StudySessionBeatIn",
+        "type": "object"
+      },
+      "StudySessionDayOut": {
+        "properties": {
+          "by_kind": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Kind",
+            "type": "object"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "total_sec": {
+            "title": "Total Sec",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "total_sec",
+          "by_kind"
+        ],
+        "title": "StudySessionDayOut",
+        "type": "object"
+      },
+      "StudySessionKind": {
+        "enum": [
+          "focus",
+          "quiz",
+          "exercise",
+          "review",
+          "read",
+          "note"
+        ],
+        "title": "StudySessionKind",
+        "type": "string"
+      },
+      "StudySessionOut": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "duration_sec": {
+            "title": "Duration Sec",
+            "type": "integer"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "entity_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Ref"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/StudySessionKind"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/StudySessionSource"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source",
+          "course_id",
+          "node_id",
+          "entity_ref",
+          "started_at",
+          "ended_at",
+          "duration_sec"
+        ],
+        "title": "StudySessionOut",
+        "type": "object"
+      },
+      "StudySessionSource": {
+        "enum": [
+          "timer",
+          "auto",
+          "manual"
+        ],
+        "title": "StudySessionSource",
+        "type": "string"
+      },
+      "StudySessionStartIn": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "entity_ref": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Ref"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/StudySessionKind"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/StudySessionSource",
+            "default": "auto"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "StudySessionStartIn",
+        "type": "object"
+      },
+      "StudySessionSummaryOut": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/StudySessionDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "today_sec": {
+            "title": "Today Sec",
+            "type": "integer"
+          },
+          "week_sec": {
+            "title": "Week Sec",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "today_sec",
+          "week_sec"
+        ],
+        "title": "StudySessionSummaryOut",
         "type": "object"
       },
       "StudyStateIn": {
@@ -24807,6 +25092,142 @@
         "summary": "Scan Source",
         "tags": [
           "sources"
+        ]
+      }
+    },
+    "/api/v1/study-sessions": {
+      "post": {
+        "operationId": "start_study_session_api_v1_study_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudySessionStartIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Study Session",
+        "tags": [
+          "study-sessions"
+        ]
+      }
+    },
+    "/api/v1/study-sessions/summary": {
+      "get": {
+        "operationId": "study_session_summary_api_v1_study_sessions_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySessionSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Study Session Summary",
+        "tags": [
+          "study-sessions"
+        ]
+      }
+    },
+    "/api/v1/study-sessions/{session_id}": {
+      "patch": {
+        "operationId": "beat_study_session_api_v1_study_sessions__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudySessionBeatIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Beat Study Session",
+        "tags": [
+          "study-sessions"
         ]
       }
     },

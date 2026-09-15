@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ...core.vocab import (
     AttemptMode,
     CourseOrigin,
+    GoalUnit,
     ItemFlag,
     RecommendationKind,
     SpeedLabel,
@@ -29,6 +30,7 @@ from ...domain.models import (
     QuizmeAnswer,
     ReviewLog,
     StudyGoal,
+    StudySession,
     utcnow,
 )
 from ...services.study.elo import is_elo_outlier
@@ -41,6 +43,8 @@ TEACHBACK_SKILL = "explanation"
 XP_PER_CORRECT = 10
 XP_PER_ANSWER = 2
 XP_PER_CARD = 3
+STREAK_MIN_SESSION_SEC = 300
+DEFAULT_MINUTES_PER_DAY = 30
 
 
 @dataclass(frozen=True)
@@ -329,11 +333,23 @@ def daily_history(session: Session, profile_id: int) -> list[dict[str, Any]]:
         .where(QuizmeAnswer.profile_id == profile_id)
         .order_by(QuizmeAnswer.id)
     ).all()
+    study = session.execute(
+        select(StudySession.started_at, StudySession.duration_sec)
+        .where(StudySession.profile_id == profile_id)
+        .order_by(StudySession.id)
+    ).all()
     days: dict[str, dict[str, Any]] = {}
     for time_ms, correct, created_at in rows:
         key = _day_key(created_at)
         entry = days.setdefault(
-            key, {"answers_n": 0, "correct_n": 0, "cards_reviewed": 0, "minutes": 0.0}
+            key,
+            {
+                "answers_n": 0,
+                "correct_n": 0,
+                "cards_reviewed": 0,
+                "minutes": 0.0,
+                "study_seconds": 0,
+            },
         )
         entry["answers_n"] += 1
         entry["correct_n"] += 1 if correct else 0
@@ -341,16 +357,43 @@ def daily_history(session: Session, profile_id: int) -> list[dict[str, Any]]:
     for correct, created_at in quizme:
         key = _day_key(created_at)
         entry = days.setdefault(
-            key, {"answers_n": 0, "correct_n": 0, "cards_reviewed": 0, "minutes": 0.0}
+            key,
+            {
+                "answers_n": 0,
+                "correct_n": 0,
+                "cards_reviewed": 0,
+                "minutes": 0.0,
+                "study_seconds": 0,
+            },
         )
         entry["answers_n"] += 1
         entry["correct_n"] += 1 if correct else 0
     for (reviewed_at,) in cards:
         key = _day_key(reviewed_at)
         entry = days.setdefault(
-            key, {"answers_n": 0, "correct_n": 0, "cards_reviewed": 0, "minutes": 0.0}
+            key,
+            {
+                "answers_n": 0,
+                "correct_n": 0,
+                "cards_reviewed": 0,
+                "minutes": 0.0,
+                "study_seconds": 0,
+            },
         )
         entry["cards_reviewed"] += 1
+    for started_at, duration_sec in study:
+        key = _day_key(started_at)
+        entry = days.setdefault(
+            key,
+            {
+                "answers_n": 0,
+                "correct_n": 0,
+                "cards_reviewed": 0,
+                "minutes": 0.0,
+                "study_seconds": 0,
+            },
+        )
+        entry["study_seconds"] += int(duration_sec or 0)
     history = []
     for key in sorted(days):
         entry = days[key]
@@ -366,6 +409,7 @@ def daily_history(session: Session, profile_id: int) -> list[dict[str, Any]]:
                 "correct_n": entry["correct_n"],
                 "cards_reviewed": entry["cards_reviewed"],
                 "minutes": round(entry["minutes"], 2),
+                "study_seconds": entry["study_seconds"],
                 "xp": xp,
             }
         )
@@ -375,7 +419,13 @@ def daily_history(session: Session, profile_id: int) -> list[dict[str, Any]]:
 def streak(history: list[dict[str, Any]]) -> int:
     if not history:
         return 0
-    active = {entry["day"] for entry in history if entry["answers_n"] or entry["cards_reviewed"]}
+    active = {
+        entry["day"]
+        for entry in history
+        if entry["answers_n"]
+        or entry["cards_reviewed"]
+        or entry.get("study_seconds", 0) >= STREAK_MIN_SESSION_SEC
+    }
     if not active:
         return 0
     today = utcnow().date()
@@ -428,20 +478,45 @@ def due_cards_count(
     return due + len(unscheduled)
 
 
-def get_goal(session: Session, profile_id: int) -> int:
-    goal = session.get(StudyGoal, profile_id)
-    return goal.answers_per_day if goal else 20
-
-
-def set_goal(session: Session, profile_id: int, answers_per_day: int) -> int:
+def get_goal(session: Session, profile_id: int) -> dict[str, Any]:
     goal = session.get(StudyGoal, profile_id)
     if goal is None:
-        goal = StudyGoal(profile_id=profile_id, answers_per_day=answers_per_day)
+        return {
+            "answers_per_day": 20,
+            "unit": GoalUnit.ANSWERS.value,
+            "minutes_per_day": DEFAULT_MINUTES_PER_DAY,
+        }
+    return {
+        "answers_per_day": goal.answers_per_day,
+        "unit": goal.unit,
+        "minutes_per_day": goal.minutes_per_day,
+    }
+
+
+def set_goal(
+    session: Session,
+    profile_id: int,
+    *,
+    unit: GoalUnit | None = None,
+    answers_per_day: int | None = None,
+    minutes_per_day: int | None = None,
+) -> dict[str, Any]:
+    goal = session.get(StudyGoal, profile_id)
+    if goal is None:
+        goal = StudyGoal(profile_id=profile_id, answers_per_day=20)
         session.add(goal)
-    else:
+    if unit is not None:
+        goal.unit = unit.value
+    if answers_per_day is not None:
         goal.answers_per_day = answers_per_day
+        if unit is None:
+            goal.unit = GoalUnit.ANSWERS.value
+    if minutes_per_day is not None:
+        goal.minutes_per_day = minutes_per_day
+        if unit is None and answers_per_day is None:
+            goal.unit = GoalUnit.MINUTES.value
     session.flush()
-    return goal.answers_per_day
+    return get_goal(session, profile_id)
 
 
 READINESS_WEIGHTS = {"coverage": 0.5, "mastery": 0.35, "trend": 0.15}
@@ -604,21 +679,25 @@ def overview(session: Session, profile_id: int) -> dict[str, Any]:
     today = next((entry for entry in history if entry["day"] == today_key), None)
     total_xp = sum(entry["xp"] for entry in history)
     level = int(math.sqrt(total_xp / 100)) + 1
+    empty_today = {
+        "day": today_key,
+        "answers_n": 0,
+        "correct_n": 0,
+        "cards_reviewed": 0,
+        "minutes": 0.0,
+        "study_seconds": 0,
+        "xp": 0,
+    }
     return {
-        "today": today
-        or {
-            "day": today_key,
-            "answers_n": 0,
-            "correct_n": 0,
-            "cards_reviewed": 0,
-            "minutes": 0.0,
-            "xp": 0,
-        },
-        "goal": get_goal(session, profile_id),
+        "today": today or empty_today,
+        **get_goal(session, profile_id),
         "streak": streak(history),
         "total_xp": total_xp,
         "level": level,
         "due_cards": due_cards_count(session, profile_id),
+        "study_seconds_week": sum(
+            entry["study_seconds"] for entry in history[-7:]
+        ),
         "history": history[-90:],
     }
 
@@ -743,6 +822,7 @@ def materialize(session: Session, profile_id: int) -> None:
                 correct_n=entry["correct_n"],
                 cards_reviewed=entry["cards_reviewed"],
                 minutes=entry["minutes"],
+                study_seconds=entry["study_seconds"],
                 xp=entry["xp"],
             )
         )

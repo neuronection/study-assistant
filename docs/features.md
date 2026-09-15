@@ -834,6 +834,18 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Today screen: streak, daily goal ring (editable goal), due-review count,
   next-best-action cards (review/drill/read/challenge) with evidence lines and
   one-tap actions, 90-day consistency heatmap — H10/H11/I21 first cut
+- ✅ Study time tracking: `study_sessions` rows auto-opened by focus surfaces
+  (quiz runner, exercise player, note editor, material reading drawer) with a
+  one-minute heartbeat and a server-side resume window so remounts fold into one
+  row; Study-time card (today/this week) on Home; heatmap colors fold in study
+  time — H3 study-time promise (plan 49-A)
+- ✅ Focus timer (I18): floating AppShell pill — 25/5, 50/10 or custom presets,
+  pause/resume/give-up, break offer on completion; focus blocks log
+  `study_sessions` rows (`source=timer`) with the active route's course/node
+  context
+- ✅ Minutes-or-questions goals (H10): daily goal gains a unit
+  (answers | minutes); streak counts any qualifying day — ≥1 answer/card review
+  or ≥5 minutes of tracked study time
 - ✅ Diagnostics: concepts×skills weakness matrix (sample-size aware), error-pattern
   profile with 7-day trend, speed–accuracy quadrants — doc 10 §3.3
 - ✅ Recommendations v1 with evidence lines (read/drill/review/challenge),
