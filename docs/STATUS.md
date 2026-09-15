@@ -93,6 +93,18 @@ suggestions (token-overlap, `matched_on` evidence), E linked-source subdir
 mirroring + scan `new_relpaths` (migration 0058). Plan doc:
 `dev/plans/75-material-placement-and-discovery.md` (local-only).
 
+**Plan 76 slice A — shared MaterialBrowser listing (2026-09-15, user-approved;
+ADR-182):** new app-level `components/materials/MaterialBrowser.tsx` — one
+`MaterialFolderItem` (grid/list, linked-source icon composite, selection/cut
+classes, badge/trailing/gridMeta slots, drag hooks + drop highlight, generic
+`LibraryBreadcrumbs` crumbs slot) and one grid/list container — now renders
+folders in **both** the Library page and the course Materials tab; the Library's
+hand-rolled folder buttons + local `tileBase`/`rowBase` strings and the tab's
+`WorkspaceFolderItem` are deleted (classes exported as
+`folderTileClass`/`folderRowClass`; inline rename form rides a `render` spec).
+Groundwork for in-tab folder drill-down (slices B–C). Frontend 1,188 green (+6),
+lint/typecheck/build green; backend untouched.
+
 **Also planned (user-approved 2026-09-15) — plan 76 "Materials tab in-tab
 folder browsing":** one shared `MaterialBrowser` listing component (folders +
 materials, grid/list toggle, breadcrumbs — killing `WorkspaceFolderItem` and

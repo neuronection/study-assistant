@@ -10,7 +10,6 @@ import {
   GitBranch,
   Layers,
   LayoutDashboard,
-  Link2,
   Loader2,
   MessageSquare,
   NotebookPen,
@@ -24,6 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -51,7 +51,7 @@ import { TabActionBar, type TabAction } from '@/components/layout/TabActionBar'
 import { type PopoverMenuItem } from '@/components/ui/popover-menu'
 import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
 import { isKeyboardClick, useSelection } from '@/lib/useSelection'
-import { MaterialList } from '@/components/materials/MaterialList'
+import { MaterialBrowser, type MaterialFolderSpec } from '@/components/materials/MaterialBrowser'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
@@ -306,109 +306,6 @@ function WorkspaceMaterialRow({
         </>
       }
     />
-  )
-}
-
-function WorkspaceFolderItem({
-  folder,
-  view,
-  selectionState,
-  onPointerDown,
-  onOpen,
-  onUnassign,
-  onContextMenu,
-}: {
-  folder: WorkspaceFolder
-  view: 'grid' | 'list'
-  selectionState?: 'none' | 'selected' | 'cut'
-  onPointerDown?: (event: React.MouseEvent<HTMLElement>) => void
-  onOpen: () => void
-  onUnassign: () => void
-  onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void
-}) {
-  const { t } = useTranslation()
-  const icon = folder.source_id !== null ? (
-    <span className="relative shrink-0">
-      <FolderClosed className="text-primary size-8" aria-hidden />
-      <Link2 className="text-primary absolute right-0 bottom-0 size-3.5" aria-hidden />
-    </span>
-  ) : (
-    <FolderClosed className="text-primary size-8 shrink-0" aria-hidden />
-  )
-  const title = t('workspace.folderMembers', { count: folder.member_count })
-  if (view === 'grid') {
-    return (
-      <button
-        type="button"
-        className={cn(
-          'group flex cursor-pointer select-none flex-col items-center gap-2 rounded-lg border border-transparent p-3 text-center transition-colors hover:border-border hover:bg-subtle',
-          selectionState === 'selected' && 'border-primary bg-primary/10 hover:bg-primary/10'
-        )}
-        title={title}
-        onMouseDown={onPointerDown}
-        onDoubleClick={onOpen}
-        onClick={(event) => {
-          if (isKeyboardClick(event)) {
-            onOpen()
-          }
-        }}
-        onContextMenu={onContextMenu}
-      >
-        {icon}
-        <span
-          className={cn(
-            'line-clamp-3 text-xs',
-            selectionState === 'selected' && 'line-clamp-4'
-          )}
-        >
-          {folder.name}
-        </span>
-        <span className="text-muted-foreground text-[10px]">{folder.member_count}</span>
-      </button>
-    )
-  }
-  return (
-    <div
-      className={cn(
-        'hover:bg-subtle group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-        selectionState === 'selected' && 'bg-primary/10'
-      )}
-      title={title}
-      onMouseDown={onPointerDown}
-      onDoubleClick={onOpen}
-      onContextMenu={onContextMenu}
-    >
-      <FolderClosed className="text-primary size-4 shrink-0" aria-hidden />
-      <button
-        type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        onClick={(event) => {
-          if (isKeyboardClick(event)) {
-            onOpen()
-          }
-        }}
-      >
-        <span
-          className={cn(
-            'min-w-0 flex-1',
-            selectionState === 'selected' ? 'line-clamp-2' : 'truncate'
-          )}
-        >
-          {folder.name}
-        </span>
-        <span className="text-muted-foreground shrink-0 text-[10px]">
-          {folder.member_count}
-        </span>
-      </button>
-      <button
-        type="button"
-        className="text-muted-foreground hidden shrink-0 group-hover:block"
-        title={t('workspace.unassignFolder')}
-        onClick={onUnassign}
-      >
-        <X className="size-3.5" aria-hidden />
-      </button>
-    </div>
   )
 }
 
@@ -1314,27 +1211,63 @@ function MaterialsTab({
     setMenu({ x: event.clientX, y: event.clientY, entry, canUnassign })
   }
 
-  const openFolderContextMenu = (
-    event: React.MouseEvent,
-    folder: WorkspaceFolder,
-  ) => {
-    event.preventDefault()
-    if (!selection.selected.has(`f${folder.folder_id}`)) {
-      selection.set([`f${folder.folder_id}`])
-    }
-    setFolderMenu({ x: event.clientX, y: event.clientY, folder })
-  }
+  const openFolderContextMenu = useCallback(
+    (event: React.MouseEvent, folder: WorkspaceFolder) => {
+      event.preventDefault()
+      if (!selection.selected.has(`f${folder.folder_id}`)) {
+        selection.set([`f${folder.folder_id}`])
+      }
+      setFolderMenu({ x: event.clientX, y: event.clientY, folder })
+    },
+    [selection]
+  )
 
-  const openFolderInLibrary = (folder: WorkspaceFolder) => {
-    void navigate({
-      to: '/library',
-      search: {
-        course: Number(courseId),
-        folder: folder.folder_id,
-        source: folder.source_id ?? undefined,
-      },
-    })
-  }
+  const openFolderInLibrary = useCallback(
+    (folder: WorkspaceFolder) => {
+      void navigate({
+        to: '/library',
+        search: {
+          course: Number(courseId),
+          folder: folder.folder_id,
+          source: folder.source_id ?? undefined,
+        },
+      })
+    },
+    [navigate, courseId]
+  )
+
+  const folderSpecs: MaterialFolderSpec[] = useMemo(
+    () =>
+      visibleFolders.map((folder) => ({
+        key: `f${folder.folder_id}`,
+        name: folder.name,
+        linked: folder.source_id !== null,
+        title: t('workspace.folderMembers', { count: folder.member_count }),
+        selectionState: selection.selected.has(`f${folder.folder_id}`) ? 'selected' : 'none',
+        onPointerDown: (event) => selection.pointerDown(`f${folder.folder_id}`, event),
+        onOpen: () => openFolderInLibrary(folder),
+        onContextMenu: (event) => openFolderContextMenu(event, folder),
+        gridMeta: (
+          <span className="text-muted-foreground text-[10px]">{folder.member_count}</span>
+        ),
+        trailing: (
+          <>
+            <span className="text-muted-foreground shrink-0 text-[10px]">
+              {folder.member_count}
+            </span>
+            <button
+              type="button"
+              className="text-muted-foreground hidden shrink-0 group-hover:block"
+              title={t('workspace.unassignFolder')}
+              onClick={() => unassignFolder.mutate(folder.folder_id)}
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+          </>
+        ),
+      })),
+    [visibleFolders, selection, t, openFolderInLibrary, unassignFolder, openFolderContextMenu]
+  )
 
   const entryMenu = (
     entry: WorkspaceMaterial,
@@ -1739,24 +1672,9 @@ function MaterialsTab({
             {t('workspace.noSearchResults')}
           </p>
         ) : (
-          <MaterialList layout={view}>
-            {visibleFolders.map((folder) => (
-              <div key={folder.folder_id} data-selectable-id={`f${folder.folder_id}`}>
-                <WorkspaceFolderItem
-                  folder={folder}
-                  view={view}
-                  selectionState={
-                    selection.selected.has(`f${folder.folder_id}`) ? 'selected' : 'none'
-                  }
-                  onPointerDown={(event) => selection.pointerDown(`f${folder.folder_id}`, event)}
-                  onOpen={() => openFolderInLibrary(folder)}
-                  onUnassign={() => unassignFolder.mutate(folder.folder_id)}
-                  onContextMenu={(event) => openFolderContextMenu(event, folder)}
-                />
-              </div>
-            ))}
+          <MaterialBrowser view={view} folders={folderSpecs}>
             {visibleMaterials.map((entry) => renderEntry(entry, true))}
-          </MaterialList>
+          </MaterialBrowser>
         )}
       </div>
 

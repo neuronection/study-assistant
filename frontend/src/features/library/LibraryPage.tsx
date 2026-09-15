@@ -3,7 +3,6 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowUp,
   ChevronRight,
-  FolderClosed,
   GraduationCap,
   Link2,
   Plus,
@@ -87,6 +86,12 @@ import type { LinkedLocationsTarget } from './LinkedLocationsDialog'
 import { NameEditor, normalizeName } from './NameEditor'
 import { NewTextFileDialog, type TextFileCreateInput, type TextFileSaveInput } from './NewTextFileDialog'
 import { ViewToggle, type LibraryView } from '@/components/ui/ViewToggle'
+import {
+  MaterialBrowser,
+  folderTileClass,
+  folderRowClass,
+  type MaterialFolderSpec,
+} from '@/components/materials/MaterialBrowser'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
@@ -900,6 +905,7 @@ export function LibraryPage() {
     setLinkState({ folderId: entry.id, sourceId: entry.source_id, subdir: '' })
   }
 
+
   const folderMenu = (entry: Folder): ContextMenuItem[] => {
     const selectionKeys = [...selection.selected]
     if (!selectionKeys.includes(`f${entry.id}`)) {
@@ -1251,6 +1257,21 @@ export function LibraryPage() {
     .sort((a, b) => a.title.localeCompare(b.title))
   const inLink = linkState !== null
   const browseData = browse.data
+  const linkFolderSpecs: MaterialFolderSpec[] = (browseData?.subdirs ?? []).map(
+    (entry) => ({
+      key: `sub-${entry.name}`,
+      name: entry.name,
+      onOpen: () => {
+        if (linkState === null) {
+          return
+        }
+        setLinkState({
+          ...linkState,
+          subdir: linkState?.subdir ? `${linkState.subdir}/${entry.name}` : entry.name,
+        })
+      },
+    })
+  )
   const pendingCount = browseData?.uningested.length ?? 0
 
   const ingestAll = () => {
@@ -1265,10 +1286,9 @@ export function LibraryPage() {
     }
   }
 
-  const tileBase =
-    'group flex cursor-pointer select-none flex-col items-center gap-2 rounded-lg border border-transparent p-3 text-center transition-colors hover:border-border hover:bg-subtle'
-  const rowBase =
-    'hover:bg-subtle flex w-full cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-left text-sm'
+  const tileBase = folderTileClass
+
+  const rowBase = folderRowClass
 
   const stateFor = (key: string): 'none' | 'selected' | 'cut' => {
     if (
@@ -1286,17 +1306,6 @@ export function LibraryPage() {
       }
     }
     return selection.selected.has(key) ? 'selected' : 'none'
-  }
-
-  const selectedClass = (key: string): string => {
-    const state = stateFor(key)
-    if (state === 'cut') {
-      return 'border-primary/50 bg-primary/5 opacity-50'
-    }
-    if (state === 'selected') {
-      return 'border-primary bg-primary/10'
-    }
-    return ''
   }
 
   const buildDragPayload = (event: React.DragEvent, kind: 'f' | 'm', id: number) => {
@@ -1354,6 +1363,73 @@ export function LibraryPage() {
       // per-mutation onError surfaces the message
     }
   }
+
+  const folderSpecs: MaterialFolderSpec[] = childFolders.map((entry) =>
+    renamingId === entry.id
+      ? {
+          key: `f${entry.id}`,
+          name: entry.name,
+          onOpen: () => goToFolder(entry.id),
+          render: (
+            <form
+              className={view === 'grid' ? 'col-span-1 p-2' : 'px-2 py-1'}
+              onSubmit={(event) => {
+                event.preventDefault()
+                const name = normalizeName(renameDraft)
+                if (name) {
+                  renameFolderMutation.mutate({ id: entry.id, name })
+                }
+                setRenamingId(null)
+              }}
+            >
+              <NameEditor
+                ariaLabel={t('library.renameEditor')}
+                value={renameDraft}
+                onChange={setRenameDraft}
+                onCancel={() => setRenamingId(null)}
+              />
+            </form>
+          ),
+        }
+      : {
+          key: `f${entry.id}`,
+          name: entry.name,
+          linked: entry.source_id !== null,
+          selectionState: stateFor(`f${entry.id}`),
+          onPointerDown: (event) => selection.pointerDown(`f${entry.id}`, event),
+          onOpen: () => openLinkFolder(entry),
+          onContextMenu: (event) => {
+            event.preventDefault()
+            setMenu({
+              x: event.clientX,
+              y: event.clientY,
+              items: folderMenu(entry),
+            })
+          },
+          badge: <LinkRefBadge count={entry.node_link_count} />,
+          dragProps: {
+            draggable: entry.source_id === null,
+            onDragStart: (event) => buildDragPayload(event, 'f', entry.id),
+            onDragOver: (event) => {
+              if (
+                event.dataTransfer.types.includes(ITEM_MIME) &&
+                entry.source_id === null
+              ) {
+                event.preventDefault()
+                setDropTarget(entry.id)
+              }
+            },
+            onDragLeave: () =>
+              setDropTarget((current) => (current === entry.id ? null : current)),
+            onDrop: (event) => {
+              event.preventDefault()
+              setDropTarget(null)
+              void moveSelectionTo(event, entry.id, entry.source_id !== null)
+            },
+          },
+          dropHighlighted: dropTarget === entry.id,
+        }
+  )
 
   const { band } = useMarquee({
     enabled: !searching && courseId !== null && linkState === null,
@@ -1631,12 +1707,10 @@ className={cn(
               ) : null}
             </div>
           ) : inLink && browseData ? (
-            <div
-              className={cn(
-                view === 'grid'
-                  ? 'grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2'
-                  : 'flex flex-col gap-1'
-              )}
+            <MaterialBrowser
+              view={view}
+              folders={linkFolderSpecs}
+              className={view === 'grid' ? 'gap-2 p-0' : 'gap-1 p-0'}
             >
               {browseData.missing_target ? (
                 <p className="text-danger col-span-full flex flex-wrap items-center gap-2 p-2 text-xs">
@@ -1659,37 +1733,6 @@ className={cn(
                   {t('library.scanError', { message: browseData.last_scan_error })}
                 </p>
               ) : null}
-              {browseData.subdirs.map((entry) => (
-                <button
-                  key={entry.name}
-                  type="button"
-                  className={view === 'grid' ? tileBase : rowBase}
-                  onClick={(event) => {
-                    if (!isKeyboardClick(event)) {
-                      return
-                    }
-                    setLinkState({
-                      ...linkState,
-                      subdir: linkState?.subdir
-                        ? `${linkState.subdir}/${entry.name}`
-                        : entry.name,
-                    })
-                  }}
-                  onDoubleClick={() =>
-                    setLinkState({
-                      ...linkState,
-                      subdir: linkState?.subdir
-                        ? `${linkState.subdir}/${entry.name}`
-                        : entry.name,
-                    })
-                  }
-                >
-                  <FolderClosed className="text-primary size-8 shrink-0" aria-hidden />
-                  <span className={view === 'grid' ? 'line-clamp-2 text-xs' : 'flex-1 truncate'}>
-                    {entry.name}
-                  </span>
-                </button>
-              ))}
               {browseData.materials.map((entry) =>
                 view === 'grid' ? (
                   <MaterialTile
@@ -1759,142 +1802,49 @@ className={cn(
                   title={t('library.emptyLink')}
                 />
               ) : null}
-            </div>
+            </MaterialBrowser>
           ) : (
-            <div
-              className={cn(
-                view === 'grid'
-                  ? 'grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2'
-                  : 'flex flex-col gap-1'
-              )}
-              data-marquee-surface=""
-              onDragOver={(event) => {
-                if (Array.from(event.dataTransfer.types).includes('Files')) {
-                  return
-                }
-                if (
-                  event.dataTransfer.types.includes(ITEM_MIME) &&
-                  event.target === event.currentTarget
-                ) {
+            <MaterialBrowser
+              view={view}
+              folders={folderSpecs}
+              className={view === 'grid' ? 'gap-2 p-0' : 'gap-1 p-0'}
+              containerProps={{
+                'data-marquee-surface': '',
+                onDragOver: (event) => {
+                  if (Array.from(event.dataTransfer.types).includes('Files')) {
+                    return
+                  }
+                  if (
+                    event.dataTransfer.types.includes(ITEM_MIME) &&
+                    event.target === event.currentTarget
+                  ) {
+                    event.preventDefault()
+                  }
+                },
+                onDrop: (event) => {
+                  if (Array.from(event.dataTransfer.types).includes('Files')) {
+                    return
+                  }
+                  if (event.target !== event.currentTarget) {
+                    return
+                  }
                   event.preventDefault()
-                }
-              }}
-              onDrop={(event) => {
-                if (Array.from(event.dataTransfer.types).includes('Files')) {
-                  return
-                }
-                if (event.target !== event.currentTarget) {
-                  return
-                }
-                event.preventDefault()
-                void moveSelectionTo(event, folderId, false)
-              }}
-              onContextMenu={(event) => {
-                const target = event.target as HTMLElement
-                if (
-                  target.closest(
-                    'button, input, textarea, select, a, [data-selectable-id], [data-no-marquee]'
-                  ) !== null
-                ) {
-                  return
-                }
-                event.preventDefault()
-                setMenu({ x: event.clientX, y: event.clientY, items: paneMenu() })
+                  void moveSelectionTo(event, folderId, false)
+                },
+                onContextMenu: (event) => {
+                  const target = event.target as HTMLElement
+                  if (
+                    target.closest(
+                      'button, input, textarea, select, a, [data-selectable-id], [data-no-marquee]'
+                    ) !== null
+                  ) {
+                    return
+                  }
+                  event.preventDefault()
+                  setMenu({ x: event.clientX, y: event.clientY, items: paneMenu() })
+                },
               }}
             >
-              {childFolders.map((entry) =>
-                renamingId === entry.id ? (
-                  <form
-                    key={entry.id}
-                    className={view === 'grid' ? 'col-span-1 p-2' : 'px-2 py-1'}
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      const name = normalizeName(renameDraft)
-                      if (name) {
-                        renameFolderMutation.mutate({ id: entry.id, name })
-                      }
-                      setRenamingId(null)
-                    }}
-                  >
-                    <NameEditor
-                      ariaLabel={t('library.renameEditor')}
-                      value={renameDraft}
-                      onChange={setRenameDraft}
-                      onCancel={() => setRenamingId(null)}
-                    />
-                  </form>
-                ) : (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    data-selectable-id={`f${entry.id}`}
-                    className={cn(
-                      view === 'grid' ? tileBase : rowBase,
-                      selectedClass(`f${entry.id}`),
-                      dropTarget === entry.id && 'ring-primary ring-2'
-                    )}
-                    onMouseDown={(event) => selection.pointerDown(`f${entry.id}`, event)}
-                    onClick={(event) => {
-                      if (isKeyboardClick(event)) {
-                        openLinkFolder(entry)
-                      }
-                    }}
-                    onDoubleClick={() => openLinkFolder(entry)}
-                    draggable={entry.source_id === null}
-                    onDragStart={(event) => buildDragPayload(event, 'f', entry.id)}
-                    onDragOver={(event) => {
-                      if (
-                        event.dataTransfer.types.includes(ITEM_MIME) &&
-                        entry.source_id === null
-                      ) {
-                        event.preventDefault()
-                        setDropTarget(entry.id)
-                      }
-                    }}
-                    onDragLeave={() =>
-                      setDropTarget((current) => (current === entry.id ? null : current))
-                    }
-                    onDrop={(event) => {
-                      event.preventDefault()
-                      setDropTarget(null)
-                      void moveSelectionTo(event, entry.id, entry.source_id !== null)
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault()
-                      setMenu({
-                        x: event.clientX,
-                        y: event.clientY,
-                        items: folderMenu(entry),
-                      })
-                    }}
-                  >
-                    {entry.source_id !== null ? (
-                      <span className="relative shrink-0">
-                        <FolderClosed className="text-primary size-8" aria-hidden />
-                        <Link2 className="text-primary absolute right-0 bottom-0 size-3.5" aria-hidden />
-                      </span>
-                    ) : (
-                      <FolderClosed className="text-primary size-8 shrink-0" aria-hidden />
-                    )}
-                    <span
-                      className={cn(
-                        'min-w-0',
-                        view === 'grid'
-                          ? cn(
-                              'line-clamp-3 text-xs',
-                              stateFor(`f${entry.id}`) === 'selected' && 'line-clamp-4'
-                            )
-                          : stateFor(`f${entry.id}`) === 'selected'
-                            ? 'flex-1 line-clamp-2'
-                            : 'flex-1 truncate'
-                      )}
-                    >
-                      {entry.name}
-                    </span>
-                    <LinkRefBadge count={entry.node_link_count} />
-                  </button>
-                )
-              )}
               {creating ? (
                 <form
                   className={view === 'grid' ? 'col-span-1 p-2' : 'px-2 py-1'}
@@ -2028,7 +1978,7 @@ className={cn(
                   title={t('library.empty')}
                 />
               ) : null}
-            </div>
+            </MaterialBrowser>
           )}
         </div>
 
