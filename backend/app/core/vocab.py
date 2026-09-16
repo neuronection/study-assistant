@@ -43,6 +43,14 @@ class FlowEvent(StrVocab):
     FLOW_FAILED = "flow_failed"
 
 
+class DiscoveryKind(StrVocab):
+    VIDEO = "video"
+    COURSE = "course"
+    ARTICLE = "article"
+    EXERCISE = "exercise"
+    OTHER = "other"
+
+
 class MaterialKind(StrVocab):
     PDF = "pdf"
     IMAGE = "image"

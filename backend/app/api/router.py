@@ -9,6 +9,7 @@ from . import (
     config,
     courses,
     desktop,
+    discovery,
     exercises,
     flashcards,
     folders,
@@ -36,6 +37,7 @@ api_router.include_router(jobs.router)
 api_router.include_router(materials.router)
 api_router.include_router(materials.blobs_router)
 api_router.include_router(search.router)
+api_router.include_router(discovery.router)
 api_router.include_router(folders.router)
 api_router.include_router(courses.router)
 api_router.include_router(chat.router)

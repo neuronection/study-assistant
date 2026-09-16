@@ -246,6 +246,15 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Discovery provider registry (plan 73-C, ADR-166, 2026-09-16)**: one
+  normalized search across pluggable providers — Web (the existing Tavily/
+  SearXNG integration), **YouTube** (yt-dlp flat search, typed `video` with
+  duration/channel), and site-filtered presets (**Khan Academy** ships
+  built-in; no first-party Coursera/Udemy — a user may add their own site or
+  an MCP connector later). `POST /discovery/search` returns normalized rows
+  (kind from a closed vocabulary: video/course/article/exercise/other) with
+  per-provider errors surfaced honestly — partial results render, silence
+  doesn't; nothing is ever persisted by a search
 - ✅ **Parser registry & YouTube transcripts (plan 73-B, ADR-165, 2026-09-16)**:
   the "Import & parse" verb on link references is now real — an ordered
   parser registry (YouTube → direct file → HTML) runs as a cancellable

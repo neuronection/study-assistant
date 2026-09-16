@@ -13,6 +13,9 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Discovery provider registry: search across web, YouTube, and site-filtered
+  presets (Khan Academy built in) through one normalized, never-persisted
+  search endpoint with honest per-provider errors. (plan 73-C, ADR-166)
 - Parser registry & YouTube transcripts: the "Import & parse" verb on link
   references now works — YouTube videos gain searchable, timestamped
   transcripts, direct file URLs (PDF, Markdown, Office, audio…) download into

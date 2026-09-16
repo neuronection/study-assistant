@@ -6,6 +6,30 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — discovery provider registry (plan 73-C, ADR-166, 2026-09-16):**
+one normalized-result registry over pluggable sources — new
+`app/search/discovery.py`: `DiscoveryProvider` protocol +
+`DiscoveryResult{provider, title, url, kind, description, meta}` with the
+`DiscoveryKind` closed vocabulary (`video|course|article|exercise|other`,
+ADR-128 StrEnum). Built-ins: **web** (the existing Tavily/SearXNG flavors +
+keyring key, reused verbatim), **youtube** (yt-dlp `ytsearchN:` flat search —
+same dependency as 73-B — typed `video` with duration/channel), and
+**site-filtered presets** (SearXNG/Tavily `site:` filter; **Khan Academy**
+ships as the built-in preset, honestly web-search under the hood; no
+first-party Coursera/Udemy per user decision — the mechanism exists for a
+user's own site presets or an MCP connector in G). Config lives in profile
+preferences (`discovery.{enabled, sites}`; defaults `["web", "youtube"]`,
+web only when the search provider is configured; provider keys stay in the
+keyring). Endpoint **`POST /discovery/search`** `{query, providers?, cap}` →
+normalized rows + per-provider error entries (partial results render, never
+fake ones; a requested-but-unconfigured provider is an honest 503; all-fail
+is 502) + per-profile in-flight guard, **never persisted** (chat-SEARCH
+posture). Settings UI card lands with D. Tests: `test_discovery.py` (7:
+tavily/searxng normalization, site-filter query building, youtube flat-entry
+normalization, ytsearch query construction with a fake yt_dlp module,
+provider resolution/defaults/filtering, honest unconfigured 503, partial
+errors + in-flight guard). Backend 1,208 green (+6), ruff/mypy clean.
+
 **Feature — parser registry & YouTube transcripts (plan 73-B, ADR-165,
 2026-09-16):** "Import & parse" on link references is real. New
 **`app/parsers/`** package — `URLParser` protocol (`matches`/`fetch` →
