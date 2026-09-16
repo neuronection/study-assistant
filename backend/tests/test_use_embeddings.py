@@ -11,14 +11,23 @@ def test_preferences_round_trip(client: TestClient) -> None:
     assert client.get("/api/v1/profiles/preferences").json() == {
         "use_embeddings": True,
         "ocr_image_max_edge": 1568,
+        "discovery": {"enabled": ["web", "youtube"], "sites": []},
     }
     off = client.put(
         "/api/v1/profiles/preferences", json={"use_embeddings": False}
     )
     assert off.status_code == 200
-    assert off.json() == {"use_embeddings": False, "ocr_image_max_edge": 1568}
+    assert off.json() == {
+        "use_embeddings": False,
+        "ocr_image_max_edge": 1568,
+        "discovery": {"enabled": ["web", "youtube"], "sites": []},
+    }
     on = client.put("/api/v1/profiles/preferences", json={"use_embeddings": True})
-    assert on.json() == {"use_embeddings": True, "ocr_image_max_edge": 1568}
+    assert on.json() == {
+        "use_embeddings": True,
+        "ocr_image_max_edge": 1568,
+        "discovery": {"enabled": ["web", "youtube"], "sites": []},
+    }
 
 
 def test_ocr_image_max_edge_preference_round_trip(client: TestClient) -> None:

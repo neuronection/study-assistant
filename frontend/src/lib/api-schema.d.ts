@@ -1290,6 +1290,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/discovery/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discovery Kinds */
+        get: operations["discovery_kinds_api_v1_discovery_kinds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discovery/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discovery Search */
+        post: operations["discovery_search_api_v1_discovery_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discovery/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Suggestions */
+        get: operations["list_suggestions_api_v1_discovery_suggestions_get"];
+        put?: never;
+        /** Save Suggestion */
+        post: operations["save_suggestion_api_v1_discovery_suggestions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discovery/suggestions/{suggestion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Suggestion */
+        delete: operations["delete_suggestion_api_v1_discovery_suggestions__suggestion_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Suggestion */
+        patch: operations["patch_suggestion_api_v1_discovery_suggestions__suggestion_id__patch"];
+        trace?: never;
+    };
     "/api/v1/exercises": {
         parameters: {
             query?: never;
@@ -4979,6 +5049,79 @@ export interface components {
             /** User */
             user: string;
         };
+        /** DiscoveryPrefsIn */
+        DiscoveryPrefsIn: {
+            /** Enabled */
+            enabled?: string[] | null;
+            /** Sites */
+            sites?: components["schemas"]["DiscoverySitePreset"][] | null;
+        };
+        /** DiscoveryPrefsOut */
+        DiscoveryPrefsOut: {
+            /** Enabled */
+            enabled?: string[];
+            /** Sites */
+            sites?: components["schemas"]["DiscoverySitePreset"][];
+        };
+        /** DiscoveryProviderErrorOut */
+        DiscoveryProviderErrorOut: {
+            /** Error */
+            error: string;
+            /** Provider */
+            provider: string;
+        };
+        /** DiscoveryResultOut */
+        DiscoveryResultOut: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Kind */
+            kind: string;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            };
+            /** Provider */
+            provider: string;
+            suggestion?: components["schemas"]["SuggestionStateOut"] | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** DiscoverySearchIn */
+        DiscoverySearchIn: {
+            /**
+             * Cap
+             * @default 10
+             */
+            cap: number;
+            /** Providers */
+            providers?: string[] | null;
+            /** Query */
+            query: string;
+        };
+        /** DiscoverySearchOut */
+        DiscoverySearchOut: {
+            /** Errors */
+            errors: components["schemas"]["DiscoveryProviderErrorOut"][];
+            /** Results */
+            results: components["schemas"]["DiscoveryResultOut"][];
+        };
+        /** DiscoverySitePreset */
+        DiscoverySitePreset: {
+            /**
+             * Kind
+             * @default course
+             */
+            kind: string;
+            /** Label */
+            label?: string | null;
+            /** Site */
+            site: string;
+        };
         /** DraftNoteOut */
         DraftNoteOut: {
             /** Existing */
@@ -6801,6 +6944,7 @@ export interface components {
         };
         /** PreferencesIn */
         PreferencesIn: {
+            discovery?: components["schemas"]["DiscoveryPrefsIn"] | null;
             /** Ocr Image Max Edge */
             ocr_image_max_edge?: number | null;
             /** Use Embeddings */
@@ -6808,6 +6952,7 @@ export interface components {
         };
         /** PreferencesOut */
         PreferencesOut: {
+            discovery?: components["schemas"]["DiscoveryPrefsOut"];
             /**
              * Ocr Image Max Edge
              * @default 1568
@@ -7756,6 +7901,100 @@ export interface components {
          * @enum {string}
          */
         StudyStatus: "unread" | "reading" | "studied";
+        /** SuggestionListOut */
+        SuggestionListOut: {
+            /** Items */
+            items: components["schemas"]["SuggestionOut"][];
+            /** Next Cursor */
+            next_cursor?: number | null;
+        };
+        /** SuggestionOut */
+        SuggestionOut: {
+            /** Course Id */
+            course_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Material Id */
+            material_id: number | null;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            };
+            /** Node Id */
+            node_id: number | null;
+            /** Provider */
+            provider: string;
+            /**
+             * Snippet
+             * @default
+             */
+            snippet: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Url */
+            url: string;
+            /** Url Norm */
+            url_norm: string;
+        };
+        /** SuggestionPatchIn */
+        SuggestionPatchIn: {
+            /** Material Id */
+            material_id?: number | null;
+            /** Node Id */
+            node_id?: number | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** SuggestionSaveIn */
+        SuggestionSaveIn: {
+            /** Course Id */
+            course_id?: number | null;
+            /** Kind */
+            kind?: string | null;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            } | null;
+            /** Node Id */
+            node_id?: number | null;
+            /** Provider */
+            provider: string;
+            /** Snippet */
+            snippet?: string | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** SuggestionSaveOut */
+        SuggestionSaveOut: {
+            /** Created */
+            created: boolean;
+            suggestion: components["schemas"]["SuggestionOut"];
+        };
+        /** SuggestionStateOut */
+        SuggestionStateOut: {
+            /** Id */
+            id: number;
+            /** Material Id */
+            material_id?: number | null;
+            /** Status */
+            status: string;
+        };
         /** SummaryNoteOut */
         SummaryNoteOut: {
             /** Node Title */
@@ -11111,6 +11350,192 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DesktopFolderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discovery_kinds_api_v1_discovery_kinds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    discovery_search_api_v1_discovery_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscoverySearchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverySearchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_suggestions_api_v1_discovery_suggestions_get: {
+        parameters: {
+            query?: {
+                course_id?: number | null;
+                node_id?: number | null;
+                status?: string | null;
+                kind?: string | null;
+                limit?: number;
+                cursor?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_suggestion_api_v1_discovery_suggestions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestionSaveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionSaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_suggestion_api_v1_discovery_suggestions__suggestion_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_suggestion_api_v1_discovery_suggestions__suggestion_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestionPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionOut"];
                 };
             };
             /** @description Validation Error */

@@ -59,6 +59,7 @@ import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDropzone'
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
+import { DiscoverDialog } from '@/features/discovery/DiscoverDialog'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { useImportUrlStore } from '@/lib/import-url-store'
@@ -1019,6 +1020,7 @@ function MaterialsTab({
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number } | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [materialQuery, setMaterialQuery] = useState('')
+  const [discoverOpen, setDiscoverOpen] = useState(false)
   const [unassignedOpen, setUnassignedOpen] = useState(false)
   const [unassignedTarget, setUnassignedTarget] = useState<number | null>(null)
   const unassigned = useQuery({
@@ -1360,6 +1362,7 @@ function MaterialsTab({
     onNewFolder: () => setFolderDialog(true),
     onNewUrl: () =>
       useImportUrlStore.getState().openImport(undefined, currentId),
+    onDiscover: () => setDiscoverOpen(true),
   })
 
   const openContextMenu = (
@@ -2241,6 +2244,13 @@ function MaterialsTab({
           }}
         />
       ) : null}
+      <DiscoverDialog
+        open={discoverOpen}
+        onClose={() => setDiscoverOpen(false)}
+        courseId={Number(courseId)}
+        nodeId={currentId}
+        defaultQuery={workspace.node.is_root ? '' : workspace.node.title}
+      />
       {pickerOpen ? (
         <MaterialPickerDialog
           courseId={Number(courseId)}

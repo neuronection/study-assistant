@@ -2732,6 +2732,218 @@
         "title": "DiffOut",
         "type": "object"
       },
+      "DiscoveryPrefsIn": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "sites": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DiscoverySitePreset"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sites"
+          }
+        },
+        "title": "DiscoveryPrefsIn",
+        "type": "object"
+      },
+      "DiscoveryPrefsOut": {
+        "properties": {
+          "enabled": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Enabled",
+            "type": "array"
+          },
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoverySitePreset"
+            },
+            "title": "Sites",
+            "type": "array"
+          }
+        },
+        "title": "DiscoveryPrefsOut",
+        "type": "object"
+      },
+      "DiscoveryProviderErrorOut": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "error"
+        ],
+        "title": "DiscoveryProviderErrorOut",
+        "type": "object"
+      },
+      "DiscoveryResultOut": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "title",
+          "url",
+          "kind"
+        ],
+        "title": "DiscoveryResultOut",
+        "type": "object"
+      },
+      "DiscoverySearchIn": {
+        "properties": {
+          "cap": {
+            "default": 10,
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Cap",
+            "type": "integer"
+          },
+          "providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providers"
+          },
+          "query": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "DiscoverySearchIn",
+        "type": "object"
+      },
+      "DiscoverySearchOut": {
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryProviderErrorOut"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryResultOut"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "errors"
+        ],
+        "title": "DiscoverySearchOut",
+        "type": "object"
+      },
+      "DiscoverySitePreset": {
+        "properties": {
+          "kind": {
+            "default": "course",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "site": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Site",
+            "type": "string"
+          }
+        },
+        "required": [
+          "site"
+        ],
+        "title": "DiscoverySitePreset",
+        "type": "object"
+      },
       "DraftNoteOut": {
         "properties": {
           "existing": {
@@ -8293,6 +8505,16 @@
       },
       "PreferencesIn": {
         "properties": {
+          "discovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiscoveryPrefsIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "ocr_image_max_edge": {
             "anyOf": [
               {
@@ -8321,6 +8543,9 @@
       },
       "PreferencesOut": {
         "properties": {
+          "discovery": {
+            "$ref": "#/components/schemas/DiscoveryPrefsOut"
+          },
           "ocr_image_max_edge": {
             "default": 1568,
             "title": "Ocr Image Max Edge",
@@ -11248,6 +11473,305 @@
         ],
         "title": "StudyStatus",
         "type": "string"
+      },
+      "SuggestionListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SuggestionListOut",
+        "type": "object"
+      },
+      "SuggestionOut": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "title": "Meta",
+            "type": "object"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "snippet": {
+            "default": "",
+            "title": "Snippet",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "url_norm": {
+            "title": "Url Norm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "provider",
+          "url",
+          "url_norm",
+          "title",
+          "kind",
+          "status",
+          "material_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
+      "SuggestionPatchIn": {
+        "properties": {
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "SuggestionPatchIn",
+        "type": "object"
+      },
+      "SuggestionSaveIn": {
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "provider": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "url",
+          "title"
+        ],
+        "title": "SuggestionSaveIn",
+        "type": "object"
+      },
+      "SuggestionSaveOut": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
+          }
+        },
+        "required": [
+          "suggestion",
+          "created"
+        ],
+        "title": "SuggestionSaveOut",
+        "type": "object"
+      },
+      "SuggestionStateOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "SuggestionStateOut",
+        "type": "object"
       },
       "SummaryNoteOut": {
         "properties": {
@@ -17258,6 +17782,321 @@
         "summary": "List Desktop Folder",
         "tags": [
           "desktop"
+        ]
+      }
+    },
+    "/api/v1/discovery/kinds": {
+      "get": {
+        "operationId": "discovery_kinds_api_v1_discovery_kinds_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Discovery Kinds Api V1 Discovery Kinds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Discovery Kinds",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/api/v1/discovery/search": {
+      "post": {
+        "operationId": "discovery_search_api_v1_discovery_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoverySearchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverySearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discovery Search",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/api/v1/discovery/suggestions": {
+      "get": {
+        "operationId": "list_suggestions_api_v1_discovery_suggestions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Node Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Suggestions",
+        "tags": [
+          "discovery"
+        ]
+      },
+      "post": {
+        "operationId": "save_suggestion_api_v1_discovery_suggestions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionSaveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionSaveOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Suggestion",
+        "tags": [
+          "discovery"
+        ]
+      }
+    },
+    "/api/v1/discovery/suggestions/{suggestion_id}": {
+      "delete": {
+        "operationId": "delete_suggestion_api_v1_discovery_suggestions__suggestion_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "title": "Suggestion Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Suggestion",
+        "tags": [
+          "discovery"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_suggestion_api_v1_discovery_suggestions__suggestion_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "title": "Suggestion Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Suggestion",
+        "tags": [
+          "discovery"
         ]
       }
     },

@@ -80,6 +80,18 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   last_scan_error?, last_scanned_at — linked folders (B15/ADR-037); scans are
   stat-first, changed files re-ingest as new extraction versions, moved files
   remap by content hash
+- **material_suggestions** (0062, plan 73-D): id, profile_id, course_id?
+  (nullable — scratchpad-level discovery is allowed; suggestions are pointers,
+  not study content), node_id? (composite `(node_id, course_id)` FK discipline
+  when set — node deletion re-points to the parent like other placements),
+  provider, url (raw, display) + url_norm (`normalize_url` identity key,
+  ADR-171; **unique per (profile_id, url_norm)** — one row per identity,
+  re-discovery upserts), title, snippet?, kind (DiscoveryKind), meta JSON,
+  status (`suggested|saved|dismissed` StrEnum), material_id? (set when
+  attached/imported — deleting the material reverts the row to `suggested`),
+  timestamps. Course purge deletes the course's rows; scratchpad rows survive.
+  **Suggestions do not ride `ca-course/v2`** — they are profile-scoped tracking
+  history, not study content.
 - **blobs**: sha256 PK, rel_path, size, mime — content-addressed originals
 - **materials**: id, profile_id, course_id (**required** — every material is owned
   by exactly one course; no global library, ADR-036), group_id?, folder_id?, kind
@@ -305,6 +317,12 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0062 (plan 73-D)**: `material_suggestions` table — profile FK indexed,
+  nullable course FK indexed, nullable `node_id` with the composite
+  `(node_id, course_id)` FK to the node tree, provider/url/url_norm/title/
+  snippet/kind/meta/status/material_id/created_at/updated_at, plus unique
+  `uq_material_suggestions_profile_url` on `(profile_id, url_norm)`. No data
+  migration (new table). Downgrade drops the table.
 - **0061 (plan 73-A, ADR-164/171)**: `materials.source_url` (nullable string
   2048, the raw URL preserved for display) and `materials.source_url_norm`
   (nullable string 2048, the `normalize_url` identity key) plus two partial

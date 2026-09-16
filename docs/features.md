@@ -246,6 +246,22 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Suggestions: keep track + Discover UI (plan 73-D, 2026-09-16)**: found
+  material no longer vanishes. Every discovery result row is annotated with its
+  tracking state ("Saved" / "Dismissed"), and the new **Discover dialog** (in
+  the create menu of the course Materials tab and the Library) searches across
+  the enabled providers with per-row verbs — **Open** external, **Attach as
+  link** (slice A, placed at the current node), **Import & parse** (slice B job
+  with live polling), **Save for later**, **Dismiss** — plus a **Saved &
+  dismissed** section listing every tracked suggestion with status chips,
+  restore, re-pointable attach, open-material shortcuts and **Forget**.
+  Suggestions are one row per normalized URL per profile
+  (`material_suggestions`, migration 0062): attaching or importing links the
+  row to its material, deleting that material reverts the row to `suggested`,
+  deleting the course removes its rows (scratchpad rows survive), and Settings
+  → Providers gains the **Discovery** card (web / YouTube toggles + site
+  presets with kind and enable flags, honestly gated on a configured search
+  provider)
 - ✅ **Discovery provider registry (plan 73-C, ADR-166, 2026-09-16)**: one
   normalized search across pluggable providers — Web (the existing Tavily/
   SearXNG integration), **YouTube** (yt-dlp flat search, typed `video` with

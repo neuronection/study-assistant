@@ -30,6 +30,7 @@ from ...domain.models import (
     MaterialLink,
     MaterialSource,
     MaterialStudyState,
+    MaterialSuggestion,
     Mistake,
     NodeConcept,
     Note,
@@ -1056,6 +1057,9 @@ def purge_course(session: Session, course: Course) -> None:
     )
     session.execute(
         delete(MaterialSource).where(MaterialSource.course_id == course.id)
+    )
+    session.execute(
+        delete(MaterialSuggestion).where(MaterialSuggestion.course_id == course.id)
     )
     session.execute(delete(PlanItem).where(PlanItem.course_id == course.id))
     session.execute(

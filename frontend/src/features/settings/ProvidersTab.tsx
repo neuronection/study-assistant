@@ -12,6 +12,7 @@ import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { LocalEngines } from './LocalEngines'
 import { SearchProviderCard } from './SearchProviderCard'
+import { DiscoveryCard } from './DiscoveryCard'
 import { useConfirm } from '@/lib/use-confirm'
 import { ProviderFormDialog } from './ProviderFormDialog'
 
@@ -145,6 +146,7 @@ export function ProvidersTab() {
         </div>
       ) : null}
       <SearchProviderCard />
+      <DiscoveryCard />
       {form ? (
         <ProviderFormDialog provider={form.provider} onClose={() => setForm(null)} />
       ) : null}

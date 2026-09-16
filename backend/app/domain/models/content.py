@@ -411,3 +411,35 @@ class MaterialSource(Base):
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+class MaterialSuggestion(Base):
+    __tablename__ = "material_suggestions"
+    __table_args__ = (
+        Index(
+            "uq_material_suggestions_profile_url",
+            "profile_id",
+            "url_norm",
+            unique=True,
+        ),
+        ForeignKeyConstraint(
+            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"]
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), index=True)
+    node_id: Mapped[int | None] = mapped_column(Integer)
+    provider: Mapped[str] = mapped_column(String(100))
+    url: Mapped[str] = mapped_column(String(2048))
+    url_norm: Mapped[str] = mapped_column(String(2048))
+    title: Mapped[str] = mapped_column(String(300))
+    snippet: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(30), default="article")
+    meta: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(20), default="suggested")
+    material_id: Mapped[int | None] = mapped_column(ForeignKey("materials.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

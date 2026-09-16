@@ -117,9 +117,21 @@ export async function deleteProfile(profileId: number): Promise<void> {
   }
 }
 
+export interface DiscoverySitePreset {
+  site: string
+  label: string | null
+  kind: string
+}
+
+export interface DiscoveryPrefs {
+  enabled: string[]
+  sites: DiscoverySitePreset[]
+}
+
 export interface ProfilePreferences {
   use_embeddings: boolean
   ocr_image_max_edge: number
+  discovery: DiscoveryPrefs
 }
 
 export async function getProfilePreferences(): Promise<ProfilePreferences> {
@@ -127,8 +139,14 @@ export async function getProfilePreferences(): Promise<ProfilePreferences> {
   return json<ProfilePreferences>(response)
 }
 
+export interface ProfilePreferencesUpdate {
+  use_embeddings?: boolean
+  ocr_image_max_edge?: number
+  discovery?: { enabled?: string[]; sites?: DiscoverySitePreset[] }
+}
+
 export async function updateProfilePreferences(
-  preferences: Partial<ProfilePreferences>
+  preferences: ProfilePreferencesUpdate
 ): Promise<ProfilePreferences> {
   const response = await apiFetch('/api/v1/profiles/preferences', {
     method: 'PUT',

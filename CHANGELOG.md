@@ -13,6 +13,12 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Discovery suggestions & Discover dialog: search results can now be kept —
+  save for later, dismiss, or attach/import them as link materials, with one
+  tracked row per normalized URL per profile and a "Saved & dismissed" list in
+  the new Discover dialog (course Materials tab and Library create menus).
+  Settings → Providers gains a Discovery card for provider toggles and
+  site presets. (plan 73-D)
 - Discovery provider registry: search across web, YouTube, and site-filtered
   presets (Khan Academy built in) through one normalized, never-persisted
   search endpoint with honest per-provider errors. (plan 73-C, ADR-166)

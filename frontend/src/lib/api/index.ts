@@ -526,12 +526,15 @@ export type {
   DeletedItemInfo,
   DesktopFileEntry,
   DesktopFolderListing,
+  DiscoveryPrefs,
+  DiscoverySitePreset,
   FsDirEntry,
   FsDirs,
   Health,
   OnboardingState,
   ProfileInfo,
   ProfilePreferences,
+  ProfilePreferencesUpdate,
   WorkingDirInfo,
   WorkingDirValidation,
 } from './system'
@@ -560,3 +563,18 @@ export {
   updateSearchProvider,
   validateWorkingDir,
 } from './system'
+
+export type {
+  DiscoveryResultRow,
+  DiscoverySearchResponse,
+  DiscoverySuggestion,
+  DiscoverySuggestionList,
+} from './discovery'
+
+export {
+  deleteDiscoverySuggestion,
+  listDiscoverySuggestions,
+  patchDiscoverySuggestion,
+  saveDiscoverySuggestion,
+  searchDiscovery,
+} from './discovery'

@@ -12,6 +12,7 @@ export function useCreateMaterialMenu({
   onNewText,
   onNewFolder,
   onNewUrl,
+  onDiscover,
   prepend = [],
   append = [],
 }: {
@@ -19,6 +20,7 @@ export function useCreateMaterialMenu({
   onNewText: (kind: 'txt' | 'md') => void
   onNewFolder: () => void
   onNewUrl?: () => void
+  onDiscover?: () => void
   prepend?: ContextMenuItem[]
   append?: ContextMenuItem[]
 }): { items: ContextMenuItem[]; inputs: ReactNode } {
@@ -29,6 +31,15 @@ export function useCreateMaterialMenu({
 
   const items: ContextMenuItem[] = [
     ...prepend,
+    ...(onDiscover
+      ? [
+          {
+            key: 'discover',
+            label: t('discovery.menuEntry'),
+            onSelect: onDiscover,
+          },
+        ]
+      : []),
     ...(onNewUrl
       ? [
           {

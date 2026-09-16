@@ -56,6 +56,9 @@ from .content import (
     MaterialStudyState as MaterialStudyState,
 )
 from .content import (
+    MaterialSuggestion as MaterialSuggestion,
+)
+from .content import (
     NodeConcept as NodeConcept,
 )
 from .content import (

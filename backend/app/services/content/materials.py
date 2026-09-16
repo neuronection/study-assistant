@@ -28,6 +28,7 @@ from ...pipelines.chunking import chunk_markdown
 from ...storage import vectors
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
+from .discovery import revert_suggestions_for_material
 from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs, remap_image_refs
 from .notes import normalize_tags
 
@@ -147,6 +148,7 @@ def purge_material(session: Session, material: Material) -> None:
         delete(MaterialDrawing).where(MaterialDrawing.material_id == material.id)
     )
     delete_material_fts(session, material.id)
+    revert_suggestions_for_material(session, material.id)
     session.delete(material)
 
 

@@ -6,6 +6,46 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — discovery suggestions & Discover UI (plan 73-D, 2026-09-16):**
+found material is now tracked. New **`material_suggestions`** table
+(migration **0062**; `SuggestionStatus` StrEnum `suggested|saved|dismissed`)
+— one row per `(profile_id, url_norm)` (the `normalize_url` identity key,
+raw URL preserved for display), nullable `course_id` (scratchpad discovery
+allowed — suggestions are pointers, not study content) and `node_id` with
+the composite FK discipline (ADR-039; registered in `PLACEMENT_TABLES` so
+node deletion/undo/move re-point it like other placements), `material_id?`
+set when attached/imported. Lifecycle edges (all tested): re-discovery
+upserts display fields instead of duplicating; **material deleted while
+saved → row reverts to `suggested`** (hook in `purge_material`);
+**course deleted → its rows cascade** (explicit delete in `purge_course`,
+scratchpad rows survive); **DELETE (forget)** removes outright. New
+`services/content/discovery.py` (save/list/update/forget/revert +
+`suggestion_states_for_urls`) and endpoints **`GET/POST/PATCH/DELETE
+/discovery/suggestions`** (filters course/node/status/kind + cursor
+pagination; POST is an upsert returning `{suggestion, created}`; search
+results now carry a read-only `suggestion` annotation `{id, status,
+material_id}` so the UI surfaces "already saved/dismissed" without
+persisting anything). Preferences API gains the **`discovery`** section
+(`enabled` provider ids `web|youtube|site:<domain>` + `sites` presets with
+label + DiscoveryKind, validated on PUT; GET returns the stored config with
+the slice-C defaults). Frontend: **DiscoverDialog** (`features/discovery/`)
+mounted from the create menu of the node-workspace Materials tab
+(`createMaterialMenu` gained an `onDiscover` entry) and the Library toolbar —
+query box (prefilled at a node), provider chips from preferences, result
+rows with Open-external / **Attach as link** (slice A at the current node) /
+**Import & parse** (slice B job-poll) / **Save for later** / **Dismiss**
+verbs + state chips, and a **Saved & dismissed** section (status chips,
+restore, attach, open-material, forget); **Settings → Providers** gains the
+Discovery card (web toggle honestly disabled without a search provider,
+YouTube toggle, site-preset editor). i18n en/de/el complete; OpenAPI +
+types regenerated. Tests: `test_discovery_suggestions.py` (10: save/upsert
+equivalence, validation, filters+pagination, transitions+attach,
+forget-recreate, purge revert, course cascade, node-deletion re-point,
+search annotation, prefs round-trip+422s) + DiscoveryDialog (7) +
+DiscoveryCard (4); the exact-preferences assert in `test_use_embeddings.py`
+updated for the new section. Backend 1,228 green (+10), ruff/mypy clean;
+frontend 1,267 green (+11), lint/typecheck/build/i18n green.
+
 **Feature — discovery provider registry (plan 73-C, ADR-166, 2026-09-16):**
 one normalized-result registry over pluggable sources — new
 `app/search/discovery.py`: `DiscoveryProvider` protocol +

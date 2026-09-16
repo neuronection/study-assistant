@@ -22,6 +22,7 @@ from ...domain.models import (
     MaterialFolderLink,
     MaterialLink,
     MaterialStudyState,
+    MaterialSuggestion,
     NodeConcept,
     Note,
     PlanItem,
@@ -86,6 +87,7 @@ def subtree_material_ids(session: Session, node: TreeNode) -> list[int]:
 PLACEMENT_TABLES: dict[str, type[Any]] = {
     "material_links": MaterialLink,
     "material_folder_links": MaterialFolderLink,
+    "material_suggestions": MaterialSuggestion,
     "activities": Activity,
     "exercises": Exercise,
     "notes": Note,

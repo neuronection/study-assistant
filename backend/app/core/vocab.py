@@ -51,6 +51,12 @@ class DiscoveryKind(StrVocab):
     OTHER = "other"
 
 
+class SuggestionStatus(StrVocab):
+    SUGGESTED = "suggested"
+    SAVED = "saved"
+    DISMISSED = "dismissed"
+
+
 class MaterialKind(StrVocab):
     PDF = "pdf"
     IMAGE = "image"

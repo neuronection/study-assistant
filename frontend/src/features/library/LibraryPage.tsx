@@ -97,6 +97,7 @@ import { MaterialTile } from '@/components/materials/MaterialTile'
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
+import { DiscoverDialog } from '@/features/discovery/DiscoverDialog'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
 import { AssignToNodeDialog } from '@/features/courses/AssignToNodeDialog'
 import { storageKeys, WsTopic } from '@/lib/constants'
@@ -158,6 +159,7 @@ export function LibraryPage() {
   const [newName, setNewName] = useState('')
   const [textDialog, setTextDialog] = useState<'txt' | 'md' | null>(null)
   const [linkPicker, setLinkPicker] = useState(false)
+  const [discoverOpen, setDiscoverOpen] = useState(false)
   const [relinkSourceId, setRelinkSourceId] = useState<number | null>(null)
   const [linkState, setLinkState] = useState<LinkState | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1205,6 +1207,7 @@ export function LibraryPage() {
     upload,
     onNewText: (kind) => setTextDialog(kind),
     onNewFolder: () => setCreating(true),
+    onDiscover: () => setDiscoverOpen(true),
     prepend: pasteable
       ? [
           {
@@ -2028,6 +2031,11 @@ className={cn(
           onClose={() => setReExtractTarget(null)}
         />
       ) : null}
+      <DiscoverDialog
+        open={discoverOpen}
+        onClose={() => setDiscoverOpen(false)}
+        courseId={courseId}
+      />
       {linkedTarget !== null ? (
         <LinkedLocationsDialog
           target={linkedTarget}
