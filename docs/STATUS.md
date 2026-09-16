@@ -491,12 +491,15 @@ question-validation contract, exact problem strings load-bearing) run by
 model-quality golden sets join the directory. Next in the approved order:
 **plan 68**.
 
-**Next (planned) — plan 70 "Compose quality & scale":** deterministic coverage
-accounting + `needs_review` gate for AI-composed material, orphan-material
-awareness (`include_unassigned` + unassigned discovery endpoint), `practice_set`
-compose through quizgen-derived SymPy validators, and a cancellable `compose`
-job with an async endpoint + single-job GET (ADRs 156–158 reserved). Plan doc:
-`dev/plans/70-compose-quality-and-scale.md` (local-only).
+**Next (planned) — plan 70 "Compose quality & scale": COMPLETE (2026-09-16,
+A–D; see the slice entries at the top of this file).** Original scope:
+deterministic coverage accounting + `needs_review` gate for AI-composed
+material, orphan-material awareness (`include_unassigned` + unassigned
+discovery endpoint), `practice_set` compose through quizgen-derived SymPy
+validators, and a cancellable `compose` job with an async endpoint +
+single-job GET (ADRs 156–158 recorded). Plan doc:
+`dev/plans/70-compose-quality-and-scale.md` (local-only). Per the approved
+execution order, **plan 73** is next.
 
 **Also planned (user-approved 2026-09-11) — plan 73 "Material discovery,
 references & integrations" (amended same day: three-tier integration
