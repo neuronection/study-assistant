@@ -160,7 +160,13 @@ The model may end a chat turn with **up to three** fenced action proposals
   `proposal_valid` contract also checks `node_id` payloads against the
   session course's tree at proposal creation (plan 72-D; `prep.context`
   carries `course_node_ids`) — an invented node id triggers a repair round
-  instead of an approve-time stale surprise. 11C2 adds
+  instead of an approve-time stale surprise. **`attach_link`
+  {url, title?, node_id?}** (plan 73-F, ADR-167/170) is the chat path to
+  material: the payload validator requires an http(s) URL at proposal
+  creation, approval executes `MaterialsService.create_link` (per-course
+  normalized-URL dedupe, optional node placement), and the card previews
+  title + domain — there is no other chat-to-material path (no auto-import,
+  no auto-attach). 11C2 adds
   `assign_material` {material_id, node_id}, `cover_concept`
   {concept_id, node_id}, `set_node_ai_hint` {node_id, hint}, `generate_quiz`
   {topic?, count, difficulty?, node_id?}, `generate_exercise`
@@ -708,6 +714,16 @@ The chat system prompt teaches single-line tools the model may emit:
   one adapter (`app/search/provider.py`, flavor preference + keyring key,
   Settings → Providers → Web search). Up to 5 titled results with URLs;
   2-per-turn budget. Unconfigured → an honest error line the model can relay.
+- `DISCOVER <query|here>` — external material discovery over the plan-73-C
+  provider registry (plan 73-F, ADR-167/170): web + YouTube + site presets
+  with provider badges, up to 5 results, 2-per-turn budget. `DISCOVER here`
+  builds its query **deterministically** from the session's study context —
+  node title + summary + `ai_hint` + up to 4 node concepts, falling back to
+  the course title + description on course-level sessions; a session with no
+  course at all returns an honest error the model can relay. Results are
+  model-only (never persisted, never auto-imported — the student saves via
+  the Discover dialog); discovered URLs feed the same citation-chip advisory
+  as SEARCH.
 - `FETCH <url>` — fetch a page as readable markdown via the plan-47 html
   converter (≤4000 chars, direct fetch not crawler, robots-unaware by design);
   1-per-turn budget.

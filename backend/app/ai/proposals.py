@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
@@ -60,6 +61,20 @@ class CreateConceptPayload(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     node_id: int | None = None
+
+
+class AttachLinkPayload(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    title: str | None = Field(default=None, max_length=300)
+    node_id: int | None = None
+
+    @field_validator("url")
+    @classmethod
+    def _http_url(cls, value: str) -> str:
+        parsed = urlsplit(value.strip())
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("attach_link url must be an http(s) URL")
+        return value.strip()
 
 
 class MoveToNodePayload(BaseModel):
@@ -269,6 +284,13 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
         payload_model=CreateConceptPayload,
         doc_line=(
             '{"action": "create_concept", "name": str, "description": str|null, '
+            '"node_id": int|null}'
+        ),
+    ),
+    "attach_link": ProposalActionSpec(
+        payload_model=AttachLinkPayload,
+        doc_line=(
+            '{"action": "attach_link", "url": "https://...", "title": str|null, '
             '"node_id": int|null}'
         ),
     ),

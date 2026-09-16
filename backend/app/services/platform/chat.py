@@ -51,6 +51,7 @@ from ...domain.models import (
     Material,
     MaterialIndexCard,
     MaterialLink,
+    NodeConcept,
     Note,
     Profile,
     Question,
@@ -89,6 +90,8 @@ MAX_READ_ROUNDS = 3
 MAX_STATE_ROUNDS = 3
 MAX_RESOURCE_ROUNDS = 5
 MAX_SEARCH_ROUNDS = 2
+MAX_DISCOVER_ROUNDS = 2
+DISCOVER_RESULT_CAP = 5
 MAX_FETCH_ROUNDS = 1
 MAX_FIND_ROUNDS = 2
 MAX_QUIZ_ROUNDS = 2
@@ -202,7 +205,7 @@ def _tool_result_summary(kind: str, raw: str) -> str | None:
         return "chart data"
     if kind == "STATE":
         return None
-    if kind == "SEARCH":
+    if kind in ("SEARCH", "DISCOVER"):
         urls = _URL_RE.findall(raw)
         domains = sorted({urlsplit(url).netloc for url in urls})
         if domains:
@@ -1016,6 +1019,86 @@ class ChatService:
                     lines.append(f"   expected: {compact}")
             return "\n".join(lines)[:READ_CHARS]
         return f"error: {entry.kind} items cannot be READ"
+
+    def _here_query(self, chat_session: ChatSession) -> str | None:
+        """Deterministic `DISCOVER here` query from the session context."""
+        if chat_session.node_id is not None and chat_session.course_id is not None:
+            node = self._session.get(TreeNode, chat_session.node_id)
+            if node is not None and node.course_id == chat_session.course_id:
+                parts = [node.title]
+                if node.summary:
+                    parts.append(str(node.summary)[:200])
+                if node.ai_hint:
+                    parts.append(str(node.ai_hint)[:150])
+                concept_names = list(
+                    self._session.scalars(
+                        select(Concept.name)
+                        .join(NodeConcept, NodeConcept.concept_id == Concept.id)
+                        .where(NodeConcept.node_id == node.id)
+                        .limit(4)
+                    )
+                )
+                parts.extend(concept_names)
+                return " ".join(part for part in parts if part)[:300]
+        if chat_session.course_id is not None:
+            course = self._session.get(Course, chat_session.course_id)
+            if course is not None:
+                parts = [course.title]
+                if course.description:
+                    parts.append(str(course.description)[:200])
+                return " ".join(part for part in parts if part)[:300]
+        return None
+
+    def _discover(
+        self, argument: str, chat_session: ChatSession
+    ) -> tuple[str, list[str]]:
+        from ...search.discovery import DiscoveryError, resolve_providers
+
+        query = argument.strip()
+        if query.lower() == "here":
+            built = self._here_query(chat_session)
+            if built is None:
+                return (
+                    "error: this session has no course context — pass an "
+                    "explicit discovery query instead of `here`",
+                    [],
+                )
+            query = built
+        profile = ensure_default_profile(self._session)
+        try:
+            providers = resolve_providers(self._session, profile.id)
+        except DiscoveryError as error:
+            return f"error: {error}", []
+        if not providers:
+            return (
+                "error: no discovery providers configured — the student can "
+                "enable them in Settings → Integrations",
+                [],
+            )
+        lines: list[str] = []
+        urls: list[str] = []
+        errors: list[str] = []
+        for provider in providers:
+            try:
+                found = provider.search(
+                    query, cap=DISCOVER_RESULT_CAP, transport=self._search_transport
+                )
+            except Exception as error:
+                errors.append(f"{provider.label}: {error}")
+                continue
+            for row in found:
+                if row.url in urls:
+                    continue
+                lines.append(
+                    f"[{len(lines) + 1}] {row.title} — {row.url} "
+                    f"({provider.label})"
+                )
+                urls.append(row.url)
+        if not lines:
+            if errors:
+                return f"error: discovery failed — {errors[0]}", []
+            return "no results found", []
+        return "\n".join(lines[:DISCOVER_RESULT_CAP]), urls[:DISCOVER_RESULT_CAP]
 
     def _search_web(self, query: str) -> tuple[str, list[str]]:
         profile = ensure_default_profile(self._session)

@@ -437,9 +437,7 @@ def test_bundle_import_recreates_sources_with_fresh_cursors(
         assert export_response.status_code == 200
         data = export_response.content
 
-        imported = client.post("/api/v1/courses/import", files={
-            "file": ("bundle.zip", data, "application/zip")
-        })
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=data)
         assert imported.status_code == 200, imported.text
         imported_course_id = imported.json()["imported"]["course_id"]
         rows = client.get(

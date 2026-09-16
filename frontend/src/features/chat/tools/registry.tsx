@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Calculator,
+  Compass,
   Globe,
   HelpCircle,
   LineChart,
@@ -36,6 +37,7 @@ const TOOL_META: Record<string, ToolMeta> = {
   PLOT: { icon: LineChart, labelKey: 'chat.tool.plot', phase: 'plotting' },
   FIND: { icon: BookOpen, labelKey: 'chat.tool.find', phase: 'reading' },
   SEARCH: { icon: Globe, labelKey: 'chat.tool.search', phase: 'reading' },
+  DISCOVER: { icon: Compass, labelKey: 'chat.tool.discover', phase: 'reading' },
   FETCH: { icon: Link2, labelKey: 'chat.tool.fetch', phase: 'reading' },
   QUIZ: { icon: HelpCircle, labelKey: 'chat.tool.quiz', phase: 'reading' },
 }
@@ -268,6 +270,7 @@ const TOOL_VIEWS: Record<string, ToolView> = {
   STATE: StateResultView,
   PLOT: PlotResultView,
   SEARCH: SearchResultsView,
+  DISCOVER: SearchResultsView,
   FETCH: FetchResultView,
   QUIZ: QuizCardView,
 }

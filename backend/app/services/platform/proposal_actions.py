@@ -2,6 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
+from urllib.parse import urlsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -98,6 +99,7 @@ _TARGET_KINDS = {
     "create_note": ("note", None),
     "create_material": ("material", None),
     "create_concept": ("concept", None),
+    "attach_link": ("link", None),
 }
 
 
@@ -147,8 +149,15 @@ def resolve_proposal_target(
     else:
         title = payload.get("name") if kind == "concept" else payload.get("title")
         if not isinstance(title, str) or not title.strip():
-            return None
-        info["target_name"] = title.strip()
+            if kind == "link":
+                parsed = urlsplit(str(payload.get("url") or ""))
+                if parsed.netloc:
+                    title = parsed.netloc
+                else:
+                    return None
+            else:
+                return None
+        info["target_name"] = str(title).strip()
     node_id = payload.get("node_id")
     if node_id is not None:
         node = session.get(TreeNode, int(node_id))
@@ -420,6 +429,40 @@ def _execute_create_material(
     }
 
 
+def _execute_attach_link(
+    session: Session,
+    payload: dict[str, Any],
+    course_id: int,
+    context: ProposalContext,
+) -> tuple[str, dict[str, Any]]:
+    if context.blobs is None or context.profile_id is None:
+        raise ProposalActionError("proposal execution context is incomplete")
+    url = str(payload["url"]).strip()
+    parsed = urlsplit(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ProposalActionError("attach_link url must be an http(s) URL")
+    service = MaterialsService(session, context.blobs)
+    title = str(payload.get("title") or "").strip() or None
+    node_id = payload.get("node_id")
+    placement: int | None = None
+    if node_id is not None:
+        placement = _node_in_course(session, int(node_id), course_id).id
+    try:
+        material, deduped = service.create_link(
+            profile_id=context.profile_id,
+            course_id=course_id,
+            url=url,
+            title=title,
+            node_id=placement,
+        )
+    except ValueError as error:
+        raise ProposalActionError(str(error)) from None
+    return "executed", {
+        "material_id": material.id,
+        "deduped": deduped,
+    }
+
+
 def _execute_create_concept(
     session: Session,
     payload: dict[str, Any],
@@ -598,6 +641,7 @@ EXECUTORS: dict[str, Executor] = {
     "append_material": _execute_append_material,
     "create_material": _execute_create_material,
     "create_concept": _execute_create_concept,
+    "attach_link": _execute_attach_link,
     "move_to_node": _execute_move_to_node,
     "tag_note": _execute_tag_note,
     "set_exam_date": _execute_set_exam_date,

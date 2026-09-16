@@ -46,6 +46,7 @@ from ...domain.models import ChatMessage, ChatSession
 from ...mcp_resources import RESOURCE_TOOL_BY_KEYWORD
 from ...services.platform.chat import (
     CHAT_TASK,
+    MAX_DISCOVER_ROUNDS,
     MAX_FETCH_ROUNDS,
     MAX_FIND_ROUNDS,
     MAX_QUIZ_ROUNDS,
@@ -76,7 +77,16 @@ STOP_MESSAGE = "generation stopped by user"
 DEGRADED = "@degraded"
 
 READISH_TOOLS = frozenset(
-    {"READ", "STATE", "SEARCH", "FETCH", "FIND", "QUIZ", *RESOURCE_TOOL_BY_KEYWORD}
+    {
+        "READ",
+        "STATE",
+        "SEARCH",
+        "FETCH",
+        "FIND",
+        "DISCOVER",
+        "QUIZ",
+        *RESOURCE_TOOL_BY_KEYWORD,
+    }
 )
 
 
@@ -95,6 +105,7 @@ class ChatTurnState(TypedDict, total=False):
     state_used: int
     resource_used: int
     search_used: int
+    discover_used: int
     fetch_used: int
     find_used: int
     quiz_used: int
@@ -157,6 +168,7 @@ def _fresh_round_scope() -> dict[str, Any]:
         "state_used": 0,
         "resource_used": 0,
         "search_used": 0,
+        "discover_used": 0,
         "fetch_used": 0,
         "find_used": 0,
         "quiz_used": 0,
@@ -460,6 +472,33 @@ def _execute_tools(
                 )
             )
             deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+        elif kind == "DISCOVER":
+            if state["discover_used"] >= MAX_DISCOVER_ROUNDS:
+                results.append(
+                    f"DISCOVER {argument} -> error: DISCOVER budget for this "
+                    "turn is spent; answer from what you already have"
+                )
+                continue
+            state["discover_used"] += 1
+            content, urls = deps.service._discover(argument, deps.chat_session)
+            sources = list(state["search_sources"])
+            for url in urls:
+                if url not in sources:
+                    sources.append(url)
+            state["search_sources"] = sources
+            results.append(f"DISCOVER {argument} -> {content}")
+            tool_calls_seen.append(
+                _tool_entry(
+                    deps,
+                    "DISCOVER",
+                    argument,
+                    phase,
+                    tool_start_ms,
+                    content,
+                    _tool_result_summary("DISCOVER", content),
+                )
+            )
+            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
         elif kind == "FETCH":
             if state["fetch_used"] >= MAX_FETCH_ROUNDS:
                 results.append(
@@ -526,6 +565,7 @@ def _execute_tools(
         "state_used": state_used,
         "resource_used": resource_used,
         "search_used": state["search_used"],
+        "discover_used": state["discover_used"],
         "fetch_used": state["fetch_used"],
         "quiz_used": state["quiz_used"],
         "search_sources": state["search_sources"],

@@ -303,7 +303,8 @@
       "fetch": "Fetch page",
       "chartNote": "The chart is rendered in the answer.",
       "stateNote": "Widget state was read; it is not displayed.",
-      "quiz": "Quiz question"
+      "quiz": "Quiz question",
+      "discover": "Find material"
     },
     "quizmeToggle": "Quiz-me",
     "quizmeOn": "Quiz-me is on — the tutor will test you here",

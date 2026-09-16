@@ -13,6 +13,11 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Chat discovery with approval-only attach: the chatbot gained a DISCOVER
+  tool (web, YouTube and site presets; `DISCOVER here` searches for the
+  current topic without typing a query) and an attach_link proposal that
+  turns a found URL into a placed link reference after you approve it.
+  (plan 73-F, ADR-167/170)
 - External web sources: add RSS/Atom feeds, YouTube channels or playlists and
   site-filtered searches as standing sources — a deterministic scheduler scans
   them on a schedule (manual "Scan now" included) and new items land as

@@ -285,7 +285,8 @@
       "fetch": "Seite abrufen",
       "chartNote": "Das Diagramm wird in der Antwort dargestellt.",
       "stateNote": "Der Widget-Status wurde gelesen; er wird nicht angezeigt.",
-      "quiz": "Quizfrage"
+      "quiz": "Quizfrage",
+      "discover": "Material finden"
     },
     "quizmeToggle": "Quizmodus",
     "quizmeOn": "Quizmodus ist aktiviert — der Tutor wird dich hier abfragen",

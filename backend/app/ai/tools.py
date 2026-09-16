@@ -192,7 +192,7 @@ RESOURCE_TOOL_KEYWORDS = (
 )
 
 TOOL_LINE_RE = re.compile(
-    r"^[ \t]*(CALC|SYMPY|READ|STATE|PLOT|SEARCH|FETCH|FIND|"
+    r"^[ \t]*(CALC|SYMPY|READ|STATE|PLOT|SEARCH|FETCH|FIND|DISCOVER|"
     + "|".join(RESOURCE_TOOL_KEYWORDS)
     + r")(?:[ \t]+(.+))?[ \t]*$",
     re.MULTILINE,
@@ -367,6 +367,30 @@ CHAT_TOOL_CATALOG: list[dict[str, Any]] = [
         "(no search provider configured, provider unreachable, budget spent).",
         "scope": "Chat answers — external research; excerpts go to the model only "
         "and are never stored in the answer; up to 2 SEARCHes per turn.",
+    },
+    {
+        "name": "DISCOVER",
+        "description": "Find study material on the open web (web search, "
+        "YouTube, site presets like Khan Academy) and get titled source "
+        "links with providers. Use it when the student asks to find videos, "
+        "courses, exercises or reading on a topic. Pass the literal word "
+        "`here` to search for material about the current topic/chapter.",
+        "example": "DISCOVER integration by parts video",
+        "arguments": [
+            {
+                "name": "query",
+                "type": "string",
+                "required": True,
+                "description": "A focused discovery query, or `here` to "
+                "build one from the current study context",
+            }
+        ],
+        "response": "Up to 5 numbered results (title, provider, URL) or an "
+        "error line (no providers configured, providers unreachable, no "
+        "course context for `here`, budget spent).",
+        "scope": "Chat answers — external material discovery; results go to "
+        "the model only and are never stored or auto-imported; the student "
+        "can save results in the Discover dialog; up to 2 DISCOVERs per turn.",
     },
     {
         "name": "FETCH",

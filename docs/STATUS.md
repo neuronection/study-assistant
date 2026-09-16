@@ -6,6 +6,33 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — chat DISCOVER tool + attach_link proposal (plan 73-F,
+ADR-167/170, 2026-09-16):** the chatbot can now find and land material —
+through HITL only. New **`DISCOVER`** chat tool in `CHAT_TOOL_CATALOG`
+(degraded prompt-line grammar too): runs the plan-73-C provider registry
+(web/YouTube/site presets, provider badges per result line), cap 5 results,
+**2-per-turn budget**, discovered URLs feed the same citation-chip advisory
+as SEARCH, results are model-only (never persisted, never auto-imported).
+**`DISCOVER here`** builds its query **deterministically** — node session:
+title + summary (≤200) + `ai_hint` (≤150) + up to 4 node concept names;
+course-level session: title + description (≤200); no course → an honest
+"no course context" error line the model can relay. Frontend registry gains
+the DISCOVER card (Compass icon, citation chips via the shared
+SearchResultsView). New **`attach_link`** proposal {url, title?, node_id?}:
+pydantic validator requires http(s) at proposal creation (repair round on
+violations via the existing proposal_valid contract, node ids validated
+against the course tree plan-72-D style), approval executes
+`MaterialsService.create_link` (normalized-URL dedupe, node placement,
+rationale "web reference"), the card previews target name (title, falling
+back to the URL domain) + node breadcrumb — the only chat-to-material path
+(no auto-attach, ADR-167). Tests: `test_chat_discover.py` (10: catalog +
+grammar, here-from-node query build, course fallback, no-course honesty,
+unconfigured honesty, 2-per-turn budget with model-visible feedback,
+attach_link payload validation, e2e execute with node link, stale-node
+honest failure, second-attach dedupes). `check-ai-alignment.sh` clean.
+Backend 1,240 green (+10), ruff/mypy clean; frontend 1,272 green
+(lint/typecheck/build/i18n green).
+
 **Feature — external web sources (plan 73-E, ADR-167/170, 2026-09-16):**
 standing declarative sources now feed the suggestion stream, LLM-free.
 New **`external_sources`** table (migration **0063**; `ExternalSourceKind`

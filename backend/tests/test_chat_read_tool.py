@@ -88,6 +88,7 @@ def test_tools_endpoint_lists_chat_tools(
             "PLOT",
             "FIND",
             "SEARCH",
+            "DISCOVER",
             "FETCH",
             "COURSES",
             "NODE_OVERVIEW",

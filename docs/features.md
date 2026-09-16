@@ -246,6 +246,18 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Chat discovery & attach proposals (plan 73-F, ADR-167/170,
+  2026-09-16)**: ask the chatbot to "find me a video on integration by parts"
+  — the new **DISCOVER** tool searches across web, YouTube and site presets
+  (with per-result provider badges) and can even be invoked as
+  **`DISCOVER here`** to search for the current chapter/topic without typing
+  a query (built deterministically from the node's title, summary, hint and
+  concepts; falls back to the course, and is honestly refused when there is
+  no course context). Results appear as citation chips — never saved or
+  imported on their own. When the model finds something worth keeping it can
+  propose **attach_link** {url, title, node}: approving creates a real link
+  reference at the chosen topic (deduped on the normalized URL), previewed on
+  the proposal card — approval is the only path from chat to material
 - ✅ **External web sources (plan 73-E, ADR-167/170, 2026-09-16)**: standing
   web sources that surface new material on their own — **RSS/Atom feeds**
   (feedparser over httpx with etag/last-modified resume), **YouTube channels
