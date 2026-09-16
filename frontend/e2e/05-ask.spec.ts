@@ -135,8 +135,13 @@ test('S8 — multi-material context-menu ask attaches the selection', async ({ p
   await uploadMaterial(page, course.id, 'derivatives.md', '# Derivatives\n\nDerivative rules.')
 
   await page.goto(`${baseUrl()}/library?course=${course.id}`)
-  const first = page.getByText('limits', { exact: false }).first()
-  const second = page.getByText('derivatives', { exact: false }).first()
+  const materialRow = (name: string) =>
+    page
+      .locator('[data-selectable-id^="m"]')
+      .filter({ hasText: name })
+      .first()
+  const first = materialRow('limits')
+  const second = materialRow('derivatives')
   await first.click()
   await second.click({ modifiers: ['Control'] })
   await second.click({ button: 'right' })
