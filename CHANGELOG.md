@@ -11,6 +11,16 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+
+- Adopt `@neuronection/assistant-ui` 0.37.0 (session-list title wrapping,
+  softer chat-bubble radius, standalone `InfoTooltip`, settings-shell
+  container-query layout modes) and refresh the minor/patch dependency
+  drift (React 19.3, TanStack router/query/virtual, i18next, lucide-react,
+  framer-motion, vite, eslint, and friends). Rendering majors (plotly 4,
+  mermaid 12, katex 0.18) and toolchain majors (TypeScript 7, vitest 5)
+  are deliberately held for dedicated passes.
+
 ### Fixed
 
 - Tutor page (`/chat`): the chat history panel now scrolls on its own while
