@@ -741,22 +741,12 @@ single-job GET (ADRs 156–158 recorded). Plan doc:
 execution order, **plan 73** is next.
 
 **Also planned (user-approved 2026-09-11) — plan 73 "Material discovery,
-references & integrations" (amended same day: three-tier integration
-model, ADR-170):** link materials (URL references as first-class
-materials with `source_url` + per-course dedupe), a URL parser registry with
-YouTube transcript ingest (yt-dlp, captions-first; transcribe-task fallback),
-a discovery provider registry (web / YouTube / site-filtered SearXNG presets
-such as Khan Academy — no first-party ToS-restricted platform code),
-`material_suggestions` tracking (suggested/saved/dismissed) with a Discover
-dialog in the workspace/library, **Tier 1 declarative external web sources**
-(RSS/Atom, YouTube channel/playlist, site-filtered search — deterministic
-scheduler landing new items as suggestions only, fully LLM-free), a chat
-`DISCOVER` tool (context-built `here` queries; Tier 3) with a HITL
-`attach_link` proposal, and **Tier 2 custom connectors via a FastMCP MCP
-client bridge invoked deterministically by services** (discovery + parse
-contracts; importable in-process scripts rejected — ADR-168).
-ADRs 164–171 reserved. Plan doc: `dev/plans/73-material-discovery-and-integrations.md`
-(local-only).
+references & integrations" — COMPLETE (2026-09-16, slices A–G; ADRs
+164–171):** link materials (A), parser registry + YouTube transcripts (B),
+discovery provider registry (C), suggestion tracking + Discover dialog +
+settings card (D), external web sources (E), chat DISCOVER + attach_link
+(F), custom MCP connectors (G) — see the slice entries at the top of this
+file and the local plan doc for as-built refinements.
 
 **Also planned (user-approved 2026-09-15) — plan 75 "Material placement &
 discovery":** node-targeted uploads (`node_id` on `POST /materials`, with
