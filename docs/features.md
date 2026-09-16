@@ -237,6 +237,15 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   also draw on them (`include_unassigned`, default off) and a link to the
   course Materials tab for placing them; the coverage note includes them when
   checked
+- ✅ **Validated practice sets (plan 70-C, ADR-158, 2026-09-16)**: composed
+  practice sets are now authored as structured items and **every answer is
+  checked server-side before saving** (SymPy equivalence for equations,
+  distractors can't duplicate the answer, numeric values must parse — the
+  quizgen validation machinery, extracted and shared); broken generations are
+  repaired or refused (422), never saved with a provably wrong key. The
+  document reads exactly as before (problems + answers section), and the
+  structured items are stored in the material's provenance for future
+  interactive practice
 - ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
   provider (Settings → Providers → Web search; Tavily-compatible or SearXNG,
   API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**

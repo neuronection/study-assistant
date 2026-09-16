@@ -21,6 +21,18 @@ class QuizgenOut(LooseObject):
     questions: list[QuizQuestion] | None = None
 
 
+class PracticeItem(LooseObject):
+    stem_md: str | None = None
+    answer_kind: str | None = None
+    answer: Any | None = None
+    choices: list[str] | None = None
+    solution_steps: list[str] | None = None
+
+
+class PracticeSetOut(LooseObject):
+    items: list[PracticeItem] | None = None
+
+
 class Flashcard(LooseObject):
     front: str | None = None
     back: str | None = None

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 
@@ -5,8 +6,19 @@ from pytest import fixture
 from sqlalchemy.orm import Session
 from test_chat_api import ScriptedGateway
 
-from app.domain.models import Course, Material, MaterialLink, Profile, TreeNode
-from app.pipelines.compose import ComposeService
+from app.domain.models import (
+    Course,
+    Material,
+    MaterialLink,
+    Profile,
+    TreeNode,
+)
+from app.pipelines.compose import (
+    ComposeError,
+    ComposeService,
+    _render_practice_set,
+    _validate_practice_draft,
+)
 from app.services.knowledge.context import (
     COVERAGE_GATE,
     COVERAGE_MIN_MATERIALS,
@@ -399,3 +411,202 @@ def _scoped_course(
         session.flush()
         ids.append(int(material.id))
     return int(profile.id), int(course.id), int(node.id), ids
+
+
+def _practice_json() -> str:
+    return json.dumps(
+        {
+            "items": [
+                {
+                    "stem_md": "Compute $2+2$.",
+                    "answer_kind": "numeric",
+                    "answer": {"value": "4"},
+                    "solution_steps": ["Add the numbers.", "$2+2=4$"],
+                },
+                {
+                    "stem_md": "Is the derivative of $x^2$ equal to $2x$?",
+                    "answer_kind": "truefalse",
+                    "answer": {"value": True},
+                },
+                {
+                    "stem_md": "Which option equals $\\frac{d}{dx}\\sin(x)$?",
+                    "answer_kind": "single",
+                    "choices": ["$\\cos(x)$", "$-\\sin(x)$", "$\\tan(x)$"],
+                    "answer": {"index": 0},
+                },
+                {
+                    "stem_md": "Expand and simplify $(x-3)(x+3)$.",
+                    "answer_kind": "equation",
+                    "choices": ["$x^2 + 9$", "$(x-3)^2$"],
+                    "answer": {"value": "x^2 - 9"},
+                    "solution_steps": ["Difference of squares."],
+                },
+            ]
+        }
+    )
+
+
+def test_validate_practice_draft_accepts_the_valid_contract() -> None:
+    problems = _validate_practice_draft(json.loads(_practice_json()), [])
+    assert problems == []
+
+
+def test_validate_practice_draft_rejects_bad_items() -> None:
+    draft = {
+        "items": [
+            {"stem_md": "Pick one", "answer_kind": "code", "answer": {}},
+            {"stem_md": "", "answer_kind": "truefalse", "answer": {"value": True}},
+            {"stem_md": "No answer object", "answer_kind": "numeric"},
+            {
+                "stem_md": "Unparseable",
+                "answer_kind": "equation",
+                "answer": {"value": "x ==="},
+            },
+            {
+                "stem_md": "Distractor equals answer",
+                "answer_kind": "equation",
+                "choices": ["x^2 - 9", "x^2 + 9"],
+                "answer": {"value": "x^2-9"},
+            },
+        ]
+    }
+    problems = _validate_practice_draft(draft, [])
+    joined = "; ".join(problems)
+    assert "answer_kind 'code'" in joined
+    assert "empty stem" in joined
+    assert "missing answer object" in joined
+    assert "is not parseable" in joined
+    assert "distractor 0 equals the answer" in joined
+
+
+def test_validate_practice_draft_requires_items_and_caps_count() -> None:
+    assert _validate_practice_draft({}, []) == ["response missing items list"]
+    assert _validate_practice_draft({"items": []}, []) == [
+        "response missing items list"
+    ]
+    oversized = {
+        "items": [
+            {
+                "stem_md": f"Problem {index}",
+                "answer_kind": "numeric",
+                "answer": {"value": str(index)},
+            }
+            for index in range(31)
+        ]
+    }
+    problems = _validate_practice_draft(oversized, [])
+    assert any("too many items" in problem for problem in problems)
+
+
+def test_render_practice_set_keeps_problems_then_answers_contract() -> None:
+    markdown = _render_practice_set("Practice", json.loads(_practice_json())["items"])
+    problems_at = markdown.index("## Problems")
+    answers_at = markdown.index("## Answers")
+    assert problems_at < answers_at
+    assert "1. Compute $2+2$." in markdown
+    assert "a) $\\cos(x)$" in markdown
+    assert "— true or false?" in markdown
+    assert "1. 4" in markdown
+    assert "2. True" in markdown
+    assert "3. a) $\\cos(x)$" in markdown
+    assert "4. $x^2 - 9$" in markdown
+    assert "   - Difference of squares." in markdown
+
+
+def test_compose_practice_set_persists_markdown_and_provenance(
+    db_session: Session, tmp_path: Path
+) -> None:
+    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1)
+    gateway = ScriptedGateway([_practice_json()])
+    service = ComposeService(db_session, gateway)
+    blobs = BlobStore(tmp_path)
+    material = service.compose(
+        profile_id=profile_id,
+        course_id=course_id,
+        node_id=None,
+        kind="practice_set",
+        title="Derivatives drill",
+        context_bundle=None,
+        blobs=blobs,
+    )
+    sha = material.blob_sha
+    assert sha is not None
+    stored_bytes = blobs.get(sha)
+    assert stored_bytes is not None
+    stored = stored_bytes.decode()
+    assert stored is not None
+    assert "## Problems" in stored
+    assert "## Answers" in stored
+    provenance = material.provenance
+    assert isinstance(provenance, dict)
+    items = provenance["practice_items"]
+    assert len(items) == 4
+    assert items[0]["checks"] == {"shape": True, "parse": True, "distractors": True}
+    assert items[2]["choices"][0] == "$\\cos(x)$"
+
+
+def test_compose_practice_set_repairs_then_succeeds(
+    db_session: Session, tmp_path: Path
+) -> None:
+    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1)
+    bad = json.dumps(
+        {
+            "items": [
+                {
+                    "stem_md": "Compute $3\\cdot3$.",
+                    "answer_kind": "numeric",
+                    "answer": {"value": "nine"},
+                }
+            ]
+        }
+    )
+    gateway = ScriptedGateway([bad, _practice_json()])
+    service = ComposeService(db_session, gateway)
+    material = service.compose(
+        profile_id=profile_id,
+        course_id=course_id,
+        node_id=None,
+        kind="practice_set",
+        title="Drill",
+        context_bundle=None,
+        blobs=BlobStore(tmp_path),
+    )
+    assert len(gateway.calls) == 2
+    feedback = "\n".join(str(m.content) for m in gateway.calls[1])
+    assert "numeric answer needs numeric value" in feedback
+    provenance = material.provenance
+    assert isinstance(provenance, dict)
+    assert len(provenance["practice_items"]) == 4
+
+
+def test_compose_practice_set_exhausts_repair_and_raises(
+    db_session: Session, tmp_path: Path
+) -> None:
+    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1)
+    bad = json.dumps(
+        {
+            "items": [
+                {
+                    "stem_md": "Compute $3\\cdot3$.",
+                    "answer_kind": "numeric",
+                    "answer": {"value": "nine"},
+                }
+            ]
+        }
+    )
+    gateway = ScriptedGateway([bad, bad, bad])
+    service = ComposeService(db_session, gateway)
+    try:
+        service.compose(
+            profile_id=profile_id,
+            course_id=course_id,
+            node_id=None,
+            kind="practice_set",
+            title="Drill",
+            context_bundle=None,
+            blobs=BlobStore(tmp_path),
+        )
+    except ComposeError as error:
+        assert "did not pass validation" in str(error)
+    else:
+        raise AssertionError("ComposeError not raised")

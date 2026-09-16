@@ -11,7 +11,6 @@ from ..core.vocab import QUESTION_TYPES
 from ..domain.models import Activity, Question
 from ..math.code import validate_code_answer
 from ..math.composite import validate_composite_answer
-from ..math.equivalence import expressions_equivalent
 from ..math.graphs import (
     build_graph_data,
     graph_domain,
@@ -22,6 +21,11 @@ from ..math.graphs import (
 from ..math.regions import validate_region_answer
 from ..math.tables import validate_table_answer
 from ..services.knowledge.context import ContextBundle
+from ..services.study.answer_validation import (
+    PRACTICE_ANSWER_KINDS,
+    validate_answer_shape,
+    validate_distractor_equivalence,
+)
 
 QUIZGEN_TASK = "quizgen"
 QUIZGEN_SKILL = "quiz.generate"
@@ -57,33 +61,11 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
         problems.append(f"q{index}: missing answer object")
         answer = {}
     options = draft.get("options_md")
-    if qtype in ("single", "multi"):
-        if not isinstance(options, list) or len(options) < 2:
-            problems.append(f"q{index}: needs at least 2 options")
-        else:
-            if qtype == "single":
-                try:
-                    choice = int(answer.get("index", -1))
-                    if not 0 <= choice < len(options):
-                        problems.append(f"q{index}: answer index out of range")
-                except (TypeError, ValueError):
-                    problems.append(f"q{index}: single answer needs integer index")
-            else:
-                indices = answer.get("indices")
-                if not isinstance(indices, list) or not indices:
-                    problems.append(f"q{index}: multi answer needs indices list")
-                elif any(not 0 <= int(i) < len(options) for i in indices if str(i).isdigit()):
-                    problems.append(f"q{index}: multi index out of range")
-    elif qtype == "truefalse":
-        if not isinstance(answer.get("value"), bool):
-            problems.append(f"q{index}: truefalse answer must be true/false")
-    elif qtype == "numeric":
-        try:
-            float(answer.get("value") or "not-a-number")
-        except (TypeError, ValueError):
-            problems.append(f"q{index}: numeric answer needs numeric value")
-    elif qtype == "equation" and not str(answer.get("value", "")).strip():
-        problems.append(f"q{index}: equation answer needs value")
+    if qtype in PRACTICE_ANSWER_KINDS:
+        problems.extend(validate_answer_shape(qtype, answer, options, f"q{index}"))
+        problems.extend(
+            validate_distractor_equivalence(qtype, answer, options, f"q{index}")
+        )
     elif qtype == "numberline":
         problems.extend(
             f"q{index}: {problem}" for problem in validate_region_answer(answer)
@@ -129,11 +111,6 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     except (TypeError, ValueError):
         problems.append(f"q{index}: expected_time_sec must be integer")
 
-    if qtype == "equation" and isinstance(options, list) and len(options) >= 2:
-        expected = str(answer.get("value", ""))
-        for option_index, option in enumerate(options):
-            if expressions_equivalent(str(option), expected):
-                problems.append(f"q{index}: distractor {option_index} equals the answer")
     return problems
 
 

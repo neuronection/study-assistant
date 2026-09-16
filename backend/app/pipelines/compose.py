@@ -7,14 +7,21 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, ProviderError
 from ..ai.runner import AuditRef, TaskRunner
-from ..ai.skills import COMPOSE_SYSTEM
+from ..ai.skills import COMPOSE_SYSTEM, PRACTICE_SET_SYSTEM
+from ..ai.structured import PracticeSetOut
 from ..core.vocab import ProvenanceKind
 from ..domain.models import Extraction, Material, MaterialLink, Note, TreeNode
+from ..math.equivalence import parse_math
 from ..services.content.materials import MaterialsService
 from ..services.knowledge.context import (
     COVERAGE_GATE,
     COVERAGE_MIN_MATERIALS,
     ContextBundle,
+)
+from ..services.study.answer_validation import (
+    PRACTICE_ANSWER_KINDS,
+    validate_answer_shape,
+    validate_distractor_equivalence,
 )
 from ..storage.blobs import BlobStore
 
@@ -22,10 +29,26 @@ logger = structlog.get_logger(__name__)
 
 COMPOSE_TASK = "material_compose"
 COMPOSE_SKILL = "material.compose"
+COMPOSE_PRACTICE_SKILL = "material.compose_practice"
 MAX_REPAIR_ROUNDS = 2
 MIN_CHARS = 400
 MAX_CHARS = 60000
 MATH_SAMPLE = 5
+MAX_PRACTICE_ITEMS = 30
+PRACTICE_LETTERS = "abcdef"
+PRACTICE_JSON_CONTRACT = (
+    "Output format (STRICT): return only a JSON object "
+    '{"items": [...]} where every item is '
+    '{"stem_md": str, "answer_kind": "single" | "multi" | "truefalse" | '
+    '"numeric" | "equation", "answer": object, "choices": [str] | null, '
+    '"solution_steps": [str] | null} — no prose, no code fences.\n'
+    '- single/multi: 2-5 entries in "choices"; answer = {"index": i} or '
+    '{"indices": [i, ...]} (0-based into choices).\n'
+    '- truefalse: answer = {"value": true | false}. numeric: '
+    '{"value": "<number>"}. equation: {"value": "<parseable expression>"}.\n'
+    "Every answer must be objectively correct; wrong choices plausible but "
+    f"provably not the answer. At most {MAX_PRACTICE_ITEMS} items."
+)
 LATEX_SPAN_RE = re.compile(r"\$\$(.+?)\$\$|\$([^$\n]+?)\$", re.DOTALL)
 FORMULA_MAX_PER_NODE = 40
 FORMULA_MIN_CHARS = 3
@@ -196,6 +219,18 @@ def _math_lint_advisory(markdown: str) -> None:
         logger.info("compose_math_lint", failures=failures)
 
 
+def _check_mentions(markdown: str, registry_refs: list[str]) -> list[str]:
+    from ..ai.mentions import MENTION_RE
+
+    used = {f"{m.group(1)}{m.group(2)}" for m in MENTION_RE.finditer(markdown)}
+    invalid = sorted(used - set(registry_refs))
+    if invalid:
+        return [
+            f"handles {invalid} were not offered in the context — remove or fix them"
+        ]
+    return []
+
+
 def _validate_markdown(markdown: str, registry_refs: list[str]) -> list[str]:
     problems: list[str] = []
     text = markdown.strip()
@@ -203,16 +238,123 @@ def _validate_markdown(markdown: str, registry_refs: list[str]) -> list[str]:
         problems.append(f"document too short ({len(text)} chars, need {MIN_CHARS})")
     if len(text) > MAX_CHARS:
         problems.append(f"document too long ({len(text)} chars, limit {MAX_CHARS})")
-    from ..ai.mentions import MENTION_RE
-
-    used = {f"{m.group(1)}{m.group(2)}" for m in MENTION_RE.finditer(text)}
-    allowed = set(registry_refs)
-    invalid = sorted(used - allowed)
-    if invalid:
-        problems.append(
-            f"handles {invalid} were not offered in the context — remove or fix them"
-        )
+    problems.extend(_check_mentions(text, registry_refs))
     return problems
+
+
+def _validate_practice_draft(
+    draft: dict[str, Any], registry_refs: list[str]
+) -> list[str]:
+    items = draft.get("items")
+    if not isinstance(items, list) or not items:
+        return ["response missing items list"]
+    problems: list[str] = []
+    if len(items) > MAX_PRACTICE_ITEMS:
+        problems.append(f"too many items ({len(items)}, max {MAX_PRACTICE_ITEMS})")
+    for index, entry in enumerate(items[:MAX_PRACTICE_ITEMS]):
+        label = f"item {index + 1}"
+        if not isinstance(entry, dict):
+            problems.append(f"{label}: not an object")
+            continue
+        kind = str(entry.get("answer_kind"))
+        if kind not in PRACTICE_ANSWER_KINDS:
+            problems.append(
+                f"{label}: answer_kind '{entry.get('answer_kind')}' must be one of "
+                f"{sorted(PRACTICE_ANSWER_KINDS)}"
+            )
+            continue
+        if not str(entry.get("stem_md", "")).strip():
+            problems.append(f"{label}: empty stem")
+        answer = entry.get("answer")
+        if not isinstance(answer, dict):
+            problems.append(f"{label}: missing answer object")
+            answer = {}
+        choices = entry.get("choices")
+        problems.extend(validate_answer_shape(kind, answer, choices, label))
+        problems.extend(validate_distractor_equivalence(kind, answer, choices, label))
+        if kind == "equation":
+            value = str(answer.get("value", "")).strip()
+            try:
+                parse_math(value)
+            except Exception:
+                problems.append(
+                    f"{label}: equation answer '{value[:40]}' is not parseable"
+                )
+    rendered = _render_practice_set("Practice set", items[:MAX_PRACTICE_ITEMS])
+    problems.extend(_check_mentions(rendered, registry_refs))
+    return problems
+
+
+def _render_practice_set(doc_title: str, items: list[dict[str, Any]]) -> str:
+    lines = [f"# {doc_title}", "", "## Problems", ""]
+    for index, entry in enumerate(items, start=1):
+        stem = str(entry.get("stem_md") or "").strip()
+        kind = str(entry.get("answer_kind") or "")
+        choices = entry.get("choices")
+        if kind in ("single", "multi") and isinstance(choices, list) and choices:
+            lines.append(f"{index}. {stem}")
+            for letter, choice in zip(PRACTICE_LETTERS, choices, strict=False):
+                lines.append(f"   {letter}) {choice}")
+        elif kind == "truefalse":
+            lines.append(f"{index}. {stem} — true or false?")
+        else:
+            lines.append(f"{index}. {stem}")
+    lines.extend(["", "## Answers", ""])
+    for index, entry in enumerate(items, start=1):
+        kind = str(entry.get("answer_kind") or "")
+        raw_answer = entry.get("answer")
+        answer: dict[str, Any] = raw_answer if isinstance(raw_answer, dict) else {}
+        raw_choices = entry.get("choices")
+        answer_choices: list[Any] = (
+            list(raw_choices) if isinstance(raw_choices, list) else []
+        )
+        rendered = "—"
+        if kind == "single":
+            try:
+                chosen = int(answer.get("index", -1))
+            except (TypeError, ValueError):
+                chosen = -1
+            rendered = (
+                f"{PRACTICE_LETTERS[chosen]}) {answer_choices[chosen]}"
+                if 0 <= chosen < len(answer_choices)
+                else "—"
+            )
+        elif kind == "multi":
+            indices = answer.get("indices")
+            picked = []
+            if isinstance(indices, list):
+                for raw in indices:
+                    try:
+                        chosen = int(raw)
+                    except (TypeError, ValueError):
+                        continue
+                    if 0 <= chosen < len(answer_choices):
+                        picked.append(
+                            f"{PRACTICE_LETTERS[chosen]}) {answer_choices[chosen]}"
+                        )
+            rendered = ", ".join(picked) if picked else "—"
+        elif kind == "truefalse":
+            rendered = "True" if answer.get("value") is True else "False"
+        elif kind == "numeric":
+            rendered = str(answer.get("value"))
+        elif kind == "equation":
+            rendered = f"${answer.get('value')}$"
+        lines.append(f"{index}. {rendered}")
+        steps = entry.get("solution_steps")
+        for step in steps if isinstance(steps, list) else []:
+            lines.append(f"   - {step}")
+    return "\n".join(lines)
+
+
+def _practice_item_report(entry: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "stem_md": entry.get("stem_md"),
+        "answer_kind": entry.get("answer_kind"),
+        "answer": entry.get("answer"),
+        "choices": entry.get("choices"),
+        "solution_steps": entry.get("solution_steps"),
+        "checks": {"shape": True, "parse": True, "distractors": True},
+    }
 
 
 class ComposeService:
@@ -319,25 +461,51 @@ class ComposeService:
             return _validate_markdown(markdown, registry_refs)
 
         runner = TaskRunner(self._session, self._gateway)
+        practice_items: list[dict[str, Any]] | None = None
         try:
-            result = runner.run_text(
-                task=COMPOSE_TASK,
-                prompt=prompt,
-                validate=validate,
-                fallback_system=COMPOSE_SYSTEM,
-                skill_key=COMPOSE_SKILL,
-                course_id=course_id,
-                max_rounds=MAX_REPAIR_ROUNDS,
-                audit=AuditRef("compose", course_id, f"compose {kind}"),
-            )
+            if kind == "practice_set":
+                result = runner.run_json(
+                    task=COMPOSE_TASK,
+                    prompt=prompt + "\n\n" + PRACTICE_JSON_CONTRACT,
+                    validate=lambda draft: _validate_practice_draft(
+                        draft, registry_refs
+                    ),
+                    fallback_system=PRACTICE_SET_SYSTEM,
+                    skill_key=COMPOSE_PRACTICE_SKILL,
+                    course_id=course_id,
+                    max_rounds=MAX_REPAIR_ROUNDS,
+                    error_type=ComposeError,
+                    audit=AuditRef("compose", course_id, f"compose {kind}"),
+                    schema=PracticeSetOut,
+                )
+                if result.problems:
+                    raise ComposeError(
+                        "composed practice set did not pass validation: "
+                        + "; ".join(result.problems[:6])
+                    )
+                raw_items = result.draft.get("items") or []
+                raw_items = raw_items[:MAX_PRACTICE_ITEMS]
+                markdown = _render_practice_set(doc_title, raw_items).strip()
+                practice_items = [_practice_item_report(entry) for entry in raw_items]
+            else:
+                result = runner.run_text(
+                    task=COMPOSE_TASK,
+                    prompt=prompt,
+                    validate=validate,
+                    fallback_system=COMPOSE_SYSTEM,
+                    skill_key=COMPOSE_SKILL,
+                    course_id=course_id,
+                    max_rounds=MAX_REPAIR_ROUNDS,
+                    audit=AuditRef("compose", course_id, f"compose {kind}"),
+                )
+                if result.problems:
+                    raise ComposeError(
+                        "composed document did not pass validation: "
+                        + "; ".join(result.problems[:6])
+                    )
+                markdown = result.output_text.strip()
         except ProviderError as error:
             raise ComposeError(str(error)) from error
-        if result.problems:
-            raise ComposeError(
-                "composed document did not pass validation: "
-                + "; ".join(result.problems[:6])
-            )
-        markdown = result.output_text.strip()
         needs_review = False
         if kind == "formula_sheet":
             markdown, unknown, total = _strip_unknown_formulas(markdown, known_keys)
@@ -370,6 +538,8 @@ class ComposeService:
             updated = dict(existing.provenance or {})
             if coverage is not None:
                 updated["coverage"] = coverage
+            if practice_items is not None:
+                updated["practice_items"] = practice_items
             if needs_review:
                 updated["needs_review"] = True
             else:
@@ -390,6 +560,8 @@ class ComposeService:
         }
         if coverage is not None:
             provenance["coverage"] = coverage
+        if practice_items is not None:
+            provenance["practice_items"] = practice_items
         if needs_review:
             provenance["needs_review"] = True
         material.provenance = provenance

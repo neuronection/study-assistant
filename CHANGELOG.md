@@ -13,6 +13,11 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Validated practice sets: AI-composed practice sets are now authored as
+  structured items whose answers are verified server-side (SymPy-checked
+  equations, distractors can't equal the answer, parseable numeric values)
+  before the document is saved — a broken generation is repaired or refused,
+  never persisted with a provably wrong key. (plan 70-C, ADR-158)
 - Compose orphan-material awareness: when composing at a topic, materials
   that were uploaded but never placed anywhere are no longer silently
   ignored — the dialog offers an opt-in checkbox to also draw on them, with a

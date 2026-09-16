@@ -259,6 +259,31 @@ COMPOSE_SYSTEM = (
     "- Output ONLY the document markdown — no preamble, no commentary."
 )
 
+PRACTICE_SET_SYSTEM = (
+    "You are a practice-set author. Given a brief (title, instructions) and "
+    "course context, author practice items that a validator can check.\n"
+    "Rules:\n"
+    "- Output ONLY a JSON object: "
+    '{"items": [{"stem_md": str, "answer_kind": str, "answer": object, '
+    '"choices": list[str] | null, "solution_steps": list[str] | null}]} — '
+    "no prose, no code fences.\n"
+    "- answer_kind is one of: single, multi, truefalse, numeric, equation.\n"
+    '- single/multi: 2-5 markdown strings in "choices"; answer = '
+    '{"index": i} (single) or {"indices": [i, ...]} (multi), 0-based.\n'
+    '- truefalse: answer = {"value": true | false}.\n'
+    '- numeric: answer = {"value": "<number>"}.\n'
+    "- equation: answer = {\"value\": \"<expression>\"} (plain math or "
+    "LaTeX, parseable by SymPy).\n"
+    "- Every answer must be objectively correct for its stem; wrong choices "
+    "must be plausible but provably not the answer.\n"
+    "- Stems are self-contained markdown; mathematics in LaTeX ($...$ "
+    "inline, $$...$$ display).\n"
+    "- Ground stems in the provided context and reference its handles "
+    "(e.g. [M12]) exactly as given; never invent content that is not there.\n"
+    "- Add 1-3 short \"solution_steps\" per item showing how the answer is "
+    "reached."
+)
+
 GRADE_FREEFORM_SYSTEM = (
     "You are a careful rubric grader. Grade the student's free-form answer against the "
     "rubric rows provided. Respond with ONLY a JSON object:\n"
@@ -313,6 +338,7 @@ ALL_SYSTEMS = {
     "mindmap.edit": MINDMAP_EDIT_SYSTEM,
     "grade.freeform": GRADE_FREEFORM_SYSTEM,
     "material.compose": COMPOSE_SYSTEM,
+    "material.compose_practice": PRACTICE_SET_SYSTEM,
     "pattern.discover": PATTERN_DISCOVER_SYSTEM,
     "transcribe.audio": TRANSCRIBE_SYSTEM,
 }
@@ -436,6 +462,17 @@ SEEDS: list[SkillSeed] = [
         name="Compose study material",
         description="AI-composed study documents (guides, summary sheets, practice sets).",
         system_prompt=COMPOSE_SYSTEM,
+        contract={"max_words": None, "no_answer_reveal": False, "citation_if_context": False},
+    ),
+    SkillSeed(
+        key="material.compose_practice",
+        task="material_compose",
+        name="Compose practice set (validated JSON)",
+        description=(
+            "Practice-set authoring through structured JSON items that the "
+            "server validates (SymPy-checked answers) before rendering to markdown."
+        ),
+        system_prompt=PRACTICE_SET_SYSTEM,
         contract={"max_words": None, "no_answer_reveal": False, "citation_if_context": False},
     ),
     SkillSeed(

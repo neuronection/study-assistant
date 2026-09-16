@@ -332,6 +332,24 @@ searchable, citable, assignable, printable — not throwaway artifacts.
   of any formula not in the collected set** (no invented formulas, guaranteed)
   and flagged `needs_review` in provenance when >20 % was stripped. Root
   study-launcher entry; one live sheet per course root (below).
+- **`practice_set` through deterministic validators (plan 70-C, ADR-158)**:
+  composing a practice set no longer trusts freeform markdown. The model
+  authors **structured JSON items** (`stem_md`, `answer_kind`, `answer`,
+  `choices?`, `solution_steps?`) restricted to the server-verifiable kinds
+  (`single`, `multi`, `truefalse`, `numeric`, `equation` — client-executed
+  kinds like `code` stay out), through `run_json` with the
+  `PracticeSetOut` schema, the `material.compose_practice` skill (seeded;
+  skills-version edits apply) and the same 2-round repair loop with validator
+  feedback (exhaustion → `ComposeError` → 422). Validation is deterministic:
+  the quizgen-derived answer-validation chain
+  (`services/study/answer_validation.py` — shape/sanity per kind, distractor ≠
+  answer via the SymPy equivalence chain, extracted mechanically so quizgen's
+  golden-set contract is unchanged), plus stems non-empty, 1–30 items, and
+  SymPy parseability for equation answers. Validated items render to the same
+  markdown contract as before (numbered problems, **Answers** section at the
+  end — the reader/ingest path is unchanged) and the structured items +
+  per-item checks ride `provenance["practice_items"]` (free for future
+  interactive practice; still no migration).
 - **`cheat_sheet` / `node_review` (plan 22 J, ADR-051 — organizer artifacts)**:
   the Phase 8E organizer outputs persist as real materials with provenance
   kinds `cheat_sheet` / `node_review`. Cheat sheets follow the **one-live-artifact

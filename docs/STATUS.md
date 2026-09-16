@@ -6,6 +6,29 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — practice_set compose through deterministic validators (plan 70-C,
+ADR-158, 2026-09-16):** composed practice sets can no longer ship wrong
+answers. `ComposeService.compose(kind="practice_set")` switched from
+`run_text` to `run_json` with the `PracticeSetOut` schema: the model authors
+items `{stem_md, answer_kind, answer, choices?, solution_steps?}` restricted
+to server-verifiable kinds (`single|multi|truefalse|numeric|equation` — no
+`code`), validated deterministically through the quizgen-derived chain
+extracted to **`services/study/answer_validation.py`** (shape/sanity per kind,
+distractor ≠ answer via the SymPy equivalence chain — mechanical extraction,
+quizgen's golden-set contract unchanged and green) plus stems non-empty, 1–30
+items and SymPy parseability for equation answers; repair loop = 2 rounds with
+validator feedback, exhaustion → `ComposeError` → 422. Validated items render
+to the **same markdown contract** as before (numbered problems + Answers
+section at the end — reader/ingest unchanged); structured items + per-item
+checks persist in `provenance["practice_items"]` (no migration). New seeded
+skill `material.compose_practice` (task `material_compose`; the markdown
+compose skill's output contract doesn't fit JSON authoring). Other kinds keep
+`run_text`; frontend untouched (response shape unchanged). Tests:
+`test_compose_coverage.py` (+8: validator contract incl. bad kinds/parse/
+distractor-equality/count cap, renderer contract, end-to-end persist +
+repair-then-succeed + exhaustion). Backend 1,165 green (+17 over slice B),
+ruff/mypy clean.
+
 **Feature — compose orphan-material awareness (plan 70-B, 2026-09-16):**
 composing at a node/subtree no longer silently ignores never-placed course
 materials. `ContextSpec.include_unassigned` (default off) merges the plan-75-C
