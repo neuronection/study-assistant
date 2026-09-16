@@ -11,6 +11,13 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed
+
+- Tutor page (`/chat`): the chat history panel now scrolls on its own while
+  the conversation and composer stay fixed (previously the whole page
+  scrolled as one), and the input is the standard multiline composer that
+  grows with the message like in Career Assistant.
+
 ## [v0.9.0] - 2026-09-16
 
 ### Added
