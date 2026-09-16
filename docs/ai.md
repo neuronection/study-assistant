@@ -758,6 +758,31 @@ prompt cannot drift from the validator.
 (introspected live from the MCP server's registry — name, description, JSON-schema
 arguments, scope). The chat panel's wrench button renders it as tool cards.
 
+## MCP client bridge — custom connectors (plan 73-G, ADR-170)
+
+User-registered **external** MCP servers (stdio) become discovery and parse
+connectors, invoked **deterministically by services** — the agent is never
+the gatekeeper. Config is machine-local profile preferences
+(`mcp.servers`: name, stdio command + args, timeout 5-120 s) — servers read
+their own configuration, nothing secret is stored. Posture (ADR-0012):
+servers **disabled by default**; tool lists arrive only through an explicit
+**Refresh** (`POST /mcp/servers/{id}/refresh`), and a refresh never
+auto-enables; each tool carries a user-assigned **contract** —
+`discovery` (returns normalized rows: `title` + http(s) `url` required,
+invalid rows dropped with a logged warning) or `parse` (takes `{url}`,
+returns `{title, markdown, metadata?}`, keyed by a user-declared URL
+pattern like `coursera.org/learn/*` and executed by the url_import job like
+any built-in parser). Tool invocations run through the bridge in
+`app/ai/mcp_client.py` (`mcp` SDK imports confined to `app/ai` per the
+alignment gate; servers launched lazily per call and reaped immediately —
+the launch environment preserves PATH semantics for frozen builds), carry a
+per-call timeout (honest timeout/transport errors, never silence), and are
+**audited** as `mcp_tool_call` ledger rows. Enabled discovery tools appear
+as providers named `mcp.<server>.<tool>` in the Discover dialog and behind
+`DISCOVER`; contract violations in the parse path fail the job honestly.
+`Settings → Integrations` hosts the **MCP connectors** card (add/refresh/
+delete, per-tool enable + contract + URL pattern).
+
 ## MCP resource server (`python -m studyassistant mcp`)
 
 Read-only **stdio** server (ADR-042 10E closed) exposing eight node-scoped tools

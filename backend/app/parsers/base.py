@@ -38,17 +38,27 @@ DOWNLOADABLE_SUFFIXES: dict[str, str] = {
 
 
 def build_registry(
-    transport: Any = None, language: str | None = None
+    transport: Any = None,
+    language: str | None = None,
+    session: Any = None,
+    profile_id: int | None = None,
 ) -> list[URLParser]:
     from .direct_file import DirectFileParser
     from .html import HtmlParser
     from .youtube import YouTubeParser
 
-    registry: list[URLParser] = [
-        YouTubeParser(language=language),
-        DirectFileParser(transport=transport),
-        HtmlParser(transport=transport),
-    ]
+    registry: list[URLParser] = []
+    if session is not None and profile_id is not None:
+        from .mcp_parse import build_mcp_parsers
+
+        registry.extend(build_mcp_parsers(session, profile_id))
+    registry.extend(
+        [
+            YouTubeParser(language=language),
+            DirectFileParser(transport=transport),
+            HtmlParser(transport=transport),
+        ]
+    )
     return registry
 
 

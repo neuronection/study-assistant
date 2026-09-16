@@ -591,3 +591,13 @@ export {
   scanExternalSource,
   updateExternalSource,
 } from './external-sources'
+
+export type { McpServerRow, McpServerToolInfo } from './mcp-servers'
+
+export {
+  createMcpServer,
+  deleteMcpServer,
+  listMcpServers,
+  refreshMcpServer,
+  updateMcpServer,
+} from './mcp-servers'

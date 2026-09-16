@@ -18,6 +18,7 @@ from . import (
     health,
     jobs,
     materials,
+    mcp_servers,
     notes,
     notifications,
     onboarding,
@@ -40,6 +41,7 @@ api_router.include_router(materials.blobs_router)
 api_router.include_router(search.router)
 api_router.include_router(discovery.router)
 api_router.include_router(external_sources.router)
+api_router.include_router(mcp_servers.router)
 api_router.include_router(folders.router)
 api_router.include_router(courses.router)
 api_router.include_router(chat.router)

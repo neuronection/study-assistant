@@ -778,6 +778,8 @@ def parse_link_material(
     registry = build_registry(
         getattr(request.app.state, "search_transport", None),
         language=material.language,
+        session=session,
+        profile_id=material.profile_id,
     )
     if resolve_parser(registry, material.source_url) is None:
         raise HTTPException(

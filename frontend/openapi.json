@@ -6091,6 +6091,168 @@
         "title": "McpInfoOut",
         "type": "object"
       },
+      "McpServerIn": {
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Args",
+            "type": "array"
+          },
+          "command": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Command",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "timeout_sec": {
+            "default": 30,
+            "maximum": 120.0,
+            "minimum": 5.0,
+            "title": "Timeout Sec",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "command"
+        ],
+        "title": "McpServerIn",
+        "type": "object"
+      },
+      "McpServerOut": {
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed At"
+          },
+          "timeout_sec": {
+            "title": "Timeout Sec",
+            "type": "integer"
+          },
+          "tools": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "command",
+          "args",
+          "enabled",
+          "timeout_sec",
+          "tools",
+          "last_error",
+          "refreshed_at"
+        ],
+        "title": "McpServerOut",
+        "type": "object"
+      },
+      "McpServerPatch": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "timeout_sec": {
+            "anyOf": [
+              {
+                "maximum": 120.0,
+                "minimum": 5.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Sec"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/McpToolPatch"
+            },
+            "maxItems": 30,
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "title": "McpServerPatch",
+        "type": "object"
+      },
       "McpToolOut": {
         "properties": {
           "arguments": {
@@ -6122,6 +6284,53 @@
           "arguments"
         ],
         "title": "McpToolOut",
+        "type": "object"
+      },
+      "McpToolPatch": {
+        "properties": {
+          "contract": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "url_pattern": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Pattern"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "McpToolPatch",
         "type": "object"
       },
       "MentionOut": {
@@ -22154,6 +22363,197 @@
         "summary": "Transcribe Link Audio",
         "tags": [
           "materials"
+        ]
+      }
+    },
+    "/api/v1/mcp/servers": {
+      "get": {
+        "operationId": "list_servers_api_v1_mcp_servers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/McpServerOut"
+                  },
+                  "title": "Response List Servers Api V1 Mcp Servers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Servers",
+        "tags": [
+          "mcp-servers"
+        ]
+      },
+      "post": {
+        "operationId": "add_server_api_v1_mcp_servers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpServerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpServerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Server",
+        "tags": [
+          "mcp-servers"
+        ]
+      }
+    },
+    "/api/v1/mcp/servers/{server_id}": {
+      "delete": {
+        "operationId": "remove_server_api_v1_mcp_servers__server_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Server",
+        "tags": [
+          "mcp-servers"
+        ]
+      },
+      "patch": {
+        "operationId": "update_server_api_v1_mcp_servers__server_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpServerPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpServerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Server",
+        "tags": [
+          "mcp-servers"
+        ]
+      }
+    },
+    "/api/v1/mcp/servers/{server_id}/refresh": {
+      "post": {
+        "operationId": "refresh_server_api_v1_mcp_servers__server_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpServerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Server",
+        "tags": [
+          "mcp-servers"
         ]
       }
     },

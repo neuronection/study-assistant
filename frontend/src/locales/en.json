@@ -2434,5 +2434,29 @@
     "enabledShort": "On",
     "edit": "Edit",
     "delete": "Delete"
+  },
+  "mcpConnectors": {
+    "title": "MCP connectors",
+    "hint": "Connect external MCP servers (stdio) to use their tools as discovery or parse connectors. Servers are off by default and nothing runs until you enable a tool.",
+    "empty": "No MCP connectors yet.",
+    "add": "Add server",
+    "addTitle": "Add MCP server",
+    "addHint": "Registers a stdio MCP server. The server reads its own configuration; no secrets are stored here.",
+    "name": "Name",
+    "command": "Command",
+    "args": "Arguments (space-separated)",
+    "disabledNote": "Servers are disabled by default — refresh to list tools, then enable the ones you want.",
+    "save": "Save",
+    "off": "Off",
+    "enabledLabel": "Enabled",
+    "enabledShort": "On",
+    "refresh": "Refresh",
+    "delete": "Delete",
+    "toolEnabled": "Enabled",
+    "contract": "Contract",
+    "contract_none": "No contract",
+    "contract_discovery": "Discovery",
+    "contract_parse": "Parser",
+    "urlPattern": "URL pattern"
   }
 }

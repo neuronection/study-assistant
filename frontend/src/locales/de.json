@@ -2434,5 +2434,29 @@
     "enabledShort": "An",
     "edit": "Bearbeiten",
     "delete": "Löschen"
+  },
+  "mcpConnectors": {
+    "title": "MCP-Konnektoren",
+    "hint": "Verbindet externe MCP-Server (stdio), um deren Tools als Discovery- oder Parser-Konnektoren zu nutzen. Server sind standardmäßig aus — nichts läuft, bis Sie ein Tool aktivieren.",
+    "empty": "Noch keine MCP-Konnektoren.",
+    "add": "Server hinzufügen",
+    "addTitle": "MCP-Server hinzufügen",
+    "addHint": "Registriert einen stdio-MCP-Server. Der Server liest seine eigene Konfiguration; hier werden keine Geheimnisse gespeichert.",
+    "name": "Name",
+    "command": "Befehl",
+    "args": "Argumente (durch Leerzeichen getrennt)",
+    "disabledNote": "Server sind standardmäßig deaktiviert — zuerst Tools laden, dann die gewünschten aktivieren.",
+    "save": "Speichern",
+    "off": "Aus",
+    "enabledLabel": "Aktiviert",
+    "enabledShort": "An",
+    "refresh": "Aktualisieren",
+    "delete": "Löschen",
+    "toolEnabled": "Aktiviert",
+    "contract": "Kontrakt",
+    "contract_none": "Kein Kontrakt",
+    "contract_discovery": "Discovery",
+    "contract_parse": "Parser",
+    "urlPattern": "URL-Muster"
   }
 }

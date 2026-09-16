@@ -6,6 +6,42 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — custom MCP connectors (plan 73-G, ADR-170, 2026-09-16):**
+plan 73 COMPLETE. Users with permission for a platform API can plug in
+their own source — without the app shipping that integration or loading
+user code. New **`app/ai/mcp_client.py`** (the only place the `mcp` SDK
+client is imported, matching the repo's existing `mcp`-SDK server
+precedent; `fastmcp` not added — recorded as an as-built note per ADR-0012
+transition mode): stdio servers launch lazily per invocation and are reaped
+immediately (no subprocess fleet), launch env preserves PATH semantics for
+frozen builds, every call carries a per-call timeout (default 30 s,
+configurable 5-120 s) and is **audited** as an `mcp_tool_call`
+`AiInteraction` ledger row. Config is machine-local profile preferences
+(`mcp.servers`: name/command/args, **disabled by default**, tools arrive
+only via explicit **Refresh** which never auto-enables, per-tool
+enable + contract + URL pattern, `last_error`/`refreshed_at`). Two
+validated contracts: **discovery** (text = JSON list or `{results}`;
+`title` + http(s) `url` required, invalid rows dropped with a logged
+warning, unknown kinds fall back to `other`) surfaces as a
+`mcp.<server>.<tool>` provider in the Discover dialog and `DISCOVER`; **parse**
+(takes `{url}` → `{title, markdown, metadata?}`, keyed by a user-declared
+URL pattern) is prepended to the slice-B parser registry via
+`build_registry(session, profile_id)` and executed by `url_import` like a
+built-in — contract violations are honest job failures. New
+`services/platform/mcp_servers.py` (prefs store with the flag_modified
+JSON-write fix) + **`GET/POST/PATCH/DELETE /mcp/servers`** +
+**`POST /{id}/refresh`** (failure → 502 + persisted `last_error`). New
+`McpParseParser` (`app/parsers/mcp_parse.py`) + `McpDiscoveryProvider`
+(`app/search/discovery.py`). Settings → Integrations gains the **MCP
+connectors** card (add dialog, refresh, per-tool enable/contract/pattern,
+honest error badges). Tests: `test_mcp_connectors.py` (9: CRUD+validation,
+refresh merge preserving tool settings, refresh failure recorded,
+discovery normalization+dedupe, discovery search + audit row, parse
+pattern match + contract violations, registry precedence, url_import e2e
+with audit). `check-ai-alignment.sh` clean. Backend 1,249 green (+9),
+ruff/mypy clean; frontend 1,277 green (+5), lint/typecheck/build/i18n
+green; OpenAPI + types regenerated.
+
 **Feature — chat DISCOVER tool + attach_link proposal (plan 73-F,
 ADR-167/170, 2026-09-16):** the chatbot can now find and land material —
 through HITL only. New **`DISCOVER`** chat tool in `CHAT_TOOL_CATALOG`

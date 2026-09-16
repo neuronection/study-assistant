@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { listMcpInfo } from '@/lib/api'
+import { McpConnectorsCard } from './McpConnectorsCard'
 import { WebSourcesCard } from './WebSourcesCard'
 
 export function McpTab() {
@@ -31,6 +32,7 @@ export function McpTab() {
   return (
     <div className="space-y-4">
       <WebSourcesCard />
+      <McpConnectorsCard />
       <header>
         <h2 className="text-sm font-medium">{t('settings.mcpTitle')}</h2>
         <p className="text-muted-foreground mt-1 text-xs">{t('settings.mcpHint')}</p>

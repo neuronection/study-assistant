@@ -3,15 +3,24 @@
 Providers return `DiscoveryResult` rows; results are never persisted (same
 posture as the chat SEARCH tool). No first-party integration with
 ToS-restricted platforms — site-filtered presets are data, not scrapers
-(ADR-166/170).
+(ADR-166/170). MCP connector providers (73-G) invoke user-registered
+external servers deterministically and validate every row app-side.
 """
 
+import json
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+import structlog
 from sqlalchemy.orm import Session
 
+from ..ai.mcp_client import (
+    McpToolError,
+    audit_mcp_invocation,
+    call_tool_sync,
+)
 from ..core.secrets import get_secret
 from ..core.vocab import DiscoveryKind
 from ..domain.models import Profile
@@ -19,6 +28,8 @@ from .provider import (
     SEARCH_KEYRING_REF,
     search_provider_config,
 )
+
+logger = structlog.get_logger(__name__)
 
 DEFAULT_ENABLED = ("web", "youtube")
 KHAN_ACADEMY_SITE = "khanacademy.org"
@@ -190,6 +201,92 @@ class YouTubeSearchProvider(DiscoveryProvider):
         return results
 
 
+class McpDiscoveryProvider(DiscoveryProvider):
+    """External MCP server tool speaking the discovery contract (73-G).
+
+    The tool receives `{"query": str}` and its text must be JSON — either a
+    list of rows or `{"results": [...]}` — with every valid row carrying a
+    non-empty `title` and an http(s) `url`. Invalid rows are dropped with a
+    logged warning (never trusted, never faked).
+    """
+
+    def __init__(self, server: dict[str, Any], tool: dict[str, Any], audit: Any = None):
+        from ..services.platform.mcp_servers import build_mcp_config
+
+        tool_name = str(tool.get("name"))
+        self.id = f"mcp.{server.get('name')}.{tool_name}"
+        self.label = f"{server.get('name')}.{tool_name}"
+        self._tool_name = tool_name
+        self._config = build_mcp_config(server)
+        self._audit_session = audit
+
+    def search(
+        self, query: str, *, cap: int, transport: httpx.BaseTransport | None = None
+    ) -> list[DiscoveryResult]:
+        started = time.monotonic()
+        try:
+            text = call_tool_sync(self._config, self._tool_name, {"query": query})
+        except (McpToolError, Exception) as error:
+            if self._audit_session is not None:
+                audit_mcp_invocation(
+                    self._audit_session,
+                    tool_ref=self.id,
+                    latency_ms=int((time.monotonic() - started) * 1000),
+                    ok=False,
+                    error=str(error),
+                )
+            raise
+        if self._audit_session is not None:
+            audit_mcp_invocation(
+                self._audit_session,
+                tool_ref=self.id,
+                latency_ms=int((time.monotonic() - started) * 1000),
+                ok=True,
+            )
+        return self._rows(text, cap)
+
+    def _rows(self, text: str, cap: int) -> list[DiscoveryResult]:
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("mcp_discovery_non_json", provider=self.id)
+            raise McpToolError(
+                f"MCP tool '{self._tool_name}' returned non-JSON output"
+            ) from None
+        if isinstance(data, dict):
+            data = data.get("results")
+        if not isinstance(data, list):
+            logger.warning("mcp_discovery_bad_shape", provider=self.id)
+            return []
+        results: list[DiscoveryResult] = []
+        for row in data[: cap * 2]:
+            if not isinstance(row, dict):
+                logger.warning("mcp_discovery_invalid_row", provider=self.id)
+                continue
+            title = str(row.get("title") or "").strip()
+            url = str(row.get("url") or "").strip()
+            if not title or not url.lower().startswith(("http://", "https://")):
+                logger.warning("mcp_discovery_invalid_row", provider=self.id)
+                continue
+            try:
+                kind = DiscoveryKind.parse(str(row.get("kind") or "other"))
+            except ValueError:
+                kind = DiscoveryKind.OTHER
+            results.append(
+                DiscoveryResult(
+                    provider=self.id,
+                    title=title[:300],
+                    url=url[:2048],
+                    kind=kind.value,
+                    description=str(row.get("description") or "")[:800],
+                    meta={"mcp": True},
+                )
+            )
+            if len(results) >= cap:
+                break
+        return results
+
+
 def discovery_preferences(session: Session, profile_id: int) -> dict[str, Any]:
     profile = session.get(Profile, profile_id)
     preferences = profile.preferences if profile is not None else None
@@ -256,6 +353,14 @@ def resolve_providers(
                     ),
                 )
             )
+
+    from ..services.platform.mcp_servers import enabled_tools
+
+    for server, tool in enabled_tools(session, profile_id, "discovery"):
+        provider = McpDiscoveryProvider(server, tool, audit=session)
+        if requested is not None and provider.id not in requested:
+            continue
+        providers.append(provider)
 
     if requested is not None:
         available_ids = [provider.id for provider in providers]

@@ -38,7 +38,12 @@ def make_url_import_handler(
         transport = (
             transport_provider() if transport_provider is not None else None
         )
-        registry = build_registry(transport, language=material.language)
+        registry = build_registry(
+            transport,
+            language=material.language,
+            session=session,
+            profile_id=material.profile_id,
+        )
         parser = resolve_parser(registry, source_url)
         if parser is None:
             raise JobError(

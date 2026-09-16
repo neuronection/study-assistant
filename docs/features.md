@@ -246,6 +246,17 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Custom MCP connectors (plan 73-G, ADR-170, 2026-09-16)**: bring your
+  own source. Register an external MCP server (stdio) in **Settings →
+  Integrations**, refresh to list its tools, and assign each tool a
+  contract: **Discovery** tools appear as providers in the Discover dialog
+  and behind chat DISCOVER; **Parser** tools (keyed by a URL pattern like
+  `coursera.org/learn/*`) work inside Import & parse like any built-in
+  parser. Servers launch on demand with per-call timeouts, stay disabled
+  until you explicitly enable tools, every invocation is audited, all
+  external output is validated app-side (invalid rows dropped, contract
+  violations fail honestly), and per-server errors show right on the card
+  — never a silent empty result
 - ✅ **Chat discovery & attach proposals (plan 73-F, ADR-167/170,
   2026-09-16)**: ask the chatbot to "find me a video on integration by parts"
   — the new **DISCOVER** tool searches across web, YouTube and site presets

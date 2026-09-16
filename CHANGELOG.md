@@ -13,6 +13,12 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Custom MCP connectors: register your own external MCP servers in
+  Settings → Integrations, refresh to list their tools, and assign each tool
+  as a discovery source (appears in Discover and chat DISCOVER) or a parser
+  (keyed by a URL pattern, runs inside Import & parse). Servers are disabled
+  by default, invocations are audited and time-boxed, and all external
+  output is validated before use. (plan 73-G, ADR-170)
 - Chat discovery with approval-only attach: the chatbot gained a DISCOVER
   tool (web, YouTube and site presets; `DISCOVER here` searches for the
   current topic without typing a query) and an attach_link proposal that
