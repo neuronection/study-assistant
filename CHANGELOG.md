@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.9.0] - 2026-09-16
+
 ### Added
 
 - Custom MCP connectors: register your own external MCP servers in
