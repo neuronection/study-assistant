@@ -56,7 +56,9 @@ def _resolve_data_dir() -> Path:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="SA_", env_file=".env")
+    model_config = SettingsConfigDict(
+        env_prefix="SA_", env_file=".env", extra="ignore"
+    )
 
     app_name: str = "Study Assistant"
     host: str = "127.0.0.1"

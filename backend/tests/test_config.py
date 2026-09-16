@@ -106,3 +106,15 @@ def test_data_dir_untouched_without_legacy(
     assert default_data_dir() == tmp_path / "StudyAssistant"
     assert not (tmp_path / "StudyAssistant").exists()
     assert not (tmp_path / "CourseAssistant").exists()
+
+
+def test_unrelated_env_file_keys_are_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / ".env").write_text(
+        "TRANSLATION_API_KEY=sk-test\nTRANSLATION_MODEL=gpt-test\nSA_PORT=9124\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    settings = Settings()
+    assert settings.port == 9124
