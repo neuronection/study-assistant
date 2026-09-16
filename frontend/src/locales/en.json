@@ -821,7 +821,7 @@
       "skills": "Skills",
       "developer": "Developer",
       "search": "Search & OCR",
-      "mcp": "MCP server"
+      "mcp": "Integrations"
     },
     "generalTitle": "General",
     "generalDescription": "App-wide preferences.",
@@ -2400,5 +2400,38 @@
     "kindArticle": "Article",
     "kindExercise": "Exercise",
     "kindOther": "Other"
+  },
+  "webSources": {
+    "title": "Web sources",
+    "hint": "Feeds, YouTube channels or playlists and site searches are scanned on a schedule — new items land as suggestions in the Discover dialog. Nothing is ever imported on its own.",
+    "empty": "No web sources yet.",
+    "add": "Add source",
+    "addTitle": "Add web source",
+    "editTitle": "Edit web source",
+    "dialogHint": "Scans are deterministic and LLM-free; new items appear as suggestions only.",
+    "kind": "Kind",
+    "kind_rss": "RSS / Atom feed",
+    "kind_youtube_channel": "YouTube channel",
+    "kind_youtube_playlist": "YouTube playlist",
+    "kind_site_search": "Site search",
+    "url": "URL",
+    "label": "Label",
+    "course": "Course",
+    "interval": "Scan interval",
+    "interval15m": "Every 15 minutes",
+    "interval1h": "Every hour",
+    "interval6h": "Every 6 hours",
+    "interval24h": "Every day",
+    "maxItems": "Max items per scan",
+    "query": "Search query",
+    "site": "Site filter (domain)",
+    "save": "Save",
+    "scanNow": "Scan now",
+    "scanDone": "Scan finished — {{count}} new.",
+    "disabled": "Off",
+    "enabledLabel": "Enabled",
+    "enabledShort": "On",
+    "edit": "Edit",
+    "delete": "Delete"
   }
 }

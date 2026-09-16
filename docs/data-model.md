@@ -92,6 +92,16 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   timestamps. Course purge deletes the course's rows; scratchpad rows survive.
   **Suggestions do not ride `ca-course/v2`** — they are profile-scoped tracking
   history, not study content.
+- **external_sources** (0063, plan 73-E): id, profile_id, course_id (required —
+  a source feeds one course's suggestion stream), kind
+  (`rss|youtube_channel|youtube_playlist|site_search` StrEnum), url
+  (String 2048), label?, options JSON (per-kind: `max_items`, `query`+`site`
+  for site_search), enabled, scan_interval_sec? (per-source override, min
+  15 min; NULL → 6 h default), last_scan_error?, last_scanned_at?,
+  cursor JSON (per-kind resume marker: RSS etag/last-modified + seen-entry ids;
+  YouTube seen-video ids — both capped at 1000), created_at. Course purge
+  cascades; **rides `ca-course/v2`** (kind/url/label/options/enabled/interval
+  exported, import re-creates rows with fresh cursors).
 - **blobs**: sha256 PK, rel_path, size, mime — content-addressed originals
 - **materials**: id, profile_id, course_id (**required** — every material is owned
   by exactly one course; no global library, ADR-036), group_id?, folder_id?, kind
@@ -317,6 +327,10 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0063 (plan 73-E)**: `external_sources` table — profile FK indexed, course
+  FK indexed (required), kind/url/label/options/enabled/scan_interval_sec/
+  last_scan_error/last_scanned_at/cursor JSON/created_at. No data migration
+  (new table). Downgrade drops the table.
 - **0062 (plan 73-D)**: `material_suggestions` table — profile FK indexed,
   nullable course FK indexed, nullable `node_id` with the composite
   `(node_id, course_id)` FK to the node tree, provider/url/url_norm/title/

@@ -41,6 +41,7 @@ from .services.platform.backup import (
     boot_integrity_check,
     load_effective_settings,
 )
+from .services.platform.external_source_scheduler import ExternalSourceScheduler
 from .services.platform.profiles import ensure_default_profile
 from .services.platform.scan_scheduler import ScanScheduler
 from .storage.blobs import BlobStore
@@ -96,10 +97,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         jobs.start()
         scheduler: ScanScheduler = app.state.scans
         scheduler.start()
+        external_scheduler: ExternalSourceScheduler = app.state.external_scans
+        external_scheduler.start()
         backups: BackupScheduler = app.state.backups
         backups.start()
         yield
         backups.stop()
+        external_scheduler.stop()
         scheduler.stop()
         jobs.stop()
     app.state.engine.dispose()
@@ -273,6 +277,10 @@ def create_app(
         app.state.jobs,
         app.state.bus.publish_threadsafe,
         interval_sec=settings.source_scan_interval_sec,
+    )
+    app.state.external_scans = ExternalSourceScheduler(
+        app.state.session_factory,
+        app.state.bus.publish_threadsafe,
     )
 
     def _backup_settings() -> EffectiveBackupSettings:

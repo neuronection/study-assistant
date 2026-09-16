@@ -73,8 +73,8 @@ without touching app code.
   quarantined as `corrupt-<ts>.db`, newest valid backup restored automatically,
   event recorded in `last-recovery.json`) → seed default profile + task
   assignment rows + purge expired trash → start job runner + scan scheduler +
-  **backup scheduler** threads → serve built SPA from `frontend/dist` (or hint
-  to build it).
+  **external-source scheduler (plan 73-E)** + **backup scheduler** threads →
+  serve built SPA from `frontend/dist` (or hint to build it).
 - **Jobs**: upload → `ingest` job → extraction + chunks + FTS (+ `postprocess` job for
   embeddings & LLM index cards, best-effort). Chat turns and tutor hints run as jobs
   too, streaming progress over WS topics `chat:{id}` / `jobs:{id}`.
@@ -84,6 +84,14 @@ without touching app code.
   weeklies; optional `SA_BACKUP_SYNC_DIR` copy (atomic rename) for off-machine
   redundancy; runtime overrides in `backup-settings.json`; manual download
   export + upload/stored-by-name restore stay available.
+- **External web sources (plan 73-E, ADR-167/170)**: `ExternalSourceScheduler`
+  polls enabled `external_sources` (RSS/Atom via feedparser over httpx,
+  YouTube channel/playlist via yt-dlp flat extract, site-filtered SearXNG/
+  Tavily search) on their per-source due times (min 15 min politeness); every
+  new item lands as a `suggested` **suggestion** — never a material, never an
+  LLM call; overlap guard prevents stacked scans of one source, feed/yt-dlp
+  metadata is untrusted (HTML-stripped, http(s)-validated), errors isolate per
+  source into `last_scan_error` and publish on WS `externalsource:{id}`.
 - **WebSocket**: `/ws` with subscribe/unsubscribe/publish/ping frames; the backend
   EventBus bridges worker threads to subscribers via `publish_threadsafe`.
 - **Storage**: SQLite in WAL mode, FTS5 full-text, sqlite-vec vectors (runtime-created

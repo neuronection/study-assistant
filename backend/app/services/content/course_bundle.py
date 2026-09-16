@@ -22,6 +22,7 @@ from ...domain.models import (
     Exercise,
     ExerciseSession,
     ExerciseStep,
+    ExternalSource,
     Extraction,
     FsrsState,
     Material,
@@ -48,6 +49,7 @@ from ...storage.blobs import blob_path
 from ...storage.fts import sync_material_fts
 from ..study.exercise_kinds import is_card_kind
 from .drawings import remap_drawing_refs
+from .external_sources import validate_source as validate_external_source
 from .folders import FoldersService
 from .materials import extraction_to_blocks
 
@@ -68,6 +70,7 @@ CARDS_NAME = "cards.json"
 PATTERNS_NAME = "patterns.json"
 HISTORY_NAME = "history.json"
 NOTE_VERSIONS_NAME = "note-versions.json"
+EXTERNAL_SOURCES_NAME = "external-sources.json"
 BLOBS_PREFIX = "blobs/"
 
 JSON_NAMES = (
@@ -86,6 +89,7 @@ OPTIONAL_JSON_NAMES = (
     PATTERNS_NAME,
     HISTORY_NAME,
     NOTE_VERSIONS_NAME,
+    EXTERNAL_SOURCES_NAME,
 )
 
 
@@ -110,6 +114,7 @@ class BundleData:
     patterns: list[dict[str, Any]] = field(default_factory=list)
     history: dict[str, Any] = field(default_factory=dict)
     note_versions: list[dict[str, Any]] = field(default_factory=list)
+    external_sources: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _export_course(session: Session, course: Course) -> dict[str, Any]:
@@ -740,6 +745,31 @@ def _export_skills(session: Session, course_id: int) -> list[dict[str, Any]]:
     return out
 
 
+def _export_external_sources(session: Session, course_id: int) -> list[dict[str, Any]]:
+    from ...core.vocab import ExternalSourceKind
+
+    sources = list(
+        session.scalars(
+            select(ExternalSource).where(ExternalSource.course_id == course_id)
+        )
+    )
+    out: list[dict[str, Any]] = []
+    for source in sources:
+        if source.kind not in {item.value for item in ExternalSourceKind}:
+            continue
+        out.append(
+            {
+                "kind": source.kind,
+                "url": source.url,
+                "label": source.label,
+                "options": source.options,
+                "enabled": source.enabled,
+                "scan_interval_sec": source.scan_interval_sec,
+            }
+        )
+    return out
+
+
 def build_course_bundle(
     session: Session,
     course: Course,
@@ -758,6 +788,7 @@ def build_course_bundle(
     skills = _export_skills(session, course.id)
     cards = _export_cards(session, course.id, include_history)
     patterns = _export_patterns(session, course)
+    external_sources = _export_external_sources(session, course.id)
     note_versions = _export_note_versions(session, course.id) if include_note_versions else []
     history = _export_history(session, course.id) if include_history else {}
     shas = {sha for sha in (material_shas | note_shas) if sha}
@@ -813,6 +844,7 @@ def build_course_bundle(
                 "error_patterns": len(patterns),
                 "attempts": len(history.get("attempts", [])),
                 "skill_overrides": len(skills),
+                "external_sources": len(external_sources),
                 "blobs": len(exportable),
             },
         "warnings": warnings,
@@ -833,6 +865,7 @@ def build_course_bundle(
         archive.writestr(PATTERNS_NAME, json.dumps(patterns))
         archive.writestr(HISTORY_NAME, json.dumps(history))
         archive.writestr(NOTE_VERSIONS_NAME, json.dumps(note_versions))
+        archive.writestr(EXTERNAL_SOURCES_NAME, json.dumps(external_sources))
         for sha in sorted(exportable):
             data = blob_path(blobs_root, sha).read_bytes()
             archive.writestr(f"{BLOBS_PREFIX}{sha}", data)
@@ -901,6 +934,7 @@ def read_course_bundle(data: bytes) -> BundleData:
         patterns=optional[PATTERNS_NAME],
         history=optional[HISTORY_NAME],
         note_versions=optional[NOTE_VERSIONS_NAME],
+        external_sources=optional[EXTERNAL_SOURCES_NAME],
     )
     _validate_bundle(bundle)
     return bundle
@@ -1519,6 +1553,28 @@ def import_course_bundle(
                 params=entry.get("params"),
                 contract=entry.get("contract"),
                 is_active=bool(entry.get("is_active")),
+            )
+        )
+
+    for entry in bundle.external_sources:
+        try:
+            kind, url, options = validate_external_source(
+                str(entry.get("kind") or ""),
+                str(entry.get("url") or ""),
+                entry.get("options"),
+            )
+        except ValueError:
+            continue
+        session.add(
+            ExternalSource(
+                profile_id=profile_id,
+                course_id=course.id,
+                kind=kind,
+                url=url,
+                label=entry.get("label"),
+                options=options,
+                enabled=bool(entry.get("enabled", True)),
+                scan_interval_sec=entry.get("scan_interval_sec"),
             )
         )
 

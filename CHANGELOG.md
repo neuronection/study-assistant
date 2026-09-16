@@ -13,6 +13,12 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- External web sources: add RSS/Atom feeds, YouTube channels or playlists and
+  site-filtered searches as standing sources — a deterministic scheduler scans
+  them on a schedule (manual "Scan now" included) and new items land as
+  suggestions in the Discover dialog, never auto-imported and never LLM-called.
+  Settings → Integrations gains the Web sources card; sources travel inside
+  course bundles with fresh cursors. (plan 73-E, ADR-167/170)
 - Discovery suggestions & Discover dialog: search results can now be kept —
   save for later, dismiss, or attach/import them as link materials, with one
   tracked row per normalized URL per profile and a "Saved & dismissed" list in

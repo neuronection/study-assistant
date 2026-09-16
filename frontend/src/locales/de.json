@@ -783,7 +783,7 @@
       "skills": "Fähigkeiten",
       "developer": "Entwickler",
       "search": "Suche & OCR",
-      "mcp": "MCP-Server"
+      "mcp": "Integrationen"
     },
     "searchProviderFlavorTavily": "Tavily-kompatibel",
     "searchProviderFlavorSearxng": "SearXNG (JSON API)",
@@ -2400,5 +2400,38 @@
     "kindArticle": "Artikel",
     "kindExercise": "Übung",
     "kindOther": "Sonstiges"
+  },
+  "webSources": {
+    "title": "Web-Quellen",
+    "hint": "Feeds, YouTube-Kanäle oder Playlists und Seiten-Suchen werden nach Zeitplan gescannt — neue Einträge landen als Vorschläge im Entdecken-Dialog. Niemals wird etwas von selbst importiert.",
+    "empty": "Noch keine Web-Quellen.",
+    "add": "Quelle hinzufügen",
+    "addTitle": "Web-Quelle hinzufügen",
+    "editTitle": "Web-Quelle bearbeiten",
+    "dialogHint": "Scans sind deterministisch und LLM-frei; neue Einträge erscheinen nur als Vorschläge.",
+    "kind": "Art",
+    "kind_rss": "RSS-/Atom-Feed",
+    "kind_youtube_channel": "YouTube-Kanal",
+    "kind_youtube_playlist": "YouTube-Playlist",
+    "kind_site_search": "Seiten-Suche",
+    "url": "URL",
+    "label": "Bezeichnung",
+    "course": "Kurs",
+    "interval": "Scan-Intervall",
+    "interval15m": "Alle 15 Minuten",
+    "interval1h": "Jede Stunde",
+    "interval6h": "Alle 6 Stunden",
+    "interval24h": "Jeden Tag",
+    "maxItems": "Max. Einträge pro Scan",
+    "query": "Suchanfrage",
+    "site": "Seiten-Filter (Domain)",
+    "save": "Speichern",
+    "scanNow": "Jetzt scannen",
+    "scanDone": "Scan abgeschlossen — {{count}} neu.",
+    "disabled": "Aus",
+    "enabledLabel": "Aktiviert",
+    "enabledShort": "An",
+    "edit": "Bearbeiten",
+    "delete": "Löschen"
   }
 }

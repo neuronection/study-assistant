@@ -212,6 +212,65 @@ def revert_suggestions_for_material(session: Session, material_id: int) -> None:
     )
 
 
+def record_scan_suggestion(
+    session: Session,
+    profile_id: int,
+    *,
+    provider: str,
+    url: str,
+    title: str,
+    snippet: str | None = None,
+    kind: str | None = None,
+    meta: dict[str, Any] | None = None,
+    course_id: int | None = None,
+) -> str:
+    """Scan-path upsert (plan 73-E): land an item as a `suggested` pointer.
+
+    Returns "created" for a new row, "updated" when a `suggested` row's
+    display fields were refreshed, and "skipped" when the URL is already
+    saved/dismissed — tracked rows are never re-surfaced as new.
+    """
+    raw_url, url_norm = _validated_url(url)
+    kind_value = _validated_kind(kind)
+    display_title = (title or "").strip()
+    if not display_title:
+        raise SuggestionError("title cannot be empty")
+    existing = session.scalars(
+        select(MaterialSuggestion).where(
+            MaterialSuggestion.profile_id == profile_id,
+            MaterialSuggestion.url_norm == url_norm,
+        )
+    ).first()
+    if existing is not None:
+        if existing.status != SuggestionStatus.SUGGESTED.value:
+            return "skipped"
+        existing.provider = (provider or "").strip()[:MAX_PROVIDER] or "web"
+        existing.title = display_title[:MAX_TITLE]
+        existing.snippet = (snippet or "").strip()[:MAX_SNIPPET] or None
+        existing.kind = kind_value
+        existing.meta = meta if isinstance(meta, dict) else existing.meta
+        if existing.course_id is None and course_id is not None:
+            existing.course_id = course_id
+        session.flush()
+        return "updated"
+    session.add(
+        MaterialSuggestion(
+            profile_id=profile_id,
+            course_id=course_id,
+            provider=(provider or "").strip()[:MAX_PROVIDER] or "web",
+            url=raw_url,
+            url_norm=url_norm,
+            title=display_title[:MAX_TITLE],
+            snippet=(snippet or "").strip()[:MAX_SNIPPET] or None,
+            kind=kind_value,
+            meta=meta if isinstance(meta, dict) else None,
+            status=SuggestionStatus.SUGGESTED.value,
+        )
+    )
+    session.flush()
+    return "created"
+
+
 def suggestion_states_for_urls(
     session: Session, profile_id: int, urls: list[str]
 ) -> dict[str, MaterialSuggestion]:

@@ -578,3 +578,16 @@ export {
   saveDiscoverySuggestion,
   searchDiscovery,
 } from './discovery'
+
+export type {
+  ExternalSourceKind,
+  ExternalSourceRow,
+} from './external-sources'
+
+export {
+  createExternalSource,
+  deleteExternalSource,
+  listExternalSources,
+  scanExternalSource,
+  updateExternalSource,
+} from './external-sources'

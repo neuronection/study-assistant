@@ -21,6 +21,7 @@ from ...domain.models import (
     CourseDefaultTaskAssignment,
     CourseTaskAssignment,
     Exercise,
+    ExternalSource,
     ItemStat,
     Material,
     MaterialFolder,
@@ -1057,6 +1058,9 @@ def purge_course(session: Session, course: Course) -> None:
     )
     session.execute(
         delete(MaterialSource).where(MaterialSource.course_id == course.id)
+    )
+    session.execute(
+        delete(ExternalSource).where(ExternalSource.course_id == course.id)
     )
     session.execute(
         delete(MaterialSuggestion).where(MaterialSuggestion.course_id == course.id)

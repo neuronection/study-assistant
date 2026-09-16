@@ -246,6 +246,22 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **External web sources (plan 73-E, ADR-167/170, 2026-09-16)**: standing
+  web sources that surface new material on their own — **RSS/Atom feeds**
+  (feedparser over httpx with etag/last-modified resume), **YouTube channels
+  and playlists** (yt-dlp flat extract, no downloads) and **site-filtered
+  searches** (the slice-C search provider with a `site:` filter) — scanned on
+  a schedule (per source, 15-minute politeness floor, 6 h default) by a
+  deterministic scheduler: every new item lands as a **suggestion** in the
+  Discover dialog (never a material, never auto-imported, zero LLM calls);
+  a URL already saved or dismissed is never re-surfaced. Per-source enable
+  toggle, manual **Scan now**, honest error badges (a dead feed shows its
+  last error), overlap guard so slow scans never stack, and untrusted
+  feed/yt-dlp metadata is HTML-stripped and http(s)-validated before
+  storage. Settings → Integrations (the former MCP tab) hosts the
+  **Web sources** card with add/edit dialog (kind, URL, label, course,
+  interval, per-kind options); sources are course-owned config that rides
+  `ca-course/v2` bundles with fresh cursors on import
 - ✅ **Suggestions: keep track + Discover UI (plan 73-D, 2026-09-16)**: found
   material no longer vanishes. Every discovery result row is annotated with its
   tracking state ("Saved" / "Dismissed"), and the new **Discover dialog** (in

@@ -412,6 +412,24 @@ class MaterialSource(Base):
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+class ExternalSource(Base):
+    __tablename__ = "external_sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(30))
+    url: Mapped[str] = mapped_column(String(2048))
+    label: Mapped[str | None] = mapped_column(String(200))
+    options: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
+    last_scan_error: Mapped[str | None] = mapped_column(Text)
+    last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cursor: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class MaterialSuggestion(Base):
     __tablename__ = "material_suggestions"
     __table_args__ = (

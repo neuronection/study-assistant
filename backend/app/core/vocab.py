@@ -57,6 +57,13 @@ class SuggestionStatus(StrVocab):
     DISMISSED = "dismissed"
 
 
+class ExternalSourceKind(StrVocab):
+    RSS = "rss"
+    YOUTUBE_CHANNEL = "youtube_channel"
+    YOUTUBE_PLAYLIST = "youtube_playlist"
+    SITE_SEARCH = "site_search"
+
+
 class MaterialKind(StrVocab):
     PDF = "pdf"
     IMAGE = "image"
@@ -236,6 +243,10 @@ class WsTopic:
     @staticmethod
     def source(source_id: int) -> str:
         return f"source:{source_id}"
+
+    @staticmethod
+    def externalsource(source_id: int) -> str:
+        return f"externalsource:{source_id}"
 
     @staticmethod
     def note(note_id: int) -> str:

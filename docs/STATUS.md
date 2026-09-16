@@ -6,6 +6,43 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — external web sources (plan 73-E, ADR-167/170, 2026-09-16):**
+standing declarative sources now feed the suggestion stream, LLM-free.
+New **`external_sources`** table (migration **0063**; `ExternalSourceKind`
+StrEnum `rss|youtube_channel|youtube_playlist|site_search`, required
+course_id, options JSON, per-source `scan_interval_sec` with 15-min
+politeness floor + 6 h default, `cursor` JSON resume markers — RSS
+etag/last-modified + capped seen-entry ids, YouTube capped seen-video ids).
+Scan service `services/content/external_sources.py`: RSS via **feedparser**
+(new backend dep) over httpx with conditional GET (304 short-circuit),
+YouTube via the module-seam yt-dlp flat extract, site_search via the slice-C
+search provider + `site:` filter; every new item goes through
+`record_scan_suggestion` (73-D service) — **suggestions only, never
+materials, never auto-import**; a URL already saved/dismissed is skipped,
+`suggested` rows get display-field refreshes. Untrusted-content posture:
+HTML stripped from titles/snippets, URLs re-validated http(s). **`ExternalSourceScheduler`**
+(services/platform, ScanScheduler shape + **overlap guard** — a source
+mid-scan is skipped on the next due tick) polls due sources every 5 min,
+isolates per-source errors into `last_scan_error`, clears on success,
+publishes WS `externalsource:{id}` scanned/scan_failed. API **`GET/POST/
+PATCH/DELETE /external-sources`** + **`POST /{id}/scan`** (manual scan;
+per-kind URL sanity — youtube hosts only, site_search requires `query`,
+intervals ≥ 900 s enforced at the schema). Course purge cascades sources;
+**external sources ride `ca-course/v2`** (optional `external-sources.json`
+part, kind-validated on import, fresh cursors) while suggestion rows still
+don't. Frontend: Settings' MCP tab is now **Integrations** and hosts the
+**Web sources** card — list with kind chips, course, enabled toggles, honest
+last-error badges, Scan now (reports new count), edit/delete, and an
+add/edit dialog (kind picker, URL, label, course, interval presets, per-kind
+options `max_items`/`query`+`site`). Tests: `test_external_sources.py` (12:
+CRUD+validation, RSS sanitize+kind heuristics, cursor no-resurfacing,
+304 short-circuit, youtube video suggestions+cursor, saved-never-resurfaced,
+site_search query+filter, failure isolation, course cascade, bundle export
++ fresh-cursor import, scheduler due/overlap/error isolation) +
+WebSourcesCard (5). Backend 1,230 green (+12), ruff/mypy clean; frontend
+1,272 green (+5), lint/typecheck/build/i18n green; OpenAPI + types
+regenerated; feedparser added to backend deps (uv.lock in-tree).
+
 **Feature — discovery suggestions & Discover UI (plan 73-D, 2026-09-16):**
 found material is now tracked. New **`material_suggestions`** table
 (migration **0062**; `SuggestionStatus` StrEnum `suggested|saved|dismissed`)

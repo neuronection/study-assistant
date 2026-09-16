@@ -821,7 +821,7 @@
       "skills": "Δεξιότητες",
       "developer": "Προγραμματιστής",
       "search": "Αναζήτηση και OCR",
-      "mcp": "Διακομιστής MCP"
+      "mcp": "Ενσωματώσεις"
     },
     "searchProviderFlavorTavily": "Συμβατό με Tavily",
     "searchProviderFlavorSearxng": "SearXNG (JSON API)",
@@ -2400,5 +2400,38 @@
     "kindArticle": "Άρθρο",
     "kindExercise": "Άσκηση",
     "kindOther": "Άλλο"
+  },
+  "webSources": {
+    "title": "Πηγές web",
+    "hint": "Τα feeds, τα κανάλια ή λίστες YouTube και οι αναζητήσεις site σαρώνονται σε πρόγραμμα — τα νέα στοιχεία καταλήγουν ως προτάσεις στον διάλογο αναζήτησης. Τίποτα δεν εισάγεται ποτέ από μόνο του.",
+    "empty": "Καμία πηγή web ακόμη.",
+    "add": "Προσθήκη πηγής",
+    "addTitle": "Προσθήκη πηγής web",
+    "editTitle": "Επεξεργασία πηγής web",
+    "dialogHint": "Οι σαρώσεις είναι ντετερμινιστικές χωρίς LLM· τα νέα στοιχεία εμφανίζονται μόνο ως προτάσεις.",
+    "kind": "Είδος",
+    "kind_rss": "RSS / Atom feed",
+    "kind_youtube_channel": "Κανάλι YouTube",
+    "kind_youtube_playlist": "Λίστα YouTube",
+    "kind_site_search": "Αναζήτηση site",
+    "url": "URL",
+    "label": "Ετικέτα",
+    "course": "Μάθημα",
+    "interval": "Διάστημα σάρωσης",
+    "interval15m": "Κάθε 15 λεπτά",
+    "interval1h": "Κάθε ώρα",
+    "interval6h": "Κάθε 6 ώρες",
+    "interval24h": "Κάθε μέρα",
+    "maxItems": "Μέγ. στοιχεία ανά σάρωση",
+    "query": "Ερώτημα αναζήτησης",
+    "site": "Φίλτρο site (domain)",
+    "save": "Αποθήκευση",
+    "scanNow": "Σάρωση τώρα",
+    "scanDone": "Η σάρωση ολοκληρώθηκε — {{count}} νέα.",
+    "disabled": "Ανενεργό",
+    "enabledLabel": "Ενεργό",
+    "enabledShort": "Ναι",
+    "edit": "Επεξεργασία",
+    "delete": "Διαγραφή"
   }
 }

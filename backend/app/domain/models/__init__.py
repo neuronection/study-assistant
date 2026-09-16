@@ -26,6 +26,9 @@ from .content import (
     ConceptLink as ConceptLink,
 )
 from .content import (
+    ExternalSource as ExternalSource,
+)
+from .content import (
     Extraction as Extraction,
 )
 from .content import (
