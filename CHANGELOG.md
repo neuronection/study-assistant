@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.9.1] - 2026-09-16
+
 ### Changed
 
 - Adopt `@neuronection/assistant-ui` 0.37.0 (session-list title wrapping,
@@ -27,6 +29,9 @@ Release history from before the public launch lives in the
   the conversation and composer stay fixed (previously the whole page
   scrolled as one), and the input is the standard multiline composer that
   grows with the message like in Career Assistant.
+- Startup: a stray `.env` in the working directory no longer crashes the
+  app at boot — unrelated keys in it are now ignored (only `SA_*` settings
+  are read).
 
 ## [v0.9.0] - 2026-09-16
 
