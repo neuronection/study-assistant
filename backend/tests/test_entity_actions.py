@@ -50,7 +50,10 @@ def wait_for_assistant(
         if messages and messages[-1]["role"] == "assistant":
             return
         time.sleep(0.05)
-    raise AssertionError(f"assistant never replied; last messages: {messages}")
+    jobs = client.get("/api/v1/jobs").json()
+    raise AssertionError(
+        f"assistant never replied; last messages: {messages}; jobs: {jobs}"
+    )
 
 
 def make_chat_with_messages(

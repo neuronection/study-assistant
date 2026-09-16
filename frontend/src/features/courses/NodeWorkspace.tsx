@@ -61,6 +61,7 @@ import { MaterialUploadDropzone } from '@/components/materials/MaterialUploadDro
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
 import { useMaterialUpload } from '@/components/materials/materialUpload'
 import { useWindowDropRegistration } from '@/lib/window-drop-store'
+import { useImportUrlStore } from '@/lib/import-url-store'
 import { useCreateMaterialMenu } from '@/components/materials/createMaterialMenu'
 import { NewFolderDialog } from '@/components/materials/NewFolderDialog'
 import {
@@ -1357,6 +1358,8 @@ function MaterialsTab({
     upload,
     onNewText: (kind) => setTextDialog(kind),
     onNewFolder: () => setFolderDialog(true),
+    onNewUrl: () =>
+      useImportUrlStore.getState().openImport(undefined, currentId),
   })
 
   const openContextMenu = (

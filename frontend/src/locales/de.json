@@ -697,7 +697,10 @@
     "paste": "Einfügen",
     "pasteInto": "In Ordner einfügen",
     "assignToNode": "Abschnitt zuweisen…",
-    "assignFolderToNode": "Ordner einem Abschnitt zuweisen…"
+    "assignFolderToNode": "Ordner einem Abschnitt zuweisen…",
+    "linkChip": "Link",
+    "linkOpen": "Öffnen",
+    "linkImport": "Importieren & parsen"
   },
   "home": {
     "title": "Heute",
@@ -2280,7 +2283,12 @@
     "hint": "Importiert die Seite als Markdown-Material in den ausgewählten Kurs.",
     "urlLabel": "Seiten-URL",
     "courseLabel": "Kurs",
-    "importAction": "Importieren"
+    "importAction": "Importieren",
+    "modeAttach": "Als Referenz anfügen",
+    "modeImport": "Importieren & parsen",
+    "attachAction": "Link anfügen",
+    "attachPlacement": "Die Referenz wird am aktuellen Thema eingeordnet.",
+    "modeLabel": "Modus"
   },
   "reextract": {
     "title": "Erneut extrahieren",

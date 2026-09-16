@@ -758,7 +758,7 @@ def send_message(
     except ChatError as error:
         status = 404 if "not found" in str(error) else 422
         raise HTTPException(status_code=status, detail=str(error)) from error
-    with _session_turn_lock(session_id):
+    with request.app.state.turn_locks.get(session_id):
         user_message = service.add_message(
             session_id,
             "user",
@@ -918,7 +918,7 @@ def edit_message(
         raise HTTPException(
             status_code=422, detail="only user messages can be edited"
         )
-    with _session_turn_lock(chat_session.id):
+    with request.app.state.turn_locks.get(chat_session.id):
         branched = service.branch_message(message, body.content.strip())
         job = JobRunner.enqueue(
             session,
@@ -943,7 +943,7 @@ def regenerate_message(
         raise HTTPException(
             status_code=422, detail="only assistant answers can be regenerated"
         )
-    with _session_turn_lock(chat_session.id):
+    with request.app.state.turn_locks.get(chat_session.id):
         service.select_message(message)
         job = JobRunner.enqueue(
             session,
@@ -969,18 +969,30 @@ def select_message(
     return list_messages(session_id=chat_session.id, request=request, session=session)
 
 
-_TURN_LOCKS: dict[int, threading.Lock] = {}
-_TURN_LOCKS_GUARD = threading.Lock()
+class SessionTurnLocks:
+    """Per-app serialization of chat turns.
+
+    Locks are keyed by chat session id, so the map must live on the app
+    instance: a module-global would let a leaked handler thread from one app
+    instance block the same-numbered session in a different app (fresh DB,
+    reused ids — exactly what the test suite does).
+    """
+
+    def __init__(self) -> None:
+        self._guard = threading.Lock()
+        self._locks: dict[int, threading.Lock] = {}
+
+    def get(self, session_id: int) -> threading.Lock:
+        with self._guard:
+            lock = self._locks.get(session_id)
+            if lock is None:
+                lock = threading.Lock()
+                self._locks[session_id] = lock
+            return lock
+
+
 _STOP_EVENTS: dict[int, threading.Event] = {}
-
-
-def _session_turn_lock(session_id: int) -> threading.Lock:
-    with _TURN_LOCKS_GUARD:
-        lock = _TURN_LOCKS.get(session_id)
-        if lock is None:
-            lock = threading.Lock()
-            _TURN_LOCKS[session_id] = lock
-        return lock
+_TURN_LOCKS_GUARD = threading.Lock()
 
 
 def _register_stop_event(session_id: int) -> threading.Event:
@@ -1023,13 +1035,16 @@ def make_chat_turn_handler(
     bus: EventBus,
     turn_engine_provider: Callable[[], Any] | None = None,
     search_transport_provider: Callable[[], Any] | None = None,
+    turn_locks: SessionTurnLocks | None = None,
 ) -> JobHandler:
+    locks = turn_locks if turn_locks is not None else SessionTurnLocks()
+
     def handler(session: Session, job: Any, report: Any) -> None:
         payload: dict[str, Any] = job.payload or {}
         chat_session = session.get(ChatSession, payload.get("chat_session_id"))
         if chat_session is None:
             raise JobError("chat session not found")
-        turn_lock = _session_turn_lock(chat_session.id)
+        turn_lock = locks.get(chat_session.id)
         turn_lock.acquire()
         try:
             service = ChatService(

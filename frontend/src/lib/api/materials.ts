@@ -26,6 +26,7 @@ export interface Material {
     coverage?: { total: number; covered: number; missing_ids: number[] } | null
     needs_review?: boolean
   } | null
+  source_url?: string | null
   created_at: string
   has_extraction?: boolean
   tags?: string[]
@@ -671,13 +672,31 @@ export async function composeMaterial(body: {
   return json<ComposedMaterial>(response)
 }
 
-export async function composeMaterialAsync(body: Parameters<typeof composeMaterial>[0]): Promise<{ job_id: number }> {
-  const response = await apiFetch('/api/v1/materials/compose/async', {
+export async function composeMaterialAsync(body: Parameters<typeof composeMaterial>[0]): Promise<{ job_id: number }> {  const response = await apiFetch('/api/v1/materials/compose/async', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   return json<{ job_id: number }>(response)
+}
+
+export interface LinkMaterialBody {
+  course_id: number
+  url: string
+  title?: string | null
+  node_id?: number | null
+  folder_id?: number | null
+}
+
+export async function createLinkMaterial(
+  body: LinkMaterialBody,
+): Promise<ComposedMaterial> {
+  const response = await apiFetch('/api/v1/materials/link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<ComposedMaterial>(response)
 }
 
 export async function addMaterialDrawing(

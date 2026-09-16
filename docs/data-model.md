@@ -305,6 +305,14 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0061 (plan 73-A, ADR-164/171)**: `materials.source_url` (nullable string
+  2048, the raw URL preserved for display) and `materials.source_url_norm`
+  (nullable string 2048, the `normalize_url` identity key) plus two partial
+  indexes: `ix_materials_source_url` (`WHERE source_url IS NOT NULL`) and
+  unique `uq_materials_course_source_url_norm` on
+  `(course_id, source_url_norm) WHERE kind = 'link' AND source_url_norm IS
+  NOT NULL` — database-enforced per-course link dedupe. Downgrade drops both
+  indexes and columns.
 - **0060 (plan 49-C, ADR-108)**: `activities.time_limit_sec` (nullable int) and
   `attempts.deadline_at` (nullable timestamp, server-computed at attempt start
   from the quiz's limit) — server-enforced quiz timing. Downgrade drops both

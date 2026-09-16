@@ -7,16 +7,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import fixture, raises
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway, add_material, make_course
+from test_compose_coverage import LONG_DOC
 
 from app.core.config import Settings
 from app.domain.models import Job, Material
-from app.jobs.cancellation import JobCancelled, request_cancel
+from app.jobs.cancellation import JobCancelled, is_cancel_requested, request_cancel
 from app.main import create_app
 from app.pipelines.compose import make_compose_handler
 from app.storage.blobs import BlobStore
-from test_compose_coverage import LONG_DOC
 
 
 def wait_job(
@@ -313,3 +313,25 @@ def _course(db_session: Session, profile_id: int) -> Any:
     )
     db_session.flush()
     return course
+
+
+def test_stale_cancel_flag_cleared_on_claim(db_session: Session) -> None:
+    from app.core.events import EventBus
+    from app.jobs.runner import JobRunner
+
+    request_cancel(1)
+    job = Job(type="ingest", payload={"material_id": 1}, status="queued")
+    db_session.add(job)
+    db_session.commit()
+    assert job.id == 1
+    assert is_cancel_requested(job.id)
+
+    runner = JobRunner(
+        sessionmaker(bind=db_session.get_bind()),
+        EventBus(),
+        handlers={},
+    )
+    claimed = runner._claim_next()
+    assert claimed is not None
+    assert claimed.id == 1
+    assert not is_cancel_requested(claimed.id)

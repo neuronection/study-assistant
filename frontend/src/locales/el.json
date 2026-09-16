@@ -697,7 +697,10 @@
     "starMany": "Προσθήκη {{count}} υλικών στα αγαπημένα",
     "unstarMany": "Αφαίρεση {{count}} υλικών από τα αγαπημένα",
     "starredFilter": "Μόνο αγαπημένα",
-    "clearTagFilter": "Εκκαθάριση φίλτρου ετικετών"
+    "clearTagFilter": "Εκκαθάριση φίλτρου ετικετών",
+    "linkChip": "Σύνδεσμος",
+    "linkOpen": "Άνοιγμα",
+    "linkImport": "Εισαγωγή & ανάλυση"
   },
   "home": {
     "title": "Σήμερα",
@@ -2271,7 +2274,12 @@
     "hint": "Ανακτά τη σελίδα ως υλικό markdown στο επιλεγμένο μάθημα.",
     "urlLabel": "URL σελίδας",
     "courseLabel": "Μάθημα",
-    "importAction": "Εισαγωγή"
+    "importAction": "Εισαγωγή",
+    "modeAttach": "Επισύναψη ως αναφορά",
+    "modeImport": "Εισαγωγή & ανάλυση",
+    "attachAction": "Επισύναψη συνδέσμου",
+    "attachPlacement": "Η αναφορά θα τοποθετηθεί στο τρέχον θέμα.",
+    "modeLabel": "Λειτουργία"
   },
   "study": {
     "paneLabel": "Διαιρεμένη προβολή μελέτης",

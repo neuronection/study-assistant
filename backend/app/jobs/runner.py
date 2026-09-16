@@ -152,6 +152,7 @@ class JobRunner:
                 session.commit()
                 if not bool(cast(Any, claimed).rowcount):
                     continue
+                clear_cancel(job.id)
                 session.refresh(job)
                 session.expunge(job)
                 return job

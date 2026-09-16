@@ -6,6 +6,7 @@ import { UrlImportDialog } from './UrlImportDialog'
 import { useImportUrlStore } from '@/lib/import-url-store'
 
 const importUrlMaterial = vi.fn()
+const createLinkMaterial = vi.fn()
 const listCourses = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -14,6 +15,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     importUrlMaterial: (...args: Parameters<typeof actual.importUrlMaterial>) =>
       importUrlMaterial(...args),
+    createLinkMaterial: (body: unknown) => createLinkMaterial(body),
     listCourses: () => listCourses(),
   }
 })
@@ -22,6 +24,7 @@ beforeEach(() => {
   listCourses.mockReset()
   listCourses.mockResolvedValue(COURSES)
   importUrlMaterial.mockReset()
+  createLinkMaterial.mockReset()
 })
 
 const COURSES = [
@@ -37,8 +40,52 @@ function renderDialog() {
   )
 }
 
+async function switchToImportMode() {
+  fireEvent.click(screen.getByRole('tab', { name: /import & parse/i }))
+}
+
 describe('UrlImportDialog', () => {
-  test('imports the URL into the selected course and navigates to the material', async () => {
+  test('attach is the default mode and calls the link endpoint', async () => {
+    createLinkMaterial.mockResolvedValue({
+      material: { id: 44, title: 'example.com - bayes' },
+      job_id: null,
+      deduped: false,
+    })
+    renderDialog()
+    useImportUrlStore.getState().openImport()
+    const input = await screen.findByRole('textbox')
+    fireEvent.change(input, { target: { value: 'https://example.com/wiki/bayes' } })
+    expect(screen.getByRole('tab', { name: /attach as reference/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    fireEvent.click(screen.getByRole('button', { name: /attach link/i }))
+    await waitFor(() =>
+      expect(createLinkMaterial).toHaveBeenCalledWith({
+        course_id: 3,
+        url: 'https://example.com/wiki/bayes',
+      }),
+    )
+    expect(importUrlMaterial).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  test('attach surfaces a duplicate as success and navigates to the existing material', async () => {
+    createLinkMaterial.mockResolvedValue({
+      material: { id: 44, title: 'example.com - bayes' },
+      job_id: null,
+      deduped: true,
+    })
+    renderDialog()
+    useImportUrlStore.getState().openImport()
+    const input = await screen.findByRole('textbox')
+    fireEvent.change(input, { target: { value: 'https://example.com/wiki/bayes' } })
+    fireEvent.click(screen.getByRole('button', { name: /attach link/i }))
+    await waitFor(() => expect(createLinkMaterial).toHaveBeenCalled())
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  test('import mode keeps the legacy parse behavior', async () => {
     importUrlMaterial.mockResolvedValue({
       material: { id: 44, title: 'example.com - bayes' },
       job_id: 7,
@@ -48,10 +95,12 @@ describe('UrlImportDialog', () => {
     useImportUrlStore.getState().openImport()
     const input = await screen.findByRole('textbox')
     fireEvent.change(input, { target: { value: 'https://example.com/wiki/bayes' } })
-    fireEvent.click(screen.getByRole('button', { name: /import/i }))
+    await switchToImportMode()
+    fireEvent.click(screen.getByRole('button', { name: /^import$/i }))
     await waitFor(() =>
       expect(importUrlMaterial).toHaveBeenCalledWith(3, 'https://example.com/wiki/bayes'),
     )
+    expect(createLinkMaterial).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -60,8 +109,9 @@ describe('UrlImportDialog', () => {
     useImportUrlStore.getState().openImport()
     const input = await screen.findByRole('textbox')
     fireEvent.change(input, { target: { value: '   ' } })
-    fireEvent.click(screen.getByRole('button', { name: /import/i }))
-    await waitFor(() => expect(importUrlMaterial).not.toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: /attach link/i }))
+    await waitFor(() => expect(createLinkMaterial).not.toHaveBeenCalled())
+    expect(importUrlMaterial).not.toHaveBeenCalled()
   })
 
   test('import failure shows the error inline and keeps the dialog open', async () => {
@@ -70,7 +120,15 @@ describe('UrlImportDialog', () => {
     useImportUrlStore.getState().openImport()
     const input = await screen.findByRole('textbox')
     fireEvent.change(input, { target: { value: 'https://example.com/missing' } })
-    fireEvent.click(screen.getByRole('button', { name: /import/i }))
+    await switchToImportMode()
+    fireEvent.click(screen.getByRole('button', { name: /^import$/i }))
     expect(await screen.findByText(/fetch returned 404/)).toBeInTheDocument()
+  })
+
+  test('a prefilled URL lands in the input', async () => {
+    renderDialog()
+    useImportUrlStore.getState().openImport('https://example.com/prefilled')
+    const input = await screen.findByRole('textbox')
+    await waitFor(() => expect(input).toHaveValue('https://example.com/prefilled'))
   })
 })

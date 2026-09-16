@@ -4912,6 +4912,60 @@
         "title": "LinkBreadcrumbOut",
         "type": "object"
       },
+      "LinkIn": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "url"
+        ],
+        "title": "LinkIn",
+        "type": "object"
+      },
       "LocalEngineHitOut": {
         "properties": {
           "base_url": {
@@ -5191,7 +5245,8 @@
           "epub",
           "html",
           "audio",
-          "video"
+          "video",
+          "link"
         ],
         "title": "MaterialKind",
         "type": "string"
@@ -5399,6 +5454,17 @@
             "readOnly": true,
             "title": "Reextract Modes",
             "type": "array"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
           },
           "starred": {
             "default": false,
@@ -19726,6 +19792,47 @@
           }
         },
         "summary": "Import Url Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/link": {
+      "post": {
+        "operationId": "create_link_material_api_v1_materials_link_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialUploadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Link Material",
         "tags": [
           "materials"
         ]

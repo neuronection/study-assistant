@@ -6,6 +6,46 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — link materials: attach a URL as a reference (plan 73-A,
+ADR-164/171, 2026-09-16):** plan 73 slice A. New `MaterialKind.LINK` +
+`materials.source_url` / `materials.source_url_norm` (migration **0061**,
+nullable, partial unique `(course_id, source_url_norm) WHERE kind='link'` —
+database-enforced per-course dedupe on the normalized URL; raw URL preserved
+verbatim for display). `normalize_url` (`app/core/urls.py`, ADR-171):
+scheme/host lowercase, default ports dropped, fragment + tracking params
+(`utm_*`, `fbclid`, `si`, …) stripped, remaining params sorted, trailing
+slashes trimmed, YouTube short forms (`youtu.be/<id>`, `/shorts/`, `/embed/`)
+resolved to canonical `watch?v=<id>` — identity key only, never the display
+URL. `POST /materials/link` (`MaterialsService.create_link`): course-required
+(ADR-040), http(s)-validated, deduped rows returned untouched
+(`deduped: true`), optional node/folder placement (rationale `web reference`),
+row is `kind=link`, blob-less, `status=ready`, provenance `{source: link,
+url}`. `MaterialOut.source_url` added (types regenerated). Frontend:
+URL-import dialog gains an **Attach as reference** (default) vs
+**Import & parse** mode toggle with URL prefill support
+(`useImportUrlStore.openImport(url, nodeId?)`), the node workspace create
+menu gains "Import from URL" placing at the current node, and link materials
+render a compact reference card (title, domain, open-external, "Import &
+parse" verb) instead of extraction views with a `Link` chip in the meta row.
+`ca-course/v2` bundles round-trip the new columns. Tests:
+`test_material_links.py` (16: normalize_url equivalence classes, create/
+dedupe/placement, non-http 422, partial unique index enforcement + non-link
+immunity, bundle round-trip); UrlImportDialog suite (6), MaterialDetailBody
+link card (1). Backend 1,189 green, frontend 1,257 green, lint/typecheck/
+build/i18n green. Two product determinism fixes surfaced by the heavier
+suite while running this slice's gate (flake root-caused, not papered over):
+(1) **`SessionTurnLocks`** — chat turn locks were a module-global map keyed
+by session id, so a leaked handler thread from a torn-down app instance could
+block the same-numbered session in a fresh app (every test/DB reuses id 1);
+locks now live on `app.state` and pass into the chat turn handler factory;
+(2) **stale cancel flags** — `request_cancel` set after a job reached a
+terminal state (racing `cancel_jobs_for`) was never cleared, and the next job
+claiming the same id in a fresh DB was instantly "cancelled" ("source deleted
+before this job finished"); `JobRunner._claim_next` now clears the flag at
+claim time (regression test `test_stale_cancel_flag_cleared_on_claim`); also
+`test_entity_actions.wait_for_assistant` 5 s → 30 s + jobs-state dump.
+Backend 1,190 green, frontend 1,254 green, lint/typecheck/build/i18n green.
+
 **Feature — async compose job with progress + cancel (plan 70-D, ADR-156,
 2026-09-16):** plan 70 COMPLETE (A–D). Generation no longer blocks the HTTP
 request. **`make_compose_handler`** (`pipelines/compose.py`, registered as the

@@ -133,6 +133,7 @@ def _to_out(
         blob_sha=material.blob_sha,
         provenance=material.provenance,
         created_at=material.created_at,
+        source_url=material.source_url,
         has_extraction=has_extraction,
         tags=list(material.tags or []),
         starred=material.starred,
@@ -725,6 +726,36 @@ class UrlImportIn(BaseModel):
     course_id: int
     url: str = Field(min_length=8, max_length=2_000)
     node_id: int | None = None
+
+
+class LinkIn(BaseModel):
+    course_id: int
+    url: str = Field(min_length=8, max_length=2_048)
+    title: str | None = Field(default=None, max_length=300)
+    node_id: int | None = None
+    folder_id: int | None = None
+
+
+@router.post("/link", response_model=MaterialUploadOut)
+def create_link_material(
+    request: Request,
+    body: LinkIn,
+    session: Session = Depends(get_session),
+) -> MaterialUploadOut:
+    profile = ensure_default_profile(session)
+    try:
+        material, deduped = _service(request, session).create_link(
+            profile_id=profile.id,
+            course_id=body.course_id,
+            url=body.url,
+            title=body.title,
+            node_id=body.node_id,
+            folder_id=body.folder_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    return MaterialUploadOut(material=_to_out(material), job_id=None, deduped=deduped)
 
 
 @router.post("/import-url", response_model=MaterialUploadOut)

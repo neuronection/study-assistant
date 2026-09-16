@@ -54,6 +54,7 @@ class MaterialKind(StrVocab):
     HTML = "html"
     AUDIO = "audio"
     VIDEO = "video"
+    LINK = "link"
 
 
 class MaterialStatus(StrVocab):

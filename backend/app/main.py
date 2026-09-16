@@ -19,7 +19,7 @@ from .ai.graphs.chat_turn_adapter import ChatTurnEngine
 from .ai.graphs.checkpointer import open_checkpointer, prune_checkpoints
 from .ai.tasks import TASK_DEFS
 from .api import ws as ws_router
-from .api.chat import make_chat_turn_handler
+from .api.chat import SessionTurnLocks, make_chat_turn_handler
 from .api.router import api_router
 from .core.config import Settings, get_settings
 from .core.events import EventBus
@@ -227,6 +227,7 @@ def create_app(
     def _turn_engine() -> ChatTurnEngine | None:
         return getattr(app.state, "chat_turns", None)
 
+    app.state.turn_locks = SessionTurnLocks()
     app.state.jobs = JobRunner(
         app.state.session_factory,
         app.state.bus,
@@ -243,6 +244,7 @@ def create_app(
                 search_transport_provider=lambda: getattr(
                     app.state, "search_transport", None
                 ),
+                turn_locks=app.state.turn_locks,
             ),
             "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
             "image_ocr": make_image_ocr_handler(app.state.gateway, app.state.blobs),

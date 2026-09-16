@@ -2080,6 +2080,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/materials/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Link Material */
+        post: operations["create_link_material_api_v1_materials_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials/text": {
         parameters: {
             query?: never;
@@ -5698,6 +5715,19 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** LinkIn */
+        LinkIn: {
+            /** Course Id */
+            course_id: number;
+            /** Folder Id */
+            folder_id?: number | null;
+            /** Node Id */
+            node_id?: number | null;
+            /** Title */
+            title?: string | null;
+            /** Url */
+            url: string;
+        };
         /** LocalEngineHitOut */
         LocalEngineHitOut: {
             /** Base Url */
@@ -5780,7 +5810,7 @@ export interface components {
          * MaterialKind
          * @enum {string}
          */
-        MaterialKind: "pdf" | "image" | "md" | "txt" | "doc" | "docx" | "pptx" | "epub" | "html" | "audio" | "video";
+        MaterialKind: "pdf" | "image" | "md" | "txt" | "doc" | "docx" | "pptx" | "epub" | "html" | "audio" | "video" | "link";
         /** MaterialLinkInfoOut */
         MaterialLinkInfoOut: {
             /** Auto Assigned */
@@ -5848,6 +5878,8 @@ export interface components {
             } | null;
             /** Reextract Modes */
             readonly reextract_modes: string[];
+            /** Source Url */
+            source_url?: string | null;
             /**
              * Starred
              * @default false
@@ -12741,6 +12773,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UrlImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_link_material_api_v1_materials_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
             };
         };
         responses: {

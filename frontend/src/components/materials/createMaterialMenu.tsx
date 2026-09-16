@@ -11,12 +11,14 @@ export function useCreateMaterialMenu({
   upload,
   onNewText,
   onNewFolder,
+  onNewUrl,
   prepend = [],
   append = [],
 }: {
   upload: MaterialUploadController
   onNewText: (kind: 'txt' | 'md') => void
   onNewFolder: () => void
+  onNewUrl?: () => void
   prepend?: ContextMenuItem[]
   append?: ContextMenuItem[]
 }): { items: ContextMenuItem[]; inputs: ReactNode } {
@@ -27,6 +29,15 @@ export function useCreateMaterialMenu({
 
   const items: ContextMenuItem[] = [
     ...prepend,
+    ...(onNewUrl
+      ? [
+          {
+            key: 'new-url',
+            label: t('importUrl.title'),
+            onSelect: onNewUrl,
+          },
+        ]
+      : []),
     {
       key: 'new-folder',
       label: t('library.newFolder'),

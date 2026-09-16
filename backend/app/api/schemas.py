@@ -192,6 +192,7 @@ class MaterialOut(BaseModel):
     blob_sha: str | None
     provenance: dict[str, Any] | None = None
     created_at: datetime
+    source_url: str | None = None
     has_extraction: bool = False
     tags: list[str] = []
     starred: bool = False

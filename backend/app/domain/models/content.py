@@ -197,6 +197,20 @@ class Material(Base):
     __table_args__ = (
         Index("ix_materials_course_status", "course_id", "status"),
         Index("ix_materials_starred", "starred", sqlite_where=text("starred = 1")),
+        Index(
+            "ix_materials_source_url",
+            "source_url",
+            sqlite_where=text("source_url IS NOT NULL"),
+        ),
+        Index(
+            "uq_materials_course_source_url_norm",
+            "course_id",
+            "source_url_norm",
+            unique=True,
+            sqlite_where=text(
+                "kind = 'link' AND source_url_norm IS NOT NULL"
+            ),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -219,6 +233,8 @@ class Material(Base):
     tags: Mapped[list[str] | None] = mapped_column(JSON)
     starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    source_url_norm: Mapped[str | None] = mapped_column(String(2048))
     source_id: Mapped[int | None] = mapped_column(Integer)
     external_path: Mapped[str | None] = mapped_column(String(1000))
     file_mtime: Mapped[float | None] = mapped_column(Float)

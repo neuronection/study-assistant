@@ -13,6 +13,12 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Link materials: paste a URL to keep it as a real, first-class reference —
+  placeable at any topic, taggable, starable and searchable, with
+  database-enforced dedupe on normalized URLs (YouTube short links and
+  tracking parameters count as the same link). The URL import dialog now
+  defaults to attaching references, with full import remaining one click
+  away. (plan 73-A, ADR-164/171)
 - Async compose with progress and cancel: composing study material no longer
   blocks the app for the whole generation — documents are generated as a
   cancellable background job with live progress, single-job status polling

@@ -253,6 +253,16 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   same result view (coverage note, review warning, open document). Large
   documents can no longer hold the UI for minutes; the sync endpoint remains
   for chat approvals
+- ✅ **Link materials — attach a URL as a reference (plan 73-A, ADR-164/171,
+  2026-09-16)**: a new `link` material kind keeps a web resource as a real,
+  first-class material — placeable, taggable, ⭐, searchable metadata — with
+  zero ingest. The URL-import dialog gains an **Attach as reference** mode
+  (default) beside **Import & parse**, the node workspace create menu gains
+  "Import from URL" (placing at the current node), and link materials render
+  a compact reference card (title, domain, open-external, "Import & parse")
+  instead of extraction views. Per-course dedupe is database-enforced on a
+  normalized URL (`youtu.be/x` ≡ `youtube.com/watch?v=x`, tracking params
+  stripped) — re-attaching the same link surfaces the existing material
 - ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
   provider (Settings → Providers → Web search; Tavily-compatible or SearXNG,
   API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**

@@ -158,6 +158,32 @@ describe('MaterialDetailBody take-notes', () => {
     expect(onTakeNotes).toHaveBeenCalled()
   })
 
+  test('link materials render the reference card instead of extraction views', async () => {
+    getMaterial.mockResolvedValue({
+      ...MATERIAL,
+      material: {
+        ...MATERIAL.material,
+        kind: 'link',
+        source_url: 'https://example.com/lecture-1',
+      },
+    })
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    renderBody()
+    expect(await screen.findByTestId('link-reference-card')).toBeInTheDocument()
+    expect(screen.getByText('example.com')).toBeInTheDocument()
+    expect(screen.getByText('Link')).toBeInTheDocument()
+    expect(screen.queryByTestId('extraction-view')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /more material actions/i })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /open/i }))
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://example.com/lecture-1',
+      '_blank',
+      'noopener',
+    )
+    openSpy.mockRestore()
+  })
+
   test('header band shows the material title, meta chips and view menu together (plan 62-E)', async () => {
     getMaterialLinks.mockResolvedValue([
       {

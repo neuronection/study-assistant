@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
+  Download,
+  ExternalLink,
   FileDown,
   FileOutput,
   History,
+  Link2,
   MoreHorizontal,
   NotebookPen,
   Printer,
@@ -21,6 +24,7 @@ import { MarkdownPrintDoc } from '@/components/print/MarkdownPrintDoc'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PopoverMenu } from '@/components/ui/popover-menu'
+import { useImportUrlStore } from '@/lib/import-url-store'
 import { cn } from '@/lib/utils'
 import {
   deriveMaterial,
@@ -106,6 +110,16 @@ export function MaterialDetailBody({
 
   const material = detail.data?.material
   const course = (courses.data ?? []).find((entry) => entry.id === material?.course_id)
+  const isLink = material?.kind === 'link'
+  const linkHostname = (() => {
+    if (material?.source_url === undefined || material.source_url === null) return null
+    try {
+      return new URL(material.source_url).hostname
+    } catch {
+      return null
+    }
+  })()
+  const openImportDialog = useImportUrlStore((state) => state.openImport)
   const rawStatus = states.data?.[String(materialId)]?.status
   const status: StudyStatus =
     rawStatus === 'reading' || rawStatus === 'studied' ? rawStatus : 'unread'
@@ -266,6 +280,12 @@ export function MaterialDetailBody({
             >
               {material.status}
             </span>
+            {isLink ? (
+              <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]">
+                <Link2 className="size-3" aria-hidden />
+                {t('library.linkChip')}
+              </span>
+            ) : null}
             {course ? (
               <span className="bg-subtle text-muted-foreground rounded-full px-2 py-0.5 text-[11px]">
                 {course.title}
@@ -371,15 +391,17 @@ export function MaterialDetailBody({
           </>
         }
         tabs={
-          <ViewMenu
-            label={t('library.viewMenu')}
-            value={active}
-            views={views.map((view) => ({
-              value: view,
-              label: t(`library.tab_${view.replaceAll('-', '_')}`),
-            }))}
-            onChange={(next) => onTabChange(next as DetailTab)}
-          />
+          isLink ? undefined : (
+            <ViewMenu
+              label={t('library.viewMenu')}
+              value={active}
+              views={views.map((view) => ({
+                value: view,
+                label: t(`library.tab_${view.replaceAll('-', '_')}`),
+              }))}
+              onChange={(next) => onTabChange(next as DetailTab)}
+            />
+          )
         }
         primary={
           <>
@@ -472,6 +494,48 @@ export function MaterialDetailBody({
       {deriveFeedback}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {isLink ? (
+          <div className="bg-subtle border-border space-y-3 rounded-lg border p-4" data-testid="link-reference-card">
+            <div className="flex items-start gap-3">
+              <Link2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{material.title}</p>
+                {linkHostname !== null ? (
+                  <p className="text-muted-foreground truncate text-xs">
+                    {linkHostname}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            {material.description ? (
+              <p className="text-muted-foreground text-xs whitespace-pre-wrap">
+                {material.description}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (material.source_url) {
+                    window.open(material.source_url, '_blank', 'noopener')
+                  }
+                }}
+              >
+                <ExternalLink className="size-4" aria-hidden />
+                {t('library.linkOpen')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openImportDialog(material.source_url ?? '')}
+              >
+                <Download className="size-4" aria-hidden />
+                {t('library.linkImport')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
         {active === 'extraction' || active === 'formatted' ? (
           <ExtractionView
             materialId={materialId}
@@ -505,6 +569,8 @@ export function MaterialDetailBody({
             </Card>
           </div>
         ) : null}
+          </>
+        )}
       </div>
     </>
   )

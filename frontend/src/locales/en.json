@@ -697,7 +697,10 @@
     "starMany": "Star {{count}} materials",
     "unstarMany": "Unstar {{count}} materials",
     "starredFilter": "Starred only",
-    "clearTagFilter": "Clear tag filter"
+    "clearTagFilter": "Clear tag filter",
+    "linkChip": "Link",
+    "linkOpen": "Open",
+    "linkImport": "Import & parse"
   },
   "home": {
     "title": "Today",
@@ -2280,7 +2283,12 @@
     "hint": "Fetches the page as a markdown material into the selected course.",
     "urlLabel": "Page URL",
     "courseLabel": "Course",
-    "importAction": "Import"
+    "importAction": "Import",
+    "modeAttach": "Attach as reference",
+    "modeImport": "Import & parse",
+    "attachAction": "Attach link",
+    "attachPlacement": "The reference will be placed at the current topic.",
+    "modeLabel": "Mode"
   },
   "reextract": {
     "title": "Re-extract",

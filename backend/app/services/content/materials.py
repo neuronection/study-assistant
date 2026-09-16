@@ -1,9 +1,11 @@
 from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from ...core.urls import normalize_url
 from ...core.vocab import DeriveOutcome, MaterialKind
 from ...domain.models import (
     Blob,
@@ -241,6 +243,77 @@ class MaterialsService:
             self.set_description(material, description)
         return material, deduped
 
+    def create_link(
+        self,
+        *,
+        profile_id: int,
+        course_id: int,
+        url: str,
+        title: str | None = None,
+        node_id: int | None = None,
+        folder_id: int | None = None,
+    ) -> tuple[Material, bool]:
+        text = (url or "").strip()
+        parsed = urlparse(text)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("expecting an http(s) URL")
+        course = self._session.get(Course, course_id)
+        if course is None or course.profile_id != profile_id:
+            raise ValueError("course not found")
+        if folder_id is not None:
+            folder = self._session.get(MaterialFolder, folder_id)
+            if folder is None or folder.profile_id != profile_id:
+                raise ValueError("folder not found")
+            if folder.course_id != course_id:
+                raise ValueError("folder belongs to a different course")
+            if folder.source_id is not None:
+                raise ValueError("cannot upload into a linked folder")
+        url_norm = normalize_url(text)
+        existing = self._session.scalars(
+            select(Material).where(
+                Material.course_id == course_id,
+                Material.kind == MaterialKind.LINK.value,
+                Material.source_url_norm == url_norm,
+            )
+        ).first()
+        if existing is not None:
+            return existing, True
+        host = parsed.netloc.split(":")[0]
+        slug = parsed.path.rstrip("/").rsplit("/", 1)[-1] or host
+        display_title = (title or "").strip() or f"{host} - {slug}"
+        material = Material(
+            profile_id=profile_id,
+            course_id=course_id,
+            folder_id=folder_id,
+            kind=MaterialKind.LINK.value,
+            title=display_title[:300],
+            blob_sha=None,
+            filename=slug[:200] or host,
+            mime=None,
+            status="ready",
+            source_url=text,
+            source_url_norm=url_norm,
+            provenance={"source": "link", "url": text},
+        )
+        self._session.add(material)
+        self._session.flush()
+        if node_id is not None:
+            from ..knowledge.tree import TreeService
+
+            placement = TreeService(self._session).placement_node(
+                course_id, node_id
+            )
+            self._session.add(
+                MaterialLink(
+                    course_id=course_id,
+                    node_id=placement,
+                    material_id=material.id,
+                    rationale="web reference",
+                )
+            )
+        self._session.flush()
+        return material, False
+
     def rename(self, material: Material, title: str) -> Material:
         title = title.strip()
         if not title:
@@ -248,7 +321,6 @@ class MaterialsService:
         material.title = title[:300]
         self._session.flush()
         return material
-
     def set_description(self, material: Material, description: str | None) -> Material:
         cleaned = description.strip() if description is not None else ""
         material.description = cleaned[:2000] or None
