@@ -23,6 +23,7 @@ from .payloads import (
     ImageOcrPayload,
     IngestPayload,
     PostprocessPayload,
+    UrlImportPayload,
 )
 
 logger = structlog.get_logger(__name__)
@@ -297,7 +298,8 @@ class JobRunner:
         | DrawingOcrPayload
         | ImageOcrPayload
         | GenesisPayload
-        | ComposePayload,
+        | ComposePayload
+        | UrlImportPayload,
     ) -> Job:
         job = Job(type=job_type, payload=dict(payload), status=JobStatus.QUEUED, progress=0)
         session.add(job)

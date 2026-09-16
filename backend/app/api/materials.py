@@ -18,6 +18,7 @@ from ..core.vocab import (
     applicable_extraction_modes,
 )
 from ..domain.models import Extraction, Material, MaterialDrawing, MaterialLink, utcnow
+from ..jobs.payloads import UrlImportPayload
 from ..jobs.runner import JobRunner
 from ..services.content.diffs import unified_text_diff
 from ..services.content.drawings import (
@@ -44,6 +45,7 @@ from .schemas import (
     IndexCardOut,
     MaterialDetailOut,
     MaterialImageOut,
+    MaterialJobOut,
     MaterialOut,
     MaterialUploadOut,
     UploadWarningOut,
@@ -756,6 +758,65 @@ def create_link_material(
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
     return MaterialUploadOut(material=_to_out(material), job_id=None, deduped=deduped)
+
+
+@router.post("/{material_id}/parse", response_model=MaterialJobOut)
+def parse_link_material(
+    material_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> MaterialJobOut:
+    from ..parsers import build_registry, resolve_parser
+
+    material = session.get(Material, material_id)
+    if material is None:
+        raise HTTPException(status_code=404, detail="material not found")
+    if material.source_url is None:
+        raise HTTPException(
+            status_code=422, detail="only URL references can be parsed"
+        )
+    registry = build_registry(
+        getattr(request.app.state, "search_transport", None),
+        language=material.language,
+    )
+    if resolve_parser(registry, material.source_url) is None:
+        raise HTTPException(
+            status_code=422,
+            detail="no parser for this URL — the link stays as a reference",
+        )
+    job = JobRunner.enqueue(
+        session,
+        "url_import",
+        UrlImportPayload(material_id=material.id),
+    )
+    session.commit()
+    request.app.state.jobs.wake()
+    return MaterialJobOut(job_id=job.id)
+
+
+@router.post("/{material_id}/transcribe-audio", response_model=MaterialJobOut)
+def transcribe_link_audio(
+    material_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> MaterialJobOut:
+    from ..parsers.youtube import is_youtube_url
+
+    material = session.get(Material, material_id)
+    if material is None:
+        raise HTTPException(status_code=404, detail="material not found")
+    if material.source_url is None or not is_youtube_url(material.source_url):
+        raise HTTPException(
+            status_code=422, detail="only YouTube references can be transcribed"
+        )
+    job = JobRunner.enqueue(
+        session,
+        "url_import",
+        UrlImportPayload(material_id=material.id, action="transcribe_audio"),
+    )
+    session.commit()
+    request.app.state.jobs.wake()
+    return MaterialJobOut(job_id=job.id)
 
 
 @router.post("/import-url", response_model=MaterialUploadOut)

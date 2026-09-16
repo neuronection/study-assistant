@@ -34,6 +34,7 @@ from .pipelines.genesis import make_genesis_handler
 from .pipelines.image_ocr import make_image_ocr_handler
 from .pipelines.ingest import make_ingest_handler
 from .pipelines.postprocess import make_postprocess_handler
+from .pipelines.url_import import make_url_import_handler
 from .services.platform.backup import (
     BackupScheduler,
     EffectiveBackupSettings,
@@ -253,6 +254,10 @@ def create_app(
             ),
             "compose": make_compose_handler(
                 app.state.gateway, app.state.blobs, app.state.embedder.embed
+            ),
+            "url_import": make_url_import_handler(
+                app.state.blobs,
+                lambda: getattr(app.state, "search_transport", None),
             ),
         },
         group_key=_chat_turn_group,

@@ -210,6 +210,10 @@ class UploadWarningOut(BaseModel):
     file_mb: float | None = None
 
 
+class MaterialJobOut(BaseModel):
+    job_id: int
+
+
 class MaterialUploadOut(BaseModel):
     material: MaterialOut
     job_id: int | None

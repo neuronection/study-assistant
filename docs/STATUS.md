@@ -6,6 +6,41 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — parser registry & YouTube transcripts (plan 73-B, ADR-165,
+2026-09-16):** "Import & parse" on link references is real. New
+**`app/parsers/`** package — `URLParser` protocol (`matches`/`fetch` →
+`ParsedDocument{title, markdown, metadata, kind_hint, blob, mime}`), ordered
+registry first-match-wins: **youtube** (yt-dlp, added to backend deps;
+metadata + captions — manual preferred over auto, material language → en;
+`[mm:ss]`-anchored markdown transcript; metadata-only completion with an
+honest `parse_note` when no captions; extractor failures raise "YouTube may
+have changed; try updating yt-dlp"), **direct_file** (suffix-keyed download —
+200 MB cap, HTML-content-type guard — into the standard ingest path, so a
+`.pdf` URL lands exactly like an upload), **html** (wraps `perform_fetch` +
+`html2text` — one implementation behind `import-url`). yt-dlp entry points
+are module-level functions; tests inject fakes + `httpx.MockTransport` (no
+network). New **`url_import`** job type (`UrlImportPayload{material_id,
+action?}`; `make_url_import_handler` in `pipelines/url_import.py`, registered
+in main.py): parse action → markdown results fill the SAME link material via
+`edit_extraction` (v1, or next version on re-parse; ADR-051 precedent) with
+provenance merged (`{source: youtube, video_id, channel}` for videos) and a
+`postprocess`-style rechunk via the shared path; blob results attach the file
+and enqueue standard ingest. New endpoints: **`POST /materials/{id}/parse`**
+(enqueues parse; 422 "only URL references" for non-links, honest no-parser
+job error for exotic schemes) and **`POST /materials/{id}/transcribe-audio`**
+(YouTube-only; yt-dlp bestaudio download → `kind=audio` + standard ingest,
+which runs the existing plan-47-D transcription — no new transcription code).
+Frontend: the reference card gains the working **Import & parse** verb
+(job-polled, 15-min deadline) and a **Transcribe audio instead** verb when a
+`parse_note` is present; a parsed link shows its transcript through the
+normal extraction views (the card only renders while the link is bare).
+Tests: `test_url_parsers.py` (12: caption anchoring/dedupe, dispatch order,
+youtube metadata+captions/no-captions/honest-failure, direct-file download +
+HTML guard, endpoint lifecycle + re-parse versioning, no-parser honest error,
+non-link 422, transcribe-audio queue + non-YouTube 422). Backend 1,202 green
+(+12), ruff/mypy clean; frontend 1,256 green (+2), lint/typecheck/build/i18n
+green; OpenAPI + types regenerated.
+
 **Feature — link materials: attach a URL as a reference (plan 73-A,
 ADR-164/171, 2026-09-16):** plan 73 slice A. New `MaterialKind.LINK` +
 `materials.source_url` / `materials.source_url_norm` (migration **0061**,

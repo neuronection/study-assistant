@@ -37,6 +37,11 @@ class GenesisPayload(TypedDict, total=False):
     flashcards: bool
 
 
+class UrlImportPayload(TypedDict, total=False):
+    material_id: Required[int]
+    action: str
+
+
 class ComposePayload(TypedDict, total=False):
     course_id: Required[int]
     profile_id: int | None

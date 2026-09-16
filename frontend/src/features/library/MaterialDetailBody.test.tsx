@@ -10,6 +10,9 @@ const listCourses = vi.fn()
 const listStudyStates = vi.fn()
 const setStudyState = vi.fn()
 const deriveMaterial = vi.fn()
+const parseLinkMaterial = vi.fn()
+const getJob = vi.fn()
+const transcribeLinkAudio = vi.fn()
 const navigate = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -23,6 +26,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
     setStudyState: (id: number, status: string) => setStudyState(id, status),
     deriveMaterial: (id: number, options?: { nodeId?: number | null }) =>
       deriveMaterial(id, options),
+    parseLinkMaterial: (id: number) => parseLinkMaterial(id),
+    getJob: (jobId: number) => getJob(jobId),
+    transcribeLinkAudio: (id: number) => transcribeLinkAudio(id),
   }
 })
 
@@ -144,6 +150,9 @@ describe('MaterialDetailBody take-notes', () => {
     setStudyState.mockReset()
     deriveMaterial.mockReset()
     navigate.mockReset()
+    parseLinkMaterial.mockReset()
+    getJob.mockReset()
+    transcribeLinkAudio.mockReset()
     getMaterial.mockResolvedValue(MATERIAL)
     getMaterialLinks.mockResolvedValue([])
     listCourses.mockResolvedValue([{ id: 2, title: 'Calculus' }])
@@ -182,6 +191,102 @@ describe('MaterialDetailBody take-notes', () => {
       'noopener',
     )
     openSpy.mockRestore()
+  })
+
+  test('Import & parse runs the job and refreshes the material', async () => {
+    parseLinkMaterial.mockResolvedValue({ job_id: 9 })
+    getJob.mockResolvedValue({
+      id: 9,
+      type: 'url_import',
+      status: 'done',
+      progress: 100,
+      stage: 'done',
+      error: null,
+      material_id: 5,
+      retriable: false,
+      stale: false,
+      label: 'url import',
+      created_at: null,
+      started_at: null,
+      finished_at: null,
+    })
+    const linkReference = {
+      ...MATERIAL,
+      material: {
+        ...MATERIAL.material,
+        kind: 'link',
+        source_url: 'https://example.com/lecture-1',
+        provenance: { source: 'link' },
+      },
+    }
+    const linkParsed = {
+      ...MATERIAL,
+      material: {
+        ...MATERIAL.material,
+        kind: 'link',
+        source_url: 'https://example.com/lecture-1',
+        provenance: { source: 'youtube', video_id: 'abc123', channel: 'Math' },
+      },
+      extraction: {
+        id: 2,
+        material_id: 5,
+        version: 1,
+        extractor: 'youtube',
+        markdown: '# transcript',
+        blocks: [],
+      },
+    }
+    let fetches = 0
+    getMaterial.mockImplementation(async () => {
+      fetches += 1
+      return fetches === 1 ? linkReference : linkParsed
+    })
+    renderBody()
+    const parseButton = await screen.findByRole('button', {
+      name: /import & parse/i,
+    })
+    fireEvent.click(parseButton)
+    await waitFor(() => expect(parseLinkMaterial).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(getJob).toHaveBeenCalledWith(9))
+    await waitFor(() =>
+      expect(screen.queryByTestId('link-reference-card')).not.toBeInTheDocument(),
+    )
+  })
+
+  test('a parse note surfaces with a transcribe-audio verb', async () => {
+    getMaterial.mockResolvedValue({
+      ...MATERIAL,
+      material: {
+        ...MATERIAL.material,
+        kind: 'link',
+        source_url: 'https://youtu.be/abc123',
+        provenance: {
+          source: 'youtube',
+          parse_note: 'no captions available — transcribe the audio instead',
+        },
+      },
+    })
+    transcribeLinkAudio.mockResolvedValue({ job_id: 11 })
+    getJob.mockResolvedValue({
+      id: 11,
+      type: 'url_import',
+      status: 'done',
+      progress: 100,
+      stage: 'done',
+      error: null,
+      material_id: 5,
+      retriable: false,
+      stale: false,
+      label: 'url import',
+      created_at: null,
+      started_at: null,
+      finished_at: null,
+    })
+    renderBody()
+    expect(await screen.findByTestId('parse-note')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /transcribe audio/i }))
+    await waitFor(() => expect(transcribeLinkAudio).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(getJob).toHaveBeenCalledWith(11))
   })
 
   test('header band shows the material title, meta chips and view menu together (plan 62-E)', async () => {

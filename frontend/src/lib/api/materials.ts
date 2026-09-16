@@ -25,6 +25,10 @@ export interface Material {
     model?: string | null
     coverage?: { total: number; covered: number; missing_ids: number[] } | null
     needs_review?: boolean
+    video_id?: string
+    channel?: string
+    duration_sec?: number
+    parse_note?: string
   } | null
   source_url?: string | null
   created_at: string
@@ -697,6 +701,22 @@ export async function createLinkMaterial(
     body: JSON.stringify(body),
   })
   return json<ComposedMaterial>(response)
+}
+
+export async function parseLinkMaterial(materialId: number): Promise<{ job_id: number }> {
+  const response = await apiFetch(`/api/v1/materials/${materialId}/parse`, {
+    method: 'POST',
+  })
+  return json<{ job_id: number }>(response)
+}
+
+export async function transcribeLinkAudio(
+  materialId: number,
+): Promise<{ job_id: number }> {
+  const response = await apiFetch(`/api/v1/materials/${materialId}/transcribe-audio`, {
+    method: 'POST',
+  })
+  return json<{ job_id: number }>(response)
 }
 
 export async function addMaterialDrawing(

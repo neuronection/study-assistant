@@ -5233,6 +5233,19 @@
         "title": "MaterialImageOut",
         "type": "object"
       },
+      "MaterialJobOut": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "MaterialJobOut",
+        "type": "object"
+      },
       "MaterialKind": {
         "enum": [
           "pdf",
@@ -20680,6 +20693,48 @@
         ]
       }
     },
+    "/api/v1/materials/{material_id}/parse": {
+      "post": {
+        "operationId": "parse_link_material_api_v1_materials__material_id__parse_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Parse Link Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
     "/api/v1/materials/{material_id}/reingest": {
       "post": {
         "operationId": "reingest_material_api_v1_materials__material_id__reingest_post",
@@ -20788,6 +20843,48 @@
         "summary": "Set Study State",
         "tags": [
           "courses"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/transcribe-audio": {
+      "post": {
+        "operationId": "transcribe_link_audio_api_v1_materials__material_id__transcribe_audio_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe Link Audio",
+        "tags": [
+          "materials"
         ]
       }
     },

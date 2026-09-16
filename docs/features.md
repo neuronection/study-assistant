@@ -246,6 +246,19 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Parser registry & YouTube transcripts (plan 73-B, ADR-165, 2026-09-16)**:
+  the "Import & parse" verb on link references is now real — an ordered
+  parser registry (YouTube → direct file → HTML) runs as a cancellable
+  background job: YouTube URLs gain a **searchable, timestamped transcript**
+  (`[mm:ss]` anchors, manual captions preferred over auto-generated, the
+  material's language first) plus channel/duration metadata; direct file URLs
+  (`.pdf`, `.md`, `.docx`, `.mp3`, …) download into the standard upload path
+  and land like any upload; plain pages parse via the same HTML conversion as
+  the URL importer. No captions? The reference card says so honestly and
+  offers **Transcribe audio instead** (yt-dlp audio download into the
+  existing transcription pipeline). Re-parsing creates a new version —
+  restorable from history. Extractor breakage (a known YouTube reality) fails
+  loudly with a "try updating yt-dlp" hint, never a silent empty transcript
 - ✅ **Async compose with progress and cancel (plan 70-D, ADR-156,
   2026-09-16)**: the compose builder no longer blocks for the whole generation —
   it submits a cancellable compose job and shows live progress with a cancel

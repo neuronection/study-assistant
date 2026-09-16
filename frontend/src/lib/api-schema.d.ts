@@ -2338,6 +2338,23 @@ export interface paths {
         patch: operations["move_material_api_v1_materials__material_id__move_patch"];
         trace?: never;
     };
+    "/api/v1/materials/{material_id}/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse Link Material */
+        post: operations["parse_link_material_api_v1_materials__material_id__parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials/{material_id}/reingest": {
         parameters: {
             query?: never;
@@ -2366,6 +2383,23 @@ export interface paths {
         /** Set Study State */
         put: operations["set_study_state_api_v1_materials__material_id__study_state_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/{material_id}/transcribe-audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transcribe Link Audio */
+        post: operations["transcribe_link_audio_api_v1_materials__material_id__transcribe_audio_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5805,6 +5839,11 @@ export interface components {
             ocr_version: number;
             /** Position */
             position: number;
+        };
+        /** MaterialJobOut */
+        MaterialJobOut: {
+            /** Job Id */
+            job_id: number;
         };
         /**
          * MaterialKind
@@ -13395,6 +13434,37 @@ export interface operations {
             };
         };
     };
+    parse_link_material_api_v1_materials__material_id__parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                material_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialJobOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reingest_material_api_v1_materials__material_id__reingest_post: {
         parameters: {
             query?: never;
@@ -13452,6 +13522,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StudyStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transcribe_link_audio_api_v1_materials__material_id__transcribe_audio_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                material_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialJobOut"];
                 };
             };
             /** @description Validation Error */

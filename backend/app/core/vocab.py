@@ -30,6 +30,7 @@ class JobType(StrVocab):
     DRAWING_OCR = "drawing_ocr"
     IMAGE_OCR = "image_ocr"
     GENESIS = "genesis"
+    URL_IMPORT = "url_import"
 
 
 class FlowEvent(StrVocab):

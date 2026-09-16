@@ -35,6 +35,7 @@ dependencies = [
     "python-pptx>=1.0.2",
     "ebooklib>=0.20",
     "mutagen>=1.48.1",
+    "yt-dlp>=2025.1",
 ]
 dynamic = ["version"]
 

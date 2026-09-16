@@ -700,7 +700,11 @@
     "clearTagFilter": "Clear tag filter",
     "linkChip": "Link",
     "linkOpen": "Open",
-    "linkImport": "Import & parse"
+    "linkImport": "Import & parse",
+    "parseFailed": "Parsing failed.",
+    "parseCancelled": "Parsing cancelled.",
+    "parseWorking": "Working — fetching and parsing the page…",
+    "transcribeAudio": "Transcribe audio instead"
   },
   "home": {
     "title": "Today",

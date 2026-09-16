@@ -700,7 +700,11 @@
     "assignFolderToNode": "Ordner einem Abschnitt zuweisen…",
     "linkChip": "Link",
     "linkOpen": "Öffnen",
-    "linkImport": "Importieren & parsen"
+    "linkImport": "Importieren & parsen",
+    "parseFailed": "Parsen fehlgeschlagen.",
+    "parseCancelled": "Parsen abgebrochen.",
+    "parseWorking": "In Arbeit — Seite wird geladen und geparst…",
+    "transcribeAudio": "Stattdessen Audio transkribieren"
   },
   "home": {
     "title": "Heute",

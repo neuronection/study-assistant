@@ -13,6 +13,12 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Parser registry & YouTube transcripts: the "Import & parse" verb on link
+  references now works — YouTube videos gain searchable, timestamped
+  transcripts, direct file URLs (PDF, Markdown, Office, audio…) download into
+  the standard library pipeline, and plain pages convert like the URL
+  importer. Links without captions say so and offer one-click audio
+  transcription; re-parsing keeps version history. (plan 73-B, ADR-165)
 - Link materials: paste a URL to keep it as a real, first-class reference —
   placeable at any topic, taggable, starable and searchable, with
   database-enforced dedupe on normalized URLs (YouTube short links and

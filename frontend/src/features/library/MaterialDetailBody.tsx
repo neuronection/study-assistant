@@ -24,16 +24,19 @@ import { MarkdownPrintDoc } from '@/components/print/MarkdownPrintDoc'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PopoverMenu } from '@/components/ui/popover-menu'
-import { useImportUrlStore } from '@/lib/import-url-store'
+import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   deriveMaterial,
+  getJob,
   getMaterial,
   getMaterialLinks,
   listCourses,
   listStudyStates,
+  parseLinkMaterial,
   patchMaterial,
   setStudyState,
+  transcribeLinkAudio,
 } from '@/lib/api'
 
 import { AskAiPopover } from './AskAiPopover'
@@ -119,7 +122,52 @@ export function MaterialDetailBody({
       return null
     }
   })()
-  const openImportDialog = useImportUrlStore((state) => state.openImport)
+  const [parseJobId, setParseJobId] = useState<number | null>(null)
+  const [transcribeJobId, setTranscribeJobId] = useState<number | null>(null)
+
+  const pollJob = async (jobId: number) => {
+    const deadline = Date.now() + 15 * 60_000
+    while (Date.now() < deadline) {
+      const job = await getJob(jobId)
+      if (job.status === 'done') return
+      if (job.status === 'failed') {
+        throw new Error(job.error || t('library.parseFailed'))
+      }
+      if (job.status === 'cancelled') {
+        throw new Error(t('library.parseCancelled'))
+      }
+      await new Promise((resolve) => setTimeout(resolve, 800))
+    }
+    throw new Error(t('library.parseFailed'))
+  }
+
+  const runParse = useMutation({
+    mutationFn: async () => {
+      const queued = await parseLinkMaterial(materialId)
+      setParseJobId(queued.job_id)
+      await pollJob(queued.job_id)
+    },
+    onSuccess: async () => {
+      setParseJobId(null)
+      await queryClient.invalidateQueries({ queryKey: ['material', materialId] })
+      await queryClient.invalidateQueries({ queryKey: ['materials'] })
+    },
+    onError: () => setParseJobId(null),
+  })
+
+  const runTranscribe = useMutation({
+    mutationFn: async () => {
+      const queued = await transcribeLinkAudio(materialId)
+      setTranscribeJobId(queued.job_id)
+      await pollJob(queued.job_id)
+    },
+    onSuccess: async () => {
+      setTranscribeJobId(null)
+      await queryClient.invalidateQueries({ queryKey: ['material', materialId] })
+      await queryClient.invalidateQueries({ queryKey: ['materials'] })
+    },
+    onError: () => setTranscribeJobId(null),
+  })
   const rawStatus = states.data?.[String(materialId)]?.status
   const status: StudyStatus =
     rawStatus === 'reading' || rawStatus === 'studied' ? rawStatus : 'unread'
@@ -494,7 +542,7 @@ export function MaterialDetailBody({
       {deriveFeedback}
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {isLink ? (
+        {isLink && detail.data?.extraction === null ? (
           <div className="bg-subtle border-border space-y-3 rounded-lg border p-4" data-testid="link-reference-card">
             <div className="flex items-start gap-3">
               <Link2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
@@ -512,6 +560,24 @@ export function MaterialDetailBody({
                 {material.description}
               </p>
             ) : null}
+            {material.provenance?.parse_note ? (
+              <p
+                className="border-warning/40 bg-warning/10 text-warning rounded-md border px-3 py-2 text-xs"
+                data-testid="parse-note"
+              >
+                {String(material.provenance.parse_note)}
+              </p>
+            ) : null}
+            {runParse.isError ? (
+              <p className="text-danger text-xs" role="alert">
+                {String(runParse.error)}
+              </p>
+            ) : null}
+            {runTranscribe.isError ? (
+              <p className="text-danger text-xs" role="alert">
+                {String(runTranscribe.error)}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -527,12 +593,36 @@ export function MaterialDetailBody({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => openImportDialog(material.source_url ?? '')}
+                disabled={runParse.isPending}
+                onClick={() => runParse.mutate()}
               >
-                <Download className="size-4" aria-hidden />
+                {runParse.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Download className="size-4" aria-hidden />
+                )}
                 {t('library.linkImport')}
               </Button>
+              {material.provenance?.parse_note ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={runTranscribe.isPending}
+                  onClick={() => runTranscribe.mutate()}
+                >
+                  <Loader2
+                    className={cn('size-4', !runTranscribe.isPending && 'hidden')}
+                    aria-hidden
+                  />
+                  {t('library.transcribeAudio')}
+                </Button>
+              ) : null}
             </div>
+            {parseJobId !== null || transcribeJobId !== null ? (
+              <p className="text-muted-foreground text-xs" data-testid="parse-progress">
+                {t('library.parseWorking')}
+              </p>
+            ) : null}
           </div>
         ) : (
           <>

@@ -318,6 +318,8 @@ export {
   composeMaterial,
   composeMaterialAsync,
   createLinkMaterial,
+  parseLinkMaterial,
+  transcribeLinkAudio,
   copyMaterial,
   createTextFile,
   createTextMaterial,
