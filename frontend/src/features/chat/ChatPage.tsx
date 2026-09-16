@@ -29,11 +29,11 @@ export function ChatPage() {
   }
 
   return (
-    <div className="flex h-full w-full">
-      <aside className="border-border bg-subtle w-72 shrink-0 border-r">
+    <div className="flex h-screen min-h-0 w-full">
+      <aside className="border-border bg-subtle flex min-h-0 w-72 shrink-0 flex-col overflow-hidden border-r">
         <ChatSessionList />
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <StudyChatProvider sessionId={sessionId}>
           {chatId !== null && isResolving ? (
             <p className="text-muted-foreground p-8 text-center text-sm">

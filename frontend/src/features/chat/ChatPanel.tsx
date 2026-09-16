@@ -773,7 +773,6 @@ export function ChatPanel({
           onSubmit={() => void submit()}
           sending={sending}
           onStop={() => void stream.stop()}
-          maxRows={6}
           placeholder={t('chat.placeholder')}
           ariaLabel={t('chat.composerLabel')}
           labels={{ send: t('chat.send'), stop: t('chat.stop') }}
