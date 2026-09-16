@@ -35,3 +35,22 @@ class GenesisPayload(TypedDict, total=False):
     lessons: bool
     quizzes: bool
     flashcards: bool
+
+
+class ComposePayload(TypedDict, total=False):
+    course_id: Required[int]
+    profile_id: int | None
+    node_id: int | None
+    kind: str | None
+    title: str | None
+    instructions: str | None
+    extra_md: str | None
+    scope: str | None
+    include_material_ids: list[int] | None
+    exclude_material_ids: list[int] | None
+    note_ids: list[int] | None
+    concept_ids: list[int] | None
+    context_hint: str | None
+    regenerate: bool | None
+    include_unassigned: bool | None
+    material_id: int | None

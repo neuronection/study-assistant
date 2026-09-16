@@ -6,6 +6,37 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — async compose job with progress + cancel (plan 70-D, ADR-156,
+2026-09-16):** plan 70 COMPLETE (A–D). Generation no longer blocks the HTTP
+request. **`make_compose_handler`** (`pipelines/compose.py`, registered as the
+`compose` job type in main.py's handlers dict) runs the identical
+`ComposeService.compose` path with progress (10 context → 30 compose →
+90 persist → 100), cooperative cancellation checkpoints (start, post-resolve,
+post-compose — mid-LLM-call cancel unsupported, same granularity as genesis)
+and honest run-time re-resolution of the live-artifact/regenerate decision
+(payload carries only the request body; `material_id` is written into the
+payload on success so `JobOut.material_id` surfaces it, and ingest is enqueued
+by the handler for new artifacts). **`POST /materials/compose/async`** takes
+the same `ComposeIn` body, pre-validates context (422 fast-fail,
+`max_chunks=0` — no generation) and the 409 live-artifact semantics at
+enqueue, and returns `ComposeQueuedOut {job_id}`; the sync endpoint keeps its
+exact contract (chat-approve stays synchronous). New jobs endpoints:
+**`GET /jobs/{job_id}`** (single-job status; only list/summary/types existed)
+and **`POST /jobs/{job_id}/cancel`** (queued → claim-cancel; running →
+cooperative `request_cancel`; finished → 409). Frontend: GenerateDialog
+composes via `composeMaterialAsync` + polling (`getJob` every 800 ms, 15-min
+honest deadline) with a live progress line and cancel button, then lands on
+the slice-A result state; `cancelJob` client added; OpenAPI + types
+regenerated. Also fixed two latent test bugs surfaced by the heavier suite:
+`test_notifications_api` hardcoded an exam date (expired as real time passed —
+now relative) and `test_entity_actions.wait_for_assistant` had a fixed 5 s
+poll deadline (now 30 s + state dump, per the load-immune-deadline rule).
+Tests: `test_compose_job.py` (8: async e2e with ready material + payload
+material_id, fast-fail 422, 409 at enqueue, single-job GET/404, queued
+cancel → no material, handler progress checkpoints, live-artifact JobError,
+cancel-before-persist JobCancelled). Backend 1,173 green (+8), ruff/mypy
+clean; frontend 1,250 green (+4), lint/typecheck/build/i18n green.
+
 **Feature — practice_set compose through deterministic validators (plan 70-C,
 ADR-158, 2026-09-16):** composed practice sets can no longer ship wrong
 answers. `ComposeService.compose(kind="practice_set")` switched from

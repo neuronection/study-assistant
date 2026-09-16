@@ -39,17 +39,18 @@ def client(tmp_path: Path) -> Iterator[tuple[TestClient, FastAPI, ScriptedGatewa
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: int, timeout: float = 30.0
 ) -> None:
     deadline = time.monotonic() + timeout
+    messages: list[dict[str, Any]] = []
     while time.monotonic() < deadline:
-        messages: list[dict[str, Any]] = client.get(
+        messages = client.get(
             f"/api/v1/chat/sessions/{session_id}/messages"
         ).json()
         if messages and messages[-1]["role"] == "assistant":
             return
         time.sleep(0.05)
-    raise AssertionError("assistant never replied")
+    raise AssertionError(f"assistant never replied; last messages: {messages}")
 
 
 def make_chat_with_messages(

@@ -246,6 +246,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Async compose with progress and cancel (plan 70-D, ADR-156,
+  2026-09-16)**: the compose builder no longer blocks for the whole generation —
+  it submits a cancellable compose job and shows live progress with a cancel
+  button; the dialog polls the new single-job status endpoint and lands on the
+  same result view (coverage note, review warning, open document). Large
+  documents can no longer hold the UI for minutes; the sync endpoint remains
+  for chat approvals
 - ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
   provider (Settings → Providers → Web search; Tavily-compatible or SearXNG,
   API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**

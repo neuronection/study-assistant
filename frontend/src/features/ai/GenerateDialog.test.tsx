@@ -7,7 +7,10 @@ import { GenerateDialog } from './GenerateDialog'
 const generateQuiz = vi.fn()
 const generateExercise = vi.fn()
 const generateFlashcards = vi.fn()
-const composeMaterial = vi.fn()
+const composeMaterialAsync = vi.fn()
+const getJob = vi.fn()
+const cancelJob = vi.fn()
+const getMaterial = vi.fn()
 const previewAiContext = vi.fn()
 const listMaterials = vi.fn()
 const listNotes = vi.fn()
@@ -24,7 +27,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
     generateQuiz: (body: unknown) => generateQuiz(body),
     generateExercise: (body: unknown) => generateExercise(body),
     generateFlashcards: (body: unknown) => generateFlashcards(body),
-    composeMaterial: (body: unknown) => composeMaterial(body),
+    composeMaterialAsync: (body: unknown) => composeMaterialAsync(body),
+    getJob: (jobId: number) => getJob(jobId),
+    cancelJob: (jobId: number) => cancelJob(jobId),
+    getMaterial: (id: number) => getMaterial(id),
     previewAiContext: (courseId: number, spec: unknown) => previewAiContext(courseId, spec),
     listMaterials: (...args: unknown[]) => listMaterials(...args),
     listNotes: (...args: unknown[]) => listNotes(...args),
@@ -132,10 +138,28 @@ describe('GenerateDialog', () => {
     generateQuiz.mockReset().mockResolvedValue({ id: 9, question_count: 8 })
     generateExercise.mockReset().mockResolvedValue({ id: 21, step_count: 3 })
     generateFlashcards.mockReset().mockResolvedValue([])
-    composeMaterial.mockReset().mockResolvedValue({
+    composeMaterialAsync.mockReset().mockResolvedValue({ job_id: 5 })
+    getJob.mockReset().mockResolvedValue({
+      id: 5,
+      type: 'compose',
+      status: 'done',
+      progress: 100,
+      stage: 'done',
+      error: null,
+      material_id: 77,
+      retriable: false,
+      stale: false,
+      label: 'compose',
+      created_at: null,
+      started_at: null,
+      finished_at: null,
+    })
+    cancelJob.mockReset().mockResolvedValue({})
+    getMaterial.mockReset().mockResolvedValue({
       material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
-      job_id: 5,
-      deduped: false,
+      extraction: null,
+      index_card: null,
+      drawings: [],
     })
     previewAiContext.mockReset().mockResolvedValue(PREVIEW)
     listMaterials.mockReset().mockResolvedValue([
@@ -173,8 +197,8 @@ describe('GenerateDialog', () => {
     fireEvent.change(instructions, { target: { value: 'compact formulas only' } })
     const submit = screen.getByRole('button', { name: /compose/i })
     fireEvent.click(submit)
-    await waitFor(() => expect(composeMaterial).toHaveBeenCalled())
-    expect(composeMaterial).toHaveBeenCalledWith(
+    await waitFor(() => expect(composeMaterialAsync).toHaveBeenCalled())
+    expect(composeMaterialAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         course_id: 3,
         kind: 'summary_sheet',
@@ -200,15 +224,15 @@ describe('GenerateDialog', () => {
 
     const submit = screen.getByRole('button', { name: /regenerate/i })
     fireEvent.click(submit)
-    await waitFor(() => expect(composeMaterial).toHaveBeenCalled())
-    expect(composeMaterial).toHaveBeenCalledWith(
+    await waitFor(() => expect(composeMaterialAsync).toHaveBeenCalled())
+    expect(composeMaterialAsync).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'study_guide', regenerate: true })
     )
   })
 
   test('compose result names a coverage shortfall before closing', async () => {
     const onSuccess = vi.fn()
-    composeMaterial.mockResolvedValue({
+    getMaterial.mockResolvedValue({
       material: {
         id: 77,
         title: 'Guide',
@@ -217,8 +241,9 @@ describe('GenerateDialog', () => {
           coverage: { total: 14, covered: 8, missing_ids: [1, 2, 3] },
         },
       },
-      job_id: 5,
-      deduped: false,
+      extraction: null,
+      index_card: null,
+      drawings: [],
     })
     renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1, onSuccess })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
@@ -233,7 +258,7 @@ describe('GenerateDialog', () => {
   })
 
   test('compose result stays silent when every material was retrieved', async () => {
-    composeMaterial.mockResolvedValue({
+    getMaterial.mockResolvedValue({
       material: {
         id: 77,
         title: 'Guide',
@@ -242,8 +267,9 @@ describe('GenerateDialog', () => {
           coverage: { total: 14, covered: 14, missing_ids: [] },
         },
       },
-      job_id: 5,
-      deduped: false,
+      extraction: null,
+      index_card: null,
+      drawings: [],
     })
     renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
@@ -253,14 +279,15 @@ describe('GenerateDialog', () => {
   })
 
   test('compose result flags needs_review from provenance', async () => {
-    composeMaterial.mockResolvedValue({
+    getMaterial.mockResolvedValue({
       material: {
         id: 77,
         title: 'Formulas',
         provenance: { source: 'ai-composed', needs_review: true },
       },
-      job_id: 5,
-      deduped: false,
+      extraction: null,
+      index_card: null,
+      drawings: [],
     })
     renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
@@ -268,15 +295,95 @@ describe('GenerateDialog', () => {
     expect(screen.queryByTestId('coverage-note')).not.toBeInTheDocument()
   })
 
+  test('compose runs as a job with live progress before the result', async () => {
+    let polls = 0
+    getJob.mockImplementation(async () => {
+      polls += 1
+      if (polls <= 2) {
+        return {
+          id: 5,
+          type: 'compose',
+          status: 'running',
+          progress: 42,
+          stage: 'compose',
+          error: null,
+          material_id: null,
+          retriable: false,
+          stale: false,
+          label: 'compose',
+          created_at: null,
+          started_at: null,
+          finished_at: null,
+        }
+      }
+      return {
+        id: 5,
+        type: 'compose',
+        status: 'done',
+        progress: 100,
+        stage: 'done',
+        error: null,
+        material_id: 77,
+        retriable: false,
+        stale: false,
+        label: 'compose',
+        created_at: null,
+        started_at: null,
+        finished_at: null,
+      }
+    })
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
+    expect(await screen.findByTestId('compose-progress')).toHaveTextContent('42%')
+    const cancelButtons = screen.getAllByRole('button', { name: /cancel/i })
+    expect(cancelButtons[cancelButtons.length - 1]).toBeInTheDocument()
+    expect(await screen.findByText(/"Guide" is ready\./)).toBeInTheDocument()
+    expect(screen.queryByTestId('compose-progress')).not.toBeInTheDocument()
+    expect(composeMaterialAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ course_id: 3, kind: 'study_guide' })
+    )
+  })
+
+  test('compose can be cancelled while queued and reports it honestly', async () => {
+    let cancelled = false
+    cancelJob.mockImplementation(async () => {
+      cancelled = true
+      return { id: 5, status: 'cancelled' }
+    })
+    getJob.mockImplementation(async () => ({
+      id: 5,
+      type: 'compose',
+      status: cancelled ? 'cancelled' : 'queued',
+      progress: 0,
+      stage: null,
+      error: cancelled ? 'cancelled by user' : null,
+      material_id: null,
+      retriable: false,
+      stale: false,
+      label: 'compose',
+      created_at: null,
+      started_at: null,
+      finished_at: null,
+    }))
+    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
+    await screen.findByTestId('compose-progress')
+    const cancelButtons = screen.getAllByRole('button', { name: /cancel/i })
+    fireEvent.click(cancelButtons[cancelButtons.length - 1])
+    expect(cancelJob).toHaveBeenCalledWith(5)
+    expect(await screen.findByText(/Composition cancelled\./)).toBeInTheDocument()
+  })
+
   test('unassigned materials notice stays opt-in and forwards the flag', async () => {
     getUnassignedMaterials.mockResolvedValue({
       count: 3,
       materials: [{ id: 41, title: 'Orphan' }],
     })
-    composeMaterial.mockResolvedValue({
+    getMaterial.mockResolvedValue({
       material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
-      job_id: 5,
-      deduped: false,
+      extraction: null,
+      index_card: null,
+      drawings: [],
     })
     renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
     expect(
@@ -287,8 +394,8 @@ describe('GenerateDialog', () => {
 
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /compose/i }))
-    await waitFor(() => expect(composeMaterial).toHaveBeenCalled())
-    expect(composeMaterial).toHaveBeenCalledWith(
+    await waitFor(() => expect(composeMaterialAsync).toHaveBeenCalled())
+    expect(composeMaterialAsync).toHaveBeenCalledWith(
       expect.objectContaining({ include_unassigned: true })
     )
   })
@@ -298,10 +405,11 @@ describe('GenerateDialog', () => {
       count: 3,
       materials: [{ id: 41, title: 'Orphan' }],
     })
-    composeMaterial.mockResolvedValue({
+    getMaterial.mockResolvedValue({
       material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
-      job_id: 5,
-      deduped: false,
+      extraction: null,
+      index_card: null,
+      drawings: [],
     })
     renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
     expect(
@@ -326,8 +434,8 @@ describe('GenerateDialog', () => {
     ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /compose/i }))
-    await waitFor(() => expect(composeMaterial).toHaveBeenCalled())
-    expect(composeMaterial).toHaveBeenCalledWith(
+    await waitFor(() => expect(composeMaterialAsync).toHaveBeenCalled())
+    expect(composeMaterialAsync).toHaveBeenCalledWith(
       expect.not.objectContaining({ include_unassigned: true })
     )
   })

@@ -74,7 +74,8 @@ const createFolder = vi.fn()
 const createTextMaterial = vi.fn()
 const updateTextMaterial = vi.fn()
 const previewAiContext = vi.fn()
-const composeMaterial = vi.fn()
+const composeMaterialAsync = vi.fn()
+const getJob = vi.fn()
 const listCourseTasks = vi.fn()
 const assignCourseTask = vi.fn()
 const listCourseTaskDefaults = vi.fn()
@@ -253,7 +254,8 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
     updateTextMaterial: (...args: unknown[]) => updateTextMaterial(...(args as [])),
     previewAiContext: (courseId: number, spec: unknown) => previewAiContext(courseId, spec),
-    composeMaterial: (body: unknown) => composeMaterial(body),
+    composeMaterialAsync: (body: unknown) => composeMaterialAsync(body),
+    getJob: (jobId: number) => getJob(jobId),
     listCourseTasks: (courseId: number) => listCourseTasks(courseId),
     assignCourseTask: (...args: unknown[]) =>
       assignCourseTask(...(args as [number, string, number | null, number | null])),
@@ -571,23 +573,21 @@ function primeDefaults() {
     stats: { materials: [], chunks: [], notes: [], concepts: [], hints: 0 },
     rendered: '',
   })
-  composeMaterial.mockResolvedValue({
-    material: {
-      id: 99,
-      title: 'Derivatives — cheat sheet',
-      kind: 'markdown',
-      status: 'ready',
-      filename: 'Cheat sheet.md',
-      mime: 'text/markdown',
-      pages: null,
-      course_id: 3,
-      group_id: null,
-      folder_id: null,
-      blob_sha: null,
-      created_at: '2026-08-23T00:00:00Z',
-    },
-    job_id: null,
-    deduped: false,
+  composeMaterialAsync.mockResolvedValue({ job_id: 3 })
+  getJob.mockResolvedValue({
+    id: 3,
+    type: 'compose',
+    status: 'done',
+    progress: 100,
+    stage: 'done',
+    error: null,
+    material_id: 99,
+    retriable: false,
+    stale: false,
+    label: 'compose',
+    created_at: null,
+    started_at: null,
+    finished_at: null,
   })
   useChatStore.setState({ open: false, session: null })
 }
@@ -852,7 +852,7 @@ describe('NodeWorkspace', () => {
     const submit = await screen.findByRole('button', { name: /^compose$/i })
     fireEvent.click(submit)
     await waitFor(() =>
-      expect(composeMaterial).toHaveBeenCalledWith(
+      expect(composeMaterialAsync).toHaveBeenCalledWith(
         expect.objectContaining({ node_id: 5, kind: 'cheat_sheet' })
       )
     )

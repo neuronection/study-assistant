@@ -1,12 +1,13 @@
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..core.vocab import JobStatus
-from ..domain.models import ChatSession, Job, Material, Note
+from ..domain.models import ChatSession, Job, Material, Note, utcnow
+from ..jobs.cancellation import request_cancel
 from .deps import get_session
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -261,6 +262,53 @@ def job_types(request: Request) -> list[JobTypeOut]:
         JobTypeOut(type=entry, label=entry.replace("_", " "))
         for entry in sorted(retriable_types)
     ]
+
+
+@router.get("/{job_id}")
+def get_job(
+    job_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> JobOut:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    retriable_types = request.app.state.jobs.retriable_handlers()
+    return _to_out(session, job, retriable_types, _stale_job_ids(session, [job]))
+
+
+@router.post("/{job_id}/cancel")
+def cancel_job(
+    job_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> JobOut:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    if job.status not in (JobStatus.QUEUED.value, JobStatus.RUNNING.value):
+        raise HTTPException(status_code=409, detail=f"job is already {job.status}")
+    if job.status == JobStatus.QUEUED.value:
+        claimed = session.execute(
+            update(Job)
+            .where(Job.id == job_id, Job.status == JobStatus.QUEUED.value)
+            .values(
+                status=JobStatus.CANCELLED.value,
+                error="cancelled by user",
+                finished_at=utcnow(),
+            )
+        )
+        session.commit()
+        if not int(cast(Any, claimed).rowcount or 0):
+            raise HTTPException(status_code=409, detail="job already started")
+        request.app.state.jobs.publish_progress(
+            job_id, 0, "cancelled", "cancelled"
+        )
+    else:
+        request_cancel(job_id)
+    retriable_types = request.app.state.jobs.retriable_handlers()
+    session.expire(job)
+    return _to_out(session, job, retriable_types)
 
 
 @router.post("/{job_id}/retry")

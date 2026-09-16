@@ -2089,7 +2089,11 @@
     "openComposed": "Open document",
     "unassignedNotice": "{{count}} materials in this course are not placed at any topic yet.",
     "unassignedCheckbox": "Also draw on the {{count}} unassigned materials",
-    "unassignedLink": "Place them first in the course materials tab"
+    "unassignedLink": "Place them first in the course materials tab",
+    "composeProgress": "Composing — {{progress}}%",
+    "cancelCompose": "Cancel",
+    "composeCancelled": "Composition cancelled.",
+    "composeFailed": "Composition failed."
   },
   "ai": {
     "mentions": {

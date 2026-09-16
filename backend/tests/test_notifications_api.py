@@ -42,7 +42,8 @@ def make_plan_item(
 
 def test_notifications_aggregate_shape_and_content(client: TestClient) -> None:
     with client:
-        calc = make_course(client, "Calculus", exam_date="2026-09-20")
+        exam_day = (utcnow().date() + timedelta(days=5)).isoformat()
+        calc = make_course(client, "Calculus", exam_date=exam_day)
         algebra = make_course(client, "Linear Algebra")
         make_card(client, calc, "card one")
         make_card(client, calc, "card two")
@@ -70,7 +71,7 @@ def test_notifications_aggregate_shape_and_content(client: TestClient) -> None:
         assert len(exams) == 1
         assert exams[0]["course_title"] == "Calculus"
         assert exams[0]["days_left"] == 5
-        assert exams[0]["exam_date"] == "2026-09-20"
+        assert exams[0]["exam_date"] == exam_day
 
         assert body["generated_at"]
 

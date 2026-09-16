@@ -13,6 +13,11 @@ Release history from before the public launch lives in the
 
 ### Added
 
+- Async compose with progress and cancel: composing study material no longer
+  blocks the app for the whole generation — documents are generated as a
+  cancellable background job with live progress, single-job status polling
+  and a cancel button; the chat approval path stays synchronous.
+  (plan 70-D, ADR-156)
 - Validated practice sets: AI-composed practice sets are now authored as
   structured items whose answers are verified server-side (SymPy-checked
   equations, distractors can't equal the answer, parseable numeric values)

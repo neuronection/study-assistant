@@ -671,6 +671,15 @@ export async function composeMaterial(body: {
   return json<ComposedMaterial>(response)
 }
 
+export async function composeMaterialAsync(body: Parameters<typeof composeMaterial>[0]): Promise<{ job_id: number }> {
+  const response = await apiFetch('/api/v1/materials/compose/async', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<{ job_id: number }>(response)
+}
+
 export async function addMaterialDrawing(
   materialId: number,
   strokes: unknown[],

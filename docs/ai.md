@@ -350,6 +350,27 @@ searchable, citable, assignable, printable — not throwaway artifacts.
   end — the reader/ingest path is unchanged) and the structured items +
   per-item checks ride `provenance["practice_items"]` (free for future
   interactive practice; still no migration).
+- **Compose as a cancellable job (plan 70-D, ADR-156)**: `make_compose_handler`
+  (`pipelines/compose.py`, registered as the `compose` job type) runs the same
+  `ComposeService.compose` path behind the job infra — progress
+  (10 context → 30 compose → 90 persist → 100), cancellation checkpoints at
+  job start, post-resolve and post-compose (mid-LLM-call cancel is unsupported,
+  same granularity as genesis), and honest run-time re-resolution of the
+  live-artifact/regenerate decision (a material created between enqueue and
+  run fails the job honestly instead of silently duplicating; no material id is
+  frozen in the payload — the request body is the only state, and the resulting
+  `material_id` is written into the payload on success so `JobOut` surfaces
+  it). **`POST /materials/compose/async`** takes the same `ComposeIn` body,
+  pre-validates the context with `max_chunks=0` (fail-fast 422 without
+  generating) and the live-artifact 409 at enqueue, then enqueues and returns
+  `{job_id}`; the sync endpoint keeps its exact contract (chat-approve and
+  programmatic callers). Supporting endpoints: **`GET /jobs/{job_id}`** (single
+  job status — previously only list/summary/types existed) and
+  **`POST /jobs/{job_id}/cancel`** (queued jobs claim-cancel directly; running
+  jobs set the cooperative flag; finished jobs 409). The GenerateDialog now
+  always composes through the async path: submit → poll the job (progress line,
+  cancel button) → on success fetch the material and show the slice-A result
+  state; chat-approve stays synchronous.
 - **`cheat_sheet` / `node_review` (plan 22 J, ADR-051 — organizer artifacts)**:
   the Phase 8E organizer outputs persist as real materials with provenance
   kinds `cheat_sheet` / `node_review`. Cheat sheets follow the **one-live-artifact

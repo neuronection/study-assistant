@@ -13,13 +13,16 @@ import { MaterialPickerDialog } from '@/features/courses/MaterialPickerDialog'
 import { NotePickerDialog } from '@/features/notes/NotePickerDialog'
 import {
   COMPOSE_KINDS,
-  composeMaterial,
+  composeMaterialAsync,
   conceptGraph,
   generateExercise,
   generateFlashcards,
   generateQuiz,
+  getJob,
   getNodeArtifacts,
+  getMaterial,
   getUnassignedMaterials,
+  cancelJob,
   listMaterials,
   listNotes,
   nodeWorkspace,
@@ -164,6 +167,11 @@ export function GenerateDialog({
   const [error, setError] = useState<string | null>(null)
   const [composed, setComposed] = useState<Material | null>(null)
   const [includeUnassigned, setIncludeUnassigned] = useState(false)
+  const [composeJobId, setComposeJobId] = useState<number | null>(null)
+  const [composeProgress, setComposeProgress] = useState<{
+    progress: number
+    stage: string | null
+  } | null>(null)
   const courseIdForRequest = courseId ?? pickedCourse
   const composeHasContext = task !== 'flashcards'
 
@@ -334,7 +342,9 @@ export function GenerateDialog({
   }
 
   const generate = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      setComposeJobId(null)
+      setComposeProgress(null)
       if (courseIdForRequest === null) {
         throw new Error(t('generate.courseRequired'))
       }
@@ -397,7 +407,7 @@ export function GenerateDialog({
         }) as Promise<GenerateResult>
       }
       if (task === 'compose') {
-        return composeMaterial({
+        const queued = await composeMaterialAsync({
           course_id: courseIdForRequest,
           kind: composeKind,
           title: topic.trim() || null,
@@ -405,9 +415,28 @@ export function GenerateDialog({
           regenerate: existing !== null || composed !== null ? true : undefined,
           include_unassigned: includeUnassigned || undefined,
           ...context,
-        }).then(
-          (result) => result.material as unknown as GenerateResult
-        )
+        })
+        setComposeJobId(queued.job_id)
+        const deadline = Date.now() + 15 * 60_000
+        while (Date.now() < deadline) {
+          const job = await getJob(queued.job_id)
+          setComposeProgress({ progress: job.progress, stage: job.stage })
+          if (job.status === 'done') {
+            if (job.material_id === null) {
+              throw new Error(t('generate.composeFailed'))
+            }
+            const detail = await getMaterial(job.material_id)
+            return detail.material as unknown as GenerateResult
+          }
+          if (job.status === 'failed') {
+            throw new Error(job.error || t('generate.composeFailed'))
+          }
+          if (job.status === 'cancelled') {
+            throw new Error(t('generate.composeCancelled'))
+          }
+          await new Promise((resolve) => setTimeout(resolve, 800))
+        }
+        throw new Error(t('generate.composeFailed'))
       }
       return generateFlashcards({
         source,
@@ -1110,6 +1139,25 @@ export function GenerateDialog({
                 : t(`generate.action.${task}`)}
             </Button>
           </div>
+          {generate.isPending && composeJobId !== null ? (
+            <div className="flex items-center gap-2 text-xs">
+              <Loader2 className="size-3 animate-spin" aria-hidden />
+              <span className="text-muted-foreground" data-testid="compose-progress">
+                {t('generate.composeProgress', {
+                  progress: composeProgress?.progress ?? 0,
+                })}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  cancelJob(composeJobId).catch(() => undefined)
+                }}
+              >
+                {t('generate.cancelCompose')}
+              </Button>
+            </div>
+          ) : null}
           <ErrorBanner message={error} />
             </>
           )}

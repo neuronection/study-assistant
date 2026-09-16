@@ -1,5 +1,5 @@
 import re
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from sqlalchemy import select
@@ -10,14 +10,29 @@ from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import COMPOSE_SYSTEM, PRACTICE_SET_SYSTEM
 from ..ai.structured import PracticeSetOut
 from ..core.vocab import ProvenanceKind
-from ..domain.models import Extraction, Material, MaterialLink, Note, TreeNode
+from ..domain.models import (
+    Course,
+    Extraction,
+    Material,
+    MaterialLink,
+    Note,
+    TreeNode,
+)
+from ..jobs.cancellation import JobCancelled, is_cancel_requested
+from ..jobs.payloads import ComposePayload, IngestPayload
+from ..jobs.runner import JobError, JobHandler, JobRunner, ProgressReporter
 from ..math.equivalence import parse_math
 from ..services.content.materials import MaterialsService
 from ..services.knowledge.context import (
     COVERAGE_GATE,
     COVERAGE_MIN_MATERIALS,
     ContextBundle,
+    ContextError,
+    ContextResolver,
+    ContextScope,
+    ContextSpec,
 )
+from ..services.knowledge.tree import TreeService
 from ..services.study.answer_validation import (
     PRACTICE_ANSWER_KINDS,
     validate_answer_shape,
@@ -632,3 +647,110 @@ class ComposeService:
             )
         self._session.flush()
         return material
+
+
+def make_compose_handler(
+    gateway: LLMGateway, blobs: BlobStore, embed: Any
+) -> JobHandler:
+    def handler(session: Session, job: Any, report: ProgressReporter) -> None:
+        payload = cast(ComposePayload, job.payload or {})
+        raw_course_id = payload.get("course_id")
+        if raw_course_id is None:
+            raise JobError("compose payload missing course_id")
+        course = session.get(Course, int(raw_course_id))
+        if course is None:
+            raise JobError(f"course {raw_course_id} not found")
+        if is_cancel_requested(job.id):
+            raise JobCancelled()
+        course_id = int(raw_course_id)
+        node_id = payload.get("node_id")
+        kind = str(payload.get("kind") or "study_guide")
+        report(10, "context")
+        resolver = ContextResolver(session, embed)
+        try:
+            bundle = resolver.resolve(
+                ContextSpec(
+                    course_id=course_id,
+                    node_id=int(node_id) if node_id is not None else None,
+                    scope=ContextScope(str(payload.get("scope") or "subtree")),
+                    include_material_ids=[
+                        int(value)
+                        for value in (payload.get("include_material_ids") or [])
+                    ],
+                    exclude_material_ids=[
+                        int(value)
+                        for value in (payload.get("exclude_material_ids") or [])
+                    ],
+                    note_ids=[
+                        int(value) for value in (payload.get("note_ids") or [])
+                    ],
+                    concept_ids=[
+                        int(value) for value in (payload.get("concept_ids") or [])
+                    ],
+                    hint=payload.get("context_hint"),
+                    query=str(
+                        payload.get("title")
+                        or payload.get("instructions")
+                        or "study material"
+                    ),
+                    exclude_ai_composed=True,
+                    include_unassigned=bool(
+                        payload.get("include_unassigned", False)
+                    ),
+                )
+            )
+        except ContextError as error:
+            raise JobError(str(error)) from error
+        placement_node_id = bundle.node.id if bundle.node is not None else node_id
+        if placement_node_id is None:
+            placement_node_id = TreeService(session).ensure_root(course_id).id
+        regenerate = bool(payload.get("regenerate", False))
+        live = find_live_artifact(session, course_id, int(placement_node_id), kind)
+        if live is not None and not regenerate:
+            raise JobError(
+                f"a {kind.replace('_', ' ')} already exists at this node "
+                f"(material {live.id})"
+            )
+        existing_md: str | None = None
+        if live is not None:
+            extraction = session.scalars(
+                select(Extraction)
+                .where(Extraction.material_id == live.id)
+                .order_by(Extraction.version.desc())
+                .limit(1)
+            ).first()
+            existing_md = extraction.markdown if extraction is not None else None
+        if is_cancel_requested(job.id):
+            raise JobCancelled()
+        report(30, "compose")
+        material = ComposeService(session, gateway).compose(
+            profile_id=int(payload.get("profile_id") or course.profile_id),
+            course_id=course_id,
+            node_id=node_id,
+            kind=kind,
+            title=payload.get("title"),
+            instructions=payload.get("instructions"),
+            extra_md=payload.get("extra_md"),
+            context_bundle=bundle,
+            blobs=blobs,
+            existing=live,
+            existing_md=existing_md,
+        )
+        if is_cancel_requested(job.id):
+            raise JobCancelled()
+        report(90, "persist")
+        session.commit()
+        if live is None:
+            JobRunner.enqueue(
+                session,
+                "ingest",
+                IngestPayload(material_id=material.id, blob_sha=material.blob_sha),
+            )
+            session.commit()
+        updated = dict(job.payload or {})
+        updated["material_id"] = material.id
+        job.payload = updated
+        session.commit()
+        report(100, "done")
+
+    return handler

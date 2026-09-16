@@ -2089,7 +2089,11 @@
     "openComposed": "Dokument öffnen",
     "unassignedNotice": "{{count}} Materialien in diesem Kurs sind noch keinem Thema zugeordnet.",
     "unassignedCheckbox": "Die {{count}} nicht zugeordneten Materialien einbeziehen",
-    "unassignedLink": "Zuerst im Materialien-Tab des Kurses zuordnen"
+    "unassignedLink": "Zuerst im Materialien-Tab des Kurses zuordnen",
+    "composeProgress": "Wird erstellt — {{progress}} %",
+    "cancelCompose": "Abbrechen",
+    "composeCancelled": "Erstellung abgebrochen.",
+    "composeFailed": "Erstellung fehlgeschlagen."
   },
   "ai": {
     "badge": {

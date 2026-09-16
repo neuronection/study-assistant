@@ -17,6 +17,7 @@ from .cancellation import (
 )
 from .payloads import (
     ChatTurnPayload,
+    ComposePayload,
     DrawingOcrPayload,
     GenesisPayload,
     ImageOcrPayload,
@@ -294,7 +295,8 @@ class JobRunner:
         | ChatTurnPayload
         | DrawingOcrPayload
         | ImageOcrPayload
-        | GenesisPayload,
+        | GenesisPayload
+        | ComposePayload,
     ) -> Job:
         job = Job(type=job_type, payload=dict(payload), status=JobStatus.QUEUED, progress=0)
         session.add(job)

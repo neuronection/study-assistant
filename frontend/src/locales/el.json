@@ -2089,7 +2089,11 @@
     "openComposed": "Άνοιγμα εγγράφου",
     "unassignedNotice": "{{count}} υλικά του μαθήματος δεν έχουν τοποθετηθεί ακόμη σε θέμα.",
     "unassignedCheckbox": "Να συμπεριληφθούν τα {{count}} μη τοποθετημένα υλικά",
-    "unassignedLink": "Τοποθετήστε τα πρώτα στην καρτέλα υλικών του μαθήματος"
+    "unassignedLink": "Τοποθετήστε τα πρώτα στην καρτέλα υλικών του μαθήματος",
+    "composeProgress": "Δημιουργία — {{progress}} %",
+    "cancelCompose": "Ακύρωση",
+    "composeCancelled": "Η δημιουργία ακυρώθηκε.",
+    "composeFailed": "Η δημιουργία απέτυχε."
   },
   "ai": {
     "badge": {

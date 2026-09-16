@@ -28,6 +28,7 @@ from .core.profile_context import reset_active_profile, set_active_profile
 from .core.vocab import WsTopic
 from .jobs.runner import JobRunner
 from .ocr.gateway_ocr import GatewayOcr
+from .pipelines.compose import make_compose_handler
 from .pipelines.drawing_ocr import make_drawing_ocr_handler
 from .pipelines.genesis import make_genesis_handler
 from .pipelines.image_ocr import make_image_ocr_handler
@@ -246,6 +247,9 @@ def create_app(
             "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
             "image_ocr": make_image_ocr_handler(app.state.gateway, app.state.blobs),
             "genesis": make_genesis_handler(
+                app.state.gateway, app.state.blobs, app.state.embedder.embed
+            ),
+            "compose": make_compose_handler(
                 app.state.gateway, app.state.blobs, app.state.embedder.embed
             ),
         },

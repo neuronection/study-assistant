@@ -379,6 +379,85 @@ def compose_material(
     return MaterialUploadOut(material=_to_out(material), job_id=job_id, deduped=False)
 
 
+class ComposeQueuedOut(BaseModel):
+    job_id: int
+
+
+@router.post("/compose/async", response_model=ComposeQueuedOut)
+def compose_material_async(
+    request: Request,
+    body: ComposeIn,
+    session: Session = Depends(get_session),
+) -> ComposeQueuedOut:
+    profile = ensure_default_profile(session)
+    from ..jobs.payloads import ComposePayload
+    from ..pipelines.compose import find_live_artifact
+    from ..services.knowledge.context import (
+        ContextError,
+        ContextResolver,
+        ContextScope,
+        ContextSpec,
+    )
+    from ..services.knowledge.tree import TreeService
+
+    try:
+        ContextResolver(session, request.app.state.embedder.embed).resolve(
+            ContextSpec(
+                course_id=body.course_id,
+                node_id=body.node_id,
+                scope=ContextScope(body.scope),
+                include_material_ids=body.include_material_ids,
+                exclude_material_ids=body.exclude_material_ids,
+                note_ids=body.note_ids,
+                concept_ids=body.concept_ids,
+                hint=body.context_hint,
+                query=body.title or body.instructions or "study material",
+                exclude_ai_composed=True,
+                include_unassigned=body.include_unassigned,
+                max_chunks=0,
+            )
+        )
+    except ContextError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    placement_node_id = body.node_id
+    if placement_node_id is None:
+        placement_node_id = TreeService(session).ensure_root(body.course_id).id
+    live = find_live_artifact(session, body.course_id, placement_node_id, body.kind)
+    if live is not None and not body.regenerate:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"a {body.kind.replace('_', ' ')} already exists at this node "
+                f"(material {live.id}) — open it, or pass regenerate=true to "
+                "replace it with a new version"
+            ),
+        )
+    job = JobRunner.enqueue(
+        session,
+        "compose",
+        ComposePayload(
+            course_id=body.course_id,
+            profile_id=profile.id,
+            node_id=body.node_id,
+            kind=body.kind,
+            title=body.title,
+            instructions=body.instructions,
+            extra_md=body.extra_md,
+            scope=body.scope,
+            include_material_ids=body.include_material_ids,
+            exclude_material_ids=body.exclude_material_ids,
+            note_ids=body.note_ids,
+            concept_ids=body.concept_ids,
+            context_hint=body.context_hint,
+            regenerate=body.regenerate,
+            include_unassigned=body.include_unassigned,
+        ),
+    )
+    session.commit()
+    request.app.state.jobs.wake()
+    return ComposeQueuedOut(job_id=job.id)
+
+
 MINDMAP_EDIT_MODES = {
     "expand": "Expand the mindmap: add more detail under each major branch.",
     "simplify": "Simplify: remove redundant or overly fine-grained nodes.",

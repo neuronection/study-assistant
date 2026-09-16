@@ -272,8 +272,10 @@ export type {
 } from './jobs'
 
 export {
+  cancelJob,
   deleteFailedJobs,
   deleteJob,
+  getJob,
   getJobsSummary,
   listJobTypes,
   listJobs,
@@ -313,6 +315,7 @@ export {
   assignCourseMaterial,
   mirrorFolder,
   composeMaterial,
+  composeMaterialAsync,
   copyMaterial,
   createTextFile,
   createTextMaterial,

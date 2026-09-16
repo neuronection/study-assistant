@@ -31,6 +31,18 @@ export async function listJobs(params?: {
 
 export type JobsSummary = Schemas['JobsSummary']
 
+export async function getJob(jobId: number): Promise<JobInfo> {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}`)
+  return json<JobInfo>(response)
+}
+
+export async function cancelJob(jobId: number): Promise<JobInfo> {
+  const response = await apiFetch(`/api/v1/jobs/${jobId}/cancel`, {
+    method: 'POST',
+  })
+  return json<JobInfo>(response)
+}
+
 export async function getJobsSummary(): Promise<JobsSummary> {
   const response = await apiFetch('/api/v1/jobs/summary')
   return json<JobsSummary>(response)
