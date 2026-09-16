@@ -275,6 +275,31 @@ describe('LibraryPage', () => {
     expect(screen.getByRole('button', { name: 'New…' })).toBeInTheDocument()
   })
 
+  test('course pane shows layout-shaped skeletons while folders and materials load', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listSources.mockResolvedValue([])
+    listFolders.mockReturnValue(new Promise(() => {}))
+    listMaterials.mockReturnValue(new Promise(() => {}))
+    const { container } = renderAt('/library?course=3')
+    const pane = await waitFor(() => {
+      const found = container.querySelector('[data-marquee-surface]')
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    })
+    await waitFor(() =>
+      expect(pane.querySelectorAll('[data-as="skeleton"]').length).toBeGreaterThan(0)
+    )
+  })
+
+  test('course root shows tile skeletons while courses load', async () => {
+    listCourses.mockReturnValue(new Promise(() => {}))
+    const { container } = renderAt('/library')
+    await waitFor(() =>
+      expect(container.querySelectorAll('[data-as="skeleton"]').length).toBeGreaterThan(0)
+    )
+    expect(screen.queryByText('No courses yet')).not.toBeInTheDocument()
+  })
+
   test('shows placement badges on linked folders and materials', async () => {
     listCourses.mockResolvedValue(COURSES)
     listFolders.mockResolvedValue([

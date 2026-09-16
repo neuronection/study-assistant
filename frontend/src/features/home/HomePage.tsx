@@ -11,6 +11,7 @@ import { GenesisDialog } from '@/features/ai/GenesisDialog'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { useRequiredCourse } from '@/components/workspace/CoursePicker'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
@@ -293,7 +294,22 @@ function ExamCard() {
   const navigate = useNavigate()
   const exams = useQuery({ queryKey: ['exam-status'], queryFn: getExamStatus })
   const entries = exams.data ?? []
-  if (exams.isLoading || entries.length === 0) {
+  if (exams.isLoading) {
+    return (
+      <div aria-busy="true" className="space-y-2">
+        {[0, 1].map((index) => (
+          <div
+            key={index}
+            className="border-border flex items-center gap-x-3 rounded-lg border px-3 py-2.5"
+          >
+            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <Skeleton className="h-4 min-w-0 flex-1" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (entries.length === 0) {
     return null
   }
   return (
@@ -429,7 +445,19 @@ function NextBestActions() {
   const recs = useQuery({ queryKey: ['recommendations'], queryFn: () => getRecommendations() })
   const list = recs.data ?? []
   if (recs.isLoading) {
-    return null
+    return (
+      <div aria-busy="true" className="space-y-2">
+        {[0, 1, 2].map((index) => (
+          <div
+            key={index}
+            className="border-border flex items-center gap-3 rounded-lg border px-3 py-2.5"
+          >
+            <Skeleton className="h-4 min-w-0 flex-1" />
+            <Skeleton className="h-8 w-20 shrink-0 rounded-md" />
+          </div>
+        ))}
+      </div>
+    )
   }
   if (list.length === 0) {
     return (
@@ -464,7 +492,23 @@ function UpcomingPlanStrip() {
     queryFn: () => listUpcomingItems(7),
   })
   const items = Array.isArray(upcoming.data) ? upcoming.data : []
-  if (upcoming.isLoading || items.length === 0) {
+  if (upcoming.isLoading) {
+    return (
+      <div aria-busy="true" className="space-y-1">
+        <Skeleton className="h-3 w-24" />
+        {[0, 1, 2, 3].map((index) => (
+          <div
+            key={index}
+            className="border-border flex items-center gap-2 rounded-lg border px-3 py-2"
+          >
+            <Skeleton className="h-3.5 w-16 shrink-0" />
+            <Skeleton className="h-4 min-w-0 flex-1" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (items.length === 0) {
     return null
   }
   return (
@@ -582,7 +626,11 @@ export function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">{data?.streak ?? 0}</span>
+              {overview.isLoading ? (
+                <Skeleton className="h-9 w-16" />
+              ) : (
+                <span className="text-3xl font-bold">{data?.streak ?? 0}</span>
+              )}
               <span className="text-muted-foreground text-xs">{t('today.days')}</span>
               <span className="text-muted-foreground ml-auto text-xs">
                 {t('today.level', { level: data?.level ?? 1 })}
@@ -598,7 +646,9 @@ export function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center gap-3">
-              {data?.unit === 'minutes' ? (
+              {overview.isLoading ? (
+                <Skeleton className="size-14 shrink-0 rounded-full" />
+              ) : data?.unit === 'minutes' ? (
                 <GoalRing
                   done={Math.round((data?.today?.study_seconds ?? 0) / 60)}
                   goal={data?.minutes_per_day ?? 30}
@@ -684,9 +734,13 @@ export function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">
-                {formatStudyMinutes(data?.today?.study_seconds ?? 0)}
-              </p>
+              {overview.isLoading ? (
+                <Skeleton className="h-9 w-20" />
+              ) : (
+                <p className="text-3xl font-bold">
+                  {formatStudyMinutes(data?.today?.study_seconds ?? 0)}
+                </p>
+              )}
               <CardDescription>
                 {t('today.studyWeek', { time: formatStudyMinutes(data?.study_seconds_week ?? 0) })}
               </CardDescription>
@@ -701,7 +755,11 @@ export function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{data?.due_cards ?? 0}</p>
+              {overview.isLoading ? (
+                <Skeleton className="h-9 w-16" />
+              ) : (
+                <p className="text-3xl font-bold">{data?.due_cards ?? 0}</p>
+              )}
               <CardDescription className="flex items-center gap-1">
                 {t('today.dueReviewsHint')}
                 <button
@@ -810,7 +868,9 @@ export function HomePage() {
           <CardTitle className="text-sm">{t('today.consistency')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {data?.history && data.history.length > 0 ? (
+          {overview.isLoading ? (
+            <Skeleton className="h-24 w-full rounded-md" />
+          ) : data?.history && data.history.length > 0 ? (
             <Heatmap days={data.history} />
           ) : (
             <p className="text-muted-foreground text-sm">{t('today.noHistory')}</p>

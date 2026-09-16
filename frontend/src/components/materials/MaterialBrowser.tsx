@@ -7,6 +7,7 @@ import type {
 
 import { LibraryBreadcrumbs, type Crumb } from '@/features/library/LibraryBreadcrumbs'
 import { isKeyboardClick } from '@/lib/useSelection'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 const GRID_CLASSES = 'grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4 p-2'
@@ -118,6 +119,42 @@ function MaterialFolderItem({ folder, view }: { folder: MaterialFolderSpec; view
       </button>
       {folder.badge ?? null}
       {folder.trailing ?? null}
+    </div>
+  )
+}
+
+export function MaterialBrowserSkeleton({
+  view,
+  count = 8,
+  className,
+}: {
+  view: 'grid' | 'list'
+  count?: number
+  className?: string
+}) {
+  return (
+    <div
+      aria-busy="true"
+      className={cn(view === 'grid' ? GRID_CLASSES : LIST_CLASSES, className)}
+    >
+      {Array.from({ length: count }, (_, index) =>
+        view === 'grid' ? (
+          <div
+            key={index}
+            className="flex flex-col items-center gap-2 rounded-lg p-3 text-center"
+          >
+            <Skeleton className="size-8 rounded-md" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-3/5" />
+          </div>
+        ) : (
+          <div key={index} className="flex w-full items-center gap-2 rounded-md px-3 py-2">
+            <Skeleton className="size-4 rounded-sm" />
+            <Skeleton className="h-4 min-w-0 flex-1" />
+            <Skeleton className="h-3.5 w-14 shrink-0" />
+          </div>
+        ),
+      )}
     </div>
   )
 }

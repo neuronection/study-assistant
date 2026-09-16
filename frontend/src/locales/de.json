@@ -1798,6 +1798,30 @@
     "contentHint": "Gib vor deiner Suchanfrage ? ein, um in deinen Materialien zu suchen.",
     "searchLabel": "Suchen…"
   },
+  "shortcuts": {
+    "title": "Tastaturkürzel",
+    "hint": "Drücke jederzeit ?, um diese Übersicht wieder zu öffnen",
+    "searchLabel": "Kürzel",
+    "group": {
+      "general": "Allgemein",
+      "review": "Wiederholen",
+      "library": "Bibliothek",
+      "study": "Lesen & Lernen"
+    },
+    "palette": "Befehlspalette öffnen",
+    "capture": "Schnellerfassung",
+    "help": "Diese Übersicht",
+    "reveal": "Antwort aufdecken",
+    "rate": "Karte bewerten",
+    "open": "Ausgewähltes Element öffnen",
+    "selection": "Zur Auswahl hinzufügen",
+    "cut": "Auswahl ausschneiden",
+    "copy": "Auswahl kopieren",
+    "paste": "In Ordner einfügen",
+    "delete": "Auswahl löschen",
+    "close": "Overlay schließen / Auswahl aufheben",
+    "resize": "Teiler der Split-Ansicht anpassen"
+  },
   "dictation": {
     "start": "Diktieren",
     "stop": "Einfügen",

@@ -608,6 +608,17 @@ describe('NodeWorkspace', () => {
     expect(screen.getByRole('button', { name: /^practice$/i })).toBeInTheDocument()
   })
 
+  test('workspace gate renders a layout-shaped skeleton while the tree loads', async () => {
+    primeDefaults()
+    courseTree.mockReturnValue(new Promise(() => {}))
+    const { container } = renderWorkspace('/courses/3')
+    await waitFor(() =>
+      expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+    )
+    expect(container.querySelectorAll('[data-as="skeleton"]').length).toBeGreaterThan(4)
+    expect(document.querySelector('.animate-spin')).toBeNull()
+  })
+
   test('node workspace renders breadcrumb and sidebar focus', async () => {
     primeDefaults()
     renderWorkspace('/courses/3/n/5')

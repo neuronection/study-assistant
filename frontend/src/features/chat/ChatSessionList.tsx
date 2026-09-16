@@ -15,6 +15,7 @@ import {
   renameChatSession,
   type ChatSession,
 } from '@/lib/api'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { exportSessionAsMarkdown } from '@/features/chat/exportSessionMarkdown'
 import { useConfirm } from '@/lib/use-confirm'
@@ -94,6 +95,16 @@ export function ChatSessionList({
   return (
     <div className="flex h-full min-h-0 flex-col p-2">
       <UndoDeleteNotice deletedItemId={deletedItemId} onDismiss={() => setDeletedItemId(null)} />
+      {sessions.isLoading ? (
+        <div aria-busy="true" className="flex flex-col gap-2 p-2">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div key={index} className="flex items-center gap-2 rounded-md px-2 py-1.5">
+              <Skeleton className="size-4 rounded-sm" />
+              <Skeleton className="h-4 min-w-0 flex-1" />
+            </div>
+          ))}
+        </div>
+      ) : (
       <ChatSessionListBase
         sessions={views}
         activeId={activeSession !== null ? String(activeSession) : null}
@@ -149,6 +160,7 @@ export function ChatSessionList({
           noResults: t('chat.noResults'),
         }}
       />
+      )}
       {renaming !== null ? (
         <RenameDialog
           title={t('chat.renameSession')}

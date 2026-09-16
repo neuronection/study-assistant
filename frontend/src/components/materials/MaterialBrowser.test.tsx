@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 
-import { MaterialBrowser, type MaterialFolderSpec } from './MaterialBrowser'
+import { MaterialBrowser, MaterialBrowserSkeleton, type MaterialFolderSpec } from './MaterialBrowser'
 
 function spec(overrides: Partial<MaterialFolderSpec> = {}): MaterialFolderSpec {
   return {
@@ -99,5 +99,27 @@ describe('MaterialBrowser', () => {
     expect(selected?.className).toContain('bg-primary/10')
     const highlighted = container.querySelector('[data-selectable-id="f2"]')
     expect(highlighted?.className).toContain('ring-2')
+  })
+})
+
+describe('MaterialBrowserSkeleton', () => {
+  test('grid view renders tile-shaped placeholders in a busy container', () => {
+    const { container } = render(<MaterialBrowserSkeleton view="grid" count={4} />)
+    expect(container.firstElementChild).toHaveAttribute('aria-busy', 'true')
+    const tiles = container.querySelectorAll('[data-as="skeleton"]')
+    expect(tiles).toHaveLength(4 * 3)
+    expect(container.firstElementChild?.className).toContain('grid')
+  })
+
+  test('list view renders row-shaped placeholders', () => {
+    const { container } = render(<MaterialBrowserSkeleton view="list" count={3} />)
+    expect(container.firstElementChild).toHaveAttribute('aria-busy', 'true')
+    expect(container.querySelectorAll('[data-as="skeleton"]')).toHaveLength(3 * 3)
+    expect(container.firstElementChild?.className).toContain('flex-col')
+  })
+
+  test('defaults to eight placeholders', () => {
+    const { container } = render(<MaterialBrowserSkeleton view="grid" />)
+    expect(container.querySelectorAll('[data-as="skeleton"]')).toHaveLength(8 * 3)
   })
 })

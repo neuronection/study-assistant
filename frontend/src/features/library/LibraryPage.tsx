@@ -88,6 +88,7 @@ import { NewTextFileDialog, type TextFileCreateInput, type TextFileSaveInput } f
 import { ViewToggle, type LibraryView } from '@/components/ui/ViewToggle'
 import {
   MaterialBrowser,
+  MaterialBrowserSkeleton,
   folderTileClass,
   folderRowClass,
   type MaterialFolderSpec,
@@ -1655,6 +1656,9 @@ export function LibraryPage() {
           }}
         >
           {searching ? (
+            searchResults.isLoading ? (
+              <MaterialBrowserSkeleton view="list" count={6} className="gap-1 p-0" />
+            ) : (
             <div className="flex flex-col gap-1">
               {(searchResults.data?.hits ?? []).map((hit) => (
                 <button
@@ -1677,7 +1681,11 @@ export function LibraryPage() {
                 <p className="text-muted-foreground px-2 text-sm">{t('library.noResults')}</p>
               ) : null}
             </div>
+            )
           ) : courseId === null ? (
+            courses.isLoading ? (
+              <MaterialBrowserSkeleton view={view} />
+            ) : (
             <div
 className={cn(
                 view === 'grid'
@@ -1709,7 +1717,11 @@ className={cn(
                 </p>
               ) : null}
             </div>
-          ) : inLink && browseData ? (
+            )
+          ) : inLink ? (
+            browse.isLoading || !browseData ? (
+              <MaterialBrowserSkeleton view={view} />
+            ) : (
             <MaterialBrowser
               view={view}
               folders={linkFolderSpecs}
@@ -1806,6 +1818,9 @@ className={cn(
                 />
               ) : null}
             </MaterialBrowser>
+            )
+          ) : folders.isLoading || materials.isLoading ? (
+            <MaterialBrowserSkeleton view={view} />
           ) : (
             <MaterialBrowser
               view={view}

@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { Skeleton, SkeletonText } from '@/components/ui/skeleton'
 import {
   getReviewDue,
   reviewFlashcard,
@@ -89,8 +90,16 @@ export function ReviewPage() {
       </header>
 
       {due.isLoading ? (
-        <div className="text-muted-foreground flex justify-center py-16">
-          <Loader2 className="size-5 animate-spin" aria-hidden />
+        <div aria-busy="true" className="space-y-3 py-4">
+          <div className="border-border rounded-xl border p-6">
+            <SkeletonText lines={2} />
+            <div className="mt-4 flex justify-center gap-2">
+              {[0, 1, 2, 3].map((index) => (
+                <Skeleton key={index} className="h-8 w-14 rounded-md" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-1.5 w-full rounded-full" />
         </div>
       ) : allClear ? (
         <div className="border-success/40 bg-success/5 flex flex-col items-center gap-2 rounded-xl border p-10 text-center">

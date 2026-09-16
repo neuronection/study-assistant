@@ -111,4 +111,12 @@ describe('ReviewPage', () => {
     })
     expect(reviewFlashcard).not.toHaveBeenCalled()
   })
+
+  test('shows a card-shaped skeleton while the due batch loads', () => {
+    getReviewDue.mockReturnValue(new Promise(() => {}))
+    const { container } = renderPage()
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+    expect(document.querySelectorAll('[data-as="skeleton"]').length).toBeGreaterThan(0)
+    expect(document.querySelector('.animate-spin')).not.toBeInTheDocument()
+  })
 })

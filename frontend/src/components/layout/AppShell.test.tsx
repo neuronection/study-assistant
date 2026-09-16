@@ -341,4 +341,23 @@ describe('AppShell rail', () => {
     )
     await waitFor(() => expect(useChatStore.getState().open).toBe(false))
   })
+
+  test('pressing ? toggles the shortcuts overlay and Escape closes it', async () => {
+    renderShell()
+    fireEvent.keyDown(window, { key: '?' })
+    expect(await screen.findByText('Keyboard shortcuts')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() =>
+      expect(screen.queryByText('Keyboard shortcuts')).not.toBeInTheDocument()
+    )
+  })
+
+  test('? inside an input does not open the shortcuts overlay', () => {
+    renderShell()
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    fireEvent.keyDown(input, { key: '?' })
+    expect(screen.queryByText('Keyboard shortcuts')).not.toBeInTheDocument()
+    input.remove()
+  })
 })

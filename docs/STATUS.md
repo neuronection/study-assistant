@@ -6,6 +6,44 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — skeleton loading system + keyboard help (plan 77-A, ADR-184,
+2026-09-17):** slice A of plan 77 "Next-gen feel & flow" (the plan's B–G
+slices follow). Loading-state primitives went upstream: the family library
+ships a **`skeleton` module** (`Skeleton` + `SkeletonText`) — tier-1
+presentational, `--as-*` tokens only, aria-hidden decorations, and a CSS-only
+shimmer sweep (background-position keyframes in tokens.css, no transforms —
+TW3 double-apply-proof, circle-safe) that degrades to a static muted block
+under `prefers-reduced-motion`; the documented container contract is
+app-owned `aria-busy` (library commit carries tests incl. axe, a Ladle
+story, docs page, a11y row and a minor changeset). Study consumes it via the
+new `components/ui/skeleton.ts` shim and sweeps the high-traffic surfaces
+with layout-matched placeholders: **`MaterialBrowserSkeleton`** (shared in
+`components/materials/`) serves grid/list-shaped skeletons to the Library
+pane's four loading branches (search rows, course-root cards, linked-source
+browse, folder+material pane), the Materials-tab's two browse branches, and
+the NodeWorkspace full-gate (title + tab strip + tile grid instead of the
+centered spinner); ReviewPage renders a card-shaped skeleton (front lines +
+rating row + progress bar); the chat session list renders row skeletons;
+Home swaps zero-flash stat values for skeleton numbers and gives
+NextBestActions/UpcomingPlanStrip/ExamCard/heatmap row-shaped placeholders —
+inline verbs keep their spinners everywhere. **`?` keyboard help**: a typed
+`lib/shortcuts.ts` inventory (the REAL bindings: Ctrl/Cmd+K palette,
+Ctrl/Cmd+Shift+K capture, `?` help, review Space/1–4, library
+Enter/Ctrl+Click/Ctrl+X/C/V/Del, Esc, split-divider arrows) drives a new
+`ShortcutsDialog` (grouped kbd grid, Esc + backdrop close) bound app-wide in
+AppShell with a typing-target guard (`isTypingTarget` — never fires in
+inputs/contenteditable) and a rail button under the palette entry;
+i18n en/de/el complete. Library release dependency: the app commit consumes
+the `skeleton` subpath ahead of the module's release (tarball overlay
+locally, manifest files deliberately uncommitted) — dep bump +
+`minimumReleaseAgeExclude` entry land with the library release, per the
+0.32.0 precedent. Tests: ShortcutsDialog (3 + isTypingTarget 1) +
+AppShell `?` toggle/guard (2) + MaterialBrowserSkeleton (3) + per-surface
+loading-skeleton suites (LibraryPage 2, NodeWorkspace 1, HomePage 1,
+ReviewPage 1, ChatSessionList 1) = +14 frontend; frontend 1,292 green,
+lint/typecheck/build/`pnpm i18n` green; library `pnpm verify` green (738).
+Backend untouched (gate re-run green, 1,250).
+
 **Feature — custom MCP connectors (plan 73-G, ADR-170, 2026-09-16):**
 plan 73 COMPLETE. Users with permission for a platform API can plug in
 their own source — without the app shipping that integration or loading
@@ -730,15 +768,20 @@ question-validation contract, exact problem strings load-bearing) run by
 model-quality golden sets join the directory. Next in the approved order:
 **plan 68**.
 
-**Next (planned) — plan 70 "Compose quality & scale": COMPLETE (2026-09-16,
-A–D; see the slice entries at the top of this file).** Original scope:
-deterministic coverage accounting + `needs_review` gate for AI-composed
-material, orphan-material awareness (`include_unassigned` + unassigned
-discovery endpoint), `practice_set` compose through quizgen-derived SymPy
-validators, and a cancellable `compose` job with an async endpoint +
-single-job GET (ADRs 156–158 recorded). Plan doc:
-`dev/plans/70-compose-quality-and-scale.md` (local-only). Per the approved
-execution order, **plan 73** is next.
+**Next (planned) — plan 77 "Next-gen feel & flow" (user-approved 2026-09-17):**
+UX modernization round over the completed 70/73/74/75/76 wave — **A** skeleton
+loading system + `?` keyboard help overlay, **B** index-card hover previews
+(upstream HoverCard/Skeleton primitives in assistant-ui, shims app-side),
+**C** formatted `MarkdownDiffView` parity for extraction history + re-OCR,
+**D** one-tap **Study now** guided session (deterministic read-only
+`GET /study/next`; phases embed ReviewQueue, plan triage, weak-concept
+practice; SuccessBurst milestone consumption), **E** course knowledge-graph
+canvas over `conceptGraph` with concept×skill mastery coloring, **F** materials
++ tree nodes join the trash (snapshot-to-trash; row-only restore on the
+immortal blob store; course purge stays irreversible), **G** upstream
+typography/spacing/elevation token refresh swept last. ADRs 184–190 reserved.
+Plan doc: `dev/plans/77-nextgen-feel-and-flow.md` (local-only, mirrored to the
+family dev repo).
 
 **Also planned (user-approved 2026-09-11) — plan 73 "Material discovery,
 references & integrations" — COMPLETE (2026-09-16, slices A–G; ADRs

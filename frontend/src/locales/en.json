@@ -1813,6 +1813,30 @@
     "contentHint": "Type ? before your query to search inside your material.",
     "searchLabel": "Search…"
   },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "hint": "Press ? anywhere to reopen this overview",
+    "searchLabel": "Shortcuts",
+    "group": {
+      "general": "General",
+      "review": "Review",
+      "library": "Library",
+      "study": "Reading & study"
+    },
+    "palette": "Open the command palette",
+    "capture": "Quick capture",
+    "help": "This overview",
+    "reveal": "Reveal the answer",
+    "rate": "Rate the card",
+    "open": "Open the selected item",
+    "selection": "Add to selection",
+    "cut": "Cut selection",
+    "copy": "Copy selection",
+    "paste": "Paste into folder",
+    "delete": "Delete selection",
+    "close": "Close overlay / clear selection",
+    "resize": "Resize split-study divider"
+  },
   "dictation": {
     "start": "Dictate",
     "stop": "Insert",

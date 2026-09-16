@@ -169,4 +169,13 @@ describe('ChatSessionList (library list, app actions)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete chat' }))
     await waitFor(() => expect(deleteChatSession).toHaveBeenCalledWith(4))
   })
+
+  test('shows skeleton rows while sessions load', async () => {
+    listChatSessions.mockReturnValue(new Promise(() => {}))
+    const { container } = renderList({})
+    await waitFor(() =>
+      expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+    )
+    expect(container.querySelectorAll('[data-as="skeleton"]')).toHaveLength(5 * 2)
+  })
 })

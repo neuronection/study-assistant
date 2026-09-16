@@ -810,6 +810,21 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 
 ## Platform & engineering
 
+- ✅ **Skeleton loading + keyboard help (plan 77-A, ADR-184)**: spinner-only
+  loading is gone from the high-traffic surfaces — the Library pane (grid/list
+  shaped, per mode), course Materials-tab browse, the NodeWorkspace gate,
+  Review's card, the chat session list and Home's stat cards/strips render
+  layout-matched shimmer skeletons (`MaterialBrowserSkeleton` shared by both
+  browse surfaces) instead of popping in; inline verbs keep their spinners.
+  Primitives are the family library's `skeleton` module (`aria-hidden`
+  decorations, CSS-only sweep via `--as-*` tokens, static under
+  `prefers-reduced-motion`), consumed through the `ui/skeleton` shim; loading
+  regions carry `aria-busy`. A **`?` keyboard-shortcuts overlay**
+  (`components/layout/ShortcutsDialog.tsx` over the honest
+  `lib/shortcuts.ts` inventory — palette, capture, review 1–4/space, library
+  cut/copy/paste/delete, Esc, split-divider arrows) opens from a rail button
+  under the palette entry and never fires while typing (input/textarea/
+  contenteditable guard)
 - ✅ **Capture shell (plan 67-A/B/C, ADR-148)**: the **command palette**
   (`Ctrl/Cmd+K` — navigation, creates, jumps to any note/quiz/exercise,
   `?`-prefixed full-text search, ranked by the library fuzzy module) gains

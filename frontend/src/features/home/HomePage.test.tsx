@@ -415,4 +415,17 @@ describe('HomePage exam card', () => {
     expect(await screen.findByText(/Linear Algebra — exam in 4 days/)).toBeInTheDocument()
     expect(screen.getByText(/1\/9 nodes studied/).className).toContain('text-danger')
   })
+
+  test('shows skeletons while the overview loads instead of zeroed stats', async () => {
+    getOverview.mockReturnValue(new Promise(() => {}))
+    getExamStatus.mockResolvedValue([])
+    getRecommendations.mockResolvedValue([])
+    listUpcomingItems.mockResolvedValue([])
+    renderHome()
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-as="skeleton"]').length).toBeGreaterThan(0)
+    })
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
+    expect(screen.queryByText(/activity heatmap builds up/i)).not.toBeInTheDocument()
+  })
 })

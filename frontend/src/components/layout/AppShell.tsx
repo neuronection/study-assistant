@@ -14,6 +14,7 @@ import {
   FolderClosed,
   GraduationCap,
   Home,
+  Keyboard,
   Layers,
   MessageSquare,
   NotebookPen,
@@ -30,6 +31,7 @@ import { useTranslation } from 'react-i18next'
 import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
 import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
+import { ShortcutsDialog } from './ShortcutsDialog'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
 import { UrlImportDialog } from '@/components/capture/UrlImportDialog'
@@ -46,6 +48,7 @@ import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { useDueCount } from '@/features/review/useDueCount'
 import { useReviewNudgeInterval } from '@/lib/review-nudges'
+import { isTypingTarget } from '@/lib/shortcuts'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import {
   getScratchpad,
@@ -340,10 +343,21 @@ export function AppShell() {
   const setCourse = useWorkspaceStore((state) => state.setCourse)
   const [selected, setSelected] = useState<number | null>(null)
   const [profilesOpen, setProfilesOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const palette = useCommandPaletteOpen()
   const shortViewport = useIsShortViewport()
   const dueCount = useDueCount()
   useReviewNudgeInterval()
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === '?' && !isTypingTarget(event.target)) {
+        event.preventDefault()
+        setShortcutsOpen((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const courseList = courses.data ?? []
   const profileList = profiles.data ?? []
   const activeCourse = courseList.find((course) => course.id === courseId) ?? null
@@ -464,6 +478,17 @@ export function AppShell() {
                 <span className="flex-1">{t('palette.searchLabel')}</span>
                 <kbd className="text-muted-foreground rounded border border-border px-1 text-[10px]">{t('palette.ctrlK')}</kbd>
               </button>
+              <button
+                type="button"
+                className="focus-visible:outline-ring text-muted-foreground hover:text-foreground border-border hover:border-border bg-surface flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-1"
+                title={t('shortcuts.title')}
+                aria-label={t('shortcuts.title')}
+                onClick={() => setShortcutsOpen(true)}
+              >
+                <Keyboard className="size-3.5 shrink-0" aria-hidden />
+                <span className="flex-1">{t('shortcuts.searchLabel')}</span>
+                <kbd className="text-muted-foreground rounded border border-border px-1 text-[10px]">?</kbd>
+              </button>
               {courseList.length > 0 ? (
                 <>
                   <CourseSwitcher
@@ -576,6 +601,7 @@ export function AppShell() {
         </StudyChatProvider>
       ) : null}
       <CommandPalette open={palette.open} onClose={palette.close} />
+      {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
       <FocusTimer />
       <QuickCapture />
       <SnapIntoNote />

@@ -36,6 +36,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import type { Block } from '@/components/blocks/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   ContextMenu,
   type ContextMenuItem,
@@ -52,7 +53,7 @@ import { TabActionBar, type TabAction } from '@/components/layout/TabActionBar'
 import { type PopoverMenuItem } from '@/components/ui/popover-menu'
 import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
 import { isKeyboardClick, useSelection } from '@/lib/useSelection'
-import { MaterialBrowser, type MaterialFolderSpec } from '@/components/materials/MaterialBrowser'
+import { MaterialBrowser, MaterialBrowserSkeleton, type MaterialFolderSpec } from '@/components/materials/MaterialBrowser'
 import { type Crumb } from '@/features/library/LibraryBreadcrumbs'
 import { KindIcon } from '@/features/library/KindIcon'
 import { MaterialRow } from '@/components/materials/MaterialRow'
@@ -2019,9 +2020,7 @@ function MaterialsTab({
         {browseActive ? (
           linkedSourceId !== null ? (
             sourceBrowseQuery.isLoading || sourceBrowse === null ? (
-              <p className="text-muted-foreground py-2 text-center text-sm">
-                {t('library.loading')}
-              </p>
+              <MaterialBrowserSkeleton view={view} count={6} />
             ) : (
               <MaterialBrowser
                 view={view}
@@ -2104,9 +2103,7 @@ function MaterialsTab({
               </MaterialBrowser>
             )
           ) : folderMaterialsQuery.isLoading ? (
-            <p className="text-muted-foreground py-2 text-center text-sm">
-              {t('library.loading')}
-            </p>
+            <MaterialBrowserSkeleton view={view} count={6} />
           ) : browseSubfolders.length === 0 && visibleBrowseMaterials.length === 0 ? (
             normalizedQuery ? (
               <p className="text-muted-foreground py-2 text-center text-sm">
@@ -3207,10 +3204,16 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     (currentId !== undefined && workspace.isLoading)
   ) {
     return (
-      <Loader2
-        className="text-muted-foreground m-8 animate-spin"
-        aria-label={t('library.loading')}
-      />
+      <div className="mx-auto max-w-6xl space-y-6 p-8" aria-busy="true">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-3.5 w-96" />
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <MaterialBrowserSkeleton view="grid" count={8} />
+      </div>
     )
   }
   if (currentId === undefined || workspace.isError || !workspace.data) {
