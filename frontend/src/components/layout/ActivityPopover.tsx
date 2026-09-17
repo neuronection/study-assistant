@@ -272,7 +272,7 @@ export function ActivityButton() {
           role="dialog"
           aria-label={t('jobs.title')}
           tabIndex={-1}
-          className="bg-surface border-border animate-in fade-in absolute bottom-full left-0 z-50 mb-2 w-80 rounded-lg border p-3 shadow-lg outline-none motion-reduce:animate-none"
+          className="bg-surface border-border animate-in fade-in absolute bottom-full left-0 z-50 mb-2 w-80 rounded-lg border p-3 shadow-[var(--as-shadow-2)] outline-none motion-reduce:animate-none"
         >
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">

@@ -6,6 +6,31 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — typography/spacing/elevation token refresh (plan 77-G, ADR-190,
+2026-09-17):** final slice of plan 77 — the visual modernization is
+token-level and conservative, no component redesign. **Library** (pushed
+`cfcf89a`, changeset pending release): elevation tokens refined to soft
+two-layer ambient+key stacks (lower alpha, wider ambient spread — the calm
+"floating surface" feel), and `--as-success` deepened from oklch(0.62…) to
+**oklch(0.55 0.15 152)** so white success text meets WCAG AA (4.51:1, was
+3.41:1). New automated **contrast gate** (`tests/tokens-contrast.test.ts`):
+parses the `:root` tokens (including `var()` indirection), converts
+OKLCH → sRGB → WCAG relative luminance, and asserts all nine fg/background
+text pairs stay ≥ 4.5:1 — future token edits can't silently regress
+accessibility. **App**: the `.dark` theme's harsh shadow overrides
+(0.4–0.5 alpha) softened to dark-appropriate ambient stacks, and a sweep
+replaced all **27 hardcoded Tailwind shadow utilities** across 27 files
+(dialogs, capture sheets, focus timer, palette, panels) with token shadows
+(`shadow-[var(--as-shadow-1..3)]` by weight) — zero hardcoded shadows
+remain outside tests; print CSS unaffected. Sibling verification honestly
+blocked: career-assistant's install hits an interactive `pnpm
+approve-builds` prompt (non-interactive environment) and health's core
+frontend does not consume the library; the token changes are CSS-value-only
+(no API/type surface) so build risk is nil — run the sibling builds at the
+token release. Tests: library contrast gate (2) + full `pnpm verify` (750);
+frontend full gate 1,308 green, lint/typecheck/build/i18n green. Backend
+untouched. **Plan 77 A–G COMPLETE.**
+
 **Feature — materials + tree nodes join the trash (plan 77-F, ADR-187,
 2026-09-17):** slice F of plan 77 — the highest-stakes deletes are now
 recoverable like the low-stakes ones. **Materials**: `DELETE

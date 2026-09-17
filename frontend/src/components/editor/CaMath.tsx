@@ -257,7 +257,7 @@ function MathView({ node, updateAttributes, selected, editor }: ReactNodeViewPro
               <div
                 role="dialog"
                 aria-label={t('editor.mathEdit')}
-                className="bg-surface border-border animate-in fixed z-50 w-[min(28rem,90vw)] rounded-lg border p-3 shadow-lg motion-reduce:animate-none"
+                className="bg-surface border-border animate-in fixed z-50 w-[min(28rem,90vw)] rounded-lg border p-3 shadow-[var(--as-shadow-2)] motion-reduce:animate-none"
                 style={{ top: position.top, left: position.left }}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {

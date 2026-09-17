@@ -1184,7 +1184,7 @@ export function NodeTreeSidebar({
       ) : null}
       {undoItemId !== null ? (
         <div
-          className="bg-surface border-border m-2 flex items-center justify-between gap-2 rounded-lg border px-3 py-2 shadow-lg"
+          className="bg-surface border-border m-2 flex items-center justify-between gap-2 rounded-lg border px-3 py-2 shadow-[var(--as-shadow-2)]"
           role="status"
         >
           <span className="text-muted-foreground text-xs">

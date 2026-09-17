@@ -138,7 +138,7 @@ export function FocusTimer() {
             ref={panelRef}
             {...presets.panel}
             className={cn(
-              'border-border bg-surface pointer-events-auto w-64 rounded-xl border p-3 shadow-xl'
+              'border-border bg-surface pointer-events-auto w-64 rounded-xl border p-3 shadow-[var(--as-shadow-3)]'
             )}
             role="dialog"
             aria-label={t('focusTimer.pickerLabel')}
@@ -218,7 +218,7 @@ export function FocusTimer() {
             {...presets.enter}
             type="button"
             className={cn(
-              'border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/40 pointer-events-auto flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium shadow-lg transition-colors'
+              'border-border bg-surface text-muted-foreground hover:text-foreground hover:border-primary/40 pointer-events-auto flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium shadow-[var(--as-shadow-2)] transition-colors'
             )}
             aria-expanded={expanded}
             aria-label={t('focusTimer.open')}
@@ -231,7 +231,7 @@ export function FocusTimer() {
           <motion.div
             key="done"
             {...presets.panel}
-            className="border-success/40 bg-surface pointer-events-auto flex items-center gap-2.5 rounded-full border py-1.5 pl-3 pr-1.5 shadow-lg"
+            className="border-success/40 bg-surface pointer-events-auto flex items-center gap-2.5 rounded-full border py-1.5 pl-3 pr-1.5 shadow-[var(--as-shadow-2)]"
             role="status"
           >
             <span className="text-success flex items-center gap-1.5 text-xs font-semibold">
@@ -256,7 +256,7 @@ export function FocusTimer() {
           <motion.div
             key="running"
             {...presets.enter}
-            className="border-border bg-surface pointer-events-auto flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-2 shadow-lg"
+            className="border-border bg-surface pointer-events-auto flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-2 shadow-[var(--as-shadow-2)]"
           >
             <button
               type="button"

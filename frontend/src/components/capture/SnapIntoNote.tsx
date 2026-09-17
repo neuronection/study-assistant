@@ -140,7 +140,7 @@ export function SnapIntoNote() {
         {open && shot !== null ? (
           <motion.div
             key="snap-review"
-            className="bg-surface border-border fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-4 shadow-xl"
+            className="bg-surface border-border fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border p-4 shadow-[var(--as-shadow-3)]"
             role="dialog"
             aria-modal="true"
             aria-label={t('capture.snapReviewTitle')}

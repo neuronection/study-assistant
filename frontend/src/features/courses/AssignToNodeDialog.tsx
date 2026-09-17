@@ -69,7 +69,7 @@ export function AssignToNodeDialog({
         }
       }}
     >
-      <div className="bg-surface border-border flex max-h-[70vh] w-full max-w-md flex-col rounded-lg border shadow-xl">
+      <div className="bg-surface border-border flex max-h-[70vh] w-full max-w-md flex-col rounded-lg border shadow-[var(--as-shadow-3)]">
         <header className="border-border border-b px-4 py-2">
           <h2 className="text-sm font-semibold">
             {title}

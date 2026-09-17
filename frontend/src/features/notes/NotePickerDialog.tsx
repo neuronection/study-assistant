@@ -112,7 +112,7 @@ export function NotePickerDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t('notePicker.title')}
-        className="bg-surface border-border flex h-[min(560px,90vh)] w-full max-w-2xl flex-col rounded-xl border shadow-xl"
+        className="bg-surface border-border flex h-[min(560px,90vh)] w-full max-w-2xl flex-col rounded-xl border shadow-[var(--as-shadow-3)]"
       >
         <div className="border-border flex items-center gap-3 border-b px-5 py-3">
           <div className="min-w-0 flex-1">

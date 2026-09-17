@@ -116,7 +116,7 @@ function MermaidView({ node, updateAttributes, selected, editor }: ReactNodeView
         title={t('editor.mermaidEdit')}
         onDoubleClick={editor.isEditable ? () => setEditing(true) : undefined}
         className={cn(
-          'bg-subtle relative my-2 cursor-pointer overflow-x-auto rounded-md p-2 transition-shadow hover:shadow-md',
+          'bg-subtle relative my-2 cursor-pointer overflow-x-auto rounded-md p-2 transition-shadow hover:shadow-[var(--as-shadow-1)]',
           selected && 'ring-primary ring-2'
         )}
       >
@@ -154,7 +154,7 @@ function MermaidView({ node, updateAttributes, selected, editor }: ReactNodeView
               <div
                 role="dialog"
                 aria-label={t('editor.mermaidEdit')}
-                className="bg-surface border-border fixed top-1/2 left-1/2 z-50 flex max-h-[80vh] w-[min(40rem,90vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border p-4 shadow-lg"
+                className="bg-surface border-border fixed top-1/2 left-1/2 z-50 flex max-h-[80vh] w-[min(40rem,90vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border p-4 shadow-[var(--as-shadow-2)]"
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
                     setEditing(false)

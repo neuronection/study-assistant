@@ -161,7 +161,7 @@ export function NewTextFileDialog({
         }
       }}
     >
-      <div className="bg-surface border-border flex max-h-[80vh] w-full max-w-2xl flex-col rounded-lg border shadow-xl">
+      <div className="bg-surface border-border flex max-h-[80vh] w-full max-w-2xl flex-col rounded-lg border shadow-[var(--as-shadow-3)]">
         <header className="border-border flex items-center justify-between border-b px-4 py-2">
           <h2 className="text-sm font-semibold">{t('newTextFile.title')}</h2>
           {savedState !== null ? (

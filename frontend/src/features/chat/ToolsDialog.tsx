@@ -32,7 +32,7 @@ export function ToolsDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-surface border-border flex max-h-[85vh] w-full max-w-lg flex-col rounded-lg border shadow-lg">
+      <div className="bg-surface border-border flex max-h-[85vh] w-full max-w-lg flex-col rounded-lg border shadow-[var(--as-shadow-2)]">
         <header className="border-border flex items-center justify-between border-b px-4 py-3">
           <span className="flex items-center gap-2 text-sm font-semibold">
             <Wrench className="size-4" aria-hidden />

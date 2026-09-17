@@ -39,7 +39,7 @@ export function NewFolderDialog({
         }
       }}
     >
-      <div className="bg-surface border-border w-full max-w-sm rounded-lg border p-4 shadow-xl">
+      <div className="bg-surface border-border w-full max-w-sm rounded-lg border p-4 shadow-[var(--as-shadow-3)]">
         <h2 className="text-sm font-semibold">{title}</h2>
         <input
           autoFocus

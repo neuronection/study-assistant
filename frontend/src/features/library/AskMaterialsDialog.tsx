@@ -81,7 +81,7 @@ export function AskMaterialsDialog({
         }
       }}
     >
-      <div className="bg-surface border-border flex w-full max-w-lg flex-col rounded-lg border shadow-xl">
+      <div className="bg-surface border-border flex w-full max-w-lg flex-col rounded-lg border shadow-[var(--as-shadow-3)]">
         <header className="border-border flex items-center justify-between border-b px-4 py-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Sparkles className="text-primary size-4" aria-hidden />

@@ -53,7 +53,7 @@ export function PromoteCourseDialog({
         }
       }}
     >
-      <div className="bg-surface border-border w-full max-w-sm rounded-lg border p-4 shadow-xl">
+      <div className="bg-surface border-border w-full max-w-sm rounded-lg border p-4 shadow-[var(--as-shadow-3)]">
         <h2 className="text-sm font-semibold">{t('scratchpad.promoteTitle')}</h2>
         <p className="text-muted-foreground mt-1 text-xs">
           {t('scratchpad.promoteHint')}

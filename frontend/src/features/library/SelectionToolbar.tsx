@@ -17,7 +17,7 @@ export function SelectionToolbar({
     <div
       role="toolbar"
       aria-label={t('library.selectionToolbar')}
-      className="bg-surface border-border text-foreground animate-in fade-in fixed z-[60] flex items-center gap-0.5 rounded-md border p-0.5 shadow-lg duration-150 motion-reduce:animate-none"
+      className="bg-surface border-border text-foreground animate-in fade-in fixed z-[60] flex items-center gap-0.5 rounded-md border p-0.5 shadow-[var(--as-shadow-2)] duration-150 motion-reduce:animate-none"
       style={{ top: capture.top, left: capture.left }}
     >
       <button

@@ -231,7 +231,7 @@ export function FocusShell({
           role="dialog"
           aria-modal="true"
           aria-label={ariaLabel ?? (typeof title === 'string' ? title : undefined)}
-          className="bg-surface border-border absolute top-0 right-0 flex h-full flex-col overflow-hidden border-l shadow-xl outline-none transition-[width] duration-200 ease-out motion-reduce:transition-none"
+          className="bg-surface border-border absolute top-0 right-0 flex h-full flex-col overflow-hidden border-l shadow-[var(--as-shadow-3)] outline-none transition-[width] duration-200 ease-out motion-reduce:transition-none"
           style={{
             width: maximized
               ? `calc(100vw - ${chatInset}px)`

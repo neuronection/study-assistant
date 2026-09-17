@@ -44,7 +44,7 @@ export function EquationDialog({
       <div
         role="dialog"
         aria-label={t('chat.composer.equation')}
-        className="bg-surface border-border w-full max-w-lg rounded-xl border p-4 shadow-xl"
+        className="bg-surface border-border w-full max-w-lg rounded-xl border p-4 shadow-[var(--as-shadow-3)]"
       >
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
           {t('chat.composer.equation')}
@@ -147,7 +147,7 @@ export function DrawingDialog({
         role="dialog"
         aria-label={t('chat.composer.drawTitle')}
         className={cn(
-          'bg-surface border-border flex flex-col shadow-xl',
+          'bg-surface border-border flex flex-col shadow-[var(--as-shadow-3)]',
           fullscreen
             ? 'inset-0 fixed h-full max-h-full w-full rounded-none'
             : 'max-h-[90vh] w-full max-w-3xl rounded-xl border p-4'

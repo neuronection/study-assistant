@@ -379,7 +379,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           }}
         >
           <motion.div
-            className="bg-surface border-border w-full max-w-lg overflow-hidden rounded-xl border shadow-xl"
+            className="bg-surface border-border w-full max-w-lg overflow-hidden rounded-xl border shadow-[var(--as-shadow-3)]"
             onKeyDown={onKeyDown}
             initial={presets.panel.initial}
             animate={presets.panel.animate}

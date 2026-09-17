@@ -664,7 +664,7 @@ export function MarkdownEditor({
                 role="dialog"
                 aria-label={t('editor.drawTitle')}
                 className={cn(
-                  'bg-surface border-border animate-in fixed z-50 flex flex-col shadow-lg motion-reduce:animate-none',
+                  'bg-surface border-border animate-in fixed z-50 flex flex-col shadow-[var(--as-shadow-2)] motion-reduce:animate-none',
                   canvasFullscreen
                     ? 'inset-0 h-full max-h-full w-full rounded-none border-0'
                     : 'top-1/2 left-1/2 max-h-[85vh] w-[min(56rem,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-lg border p-4'

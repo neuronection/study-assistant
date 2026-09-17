@@ -329,7 +329,7 @@ export function FloatingPanel({
                     }
               }
               className={cn(
-                'bg-surface border-border z-[60] w-80 rounded-lg border p-3 shadow-lg outline-none',
+                'bg-surface border-border z-[60] w-80 rounded-lg border p-3 shadow-[var(--as-shadow-2)] outline-none',
                 panelClassName,
                 'flex flex-col'
               )}

@@ -201,7 +201,7 @@ export function MindmapViewer({
               <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
               <div
                 role="menu"
-                className="bg-surface border-border absolute top-full right-0 z-30 mt-1 w-52 rounded-md border p-1 shadow-lg"
+                className="bg-surface border-border absolute top-full right-0 z-30 mt-1 w-52 rounded-md border p-1 shadow-[var(--as-shadow-2)]"
               >
                 {menuEntry(
                   <Wand2 className="text-muted-foreground size-4" aria-hidden />,

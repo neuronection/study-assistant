@@ -85,7 +85,7 @@ export function ProfileDialog({
         }
       }}
     >
-      <div className="bg-surface border-border w-full max-w-sm rounded-xl border p-4 shadow-xl">
+      <div className="bg-surface border-border w-full max-w-sm rounded-xl border p-4 shadow-[var(--as-shadow-3)]">
         <div className="flex items-center gap-2">
           <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-lg" aria-hidden>
             <UserRound className="size-4" />

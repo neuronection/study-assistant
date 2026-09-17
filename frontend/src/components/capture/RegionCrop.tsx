@@ -180,7 +180,7 @@ export function RegionCrop({
       <div
         role="dialog"
         aria-label={title}
-        className="bg-surface border-border flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl border p-4 shadow-xl"
+        className="bg-surface border-border flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl border p-4 shadow-[var(--as-shadow-3)]"
       >
         <p className="mb-1 text-sm font-semibold">{title}</p>
         <p className="text-muted-foreground mb-2 text-xs" role={error ? 'alert' : undefined}>

@@ -843,6 +843,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   focus-openable, Escape/blur close, 150/100 ms grace defaults) is composed
   app-side in `MaterialHoverCard`; GenerateDialog context chips are a
   recorded residual
+- ✅ **Token refresh (plan 77-G, ADR-190)**: soft two-layer ambient+key
+  elevation tokens (library `--as-shadow-1..3` refined; the app's dark-mode
+  harsh 0.4-alpha overrides softened), all 27 hardcoded Tailwind shadow
+  utilities across dialog/capture/panel surfaces replaced by token shadows,
+  `--as-success` deepened to WCAG-AA for white text, and a library contrast
+  gate (OKLCH→sRGB→WCAG ratio for all text token pairs) preventing silent
+  a11y regressions
 - ✅ **Formatted diff parity (plan 77-C, ADR-188)**: the extraction History
   dialog's version compare and the drawing re-OCR transcript review render
   **`MarkdownDiffView` formatted by default** (math/tables/headings
