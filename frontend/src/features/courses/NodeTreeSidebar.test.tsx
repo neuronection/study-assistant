@@ -17,6 +17,7 @@ const renameNode = vi.fn()
 const deleteNode = vi.fn()
 const moveNode = vi.fn()
 const restoreNode = vi.fn()
+const restoreDeletedItem = vi.fn()
 const allocateMaterial = vi.fn()
 const moveNote = vi.fn()
 const promoteNode = vi.fn()
@@ -31,6 +32,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     renameNode: (...args: unknown[]) => renameNode(...(args as [number, string])),
     deleteNode: (id: number) => deleteNode(id),
     restoreNode: (token: string) => restoreNode(token),
+    restoreDeletedItem: (id: number) => restoreDeletedItem(id),
     moveNode: (...args: unknown[]) => moveNode(...(args as [number, number, number])),
     allocateMaterial: (...args: unknown[]) =>
       allocateMaterial(...(args as [number, number])),
@@ -146,6 +148,7 @@ describe('NodeTreeSidebar', () => {
     deleteNode.mockReset()
     moveNode.mockReset()
     restoreNode.mockReset()
+    restoreDeletedItem.mockReset()
     allocateMaterial.mockReset()
     window.localStorage.clear()
     courseTree.mockResolvedValue([TREE])
@@ -510,7 +513,9 @@ describe('NodeTreeSidebar', () => {
     expect(treeEl.getAttribute('aria-activedescendant')).toBe('ca-tree-row-2')
   })
 
-  test('delete shows an undo toast that restores the node', async () => {
+  test('delete shows an undo toast that restores the node from the trash', async () => {
+    deleteNode.mockResolvedValue({ deleted_item_id: 91 })
+    restoreDeletedItem.mockResolvedValue({ status: 'restored', entity_type: 'node' })
     renderSidebar(undefined)
     await screen.findByText('Derivatives')
 
@@ -521,7 +526,7 @@ describe('NodeTreeSidebar', () => {
 
     expect(await screen.findByText('Node deleted.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /undo/i }))
-    await waitFor(() => expect(restoreNode).toHaveBeenCalledWith('token-1'))
+    await waitFor(() => expect(restoreDeletedItem).toHaveBeenCalledWith(91))
   })
 
   test('expansion state persists to localStorage per course', async () => {

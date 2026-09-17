@@ -2231,7 +2231,9 @@
       "note": "Note",
       "quiz": "Quiz",
       "exercise": "Exercise",
-      "chat": "Chat"
+      "chat": "Chat",
+      "material": "Material",
+      "node": "Topic"
     }
   },
   "study": {

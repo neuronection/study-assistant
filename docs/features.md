@@ -1061,7 +1061,14 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   Settings → Data), Settings → Data card (toggle, interval, retention, sync
   picker, Back up now, list with restore-by-name/delete; runtime overrides in
   `backup-settings.json`, env defaults `SA_AUTO_BACKUP` etc.) — ADR-047
-- ✅ Trash (plan 22 D, ADR-048): deleting a note/quiz/exercise/chat snapshots
+- ✅ Trash (plan 22 D, ADR-048; **materials + topics join in plan 77-F,
+  ADR-187**): deleting a **material** snapshots the row + extractions + links +
+  study state + images/drawings + index card (blobs survive — restore is
+  row-only, rebuilds chunks/FTS, drops dangling placements, dedupe-merges when
+  the file was re-added) and deleting a **topic** moves the whole subtree to
+  the trash (content placements re-point to the parent while trashed; restore
+  rebuilds structure + links + coverage + placements under the nearest
+  surviving ancestor with honest depth/skip reporting): deleting a note/quiz/exercise/chat snapshots
   the full subtree (children, drawings w/ embedded PNGs, review history,
   attempts) into `deleted_items` (7-day TTL, purged at boot + on demand) —
   **Undo strip** on every trashed delete, Trash card in Settings → Data with

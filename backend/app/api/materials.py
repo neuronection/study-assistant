@@ -58,6 +58,10 @@ blobs_router = APIRouter(prefix="/blobs", tags=["blobs"])
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
+class MaterialDeletedOut(BaseModel):
+    deleted_item_id: int
+
+
 class TextFileIn(BaseModel):
     course_id: int
     folder_id: int | None = None
@@ -1088,19 +1092,25 @@ def derive_material(
     return MaterialUploadOut(material=_to_out(derived), job_id=job_id, deduped=deduped)
 
 
-@router.delete("/{material_id}", status_code=204)
+@router.delete("/{material_id}", response_model=MaterialDeletedOut)
 def delete_material(
     request: Request,
     material_id: int,
     session: Session = Depends(get_session),
-) -> None:
+) -> dict[str, Any]:
     service = _service(request, session)
     profile = ensure_default_profile(session)
     material = service.get(material_id, profile_id=profile.id)
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
+    from ..services.platform import trash
+
+    deleted_item_id = trash.snapshot(
+        session, "material", material.id, material.title, profile.id
+    )
     purge_material(session, material)
     session.commit()
+    return {"deleted_item_id": deleted_item_id}
 
 
 @router.get("/{material_id}", response_model=MaterialDetailOut)

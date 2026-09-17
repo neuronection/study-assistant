@@ -6,6 +6,44 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — materials + tree nodes join the trash (plan 77-F, ADR-187,
+2026-09-17):** slice F of plan 77 — the highest-stakes deletes are now
+recoverable like the low-stakes ones. **Materials**: `DELETE
+/api/v1/materials/{id}` snapshots the material + extractions + links +
+study-state + images + drawings + index card into a `DeletedItem` (generic
+table serializer, no migration — `entity_type` "material"; blobs are
+content-addressed and survive, so restore is row-only) and returns
+`{deleted_item_id}` (was 204). **Restore** re-inserts with the generic
+remapping, rebuilds chunks + FTS for the latest extraction synchronously
+(`chunk_markdown` + `sync_material_fts`), drops node links whose node no
+longer exists and nulls a vanished folder (honest dangling handling), and
+enqueues postprocess for embeddings. **Dedupe-collision semantics
+(ADR-187)**: if a material with the same `(course, content_hash)` was
+re-created meanwhile, restore does NOT insert a twin — it attaches the
+snapshot's node links to the existing material and reports `merged`/
+`deduped`. **Tree nodes**: `DELETE /api/v1/nodes/{id}` now moves the whole
+SUBTREE to the trash (semantic change from merge-delete — recorded in
+ADR-187): the snapshot captures the subtree structure, material/folder
+links and concept coverage per node; content placements (notes, quizzes,
+exercises, chat sessions, plan items, suggestions) are re-pointed to the
+parent exactly like the old merge so content stays accessible, and
+restore rebuilds nodes under the nearest surviving ancestor (course root
+fallback) at the captured sibling position, re-attaching links (skip when
+the material is gone or already linked), folder links, coverage and
+moving snapshotted placements back — depth over `MAX_DEPTH` reports
+`skipped_deep` honestly. The old in-memory undo endpoint stays for
+compatibility; the tree sidebar's undo toast now restores from the trash.
+Frontend: Library material deletes surface the existing
+`UndoDeleteNotice`; Settings → Data's Trash card lists the new `Material`
+/ `Topic` entity labels (en/de/el). Tests: backend
+`test_trash_materials_nodes.py` (5: material round-trip with FTS hit,
+dedupe-merge on re-upload, node subtree round-trip with placements,
+dangling-link skip, depth-cap report) + existing trash/structure suites
+re-pointed to the new contracts. Backend 1,262 green, ruff/mypy clean;
+frontend 1,308 green, lint/typecheck/build/i18n green. Backend semantics
+recorded: node delete = subtree-to-trash (children go with it, restorable)
+— the merge-delete behavior is gone.
+
 **Feature — course concept-graph canvas (plan 77-E, ADR-189, 2026-09-17):**
 slice E of plan 77 — the Concepts tab gains an additive **List ⇄ Graph**
 view (toggle persisted per course, hidden below `lg` — the list remains the

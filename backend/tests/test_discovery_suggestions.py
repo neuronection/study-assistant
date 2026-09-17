@@ -236,7 +236,7 @@ def test_material_purge_reverts_saved_suggestion(
         assert attached.json()["material_id"] == material_id
 
         deleted = client.delete(f"/api/v1/materials/{material_id}")
-        assert deleted.status_code == 204, deleted.text
+        assert deleted.status_code == 200, deleted.text
 
     row = db_session.get(MaterialSuggestion, sid)
     assert row is not None

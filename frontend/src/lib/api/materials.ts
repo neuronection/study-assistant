@@ -448,9 +448,9 @@ export async function deriveMaterials(ids: number[]): Promise<DeriveBatchResult>
   return json<DeriveBatchResult>(response)
 }
 
-export async function deleteMaterial(id: number): Promise<void> {
+export async function deleteMaterial(id: number): Promise<{ deleted_item_id: number }> {
   const response = await apiFetch(`/api/v1/materials/${id}`, { method: 'DELETE' })
-  await expectOk(response)
+  return json<{ deleted_item_id: number }>(response)
 }
 
 export async function getMaterial(id: number): Promise<MaterialDetail> {

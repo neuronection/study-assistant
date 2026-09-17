@@ -94,6 +94,7 @@ import {
   type MaterialFolderSpec,
 } from '@/components/materials/MaterialBrowser'
 import { MaterialHoverCard } from '@/components/materials/MaterialHoverCard'
+import { UndoDeleteNotice } from '@/components/UndoDeleteNotice'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
@@ -147,6 +148,7 @@ export function LibraryPage() {
   const from = useCurrentOrigin()
   const searchParams = useSearch({ from: '/library' })
   const queryClient = useQueryClient()
+  const [deletedItemId, setDeletedItemId] = useState<number | null>(null)
   const workspace = useWorkspaceStore()
   const courseId = searchParams.course ?? null
   const folderId = searchParams.folder ?? null
@@ -312,7 +314,10 @@ export function LibraryPage() {
   })
   const deleteMaterialMutation = useMutation({
     mutationFn: (id: number) => deleteMaterial(id),
-    onSuccess: () => refreshMaterials(),
+    onSuccess: (result) => {
+      setDeletedItemId(result.deleted_item_id)
+      refreshMaterials()
+    },
     onError: (error: Error) => setNotice(error.message),
   })
   const reingestMutation = useMutation({
@@ -1645,6 +1650,10 @@ export function LibraryPage() {
           </div>
         ) : null}
 
+        <UndoDeleteNotice
+          deletedItemId={deletedItemId}
+          onDismiss={() => setDeletedItemId(null)}
+        />
         <div
           ref={paneRef}
           data-marquee-surface=""

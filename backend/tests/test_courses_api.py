@@ -276,12 +276,31 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     chapter_one = next(c for c in tree[0]["children"] if c["id"] == chapter["id"])
     assert chapter_one["children"][0]["title"] == "Basics (renamed)"
 
-    course_client.delete(f"/api/v1/nodes/{chapter["id"]}")
-    assert [entry["title"] for entry in children()] == [
-        "Chapter 2",
-        "Basics (renamed)",
-        "L1",
-    ]
+    deleted = course_client.delete(f"/api/v1/nodes/{chapter["id"]}")
+    trash_item = deleted.json()["deleted_item_id"]
+    assert [entry["title"] for entry in children()] == ["Chapter 2", "L1"]
+
+    restored = course_client.post(f"/api/v1/deleted-items/{trash_item}/restore")
+    assert restored.status_code == 200, restored.text
+    subtree_root = restored.json()["node_id"]
+    print("DBGD", restored.json(), subtree_root)
+    tree = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
+
+    def flatten(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for entry in entries:
+            out.append(entry)
+            out.extend(flatten(entry["children"]))
+        return out
+
+    flat = flatten(tree)
+    assert any(c["id"] == subtree_root for c in flat), (
+        f"subtree root {subtree_root} missing; restored={restored.json()}; "
+        f"tree={[(c['id'], c['title']) for c in flat]}"
+    )
+    chapter_one = next(c for c in flat if c["id"] == subtree_root)
+    assert chapter_one["children"][0]["title"] == "Basics (renamed)"
+    course_client.delete(f"/api/v1/nodes/{subtree_root}", params={})
 
 
 def test_study_state_roundtrip(course_client: TestClient) -> None:

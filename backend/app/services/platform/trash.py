@@ -12,12 +12,20 @@ from ...domain.models import (
     ChatMessage,
     ChatProposal,
     ChatSession,
+    Chunk,
     DeletedItem,
     Exercise,
     ExerciseSession,
     ExerciseStep,
+    Extraction,
     FsrsState,
     ItemStat,
+    Material,
+    MaterialDrawing,
+    MaterialImage,
+    MaterialIndexCard,
+    MaterialLink,
+    MaterialStudyState,
     Mistake,
     Note,
     NoteDrawing,
@@ -26,8 +34,11 @@ from ...domain.models import (
     QuizHelpEvent,
     ReviewLog,
     StepAttempt,
+    TreeNode,
     utcnow,
 )
+from ...pipelines.chunking import chunk_markdown
+from ...storage.fts import sync_material_fts
 
 TRASH_TTL_DAYS = 7
 
@@ -77,11 +88,23 @@ def _spec(entity_type: str) -> dict[str, Any] | None:
             ],
             "root": ChatSession.__table__,
         },
+        "material": {
+            "tables": [
+                (Material.__table__, "id"),
+                (Extraction.__table__, "material_id"),
+                (MaterialLink.__table__, "material_id"),
+                (MaterialStudyState.__table__, "material_id"),
+                (MaterialImage.__table__, "material_id"),
+                (MaterialDrawing.__table__, "material_id"),
+                (MaterialIndexCard.__table__, "material_id"),
+            ],
+            "root": Material.__table__,
+        },
     }
     return specs.get(entity_type)
 
 
-ENTITY_TYPES = ("note", "quiz", "exercise", "chat")
+ENTITY_TYPES = ("note", "quiz", "exercise", "chat", "material", "node")
 
 
 def _jsonify(value: Any) -> Any:
@@ -117,17 +140,13 @@ def _collect_note_blobs(session: Session, payload: dict[str, Any], blobs_store: 
             payload["blobs"][sha] = base64.b64encode(data).decode()
 
 
-def snapshot(
+def persist(
     session: Session,
     entity_type: str,
-    root_id: int,
     title: str,
     profile_id: int,
-    blobs_store: Any = None,
+    payload: dict[str, Any],
 ) -> int:
-    payload = _serialize(session, entity_type, root_id)
-    if blobs_store is not None and entity_type == "note":
-        _collect_note_blobs(session, payload, blobs_store)
     item = DeletedItem(
         profile_id=profile_id,
         entity_type=entity_type,
@@ -141,6 +160,20 @@ def snapshot(
     return item.id
 
 
+def snapshot(
+    session: Session,
+    entity_type: str,
+    root_id: int,
+    title: str,
+    profile_id: int,
+    blobs_store: Any = None,
+) -> int:
+    payload = _serialize(session, entity_type, root_id)
+    if blobs_store is not None and entity_type == "note":
+        _collect_note_blobs(session, payload, blobs_store)
+    return persist(session, entity_type, title, profile_id, payload)
+
+
 def _parse_value(table: Any, column_name: str, value: Any) -> Any:
     column = table.c[column_name]
     if isinstance(column.type, DateTime) and isinstance(value, str):
@@ -148,7 +181,7 @@ def _parse_value(table: Any, column_name: str, value: Any) -> Any:
     return value
 
 
-def _restore_rows(session: Session, payload: dict[str, Any]) -> None:
+def _restore_rows(session: Session, payload: dict[str, Any]) -> dict[str, dict[int, int]]:
     remapped: dict[str, dict[int, int]] = {}
     for table_name, rows in payload["tables"].items():
         model = _model_for(table_name)
@@ -171,6 +204,7 @@ def _restore_rows(session: Session, payload: dict[str, Any]) -> None:
             new_pk = inserted[0] if inserted else None
             if pk is not None and new_pk is not None and new_pk != pk:
                 remapped.setdefault(table_name, {})[pk] = int(new_pk)
+    return remapped
 
 
 _TABLE_REGISTRY: dict[str, Any] = {
@@ -193,6 +227,13 @@ _TABLE_REGISTRY: dict[str, Any] = {
     "chat_sessions": ChatSession,
     "chat_messages": ChatMessage,
     "chat_proposals": ChatProposal,
+    "materials": Material,
+    "extractions": Extraction,
+    "material_links": MaterialLink,
+    "material_study_state": MaterialStudyState,
+    "material_images": MaterialImage,
+    "material_drawings": MaterialDrawing,
+    "material_index_cards": MaterialIndexCard,
 }
 
 
@@ -203,7 +244,104 @@ def _model_for(table_name: str) -> Any:
     return model
 
 
+def restore_material(session: Session, item: DeletedItem) -> tuple[str, int | None]:
+    payload = item.payload
+    material_rows = payload["tables"].get("materials", [])
+    if not material_rows:
+        raise TrashError("material snapshot is empty")
+    row = material_rows[0]
+    course_id = row["course_id"]
+    content_hash = row.get("content_hash")
+    existing = None
+    if content_hash:
+        existing = session.scalars(
+            select(Material).where(
+                Material.profile_id == item.profile_id,
+                Material.course_id == course_id,
+                Material.content_hash == content_hash,
+                Material.status != "failed",
+            )
+        ).first()
+    if existing is not None:
+        attached = 0
+        for link in payload["tables"].get("material_links", []):
+            node = session.get(TreeNode, link["node_id"])
+            if node is None:
+                continue
+            duplicate = session.scalars(
+                select(MaterialLink).where(
+                    MaterialLink.node_id == link["node_id"],
+                    MaterialLink.material_id == existing.id,
+                )
+            ).first()
+            if duplicate is not None:
+                continue
+            session.add(
+                MaterialLink(
+                    node_id=link["node_id"],
+                    material_id=existing.id,
+                    rationale=link.get("rationale"),
+                    auto_assigned=link.get("auto_assigned", False),
+                    confidence=link.get("confidence"),
+                )
+            )
+            attached += 1
+        session.delete(item)
+        session.flush()
+        return ("merged", existing.id) if attached else ("deduped", existing.id)
+
+    node_ids = set(session.scalars(select(TreeNode.id)).all())
+    payload["tables"]["material_links"] = [
+        link
+        for link in payload["tables"].get("material_links", [])
+        if link.get("node_id") in node_ids
+    ]
+    remapped = _restore_rows(session, payload)
+    new_id = remapped.get("materials", {}).get(row["id"], row["id"])
+    restored = session.get(Material, new_id)
+    if restored is not None and restored.folder_id is not None:
+        from ...domain.models import MaterialFolder
+
+        if session.get(MaterialFolder, restored.folder_id) is None:
+            restored.folder_id = None
+
+    if restored is not None:
+        latest = session.scalars(
+            select(Extraction)
+            .where(Extraction.material_id == new_id)
+            .order_by(Extraction.version.desc())
+        ).first()
+        if latest is not None:
+            ocr_parts = [
+                drawing.ocr_markdown
+                for drawing in restored.drawings
+                if drawing.ocr_markdown
+            ] + [
+                image.ocr_markdown
+                for image in restored.images
+                if image.ocr_markdown
+            ]
+            ocr = "\n".join(part for part in ocr_parts if part)
+            chunk_source = f"{latest.markdown}\n\n{ocr}" if ocr else latest.markdown
+            for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
+                session.add(
+                    Chunk(
+                        extraction_id=latest.id,
+                        ordinal=ordinal,
+                        text=chunk_text,
+                        token_count=max(1, len(chunk_text) // 4),
+                    )
+                )
+            sync_material_fts(session, restored, latest.markdown, ocr)
+
+    session.delete(item)
+    session.flush()
+    return ("restored", new_id)
+
+
 def restore(session: Session, item: DeletedItem, blobs_store: Any = None) -> str:
+    if item.entity_type in ("material", "node"):
+        raise TrashError("use the dedicated restore path")
     if item.entity_type not in ENTITY_TYPES:
         raise TrashError("unknown entity type")
     payload = item.payload

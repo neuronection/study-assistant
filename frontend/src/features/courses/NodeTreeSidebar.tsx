@@ -36,7 +36,7 @@ import {
   moveNote,
   promoteNode,
   renameNode,
-  restoreNode,
+  restoreDeletedItem,
   type NodeCounts,
   type NodeInfo,
 } from '@/lib/api'
@@ -437,7 +437,7 @@ export function NodeTreeSidebar({
   const [materialTarget, setMaterialTarget] = useState<number | null>(null)
   const [filter, setFilter] = useState('')
   const [focusIndex, setFocusIndex] = useState<number>(-1)
-  const [undoToken, setUndoToken] = useState<string | null>(null)
+  const [undoItemId, setUndoItemId] = useState<number | null>(null)
   const undoTimer = useRef<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [confirm, confirmElement] = useConfirm()
@@ -450,13 +450,13 @@ export function NodeTreeSidebar({
     }
   }, [])
 
-  const showUndo = (token: string | null) => {
+  const showUndo = (itemId: number | null) => {
     if (undoTimer.current !== null) {
       window.clearTimeout(undoTimer.current)
     }
-    setUndoToken(token)
-    if (token !== null) {
-      undoTimer.current = window.setTimeout(() => setUndoToken(null), 8000)
+    setUndoItemId(itemId)
+    if (itemId !== null) {
+      undoTimer.current = window.setTimeout(() => setUndoItemId(null), 8000)
     }
   }
 
@@ -492,11 +492,11 @@ export function NodeTreeSidebar({
   })
   const remove = useMutation({
     mutationFn: (id: number) => deleteNode(id),
-    onSuccess: (token) => showUndo(token),
+    onSuccess: (item) => showUndo(item.deleted_item_id),
     onError: () => showUndo(null),
   })
   const restore = useMutation({
-    mutationFn: (token: string) => restoreNode(token),
+    mutationFn: (itemId: number) => restoreDeletedItem(itemId),
     onSuccess: async () => {
       showUndo(null)
       await refresh()
@@ -1182,7 +1182,7 @@ export function NodeTreeSidebar({
           onCancel={() => setPromoteTarget(null)}
         />
       ) : null}
-      {undoToken !== null ? (
+      {undoItemId !== null ? (
         <div
           className="bg-surface border-border m-2 flex items-center justify-between gap-2 rounded-lg border px-3 py-2 shadow-lg"
           role="status"
@@ -1198,7 +1198,7 @@ export function NodeTreeSidebar({
                 variant="outline"
                 size="sm"
                 disabled={restore.isPending}
-                onClick={() => restore.mutate(undoToken)}
+                onClick={() => restore.mutate(undoItemId)}
               >
                 {restore.isPending ? (
                   <Loader2 className="animate-spin" aria-hidden />

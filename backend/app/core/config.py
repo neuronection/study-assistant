@@ -62,7 +62,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Study Assistant"
     host: str = "127.0.0.1"
-    port: int = 8000
+    port: int = 8200
     debug: bool = False
     log_level: str = "INFO"
     config_dir: Path = Field(default_factory=default_config_dir)

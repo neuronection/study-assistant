@@ -86,7 +86,7 @@ class NodeMovedOut(BaseModel):
 
 
 class NodeDeletedOut(BaseModel):
-    undo_token: str | None
+    deleted_item_id: int
 
 
 class NodeRestoredOut(BaseModel):

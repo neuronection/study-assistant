@@ -5511,6 +5511,19 @@
         "title": "MaterialCopyIn",
         "type": "object"
       },
+      "MaterialDeletedOut": {
+        "properties": {
+          "deleted_item_id": {
+            "title": "Deleted Item Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_item_id"
+        ],
+        "title": "MaterialDeletedOut",
+        "type": "object"
+      },
       "MaterialDeriveIn": {
         "properties": {
           "folder_id": {
@@ -7184,20 +7197,13 @@
       },
       "NodeDeletedOut": {
         "properties": {
-          "undo_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Undo Token"
+          "deleted_item_id": {
+            "title": "Deleted Item Id",
+            "type": "integer"
           }
         },
         "required": [
-          "undo_token"
+          "deleted_item_id"
         ],
         "title": "NodeDeletedOut",
         "type": "object"
@@ -10117,9 +10123,43 @@
       },
       "RestoreDeletedOut": {
         "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
           "entity_type": {
             "title": "Entity Type",
             "type": "string"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
           },
           "status": {
             "title": "Status",
@@ -21534,7 +21574,14 @@
           }
         ],
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialDeletedOut"
+                }
+              }
+            },
             "description": "Successful Response"
           },
           "422": {

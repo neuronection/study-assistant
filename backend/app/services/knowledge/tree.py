@@ -30,6 +30,7 @@ from ...domain.models import (
     utcnow,
 )
 from ..content.folders import folder_links_by_node, folder_member_ids
+from ..platform import trash
 
 MAX_DEPTH = 4
 ORDER_STEP = 1000
@@ -1143,3 +1144,310 @@ class TreeService:
             "flashcards": counts(Exercise, Exercise.kind.like("card_%")),
             "child_nodes": len(child_ids),
         }
+
+    def delete_node_to_trash(self, node_id: int, profile_id: int) -> int:
+        node = self.get(node_id)
+        if node.is_root:
+            raise TreeError("the course root cannot be deleted")
+        parent = self._session.get(TreeNode, node.parent_id)
+        if parent is None:
+            raise TreeError("node has no parent")
+        item_id = self.snapshot_subtree_to_trash(node_id, profile_id)
+        subtree = self.subtree_ids(node, include_children=True)
+
+        link_tables = (MaterialLink, MaterialFolderLink)
+        for table in PLACEMENT_TABLES.values():
+            if table in link_tables:
+                continue
+            self._session.execute(
+                sa_update(table)
+                .where(table.node_id.in_(subtree))
+                .values(node_id=parent.id)
+            )
+        self._session.flush()
+
+        self._session.execute(
+            sa_delete(MaterialLink).where(MaterialLink.node_id.in_(subtree))
+        )
+        self._session.execute(
+            sa_delete(MaterialFolderLink).where(
+                MaterialFolderLink.node_id.in_(subtree)
+            )
+        )
+        self._session.execute(
+            sa_delete(NodeConcept).where(NodeConcept.node_id.in_(subtree))
+        )
+        for doomed_id in reversed(subtree):
+            self._session.execute(
+                sa_delete(TreeNode).where(TreeNode.id == doomed_id)
+            )
+        self._session.flush()
+        self._rewrite_child_sorts(parent)
+        return item_id
+
+    def snapshot_subtree_to_trash(self, node_id: int, profile_id: int) -> int:
+        node = self.get(node_id)
+        keys: dict[int, int] = {}
+        node_entries: list[dict[str, Any]] = []
+        links: list[dict[str, Any]] = []
+        folder_links: list[dict[str, Any]] = []
+        concepts: list[dict[str, Any]] = []
+        placements: list[dict[str, Any]] = []
+        counter = 0
+        frontier: list[tuple[TreeNode, int | None]] = [(node, None)]
+        while frontier:
+            current, parent_key = frontier.pop(0)
+            key = counter
+            counter += 1
+            keys[current.id] = key
+            node_entries.append(
+                {
+                    "key": key,
+                    "parent_key": parent_key,
+                    "title": current.title,
+                    "summary": current.summary,
+                    "objectives": current.objectives,
+                    "ai_hint": current.ai_hint,
+                    "order_idx": current.order_idx,
+                }
+            )
+            for link in self._session.scalars(
+                select(MaterialLink).where(MaterialLink.node_id == current.id)
+            ):
+                links.append(
+                    {
+                        "node_key": key,
+                        "material_id": link.material_id,
+                        "rationale": link.rationale,
+                        "auto_assigned": link.auto_assigned,
+                        "confidence": link.confidence,
+                    }
+                )
+            for folder_link in self._session.scalars(
+                select(MaterialFolderLink).where(
+                    MaterialFolderLink.node_id == current.id
+                )
+            ):
+                folder_links.append(
+                    {
+                        "node_key": key,
+                        "folder_id": folder_link.folder_id,
+                        "rationale": folder_link.rationale,
+                        "auto_assigned": folder_link.auto_assigned,
+                        "confidence": folder_link.confidence,
+                    }
+                )
+            for concept_id in self._session.scalars(
+                select(NodeConcept.concept_id).where(
+                    NodeConcept.node_id == current.id
+                )
+            ):
+                concepts.append(
+                    {"node_key": key, "concept_id": concept_id}
+                )
+            for table_key, model in PLACEMENT_TABLES.items():
+                for row_id in self._session.scalars(
+                    select(model.id).where(model.node_id == current.id)
+                ):
+                    placements.append(
+                        {"node_key": key, "table": table_key, "row_id": row_id}
+                    )
+            children = self._session.scalars(
+                select(TreeNode)
+                .where(TreeNode.parent_id == current.id)
+                .order_by(TreeNode.order_idx, TreeNode.id)
+            ).all()
+            for child in children:
+                frontier.append((child, key))
+
+        sibling_ids = list(
+            self._session.scalars(
+                select(TreeNode.id)
+                .where(TreeNode.parent_id == node.parent_id)
+                .order_by(TreeNode.order_idx, TreeNode.id)
+            )
+        )
+        payload = {
+            "placements": placements,
+            "course_id": node.course_id,
+            "root_parent_id": node.parent_id,
+            "root_sibling_index": (
+                sibling_ids.index(node.id) if node.id in sibling_ids else len(sibling_ids)
+            ),
+            "nodes": node_entries,
+            "links": links,
+            "folder_links": folder_links,
+            "concepts": concepts,
+        }
+        return trash.persist(self._session, "node", node.title, profile_id, payload)
+
+    def restore_subtree_from_trash(self, payload: dict[str, Any]) -> dict[str, Any]:
+        parent = self._session.get(TreeNode, payload["root_parent_id"])
+        if parent is None or parent.course_id != payload["course_id"]:
+            parent = self._session.scalars(
+                select(TreeNode).where(
+                    TreeNode.course_id == payload["course_id"],
+                    TreeNode.depth == 0,
+                )
+            ).first()
+        if parent is None:
+            raise TreeError("no surviving ancestor for this subtree")
+
+        skipped_deep = 0
+        id_map: dict[int, int] = {}
+        last_created: TreeNode | None = None
+        for entry in sorted(payload["nodes"], key=lambda e: e["key"]):
+            parent_key = entry["parent_key"]
+            target: TreeNode | None
+            if parent_key is None:
+                target = parent
+            else:
+                mapped = id_map.get(int(parent_key))
+                target = (
+                    self._session.get(TreeNode, mapped)
+                    if mapped is not None
+                    else None
+                )
+                if target is None:
+                    skipped_deep += 1
+                    continue
+            if target.depth + 1 > MAX_DEPTH:
+                skipped_deep += 1
+                continue
+            node = self.create_node(
+                payload["course_id"],
+                target.id,
+                entry["title"],
+                summary=entry["summary"],
+                objectives=entry["objectives"],
+                ai_hint=entry["ai_hint"],
+            )
+            id_map[entry["key"]] = node.id
+            last_created = node
+
+        restored_links = 0
+        skipped_links = 0
+        for link in payload.get("links", []):
+            node_id = id_map.get(link["node_key"])
+            if node_id is None:
+                skipped_links += 1
+                continue
+            material = self._session.get(Material, link["material_id"])
+            if material is None:
+                skipped_links += 1
+                continue
+            existing_link = self._session.scalars(
+                select(MaterialLink).where(
+                    MaterialLink.node_id == node_id,
+                    MaterialLink.material_id == link["material_id"],
+                )
+            ).first()
+            if existing_link is not None:
+                continue
+            self._session.add(
+                MaterialLink(
+                    node_id=node_id,
+                    material_id=link["material_id"],
+                    course_id=payload["course_id"],
+                    rationale=link.get("rationale"),
+                    auto_assigned=link.get("auto_assigned", False),
+                    confidence=link.get("confidence"),
+                )
+            )
+            restored_links += 1
+
+        restored_folders = 0
+        for folder_link in payload.get("folder_links", []):
+            node_id = id_map.get(folder_link["node_key"])
+            if node_id is None:
+                continue
+            folder = self._session.get(MaterialFolder, folder_link["folder_id"])
+            if folder is None:
+                continue
+            existing_folder_link = self._session.scalars(
+                select(MaterialFolderLink).where(
+                    MaterialFolderLink.node_id == node_id,
+                    MaterialFolderLink.folder_id == folder_link["folder_id"],
+                )
+            ).first()
+            if existing_folder_link is not None:
+                continue
+            self._session.add(
+                MaterialFolderLink(
+                    node_id=node_id,
+                    course_id=payload["course_id"],
+                    folder_id=folder_link["folder_id"],
+                    rationale=folder_link.get("rationale"),
+                    auto_assigned=folder_link.get("auto_assigned", False),
+                    confidence=folder_link.get("confidence"),
+                )
+            )
+            restored_folders += 1
+
+        restored_concepts = 0
+        for concept_entry in payload.get("concepts", []):
+            node_id = id_map.get(concept_entry["node_key"])
+            if node_id is None:
+                continue
+            concept = self._session.get(Concept, concept_entry["concept_id"])
+            if concept is None or concept.course_id != payload["course_id"]:
+                continue
+            existing_concept = self._session.scalars(
+                select(NodeConcept).where(
+                    NodeConcept.node_id == node_id,
+                    NodeConcept.concept_id == concept_entry["concept_id"],
+                )
+            ).first()
+            if existing_concept is not None:
+                continue
+            self._session.add(
+                NodeConcept(
+                    node_id=node_id,
+                    concept_id=concept_entry["concept_id"],
+                )
+            )
+            restored_concepts += 1
+
+        restored_placements = 0
+        for placement in payload.get("placements", []):
+            model = PLACEMENT_TABLES.get(placement["table"])
+            if model is None:
+                continue
+            row = self._session.get(model, placement["row_id"])
+            if row is None:
+                continue
+            target_id = id_map.get(placement["node_key"], parent.id)
+            row.node_id = target_id
+            restored_placements += 1
+
+        root_id = id_map.get(0)
+        if root_id is not None:
+            sibling_ids = list(
+                self._session.scalars(
+                    select(TreeNode.id)
+                    .where(TreeNode.parent_id == parent.id)
+                    .order_by(TreeNode.order_idx, TreeNode.id)
+                )
+            )
+            position = min(
+                int(payload.get("root_sibling_index", len(sibling_ids))),
+                len(sibling_ids),
+            )
+            sibling_ids = [node_id for node_id in sibling_ids if node_id != root_id]
+            sibling_ids.insert(position, root_id)
+            for index, sibling in enumerate(sibling_ids):
+                sibling_node = self._session.get(TreeNode, sibling)
+                if sibling_node is not None:
+                    sibling_node.order_idx = index * ORDER_STEP
+        self._session.flush()
+        fallback_id = last_created.id if last_created is not None else None
+        return {
+            "node_id": root_id if root_id is not None else fallback_id,
+            "skipped_deep": skipped_deep,
+            "restored_links": restored_links,
+            "skipped_links": skipped_links,
+            "restored_folders": restored_folders,
+            "restored_concepts": restored_concepts,
+            "restored_placements": restored_placements,
+        }
+

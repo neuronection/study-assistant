@@ -467,12 +467,12 @@ def test_restore_node_restores_folder_links(client: TestClient) -> None:
     )
     assert assigned.status_code == 201
 
-    deleted = client.delete(f"/api/v1/nodes/{node_id}", params={"snapshot": "true"})
+    deleted = client.delete(f"/api/v1/nodes/{node_id}")
     assert deleted.status_code == 200
-    token = deleted.json()["undo_token"]
-    restored = client.post("/api/v1/nodes/restore", json={"undo_token": token})
+    item_id = deleted.json()["deleted_item_id"]
+    restored = client.post(f"/api/v1/deleted-items/{item_id}/restore")
     assert restored.status_code == 200, restored.text
-    new_node_id = restored.json()["id"]
+    new_node_id = restored.json()["node_id"]
     workspace = workspace_of(client, new_node_id)
     assert len(workspace["folders"]) == 1
     assert len(workspace["folder_material_ids"]) == 1

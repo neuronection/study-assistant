@@ -200,7 +200,7 @@ def test_text_file_create_rename_delete(client: TestClient) -> None:
     assert empty.status_code == 422
 
     deleted = client.delete(f"/api/v1/materials/{material_id}")
-    assert deleted.status_code == 204
+    assert deleted.status_code == 200
     assert client.get(f"/api/v1/materials/{material_id}").status_code == 404
     hits = client.get("/api/v1/search", params={"q": "Quick"}).json()["hits"]
     assert hits == []

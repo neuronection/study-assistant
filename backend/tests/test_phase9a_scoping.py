@@ -174,7 +174,7 @@ def test_cross_course_placement_refused(client: TestClient) -> None:
     assert too_deep.status_code == 422
 
 
-def test_delete_node_merges_placements(client: TestClient) -> None:
+def test_delete_node_trashes_subtree_and_merges_content(client: TestClient) -> None:
     course_id = make_course(client, "Merge")
     root = root_node(client, course_id)
     chapter = make_node(client, course_id, root, "Ch")
@@ -192,14 +192,33 @@ def test_delete_node_merges_placements(client: TestClient) -> None:
 
     moved = client.delete(f"/api/v1/nodes/{chapter}")
     assert moved.status_code == 200
-    assert moved.json()["undo_token"]
+    item_id = moved.json()["deleted_item_id"]
+
+    assert client.get(f"/api/v1/nodes/{chapter}").status_code == 404
+    assert client.get(f"/api/v1/nodes/{section}").status_code == 404
 
     quizzes = client.get("/api/v1/quiz/activities", params={"node_id": root}).json()
     assert [entry["id"] for entry in quizzes] == [quiz_id]
     assert quizzes[0]["node_id"] == root
     notes = client.get("/api/v1/notes", params={"node_id": root}).json()
     assert [entry["id"] for entry in notes["items"]] == [note["id"]]
-    assert notes["items"][0]["node_id"] == section
+    assert notes["items"][0]["node_id"] == root
+
+    restored = client.post(f"/api/v1/deleted-items/{item_id}/restore")
+    assert restored.status_code == 200, restored.text
+    new_chapter = restored.json()["node_id"]
+    tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
+    by_id = {}
+    def walk(entries: list[dict[str, Any]]) -> None:
+        for entry in entries:
+            by_id[entry["id"]] = entry
+            walk(entry["children"])
+    walk(tree)
+    assert new_chapter in by_id
+    assert [child["title"] for child in by_id[new_chapter]["children"]] == ["Sec"]
+
+    quizzes = client.get("/api/v1/quiz/activities", params={"node_id": root}).json()
+    assert [entry["id"] for entry in quizzes] == [quiz_id]
 
 
 def test_chat_session_binds_node(client: TestClient) -> None:
@@ -344,15 +363,15 @@ def test_delete_restore_round_trip(client: TestClient) -> None:
 
     deleted = client.delete(f"/api/v1/nodes/{child_a}")
     assert deleted.status_code == 200, deleted.text
-    token = deleted.json()["undo_token"]
-    assert token
+    item_id = deleted.json()["deleted_item_id"]
+    assert item_id
 
     assert client.get(f"/api/v1/nodes/{child_a}").status_code == 404
     assert client.get(f"/api/v1/notes/{note_id}").json()["node_id"] == parent
 
-    restored = client.post("/api/v1/nodes/restore", json={"undo_token": token})
+    restored = client.post(f"/api/v1/deleted-items/{item_id}/restore")
     assert restored.status_code == 200, restored.text
-    new_id = int(restored.json()["id"])
+    new_id = int(restored.json()["node_id"])
     assert new_id != child_a
 
     node = client.get(f"/api/v1/nodes/{new_id}").json()
@@ -367,8 +386,8 @@ def test_delete_restore_round_trip(client: TestClient) -> None:
     assert client.get(f"/api/v1/notes/{note_id}").json()["node_id"] == new_id
     assert "Deep" in [c["title"] for c in subtree["children"]]
 
-    again = client.post("/api/v1/nodes/restore", json={"undo_token": token})
-    assert again.status_code == 422
+    again = client.post(f"/api/v1/deleted-items/{item_id}/restore")
+    assert again.status_code == 404
 
 
 def test_restore_refuses_unknown_token(client: TestClient) -> None:

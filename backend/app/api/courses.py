@@ -832,12 +832,13 @@ def move_node(
 @router.delete("/nodes/{node_id}", response_model=NodeDeletedOut)
 def delete_node(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     _load_node(session, node_id)
+    profile = ensure_default_profile(session)
     try:
-        token = _tree(session).delete_node(node_id, snapshot=True)
+        deleted_item_id = _tree(session).delete_node_to_trash(node_id, profile.id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return {"undo_token": token}
+    return {"deleted_item_id": deleted_item_id}
 
 
 @router.post("/nodes/restore", status_code=200, response_model=NodeRestoredOut)

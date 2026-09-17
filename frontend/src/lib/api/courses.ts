@@ -325,9 +325,9 @@ export async function moveNode(
   await json<unknown>(response)
 }
 
-export async function deleteNode(id: number): Promise<string | null> {
+export async function deleteNode(id: number): Promise<{ deleted_item_id: number }> {
   const response = await apiFetch(`/api/v1/nodes/${id}`, { method: 'DELETE' })
-  return json<{ undo_token: string | null }>(response).then((body) => body.undo_token)
+  return json<{ deleted_item_id: number }>(response)
 }
 
 export async function restoreNode(undoToken: string): Promise<{ id: number }> {

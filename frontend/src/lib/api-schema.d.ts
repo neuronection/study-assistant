@@ -6129,6 +6129,11 @@ export interface components {
             /** Folder Id */
             folder_id?: number | null;
         };
+        /** MaterialDeletedOut */
+        MaterialDeletedOut: {
+            /** Deleted Item Id */
+            deleted_item_id: number;
+        };
         /** MaterialDeriveIn */
         MaterialDeriveIn: {
             /** Folder Id */
@@ -6629,8 +6634,8 @@ export interface components {
         };
         /** NodeDeletedOut */
         NodeDeletedOut: {
-            /** Undo Token */
-            undo_token: string | null;
+            /** Deleted Item Id */
+            deleted_item_id: number;
         };
         /** NodeDetailOut */
         NodeDetailOut: {
@@ -7547,8 +7552,16 @@ export interface components {
         };
         /** RestoreDeletedOut */
         RestoreDeletedOut: {
+            /** Detail */
+            detail?: {
+                [key: string]: unknown;
+            } | null;
             /** Entity Type */
             entity_type: string;
+            /** Material Id */
+            material_id?: number | null;
+            /** Node Id */
+            node_id?: number | null;
             /** Status */
             status: string;
             /** Title */
@@ -13825,11 +13838,13 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MaterialDeletedOut"];
+                };
             };
             /** @description Validation Error */
             422: {

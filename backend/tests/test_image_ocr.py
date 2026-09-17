@@ -92,7 +92,7 @@ def test_converted_material_purge_cascades_images(client: tuple[TestClient, list
         db.commit()
 
     deleted = test_client.delete(f"/api/v1/materials/{material_id}")
-    assert deleted.status_code == 204
+    assert deleted.status_code in (200, 204)
 
     with app.state.session_factory() as db:
         from sqlalchemy import select
