@@ -74,10 +74,9 @@ import {
 import { MarqueeSurface } from '@/components/ui/Marquee'
 import { GenerateDialog as AIGenerateDialog } from '@/features/ai/GenerateDialog'
 import { StudyLauncherDialog } from '@/features/ai/StudyLauncherDialog'
-import { NoteEditorDrawer, closeNote, openNote } from '@/features/notes/NoteEditorDrawer'
+import { openNote } from '@/features/notes/NoteEditorDrawer'
 import { SplitStudyPane } from '@/features/library/SplitStudyPane'
 import { PlannerTab } from '@/features/planner/PlannerTab'
-import { MaterialDetailDrawer } from '@/features/library/MaterialDetailDrawer'
 import { useCurrentOrigin } from '@/lib/origin'
 import { fuzzyFilter } from '@/lib/fuzzy'
 import { useConfirm } from '@/lib/use-confirm'
@@ -2938,7 +2937,6 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   const from = useCurrentOrigin()
   const queryClient = useQueryClient()
   const parsedTab = parseTab(search.tab)
-  const [alongsidePickerFor, setAlongsidePickerFor] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
       return window.localStorage.getItem(storageKeys.treeSidebarOpen) !== '0'
@@ -3018,40 +3016,11 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const closeOpenNote = () => {
-    if (nodeId !== undefined) {
-      void navigate({
-        to: '/courses/$courseId/n/$nodeId',
-        params: { courseId, nodeId },
-        search: closeNote,
-      })
-    } else {
-      void navigate({ to: '/courses/$courseId', params: { courseId }, search: closeNote })
-    }
-  }
-
   const openMaterialAt = (materialId: number) => {
     const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => ({
       ...prev,
       material: materialId,
     })
-    if (nodeId !== undefined) {
-      void navigate({
-        to: '/courses/$courseId/n/$nodeId',
-        params: { courseId, nodeId },
-        search: nextSearch,
-      })
-    } else {
-      void navigate({ to: '/courses/$courseId', params: { courseId }, search: nextSearch })
-    }
-  }
-
-  const closeOpenMaterial = () => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => {
-      const rest = { ...prev }
-      delete rest.material
-      return rest
-    }
     if (nodeId !== undefined) {
       void navigate({
         to: '/courses/$courseId/n/$nodeId',
@@ -3109,45 +3078,11 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const openStudyAt = (materialId: number) => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => ({
-      ...prev,
-      material: materialId,
-      study: 'new' as const,
-    })
-    if (nodeId !== undefined) {
-      void navigate({
-        to: '/courses/$courseId/n/$nodeId',
-        params: { courseId, nodeId },
-        search: nextSearch,
-      })
-    } else {
-      void navigate({ to: '/courses/$courseId', params: { courseId }, search: nextSearch })
-    }
-  }
-
   const studyNoteCreated = (noteId: number) => {
     const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => ({
       ...prev,
       study: noteId,
     })
-    if (nodeId !== undefined) {
-      void navigate({
-        to: '/courses/$courseId/n/$nodeId',
-        params: { courseId, nodeId },
-        search: nextSearch,
-      })
-    } else {
-      void navigate({ to: '/courses/$courseId', params: { courseId }, search: nextSearch })
-    }
-  }
-
-  const studyAlongside = (noteId: number, materialId: number) => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => {
-      const rest = { ...prev }
-      delete rest.note
-      return { ...rest, material: materialId, study: noteId }
-    }
     if (nodeId !== undefined) {
       void navigate({
         to: '/courses/$courseId/n/$nodeId',
@@ -3451,13 +3386,6 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
       ) : null}
         </div>
       </div>
-      {search.note !== undefined ? (
-        <NoteEditorDrawer
-          noteId={search.note}
-          onClose={closeOpenNote}
-          onStudyAlongside={() => setAlongsidePickerFor(search.note!)}
-        />
-      ) : null}
       {search.material !== undefined && search.study !== undefined ? (
         <SplitStudyPane
           courseId={Number(courseId)}
@@ -3466,30 +3394,6 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
           onNoteCreated={studyNoteCreated}
           onClose={closeStudy}
           onCloseNotes={closeNotes}
-        />
-      ) : null}
-      {search.material !== undefined && search.study === undefined ? (
-        <MaterialDetailDrawer
-          materialId={search.material}
-          onClose={closeOpenMaterial}
-          onTakeNotes={() => openStudyAt(search.material!)}
-        />
-      ) : null}
-      {alongsidePickerFor !== null ? (
-        <MaterialPickerDialog
-          courseId={Number(courseId)}
-          nodeId={currentId}
-          nodeTitle={node.title}
-          assignedIds={new Set<number>()}
-          mode="select"
-          onClose={() => setAlongsidePickerFor(null)}
-          onSelect={(ids) => {
-            const picked = ids[0]
-            setAlongsidePickerFor(null)
-            if (picked !== undefined) {
-              studyAlongside(alongsidePickerFor, picked)
-            }
-          }}
         />
       ) : null}
       {launcherNode !== null && rootId !== undefined ? (

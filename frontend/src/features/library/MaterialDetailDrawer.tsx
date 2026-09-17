@@ -12,10 +12,14 @@ export function MaterialDetailDrawer({
   materialId,
   onClose,
   onTakeNotes,
+  onExpand,
+  docked = false,
 }: {
   materialId: number
   onClose: () => void
   onTakeNotes?: () => void
+  onExpand?: () => void
+  docked?: boolean
 }) {
   const { t } = useTranslation()
   const [tab, setTab] = useState<DetailTab>('extraction')
@@ -35,7 +39,9 @@ export function MaterialDetailDrawer({
 
   return (
     <FocusShell
-      overlay
+      overlay={!docked}
+      docked={docked}
+      onExpand={onExpand}
       title={material?.title ?? t('library.loading')}
       context={context}
       onClose={onClose}

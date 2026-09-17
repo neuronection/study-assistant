@@ -231,9 +231,10 @@ a small toolbar appears — **Ask AI about this** opens the sidepanel with your
 selection quoted above the cursor, ready for your actual question (in the
 split study view the same toolbar also offers quote-into-note).
 
-The sidepanel and the material drawer don't fight for the screen: the drawer
-slides left to make room while you chat, and expands back when you close the
-chat.
+The sidepanel and the material panel work as one layout: the workspace docks
+the file panel and the tutor side by side (*content | file | tutor*), each
+resizable; on narrow windows the tutor steps aside while a file is docked and
+its rail button brings it back.
 
 ### AI helper while editing
 
@@ -267,7 +268,7 @@ before anything is added, and the course lands as a new workspace.
 The back arrow (and the Library breadcrumb) returns to **where you opened the
 material from** — the folder you were browsing, or the page that linked here.
 Materials opened from a course workspace never take this path: they open as a
-drawer over the workspace instead (see the courses guide).
+docked panel beside the workspace instead (see the courses guide).
 
 > **Migrating from the old global library?** Materials that had no course were moved
 > into an auto-created **Unsorted** course. Re-assign them by re-uploading to the

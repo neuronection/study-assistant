@@ -29,6 +29,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
+import { FileDock, fileDockOpen } from './FileDock'
 import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
 import { ShortcutsDialog } from './ShortcutsDialog'
@@ -49,6 +50,10 @@ import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { useDueCount } from '@/features/review/useDueCount'
 import { useReviewNudgeInterval } from '@/lib/review-nudges'
 import { isTypingTarget } from '@/lib/shortcuts'
+import {
+  navigateWorkspaceSearch,
+  stripFileParams,
+} from '@/lib/workspace-search'
 import { OnboardingWizard } from '@/features/onboarding/OnboardingWizard'
 import {
   getScratchpad,
@@ -59,6 +64,7 @@ import {
   type Course,
 } from '@/lib/api'
 import { useChatStore } from '@/lib/chat-store'
+import { useChatFitsAlongsideFile, useRailLayout } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 import { fuzzyFilter } from '@/lib/fuzzy'
 
@@ -332,6 +338,15 @@ export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const params = useParams({ strict: false }) as { courseId?: string; nodeId?: string }
+  const workspaceSearch = useSearch({ strict: false }) as {
+    material?: number
+    note?: number
+    study?: number | 'new'
+  }
+  const fileOpen = fileDockOpen(workspaceSearch)
+  const rail = useRailLayout(fileOpen)
+  const chatFits = useChatFitsAlongsideFile(fileOpen)
   const chatOpen = useChatStore((state) => state.open)
   const chatSession = useChatStore((state) => state.session)
   const setOpen = useChatStore((state) => state.setOpen)
@@ -422,6 +437,17 @@ export function AppShell() {
 
   const closeChat = () => {
     setOpen(false)
+  }
+
+  const toggleChat = () => {
+    if (chatOpen) {
+      setOpen(false)
+      return
+    }
+    if (!chatFits) {
+      navigateWorkspaceSearch(navigate, params, stripFileParams)
+    }
+    setOpen(true)
   }
 
   useEffect(() => {
@@ -561,7 +587,7 @@ export function AppShell() {
                     )}
                     title={chatOpen ? t('chat.close') : t('chat.open')}
                     aria-pressed={chatOpen}
-                    onClick={() => (chatOpen ? closeChat() : setOpen(true))}
+                    onClick={toggleChat}
                   >
                     <MessageSquare className="size-4" aria-hidden />
                   </button>
@@ -589,9 +615,11 @@ export function AppShell() {
       <main className="flex-1 overflow-y-auto">
         <RouteFade />
       </main>
-      {chatOpen ? (
+      <FileDock />
+      {chatOpen && !rail.chatDeferred ? (
         <StudyChatProvider sessionId={sessionId ?? chatSession?.id ?? null}>
           <ChatPanel
+            layoutWidth={rail.chatWidth ?? undefined}
             onSessionCreated={adoptSidebarSession}
             onSelectSession={adoptSidebarSession}
             onNewChat={onNewChat}

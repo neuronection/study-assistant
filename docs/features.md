@@ -89,7 +89,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   (back/forward + deep links), showing the folder's **full contents** —
   subfolders + materials from the standard library endpoints (shared
   `MaterialBrowser` component with the Library), breadcrumbs with a Materials
-  root crumb, honest stale-id fallback, drawer opening for folder materials,
+  root crumb, honest stale-id fallback, dock opening for folder materials,
   and Open / Open-in-library / Assign-to-node menus; linked-source folders
   browse over `browseSource` with subdirectory state, one-click ingest of
   pending files, and an "Open in library" crumb-row button in every browse mode
@@ -436,8 +436,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ **Notes live where you explore (ADR-040 follow-up)**: no flat global Notes
   page — the workspace Notes tab is the notes surface (search incl. OCR'd
   handwriting, tag filter chips, cursor pagination, node roll-up), note rows and
-  create/draft actions open a **drawer editor over the workspace**
-  (`?note=<id>` search param — back/X/backdrop close it) with a course▸node
+  create/draft actions open a **docked editor panel beside the workspace**
+  (`?note=<id>` search param — back/✕ close it; ADR-191) with a course▸node
   breadcrumb; a standalone full-page editor lives at `/note/{id}` (old `/notes/…`
   URLs redirect; `/notes` → Courses); the command palette fuzzy-searches note
   titles (`note: …` results) and its quick-note action opens the full-page editor
@@ -600,13 +600,26 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   holds Export .md / Print / Save as material / History (hidden without an
   extraction; mindmaps skip History) while the extraction toolbar keeps only
   version meta + read-aloud + edit
-  creates a note on the material's node; **Study alongside** on a note drawer
+  creates a note on the material's node; **Study alongside** on a note panel
   picks a material (catalog picker, select mode) for the reverse direction;
-  the **material/notes drawers expand to full width** (FocusShell toggle,
-  persisted `ca-focus-fullscreen`);
+  the **material/notes panels expand to the full-page route** (material →
+  `/library/<id>`, note → `/note/<id>`, carrying `from=` so back returns to
+  the workspace);
   **selection → Quote-into-note bridge** (floating affordance on text
   selection in the reader → blockquote + `ca-material://` source link inserted
-  at the tiptap cursor via `insertQuote` API)- ✅ Import inbox: watched-by-scan directory; files staged + validated, committed
+  at the tiptap cursor via `insertQuote` API)
+- ✅ **Docked right-rail panels (ADR-191, 2026-09-17)**: opening a material or
+  note in the workspace (`?material=` / `?note=`) renders a **docked,
+  non-modal side panel** — a flex sibling of the main content (no backdrop, no
+  dialog semantics, main area stays interactive) — instead of the old modal
+  drawer; the **tutor chat and the file panel dock side by side**
+  (`main | file | chat`), each with a persisted resizable width
+  (`ca-file-width` / `ca-chat-width`); `lib/dock-store.ts` owns the rail
+  geometry with a deterministic squeeze policy — panels clamp chat-first,
+  then file, and when both minimums cannot fit the chat rail **defers**
+  (hidden while a file is docked; the rail's chat button closes the file and
+  opens chat). The split-study view and the note focus page keep their
+  overlay/full-screen forms.- ✅ Import inbox: watched-by-scan directory; files staged + validated, committed
   files renamed `.imported`, invalid → `.rejected` + error report; AUTHORING.md +
   schema.json written for agent self-service — doc 11
 - ✅ "Author with AI" prompt builder: topic/count/types/difficulty → copyable
@@ -727,11 +740,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   **one session per material** (lazily created, titled after the material,
   scoped to its node) with the material attached — grounding rides message
   attachments + the READ tool, never pasted ids; the quiz-me chip flips the
-  session into quiz-me mode first. The sidepanel and the drawer
-  **coexist**: the FocusShell overlay (material drawer, quiz/exercise runners)
-  yields — panel and backdrop inset by the live chat width, maximize yields to
-  the remaining space — and the chat entrance/resize are 200 ms
-  reduced-motion-safe animations
+  session into quiz-me mode first. The sidepanel and the file panel
+  **coexist side by side**: `lib/dock-store.ts` clamps their widths against
+  the viewport (chat yields first, then the file panel) and hides the chat
+  rail when both minimums cannot fit — the rail's chat button then closes the
+  file and opens chat; the remaining FocusShell overlay consumers (note focus
+  page, split-study fallback) still inset by the live chat width, and the
+  chat entrance/resize are 200 ms reduced-motion-safe animations
 - ✅ **First-ask visibility fix (2026-09-07 follow-up)**: a pendingSend queued
   before the sidepanel mounts (the Ask AI / selection-ask path) is consumed on
   mount with a session adoption, so the provider's mount reset no longer wipes

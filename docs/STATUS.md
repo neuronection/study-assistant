@@ -6,6 +6,40 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — docked right-rail file panels (ADR-191, 2026-09-17):** opening a
+material or note in the course workspace (`?material=` / `?note=`) no longer
+pops a modal drawer — it mounts a **docked, non-modal side panel** in the app
+shell: a flex sibling of `<main>` with no backdrop and no dialog semantics, so
+the workspace stays fully interactive while the file is open. The tutor chat
+and the file panel dock **side by side** (`main | file | chat`), each with its
+own persisted resizable width (new `ca-file-width` storage key; chat keeps
+`ca-chat-width`); **`lib/dock-store.ts` is the single right-rail geometry
+owner** — `resolveRailWidths` clamps both rails against
+`viewport − sidebar − main-min` (chat yields first, then the file panel, never
+below their minimums) and when both minimums cannot fit the chat rail
+**defers**: AppShell hides it while a file is docked, and the sidebar's chat
+button closes the file (strips the params via the new shared
+`lib/workspace-search.ts` navigators) before opening chat. `FocusShell` gains
+a `docked` variant (`<section>`, expand header action → `onExpand`); the
+drawers (`MaterialDetailDrawer`, `NoteEditor` via `LazyNoteEditor`) pass
+`docked`/`onExpand` through, and `FileDock` (`components/layout/`) reads the
+active route's search params to mount them — **URL params unchanged, deep
+links and back-button intact**; NodeWorkspace stops rendering the overlay
+drawers and its study-alongside picker moves into `FileDock`. **Expand =
+navigate to the full-page route** (material → `/library/<id>`, note →
+`/note/<id>`, both carrying `from=` for the existing origin-back return),
+matching chat's expand; the overlay drawer variant survives only for the note
+focus page and the split-study narrow fallback (its chatInset logic stays for
+those). `ChatPanel` takes a `layoutWidth` override so the squeezed rail width
+wins over the stored preference without rewriting it. Split-study
+(`?material=&study=`) keeps owning the full screen unchanged. i18n `dock.*`
+(en/de/el). Tests: `dock-store` (9: squeeze policy, clamp, defer, store
+persistence), `FileDock` (8: docked mount, non-modal, close/take-notes/
+study-alongside/expand navigation, split-mode suppression), FocusShell docked
+variant (2), NodeWorkspace drawer tests re-pointed to URL-param assertions
+(4); frontend 1,326 green, lint/typecheck/build/i18n green; backend untouched
+(gate green, 1,262).
+
 **Feature — typography/spacing/elevation token refresh (plan 77-G, ADR-190,
 2026-09-17):** final slice of plan 77 — the visual modernization is
 token-level and conservative, no component redesign. **Library** (pushed

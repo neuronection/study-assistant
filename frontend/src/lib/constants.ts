@@ -14,6 +14,7 @@ export const storageKeys = {
   quizShuffle: 'ca-quiz-shuffle',
   chatReasoningOpen: 'ca-chat-reasoning-open',
   chatWidth: 'ca-chat-width',
+  fileWidth: 'ca-file-width',
   focusFullscreen: 'ca-focus-fullscreen',
   libraryView: 'ca-library-view',
   materialsView: 'ca-materials-view',

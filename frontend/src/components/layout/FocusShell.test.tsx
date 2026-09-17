@@ -210,6 +210,34 @@ describe('FocusShell', () => {
     expect(screen.queryByRole('button', { name: 'Expand to full width' })).not.toBeInTheDocument()
   })
 
+  test('docked variant is non-modal: no dialog, backdrop or Escape close', async () => {
+    const onClose = vi.fn()
+    renderInRouter(
+      <FocusShell title="Material" docked onClose={onClose}>
+        <p>docked-content</p>
+      </FocusShell>
+    )
+    expect(await screen.findByText('docked-content')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Expand to full width' })).not.toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  test('docked variant expands through onExpand instead of maximizing in place', async () => {
+    const onExpand = vi.fn()
+    renderInRouter(
+      <FocusShell title="Material" docked onClose={() => {}} onExpand={onExpand}>
+        <p>docked-content</p>
+      </FocusShell>
+    )
+    expect(await screen.findByText('docked-content')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open in full page' }))
+    expect(onExpand).toHaveBeenCalledTimes(1)
+  })
+
   test('overlay owns height as a flex column; the content area is the single scroll fallback', async () => {
     renderInRouter(
       <FocusShell title="Material" overlay onClose={() => {}}>

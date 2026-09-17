@@ -15,6 +15,8 @@ export function LazyNoteEditor({
   closeLabel,
   insertRef,
   onStudyAlongside,
+  onExpand,
+  docked = false,
 }: {
   noteId: number
   onClose?: () => void
@@ -22,6 +24,8 @@ export function LazyNoteEditor({
   closeLabel?: string
   insertRef?: { current: NoteInsertApi | null }
   onStudyAlongside?: () => void
+  onExpand?: () => void
+  docked?: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -33,6 +37,8 @@ export function LazyNoteEditor({
         closeLabel={closeLabel}
         insertRef={insertRef}
         onStudyAlongside={onStudyAlongside}
+        onExpand={onExpand}
+        docked={docked}
       />
     </Suspense>
   )

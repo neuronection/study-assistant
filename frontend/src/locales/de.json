@@ -260,6 +260,10 @@
     "go": "los",
     "speedLine": "{{accuracy}}% · ×{{ratio}}"
   },
+  "dock": {
+    "expand": "Vollseite öffnen",
+    "resize": "Panelbreite anpassen"
+  },
   "chat": {
     "close": "Chat schließen",
     "expand": "Vollbild öffnen",

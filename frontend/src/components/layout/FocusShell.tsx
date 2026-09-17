@@ -103,6 +103,8 @@ export function FocusShell({
   chip,
   onClose,
   overlay = false,
+  docked = false,
+  onExpand,
   contentClassName,
   closeLabel,
   children,
@@ -114,6 +116,8 @@ export function FocusShell({
   chip?: ReactNode
   onClose?: () => void
   overlay?: boolean
+  docked?: boolean
+  onExpand?: () => void
   contentClassName?: string
   closeLabel?: string
   children: ReactNode
@@ -161,7 +165,7 @@ export function FocusShell({
           <h1 className="truncate text-lg font-semibold">{title}</h1>
         </div>
         {chip ? <div className="shrink-0">{chip}</div> : null}
-        {overlay ? (
+        {(overlay && !docked) ? (
           <Button
             variant="ghost"
             size="icon"
@@ -175,6 +179,17 @@ export function FocusShell({
             ) : (
               <Maximize2 className="size-4" aria-hidden />
             )}
+          </Button>
+        ) : null}
+        {docked && onExpand ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onExpand}
+            title={t('dock.expand')}
+            aria-label={t('dock.expand')}
+          >
+            <Maximize2 className="size-4" aria-hidden />
           </Button>
         ) : null}
         {onClose ? (
@@ -212,6 +227,18 @@ export function FocusShell({
       ) : null}
     </div>
   )
+
+  if (docked) {
+    return (
+      <section
+        aria-label={ariaLabel ?? (typeof title === 'string' ? title : undefined)}
+        className="bg-surface border-border flex h-full min-h-0 w-full flex-col overflow-hidden border-l"
+      >
+        <div className="border-border bg-surface shrink-0 border-b p-4">{header}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
+      </section>
+    )
+  }
 
   if (overlay) {
     const chatInset = chatOpen ? chatWidth : 0

@@ -22,7 +22,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -78,6 +77,7 @@ import {
   classifyDictationError,
 } from '@/lib/dictation'
 import { useChatStore } from '@/lib/chat-store'
+import { useRailResize } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
 import { cn } from '@/lib/utils'
@@ -120,6 +120,7 @@ export function ChatPanel({
   onExpand,
   onCollapse,
   variant = 'sidebar',
+  layoutWidth,
 }: {
   onSessionCreated: (session: ChatSession) => void
   onSelectSession?: (session: ChatSession) => void
@@ -128,6 +129,7 @@ export function ChatPanel({
   onExpand?: () => void
   onCollapse?: () => void
   variant?: 'sidebar' | 'page'
+  layoutWidth?: number
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -152,29 +154,16 @@ export function ChatPanel({
   const createdSessionIdRef = useRef<number | null>(null)
   const [reasoningOpen, setReasoningOpen] = useReasoningOpen()
   const isPage = variant === 'page'
-  const width = useChatStore((state) => state.width)
+  const storeWidth = useChatStore((state) => state.width)
+  const width = layoutWidth ?? storeWidth
   const setChatWidth = useChatStore((state) => state.setChatWidth)
   const persistChatWidth = useChatStore((state) => state.persistChatWidth)
-  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
-
-  const onResizeStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    dragRef.current = { startX: event.clientX, startWidth: width }
-    if (typeof event.currentTarget.setPointerCapture === 'function') {
-      event.currentTarget.setPointerCapture(event.pointerId)
-    }
-  }
-
-  const onResizeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current
-    if (!drag) return
-    setChatWidth(drag.startWidth + (drag.startX - event.clientX))
-  }
-
-  const onResizeEnd = () => {
-    if (!dragRef.current) return
-    dragRef.current = null
-    persistChatWidth()
-  }
+  const resize = useRailResize({
+    width,
+    setWidth: setChatWidth,
+    persist: persistChatWidth,
+  })
+  const { onResizeStart, onResizeMove, onResizeEnd } = resize
 
   const sessionContext = useQuery({
     queryKey: ['chat-context', activeSession],

@@ -9,11 +9,13 @@ is extracted by OCR for you.
 - **Workspace Notes tab** (course root or any node): lists the notes of that node
   *and everything below it* — rows carry a scope chip showing which node a note
   belongs to. A single click selects a row (file-browser style, Ctrl/Shift to
-  extend); **double-clicking** opens the note in a **drawer over the workspace**, so
-  you keep your place; close it with the ×, a click on the backdrop, or the back
-  button. The **⤢ / ⤡ button in the drawer header expands the editor to full
-  width** (and back), handy while writing long notes; your choice is remembered.
-- **New note here** creates a note at the current node and opens it in the drawer;
+  extend); **double-clicking** opens the note in a **docked editor panel next
+  to the workspace**, so you keep your place and the workspace stays
+  interactive (the tutor chat can open beside it); close it with the × or the
+  back button. The **⤡ button in the panel header opens the full-page note
+  editor** for focused writing.
+- **New note here** creates a note at the current node and opens it in the side
+  panel;
   **Draft notes** asks AI to draft study notes from the node's material.
 - Every row has a **⋯ menu** (or right-click): **Rename** and **Delete** —
   deleting removes the note together with its drawings. The toggle next to the
@@ -60,9 +62,8 @@ and deep links work.
   **Quote into note** button — a blockquote of the selection (with a link to
   the material) lands in your note at the cursor.
 - From an open note, **Study alongside** offers the reverse: pick a material
-  and the same split opens with your existing note on the right.
-- **Closing:** the ✕ on the *note* header closes only the notes side — the
-  material stays open for reading (the file drawer takes its place). The ✕ in
+  and the same split opens with your existing note on the right.- **Closing:** the ✕ on the *note* header closes only the notes side — the
+  material stays open for reading (the file panel takes its place). The ✕ in
   the pane's top-right corner or **Escape** closes the whole split view. Either
   way everything you typed is kept — the note editor autosaves (and flushes
   pending edits the moment you close the note).

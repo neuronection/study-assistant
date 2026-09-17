@@ -102,7 +102,7 @@ onto the structure sidebar to re-assign. The **search button** (magnifier icon)
 next to it expands into a filter box that narrows the list by material or
 folder name as you type.
 Like the Library, a **single click selects**, a **double-click opens** a
-material in its drawer, and **Enter** works too. **Drag across empty space to
+material in its side panel, and **Enter** works too. **Drag across empty space to
 rubber-band-select** — the rectangular marquee works exactly like the
 Library's.
 **Right-click** an assigned material to **Open** it, **Assign to node…** (move
@@ -238,11 +238,16 @@ are set. At the course root the Title/Description edit the course itself.
   browsing and are selected automatically), and its list keeps a
   drag-and-drop row.
   Clicking a material opens it **in place** as a
-  drawer over the workspace (Extraction / Original / Side-by-side tabs, study
-  state, assigned-to chips) — closing it returns to the same tab, and the URL
-  gains `?material=<id>` so deep links and the back button work. The **⤢ /
-  ⤡ button in the drawer header expands it to full width** (and back), handy for
-  wide tables or side-by-side; your choice is remembered.
+  docked side panel next to the workspace (Extraction / Original / Side-by-side
+  tabs, study state, assigned-to chips) — the workspace stays live while you
+  read, so you can keep browsing, editing notes or talking to the tutor at the
+  same time. The tutor chat docks beside it: on wide screens you get
+  *workspace | file | tutor*; on narrow ones the tutor steps aside while a file
+  is open (its rail button brings it back, closing the file first). Closing
+  the panel returns to the same tab, and the URL gains `?material=<id>` so
+  deep links and the back button work. The **⤡ button in the panel header
+  opens the material full page** (and back), handy for wide tables or
+  side-by-side reading.
 - **Notes** — this node's notes including everything below it (each row carries a
   chip showing which node owns it); **New note here** files the note at this node,
   **Draft notes** asks the AI to write one from the assigned material. Notes

@@ -4,11 +4,17 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { AppShell } from './AppShell'
 import { useChatStore } from '@/lib/chat-store'
+import { useDockStore } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
 const chatPanelState = vi.hoisted(() => ({
   props: null as Record<string, unknown> | null,
   sessionProps: null as Record<string, unknown> | null,
+}))
+
+const routerHolder = vi.hoisted(() => ({
+  search: {} as Record<string, unknown>,
+  params: {} as Record<string, unknown>,
 }))
 
 const listCourses = vi.fn()
@@ -53,8 +59,8 @@ vi.mock('@tanstack/react-router', () => ({
       ? options.select({ pathname: '/' })
       : { pathname: '/' },
   useNavigate: () => navigate,
-  useParams: () => ({}),
-  useSearch: () => ({}),
+  useParams: () => routerHolder.params,
+  useSearch: () => routerHolder.search,
   useRouterState: ({ select }: { select: (state: unknown) => unknown }) =>
     select({ location: { pathname: '/' } }),
 }))
@@ -126,6 +132,9 @@ describe('AppShell rail', () => {
     navigate.mockReset()
     useWorkspaceStore.getState().setCourse(null)
     useChatStore.setState({ open: false, session: null })
+    useDockStore.setState({ fileWidth: 480 })
+    routerHolder.search = {}
+    routerHolder.params = {}
     chatPanelState.props = null
     chatPanelState.sessionProps = null
   })
@@ -359,5 +368,39 @@ describe('AppShell rail', () => {
     fireEvent.keyDown(input, { key: '?' })
     expect(screen.queryByText('Keyboard shortcuts')).not.toBeInTheDocument()
     input.remove()
+  })
+
+  test('a docked file defers the chat rail when both cannot fit', async () => {
+    routerHolder.search = { material: 7 }
+    useChatStore.setState({ open: true, session: null })
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true })
+    renderShell()
+    await screen.findByRole('navigation', { name: 'Main navigation' })
+    expect(chatPanelState.props).toBeNull()
+  })
+
+  test('a docked file and the chat rail render side by side when they fit', async () => {
+    routerHolder.search = { material: 7 }
+    useChatStore.setState({ open: true, session: null })
+    Object.defineProperty(window, 'innerWidth', { value: 1600, configurable: true })
+    renderShell()
+    await screen.findByRole('navigation', { name: 'Main navigation' })
+    await waitFor(() => expect(chatPanelState.props).not.toBeNull())
+    expect(chatPanelState.props!.layoutWidth).toBe(384)
+  })
+
+  test('the chat rail button closes a docked file first when chat cannot fit', async () => {
+    routerHolder.search = { material: 7 }
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true })
+    renderShell()
+    fireEvent.click(await screen.findByRole('button', { name: 'Open chat' }))
+    await waitFor(() => expect(useChatStore.getState().open).toBe(true))
+    expect(navigate).toHaveBeenCalledTimes(1)
+    const call = navigate.mock.calls[0][0] as {
+      to: string
+      search: (prev: Record<string, unknown>) => Record<string, unknown>
+    }
+    expect(call.to).toBe('/courses/$courseId')
+    expect(call.search({ tab: 'materials', material: 7 })).toEqual({ tab: 'materials' })
   })
 })

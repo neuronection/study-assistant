@@ -816,7 +816,9 @@ describe('NodeWorkspace', () => {
     expect(screen.getByRole('menuitem', { name: /open existing/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /regenerate cheat sheet/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: /open existing/i }))
-    expect(await screen.findByRole('dialog', { name: 'chain-rule.pdf' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(routerHolder.current!.state.location.search).toMatchObject({ material: 42 })
+    )
   })
 
   test('overview cheat-sheet menu offers generate and opens the cheat-sheet builder', async () => {
@@ -1036,8 +1038,12 @@ describe('NodeWorkspace', () => {
     })
 
     fireEvent.doubleClick(screen.getByRole('button', { name: /chain rule note/i }))
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(await screen.findByRole('textbox', { name: 'Note title' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(routerHolder.current!.state.location.search).toMatchObject({ note: 21 })
+    )
+    expect(
+      screen.queryByRole('textbox', { name: 'Note title' })
+    ).not.toBeInTheDocument()
 
     const openCall = navigateMock.mock.calls.find(
       (call) =>
@@ -1100,7 +1106,7 @@ describe('NodeWorkspace', () => {
     await waitFor(() => expect(deleteQuiz).toHaveBeenCalledWith(50))
   })
 
-  test('notes tab creates a note here and opens it in the drawer', async () => {
+  test('notes tab creates a note here and pins it in the dock URL', async () => {
     primeDefaults()
     createNote.mockResolvedValue({ id: 30, body: [], drawings: [], tags: [] })
     renderWorkspace('/courses/3/n/5?tab=notes')
@@ -1113,7 +1119,12 @@ describe('NodeWorkspace', () => {
         tags: [],
       })
     )
-    expect(await screen.findByRole('textbox', { name: 'Note title' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(routerHolder.current!.state.location.search).toMatchObject({ note: 30 })
+    )
+    expect(
+      screen.queryByRole('textbox', { name: 'Note title' })
+    ).not.toBeInTheDocument()
     expect(
       navigateMock.mock.calls.every((call) => call[0].to !== '/notes/$noteId')
     ).toBe(true)
@@ -1266,31 +1277,21 @@ describe('NodeWorkspace', () => {
     expect(await screen.findByText('This node no longer exists.')).toBeInTheDocument()
   })
 
-  test('material rows open the drawer in place and close strips the param', async () => {
+  test('material rows open the dock in place (URL param), close lives in the dock', async () => {
     primeDefaults()
     renderWorkspace('/courses/3/n/5?tab=materials')
     const row = await screen.findByRole('button', { name: /chain-rule\.pdf/i })
     fireEvent.click(row, { detail: 1 })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.doubleClick(row)
-    const dialog = await screen.findByRole('dialog')
-    expect(dialog).toBeInTheDocument()
     await waitFor(() =>
       expect(routerHolder.current!.state.location.search).toMatchObject({ material: 7 })
     )
     expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    await waitFor(() =>
-      expect(
-        (routerHolder.current!.state.location.search as { material?: number }).material
-      ).toBeUndefined()
-    )
-    expect(routerHolder.current!.state.location.href).not.toContain('material=')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  test('closing the notes side keeps the material drawer (plan 62-A)', async () => {
+  test('closing the notes side keeps the material docked (plan 62-A)', async () => {
     primeDefaults()
     renderWorkspace('/courses/3/n/5?tab=materials&material=7&study=77')
     expect(await screen.findByTestId('study-note-editor-stub')).toHaveTextContent('note:77')
@@ -1303,7 +1304,6 @@ describe('NodeWorkspace', () => {
     expect(
       (routerHolder.current!.state.location.search as { study?: number }).study
     ).toBeUndefined()
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
   test('materials tab toggles to grid and back', async () => {
@@ -2748,7 +2748,7 @@ describe('NodeWorkspace', () => {
       expect(screen.queryByRole('button', { name: 'Materials' })).not.toBeInTheDocument()
     })
 
-    test('a material inside a folder opens the drawer in place', async () => {
+    test('a material inside a folder opens the dock in place', async () => {
       primeFolderWorkspace()
       listFolders.mockResolvedValue(FOLDERS)
       listMaterials.mockImplementation((folderId: number) =>
@@ -2757,7 +2757,6 @@ describe('NodeWorkspace', () => {
       renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
       const row = await screen.findByRole('button', { name: /limits-notes\.md/i })
       fireEvent.doubleClick(row)
-      await screen.findByRole('dialog')
       await waitFor(() =>
         expect(routerHolder.current!.state.location.search).toMatchObject({ material: 44 })
       )

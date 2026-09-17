@@ -274,6 +274,10 @@
     "stop": "Stop reading",
     "speed": "Playback speed"
   },
+  "dock": {
+    "expand": "Open in full page",
+    "resize": "Resize panel width"
+  },
   "chat": {
     "title": "Tutor",
     "searchOn": "Semantic search on — click to use keyword search for this chat",

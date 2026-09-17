@@ -56,6 +56,8 @@ export function NoteEditor({
   closeLabel,
   insertRef,
   onStudyAlongside,
+  onExpand,
+  docked = false,
 }: {
   noteId: number
   onClose?: () => void
@@ -63,6 +65,8 @@ export function NoteEditor({
   closeLabel?: string
   insertRef?: { current: NoteInsertApi | null }
   onStudyAlongside?: () => void
+  onExpand?: () => void
+  docked?: boolean
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -645,9 +649,11 @@ export function NoteEditor({
 
   return (
     <FocusShell
-      overlay
+      overlay={!docked}
+      docked={docked}
+      onExpand={onExpand}
       ariaLabel={t('notes.drawerLabel')}
-      contentClassName="max-w-3xl"
+      contentClassName={docked ? undefined : 'max-w-3xl'}
       context={context}
       onClose={onClose}
       title={titleForm}
