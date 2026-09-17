@@ -32,8 +32,11 @@ _other`, `previewDifficulty`, `previewNoSummary`; en/de/el complete).
 Library release dependency: hover-card rides the NEXT library release —
 the app commit keeps the 0.38.0 tarball overlay (both modules) with
 manifest files uncommitted; dep bump + `minimumReleaseAgeExclude` land at
-release. Tests: library HoverCard suite (6: hover/focus open, controlled,
-Escape/unhover close, marker+className merge, axe) + app
+release. **Update (same day): 0.39.0 published** (Release run on PR #51)
+— the app bumped to the real `^0.39.0` (`b5fc3a0`, manifest + lockfile +
+`minimumReleaseAgeExclude || 0.39.0` committed; tarball overlay removed,
+stale tgz cleaned). Tests: library HoverCard suite (6: hover/focus open,
+controlled, Escape/unhover close, marker+className merge, axe) + app
 `MaterialHoverCard` (4: fetch-on-open with summary/topics/meta, honest
 empty, no-fetch-idle, coarse-pointer suppression) + Tile/Row suites
 re-pointed through a shared `renderWithClient`/`rerenderWithClient`
