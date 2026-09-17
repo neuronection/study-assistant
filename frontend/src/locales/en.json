@@ -709,7 +709,8 @@
     "previewDifficulty": "difficulty {{n}}",
     "previewNoSummary": "No AI summary yet — open the material for details.",
     "previewReading_one": "1 min read",
-    "previewReading_other": "{{count}} min read"
+    "previewReading_other": "{{count}} min read",
+    "diffTooLarge": "Documents too large for the formatted view — showing the raw diff."
   },
   "home": {
     "title": "Today",

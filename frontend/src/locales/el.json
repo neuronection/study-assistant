@@ -709,7 +709,8 @@
     "previewDifficulty": "δυσκολία {{n}}",
     "previewNoSummary": "Δεν υπάρχει ακόμη σύνοψη AI — άνοιξε το υλικό για λεπτομέρειες.",
     "previewReading_one": "1 λεπτό ανάγνωσης",
-    "previewReading_other": "{{count}} λεπτά ανάγνωσης"
+    "previewReading_other": "{{count}} λεπτά ανάγνωσης",
+    "diffTooLarge": "Έγγραφα πολύ μεγάλα για μορφοποιημένη προβολή — εμφανίζεται το ακατέργαστο diff."
   },
   "home": {
     "title": "Σήμερα",

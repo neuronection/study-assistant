@@ -709,7 +709,8 @@
     "previewDifficulty": "Schwierigkeit {{n}}",
     "previewNoSummary": "Noch keine KI-Zusammenfassung — Material für Details öffnen.",
     "previewReading_one": "1 Min. Lesezeit",
-    "previewReading_other": "{{count}} Min. Lesezeit"
+    "previewReading_other": "{{count}} Min. Lesezeit",
+    "diffTooLarge": "Dokumente zu groß für die formatierte Ansicht — Roh-Diff wird angezeigt."
   },
   "home": {
     "title": "Heute",

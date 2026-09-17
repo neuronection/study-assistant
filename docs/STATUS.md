@@ -6,6 +6,29 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — formatted diff parity for extraction history & re-OCR (plan
+77-C, ADR-188, 2026-09-17):** slice C of plan 77 — the extraction History
+dialog and the drawing re-OCR transcript review now match the chat-proposal
+review contract: **`MarkdownDiffView` formatted by default** (math, tables
+and headings render; unchanged blocks fold), with the Formatted | Raw
+toggle keeping the source-precise line diff one click away. The History
+dialog composes the two sides itself — base via `getExtractionVersion`,
+`current` via the standard `['material', id]` detail cache — while the
+backend `diffExtractionVersions` contract stays untouched and its
+additions/deletions stats remain authoritative; `Raw` renders the existing
+unified `DiffView`. **Size guard (ADR-188): either side over the
+100 000-char cap (the plan-66 material-edit proposal ceiling) disables
+formatted for that pair and shows the raw diff with an honest note**
+(`library.diffTooLarge`, en/de/el). DrawingBlock's re-OCR old-vs-new
+transcript (per-drawing diff via `DrawingDiffContext`) gains the same
+toggle — formatted default, compact `TextDiffView` as the raw view; the
+dismiss flow is unchanged. No backend changes; no new endpoints. Tests:
+ExtractionHistoryDialog suite extended (formatted default renders both
+sides with math kept rendered; Raw toggle reveals the unified diff;
+oversize note + fallback; mock now covers `getMaterial`) — 8 passing;
+DrawingBlock suite unchanged-green (formatted textContent assertions hold).
+Frontend 1,298 green, lint/typecheck/build/i18n green. Backend untouched.
+
 **Feature — index-card hover previews (plan 77-B, ADR-185, 2026-09-17):**
 slice B of plan 77. The family library ships a **`hover-card` module**
 (new `@radix-ui/react-hover-card` dep; released as part of the 0.39.0 cycle

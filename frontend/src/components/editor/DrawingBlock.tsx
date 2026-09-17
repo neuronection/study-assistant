@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import { Copy, Loader2, MoreHorizontal, Pencil, RefreshCw, Trash2, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -8,6 +8,7 @@ import type {
 } from '@/components/editor/DrawingImage'
 import { DrawingDiffContext } from '@/components/editor/drawingDiffContext'
 import { PopoverMenu } from '@/components/ui/popover-menu'
+import { MarkdownDiffView } from '@/components/ui/markdown-diff-view'
 import { TextDiffView } from '@/components/ui/text-diff-view'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/lib/use-confirm'
@@ -27,6 +28,7 @@ export function DrawingBlock({
 }) {
   const { t } = useTranslation()
   const [confirm, confirmElement] = useConfirm()
+  const [ocrDiffMode, setOcrDiffMode] = useState<'formatted' | 'raw'>('formatted')
   const diffStore = useContext(DrawingDiffContext)
   const ocrDiff = diffStore?.diffs.get(drawingId) ?? null
   return (
@@ -131,15 +133,63 @@ export function DrawingBlock({
           </summary>
           {ocrDiff !== null ? (
             <div className="mt-1 space-y-1">
-              <TextDiffView
-                original={ocrDiff.before}
-                suggested={ocrDiff.after}
-                showHeader={false}
-                showNav={false}
-                contextLines={1}
-                bodyClassName="max-h-64"
-                labels={{ showLess: t('diff.showLess') }}
-              />
+              <div className="flex items-center justify-end gap-2">
+                <div className="border-border bg-subtle inline-flex overflow-hidden rounded-md border text-[10px] font-medium">
+                  <button
+                    type="button"
+                    aria-pressed={ocrDiffMode === 'formatted'}
+                    onClick={() => setOcrDiffMode('formatted')}
+                    className={cn(
+                      'text-muted-foreground px-2 py-0.5',
+                      ocrDiffMode === 'formatted' && 'bg-surface text-foreground',
+                    )}
+                  >
+                    {t('diff.formatted')}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={ocrDiffMode === 'raw'}
+                    onClick={() => setOcrDiffMode('raw')}
+                    className={cn(
+                      'text-muted-foreground px-2 py-0.5',
+                      ocrDiffMode === 'raw' && 'bg-surface text-foreground',
+                    )}
+                  >
+                    {t('diff.raw')}
+                  </button>
+                </div>
+              </div>
+              {ocrDiffMode === 'formatted' ? (
+                <div className="max-h-64 overflow-y-auto">
+                  <MarkdownDiffView
+                    original={ocrDiff.before}
+                    suggested={ocrDiff.after}
+                    className="w-full text-[11px]"
+                    labels={{
+                      original: t('diff.original'),
+                      suggested: t('diff.suggested'),
+                      unchangedBlocks: (count) =>
+                        t('diff.unchangedBlocks', { count }),
+                      showLess: t('diff.showLess'),
+                      prevChange: t('diff.prevChange'),
+                      nextChange: t('diff.nextChange'),
+                      changePosition: (index, total) =>
+                        t('diff.changePosition', { index, total }),
+                      noChanges: t('diff.noChanges'),
+                    }}
+                  />
+                </div>
+              ) : (
+                <TextDiffView
+                  original={ocrDiff.before}
+                  suggested={ocrDiff.after}
+                  showHeader={false}
+                  showNav={false}
+                  contextLines={1}
+                  bodyClassName="max-h-64"
+                  labels={{ showLess: t('diff.showLess') }}
+                />
+              )}
               <div className="flex justify-end">
                 <button
                   type="button"

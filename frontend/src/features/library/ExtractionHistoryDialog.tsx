@@ -6,15 +6,20 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DiffView } from '@/components/diff/DiffView'
+import { MarkdownDiffView } from '@/components/ui/markdown-diff-view'
 import { ErrorBanner } from '@/components/ErrorBanner'
+import { cn } from '@/lib/utils'
 import {
   diffExtractionVersions,
   editExtraction,
   getExtractionVersion,
+  getMaterial,
   listExtractionVersions,
 } from '@/lib/api'
 import { formatDateTime } from '@/lib/format'
 import { useCloseFloatings } from '@/lib/ui-overlays'
+
+const FORMATTED_CAP = 100_000
 
 export function ExtractionHistoryDialog({
   materialId,
@@ -29,6 +34,7 @@ export function ExtractionHistoryDialog({
   const [picked, setPicked] = useState<number | null>(null)
   const [compareBase, setCompareBase] = useState<string>('')
   const [compareTarget, setCompareTarget] = useState<string>('current')
+  const [diffMode, setDiffMode] = useState<'formatted' | 'raw'>('formatted')
   const [error, setError] = useState<string | null>(null)
 
   const versions = useQuery({
@@ -42,6 +48,38 @@ export function ExtractionHistoryDialog({
     queryFn: () => diffExtractionVersions(materialId, fromRef, compareTarget),
     enabled: fromRef !== '',
   })
+
+  const baseVersion = Number(fromRef)
+  const baseIsNumeric = fromRef !== '' && Number.isFinite(baseVersion)
+  const targetVersion = compareTarget !== 'current' ? Number(compareTarget) : null
+  const baseMd = useQuery({
+    queryKey: ['material', materialId, 'extractions', 'markdown', baseVersion],
+    queryFn: () => getExtractionVersion(materialId, baseVersion),
+    enabled: diffMode === 'formatted' && baseIsNumeric,
+  })
+  const currentMd = useQuery({
+    queryKey: ['material', materialId],
+    queryFn: () => getMaterial(materialId),
+    enabled: diffMode === 'formatted' && targetVersion === null && compareTarget === 'current',
+  })
+  const targetMd = useQuery({
+    queryKey: ['material', materialId, 'extractions', 'markdown', targetVersion ?? 0],
+    queryFn: () => getExtractionVersion(materialId, targetVersion as number),
+    enabled: diffMode === 'formatted' && targetVersion !== null,
+  })
+  const before = baseMd.data?.markdown ?? null
+  const after =
+    targetVersion === null
+      ? (currentMd.data?.extraction?.markdown ?? null)
+      : (targetMd.data?.markdown ?? null)
+  const markdownsReady = before !== null && after !== null
+  const withinCap =
+    markdownsReady && before.length <= FORMATTED_CAP && (after?.length ?? 0) <= FORMATTED_CAP
+  const showFormatted = diffMode === 'formatted' && markdownsReady && withinCap
+  const overCap =
+    diffMode === 'formatted' &&
+    markdownsReady &&
+    !withinCap
 
   const restore = useMutation({
     mutationFn: async () => {
@@ -140,17 +178,73 @@ export function ExtractionHistoryDialog({
                   ))}
                 </select>
               </div>
-              {diff.isLoading ? (
+              {diff.isLoading ||
+              (diffMode === 'formatted' && diff.data && (baseMd.fetchStatus === 'fetching' || currentMd.fetchStatus === 'fetching' || targetMd.fetchStatus === 'fetching')) ? (
                 <Loader2 className="text-muted-foreground animate-spin" aria-hidden />
               ) : diff.data ? (
                 <div>
-                  <p className="text-muted-foreground mb-1 text-[11px]">
-                    {t('library.extractionCompareStats', {
-                      additions: diff.data.additions,
-                      deletions: diff.data.deletions,
-                    })}
-                  </p>
-                  <DiffView diff={diff.data.diff} className="max-h-72 overflow-y-auto" />
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <p className="text-muted-foreground text-[11px]">
+                      {t('library.extractionCompareStats', {
+                        additions: diff.data.additions,
+                        deletions: diff.data.deletions,
+                      })}
+                    </p>
+                    <div className="border-border bg-subtle inline-flex overflow-hidden rounded-md border text-[10px] font-medium">
+                      <button
+                        type="button"
+                        aria-pressed={diffMode === 'formatted'}
+                        onClick={() => setDiffMode('formatted')}
+                        className={cn(
+                          'text-muted-foreground px-2 py-0.5',
+                          diffMode === 'formatted' && 'bg-surface text-foreground',
+                        )}
+                      >
+                        {t('diff.formatted')}
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={diffMode === 'raw'}
+                        onClick={() => setDiffMode('raw')}
+                        className={cn(
+                          'text-muted-foreground px-2 py-0.5',
+                          diffMode === 'raw' && 'bg-surface text-foreground',
+                        )}
+                      >
+                        {t('diff.raw')}
+                      </button>
+                    </div>
+                  </div>
+                  {showFormatted ? (
+                    <div className="max-h-72 overflow-y-auto">
+                      <MarkdownDiffView
+                        original={before}
+                        suggested={after}
+                        className="w-full"
+                        labels={{
+                          original: t('diff.original'),
+                          suggested: t('diff.suggested'),
+                          unchangedBlocks: (count) =>
+                            t('diff.unchangedBlocks', { count }),
+                          showLess: t('diff.showLess'),
+                          prevChange: t('diff.prevChange'),
+                          nextChange: t('diff.nextChange'),
+                          changePosition: (index, total) =>
+                            t('diff.changePosition', { index, total }),
+                          noChanges: t('diff.noChanges'),
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {overCap ? (
+                        <p className="text-muted-foreground mb-1 text-[11px]">
+                          {t('library.diffTooLarge')}
+                        </p>
+                      ) : null}
+                      <DiffView diff={diff.data.diff} className="max-h-72 overflow-y-auto" />
+                    </>
+                  )}
                 </div>
               ) : null}
             </div>

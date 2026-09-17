@@ -836,6 +836,15 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   focus-openable, Escape/blur close, 150/100 ms grace defaults) is composed
   app-side in `MaterialHoverCard`; GenerateDialog context chips are a
   recorded residual
+- ✅ **Formatted diff parity (plan 77-C, ADR-188)**: the extraction History
+  dialog's version compare and the drawing re-OCR transcript review render
+  **`MarkdownDiffView` formatted by default** (math/tables/headings
+  rendered, unchanged blocks folded) with a Formatted | Raw toggle keeping
+  the source-precise line diff one click away — matching the chat-proposal
+  review contract. The history dialog composes both sides client-side
+  (base via the version endpoint, `current` via the cached detail query);
+  the backend diff endpoint and its stats are unchanged, and pairs over the
+  100 000-char/side cap fall back to the raw diff with an honest note
 - ✅ **Capture shell (plan 67-A/B/C, ADR-148)**: the **command palette**
   (`Ctrl/Cmd+K` — navigation, creates, jumps to any note/quiz/exercise,
   `?`-prefixed full-text search, ranked by the library fuzzy module) gains
