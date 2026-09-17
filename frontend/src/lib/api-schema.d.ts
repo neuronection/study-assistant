@@ -4234,6 +4234,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/study/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Study Next */
+        get: operations["study_next_api_v1_study_next_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks": {
         parameters: {
             query?: never;
@@ -8036,6 +8053,40 @@ export interface components {
             /** Stopped */
             stopped: boolean;
         };
+        /** StudyNextOut */
+        StudyNextOut: {
+            /** Due Cards */
+            due_cards: number;
+            /** Goal Done */
+            goal_done: number;
+            /** Goal Target */
+            goal_target: number;
+            /** Goal Unit */
+            goal_unit: string;
+            /** Plan Rows */
+            plan_rows: components["schemas"]["StudyPlanRowOut"][];
+            /** Review Courses */
+            review_courses: string[];
+            /** Streak */
+            streak: number;
+            /** Weak Cells */
+            weak_cells: components["schemas"]["StudyWeakCellOut"][];
+        };
+        /** StudyPlanRowOut */
+        StudyPlanRowOut: {
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** Due Date */
+            due_date: string;
+            /** Item Id */
+            item_id: number;
+            /** Overdue */
+            overdue: boolean;
+            /** Title */
+            title: string;
+        };
         /** StudySessionBeatIn */
         StudySessionBeatIn: {
             /**
@@ -8126,6 +8177,23 @@ export interface components {
          * @enum {string}
          */
         StudyStatus: "unread" | "reading" | "studied";
+        /** StudyWeakCellOut */
+        StudyWeakCellOut: {
+            /** Accuracy */
+            accuracy: number;
+            /** Concept */
+            concept: string;
+            /** Course Id */
+            course_id: number;
+            /** Course Title */
+            course_title: string;
+            /** N */
+            n: number;
+            /** Skill */
+            skill: string;
+            /** Weakness Score */
+            weakness_score: number;
+        };
         /** SuggestionListOut */
         SuggestionListOut: {
             /** Items */
@@ -18075,6 +18143,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: components["schemas"]["StudyStateOut"];
                     };
+                };
+            };
+        };
+    };
+    study_next_api_v1_study_next_get: {
+        parameters: {
+            query?: {
+                course?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudyNextOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

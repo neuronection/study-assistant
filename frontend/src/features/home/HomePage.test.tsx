@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '@/lib/workspace-store'
 
 const getOverview = vi.fn()
 const getExamStatus = vi.fn()
+const getStudyNext = vi.fn()
 const getRecommendations = vi.fn()
 const listCourses = vi.fn()
 const generateQuiz = vi.fn()
@@ -20,6 +21,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     getOverview: () => getOverview(),
     getExamStatus: () => getExamStatus(),
+    getStudyNext: () => getStudyNext(),
     getRecommendations: () => getRecommendations(),
     listCourses: () => listCourses(),
     generateQuiz: (body: unknown) => generateQuiz(body),
@@ -153,6 +155,56 @@ describe('HomePage (Today screen)', () => {
     getRecommendations.mockResolvedValue([])
     renderHome()
     expect(await screen.findByText('Backend 9.9.9')).toBeInTheDocument()
+  })
+
+  test('study-now card shows counts and links into the session', async () => {
+    getOverview.mockResolvedValue(OVERVIEW)
+    getExamStatus.mockResolvedValue([])
+    getRecommendations.mockResolvedValue([])
+    listUpcomingItems.mockResolvedValue([])
+    getStudyNext.mockResolvedValue({
+      due_cards: 3,
+      review_courses: ['Calculus I'],
+      plan_rows: [
+        {
+          item_id: 1,
+          title: 'Review limits',
+          course_id: 3,
+          course_title: 'Calculus I',
+          due_date: '2026-09-16',
+          overdue: true,
+        },
+      ],
+      weak_cells: [],
+      goal_unit: 'answers',
+      goal_done: 0,
+      goal_target: 20,
+      streak: 1,
+    })
+    renderHome()
+    expect(await screen.findByText('Study now')).toBeInTheDocument()
+    expect(screen.getByText('3 cards due · 1 plan item')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start session' })).toBeEnabled()
+  })
+
+  test('study-now card is disabled with an all-clear at zero', async () => {
+    getOverview.mockResolvedValue(OVERVIEW)
+    getExamStatus.mockResolvedValue([])
+    getRecommendations.mockResolvedValue([])
+    listUpcomingItems.mockResolvedValue([])
+    getStudyNext.mockResolvedValue({
+      due_cards: 0,
+      review_courses: [],
+      plan_rows: [],
+      weak_cells: [],
+      goal_unit: 'answers',
+      goal_done: 20,
+      goal_target: 20,
+      streak: 5,
+    })
+    renderHome()
+    expect(await screen.findByText(/Nothing needs you right now/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
   })
 
   test('shows offline badge when health rejects', async () => {

@@ -6,6 +6,40 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — "Study now" guided session (plan 77-D, ADR-186, 2026-09-17):**
+slice D of plan 77 — the flagship flow: one tap chains what the app knows
+needs doing. New read-only **`GET /study/next`** aggregate (`api/study.py`,
+typed `StudyNextOut`, OpenAPI + types regenerated; deterministic, zero LLM,
+nothing persisted) composing existing readers only: due-cards count +
+scratch-excluded review course titles, open plan rows due-today/overdue
+(≤10), weakness cells, and goal/streak from the overview reader. **Weak-cell
+scoping rule pinned (ADR-186)**: candidate courses in order — the optional
+`?course=` param, then exam-nearest (`days_left` asc, no-exam last), then
+remaining courses by id — scanning each course's weakness matrix
+(`enough_data` only, score desc) until 3 cells. Frontend: **Home cockpit
+card** ("Study now" + honest preview counts, all-clear + disabled button at
+zero) entering the new **`/study/session`** route
+(`features/study-session/StudySessionFlow.tsx`): a phase ribbon (Review →
+Plan → Practice) where Review embeds the course-agnostic `ReviewQueue` over
+the existing `/review/due` batch, Plan embeds triage rows (Done via the
+existing plan-item PATCH + "+1 day" snooze), and Practice lists weak cells
+opening the standard **prefilled GenerateDialog** (quiz, topic = the weak
+concept, difficulty 2 — HITL + the dialog's own progress/cancel; the flow
+NEVER auto-fires generation). Phases are skippable; the wrap-up screen shows
+reviewed/checked/practice counts + logged time (read from the
+`study_sessions` the embedded surfaces log — triage logs none and the copy
+doesn't pretend otherwise) + goal progress, with `SuccessBurst` on
+goal-met (the ADR-155 component's I19/I20 consumption). Loading states are
+skeletons (77-A primitives). Deviation recorded: the flow is a focused
+route, not a FocusShell overlay (Accept criteria don't require the shell;
+recorded in the plan as-built). Tests: backend `test_study_next.py` (6:
+empty-honest, composition, scoping order unit-tested with monkeypatched
+metrics per the pinned rule, scratch exclusion, determinism) + frontend
+`StudySessionFlow` (3: all-clear, review→plan→wrap-up with counts,
+practice prefilled generation) + Home card (2: counts + link, all-clear
+disabled). Backend 1,256 green, frontend 1,303 green, lint/typecheck/
+build/i18n green; OpenAPI + types regenerated.
+
 **Feature — formatted diff parity for extraction history & re-OCR (plan
 77-C, ADR-188, 2026-09-17):** slice C of plan 77 — the extraction History
 dialog and the drawing re-OCR transcript review now match the chat-proposal

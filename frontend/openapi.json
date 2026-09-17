@@ -11611,6 +11611,101 @@
         "title": "StopOut",
         "type": "object"
       },
+      "StudyNextOut": {
+        "properties": {
+          "due_cards": {
+            "title": "Due Cards",
+            "type": "integer"
+          },
+          "goal_done": {
+            "title": "Goal Done",
+            "type": "integer"
+          },
+          "goal_target": {
+            "title": "Goal Target",
+            "type": "integer"
+          },
+          "goal_unit": {
+            "title": "Goal Unit",
+            "type": "string"
+          },
+          "plan_rows": {
+            "items": {
+              "$ref": "#/components/schemas/StudyPlanRowOut"
+            },
+            "title": "Plan Rows",
+            "type": "array"
+          },
+          "review_courses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Review Courses",
+            "type": "array"
+          },
+          "streak": {
+            "title": "Streak",
+            "type": "integer"
+          },
+          "weak_cells": {
+            "items": {
+              "$ref": "#/components/schemas/StudyWeakCellOut"
+            },
+            "title": "Weak Cells",
+            "type": "array"
+          }
+        },
+        "required": [
+          "due_cards",
+          "review_courses",
+          "plan_rows",
+          "weak_cells",
+          "goal_unit",
+          "goal_done",
+          "goal_target",
+          "streak"
+        ],
+        "title": "StudyNextOut",
+        "type": "object"
+      },
+      "StudyPlanRowOut": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "due_date": {
+            "title": "Due Date",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "title",
+          "course_id",
+          "course_title",
+          "due_date",
+          "overdue"
+        ],
+        "title": "StudyPlanRowOut",
+        "type": "object"
+      },
       "StudySessionBeatIn": {
         "properties": {
           "action": {
@@ -11889,6 +11984,49 @@
         ],
         "title": "StudyStatus",
         "type": "string"
+      },
+      "StudyWeakCellOut": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "concept": {
+            "title": "Concept",
+            "type": "string"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "course_title": {
+            "title": "Course Title",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "weakness_score": {
+            "title": "Weakness Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "course_id",
+          "course_title",
+          "concept",
+          "skill",
+          "n",
+          "accuracy",
+          "weakness_score"
+        ],
+        "title": "StudyWeakCellOut",
+        "type": "object"
       },
       "SuggestionListOut": {
         "properties": {
@@ -27689,6 +27827,55 @@
         "summary": "List Study States",
         "tags": [
           "courses"
+        ]
+      }
+    },
+    "/api/v1/study/next": {
+      "get": {
+        "operationId": "study_next_api_v1_study_next_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyNextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Study Next",
+        "tags": [
+          "study"
         ]
       }
     },

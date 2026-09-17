@@ -32,6 +32,7 @@ import {
   listMaterials,
   listNotes,
   setDailyGoal,
+  getStudyNext,
   type Recommendation,
 } from '@/lib/api'
 
@@ -440,6 +441,54 @@ function ReviewNudgeStrip() {
   )
 }
 
+function StudyNowCard() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const next = useQuery({ queryKey: ['study-next'], queryFn: () => getStudyNext() })
+  if (next.isLoading || next.isError || next.data === undefined) {
+    return null
+  }
+  const data = next.data
+  const nothing =
+    data.due_cards === 0 && data.plan_rows.length === 0 && data.weak_cells.length === 0
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Sparkles className="text-primary size-4" aria-hidden />
+          {t('home.studyNow')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-3">
+        {nothing ? (
+          <p className="text-muted-foreground text-sm">{t('home.studyNowAllClear')}</p>
+        ) : (
+          <span className="text-muted-foreground text-sm">
+            {data.due_cards > 0 ? t('home.studyNowCards', { count: data.due_cards }) : null}
+            {data.due_cards > 0 && data.plan_rows.length > 0 ? ' · ' : null}
+            {data.plan_rows.length > 0
+              ? t('home.studyNowPlan', { count: data.plan_rows.length })
+              : null}
+            {data.plan_rows.length > 0 && data.weak_cells.length > 0 ? ' · ' : null}
+            {data.weak_cells.length > 0
+              ? t('home.studyNowWeak', { count: data.weak_cells.length })
+              : null}
+          </span>
+        )}
+        <Button
+          size="sm"
+          className="ml-auto"
+          disabled={nothing}
+          onClick={() => void navigate({ to: '/study/session' })}
+        >
+          <Sparkles aria-hidden />
+          {t('home.studyNowButton')}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 function NextBestActions() {
   const { t } = useTranslation()
   const recs = useQuery({ queryKey: ['recommendations'], queryFn: () => getRecommendations() })
@@ -782,6 +831,7 @@ export function HomePage() {
         <CardContent className="space-y-3">
           <ReviewNudgeStrip />
           <ExamCard />
+          <StudyNowCard />
           <NextBestActions />
           <UpcomingPlanStrip />
           {(captures.data?.items ?? []).length > 0 ? (

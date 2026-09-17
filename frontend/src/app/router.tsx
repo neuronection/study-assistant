@@ -17,6 +17,7 @@ import { ExercisePlayerRoute } from '@/features/exercises/Player'
 import { NoteFocusPage } from '@/features/notes/NoteFocusPage'
 import { ChatPage } from '@/features/chat/ChatPage'
 import { ReviewPage } from '@/features/review/ReviewPage'
+import { StudySessionPage } from '@/features/study-session/StudySessionFlow'
 import { QuizRunner } from '@/features/quiz/QuizRunner'
 import { ScoresPage } from '@/features/scores/ScoresPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
@@ -38,6 +39,12 @@ const reviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/review',
   component: () => <ReviewPage />,
+})
+
+const studySessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/study/session',
+  component: () => <StudySessionPage />,
 })
 
 const chatRoute = createRoute({
@@ -284,6 +291,7 @@ const aboutRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   reviewRoute,
+  studySessionRoute,
   chatRoute.addChildren([chatIndexRoute, chatDetailRoute]),
   coursesRoute,
   courseDetailRoute,

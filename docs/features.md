@@ -845,6 +845,18 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   (base via the version endpoint, `current` via the cached detail query);
   the backend diff endpoint and its stats are unchanged, and pairs over the
   100 000-char/side cap fall back to the raw diff with an honest note
+- ✅ **"Study now" guided session (plan 77-D, ADR-186)**: a Home cockpit card
+  ("Study now" + honest preview counts from the new read-only
+  `GET /study/next` aggregate — due cards, open plan rows, weak topics,
+  goal/streak; all-clear + disabled at zero) enters **`/study/session`**: a
+  skippable phase ribbon (Review → Plan → Practice) where Review embeds the
+  course-agnostic `ReviewQueue`, Plan embeds triage rows (Done / +1-day
+  snooze over the existing plan endpoints), and Practice lists weak
+  concept×skill cells (exam-nearest-course scoping rule pinned in the ADR)
+  opening the standard prefilled GenerateDialog — the flow never auto-fires
+  generation and never double-logs time (embedded surfaces keep logging
+  their own `study_sessions`). The wrap-up shows counts, logged time and
+  goal progress with a `SuccessBurst` on goal-met
 - ✅ **Capture shell (plan 67-A/B/C, ADR-148)**: the **command palette**
   (`Ctrl/Cmd+K` — navigation, creates, jumps to any note/quiz/exercise,
   `?`-prefixed full-text search, ranked by the library fuzzy module) gains

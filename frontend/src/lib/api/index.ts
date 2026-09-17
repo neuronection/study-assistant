@@ -70,6 +70,14 @@ export type { DueCourseGroup, ReviewDue } from './review'
 
 export { getNotifications } from './notifications'
 
+export { getStudyNext } from './study'
+
+export type {
+  StudyNext,
+  StudyPlanRow,
+  StudyWeakCell,
+} from './study'
+
 export type {
   DueReviewEntry,
   ExamEntry,
