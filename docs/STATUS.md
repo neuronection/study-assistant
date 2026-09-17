@@ -29,7 +29,11 @@ frontend does not consume the library; the token changes are CSS-value-only
 (no API/type surface) so build risk is nil — run the sibling builds at the
 token release. Tests: library contrast gate (2) + full `pnpm verify` (750);
 frontend full gate 1,308 green, lint/typecheck/build/i18n green. Backend
-untouched. **Plan 77 A–G COMPLETE.**
+untouched. **Plan 77 A–G COMPLETE.** **Round closed (2026-09-17):** all
+seven slices landed with their docs, tests and ADRs (184–190); remaining
+follow-ups recorded in the plan as-built: sibling builds at the token
+release, GenerateDialog chip previews residual, deferred pan/zoom + edge
+labels on the graph canvas.
 
 **Feature — materials + tree nodes join the trash (plan 77-F, ADR-187,
 2026-09-17):** slice F of plan 77 — the highest-stakes deletes are now
