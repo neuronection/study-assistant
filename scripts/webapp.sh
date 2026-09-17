@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-PORT="${SA_PORT:-8000}"
+PORT="${SA_PORT:-8200}"
 REBUILD=0
 FORCE=0
 RESET=0

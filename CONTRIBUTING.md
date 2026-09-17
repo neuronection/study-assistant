@@ -19,7 +19,7 @@ git clone https://github.com/neuronection/study-assistant.git
 cd study-assistant
 uv sync                                   # backend venv (repo root)
 corepack enable pnpm && pnpm install      # frontend
-pnpm webapp                               # build + serve + open http://127.0.0.1:8000
+pnpm webapp                               # build + serve + open http://127.0.0.1:8200
 ```
 
 See the [Quick start](README.md#quick-start) section of the README for all

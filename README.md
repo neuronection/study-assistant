@@ -248,11 +248,11 @@ git clone https://github.com/neuronection/study-assistant.git
 cd study-assistant
 uv sync                                   # backend venv (repo root)
 corepack enable pnpm && pnpm install      # frontend
-pnpm webapp                               # build + serve + open http://127.0.0.1:8000
+pnpm webapp                               # build + serve + open http://127.0.0.1:8200
 ```
 
 `pnpm webapp` (recommended) serves the built app in your browser; `pnpm dev` runs
-uvicorn + Vite with hot reload on `localhost:5173`; `pnpm app` opens the pywebview
+uvicorn + Vite with hot reload on `localhost:3200`; `pnpm app` opens the pywebview
 desktop window. All modes accept `--reset` to wipe local data. Override the port with
 `SA_PORT`.
 

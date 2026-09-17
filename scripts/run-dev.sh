@@ -16,7 +16,8 @@
 #   ./scripts/run-dev.sh --no-bootstrap   # skip dep bootstrap, just start
 #   ./scripts/run-dev.sh -h | --help      # print this help and exit
 #
-# Ports: SA_PORT (backend, default 8000) and VITE_PORT (frontend, default 5173).
+# Ports (family dev-port bands, dev/guidelines/dev-ports.md): study is slot 2,
+# so SA_PORT defaults to 8200 and VITE_PORT to 3200.
 # Desktop mode (pywebview) is a single process: scripts/app.sh (`pnpm app`).
 # Built-SPA mode served by the backend: scripts/webapp.sh (`pnpm webapp`).
 set -euo pipefail
@@ -26,8 +27,8 @@ cd "$SCRIPT_DIR/.."
 # shellcheck source=lib/dev-common.sh
 source scripts/lib/dev-common.sh
 
-BACKEND_PORT="${SA_PORT:-8000}"
-VITE_PORT="${VITE_PORT:-5173}"
+BACKEND_PORT="${SA_PORT:-8200}"
+VITE_PORT="${VITE_PORT:-3200}"
 export SA_PORT="$BACKEND_PORT" VITE_PORT="$VITE_PORT"
 
 RESET=0

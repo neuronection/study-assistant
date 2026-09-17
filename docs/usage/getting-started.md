@@ -12,9 +12,9 @@ Webapp mode (recommended) — the app opens in your default browser:
 pnpm webapp
 ```
 
-The backend serves the built app at `http://127.0.0.1:8000` (override the port with
+The backend serves the built app at `http://127.0.0.1:8200` (override the port with
 `SA_PORT`). Press Ctrl+C in the terminal to stop it. Alternatively `pnpm dev` runs the
-frontend with hot reload at `http://localhost:5173`, and `pnpm app` opens the desktop
+frontend with hot reload at `http://localhost:3200`, and `pnpm app` opens the desktop
 window (pywebview) — currently not recommended, see the known-issues note in
 `docs/STATUS.md`.
 
