@@ -2,12 +2,19 @@ import json
 import re
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ...ai.gateway import LLMGateway, Message
 from ...core.vocab import ConceptRelation
-from ...domain.models import Concept, ConceptLink, Course, NodeConcept, TreeNode
+from ...domain.models import (
+    Concept,
+    ConceptLink,
+    ConceptSkillStat,
+    Course,
+    NodeConcept,
+    TreeNode,
+)
 
 CONCEPTS_TASK = "concepts"
 
@@ -239,7 +246,50 @@ def commit_concepts(
     }
 
 
-def concept_graph(session: Session, course_id: int) -> dict[str, Any]:
+def concept_mastery(
+    session: Session, course_id: int, profile_id: int, names: list[str]
+) -> dict[str, str | None]:
+    stats = session.execute(
+        select(ConceptSkillStat).where(
+            ConceptSkillStat.profile_id == profile_id,
+            or_(
+                ConceptSkillStat.concept_id.in_(
+                    select(Concept.id).where(Concept.course_id == course_id)
+                ),
+                ConceptSkillStat.concept.in_(names),
+            ),
+        )
+    ).scalars()
+    weighted: dict[str, dict[str, float]] = {}
+    for stat in stats:
+        if stat.n <= 0:
+            continue
+        key = str(stat.concept_id) if stat.concept_id is not None else stat.concept
+        entry = weighted.setdefault(key, {"acc": 0.0, "n": 0.0})
+        entry["acc"] += stat.accuracy * stat.n
+        entry["n"] += stat.n
+
+    def bucket(concept: Concept) -> str | None:
+        by_id = weighted.get(str(concept.id))
+        by_name = weighted.get(concept.name)
+        data = by_id if by_id is not None else by_name
+        if data is None or data["n"] <= 0:
+            return None
+        accuracy = data["acc"] / data["n"]
+        if accuracy >= 0.8:
+            return "strong"
+        if accuracy >= 0.5:
+            return "shaky"
+        return "weak"
+
+    return {concept.name: bucket(concept) for concept in session.scalars(
+        select(Concept).where(Concept.course_id == course_id)
+    )}
+
+
+def concept_graph(
+    session: Session, course_id: int, profile_id: int | None = None
+) -> dict[str, Any]:
     concepts = list(
         session.scalars(
             select(Concept)
@@ -248,6 +298,11 @@ def concept_graph(session: Session, course_id: int) -> dict[str, Any]:
         )
     )
     by_id = {concept.id: concept for concept in concepts}
+    mastery = (
+        concept_mastery(session, course_id, profile_id, [c.name for c in concepts])
+        if profile_id is not None
+        else {concept.name: None for concept in concepts}
+    )
     links = list(
         session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id))
     )
@@ -270,6 +325,7 @@ def concept_graph(session: Session, course_id: int) -> dict[str, Any]:
                 "description": concept.description,
                 "aliases": concept.aliases or [],
                 "nodes": coverage.get(concept.id, []),
+                "mastery": mastery.get(concept.name),
             }
             for concept in concepts
         ],

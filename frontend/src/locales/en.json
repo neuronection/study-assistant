@@ -1777,7 +1777,14 @@
     "relation_part_of": "part of",
     "relation_related_to": "related to",
     "relation_inbound": "→ {{relation}} this",
-    "teachBack": "Teach back"
+    "teachBack": "Teach back",
+    "viewList": "List",
+    "viewGraph": "Graph",
+    "canvasHint": "Click a node to inspect the concept.",
+    "canvasNode": "{{name}} — {{count}} topics",
+    "canvasAria_one": "Concept graph with {{count}} concept",
+    "canvasAria_other": "Concept graph with {{count}} concepts",
+    "relation_inverse": "related back from"
   },
   "capture": {
     "title": "Quick capture",

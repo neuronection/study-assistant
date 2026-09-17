@@ -444,7 +444,14 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ **Concepts & knowledge graph (A9, Phase 8D)**: AI concept extraction from
   material index cards + outline → review → commit (validated); course Concepts
   tab with aliases, per-node coverage chips and relations; **per-node coverage
-  management (9C)** — cover/uncover concepts at any node from its workspace
+  management (9C)** — cover/uncover concepts at any node from its workspace;
+  **concept-graph canvas (plan 77-E, ADR-189)** — additive List ⇄ Graph view
+  (persisted per course, list stays below-lg/reduced-motion/a11y surface):
+  hand-rolled seeded force-directed canvas (no new deps, deterministic),
+  nodes sized by coverage and colored by a server-computed mastery bucket
+  (strong/shaky/weak/none — `concept_skill_stats` joined by concept_id with
+  exact-name fallback), edges = relations; click opens the concept sheet;
+  declutters above 150 concepts to top-K by degree
 - ✅ **AI node organizer (A10 first cut, Phase 8E, node-based since 9A; reworked
   plan 22 J, ADR-051; plan 33, ADR-070)**: node Review with honest findings (gaps,
   ordering, orphaned material, missing coverage) — **persisted as dated `node_review`

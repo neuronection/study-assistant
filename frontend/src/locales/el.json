@@ -1777,7 +1777,14 @@
     "relation_part_of": "ανήκει σε",
     "relation_related_to": "σχετίζεται με",
     "relation_inbound": "→ {{relation}} αυτό",
-    "teachBack": "Εξηγήστε το με δικά σας λόγια"
+    "teachBack": "Εξηγήστε το με δικά σας λόγια",
+    "viewList": "Λίστα",
+    "viewGraph": "Γράφημα",
+    "canvasHint": "Κλίκαρε έναν κόμβο για να δεις την έννοια.",
+    "canvasNode": "{{name}} — {{count}} θέματα",
+    "canvasAria_one": "Γράφημα εννοιών με {{count}} έννοια",
+    "canvasAria_other": "Γράφημα εννοιών με {{count}} έννοιες",
+    "relation_inverse": "συνδεδεμένο από"
   },
   "palette": {
     "quizMeOn": "Κάντε μου κουίζ για το {{title}}",

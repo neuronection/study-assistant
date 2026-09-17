@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.ai.gateway import LLMGateway, Message, ResolvedModel, TaskUnassigned
@@ -155,3 +156,74 @@ def test_concepts_extract_validate_commit_and_graph(
 
     missing = client.get("/api/v1/courses/99999/concepts")
     assert missing.status_code == 404
+
+
+def test_concept_graph_mastery_buckets(
+    concepts_client: tuple[TestClient, list[Message]],
+) -> None:
+    client, _calls = concepts_client
+    course = client.post("/api/v1/courses", json={"title": "Mastery"}).json()["id"]
+
+    committed = client.post(
+        f"/api/v1/courses/{course}/concepts/commit",
+        json={
+            "concepts": [
+                {"name": "alpha", "description": None, "aliases": []},
+                {"name": "beta", "description": None, "aliases": []},
+                {"name": "gamma", "description": None, "aliases": []},
+            ],
+            "links": [{"from": "alpha", "to": "beta", "relation": "prereq-of"}],
+            "nodes": [],
+        },
+    )
+    assert committed.status_code == 200, committed.text
+
+    graph = client.get(f"/api/v1/courses/{course}/concepts").json()
+    by_name = {entry["name"]: entry for entry in graph["concepts"]}
+    ids = {name: entry["id"] for name, entry in by_name.items()}
+    assert all(entry["mastery"] is None for entry in graph["concepts"])
+
+    assert isinstance(client.app, FastAPI)
+    with client.app.state.session_factory() as session:
+        from app.domain.models import ConceptSkillStat
+
+        session.add(
+            ConceptSkillStat(
+                profile_id=1,
+                concept="alpha",
+                concept_id=ids["alpha"],
+                skill="compute",
+                n=4,
+                accuracy=0.9,
+                weakness_score=0.5,
+            )
+        )
+        session.add(
+            ConceptSkillStat(
+                profile_id=1,
+                concept="alpha",
+                concept_id=ids["alpha"],
+                skill="explain",
+                n=1,
+                accuracy=0.4,
+                weakness_score=0.5,
+            )
+        )
+        session.add(
+            ConceptSkillStat(
+                profile_id=1,
+                concept="beta",
+                concept_id=None,
+                skill="compute",
+                n=2,
+                accuracy=0.6,
+                weakness_score=0.5,
+            )
+        )
+        session.commit()
+
+    graph = client.get(f"/api/v1/courses/{course}/concepts").json()
+    mastery = {entry["name"]: entry["mastery"] for entry in graph["concepts"]}
+    assert mastery["alpha"] == "strong"
+    assert mastery["beta"] == "shaky"
+    assert mastery["gamma"] is None

@@ -1862,7 +1862,14 @@
     "summary": "{{concepts}} Konzepte · {{links}} Beziehungen",
     "extract": "Konzepte extrahieren",
     "draftTitle": "Konzeptentwurf",
-    "draftHint": "Entferne alles Falsche — beim Übernehmen wird der Rest hinzugefügt (bestehende Konzepte bleiben erhalten)."
+    "draftHint": "Entferne alles Falsche — beim Übernehmen wird der Rest hinzugefügt (bestehende Konzepte bleiben erhalten).",
+    "viewList": "Liste",
+    "viewGraph": "Graph",
+    "canvasHint": "Klicke einen Knoten, um das Konzept zu prüfen.",
+    "canvasNode": "{{name}} — {{count}} Themen",
+    "canvasAria_one": "Konzeptgraph mit {{count}} Konzept",
+    "canvasAria_other": "Konzeptgraph mit {{count}} Konzepten",
+    "relation_inverse": "verknüpft von"
   },
   "editor": {
     "toolbar": "Formatierung",

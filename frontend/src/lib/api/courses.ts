@@ -471,12 +471,15 @@ export interface ConceptDraft {
   nodes: ConceptNodeDraft[]
 }
 
+export type ConceptMastery = 'strong' | 'shaky' | 'weak' | null
+
 export interface ConceptNode {
   id: number
   name: string
   description: string | null
   aliases: string[]
   nodes: { node_id: number; node_title: string }[]
+  mastery?: ConceptMastery
 }
 
 export interface ConceptGraph {

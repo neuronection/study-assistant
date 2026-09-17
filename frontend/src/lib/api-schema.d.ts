@@ -4778,6 +4778,8 @@ export interface components {
             description: string | null;
             /** Id */
             id: number;
+            /** Mastery */
+            mastery?: string | null;
             /** Name */
             name: string;
             /** Nodes */

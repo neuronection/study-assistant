@@ -6,6 +6,31 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — course concept-graph canvas (plan 77-E, ADR-189, 2026-09-17):**
+slice E of plan 77 — the Concepts tab gains an additive **List ⇄ Graph**
+view (toggle persisted per course, hidden below `lg` — the list remains the
+small-screen, keyboard and reduced-motion surface). The graph is a
+**hand-rolled force-directed `<canvas>`** (repulsion + link springs +
+centering, ~100 lines, seeded mulberry32 PRNG, fixed 300-iteration layout —
+deterministic and snapshot-testable, **no new dependency**, no per-node
+DOM): nodes sized by coverage count and colored by a new server-computed
+**`mastery` bucket** (`strong` ≥80% · `shaky` ≥50% · `weak` below · `null`
+= no data, rendered neutral — never guessed), edges = concept links; click
+a node to open the concept sheet (description, coverage chips, relations,
+teach-back). **Mastery derivation (ADR-189 join subtlety):**
+`concept_skill_stats` rows are weighted-by-n mean accuracy joined by
+`concept_id` where present, else by exact concept name (the 8D dual-write
+never backfilled every row) — `ConceptGraphOut` gains the additive field
+(ADR-130 typed model updated), `concept_graph` resolves the default profile
+for the join. Declutter: above 150 concepts only top-K by degree render.
+Deviations recorded: pan/zoom and edge-relation hover labels are deferred
+(the canvas fits its container; relations remain in the list/sheet).
+Tests: backend mastery-bucket derivation (concept_id join + weighted
+accuracy + name fallback + honest null) in the concepts suite; frontend
+canvas layout suite (determinism under seed, bounds, unknown bucket,
+150-concept declutter). Backend 1,257 green, frontend 1,308 green,
+lint/typecheck/build/i18n green; OpenAPI + types regenerated.
+
 **Feature — "Study now" guided session (plan 77-D, ADR-186, 2026-09-17):**
 slice D of plan 77 — the flagship flow: one tap chains what the app knows
 needs doing. New read-only **`GET /study/next`** aggregate (`api/study.py`,

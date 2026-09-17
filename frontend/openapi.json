@@ -1387,6 +1387,17 @@
             "title": "Id",
             "type": "integer"
           },
+          "mastery": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mastery"
+          },
           "name": {
             "title": "Name",
             "type": "string"

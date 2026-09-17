@@ -1,11 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { GraduationCap, Loader2, Network, Sparkles, X } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { commitConcepts, conceptGraph, createTeachBack, type ConceptDraft } from '@/lib/api'
+import { ConceptGraphCanvas } from './ConceptGraphCanvas'
+import {
+  commitConcepts,
+  conceptGraph,
+  createTeachBack,
+  type ConceptDraft,
+} from '@/lib/api'
+import { useMediaQuery } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
 
 export function ConceptsPanel({
@@ -20,6 +28,18 @@ export function ConceptsPanel({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [view, setView] = useState<'list' | 'graph'>(() => {
+    const stored = window.localStorage.getItem(`ca-concepts-view:${courseId}`)
+    return stored === 'graph' ? 'graph' : 'list'
+  })
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const belowLg = useMediaQuery('(max-width: 1023px)')
+  const effectiveView = belowLg ? 'list' : view
+
+  const setPersistedView = (next: 'list' | 'graph') => {
+    setView(next)
+    window.localStorage.setItem(`ca-concepts-view:${courseId}`, next)
+  }
 
   const teachBack = useMutation({
     mutationFn: (concept: { id: number; name: string }) =>
@@ -115,11 +135,113 @@ export function ConceptsPanel({
         </Card>
       ) : null}
 
+      {(data?.concepts.length ?? 0) > 0 && !belowLg ? (
+        <div className="flex items-center justify-end gap-2">
+          <div className="border-border bg-subtle inline-flex overflow-hidden rounded-md border text-[11px] font-medium">
+            <button
+              type="button"
+              aria-pressed={effectiveView === 'list'}
+              onClick={() => setPersistedView('list')}
+              className={cn(
+                'text-muted-foreground px-2 py-0.5',
+                effectiveView === 'list' && 'bg-surface text-foreground',
+              )}
+            >
+              {t('concepts.viewList')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={effectiveView === 'graph'}
+              onClick={() => setPersistedView('graph')}
+              className={cn(
+                'text-muted-foreground px-2 py-0.5',
+                effectiveView === 'graph' && 'bg-surface text-foreground',
+              )}
+            >
+              {t('concepts.viewGraph')}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {(data?.concepts.length ?? 0) === 0 ? (
         <div className="text-muted-foreground py-12 text-center text-sm">
           <Network className="mx-auto mb-2 size-8" aria-hidden />
           {t('concepts.empty')}
         </div>
+      ) : effectiveView === 'graph' && data ? (
+        <>
+          <ConceptGraphCanvas graph={data} onSelect={setSelectedId} />
+          {(() => {
+            const selected = data.concepts.find((entry) => entry.id === selectedId)
+            if (selected === undefined) {
+              return (
+                <p className="text-muted-foreground text-xs">{t('concepts.canvasHint')}</p>
+              )
+            }
+            const outgoing = data.links.filter((link) => link.from === selected.name)
+            const incoming = data.links.filter((link) => link.to === selected.name)
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">{selected.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {selected.description ? (
+                    <p className="text-muted-foreground text-xs">{selected.description}</p>
+                  ) : null}
+                  {selected.nodes.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {selected.nodes.map((entry) => (
+                        <span
+                          key={entry.node_id}
+                          className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px]"
+                        >
+                          {entry.node_title}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {outgoing.length + incoming.length > 0 ? (
+                    <ul className="text-muted-foreground space-y-0.5 text-[11px]">
+                      {outgoing.map((link, index) => (
+                        <li key={`out-${index}`}>
+                          <span
+                            className={cn(
+                              link.relation === 'prereq-of' && 'text-primary',
+                            )}
+                          >
+                            {t(`concepts.relation_${link.relation.replace(/-/g, '_')}`)}
+                          </span>{' '}
+                          {link.to}
+                        </li>
+                      ))}
+                      {incoming.map((link, index) => (
+                        <li key={`in-${index}`}>
+                          <span className="text-muted-foreground">
+                            {t('concepts.relation_inverse')}
+                          </span>{' '}
+                          {link.from}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={teachBack.isPending}
+                    onClick={() =>
+                      teachBack.mutate({ id: selected.id, name: selected.name })
+                    }
+                  >
+                    <GraduationCap className="size-3.5" aria-hidden />
+                    {t('concepts.teachBack')}
+                  </Button>
+                </CardContent>
+              </Card>
+            )
+          })()}
+        </>
       ) : (
         <div className="space-y-2">
           {(data?.concepts ?? []).map((concept) => {

@@ -1243,7 +1243,8 @@ def course_concept_graph(
     course_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
-    return concept_graph(session, course_id)
+    profile = ensure_default_profile(session)
+    return concept_graph(session, course_id, profile.id)
 
 
 @router.post("/nodes/{node_id}/review", response_model=NodeReviewOut)

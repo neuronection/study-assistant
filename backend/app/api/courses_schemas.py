@@ -220,6 +220,7 @@ class ConceptGraphConceptOut(BaseModel):
     description: str | None
     aliases: list[str]
     nodes: list[ConceptCoverageOut]
+    mastery: str | None = None
 
 
 class ConceptGraphLinkOut(BaseModel):
