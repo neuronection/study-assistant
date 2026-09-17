@@ -6,6 +6,41 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — index-card hover previews (plan 77-B, ADR-185, 2026-09-17):**
+slice B of plan 77. The family library ships a **`hover-card` module**
+(new `@radix-ui/react-hover-card` dep; released as part of the 0.39.0 cycle
+after 0.38.0 shipped skeleton): `HoverCard` (Radix root wrapper with
+150/100 ms open/close grace defaults, controlled-first
+`open`/`onOpenChange`), `HoverCardTrigger` (opens from keyboard focus alone —
+asserted in tests incl. axe), `HoverCardContent` (`data-as="hover-card"`,
+tokened surface) and `HoverCardPortal`. Study consumes it via the
+`components/ui/hover-card.ts` shim and composes **`MaterialHoverCard`**
+(`components/materials/`): on open it lazy-fetches the EXISTING
+`GET /materials/{id}` detail under the standard `['material', id]` cache key
+(5-min staleTime — zero new backend surface, no list-payload growth, no N+1;
+one fetch per opened card) and renders the index card — clamped summary,
+≤6 topic chips, reading-minutes + difficulty meta — with skeleton lines
+while loading and an honest "No AI summary yet" state when the card is
+null. Suppressed on coarse pointers (`matchMedia('(pointer: coarse)')` via
+`useMediaQuery` — touch never triggers a fetch). Wired into the shared
+`MaterialTile` + `MaterialRow` renderers (picker/workspace/library all
+inherit it) and the Library search-hit rows; GenerateDialog context chips
+deliberately NOT wired (the chip wraps a remove button and carries no
+material id — recorded as a plan-77 residual rather than risk hover-hijack).
+Preview meta line uses plural-aware i18n keys (`library.previewReading_one/
+_other`, `previewDifficulty`, `previewNoSummary`; en/de/el complete).
+Library release dependency: hover-card rides the NEXT library release —
+the app commit keeps the 0.38.0 tarball overlay (both modules) with
+manifest files uncommitted; dep bump + `minimumReleaseAgeExclude` land at
+release. Tests: library HoverCard suite (6: hover/focus open, controlled,
+Escape/unhover close, marker+className merge, axe) + app
+`MaterialHoverCard` (4: fetch-on-open with summary/topics/meta, honest
+empty, no-fetch-idle, coarse-pointer suppression) + Tile/Row suites
+re-pointed through a shared `renderWithClient`/`rerenderWithClient`
+provider helper (12). Frontend 1,296 green, lint/typecheck/build/i18n
+green; library `pnpm verify` green (745) and pushed (`43789ef` on top of
+the released v0.38.0). Backend untouched.
+
 **Feature — skeleton loading system + keyboard help (plan 77-A, ADR-184,
 2026-09-17):** slice A of plan 77 "Next-gen feel & flow" (the plan's B–G
 slices follow). Loading-state primitives went upstream: the family library

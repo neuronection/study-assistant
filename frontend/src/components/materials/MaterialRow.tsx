@@ -5,6 +5,7 @@ import { AiGeneratedBadge } from '@/features/ai/AiGeneratedBadge'
 import { KindIcon } from '@/features/library/KindIcon'
 import { LinkRefBadge } from '@/features/library/LinkRefBadge'
 import { CheckIndicator } from '@/components/ui/CheckIndicator'
+import { MaterialHoverCard } from '@/components/materials/MaterialHoverCard'
 import { isKeyboardClick } from '@/lib/useSelection'
 import { cn } from '@/lib/utils'
 
@@ -112,22 +113,23 @@ export function MaterialRow({
     )
   }
   return (
-    <div
-      className={cn(
-        'hover:bg-subtle group flex w-full items-center gap-2 rounded-md px-2 py-1.5',
-        compact ? 'text-xs' : 'text-sm',
-        selected !== undefined && onToggle && 'cursor-pointer',
-        selectionState === 'selected' && 'bg-primary/10',
-        selectionState === 'cut' && 'bg-primary/5 opacity-50',
-        className
-      )}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onContextMenu={onContextMenu}
-      onMouseDown={onMouseDown}
-      onDoubleClick={onOpen}
-      title={title}
-    >
+    <MaterialHoverCard materialId={material.id}>
+      <div
+        className={cn(
+          'hover:bg-subtle group flex w-full items-center gap-2 rounded-md px-2 py-1.5',
+          compact ? 'text-xs' : 'text-sm',
+          selected !== undefined && onToggle && 'cursor-pointer',
+          selectionState === 'selected' && 'bg-primary/10',
+          selectionState === 'cut' && 'bg-primary/5 opacity-50',
+          className
+        )}
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onContextMenu={onContextMenu}
+        onMouseDown={onMouseDown}
+        onDoubleClick={onOpen}
+        title={title}
+      >
       {onToggle ? (
         <CheckIndicator
           checked={selected ?? false}
@@ -191,6 +193,7 @@ export function MaterialRow({
       {material.status ? <StatusPill status={material.status} /> : null}
       <LinkRefBadge count={material.linkCount} />
       {action ?? null}
-    </div>
+      </div>
+    </MaterialHoverCard>
   )
 }

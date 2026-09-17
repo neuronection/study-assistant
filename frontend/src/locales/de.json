@@ -705,7 +705,11 @@
     "parseFailed": "Parsen fehlgeschlagen.",
     "parseCancelled": "Parsen abgebrochen.",
     "parseWorking": "In Arbeit — Seite wird geladen und geparst…",
-    "transcribeAudio": "Stattdessen Audio transkribieren"
+    "transcribeAudio": "Stattdessen Audio transkribieren",
+    "previewDifficulty": "Schwierigkeit {{n}}",
+    "previewNoSummary": "Noch keine KI-Zusammenfassung — Material für Details öffnen.",
+    "previewReading_one": "1 Min. Lesezeit",
+    "previewReading_other": "{{count}} Min. Lesezeit"
   },
   "home": {
     "title": "Heute",

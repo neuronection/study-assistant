@@ -93,6 +93,7 @@ import {
   folderRowClass,
   type MaterialFolderSpec,
 } from '@/components/materials/MaterialBrowser'
+import { MaterialHoverCard } from '@/components/materials/MaterialHoverCard'
 import { MaterialRow } from '@/components/materials/MaterialRow'
 import { MaterialTile } from '@/components/materials/MaterialTile'
 import { ReExtractDialog } from '@/components/materials/ReExtractDialog'
@@ -1661,21 +1662,22 @@ export function LibraryPage() {
             ) : (
             <div className="flex flex-col gap-1">
               {(searchResults.data?.hits ?? []).map((hit) => (
-                <button
-                  key={hit.material_id}
-                  type="button"
-                  className="hover:bg-subtle w-full rounded-md px-2 py-1.5 text-left text-xs"
-                  onClick={() =>
-                    void navigate({
-                      to: '/library/$materialId',
-                      search: { from },
-                      params: { materialId: String(hit.material_id) },
-                    })
-                  }
-                >
-                  <span className="font-medium">{hit.title}</span>
-                  <span className="text-muted-foreground block truncate">{hit.snippet}</span>
-                </button>
+                <MaterialHoverCard key={hit.material_id} materialId={hit.material_id}>
+                  <button
+                    type="button"
+                    className="hover:bg-subtle w-full rounded-md px-2 py-1.5 text-left text-xs"
+                    onClick={() =>
+                      void navigate({
+                        to: '/library/$materialId',
+                        search: { from },
+                        params: { materialId: String(hit.material_id) },
+                      })
+                    }
+                  >
+                    <span className="font-medium">{hit.title}</span>
+                    <span className="text-muted-foreground block truncate">{hit.snippet}</span>
+                  </button>
+                </MaterialHoverCard>
               ))}
               {searchResults.data && searchResults.data.hits.length === 0 ? (
                 <p className="text-muted-foreground px-2 text-sm">{t('library.noResults')}</p>

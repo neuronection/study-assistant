@@ -705,7 +705,11 @@
     "parseFailed": "Η ανάλυση απέτυχε.",
     "parseCancelled": "Η ανάλυση ακυρώθηκε.",
     "parseWorking": "Σε εξέλιξη — φόρτωση και ανάλυση της σελίδας…",
-    "transcribeAudio": "Μεταγραφή ήχου αντ’ αυτού"
+    "transcribeAudio": "Μεταγραφή ήχου αντ’ αυτού",
+    "previewDifficulty": "δυσκολία {{n}}",
+    "previewNoSummary": "Δεν υπάρχει ακόμη σύνοψη AI — άνοιξε το υλικό για λεπτομέρειες.",
+    "previewReading_one": "1 λεπτό ανάγνωσης",
+    "previewReading_other": "{{count}} λεπτά ανάγνωσης"
   },
   "home": {
     "title": "Σήμερα",

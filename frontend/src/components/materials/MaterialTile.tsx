@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import { AiGeneratedBadge } from '@/features/ai/AiGeneratedBadge'
 import { KindIcon } from '@/features/library/KindIcon'
 import { LinkRefBadge } from '@/features/library/LinkRefBadge'
+import { MaterialHoverCard } from '@/components/materials/MaterialHoverCard'
 import { cn } from '@/lib/utils'
 
 import type { MaterialSummary } from './MaterialRow'
@@ -40,31 +41,33 @@ export function MaterialTile({
   selectionState?: 'none' | 'selected' | 'cut'
 }) {
   return (
-    <button
-      type="button"
-      className={cn(
-        'group flex cursor-pointer select-none flex-col items-center gap-2 rounded-lg border border-transparent p-3 text-center transition-colors hover:border-border hover:bg-subtle',
-        selectionState === 'selected' && 'border-primary bg-primary/10 hover:bg-primary/10',
-        selectionState === 'cut' && 'border-primary/50 bg-primary/5 opacity-50 hover:bg-primary/10',
-        className
-      )}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
-      onMouseDown={onMouseDown}
-      onContextMenu={onContextMenu}
-    >
-      <KindIcon kind={material.kind ?? 'doc'} className="text-muted-foreground size-8 shrink-0" />
-      <span
+    <MaterialHoverCard materialId={material.id}>
+      <button
+        type="button"
         className={cn(
-          'line-clamp-3 text-xs',
-          selectionState === 'selected' && 'line-clamp-4'
+          'group flex cursor-pointer select-none flex-col items-center gap-2 rounded-lg border border-transparent p-3 text-center transition-colors hover:border-border hover:bg-subtle',
+          selectionState === 'selected' && 'border-primary bg-primary/10 hover:bg-primary/10',
+          selectionState === 'cut' && 'border-primary/50 bg-primary/5 opacity-50 hover:bg-primary/10',
+          className
         )}
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+        onMouseDown={onMouseDown}
+        onContextMenu={onContextMenu}
       >
-        {material.title}
-      </span>
-      {material.aiComposed ? <AiGeneratedBadge /> : null}
-      {material.status ? <StatusPill status={material.status} /> : null}
-      <LinkRefBadge count={material.linkCount} />
-    </button>
+        <KindIcon kind={material.kind ?? 'doc'} className="text-muted-foreground size-8 shrink-0" />
+        <span
+          className={cn(
+            'line-clamp-3 text-xs',
+            selectionState === 'selected' && 'line-clamp-4'
+          )}
+        >
+          {material.title}
+        </span>
+        {material.aiComposed ? <AiGeneratedBadge /> : null}
+        {material.status ? <StatusPill status={material.status} /> : null}
+        <LinkRefBadge count={material.linkCount} />
+      </button>
+    </MaterialHoverCard>
   )
 }

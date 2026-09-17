@@ -825,6 +825,17 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   cut/copy/paste/delete, Esc, split-divider arrows) opens from a rail button
   under the palette entry and never fires while typing (input/textarea/
   contenteditable guard)
+- ✅ **Index-card hover previews (plan 77-B, ADR-185)**: hovering (or
+  keyboard-focusing) a material tile, row or Library search hit opens a rich
+  preview card — clamped AI summary, ≤6 topic chips, reading-minutes +
+  difficulty — fetched lazily from the existing detail endpoint only on
+  open (cached under the standard `['material', id]` key; no list-payload
+  growth, no N+1) with an honest "No AI summary yet" state when no card
+  exists. Touch devices are suppressed (`pointer: coarse` — taps never
+  trigger fetches). The family library's `hover-card` primitive (Radix,
+  focus-openable, Escape/blur close, 150/100 ms grace defaults) is composed
+  app-side in `MaterialHoverCard`; GenerateDialog context chips are a
+  recorded residual
 - ✅ **Capture shell (plan 67-A/B/C, ADR-148)**: the **command palette**
   (`Ctrl/Cmd+K` — navigation, creates, jumps to any note/quiz/exercise,
   `?`-prefixed full-text search, ranked by the library fuzzy module) gains

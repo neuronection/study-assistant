@@ -705,7 +705,11 @@
     "parseFailed": "Parsing failed.",
     "parseCancelled": "Parsing cancelled.",
     "parseWorking": "Working — fetching and parsing the page…",
-    "transcribeAudio": "Transcribe audio instead"
+    "transcribeAudio": "Transcribe audio instead",
+    "previewDifficulty": "difficulty {{n}}",
+    "previewNoSummary": "No AI summary yet — open the material for details.",
+    "previewReading_one": "1 min read",
+    "previewReading_other": "{{count}} min read"
   },
   "home": {
     "title": "Today",
