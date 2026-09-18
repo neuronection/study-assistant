@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.10.0] - 2026-09-18
+
 ### Fixed
 - **Desktop webkit fallback hardening (ported from career-assistant
   v0.11.x)** — the renderer-sentinel relaunch crashed on an invalid
@@ -58,8 +60,34 @@ Release history from before the public launch lives in the
   subject opens a large modal rendering the actual content (math, diagrams,
   tables) through the app's markdown surface, so nothing has to be judged
   from raw JSON (plan 78-F, ADR-192).
+- Opening a material or note in the course workspace now docks it as a
+  resizable, non-modal side panel beside the tutor chat instead of a modal
+  drawer — the workspace stays fully interactive, both rails remember their
+  widths, expand jumps to the full-page view, and deep links and back-button
+  behavior are unchanged (ADR-191).
+- Loading states across the app now use soft skeleton placeholders instead
+  of spinners, and a keyboard shortcuts help overlay documents every binding
+  in one place (plan 77-A).
+- Materials show an index-card hover preview — summary, topics and metadata
+  surface on hover without opening the file (plan 77-B).
+- Extraction history and drawing re-OCR reviews now render the old-vs-new
+  diff in the same formatted view as chat proposals — math, tables and
+  headings render, unchanged blocks fold, raw view one click away (plan 77-C).
+- One-tap "Study now" guided session: the home screen's Study action chains
+  what the app knows needs doing — review, practice and wrap-up — from a
+  single deterministic recommendation aggregate, no LLM in the loop (plan 77-D).
+- The Concepts tab gained a persisted List ⇄ Graph toggle that renders the
+  course's concept relations as an interactive canvas colored by mastery
+  (plan 77-E).
+- Materials and course tree nodes now join the trash — deleting them is
+  recoverable via restore, like notes and quizzes before (plan 77-F).
 
 ### Changed
+
+- Visual token refresh: softer two-layer elevation shadows, dark-mode shadow
+  tuning, the success color deepened to meet WCAG AA contrast (with a new
+  automated contrast gate so it stays there), and all hardcoded Tailwind
+  shadows swept onto tokens — conservative, no component redesign (plan 77-G).
 
 - Adopt `@neuronection/assistant-ui` 0.42.0 (chat-tools-catalog badge chip,
   chat-hitl module enhancements, ModalBody compound, token refresh).
