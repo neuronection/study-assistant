@@ -17,6 +17,7 @@ from app.ai.proposals import (
     PROPOSAL_ACTIONS,
     CreateNotePayload,
     extract_proposals,
+    extract_proposals_with_drops,
     strip_proposal_fences,
     validate_proposal_text,
 )
@@ -118,6 +119,101 @@ def test_extract_and_strip() -> None:
     assert len(extract_proposals(doubled)) == 2
     over_cap = "\n".join([VALID_PROPOSAL] * (MAX_PROPOSALS_PER_TURN + 2))
     assert len(extract_proposals(over_cap)) == MAX_PROPOSALS_PER_TURN
+
+
+def test_extract_proposals_with_drops_reason_codes() -> None:
+    proposals, drops = extract_proposals_with_drops(VALID_PROPOSAL)
+    assert drops == []
+    assert len(proposals) == 1
+    _, drops = extract_proposals_with_drops("no fences")
+    assert drops == []
+    _, drops = extract_proposals_with_drops("```proposal\n{broken\n```")
+    assert drops == ["invalid_json"]
+    _, drops = extract_proposals_with_drops('```proposal\n"just a string"\n```')
+    assert drops == ["not_object"]
+    _, drops = extract_proposals_with_drops(
+        '```proposal\n{"action": "make_coffee"}\n```'
+    )
+    assert drops == ["unknown_action"]
+    _, drops = extract_proposals_with_drops(
+        '```proposal\n{"action": "create_note", "title": ""}\n```'
+    )
+    assert drops == ["schema"]
+    over_cap = "\n".join([VALID_PROPOSAL] * (MAX_PROPOSALS_PER_TURN + 2))
+    proposals, drops = extract_proposals_with_drops(over_cap)
+    assert len(proposals) == MAX_PROPOSALS_PER_TURN
+    assert drops == ["cap"]
+    mixed = "\n".join(
+        [
+            VALID_PROPOSAL,
+            "```proposal\n{broken\n```",
+            '```proposal\n{"action": "nope"}\n```',
+        ]
+    )
+    proposals, drops = extract_proposals_with_drops(mixed)
+    assert len(proposals) == 1
+    assert drops == ["invalid_json", "unknown_action"]
+
+
+def test_dropped_proposals_surface_warning_and_trace(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, gateway, _app = client
+    unfixable = (
+        "Here you go.\n\n```proposal\n{broken\n```\n\n"
+        + VALID_PROPOSAL
+    )
+    gateway.responses.append(unfixable)
+    gateway.responses.append(unfixable)
+    with test_client:
+        course_id = make_course(test_client)
+        add_material(test_client, "m.txt", "chain rule content", course_id)
+        session = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_id}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session['id']}/messages",
+            json={"content": "summarize the chain rule and offer to save it"},
+        )
+        messages = wait_for_assistant(test_client, session["id"])
+    assistant = messages[-1]
+    assert len(gateway.calls) == 2
+    assert len(assistant["proposals"]) == 1
+    assert assistant["proposals"][0]["action"] == "create_note"
+    assert any(
+        "1 suggested action(s) dropped (invalid_json: 1)" in warning
+        for warning in assistant["warnings"]
+    )
+    assert assistant["trace"]["proposals_dropped"] == ["invalid_json"]
+
+
+def test_tools_catalog_lists_capabilities_as_non_executable(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    from app.ai.tools import (
+        CAPABILITY_TOOL_NAMES,
+        CHAT_CAPABILITY_CATALOG,
+        build_tool_doc,
+        native_tool_schemas,
+        run_tool_line,
+    )
+
+    test_client, _gateway, _app = client
+    with test_client:
+        payload = test_client.get("/api/v1/ai/tools").json()
+    capabilities = [tool for tool in payload["tools"] if tool.get("hitl")]
+    assert {tool["name"] for tool in capabilities} == set(CAPABILITY_TOOL_NAMES)
+    assert {tool["kind"] for tool in capabilities} == {"capability"}
+    for tool in capabilities:
+        assert tool["arguments"] == []
+    plain_tool = {"name": "CALC", "description": "d", "arguments": []}
+    doc = build_tool_doc([*CHAT_CAPABILITY_CATALOG, plain_tool])
+    assert "PROPOSE_EDITS" not in doc
+    assert "CALC" in doc
+    assert native_tool_schemas(CHAT_CAPABILITY_CATALOG) == []
+    for name in sorted(CAPABILITY_TOOL_NAMES):
+        result = run_tool_line(name, "")
+        assert result.startswith("error: HITL capability")
 
 
 def test_proposal_contract_blocks_invalid_and_repairs(

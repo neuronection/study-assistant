@@ -90,6 +90,8 @@ def test_tools_endpoint_lists_chat_tools(
             "SEARCH",
             "DISCOVER",
             "FETCH",
+            "PROPOSE_EDITS",
+            "PROPOSE_GENERATIONS",
             "COURSES",
             "NODE_OVERVIEW",
             "NODE_MATERIALS",

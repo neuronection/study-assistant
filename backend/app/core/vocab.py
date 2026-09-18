@@ -33,6 +33,11 @@ class JobType(StrVocab):
     URL_IMPORT = "url_import"
 
 
+class ToolEntryKind(StrVocab):
+    TOOL = "tool"
+    CAPABILITY = "capability"
+
+
 class FlowEvent(StrVocab):
     FLOW_STARTED = "flow_started"
     NODE_STARTED = "node_started"

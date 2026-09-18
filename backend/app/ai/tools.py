@@ -83,6 +83,8 @@ _JSON_SCHEMA_TYPES = frozenset(
 def native_tool_schemas(catalog: list[dict[str, Any]]) -> list[dict[str, Any]]:
     schemas: list[dict[str, Any]] = []
     for tool in catalog:
+        if tool.get("kind") == "capability":
+            continue
         properties: dict[str, Any] = {}
         required: list[str] = []
         for argument in tool.get("arguments", []):
@@ -129,6 +131,8 @@ def build_tool_doc(catalog: list[dict[str, Any]]) -> str:
         "Use these tools when they help. Emit EXACTLY one tool line, nothing else:"
     ]
     for tool in catalog:
+        if tool.get("kind") == "capability":
+            continue
         args = " ".join(f"<{argument['name']}>" for argument in tool["arguments"])
         body = f"{tool['name']} {args}".strip()
         lines = [body, f"  {tool['description'].splitlines()[0]}"]
@@ -200,6 +204,11 @@ TOOL_LINE_RE = re.compile(
 
 
 def run_tool_line(kind: str, argument: str) -> str:
+    if kind in CAPABILITY_TOOL_NAMES:
+        return (
+            "error: HITL capability — propose it in your answer instead; "
+            "the student approves the card"
+        )
     if kind == "CALC":
         return calculate(argument)
     if kind == "SYMPY":
@@ -414,6 +423,44 @@ CHAT_TOOL_CATALOG: list[dict[str, Any]] = [
 ]
 
 CHAT_TOOL_DOC = build_tool_doc(CHAT_TOOL_CATALOG)
+
+CHAT_CAPABILITY_CATALOG: list[dict[str, Any]] = [
+    {
+        "name": "PROPOSE_EDITS",
+        "kind": "capability",
+        "hitl": True,
+        "description": "Propose study edits as approval cards: create or edit "
+        "notes and materials, place or move them on the course tree, cover "
+        "concepts, tag notes, set the exam date, add plan items or attach a "
+        "web link.",
+        "arguments": [],
+        "response": "Nothing executes by itself — each proposal becomes a card "
+        "in the answer; the student approves or dismisses it and only approval "
+        "writes anything.",
+        "scope": "Chat answers — human-in-the-loop only (ADR-0015 Class B): "
+        "drafted inside ```proposal blocks, validated server-side, applied "
+        "through the same endpoints the forms use.",
+    },
+    {
+        "name": "PROPOSE_GENERATIONS",
+        "kind": "capability",
+        "hitl": True,
+        "description": "Propose AI generations as approval cards: a quiz, an "
+        "exercise or flashcards from the current material or note, or a "
+        "composed material (summary, formula sheet, practice set).",
+        "arguments": [],
+        "response": "Nothing executes by itself — approval opens the "
+        "generation dialog prefilled (or starts the compose job); the "
+        "student confirms every run.",
+        "scope": "Chat answers — human-in-the-loop only (ADR-0015 Class B): "
+        "the model proposes, the dialog's progress and cancel stay with the "
+        "student.",
+    },
+]
+
+CAPABILITY_TOOL_NAMES = frozenset(
+    str(entry["name"]) for entry in CHAT_CAPABILITY_CATALOG
+)
 
 QUIZ_TOOL: dict[str, Any] = {
     "name": "QUIZ",

@@ -8,7 +8,8 @@ from starlette.concurrency import run_in_threadpool
 
 from ..ai.gateway import BudgetExceeded, ProviderError, TaskUnassigned
 from ..ai.speech import MAX_TTS_CHARS
-from ..ai.tools import CHAT_TOOL_CATALOG
+from ..ai.tools import CHAT_CAPABILITY_CATALOG, CHAT_TOOL_CATALOG
+from ..core.vocab import ToolEntryKind
 from ..mcp_resources import MCP_INSTRUCTIONS, RESOURCE_TOOLS, create_resource_server
 from ..services.knowledge.context import (
     ContextError,
@@ -308,6 +309,8 @@ class ToolInfoOut(BaseModel):
     arguments: list[ToolArgumentOut]
     response: str | None = None
     scope: str | None = None
+    kind: ToolEntryKind = ToolEntryKind.TOOL
+    hitl: bool = False
 
 
 class ToolsOut(BaseModel):
@@ -319,6 +322,7 @@ async def list_tools(request: Request) -> dict[str, Any]:
     return {
         "tools": [
             *CHAT_TOOL_CATALOG,
+            *CHAT_CAPABILITY_CATALOG,
             *(_resource_tool_info(tool) for tool in RESOURCE_TOOLS),
         ]
     }

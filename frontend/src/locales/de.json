@@ -354,7 +354,8 @@
       "required": "erforderlich",
       "optional": "optional",
       "empty": "Keine Tools verfügbar",
-      "noResults": "Keine passenden Tools"
+      "noResults": "Keine passenden Tools",
+      "hitlBadge": "HITL-Aktion"
     },
     "trace": {
       "toggle": "Antwortprozess anzeigen",

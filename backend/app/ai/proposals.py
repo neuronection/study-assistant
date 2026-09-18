@@ -480,24 +480,53 @@ def validate_proposal_context(
     return problems
 
 
-def extract_proposals(text: str) -> list[tuple[str, dict[str, Any]]]:
+PROPOSAL_DROP_REASONS: tuple[str, ...] = (
+    "invalid_json",
+    "not_object",
+    "unknown_action",
+    "schema",
+    "cap",
+)
+
+
+def extract_proposals_with_drops(
+    text: str,
+) -> tuple[list[tuple[str, dict[str, Any]]], list[str]]:
+    """Validated proposals plus one stable reason code per dropped fence.
+
+    ``cap`` appears once when fences beyond MAX_PROPOSALS_PER_TURN were
+    ignored; every other code is per dropped fence, in fence order.
+    """
     proposals: list[tuple[str, dict[str, Any]]] = []
-    for fence in PROPOSAL_FENCE_RE.findall(text)[:MAX_PROPOSALS_PER_TURN]:
+    drops: list[str] = []
+    fences = PROPOSAL_FENCE_RE.findall(text)
+    if len(fences) > MAX_PROPOSALS_PER_TURN:
+        drops.append("cap")
+    for fence in fences[:MAX_PROPOSALS_PER_TURN]:
         try:
             raw = json.loads(fence)
         except json.JSONDecodeError:
+            drops.append("invalid_json")
             continue
         if not isinstance(raw, dict) or "action" not in raw:
+            drops.append("not_object")
             continue
         action = str(raw["action"])
         spec = PROPOSAL_ACTIONS.get(action)
         if spec is None:
+            drops.append("unknown_action")
             continue
         try:
             payload = spec.payload_model.model_validate(_payload_from(raw))
         except ValidationError:
+            drops.append("schema")
             continue
         proposals.append((action, json.loads(payload.model_dump_json())))
+    return proposals, drops
+
+
+def extract_proposals(text: str) -> list[tuple[str, dict[str, Any]]]:
+    proposals, _ = extract_proposals_with_drops(text)
     return proposals
 
 

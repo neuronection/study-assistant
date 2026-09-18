@@ -1,6 +1,7 @@
 import json
 import re
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -24,7 +25,7 @@ from ...ai.proposals import (
     DISMISSAL_NOTE,
     MAX_PROPOSALS_PER_TURN,
     PROPOSAL_DOC,
-    extract_proposals,
+    extract_proposals_with_drops,
     strip_proposal_fences,
 )
 from ...ai.skills import CHAT_ANSWER_SYSTEM
@@ -1515,10 +1516,27 @@ class ChatService:
 
         citations = _extract_citations(final_output, chunks)
         grounded = bool(citations) if chunks else None
-        proposals = extract_proposals(final_output) if proposals_enabled else []
+        proposals, proposal_drops = (
+            extract_proposals_with_drops(final_output)
+            if proposals_enabled
+            else ([], [])
+        )
         if proposals or "```proposal" in final_output:
             final_output = strip_proposal_fences(final_output)
         used_mentions = registry.parse(final_output)
+        turn_warnings = (
+            [prep.turn_warning] if prep.turn_warning is not None else []
+        )
+        if proposal_drops:
+            counts = Counter(proposal_drops)
+            summary = ", ".join(
+                f"{code}: {count}" for code, count in sorted(counts.items())
+            )
+            turn_warnings.append(
+                f"{sum(counts.values())} suggested action(s) dropped "
+                f"({summary}) — ask again to retry them."
+            )
+            trace["proposals_dropped"] = proposal_drops
         message = self.add_message(
             chat_session.id,
             "assistant",
@@ -1530,7 +1548,7 @@ class ChatService:
             tool_calls=final_tool_calls or None,
             blocks=parse_answer_blocks(final_output),
             trace=trace,
-            warnings=[prep.turn_warning] if prep.turn_warning is not None else None,
+            warnings=turn_warnings or None,
         )
         message.parent_id = user_message.id
         user_message.active_child_id = message.id

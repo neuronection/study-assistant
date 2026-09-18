@@ -8426,6 +8426,11 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /**
+         * ToolEntryKind
+         * @enum {string}
+         */
+        ToolEntryKind: "tool" | "capability";
         /** ToolInfoOut */
         ToolInfoOut: {
             /** Arguments */
@@ -8434,6 +8439,13 @@ export interface components {
             description: string;
             /** Example */
             example?: string | null;
+            /**
+             * Hitl
+             * @default false
+             */
+            hitl: boolean;
+            /** @default tool */
+            kind: components["schemas"]["ToolEntryKind"];
             /** Name */
             name: string;
             /** Response */

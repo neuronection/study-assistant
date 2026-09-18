@@ -50,6 +50,8 @@ export interface AiToolInfo {
   arguments: AiToolArgument[]
   response: string
   scope: string
+  kind?: 'tool' | 'capability'
+  hitl?: boolean
 }
 
 export interface McpToolInfo {

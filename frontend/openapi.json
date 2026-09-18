@@ -12816,6 +12816,14 @@
         "title": "ToolCallOut",
         "type": "object"
       },
+      "ToolEntryKind": {
+        "enum": [
+          "tool",
+          "capability"
+        ],
+        "title": "ToolEntryKind",
+        "type": "string"
+      },
       "ToolInfoOut": {
         "properties": {
           "arguments": {
@@ -12839,6 +12847,15 @@
               }
             ],
             "title": "Example"
+          },
+          "hitl": {
+            "default": false,
+            "title": "Hitl",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ToolEntryKind",
+            "default": "tool"
           },
           "name": {
             "title": "Name",

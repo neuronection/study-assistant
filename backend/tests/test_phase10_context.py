@@ -210,6 +210,8 @@ def test_ai_tools_catalog(client: TestClient) -> None:
         "SEARCH",
         "DISCOVER",
         "FETCH",
+        "PROPOSE_EDITS",
+        "PROPOSE_GENERATIONS",
         "COURSES",
         "NODE_OVERVIEW",
         "NODE_MATERIALS",

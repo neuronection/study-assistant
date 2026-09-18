@@ -11,6 +11,20 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added
+
+- Tutor chat: the tools catalog now lists the assistant's proposal abilities
+  as first-class HITL capabilities ("propose edits", "propose generations")
+  with a warning-tone badge, and turns whose suggested actions fail
+  validation say so honestly — a warning line plus per-fence reason codes
+  (`trace.proposals_dropped`) instead of silently vanishing proposals
+  (plan 78-A, ADR-192; family ADR-0015 conformance).
+
+### Changed
+
+- Adopt `@neuronection/assistant-ui` 0.42.0 (chat-tools-catalog badge chip,
+  chat-hitl module enhancements, ModalBody compound, token refresh).
+
 ## [v0.9.1] - 2026-09-16
 
 ### Changed

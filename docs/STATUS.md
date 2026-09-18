@@ -6,6 +6,52 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Planned next — plan 78, grounded chat proposals & ADR-0015 HITL
+conformance (user-approved 2026-09-18, ADR-192 reserved):** adopt the family
+ADR-0015 Class-B proposal contract in full (local plan doc
+`dev/plans/78-grounded-chat-proposals-hitl-contract.md`). Five slices, no
+migrations: **A** capability discovery + drop-reason visibility (tools
+catalog gains `kind: tool|capability` entries with the amber HITL badge;
+silently-dropped proposals surface machine reason codes in message
+warnings); **B** full grounding gate (every singular target id checked
+against the offered manifest; read-before-edit required for note/material
+edits); **C** anchored text edits for notes/materials (`replace` with an
+exact-unique anchor, in-order server-side resolution at creation — surgical
+diffs instead of full-document regeneration, full-body replacement kept as
+the rewrite fallback); **D** conflict re-diff (approve-time drift recomputes
+the diff against current content and re-requires explicit approval instead
+of dead-ending stale; `ChatProposalStatus` StrEnum per ADR-128; the model
+receives structured resolution feedback on its next turn); **E** cross-session
+surface (`GET /chat/proposals` list, pending count in the computed
+notifications aggregate + chat rail badge, one shared card serializer for
+WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
+the family ADR was amended pre-acceptance this session to bind them.
+
+**Feature — chat capability discovery + proposal drop visibility (plan 78-A,
+ADR-192, 2026-09-18):** first slice of plan 78 (ADR-0015 adoption). The tools
+catalog now lists the tutor's proposal abilities as first-class **HITL
+capabilities**: new `CHAT_CAPABILITY_CATALOG` (`ai/tools.py`) with
+`PROPOSE_EDITS` and `PROPOSE_GENERATIONS` entries (`kind: "capability"` +
+`hitl: true`, new `ToolEntryKind` StrEnum in `core/vocab.py`), served by
+`GET /ai/tools` alongside tools (OpenAPI + types regenerated). Excluded from
+every executable surface — `build_tool_doc` prompt grammar,
+`native_tool_schemas`, `TOOL_LINE_RE` — and `run_tool_line` refuses them with
+a stable "HITL capability" error; a lockstep test pins the refusal. The Tools
+dialog renders capability rows with the library `ChatToolsCatalog` warning
+badge ("HITL action", en/de/el) — **library dep bumped `^0.39.0` → `^0.42.0`**
+(badge chip support; `minimumReleaseAgeExclude` + lockfile updated; additive
+releases only). Dropped proposals are no longer invisible: new
+`extract_proposals_with_drops` returns one stable reason code per dropped
+fence (`invalid_json` / `not_object` / `unknown_action` / `schema` / `cap`);
+finalize appends a human summary line to the message warnings and persists
+the codes in `trace.proposals_dropped` — a turn whose proposals all fail
+validation now says so honestly. Tests: backend drop-reason matrix + full-turn
+unfixable-fence warning/trace + capability catalog/refusal/grammar-exclusion
+(+6), two catalog tests re-pointed to include the capability entries;
+frontend ToolsDialog badge tests (2). Backend 1,265 green, ruff/mypy clean;
+frontend 1,328 green, lint/typecheck/build/i18n green; AI alignment gate
+clean.
+
 **Feature — docked right-rail file panels (ADR-191, 2026-09-17):** opening a
 material or note in the course workspace (`?material=` / `?note=`) no longer
 pops a modal drawer — it mounts a **docked, non-modal side panel** in the app

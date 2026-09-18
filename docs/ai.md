@@ -267,6 +267,21 @@ The model may end a chat turn with **up to three** fenced action proposals
   its explanation), expandable payload preview, Approve/Dismiss with pending
   state, deep-link to the created note, "Open generator" for approved
   generate-* cards (mounts the shared GenerateDialog prefilled).
+- **Capability discovery + drop visibility (plan 78-A, ADR-192, ADR-0015)**:
+  the tools catalog lists the proposal families as first-class **capabilities**
+  — `PROPOSE_EDITS` and `PROPOSE_GENERATIONS` (`ai/tools.py`
+  `CHAT_CAPABILITY_CATALOG`, `kind: "capability"` + `hitl: true`, the
+  `ToolEntryKind` vocabulary) — so the Tools dialog shows that the tutor can
+  *propose*, with the library `ChatToolsCatalog` warning-tone "HITL action"
+  badge. Capabilities are excluded from the executable grammar
+  (`build_tool_doc`, `native_tool_schemas`, `TOOL_LINE_RE`) and
+  `run_tool_line` refuses them; the `/ai/tools` endpoint is the single
+  registry-driven source. Proposals that never survive validation are no
+  longer invisible: `extract_proposals_with_drops` returns one stable reason
+  code per dropped fence (`invalid_json`, `not_object`, `unknown_action`,
+  `schema`, `cap`), finalize appends a human summary line to the message
+  warnings ("N suggested action(s) dropped (…: …)") and persists the codes in
+  `trace.proposals_dropped`.
 
 ## AI-composed material (`material.compose` — Phase 11D)
 

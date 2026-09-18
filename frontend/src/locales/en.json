@@ -381,7 +381,8 @@
       "required": "required",
       "optional": "optional",
       "empty": "No tools available",
-      "noResults": "No matching tools"
+      "noResults": "No matching tools",
+      "hitlBadge": "HITL action"
     },
     "composer": {
       "equation": "Insert equation…",

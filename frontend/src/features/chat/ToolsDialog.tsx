@@ -29,6 +29,14 @@ export function ToolsDialog({ onClose }: { onClose: () => void }) {
   useCloseFloatings()
   const { t } = useTranslation()
   const catalog = useQuery({ queryKey: ['ai-tools'], queryFn: listAiTools })
+  const entries = (catalog.data ?? []).map((tool) => {
+    const entry = toolCatalogEntry(tool)
+    if (!tool.hitl) return entry
+    return {
+      ...entry,
+      badge: { label: t('chat.tools.hitlBadge'), tone: 'warning' as const },
+    }
+  })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -53,7 +61,7 @@ export function ToolsDialog({ onClose }: { onClose: () => void }) {
             message={catalog.isError ? (catalog.error as Error).message : null}
           />
           <ChatToolsCatalog
-            tools={(catalog.data ?? []).map(toolCatalogEntry)}
+            tools={entries}
             labels={{
               tools: t('chat.tools.title'),
               search: t('chat.tools.search'),
