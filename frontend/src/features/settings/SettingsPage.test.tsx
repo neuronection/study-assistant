@@ -484,7 +484,7 @@ describe('SettingsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
 
-    const picker = within(dialog).getByRole('combobox', { name: 'Model' })
+    const picker = await within(dialog).findByRole('combobox', { name: 'Model' })
     fireEvent.click(picker)
     fireEvent.click(await screen.findByRole('option', { name: 'gemini-2.5-pro' }))
     expect(

@@ -1,6 +1,7 @@
 import sys
 import threading
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -129,7 +130,7 @@ def test_watch_renderer_no_relaunch_loop_after_success() -> None:
 
 
 def test_compat_env_persisted_marker_forces_software(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """A machine whose GPU path failed once must not repeat the blank
     boot: the persisted marker short-circuits the probe (ported from
@@ -141,14 +142,18 @@ def test_compat_env_persisted_marker_forces_software(
     assert env["WEBKIT_DISABLE_DMABUF_RENDERER"] == "1"
 
 
-def test_compat_env_software_writes_marker(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_compat_env_software_writes_marker(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: False)
     marker = tmp_path / "webkit_soft_fallback"
     apply_webkit_compat_env({}, marker=marker)
     assert marker.exists()
 
 
-def test_compat_env_probe_pass_writes_no_marker(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_compat_env_probe_pass_writes_no_marker(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(shell, "_egl_probe", lambda: True)
     marker = tmp_path / "webkit_soft_fallback"
     apply_webkit_compat_env({}, marker=marker)
@@ -160,16 +165,16 @@ def test_relaunch_self_logs_percent_style_and_execs(
 ) -> None:
     """The relaunch used to crash on logger.warning(event, argv=...) — an
     invalid logging kwarg — so the software fallback never engaged."""
-    calls: list = []
+    calls: list[tuple[str, object, dict[str, object]]] = []
 
-    def fake_warning(msg, *args, **kwargs):
+    def fake_warning(msg: str, *args: object, **kwargs: object) -> None:
         calls.append(("warn", msg % args if args else msg, kwargs))
 
-    def fake_execv(path, argv):
+    def fake_execv(path: str, argv: list[str]) -> None:
         calls.append(("execv", list(argv), {}))
 
     monkeypatch.setattr(shell.logger, "warning", fake_warning)
-    monkeypatch.setattr(shell.os, "execv", fake_execv)
+    monkeypatch.setattr("os.execv", fake_execv)
     shell._relaunch_self()
     assert calls[-1][0] == "execv"
     assert not any("argv" in kw for _, _, kw in calls)
