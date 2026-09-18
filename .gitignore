@@ -63,3 +63,6 @@ packaging/*.AppImage
 *.bak.*
 *.orig
 *.rej
+
+# Runtime logs
+logs/
