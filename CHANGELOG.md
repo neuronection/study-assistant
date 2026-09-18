@@ -11,6 +11,17 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed
+- **Desktop webkit fallback hardening (ported from career-assistant
+  v0.11.x)** — the renderer-sentinel relaunch crashed on an invalid
+  logging kwarg (`argv=`), so the software fallback never engaged; the
+  fallback now also disables the WebKitGTK bubblewrap sandbox, forces
+  the X11 GDK backend, pins EGL+GLX to Mesa when the default glvnd
+  vendor is broken hardware, persists a `webkit_soft_fallback` marker
+  in the data dir (later boots skip the blank GPU attempt), and every
+  launch logs its render mode at WARNING. The .deb build now fails if
+  any GL/X/render library survives the strip (regression guard).
+
 ### Added
 
 - Tutor chat: the tools catalog now lists the assistant's proposal abilities

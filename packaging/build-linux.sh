@@ -60,6 +60,25 @@ if [[ "$TARGET" == "deb" || "$TARGET" == "all" ]]; then
       ! -name 'libexpat*' ! -name 'libgcc_s*' ! -name 'libreadline*' \
       ! -name 'libtinfo*' ! -name 'libncursesw*' -delete
     rm -rf "$INTERNAL/gio_modules"
+    # Regression guard (career-assistant v0.11.3 lesson): the GL/X/render
+    # adjacency must NEVER survive in the deb — the frozen exe's RUNPATH
+    # lets the system WebKit resolve its deps against these old copies
+    # and WebKitWebProcess aborts at EGL init (blank window). The
+    # allowlist strip above covers this today; the guard catches future
+    # allowlist edits.
+    _deny_hits=""
+    for _pat in libgtk-3 libgdk-3 libglib-2.0 libgobject-2.0 libgio-2.0 \
+      libpango libcairo libharfbuzz libfreetype libepoxy libX11 libXext \
+      libatk libatspi librsvg libpixman libfontconfig libxkbcommon \
+      libstdc++ libwayland libEGL libGLESv2 libgbm libdrm; do
+      _hit="$(ls "$INTERNAL"/${_pat}*.so.* 2>/dev/null || true)"
+      [[ -n "$_hit" ]] && _deny_hits="${_deny_hits}${_hit}"$'\n'
+    done
+    if [[ -n "$_deny_hits" ]]; then
+      echo "ERROR: system-stack libraries survived the deb strip:" >&2
+      echo "$_deny_hits" >&2
+      exit 1
+    fi
   fi
 
   cat > "$STAGE/usr/bin/$APP" <<EOF

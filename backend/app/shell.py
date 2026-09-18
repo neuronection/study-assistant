@@ -99,10 +99,7 @@ def default_window_state() -> WindowState:
 
 def _screen_for(x: int, y: int, screens: Sequence[Any]) -> Any | None:
     for screen in screens:
-        if (
-            screen.x <= x < screen.x + screen.width
-            and screen.y <= y < screen.y + screen.height
-        ):
+        if screen.x <= x < screen.x + screen.width and screen.y <= y < screen.y + screen.height:
             return screen
     return None
 
@@ -215,14 +212,14 @@ def save_window_state(data_dir: Path, state: WindowState) -> None:
         os.replace(tmp, path)
     except OSError:
         pass
+
+
 def run_browser() -> None:
     settings = get_settings()
     app = create_app(settings)
     url = f"http://{settings.host}:{settings.port}"
     threading.Timer(0.5, webbrowser.open, args=(url,)).start()
-    uvicorn.run(
-        app, host=settings.host, port=settings.port, log_level=settings.log_level.lower()
-    )
+    uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level.lower())
 
 
 def _egl_probe() -> bool:
@@ -242,21 +239,53 @@ def _egl_probe() -> bool:
         return False
 
 
+_MESA_EGL_JSON = Path("/usr/share/glvnd/egl_vendor.d/50_mesa.json")
+
+
 def _software_render_env(env: MutableMapping[str, str]) -> None:
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     env["WEBKIT_DISABLE_DMABUF_RENDERER"] = "1"
     env["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
+    # X11 is the most compatible WebKit surface — the Wayland path forces
+    # the EGL/DMABUF machinery even with the knobs above.
+    env["GDK_BACKEND"] = "x11"
+    # WebKitGTK's bubblewrap sandbox silently kills the WebProcess in
+    # some packaged-app layouts (page never loads, blank view).
+    env["WEBKIT_DISABLE_SANDBOX"] = "1"
+    # LIBGL_ALWAYS_SOFTWARE only steers Mesa; when glvnd's default EGL/GLX
+    # vendor is broken hardware (EGL_BAD_PARAMETER even with every knob
+    # above), pinning Mesa's vendor makes the software path reachable
+    # (career-assistant v0.11.x field report on Mint 22).
+    if _MESA_EGL_JSON.exists():
+        env["__EGL_VENDOR_LIBRARY_FILENAMES"] = str(_MESA_EGL_JSON)
+        env["__GLX_VENDOR_LIBRARY_NAME"] = "mesa"
 
 
 def apply_webkit_compat_env(
     environ: MutableMapping[str, str] | None = None,
+    marker: Path | None = None,
 ) -> MutableMapping[str, str]:
+    """Force software WebKit rendering when the machine has no usable GPU.
+
+    Skipped when the GPU path is forced with `SA_WEBKIT_GPU=1`; the probe
+    is skipped when a previous relaunch already marked the soft fallback
+    (`SA_WEBKIT_SOFT_FALLBACK=1`) or when the persisted marker exists —
+    the marker lets every later boot start in software instead of
+    repeating the blank + relaunch cycle.
+    """
     env: MutableMapping[str, str] = os.environ if environ is None else environ
     if sys.platform != "linux" or env.get("SA_WEBKIT_GPU") == "1":
         return env
-    if env.get("SA_WEBKIT_SOFT_FALLBACK") != "1" and _egl_probe():
+    persisted = marker is not None and marker.exists()
+    if env.get("SA_WEBKIT_SOFT_FALLBACK") != "1" and not persisted and _egl_probe():
         return env
     _software_render_env(env)
+    if marker is not None:
+        try:
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text("1", encoding="utf-8")
+        except OSError:
+            pass
     return env
 
 
@@ -281,7 +310,7 @@ def _plan_fallback(env: MutableMapping[str, str]) -> tuple[str, str]:
 def _relaunch_self() -> None:
     mode, event = _plan_fallback(os.environ)
     argv = _relaunch_argv(mode)
-    logger.warning(event, argv=argv)
+    logger.warning("%s — relaunching %s (%s)", event, mode, " ".join(argv))
     os.execv(argv[0], argv)
 
 
@@ -324,8 +353,8 @@ class DesktopBridge:
 
 def run() -> None:
     sanitize_environment()
-    apply_webkit_compat_env()
     settings = get_settings()
+    apply_webkit_compat_env(marker=Path(settings.data_dir) / "webkit_soft_fallback")
     app = create_app(settings)
     desktop_files = DesktopFileAccess()
     app.state.desktop_files = desktop_files
@@ -338,10 +367,19 @@ def run() -> None:
     thread.start()
     sentinel_cancel = threading.Event()
     gpu_forced = os.environ.get("SA_WEBKIT_GPU") == "1"
-    render_mode = "forced-gpu" if gpu_forced else (
-        "software" if os.environ.get("WEBKIT_DISABLE_DMABUF_RENDERER") == "1" else "gpu"
+    render_mode = (
+        "forced-gpu"
+        if gpu_forced
+        else ("software" if os.environ.get("WEBKIT_DISABLE_DMABUF_RENDERER") == "1" else "gpu")
     )
-    logger.info("webkit_render_mode", mode=render_mode)
+    logger.warning(
+        "webkit render mode: %s (soft_fallback=%s persisted=%s mesa_json=%s session=%s)",
+        render_mode,
+        os.environ.get("SA_WEBKIT_SOFT_FALLBACK", "0"),
+        (Path(settings.data_dir) / "webkit_soft_fallback").exists(),
+        _MESA_EGL_JSON.exists(),
+        os.environ.get("XDG_SESSION_TYPE", "?"),
+    )
     if sys.platform == "linux" and not gpu_forced:
         threading.Thread(
             target=_watch_renderer,

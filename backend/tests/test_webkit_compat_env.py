@@ -16,6 +16,8 @@ def test_compat_env_software_when_probe_fails(monkeypatch: pytest.MonkeyPatch) -
     assert env["LIBGL_ALWAYS_SOFTWARE"] == "1"
     assert env["WEBKIT_DISABLE_DMABUF_RENDERER"] == "1"
     assert env["WEBKIT_DISABLE_COMPOSITING_MODE"] == "1"
+    assert env["GDK_BACKEND"] == "x11"
+    assert env["WEBKIT_DISABLE_SANDBOX"] == "1"
 
 
 def test_compat_env_gpu_when_probe_ok(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -55,9 +57,7 @@ def test_relaunch_argv_frozen(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_relaunch_argv_dev_replaces_mode_keeps_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delattr(sys, "frozen", raising=False)
     monkeypatch.setattr(sys, "executable", "/usr/bin/python3")
-    monkeypatch.setattr(
-        sys, "argv", ["backend/studyassistant/__main__.py", "web", "--flag"]
-    )
+    monkeypatch.setattr(sys, "argv", ["backend/studyassistant/__main__.py", "web", "--flag"])
     assert _relaunch_argv("app") == [
         "/usr/bin/python3",
         "-m",
@@ -120,11 +120,56 @@ def test_watch_renderer_no_relaunch_loop_after_success() -> None:
     def relaunch() -> None:
         marker.relaunched = True
 
-    thread = threading.Thread(
-        target=_watch_renderer, args=(app, threading.Event(), 0.5, relaunch)
-    )
+    thread = threading.Thread(target=_watch_renderer, args=(app, threading.Event(), 0.5, relaunch))
     thread.start()
     time.sleep(0.1)
     app.state.spa_rendered = True
     thread.join()
     assert marker.relaunched is False
+
+
+def test_compat_env_persisted_marker_forces_software(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """A machine whose GPU path failed once must not repeat the blank
+    boot: the persisted marker short-circuits the probe (ported from
+    career-assistant v0.11.x)."""
+    monkeypatch.setattr(shell, "_egl_probe", lambda: True)
+    marker = tmp_path / "webkit_soft_fallback"
+    marker.write_text("1", encoding="utf-8")
+    env = apply_webkit_compat_env({}, marker=marker)
+    assert env["WEBKIT_DISABLE_DMABUF_RENDERER"] == "1"
+
+
+def test_compat_env_software_writes_marker(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(shell, "_egl_probe", lambda: False)
+    marker = tmp_path / "webkit_soft_fallback"
+    apply_webkit_compat_env({}, marker=marker)
+    assert marker.exists()
+
+
+def test_compat_env_probe_pass_writes_no_marker(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    monkeypatch.setattr(shell, "_egl_probe", lambda: True)
+    marker = tmp_path / "webkit_soft_fallback"
+    apply_webkit_compat_env({}, marker=marker)
+    assert not marker.exists()
+
+
+def test_relaunch_self_logs_percent_style_and_execs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The relaunch used to crash on logger.warning(event, argv=...) — an
+    invalid logging kwarg — so the software fallback never engaged."""
+    calls: list = []
+
+    def fake_warning(msg, *args, **kwargs):
+        calls.append(("warn", msg % args if args else msg, kwargs))
+
+    def fake_execv(path, argv):
+        calls.append(("execv", list(argv), {}))
+
+    monkeypatch.setattr(shell.logger, "warning", fake_warning)
+    monkeypatch.setattr(shell.os, "execv", fake_execv)
+    shell._relaunch_self()
+    assert calls[-1][0] == "execv"
+    assert not any("argv" in kw for _, _, kw in calls)
