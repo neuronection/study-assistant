@@ -174,10 +174,8 @@ jobs:
           $ok = $false
           foreach ($i in 1..90) {
             Start-Sleep -Seconds 2
-            try {
-              $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/health" -TimeoutSec 2
-              if ($health.status -eq "ok") { $ok = $true; break }
-            } catch {}
+            $health = curl.exe -fsS --noproxy '*' --max-time 5 http://127.0.0.1:8000/api/v1/health 2>$null
+            if ($LASTEXITCODE -eq 0 -and "$health" -match '"status"\s*:\s*"ok"') { $ok = $true; break }
           }
           taskkill /PID $p.Id /T /F 2>$null
           if (-not $ok) { throw "health check timed out" }

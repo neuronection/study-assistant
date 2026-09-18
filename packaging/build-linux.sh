@@ -53,7 +53,7 @@ if [[ "$TARGET" == "deb" || "$TARGET" == "all" ]]; then
   echo "==> Stripping bundled GUI stack from deb stage (system copies must win)"
   INTERNAL="$STAGE/usr/lib/$APP/_internal"
   if [[ -d "$INTERNAL" ]]; then
-    find "$INTERNAL" -maxdepth 1 -type f -name 'lib*.so*' \
+    find "$INTERNAL" -maxdepth 1 \( -type f -o -type l \) -name 'lib*.so*' \
       ! -name 'libpython3*' ! -name 'libmupdf*' ! -name 'libmupdfcpp*' \
       ! -name 'libssl*' ! -name 'libcrypto*' ! -name 'libsqlite3*' ! -name 'libffi*' \
       ! -name 'libz.so*' ! -name 'libzstd*' ! -name 'liblzma*' ! -name 'libbz2*' \
