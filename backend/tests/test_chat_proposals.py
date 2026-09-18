@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from pytest import fixture
+from pytest import fixture, raises
 from sqlalchemy import select
 from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway, add_material, make_course
 
@@ -1534,3 +1534,168 @@ def test_unread_edit_repairs_after_read(
         assert f"READ [N{note_id}]" in repair_prompt
         assert proposal["action"] == "edit_note"
         assert proposal["payload"]["original_md"]
+
+
+def test_text_edit_ops_resolution() -> None:
+    from app.ai.proposals import ProposalError, TextEditOp, resolve_text_edits
+
+    base = "# Note\n\nalpha beta gamma"
+    resolved = resolve_text_edits(
+        base,
+        [
+            TextEditOp(op="replace", find="beta", text="BETA"),
+            TextEditOp(op="append", text="delta"),
+            TextEditOp(op="replace", find="gamma\ndelta", text="gamma delta!"),
+        ],
+    )
+    assert resolved == "# Note\n\nalpha BETA gamma delta!"
+    with raises(ProposalError, match="anchor_mismatch"):
+        resolve_text_edits(base, [TextEditOp(op="replace", find="omega", text="x")])
+    with raises(ProposalError, match="anchor_ambiguous"):
+        resolve_text_edits("a b a", [TextEditOp(op="replace", find="a", text="z")])
+    assert resolve_text_edits("", [TextEditOp(op="append", text="first")]) == "first"
+    assert (
+        resolve_text_edits("head", [TextEditOp(op="prepend", text="NOTE")])
+        == "NOTE\nhead"
+    )
+    removed = resolve_text_edits(
+        base, [TextEditOp(op="replace", find=" beta", text="")]
+    )
+    assert removed == "# Note\n\nalpha gamma"
+
+
+def test_text_edit_payload_shapes() -> None:
+    from app.ai.proposals import EditNotePayload, extract_proposals_with_drops
+
+    with raises(ValidationError, match="replace requires"):
+        EditNotePayload.model_validate(
+            {"note_id": 1, "text_edits": [{"op": "replace", "text": "x"}]}
+        )
+    with raises(ValidationError, match="find applies to replace only"):
+        EditNotePayload.model_validate(
+            {
+                "note_id": 1,
+                "text_edits": [{"op": "append", "find": "a", "text": "x"}],
+            }
+        )
+    with raises(ValidationError, match="conflicting_edit"):
+        EditNotePayload.model_validate(
+            {
+                "note_id": 1,
+                "new_body_md": "full",
+                "text_edits": [{"op": "append", "text": "x"}],
+            }
+        )
+    with raises(ValidationError, match="conflicting_edit"):
+        EditNotePayload.model_validate({"note_id": 1})
+    text = (
+        "```proposal\n"
+        + json.dumps(
+            {
+                "action": "edit_note",
+                "note_id": 1,
+                "new_body_md": "full",
+                "text_edits": [{"op": "append", "text": "x"}],
+            }
+        )
+        + "\n```"
+    )
+    _proposals, drops = extract_proposals_with_drops(text)
+    assert drops == ["conflicting_edit"]
+
+
+def test_anchored_edit_note_resolves_and_executes(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, gateway, app = client
+    with test_client:
+        course_id = make_course(test_client)
+        note_id = make_note(
+            test_client, course_id, "# Derivation note\n\nThe derivative is $2x$."
+        )
+        anchored = (
+            "```proposal\n"
+            + json.dumps(
+                {
+                    "action": "edit_note",
+                    "note_id": note_id,
+                    "reason": "sign error",
+                    "text_edits": [
+                        {"op": "replace", "find": "$2x$", "text": "$-2x$"},
+                        {"op": "append", "text": "Checked."}
+                    ],
+                }
+            )
+            + "\n```"
+        )
+        gateway.responses.append(f"READ N{note_id}")
+        gateway.responses.append("Fixing it.\n\n" + anchored)
+        session = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_id}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session['id']}/messages",
+            json={"content": "fix the sign error only"},
+        )
+        proposal = get_proposal(test_client, session["id"])
+        payload = proposal["payload"]
+        assert payload["original_md"] == (
+            "# Derivation note\n\nThe derivative is $2x$."
+        )
+        assert payload["new_body_md"] == (
+            "# Derivation note\n\nThe derivative is $-2x$.\nChecked."
+        )
+        assert payload["text_edits"][0]["find"] == "$2x$"
+
+        approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["status"] == "executed"
+        stored = app.state.session_factory()
+        versions = stored.scalars(
+            select(NoteVersion).where(NoteVersion.note_id == note_id)
+        ).all()
+        stored.close()
+        assert len(versions) == 1
+        note = test_client.get(f"/api/v1/notes/{note_id}").json()
+        rendered = str(note["body"])
+        assert "-2x" in rendered
+        assert "Checked." in rendered
+
+
+def test_anchored_edit_anchor_mismatch_drops(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, gateway, _app = client
+    with test_client:
+        course_id = make_course(test_client)
+        note_id = make_note(test_client, course_id, "# Derivation note\n\nOriginal.")
+        bad_anchor = (
+            "```proposal\n"
+            + json.dumps(
+                {
+                    "action": "edit_note",
+                    "note_id": note_id,
+                    "text_edits": [
+                        {"op": "replace", "find": "not in the note", "text": "x"}
+                    ],
+                }
+            )
+            + "\n```"
+        )
+        gateway.responses.append(f"READ N{note_id}")
+        gateway.responses.append("Fixing it.\n\n" + bad_anchor)
+        gateway.responses.append("Fixing it.\n\n" + bad_anchor)
+        session = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_id}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session['id']}/messages",
+            json={"content": "fix"},
+        )
+        messages = wait_for_assistant(test_client, session["id"])
+        assistant = messages[-1]
+        assert assistant["proposals"] == []
+        assert any(
+            "anchor_mismatch" in warning for warning in assistant["warnings"]
+        )
+        assert assistant["trace"]["proposals_dropped"][-1] == "anchor_mismatch"

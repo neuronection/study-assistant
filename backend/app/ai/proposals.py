@@ -15,16 +15,80 @@ class ProposalError(ValueError):
     pass
 
 
+class TextEditOp(BaseModel):
+    """One anchored edit (plan 78-C): ``replace`` requires an exact
+    ``find`` anchor that matches the current content exactly once;
+    ``append``/``prepend`` are additive and cannot delete."""
+
+    op: Literal["replace", "append", "prepend"]
+    find: str | None = Field(default=None, max_length=2000)
+    text: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def _anchor_shape(self) -> "TextEditOp":
+        if self.op == "replace":
+            if not self.find:
+                raise ValueError("replace requires a non-empty find anchor")
+        elif self.find is not None:
+            raise ValueError("find applies to replace only")
+        return self
+
+
+def resolve_text_edits(base: str, ops: list[TextEditOp]) -> str:
+    """Apply anchored ops IN ORDER, each anchored against the result of
+    the previous; a silent overwrite is structurally impossible."""
+    current = base
+    for index, edit in enumerate(ops):
+        if edit.op == "replace":
+            find = edit.find or ""
+            count = current.count(find)
+            if count == 0:
+                raise ProposalError(
+                    f"anchor_mismatch: quoted text does not appear in the "
+                    f"document (edit #{index + 1}) — quote it verbatim from "
+                    "the read result"
+                )
+            if count > 1:
+                raise ProposalError(
+                    f"anchor_ambiguous: quoted text appears {count}x in the "
+                    f"document (edit #{index + 1}) — include more surrounding "
+                    "context"
+                )
+            current = current.replace(find, edit.text, 1)
+        elif edit.op == "append":
+            current = f"{current}\n{edit.text}" if current else edit.text
+        else:
+            current = f"{edit.text}\n{current}" if current else edit.text
+    return current
+
+
+class _TextEditsPayloadMixin(BaseModel):
+    text_edits: list[TextEditOp] = Field(default_factory=list, max_length=10)
+
+
 class CreateNotePayload(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     body_md: str = Field(min_length=1, max_length=50000)
     node_id: int | None = None
 
 
-class EditNotePayload(BaseModel):
+class EditNotePayload(_TextEditsPayloadMixin):
     note_id: int
-    new_body_md: str = Field(min_length=1, max_length=50000)
+    new_body_md: str | None = Field(default=None, min_length=1, max_length=50000)
     reason: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _one_way_to_edit(self) -> "EditNotePayload":
+        if self.new_body_md is None and not self.text_edits:
+            raise ValueError(
+                "conflicting_edit: set either new_body_md or text_edits"
+            )
+        if self.new_body_md is not None and self.text_edits:
+            raise ValueError(
+                "conflicting_edit: new_body_md and text_edits are mutually "
+                "exclusive — one way to express the change"
+            )
+        return self
 
 
 class AppendNotePayload(BaseModel):
@@ -33,10 +97,23 @@ class AppendNotePayload(BaseModel):
     heading: str | None = Field(default=None, max_length=300)
 
 
-class EditMaterialPayload(BaseModel):
+class EditMaterialPayload(_TextEditsPayloadMixin):
     material_id: int
-    new_markdown: str = Field(min_length=1, max_length=200000)
+    new_markdown: str | None = Field(default=None, min_length=1, max_length=200000)
     reason: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _one_way_to_edit(self) -> "EditMaterialPayload":
+        if self.new_markdown is None and not self.text_edits:
+            raise ValueError(
+                "conflicting_edit: set either new_markdown or text_edits"
+            )
+        if self.new_markdown is not None and self.text_edits:
+            raise ValueError(
+                "conflicting_edit: new_markdown and text_edits are mutually "
+                "exclusive — one way to express the change"
+            )
+        return self
 
 
 class AppendMaterialPayload(BaseModel):
@@ -197,7 +274,11 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
         payload_model=EditNotePayload,
         doc_line=(
             '{"action": "edit_note", "note_id": int, "new_body_md": markdown, '
-            '"reason": str|null}'
+            '"reason": str|null} — or, for a targeted change, "text_edits": '
+            '[{"op": "replace", "find": "exact current text", "text": '
+            '"replacement"} | {"op": "append", "text": …} | {"op": "prepend", '
+            '"text": …}] (preferred: the find text must appear exactly once '
+            "in the note's current body)"
         ),
         snapshot="note_body",
         context_ids=(("note_id", "note"),),
@@ -215,7 +296,11 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
         payload_model=EditMaterialPayload,
         doc_line=(
             '{"action": "edit_material", "material_id": int, '
-            '"new_markdown": markdown, "reason": str|null}'
+            '"new_markdown": markdown, "reason": str|null} — or, for a '
+            'targeted change, "text_edits": [{"op": "replace", "find": '
+            '"exact current text", "text": "replacement"} | {"op": "append", '
+            '"text": …} | {"op": "prepend", "text": …}] (preferred: the find '
+            "text must appear exactly once in the material's current markdown)"
         ),
         snapshot="extraction_md",
         context_ids=(("material_id", "material"),),
@@ -607,6 +692,9 @@ PROPOSAL_DROP_REASONS: tuple[str, ...] = (
     "unknown_action",
     "schema",
     "ungrounded",
+    "conflicting_edit",
+    "anchor_mismatch",
+    "anchor_ambiguous",
     "cap",
 )
 
@@ -640,8 +728,11 @@ def extract_proposals_with_drops(
             continue
         try:
             payload = spec.payload_model.model_validate(_payload_from(raw))
-        except ValidationError:
-            drops.append("schema")
+        except ValidationError as error:
+            if "conflicting_edit" in str(error):
+                drops.append("conflicting_edit")
+            else:
+                drops.append("schema")
             continue
         proposals.append((action, json.loads(payload.model_dump_json())))
     return proposals, drops
@@ -650,6 +741,11 @@ def extract_proposals_with_drops(
 def extract_proposals(text: str) -> list[tuple[str, dict[str, Any]]]:
     proposals, _ = extract_proposals_with_drops(text)
     return proposals
+
+
+def drop_code(reason: str) -> str:
+    """Stable drop-reason token (`anchor_mismatch` …) from a message."""
+    return str(reason).split(":", 1)[0].strip()[:40]
 
 
 def strip_proposal_fences(text: str) -> str:

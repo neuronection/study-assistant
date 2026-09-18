@@ -420,3 +420,48 @@ describe('ProposalCard', () => {
     expect(document.querySelector('[data-as="chat-markdown"]')).not.toBeNull()
   })
 })
+
+describe('ProposalCard anchored edits (plan 78-C)', () => {
+  const ANCHORED: ChatProposal = {
+    id: 12,
+    action: 'edit_note',
+    payload: {
+      note_id: 5,
+      original_md: '# Note\n\nThe derivative is $2x$.',
+      new_body_md: '# Note\n\nThe derivative is $-2x$.',
+      reason: 'sign error',
+      text_edits: [
+        { op: 'replace', find: '$2x$', text: '$-2x$' },
+        { op: 'append', text: 'Checked.' },
+      ],
+    },
+    status: 'proposed',
+    result: null,
+  }
+
+  test('renders anchored-edit summary rows and the surgical diff', async () => {
+    renderCard(ANCHORED)
+    expect(
+      await screen.findByText(/Suggested changes/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Replaces “\$2x\$” with “\$-2x\$”/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Appends: “Checked\.”/)).toBeInTheDocument()
+    expect(await screen.findByText(/Formatted/)).toBeInTheDocument()
+    expect(screen.getByText(/-2x/)).toBeInTheDocument()
+  })
+
+  test('full-body edit cards render no anchored-edit section', async () => {
+    renderCard({
+      ...ANCHORED,
+      payload: {
+        note_id: 5,
+        original_md: '# Note',
+        new_body_md: '# Note rewritten',
+      },
+    })
+    expect(await screen.findByText(/Formatted/)).toBeInTheDocument()
+    expect(screen.queryByText(/Suggested changes/)).not.toBeInTheDocument()
+  })
+})

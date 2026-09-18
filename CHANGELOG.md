@@ -26,6 +26,12 @@ Release history from before the public launch lives in the
   round that names the exact `READ` call to make, and are dropped with an
   honest reason instead of becoming cards that can never apply (plan 78-B,
   ADR-192).
+- Tutor chat: note and material edit proposals can now carry anchored
+  `text_edits` (replace-with-exact-anchor / append / prepend) that resolve
+  server-side against the current content — surgical diffs for targeted
+  changes instead of whole-document regeneration, with
+  mismatch/ambiguity/conflict dropped by stable reason codes (plan 78-C,
+  ADR-192).
 
 ### Changed
 

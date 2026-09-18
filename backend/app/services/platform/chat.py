@@ -25,8 +25,12 @@ from ...ai.proposals import (
     DISMISSAL_NOTE,
     MAX_PROPOSALS_PER_TURN,
     PROPOSAL_DOC,
+    ProposalError,
+    TextEditOp,
+    drop_code,
     extract_proposals_with_drops,
     filter_ungrounded,
+    resolve_text_edits,
     strip_proposal_fences,
 )
 from ...ai.skills import CHAT_ANSWER_SYSTEM
@@ -1531,6 +1535,44 @@ class ChatService:
         if proposals or "```proposal" in final_output:
             final_output = strip_proposal_fences(final_output)
         used_mentions = registry.parse(final_output)
+        prepared_proposals: list[tuple[str, dict[str, Any]]] = []
+        for action, payload in proposals[:MAX_PROPOSALS_PER_TURN]:
+            stored_payload = dict(payload)
+            snapshot = capture_proposal_snapshot(
+                self._session,
+                action=action,
+                payload=stored_payload,
+                course_id=int(chat_session.course_id or 0),
+            )
+            if snapshot:
+                stored_payload.update(snapshot)
+            if stored_payload.get("text_edits"):
+                base = stored_payload.get("original_md")
+                drop: str | None = None
+                if not base:
+                    drop = "anchor_mismatch"
+                else:
+                    try:
+                        resolved = resolve_text_edits(
+                            str(base),
+                            [
+                                TextEditOp.model_validate(op)
+                                for op in stored_payload["text_edits"]
+                            ],
+                        )
+                    except ProposalError as error:
+                        drop = drop_code(str(error))
+                    else:
+                        body_field = (
+                            "new_body_md"
+                            if action == "edit_note"
+                            else "new_markdown"
+                        )
+                        stored_payload[body_field] = resolved
+                if drop is not None:
+                    proposal_drops.append(drop)
+                    continue
+            prepared_proposals.append((action, stored_payload))
         turn_warnings = (
             [prep.turn_warning] if prep.turn_warning is not None else []
         )
@@ -1561,16 +1603,7 @@ class ChatService:
         user_message.active_child_id = message.id
         self._session.flush()
         proposal_rows: list[ChatProposal] = []
-        for action, payload in proposals[:MAX_PROPOSALS_PER_TURN]:
-            stored_payload = dict(payload)
-            snapshot = capture_proposal_snapshot(
-                self._session,
-                action=action,
-                payload=stored_payload,
-                course_id=int(chat_session.course_id or 0),
-            )
-            if snapshot:
-                stored_payload.update(snapshot)
+        for action, stored_payload in prepared_proposals:
             target = resolve_proposal_target(
                 self._session,
                 action=action,

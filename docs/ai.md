@@ -263,6 +263,22 @@ The model may end a chat turn with **up to three** fenced action proposals
   happens without the click. `POST /chat/proposals/{id}/dismiss` records
   dismissal; after **2 dismissals** in a session the system prompt gains a
   "the user dismissed earlier proposals" note (more conservative proposals).
+- **Anchored text edits (plan 78-C, ADR-192)**: `edit_note`/`edit_material`
+  payloads accept an optional `text_edits` list —
+  `{op: "replace"|"append"|"prepend", find?, text}` (≤10 ops, ≤2000 chars
+  each) — as the targeted alternative to full-body replacement
+  (`new_body_md`/`new_markdown` and `text_edits` are mutually exclusive; the
+  prompt grammar steers the model to anchored edits for targeted changes).
+  Ops resolve **server-side at proposal creation** (in `finalize_turn`, right
+  after `capture_proposal_snapshot`): they apply in order, each anchored
+  against the previous result, a `replace` anchor must match the current
+  content **exactly once** (`anchor_mismatch` / `anchor_ambiguous` drop
+  codes otherwise; both instructions at once is `conflicting_edit`), and the
+  resolved body is stored as the payload's `new_body_md`/`new_markdown` — so
+  the approve path, snapshot staleness, version creation and the formatted
+  diff are all reused unchanged; only the diff is now surgical. The raw ops
+  stay in `payload.text_edits` (audit + the card's "Suggested changes"
+  summary rows). No migration (payload JSON).
 - **Frontend**: `ProposalCard` (`features/ai/`) — status badge (incl. stale +
   its explanation), expandable payload preview, Approve/Dismiss with pending
   state, deep-link to the created note, "Open generator" for approved

@@ -2212,7 +2212,11 @@
       "openMaterial": "Άνοιγμα του υλικού",
       "target_material": "Υλικό",
       "target_note": "Σημείωση",
-      "target_concept": "Έννοια"
+      "target_concept": "Έννοια",
+      "editsTitle": "Προτεινόμενες αλλαγές",
+      "editReplace": "Αντικαθιστά «{{find}}» με «{{text}}»",
+      "editAppend": "Προσθήκη στο τέλος: «{{text}}»",
+      "editPrepend": "Προσθήκη στην αρχή: «{{text}}»"
     },
     "mentions": {
       "material": "Υλικό",

@@ -27,6 +27,31 @@ notifications aggregate + chat rail badge, one shared card serializer for
 WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
 the family ADR was amended pre-acceptance this session to bind them.
 
+**Feature — anchored chat edits (plan 78-C, ADR-192, 2026-09-18):** slice C
+of plan 78 — the Tier-2 centerpiece: targeted note/material edits no longer
+regenerate whole documents. `edit_note`/`edit_material` payloads gain an
+optional **`text_edits`** list (`{op: replace|append|prepend, find?, text}`,
+≤10 ops / 2000 chars each) — mutually exclusive with `new_body_md` /
+`new_markdown` (sending both is a `conflicting_edit` drop; neither is a
+validation error). Ops resolve **server-side at proposal creation** in
+`finalize_turn`, immediately after the staleness snapshot: in order, each
+anchored against the previous result, `replace` anchors must match the
+current content exactly once — `anchor_mismatch` / `anchor_ambiguous` drop
+with a reason code instead of writing anything; the resolved body is stored
+as the payload's `new_body_md`/`new_markdown`, so the approve path, snapshot
+staleness, `ai-edit` versions, postprocess, and the card's formatted
+`MarkdownDiffView` are reused unchanged — only the diff is now surgical (the
+card also renders "Suggested changes" summary rows from the raw ops, en/de/el
+i18n). The prompt grammar documents the anchored form and prefers it for
+targeted changes; the full-body path remains for wholesale rewrites. No
+migration (payload JSON); OpenAPI unchanged (chat payload shapes are
+schema-free JSON on the wire). Tests: backend +4 (resolver unit matrix incl.
+in-order composition/ambiguity/deletion, payload-shape + drop-code mapping,
+full-turn anchored edit → resolved card → approve → single `ai-edit` version,
+anchor-mismatch drop path) — 1,272 green, ruff/mypy clean; frontend +2
+(summary rows + surgical diff; no-anchored-section regression) — 1,330 green,
+lint/typecheck/build/i18n green. AI alignment clean.
+
 **Feature — chat proposal grounding gate (plan 78-B, ADR-192, 2026-09-18):**
 slice B of plan 78 — hallucinated proposal targets are now structurally
 impossible. **Manifest coverage**: `ProposalActionSpec` gains declarative

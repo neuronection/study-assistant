@@ -2212,7 +2212,11 @@
       "openMaterial": "Material öffnen",
       "target_material": "Material",
       "target_note": "Notiz",
-      "target_concept": "Konzept"
+      "target_concept": "Konzept",
+      "editsTitle": "Vorgeschlagene Änderungen",
+      "editReplace": "Ersetzt „{{find}}“ durch „{{text}}“",
+      "editAppend": "Hängt an: „{{text}}“",
+      "editPrepend": "Stellt voran: „{{text}}“"
     },
     "mentions": {
       "material": "Material",

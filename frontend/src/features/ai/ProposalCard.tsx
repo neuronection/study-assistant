@@ -180,6 +180,42 @@ const TARGET_ICONS = {
   concept: Network,
 } as const
 
+interface AnchoredEdit {
+  op: 'replace' | 'append' | 'prepend'
+  find?: string
+  text?: string
+}
+
+function anchoredEdits(proposal: ChatProposal): AnchoredEdit[] {
+  const payload = (proposal.payload ?? {}) as Record<string, unknown>
+  const raw = payload.text_edits
+  if (!Array.isArray(raw)) return []
+  const ops: AnchoredEdit[] = []
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) continue
+    const record = entry as Record<string, unknown>
+    if (
+      record.op !== 'replace' &&
+      record.op !== 'append' &&
+      record.op !== 'prepend'
+    ) {
+      continue
+    }
+    ops.push({
+      op: record.op,
+      find: typeof record.find === 'string' ? record.find : undefined,
+      text: typeof record.text === 'string' ? record.text : undefined,
+    })
+  }
+  return ops
+}
+
+function truncate(value: string | undefined, cap = 60): string {
+  const text = (value ?? '').trim()
+  if (!text) return ''
+  return text.length <= cap ? text : `${text.slice(0, cap - 1)}…`
+}
+
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   const tone =
@@ -305,6 +341,7 @@ export function ProposalCard({
   const noteId = proposal.result?.note_id
   const materialId = proposal.result?.material_id
   const diff = proposalDiff(view)
+  const edits = anchoredEdits(view)
 
   return (
     <div className="border-border bg-surface my-1 w-full max-w-[92%] rounded-xl border">
@@ -349,6 +386,29 @@ export function ProposalCard({
               · {target.nodePath.join(' › ')}
             </span>
           ) : null}
+        </div>
+      ) : null}
+      {edits.length > 0 ? (
+        <div className="border-border text-muted-foreground space-y-0.5 border-t px-3 py-1.5 text-[11px]">
+          <p className="text-foreground/70 font-semibold uppercase tracking-wide">
+            {t('ai.proposals.editsTitle')}
+          </p>
+          {edits.map((edit, index) => (
+            <p key={index} className="min-w-0 truncate">
+              {edit.op === 'replace' ? (
+                <>
+                  {t('ai.proposals.editReplace', {
+                    find: truncate(edit.find),
+                    text: truncate(edit.text),
+                  })}
+                </>
+              ) : edit.op === 'append' ? (
+                t('ai.proposals.editAppend', { text: truncate(edit.text) })
+              ) : (
+                t('ai.proposals.editPrepend', { text: truncate(edit.text) })
+              )}
+            </p>
+          ))}
         </div>
       ) : null}
       {diff ? (
