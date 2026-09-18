@@ -465,3 +465,42 @@ describe('ProposalCard anchored edits (plan 78-C)', () => {
     expect(screen.queryByText(/Suggested changes/)).not.toBeInTheDocument()
   })
 })
+
+describe('ProposalCard conflict flow (plan 78-D)', () => {
+  const CONFLICT: ChatProposal = {
+    id: 21,
+    action: 'edit_note',
+    payload: {
+      note_id: 5,
+      original_md: '# Note\n\nCurrent content.',
+      new_body_md: '# Note\n\nCurrent content, fixed.',
+    },
+    status: 'conflict',
+    result: {
+      conflict:
+        'target changed since this proposal was made — the diff was refreshed; review and approve again',
+    },
+  }
+
+  test('conflict card shows warning, refreshed diff and approve-again button', async () => {
+    renderCard(CONFLICT)
+    expect(await screen.findByText('Changed')).toBeInTheDocument()
+    expect(
+      screen.getByText(/target changed since this proposal/),
+    ).toBeInTheDocument()
+    const approveAgain = screen.getByRole('button', {
+      name: /approve refreshed diff/i,
+    })
+    expect(approveAgain).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dismiss/i })).toBeInTheDocument()
+  })
+
+  test('approving a conflict card calls the API and flips to executed', async () => {
+    approveChatProposal.mockResolvedValue({ ...CONFLICT, status: 'executed' })
+    renderCard(CONFLICT)
+    fireEvent.click(
+      await screen.findByRole('button', { name: /approve refreshed diff/i }),
+    )
+    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith(21))
+  })
+})

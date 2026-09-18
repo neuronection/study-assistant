@@ -40,6 +40,7 @@ from ...ai.tools import (
 )
 from ...ai.widgets import CHAT_WIDGET_DOC
 from ...core.secrets import get_secret
+from ...core.vocab import ChatProposalStatus
 from ...domain.models import (
     Activity,
     AiInteraction,
@@ -152,6 +153,7 @@ class TurnPrep:
     contract: list[Constraint] = field(default_factory=list)
     skill_version_id: int | None = None
     turn_warning: str | None = None
+    proposal_feedback: str | None = None
 
 
 class ChatError(ValueError):
@@ -859,7 +861,7 @@ class ChatService:
 
     def _dismissal_count(self, chat_session: ChatSession) -> int:
         dismissed = self._session.query(ChatProposal).filter(
-            ChatProposal.status == "dismissed",
+            ChatProposal.status == ChatProposalStatus.DISMISSED.value,
             ChatProposal.message_id.in_(
                 select(ChatMessage.id).where(
                     ChatMessage.session_id == chat_session.id
@@ -867,6 +869,57 @@ class ChatService:
             ),
         )
         return dismissed.count()
+
+    #: Feedback block caps: at most this many outcome rows and tracked ids.
+    PROPOSAL_FEEDBACK_CAP = 10
+    PROPOSAL_FEEDBACK_TRACK_CAP = 100
+
+    def _proposal_feedback(
+        self, chat_session: ChatSession
+    ) -> str | None:
+        """Structured outcome block for cards resolved since the model's
+        last turn (plan 78-D): the model must learn what happened to its
+        proposals and not re-propose the same change unprompted."""
+        context = dict(chat_session.context or {})
+        reported: list[int] = [
+            int(value)
+            for value in (context.get("proposal_feedback_ids") or [])
+            if isinstance(value, (int, str)) and str(value).isdigit()
+        ]
+        rows = self._session.execute(
+            select(ChatProposal)
+            .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
+            .where(
+                ChatMessage.session_id == chat_session.id,
+                ChatProposal.status != ChatProposalStatus.PROPOSED.value,
+            )
+            .order_by(ChatProposal.id.desc())
+            .limit(self.PROPOSAL_FEEDBACK_TRACK_CAP)
+        ).scalars().all()
+        fresh = [row for row in rows if row.id not in reported][
+            : self.PROPOSAL_FEEDBACK_CAP
+        ]
+        if not fresh:
+            return None
+        lines = []
+        for row in fresh:
+            payload = row.payload or {}
+            target = str(payload.get("target_name") or "").strip()
+            label = f"{row.action} → {row.status}"
+            if target:
+                label = f"{label} ({target})"
+            lines.append(label)
+            reported.append(row.id)
+        context["proposal_feedback_ids"] = reported[
+            -self.PROPOSAL_FEEDBACK_TRACK_CAP :
+        ]
+        chat_session.context = context
+        self._session.flush()
+        return (
+            "PROPOSAL OUTCOMES — cards you proposed earlier were resolved:\n"
+            + "\n".join(f"- {line}" for line in lines)
+            + "\nDo not re-propose the same change unprompted."
+        )
 
     def _find_local(
         self, query: str, chat_session: ChatSession, registry: MentionRegistry
@@ -1274,6 +1327,7 @@ class ChatService:
         dismissal_note: bool = False,
         native_tools: bool = False,
         chat_session: ChatSession | None = None,
+        proposal_feedback: str | None = None,
     ) -> list[Message]:
         if native_tools:
             system = f"{system_base}\n\n{CHAT_WIDGET_DOC}"
@@ -1303,6 +1357,8 @@ class ChatService:
                     )
         if proposals_enabled:
             system = f"{system}\n\n{PROPOSAL_DOC}"
+            if proposal_feedback:
+                system = f"{system}\n\n{proposal_feedback}"
             if dismissal_note:
                 system = f"{system}\n\n{DISMISSAL_NOTE}"
         if guard_rule_text is not None:
@@ -1403,6 +1459,9 @@ class ChatService:
             guard_rule_text = QUIZ_GUARD_RULE if guard is not None else EXERCISE_GUARD_RULE
         proposals_enabled = chat_session.course_id is not None
         dismissal_note = proposals_enabled and self._dismissal_count(chat_session) >= 2
+        proposal_feedback = (
+            self._proposal_feedback(chat_session) if proposals_enabled else None
+        )
         context: dict[str, Any] = {
             "chunks": chunks,
             "mention_refs": registry.refs(),
@@ -1428,6 +1487,7 @@ class ChatService:
             guard_rule_text=guard_rule_text,
             proposals_enabled=proposals_enabled,
             dismissal_note=dismissal_note,
+            proposal_feedback=proposal_feedback,
             context=context,
             question=user_message.blocks[0]["md"],
             turn_warning=turn_warning,

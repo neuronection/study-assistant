@@ -2225,7 +2225,10 @@
       "editsTitle": "Suggested changes",
       "editReplace": "Replaces “{{find}}” with “{{text}}”",
       "editAppend": "Appends: “{{text}}”",
-      "editPrepend": "Prepends: “{{text}}”"
+      "editPrepend": "Prepends: “{{text}}”",
+      "status_conflict": "Changed",
+      "conflictHint": "The target changed since this proposal was made — the diff below was refreshed against the current content. Approve again to apply it.",
+      "approveRefreshed": "Approve refreshed diff"
     }
   },
   "trash": {

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...ai.proposals import PROPOSAL_ACTIONS
+from ...core.vocab import ChatProposalStatus
 from ...domain.models import (
     Activity,
     Concept,
@@ -667,6 +668,6 @@ def execute_proposal(
 
 
 def mark_stale(proposal: Any, reason: str) -> None:
-    proposal.status = "stale"
+    proposal.status = ChatProposalStatus.STALE.value
     proposal.result = {"error": reason}
     proposal.executed_at = utcnow()

@@ -1,3 +1,4 @@
+from ...core.vocab import ChatProposalStatus
 from .core import (
     JSON as JSON,
 )
@@ -99,7 +100,9 @@ class ChatProposal(Base):
     )
     action: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
-    status: Mapped[str] = mapped_column(String(20), default="proposed")
+    status: Mapped[str] = mapped_column(
+        String(20), default=ChatProposalStatus.PROPOSED.value
+    )
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

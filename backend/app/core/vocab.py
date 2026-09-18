@@ -38,6 +38,23 @@ class ToolEntryKind(StrVocab):
     CAPABILITY = "capability"
 
 
+class ChatProposalStatus(StrVocab):
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    DISMISSED = "dismissed"
+    EXECUTED = "executed"
+    STALE = "stale"
+    CONFLICT = "conflict"
+
+    @classmethod
+    def resolvable(cls) -> tuple["ChatProposalStatus", ...]:
+        return (cls.PROPOSED, cls.CONFLICT)
+
+    @classmethod
+    def resolved(cls) -> tuple["ChatProposalStatus", ...]:
+        return (cls.APPROVED, cls.DISMISSED, cls.EXECUTED, cls.STALE, cls.CONFLICT)
+
+
 class FlowEvent(StrVocab):
     FLOW_STARTED = "flow_started"
     NODE_STARTED = "node_started"

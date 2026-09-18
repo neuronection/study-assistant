@@ -32,6 +32,12 @@ Release history from before the public launch lives in the
   changes instead of whole-document regeneration, with
   mismatch/ambiguity/conflict dropped by stable reason codes (plan 78-C,
   ADR-192).
+- Tutor chat: approving a proposal whose target changed in the meantime no
+  longer dead-ends as stale — the card flips to "Changed" with the diff
+  refreshed against the current content for explicit re-approval (anchored
+  edits preserve interim manual edits), and the tutor now learns the outcome
+  of its earlier cards on the next turn so it stops re-proposing resolved
+  changes (plan 78-D, ADR-192).
 
 ### Changed
 

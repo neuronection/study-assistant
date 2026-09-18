@@ -23,6 +23,7 @@ import {
   Sparkles,
   StickyNote,
   Tag,
+  TriangleAlert,
   Wand2,
   X,
 } from 'lucide-react'
@@ -223,7 +224,7 @@ function StatusBadge({ status }: { status: string }) {
       ? 'text-success border-success/40 bg-success/10'
       : status === 'approved'
         ? 'text-primary border-primary/40 bg-primary/10'
-        : status === 'stale'
+        : status === 'stale' || status === 'conflict'
           ? 'text-warning border-warning/40 bg-warning/10'
           : 'text-muted-foreground border-border bg-subtle'
   return (
@@ -342,6 +343,11 @@ export function ProposalCard({
   const materialId = proposal.result?.material_id
   const diff = proposalDiff(view)
   const edits = anchoredEdits(view)
+  const conflictNote =
+    view.status === 'conflict'
+      ? ((view.result?.conflict as string | undefined) ??
+        t('ai.proposals.conflictHint'))
+      : null
 
   return (
     <div className="border-border bg-surface my-1 w-full max-w-[92%] rounded-xl border">
@@ -498,7 +504,13 @@ export function ProposalCard({
           </motion.div>
         ) : null}
       </AnimatePresence>
-      {view.status === 'proposed' ? (
+      {view.status === 'conflict' && conflictNote ? (
+        <p className="text-warning flex items-start gap-1 border-t px-3 py-1.5 text-[11px]">
+          <TriangleAlert className="mt-0.5 size-3 shrink-0" aria-hidden />
+          {conflictNote}
+        </p>
+      ) : null}
+      {view.status === 'proposed' || view.status === 'conflict' ? (
         <div className="border-border flex items-center gap-2 border-t px-3 py-2">
           <Button size="sm" disabled={pending} onClick={() => approve.mutate()}>
             {approve.isPending ? (
@@ -506,7 +518,9 @@ export function ProposalCard({
             ) : (
               <Check className="size-3.5" aria-hidden />
             )}
-            {t('ai.proposals.approve')}
+            {view.status === 'conflict'
+              ? t('ai.proposals.approveRefreshed')
+              : t('ai.proposals.approve')}
           </Button>
           <Button
             variant="ghost"

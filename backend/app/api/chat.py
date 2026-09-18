@@ -16,7 +16,7 @@ from ..ai.gateway import ProviderError
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS
 from ..core.events import EventBus
-from ..core.vocab import WsTopic
+from ..core.vocab import ChatProposalStatus, WsTopic
 from ..domain.models import (
     AiInteraction,
     ChatMessage,
@@ -462,6 +462,59 @@ def _load_proposal_for_profile(
     return proposal, chat_session
 
 
+def _conflict_refresh(
+    session: Session,
+    proposal: ChatProposal,
+    chat_session: ChatSession,
+) -> bool:
+    """Re-diff an edit-in-place card whose target moved (plan 78-D).
+
+    Refreshes the snapshot, re-resolves anchored text edits against the
+    current content and flips the card to ``conflict`` so the user reviews
+    the recomputed change and approves again. Returns False when the card
+    is unaffected; raises ``ProposalActionError`` when the anchors no
+    longer match the moved content (an honest stale).
+    """
+    from ..ai.proposals import (
+        PROPOSAL_ACTIONS,
+        TextEditOp,
+        resolve_text_edits,
+    )
+
+    spec = PROPOSAL_ACTIONS.get(proposal.action)
+    if spec is None or spec.snapshot is None:
+        return False
+    payload = dict(proposal.payload or {})
+    from ..services.platform.proposal_actions import capture_proposal_snapshot
+
+    snapshot = capture_proposal_snapshot(
+        session,
+        action=proposal.action,
+        payload=payload,
+        course_id=int(chat_session.course_id or 0),
+    )
+    if not snapshot:
+        return False
+    current = str(snapshot.get("original_md") or "")
+    if current == str(payload.get("original_md") or ""):
+        return False
+    if payload.get("text_edits"):
+        resolved = resolve_text_edits(
+            current, [TextEditOp.model_validate(op) for op in payload["text_edits"]]
+        )
+        payload[("new_body_md" if proposal.action == "edit_note" else "new_markdown")] = resolved
+    payload["original_md"] = current
+    proposal.payload = payload
+    proposal.status = ChatProposalStatus.CONFLICT.value
+    proposal.result = {
+        "conflict": (
+            "target changed since this proposal was made — "
+            "the diff was refreshed; review and approve again"
+        )
+    }
+    return True
+
+
 @router.post("/proposals/{proposal_id}/approve", response_model=ProposalOut)
 def approve_proposal(
     proposal_id: int,
@@ -470,12 +523,12 @@ def approve_proposal(
 ) -> ProposalOut:
     profile = ensure_default_profile(session)
     proposal, chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
-    if proposal.status != "proposed":
+    if proposal.status not in ChatProposalStatus.resolvable():
         raise HTTPException(
             status_code=409, detail=f"proposal already {proposal.status}"
         )
     if proposal.action in GENERATE_ACTIONS:
-        proposal.status = "approved"
+        proposal.status = ChatProposalStatus.APPROVED.value
         proposal.result = {"open_dialog": proposal.payload}
         session.commit()
         return _proposal_row_out(proposal)
@@ -483,6 +536,14 @@ def approve_proposal(
         raise HTTPException(
             status_code=422, detail="chat session has no course to act on"
         )
+    try:
+        if _conflict_refresh(session, proposal, chat_session):
+            session.commit()
+            return _proposal_row_out(proposal)
+    except ProposalActionError:
+        mark_stale(proposal, "the quoted text no longer appears in the content")
+        session.commit()
+        return _proposal_row_out(proposal)
     if proposal.action == "compose_material":
         result = _execute_compose_material(request, session, chat_session, proposal)
         if result is None:
@@ -517,7 +578,7 @@ def approve_proposal(
             )
         if proposal.action in POSTPROCESS_ACTIONS:
             request.app.state.jobs.wake()
-    proposal.status = "executed"
+    proposal.status = ChatProposalStatus.EXECUTED.value
     proposal.result = result
     proposal.executed_at = utcnow()
     session.add(
@@ -623,7 +684,7 @@ def dismiss_proposal(
         raise HTTPException(
             status_code=409, detail=f"proposal already {proposal.status}"
         )
-    proposal.status = "dismissed"
+    proposal.status = ChatProposalStatus.DISMISSED.value
     session.commit()
     return _proposal_row_out(proposal)
 

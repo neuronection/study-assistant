@@ -99,13 +99,14 @@ export interface ChatProposal {
   id: number
   action: string
   payload: Record<string, unknown>
-  status: 'proposed' | 'approved' | 'dismissed' | 'executed' | 'stale'
+  status: 'proposed' | 'approved' | 'dismissed' | 'executed' | 'stale' | 'conflict'
   result?:
     | {
         note_id?: number
         material_id?: number
         open_dialog?: Record<string, unknown>
         error?: string
+        conflict?: string
       }
     | null
 }

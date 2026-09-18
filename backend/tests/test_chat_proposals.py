@@ -765,10 +765,20 @@ def test_edit_note_marks_stale_when_note_changed(
         approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert approved.status_code == 200
         body = approved.json()
-        assert body["status"] == "stale"
-        assert "changed" in body["result"]["error"]
+        assert body["status"] == "conflict"
+        assert "changed" in body["result"]["conflict"]
+        assert body["payload"]["original_md"] == (
+            "# Derivation note\n\nUser edited this first."
+        )
         note = test_client.get(f"/api/v1/notes/{note_id}").json()
         assert "User edited" in str(note["body"])
+
+        replay = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
+        assert replay.status_code == 200
+        assert replay.json()["status"] == "executed"
+        note = test_client.get(f"/api/v1/notes/{note_id}").json()
+        rendered = str(note["body"])
+        assert "Fixed: the derivative is $-2x$." in rendered
 
 
 def test_edit_note_unknown_target_marks_stale(
@@ -933,8 +943,76 @@ def test_edit_material_marks_stale_when_edited_elsewhere(
         approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
         assert approved.status_code == 200
         body = approved.json()
-        assert body["status"] == "stale"
-        assert "changed" in body["result"]["error"]
+        assert body["status"] == "conflict"
+        assert "changed" in body["result"]["conflict"]
+        assert body["payload"]["original_md"] == (
+            "# Chain rule\n\nUser fixed this first."
+        )
+
+        replay = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
+        assert replay.status_code == 200
+        assert replay.json()["status"] == "executed"
+        versions = test_client.get(
+            f"/api/v1/materials/{material_id}/extractions"
+        ).json()
+        latest = test_client.get(
+            f"/api/v1/materials/{material_id}/extractions/{len(versions)}"
+        ).json()
+        assert "Edited body with the correct sign." in latest["markdown"]
+        assert "Edited body" in latest["markdown"]
+
+
+def test_anchored_conflict_re_resolves_and_preserves_interim_edit(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, gateway, _app = client
+    with test_client:
+        course_id = make_course(test_client)
+        note_id = make_note(test_client, course_id, "# Note\n\nalpha beta")
+        anchored = (
+            "```proposal\n"
+            + json.dumps(
+                {
+                    "action": "edit_note",
+                    "note_id": note_id,
+                    "text_edits": [
+                        {"op": "replace", "find": "beta", "text": "BETA"}
+                    ],
+                }
+            )
+            + "\n```"
+        )
+        gateway.responses.append(f"READ N{note_id}")
+        gateway.responses.append("Fixing it.\n\n" + anchored)
+        session = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_id}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session['id']}/messages",
+            json={"content": "emphasize beta"},
+        )
+        proposal = get_proposal(test_client, session["id"])
+        patched = test_client.patch(
+            f"/api/v1/notes/{note_id}",
+            json={"body_md": "# Note\n\nalpha beta gamma — user added this."},
+        )
+        assert patched.status_code == 200, patched.text
+        approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
+        assert approved.status_code == 200
+        body = approved.json()
+        assert body["status"] == "conflict"
+        assert body["payload"]["original_md"] == (
+            "# Note\n\nalpha beta gamma — user added this."
+        )
+        assert body["payload"]["new_body_md"] == (
+            "# Note\n\nalpha BETA gamma — user added this."
+        )
+        replay = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
+        assert replay.status_code == 200
+        assert replay.json()["status"] == "executed"
+        note = test_client.get(f"/api/v1/notes/{note_id}").json()
+        rendered = str(note["body"])
+        assert "alpha BETA gamma — user added this." in rendered
 
 
 def test_append_material_executes(

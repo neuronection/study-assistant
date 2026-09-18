@@ -27,6 +27,32 @@ notifications aggregate + chat rail badge, one shared card serializer for
 WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
 the family ADR was amended pre-acceptance this session to bind them.
 
+**Feature — chat conflict re-diff + resolution feedback (plan 78-D, ADR-192,
+2026-09-18):** slice D of plan 78 — approve-time drift is no longer a dead
+end, and the model learns what happened to its cards. **Status vocabulary**:
+new `ChatProposalStatus` StrEnum (`core/vocab.py`; adds `conflict`, ADR-128)
+replaces bare-string statuses across the model, approve/dismiss endpoints and
+mark-stale paths — zero data migration (values are today's strings).
+**Conflict re-diff**: approving an edit-in-place proposal (the four
+snapshot-bearing actions) whose target changed no longer marks it stale —
+`_conflict_refresh` recomputes the snapshot, re-resolves anchored
+`text_edits` against the current content (unmatched anchors → honest stale),
+stores the refreshed payload, and flips the card to `conflict`; the card
+shows a warning line, the refreshed diff, and an "Approve refreshed diff"
+button (en/de/el). The second consent applies the recomputed change —
+anchored ops preserve the user's interim edits (verified by the new
+anchored-conflict test: user text + anchored fix both land), full-body edits
+replace with consent. Content that moves again re-conflicts; target-gone
+stays terminal stale. **Resolution feedback** (ADR-0015): the next turn's
+system prompt gains a structured `PROPOSAL OUTCOMES` block (action → status +
+target for every card resolved since the model's last turn, tracked via the
+session context's `proposal_feedback_ids`, capped at 100 ids / 10 rows) with
+the no-unprompted-re-propose rule, complementing the dismissal-count note.
+Tests: backend (conflict → refresh → second-consent apply for note + material,
+anchored re-resolution preserving interim edits) + frontend (conflict badge,
+warning, refreshed-approve button, API call) — backend 1,273 green, ruff/mypy
+clean; frontend 1,332 green, lint/typecheck/build/i18n green.
+
 **Feature — anchored chat edits (plan 78-C, ADR-192, 2026-09-18):** slice C
 of plan 78 — the Tier-2 centerpiece: targeted note/material edits no longer
 regenerate whole documents. `edit_note`/`edit_material` payloads gain an

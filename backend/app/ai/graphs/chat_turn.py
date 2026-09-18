@@ -229,6 +229,7 @@ def _round_messages(
             dismissal_note=prep.dismissal_note,
             native_tools=True,
             chat_session=deps.chat_session,
+            proposal_feedback=prep.proposal_feedback,
         )
         native_round = [
             Message(
@@ -251,6 +252,7 @@ def _round_messages(
         proposals_enabled=prep.proposals_enabled,
         dismissal_note=prep.dismissal_note,
         chat_session=deps.chat_session,
+        proposal_feedback=prep.proposal_feedback,
     )
 
 

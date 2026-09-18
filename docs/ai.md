@@ -245,8 +245,25 @@ The model may end a chat turn with **up to three** fenced action proposals
   message. Proposal blocks are removed from the stored markdown; the card is
   the UI.
 - **Storage** (`chat_proposals`, migration 0024): message, action, payload,
-  status `proposed|approved|dismissed|executed|stale`, result, timestamps.
-  Surfaced on the messages API and the `assistant_message` WS event.
+  status `proposed|approved|dismissed|executed|stale|conflict` (the
+  `ChatProposalStatus` vocabulary, plan 78-D), result, timestamps. Surfaced on
+  the messages API and the `assistant_message` WS event.
+- **Conflict re-diff instead of stale (plan 78-D, ADR-192)**: when an
+  edit-in-place proposal is approved after its target changed, the approve
+  endpoint refreshes the snapshot, re-resolves anchored `text_edits` against
+  the current content (anchors that no longer match → honest `stale`), flips
+  the card to `conflict` with an explanatory result note, and shows the
+  recomputed diff — the user approves again to apply the refreshed change
+  (approving twice in a row means the content moved twice; each refresh is
+  re-reviewed). Full-body proposals replace the moved content on the second
+  consent; anchored ones preserve the user's interim edits. Target-gone is
+  still terminal `stale`.
+- **Resolution feedback (plan 78-D, ADR-0015)**: the next turn's system
+  prompt carries a structured `PROPOSAL OUTCOMES` block — action, status and
+  target for every card resolved since the model last acted (tracked via the
+  session context's `proposal_feedback_ids`, capped), with the rule "do not
+  re-propose the same change unprompted"; this complements the existing
+  dismissal-count note.
 - **Execution is click-gated**: `POST /chat/proposals/{id}/approve` is the only
   path that executes — `create_note` places a real note through the same
   placement rules as the notes API (`TreeService.placement_node`), tagged

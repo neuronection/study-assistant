@@ -2216,7 +2216,10 @@
       "editsTitle": "Vorgeschlagene Änderungen",
       "editReplace": "Ersetzt „{{find}}“ durch „{{text}}“",
       "editAppend": "Hängt an: „{{text}}“",
-      "editPrepend": "Stellt voran: „{{text}}“"
+      "editPrepend": "Stellt voran: „{{text}}“",
+      "status_conflict": "Geändert",
+      "conflictHint": "Das Ziel hat sich seit diesem Vorschlag geändert — der Diff unten wurde mit dem aktuellen Inhalt aktualisiert. Um anzuwenden, erneut bestätigen.",
+      "approveRefreshed": "Aktualisierten Diff bestätigen"
     },
     "mentions": {
       "material": "Material",
