@@ -701,6 +701,7 @@ def test_edit_note_captures_snapshot_and_executes(
         note_id = make_note(
             test_client, course_id, "# Derivation note\n\nThe derivative is $2x$."
         )
+        gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", str(note_id))
         )
@@ -744,6 +745,7 @@ def test_edit_note_marks_stale_when_note_changed(
     with test_client:
         course_id = make_course(test_client)
         note_id = make_note(test_client, course_id, "# Derivation note\n\nOriginal.")
+        gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", str(note_id))
         )
@@ -778,6 +780,9 @@ def test_edit_note_unknown_target_marks_stale(
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", "999999")
         )
+        gateway.responses.append(
+            "Fixing it.\n\n" + EDIT_NOTE_PROPOSAL.replace("{nid}", "999999")
+        )
         session = test_client.post(
             "/api/v1/chat/sessions", json={"course_id": course_id}
         ).json()
@@ -785,10 +790,11 @@ def test_edit_note_unknown_target_marks_stale(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "fix"},
         )
-        proposal = get_proposal(test_client, session["id"])
-        approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
-        assert approved.status_code == 200
-        assert approved.json()["status"] == "stale"
+        messages = wait_for_assistant(test_client, session["id"])
+        assistant = messages[-1]
+        assert assistant["proposals"] == []
+        assert any("ungrounded" in warning for warning in assistant["warnings"])
+        assert assistant["trace"]["proposals_dropped"] == ["ungrounded"]
 
 
 def test_append_note_executes_and_versions(
@@ -798,6 +804,7 @@ def test_append_note_executes_and_versions(
     with test_client:
         course_id = make_course(test_client)
         note_id = make_note(test_client, course_id, "# Derivation note\n\nBase body.")
+        gateway.responses.append(f"READ N{note_id}")
         gateway.responses.append(
             "Adding it.\n\n" + APPEND_NOTE_PROPOSAL.replace("{nid}", str(note_id))
         )
@@ -864,6 +871,7 @@ def test_edit_material_captures_snapshot_and_executes(
     with test_client:
         course_id = make_course(test_client)
         material_id = add_material(test_client, "m.txt", "Original body.", course_id)
+        gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
         )
@@ -905,6 +913,7 @@ def test_edit_material_marks_stale_when_edited_elsewhere(
     with test_client:
         course_id = make_course(test_client)
         material_id = add_material(test_client, "m.txt", "Original body.", course_id)
+        gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(
             "Fixing it.\n\n" + EDIT_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
         )
@@ -935,6 +944,7 @@ def test_append_material_executes(
     with test_client:
         course_id = make_course(test_client)
         material_id = add_material(test_client, "m.txt", "Original body.", course_id)
+        gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(
             "Adding it.\n\n"
             + APPEND_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
@@ -973,6 +983,7 @@ def test_proposals_carry_target_info(
         course_id = make_course(test_client)
         material_id = add_material(test_client, "m.txt", "Original body.", course_id)
         node_id = make_node(test_client, course_id, "Chapter 3")
+        gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(
             "Extending it.\n\n"
             + APPEND_MATERIAL_PROPOSAL.replace("{mid}", str(material_id))
@@ -1423,3 +1434,103 @@ def test_proposal_node_id_must_exist_in_course() -> None:
     assert "[T#]" in problems[0]
     null_node = text.replace('"node_id": 77', '"node_id": null')
     assert validate_proposal_context(null_node, ["T7"], course_node_ids={1}) == []
+
+
+def test_manifest_checks_cover_singular_ids() -> None:
+    from app.ai.proposals import validate_proposal_context
+
+    offered = ["N3", "M7"]
+    ungrounded_edit = (
+        '```proposal\n{"action": "edit_note", "note_id": 999, '
+        '"new_body_md": "x"}\n```'
+    )
+    assert any(
+        "note 999" in problem
+        for problem in validate_proposal_context(ungrounded_edit, offered)
+    )
+    flashcards_none = (
+        '```proposal\n{"action": "generate_flashcards", "count": 5}\n```'
+    )
+    assert validate_proposal_context(flashcards_none, offered) == []
+    flashcards_bad = (
+        '```proposal\n{"action": "generate_flashcards", "material_id": 999}\n```'
+    )
+    assert any(
+        "material 999" in problem
+        for problem in validate_proposal_context(flashcards_bad, offered)
+    )
+    move_bad = (
+        '```proposal\n{"action": "move_to_node", "kind": "note", '
+        '"id": 999, "node_id": 1}\n```'
+    )
+    assert any(
+        "note 999" in problem
+        for problem in validate_proposal_context(move_bad, offered, {1})
+    )
+    cover_concept = (
+        '```proposal\n{"action": "cover_concept", "concept_id": 55, '
+        '"node_id": 1}\n```'
+    )
+    assert validate_proposal_context(cover_concept, offered, {1}) == []
+
+
+def test_grounding_gate_and_ungrounded_filter() -> None:
+    from app.ai.proposals import (
+        filter_ungrounded,
+        validate_proposal_grounding,
+    )
+
+    edit = '```proposal\n{"action": "edit_note", "note_id": 3, "new_body_md": "x"}\n```'
+    problems = validate_proposal_grounding(edit, [])
+    assert len(problems) == 1
+    assert "unread_target" in problems[0]
+    assert "READ [N3]" in problems[0]
+    assert validate_proposal_grounding(edit, ["N3"]) == []
+    cross_kind = validate_proposal_grounding(edit, ["M7"])
+    assert len(cross_kind) == 1
+    assert "unread_target" in cross_kind[0]
+    create = (
+        '```proposal\n{"action": "create_note", "title": "t", '
+        '"body_md": "b", "node_id": null}\n```'
+    )
+    assert validate_proposal_grounding(create, []) == []
+
+    proposals: list[tuple[str, dict[str, Any]]] = [
+        ("edit_note", {"note_id": 3, "new_body_md": "x"}),
+        ("create_note", {"title": "t", "body_md": "b"}),
+    ]
+    kept, drops = filter_ungrounded(proposals, ["N3"])
+    assert drops == []
+    assert len(kept) == 2
+    kept, drops = filter_ungrounded(proposals, [])
+    assert drops == ["ungrounded"]
+    assert [action for action, _payload in kept] == ["create_note"]
+
+
+def test_unread_edit_repairs_after_read(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, gateway, _app = client
+    with test_client:
+        course_id = make_course(test_client)
+        note_id = make_note(test_client, course_id, "# Derivation note\n\nOriginal.")
+        proposal_text = EDIT_NOTE_PROPOSAL.replace("{nid}", str(note_id))
+        gateway.responses.append("Fixing it.\n\n" + proposal_text)
+        gateway.responses.append(f"READ N{note_id}")
+        gateway.responses.append("Fixing it.\n\n" + proposal_text)
+        session = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_id}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session['id']}/messages",
+            json={"content": "fix the sign error"},
+        )
+        proposal = get_proposal(test_client, session["id"])
+        assert len(gateway.calls) == 3
+        repair_prompt = "\n".join(
+            str(message.content) for message in gateway.calls[1]
+        )
+        assert "unread_target" in repair_prompt
+        assert f"READ [N{note_id}]" in repair_prompt
+        assert proposal["action"] == "edit_note"
+        assert proposal["payload"]["original_md"]

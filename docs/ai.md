@@ -282,6 +282,22 @@ The model may end a chat turn with **up to three** fenced action proposals
   `schema`, `cap`), finalize appends a human summary line to the message
   warnings ("N suggested action(s) dropped (…: …)") and persists the codes in
   `trace.proposals_dropped`.
+- **Full grounding gate (plan 78-B, ADR-192)**: every singular target id is
+  checked against the offered manifest at contract time — `ProposalActionSpec`
+  carries declarative `context_ids` (field → ref-kind) for
+  edit/append/tag/assign/flashcards payloads, `move_to_node` checks its
+  kind-conditional `id`, and invented ids trigger the repair round instead of
+  approve-time stale surprises (`cover_concept` stays exempt: concept ids come
+  from NODE_CONCEPTS tool results, which are not registry handles, and
+  approve-time revalidation covers them). On top, edit-in-place actions — the
+  snapshot-bearing `edit_note`/`append_note`/`edit_material`/`append_material`
+  — are **read-before-edit gated**: the target's full content must have been
+  READ this turn (`grounded_refs` accumulates successful READ tool results
+  across repair rounds; `validate_proposal_grounding` enforces it in the
+  contract with an `unread_target` violation that names the exact
+  `READ [N#]` call, and `filter_ungrounded` drops still-ungrounded proposals
+  at finalize with the `ungrounded` drop code instead of creating cards
+  doomed to stale). `PROPOSAL_DOC` teaches the READ-first rule.
 
 ## AI-composed material (`material.compose` — Phase 11D)
 

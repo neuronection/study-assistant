@@ -19,6 +19,13 @@ Release history from before the public launch lives in the
   validation say so honestly — a warning line plus per-fence reason codes
   (`trace.proposals_dropped`) instead of silently vanishing proposals
   (plan 78-A, ADR-192; family ADR-0015 conformance).
+- Tutor chat: proposals are now grounded — every target id is checked
+  against the offered manifest at contract time, and edit-in-place proposals
+  (note/material edits and appends) require the target's full content to
+  have been read in the same turn; ungrounded proposals trigger a repair
+  round that names the exact `READ` call to make, and are dropped with an
+  honest reason instead of becoming cards that can never apply (plan 78-B,
+  ADR-192).
 
 ### Changed
 

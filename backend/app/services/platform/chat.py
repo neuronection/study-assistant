@@ -26,6 +26,7 @@ from ...ai.proposals import (
     MAX_PROPOSALS_PER_TURN,
     PROPOSAL_DOC,
     extract_proposals_with_drops,
+    filter_ungrounded,
     strip_proposal_fences,
 )
 from ...ai.skills import CHAT_ANSWER_SYSTEM
@@ -1465,6 +1466,7 @@ class ChatService:
         final_output: str,
         final_tool_calls: list[dict[str, Any]],
         reads: list[dict[str, Any]],
+        grounded_refs: list[str] | None = None,
         repair_rounds: int,
         trace_rounds: list[dict[str, Any]],
         reasoning_parts: list[str],
@@ -1521,6 +1523,11 @@ class ChatService:
             if proposals_enabled
             else ([], [])
         )
+        if proposals_enabled and proposals:
+            proposals, ungrounded = filter_ungrounded(
+                proposals, grounded_refs or []
+            )
+            proposal_drops.extend(ungrounded)
         if proposals or "```proposal" in final_output:
             final_output = strip_proposal_fences(final_output)
         used_mentions = registry.parse(final_output)

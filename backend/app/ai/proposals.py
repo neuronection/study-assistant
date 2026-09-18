@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from ..core.vocab import PLAN_ITEM_KINDS, QUESTION_TYPES
-from .mentions import KIND_BY_LETTER
+from .mentions import KIND_BY_LETTER, LETTER_BY_KIND
 
 
 class ProposalError(ValueError):
@@ -181,6 +181,7 @@ class ProposalActionSpec:
     doc_line: str
     api_executed: bool = False
     snapshot: str | None = None
+    context_ids: tuple[tuple[str, str], ...] = ()
 
 
 PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
@@ -199,6 +200,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
             '"reason": str|null}'
         ),
         snapshot="note_body",
+        context_ids=(("note_id", "note"),),
     ),
     "append_note": ProposalActionSpec(
         payload_model=AppendNotePayload,
@@ -207,6 +209,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
             '"heading": str|null}'
         ),
         snapshot="note_body",
+        context_ids=(("note_id", "note"),),
     ),
     "edit_material": ProposalActionSpec(
         payload_model=EditMaterialPayload,
@@ -215,6 +218,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
             '"new_markdown": markdown, "reason": str|null}'
         ),
         snapshot="extraction_md",
+        context_ids=(("material_id", "material"),),
     ),
     "append_material": ProposalActionSpec(
         payload_model=AppendMaterialPayload,
@@ -223,10 +227,12 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
             '"markdown": markdown, "heading": str|null}'
         ),
         snapshot="extraction_md",
+        context_ids=(("material_id", "material"),),
     ),
     "assign_material": ProposalActionSpec(
         payload_model=AssignMaterialPayload,
         doc_line='{"action": "assign_material", "material_id": int, "node_id": int}',
+        context_ids=(("material_id", "material"),),
     ),
     "cover_concept": ProposalActionSpec(
         payload_model=CoverConceptPayload,
@@ -272,6 +278,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
             '"note_id": int|null, "count": 1-30}'
         ),
         api_executed=True,
+        context_ids=(("material_id", "material"), ("note_id", "note")),
     ),
     "create_material": ProposalActionSpec(
         payload_model=CreateMaterialPayload,
@@ -306,6 +313,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
         doc_line=(
             '{"action": "tag_note", "note_id": int, "add": [str]}'
         ),
+        context_ids=(("note_id", "note"),),
     ),
     "set_exam_date": ProposalActionSpec(
         payload_model=SetExamDatePayload,
@@ -343,7 +351,10 @@ PROPOSAL_DOC = (
     + "\n```\n"
     "Use ids only from the offered manifest. When a payload has node_id, it "
     "must be the integer id of a [T#] node from the course structure "
-    "(or null to leave placement unchanged). Use proposals only when they "
+    "(or null to leave placement unchanged). edit_note, append_note, "
+    "edit_material and append_material REQUIRE the target's full content to "
+    "be read in this turn first: call READ [N#]/[M#], then propose the edit. "
+    "Use proposals only when they "
     "clearly help; at most three proposal blocks per reply; omit them otherwise."
 )
 
@@ -406,6 +417,24 @@ CONTEXT_ID_FIELDS: dict[str, str] = {
 _OFFERED_REF_RE = re.compile(r"([MNCTQE])(\d+)")
 
 
+def _singular_context_problems(
+    action: str,
+    payload: BaseModel,
+    spec: ProposalActionSpec,
+    offered: dict[str, set[int]],
+) -> list[str]:
+    problems: list[str] = []
+    for field_name, kind in spec.context_ids:
+        value = getattr(payload, field_name, None)
+        if value is None or value in offered.get(kind, set()):
+            continue
+        problems.append(
+            f"proposal {action} references {kind} {value} which was "
+            "not offered in this conversation — use only offered ids"
+        )
+    return problems
+
+
 def validate_proposal_context(
     text: str,
     offered_refs: list[str],
@@ -449,23 +478,21 @@ def validate_proposal_context(
                         "not offered in this conversation — use only offered ids "
                         "in material_ids/note_ids"
                     )
-        if isinstance(payload, GenerateFlashcardsPayload):
-            offered_materials = offered.get("material", set())
-            offered_notes = offered.get("note", set())
-            if (
-                payload.material_id is not None
-                and payload.material_id not in offered_materials
-            ):
-                problems.append(
-                    f"proposal {action} references material {payload.material_id} "
-                    "which was not offered in this conversation — use only "
-                    "offered ids"
-                )
-            if payload.note_id is not None and payload.note_id not in offered_notes:
-                problems.append(
-                    f"proposal {action} references note {payload.note_id} which "
-                    "was not offered in this conversation — use only offered ids"
-                )
+        problems.extend(_singular_context_problems(action, payload, spec, offered))
+        move_kind = getattr(payload, "kind", None)
+        move_id = getattr(payload, "id", None)
+        if (
+            action == "move_to_node"
+            and move_kind is not None
+            and move_id is not None
+            and move_kind in offered
+            and move_id not in offered[move_kind]
+        ):
+            problems.append(
+                f"proposal {action} references {move_kind} {move_id} "
+                "which was not offered in this conversation — use only "
+                "offered ids"
+            )
         node_id = getattr(payload, "node_id", None)
         if (
             node_id is not None
@@ -480,11 +507,106 @@ def validate_proposal_context(
     return problems
 
 
+def _grounding_target(
+    payload: BaseModel, spec: ProposalActionSpec
+) -> tuple[str, int, str] | None:
+    """The (field, id, kind) an edit-in-place op must have had read."""
+    for field_name, kind in spec.context_ids:
+        value = getattr(payload, field_name, None)
+        if value is not None:
+            return (field_name, int(value), kind)
+    return None
+
+
+def validate_proposal_grounding(
+    text: str,
+    read_refs: list[str],
+) -> list[str]:
+    """Read-before-edit gate (plan 78-B): edit-in-place proposals (the
+    snapshot-bearing actions) are violations unless the target's full
+    content was READ in this turn."""
+    fences = PROPOSAL_FENCE_RE.findall(text)
+    if not fences:
+        return []
+    read_ids: dict[str, set[int]] = {}
+    for ref in read_refs or []:
+        match = _OFFERED_REF_RE.fullmatch(ref)
+        if match:
+            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
+                int(match.group(2))
+            )
+    problems: list[str] = []
+    for fence in fences:
+        try:
+            raw = json.loads(fence)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(raw, dict):
+            continue
+        action = str(raw.get("action"))
+        spec = PROPOSAL_ACTIONS.get(action)
+        if spec is None or spec.snapshot is None:
+            continue
+        try:
+            payload = spec.payload_model.model_validate(
+                raw.get("payload") or _payload_from(raw)
+            )
+        except ValidationError:
+            continue
+        target = _grounding_target(payload, spec)
+        if target is None:
+            continue
+        _field, target_id, kind = target
+        if target_id in read_ids.get(kind, set()):
+            continue
+        letter = LETTER_BY_KIND.get(kind, kind[:1].upper())
+        problems.append(
+            f"unread_target: proposal {action} targets {kind} {target_id} "
+            f"whose full content was not read this turn — call READ "
+            f"[{letter}{target_id}] first, then propose the edit"
+        )
+    return problems
+
+
+def filter_ungrounded(
+    proposals: list[tuple[str, dict[str, Any]]],
+    read_refs: list[str],
+) -> tuple[list[tuple[str, dict[str, Any]]], list[str]]:
+    """Extraction-time twin of `validate_proposal_grounding`: after the
+    repair budget is spent, ungrounded edit-in-place proposals are dropped
+    with the `ungrounded` code instead of becoming cards doomed to stale."""
+    read_ids: dict[str, set[int]] = {}
+    for ref in read_refs or []:
+        match = _OFFERED_REF_RE.fullmatch(ref)
+        if match:
+            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
+                int(match.group(2))
+            )
+    kept: list[tuple[str, dict[str, Any]]] = []
+    drops: list[str] = []
+    for action, payload in proposals:
+        spec = PROPOSAL_ACTIONS.get(action)
+        target: tuple[str, int, str] | None = None
+        if spec is not None and spec.snapshot is not None:
+            try:
+                target = _grounding_target(
+                    spec.payload_model.model_validate(payload), spec
+                )
+            except ValidationError:
+                target = None
+        if target is not None and target[1] not in read_ids.get(target[2], set()):
+            drops.append("ungrounded")
+            continue
+        kept.append((action, payload))
+    return kept, drops
+
+
 PROPOSAL_DROP_REASONS: tuple[str, ...] = (
     "invalid_json",
     "not_object",
     "unknown_action",
     "schema",
+    "ungrounded",
     "cap",
 )
 

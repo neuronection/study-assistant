@@ -27,6 +27,34 @@ notifications aggregate + chat rail badge, one shared card serializer for
 WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
 the family ADR was amended pre-acceptance this session to bind them.
 
+**Feature — chat proposal grounding gate (plan 78-B, ADR-192, 2026-09-18):**
+slice B of plan 78 — hallucinated proposal targets are now structurally
+impossible. **Manifest coverage**: `ProposalActionSpec` gains declarative
+`context_ids` (payload field → ref kind) and `validate_proposal_context`
+checks every singular id (`edit/append/tag_note.note_id`,
+`edit/append/assign_material.material_id`, flashcards' optional source ids,
+`move_to_node`'s kind-conditional `id`) against the turn's offered refs —
+invented ids trigger the repair round naming the violation instead of
+passing validation and dying at approve (`cover_concept` deliberately exempt:
+concepts arrive via NODE_CONCEPTS tool results, not registry handles, and
+approve-time revalidation still guards them). **Read-before-edit** (the
+Tier-2 grounding gate): the snapshot-bearing edit-in-place actions
+(`edit_note`, `append_note`, `edit_material`, `append_material`) require the
+target's full content to have been READ this turn — `grounded_refs`
+(a repair-surviving turn-state key) accumulates successful READ results from
+both the prompt-grammar and native-tool paths, `validate_proposal_grounding`
+rejects violations with an `unread_target` message naming the exact
+`READ [N#]` call (so the repair round can actually go read), and after the
+repair budget `filter_ungrounded` drops the proposal at finalize with the new
+`ungrounded` drop code — warning line + `trace.proposals_dropped`, never a
+card doomed to stale. `PROPOSAL_DOC` teaches the READ-first rule. Tests:
+backend +3 (manifest singular/move/flashcards matrix, grounding gate +
+ungrounded filter units, full-turn unread→repair-prompt-with-READ→read→card
+flow) + edit/append full-turn tests re-scripted to READ first; the
+unknown-target test re-pointed to the honest drop (no card, `ungrounded`
+reason). Backend 1,268 green, ruff/mypy clean; frontend untouched (no
+surface change).
+
 **Feature — chat capability discovery + proposal drop visibility (plan 78-A,
 ADR-192, 2026-09-18):** first slice of plan 78 (ADR-0015 adoption). The tools
 catalog now lists the tutor's proposal abilities as first-class **HITL

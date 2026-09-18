@@ -157,6 +157,7 @@ def _proposal_valid(
     from ..proposals import (
         PROPOSAL_FENCE_RE,
         validate_proposal_context,
+        validate_proposal_grounding,
         validate_proposal_text,
     )
 
@@ -168,6 +169,12 @@ def _proposal_valid(
             output,
             context.get("mention_refs") or [],
             course_node_ids=context.get("course_node_ids"),
+        )
+    )
+    problems.extend(
+        validate_proposal_grounding(
+            output,
+            context.get("read_refs") or [],
         )
     )
     return [Violation("proposal_valid", problem) for problem in problems]

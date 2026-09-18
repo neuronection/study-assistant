@@ -111,6 +111,7 @@ class ChatTurnState(TypedDict, total=False):
     quiz_used: int
     search_sources: list[str]
     reads: list[dict[str, Any]]
+    grounded_refs: list[str]
     tool_calls_seen: list[dict[str, Any]]
     trace_rounds: list[dict[str, Any]]
     reasoning_parts: list[str]
@@ -199,6 +200,7 @@ def _retrieve(deps: ChatTurnDeps, _state: ChatTurnState) -> dict[str, Any]:
         "final_tool_calls": [],
         "final_events": [],
         "finalized": False,
+        "grounded_refs": [],
         **_fresh_round_scope(),
     }
 
@@ -329,6 +331,7 @@ def _execute_tools(
     state_used = state["state_used"]
     resource_used = state["resource_used"]
     reads = list(state["reads"])
+    grounded_refs = list(state["grounded_refs"])
     tool_calls_seen = list(state["tool_calls_seen"])
     for kind, argument in tool_calls:
         tool_start_ms = deps.elapsed_ms()
@@ -364,6 +367,8 @@ def _execute_tools(
                         "chars": len(content),
                     }
                 )
+                if entry.ref not in grounded_refs:
+                    grounded_refs.append(entry.ref)
             tool_calls_seen.append(
                 _tool_entry(
                     deps,
@@ -570,6 +575,7 @@ def _execute_tools(
         "quiz_used": state["quiz_used"],
         "search_sources": state["search_sources"],
         "reads": reads,
+        "grounded_refs": grounded_refs,
         "tool_calls_seen": tool_calls_seen,
         "math_rounds": state["math_rounds"] + (1 if executed_math else 0),
     }
@@ -709,6 +715,7 @@ def _validate_repair(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]
     if state.get("stream_interruption") is not None:
         return {"output": output}
     deps.prep.context["search_sources"] = list(state.get("search_sources") or [])
+    deps.prep.context["read_refs"] = list(state.get("grounded_refs") or [])
     validation = validate(output, deps.prep.contract, deps.prep.context)
     deps.validation = validation
     if validation.ok:
@@ -742,6 +749,7 @@ def _finalize(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]:
         final_output=state["output"],
         final_tool_calls=state["final_tool_calls"],
         reads=state["reads"],
+        grounded_refs=list(state.get("grounded_refs") or []),
         repair_rounds=state["attempt"],
         trace_rounds=state["trace_rounds"],
         reasoning_parts=state["reasoning_parts"],
