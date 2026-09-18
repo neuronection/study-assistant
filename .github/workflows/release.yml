@@ -168,13 +168,14 @@ jobs:
       - name: Smoke test (headless web mode)
         env:
           SA_DATA_DIR: ${{ runner.temp }}\sa-data
+          SA_PORT: "8975"
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "backend/dist/StudyAssistant.exe" -ArgumentList "web" -PassThru -NoNewWindow
           $ok = $false
           foreach ($i in 1..90) {
             Start-Sleep -Seconds 2
-            $health = curl.exe -fsS --noproxy '*' --max-time 5 http://127.0.0.1:8000/api/v1/health 2>$null
+            $health = curl.exe -fsS --noproxy '*' --max-time 5 http://127.0.0.1:8975/api/v1/health 2>$null
             if ($LASTEXITCODE -eq 0 -and "$health" -match '"status"\s*:\s*"ok"') { $ok = $true; break }
           }
           taskkill /PID $p.Id /T /F 2>$null
