@@ -6,8 +6,17 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from ..core.vocab import CourseOrigin, PlanItemKind
-from ..domain.models import Course, Exercise, FsrsState, PlanItem, utcnow
+from ..core.vocab import ChatProposalStatus, CourseOrigin, PlanItemKind
+from ..domain.models import (
+    ChatMessage,
+    ChatProposal,
+    ChatSession,
+    Course,
+    Exercise,
+    FsrsState,
+    PlanItem,
+    utcnow,
+)
 from ..services.platform import metrics
 from ..services.platform.profiles import ensure_default_profile
 from ..services.study.exercise_kinds import CARD_KINDS
@@ -50,6 +59,7 @@ class NotificationsOut(BaseModel):
     plan_today: list[PlanEntryOut]
     plan_overdue_count: int
     exams: list[ExamEntryOut]
+    pending_proposals: int
     generated_at: str
 
 
@@ -128,6 +138,18 @@ def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
         for entry in metrics.exam_status(session, profile.id)[:MAX_EXAMS]
     ]
 
+    pending_proposals = len(
+        session.execute(
+            select(ChatProposal.id)
+            .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
+            .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+            .where(
+                ChatSession.profile_id == profile.id,
+                ChatProposal.status == ChatProposalStatus.PROPOSED.value,
+            )
+        ).all()
+    )
+
     generated_at = datetime.now(UTC).isoformat()
     return {
         "due_cards": due_cards,
@@ -135,6 +157,7 @@ def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
         "plan_today": plan_today,
         "plan_overdue_count": plan_overdue_count,
         "exams": exams,
+        "pending_proposals": pending_proposals,
         "generated_at": generated_at,
     }
 

@@ -2459,7 +2459,10 @@
     "plan": "Plan",
     "exams": "Prüfungen",
     "daysLeft": "· {{days}} T.",
-    "moreOverdue": "+{{count}} weitere überfällig"
+    "moreOverdue": "+{{count}} weitere überfällig",
+    "pendingProposals": "Warten auf dich",
+    "pendingProposalsCount_one": "{{count}} Tutor-Vorschlag zur Überprüfung",
+    "pendingProposalsCount_other": "{{count}} Tutor-Vorschläge zur Überprüfung"
   },
   "nudges": {
     "title": "{{count}} Karten fällig",

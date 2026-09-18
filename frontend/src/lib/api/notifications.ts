@@ -30,6 +30,7 @@ export interface Notifications {
   plan_today: PlanEntry[]
   plan_overdue_count: number
   exams: ExamEntry[]
+  pending_proposals: number
   generated_at: string
 }
 

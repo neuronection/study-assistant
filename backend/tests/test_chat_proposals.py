@@ -1777,3 +1777,82 @@ def test_anchored_edit_anchor_mismatch_drops(
             "anchor_mismatch" in warning for warning in assistant["warnings"]
         )
         assert assistant["trace"]["proposals_dropped"][-1] == "anchor_mismatch"
+
+
+def test_proposal_list_endpoint_and_notifications_aggregate(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    from app.domain.models import ChatProposal as ChatProposalRow
+
+    test_client, gateway, app = client
+    with test_client:
+        course_a = make_course(test_client)
+        course_b = make_course(test_client)
+        gateway.responses.append(VALID_PROPOSAL)
+        session_a = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_a}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session_a['id']}/messages",
+            json={"content": "save a summary"},
+        )
+        first = get_proposal(test_client, session_a["id"])
+        gateway.responses.append(VALID_PROPOSAL)
+        session_b = test_client.post(
+            "/api/v1/chat/sessions", json={"course_id": course_b}
+        ).json()
+        test_client.post(
+            f"/api/v1/chat/sessions/{session_b['id']}/messages",
+            json={"content": "save a summary"},
+        )
+        messages_b = wait_for_assistant(test_client, session_b["id"])
+        second = messages_b[-1]["proposals"][0]
+
+        assert first["id"] != second["id"]
+        listed = test_client.get("/api/v1/chat/proposals").json()
+        assert [row["id"] for row in listed["proposals"]] == [
+            second["id"],
+            first["id"],
+        ]
+        for row in listed["proposals"]:
+            assert row["session_id"] in (session_a["id"], session_b["id"])
+            assert row["message_id"] > 0
+
+        pending = test_client.get(
+            "/api/v1/chat/proposals", params={"status": "proposed"}
+        ).json()
+        assert {row["id"] for row in pending["proposals"]} == {
+            first["id"],
+            second["id"],
+        }
+
+        test_client.post(f"/api/v1/chat/proposals/{second['id']}/dismiss")
+        pending = test_client.get(
+            "/api/v1/chat/proposals", params={"status": "proposed"}
+        ).json()
+        assert [row["id"] for row in pending["proposals"]] == [first["id"]]
+
+        paged = test_client.get(
+            "/api/v1/chat/proposals", params={"limit": 1}
+        ).json()
+        assert len(paged["proposals"]) == 1
+        assert paged["next_cursor"] == str(paged["proposals"][0]["id"])
+        follow_up = test_client.get(
+            "/api/v1/chat/proposals",
+            params={"limit": 1, "cursor": paged["next_cursor"]},
+        ).json()
+        assert follow_up["proposals"][0]["id"] == first["id"]
+
+        bad = test_client.get(
+            "/api/v1/chat/proposals", params={"status": "nope"}
+        )
+        assert bad.status_code == 422
+
+        stored = app.state.session_factory()
+        assert (
+            stored.query(ChatProposalRow).filter_by(id=second["id"]).first()
+            is not None
+        )
+        stored.close()
+        aggregate = test_client.get("/api/v1/notifications").json()
+        assert aggregate["pending_proposals"] == 1

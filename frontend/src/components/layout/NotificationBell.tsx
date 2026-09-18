@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
-import { AlarmClock, Bell, CalendarClock, Layers } from 'lucide-react'
+import {
+  AlarmClock,
+  Bell,
+  CalendarClock,
+  Layers,
+  MessagesSquare,
+} from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -63,7 +69,7 @@ export function actionableTotal(data: Notifications | undefined): number | null 
   if (!data) {
     return null
   }
-  return data.due_cards + data.plan_today.length
+  return data.due_cards + data.plan_today.length + data.pending_proposals
 }
 
 function SectionLabel({ icon: Icon, label }: { icon: typeof Bell; label: string }) {
@@ -91,6 +97,7 @@ export function NotificationBell() {
   }
 
   const openReview = () => void navigate({ to: '/review' })
+  const openChat = () => void navigate({ to: '/chat' })
   const openPlanner = (courseId: number) =>
     void navigate({
       to: '/courses/$courseId',
@@ -102,7 +109,8 @@ export function NotificationBell() {
     data !== undefined &&
     data.due_cards === 0 &&
     data.plan_today.length === 0 &&
-    data.exams.length === 0
+    data.exams.length === 0 &&
+    data.pending_proposals === 0
 
   return (
     <Popover
@@ -199,6 +207,30 @@ export function NotificationBell() {
                   {t('notifications.moreOverdue', { count: data.plan_overdue_count })}
                 </p>
               ) : null}
+            </motion.section>
+          ) : null}
+
+          {data && data.pending_proposals > 0 ? (
+            <motion.section {...presets.enter} className="space-y-1.5">
+              <SectionLabel
+                icon={MessagesSquare}
+                label={t('notifications.pendingProposals')}
+              />
+              <button
+                type="button"
+                className="hover:bg-subtle flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                onClick={openChat}
+              >
+                <MessagesSquare
+                  className="text-primary size-3.5 shrink-0"
+                  aria-hidden
+                />
+                <span className="text-foreground flex-1 font-medium">
+                  {t('notifications.pendingProposalsCount', {
+                    count: data.pending_proposals,
+                  })}
+                </span>
+              </button>
             </motion.section>
           ) : null}
 

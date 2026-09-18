@@ -56,6 +56,7 @@ const AGGREGATE: Notifications = {
       days_left: 5,
     },
   ],
+  pending_proposals: 0,
   generated_at: '2026-09-15T00:00:00Z',
 }
 
@@ -113,5 +114,19 @@ describe('NotificationBell', () => {
   test('actionableTotal is null while loading, counts rows when loaded', () => {
     expect(actionableTotal(undefined)).toBeNull()
     expect(actionableTotal(AGGREGATE)).toBe(4)
+  })
+})
+
+describe('NotificationBell pending proposals (plan 78-E)', () => {
+  test('lists pending tutor suggestions and links to chat', async () => {
+    getNotifications.mockResolvedValue({
+      ...AGGREGATE,
+      pending_proposals: 2,
+    })
+    const { view } = renderBell()
+    const trigger = await screen.findByRole('button', { name: /notifications/i })
+    fireEvent.click(trigger)
+    expect(await screen.findByText(/2 tutor suggestions to review/)).toBeInTheDocument()
+    expect(view.getByText(/waiting for you/i)).toBeInTheDocument()
   })
 })

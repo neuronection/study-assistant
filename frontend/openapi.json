@@ -8187,6 +8187,10 @@
             "title": "Generated At",
             "type": "string"
           },
+          "pending_proposals": {
+            "title": "Pending Proposals",
+            "type": "integer"
+          },
           "plan_overdue_count": {
             "title": "Plan Overdue Count",
             "type": "integer"
@@ -8205,6 +8209,7 @@
           "plan_today",
           "plan_overdue_count",
           "exams",
+          "pending_proposals",
           "generated_at"
         ],
         "title": "NotificationsOut",
@@ -9211,6 +9216,33 @@
         "title": "PromoteIn",
         "type": "object"
       },
+      "ProposalListOut": {
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalOut"
+            },
+            "title": "Proposals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "proposals"
+        ],
+        "title": "ProposalListOut",
+        "type": "object"
+      },
       "ProposalOut": {
         "properties": {
           "action": {
@@ -9220,6 +9252,17 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
           },
           "payload": {
             "additionalProperties": true,
@@ -9237,6 +9280,17 @@
               }
             ],
             "title": "Result"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
           },
           "status": {
             "title": "Status",
@@ -15867,6 +15921,84 @@
           }
         },
         "summary": "Patch Message State",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/proposals": {
+      "get": {
+        "description": "Cross-session pending/inbox surface (plan 78-E): profile-scoped\nproposal cards, newest first, for resolution from outside the chat.",
+        "operationId": "list_proposals_api_v1_chat_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Proposals",
         "tags": [
           "chat"
         ]

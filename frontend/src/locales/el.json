@@ -2459,7 +2459,10 @@
     "plan": "Πλάνο",
     "exams": "Διαγωνίσματα",
     "daysLeft": "· {{days}} η",
-    "moreOverdue": "+{{count}} ακόμη εκτός χρόνου"
+    "moreOverdue": "+{{count}} ακόμη εκτός χρόνου",
+    "pendingProposals": "Περιμένουν εσένα",
+    "pendingProposalsCount_one": "{{count}} πρόταση του βοηθού προς αναθεώρηση",
+    "pendingProposalsCount_other": "{{count}} προτάσεις του βοηθού προς αναθεώρηση"
   },
   "nudges": {
     "title": "{{count}} κάρτες προς εξέταση",

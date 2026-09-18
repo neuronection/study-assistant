@@ -264,6 +264,15 @@ The model may end a chat turn with **up to three** fenced action proposals
   session context's `proposal_feedback_ids`, capped), with the rule "do not
   re-propose the same change unprompted"; this complements the existing
   dismissal-count note.
+- **Cross-session surface (plan 78-E, ADR-192)**: `GET /chat/proposals`
+  (status filter + id-cursor pagination, profile-scoped via the
+  proposal→message→session join, rows carry `session_id`/`message_id` for
+  deep links) makes pending cards resolvable outside the transcript; the
+  computed `GET /notifications` aggregate gains `pending_proposals` (no new
+  tables), the bell lists the count linking to `/chat`, and the chat rail
+  entry shows a badge (sharing the bell's query cache). One shared card
+  serializer (`proposal_out`) feeds the WS event, the message payloads and
+  the list — no hand-synced shapes.
 - **Execution is click-gated**: `POST /chat/proposals/{id}/approve` is the only
   path that executes — `create_note` places a real note through the same
   placement rules as the notes API (`TreeService.placement_node`), tagged

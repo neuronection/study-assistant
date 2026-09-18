@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ from ..domain.models import (
 )
 from ..jobs.runner import JobError, JobHandler, JobRunner
 from ..services.knowledge.tree import TreeError, TreeService
-from ..services.platform.chat import ChatError, ChatService
+from ..services.platform.chat import ChatError, ChatService, proposal_out
 from ..services.platform.profiles import ensure_default_profile
 from ..services.platform.proposal_actions import (
     POSTPROCESS_ACTIONS,
@@ -112,6 +112,13 @@ class ProposalOut(BaseModel):
     payload: dict[str, Any]
     status: str
     result: dict[str, Any] | None
+    message_id: int | None = None
+    session_id: int | None = None
+
+
+class ProposalListOut(BaseModel):
+    proposals: list[ProposalOut]
+    next_cursor: str | None = None
 
 
 class MessageOut(BaseModel):
@@ -179,13 +186,59 @@ def _session_out(chat_session: Any) -> SessionOut:
 
 
 def _proposal_row_out(proposal: Any) -> ProposalOut:
-    return ProposalOut(
-        id=proposal.id,
-        action=proposal.action,
-        payload=proposal.payload,
-        status=proposal.status,
-        result=proposal.result,
-    )
+    """One shared card serializer (plan 78-E): the WS path (`proposal_out`
+    in the chat service) and this REST path produce the same shape."""
+    return ProposalOut(**proposal_out(proposal))
+
+
+@router.get("/proposals", response_model=ProposalListOut)
+def list_proposals(
+    status: str | None = None,
+    cursor: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Cross-session pending/inbox surface (plan 78-E): profile-scoped
+    proposal cards, newest first, for resolution from outside the chat."""
+    profile = ensure_default_profile(session)
+    filters = [ChatSession.profile_id == profile.id]
+    if status is not None:
+        try:
+            status_value = ChatProposalStatus(status).value
+        except ValueError as error:
+            raise HTTPException(
+                status_code=422, detail=f"unknown proposal status {status!r}"
+            ) from error
+        filters.append(ChatProposal.status == status_value)
+    if cursor is not None:
+        try:
+            before_id = int(cursor)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=422, detail="invalid cursor"
+            ) from error
+        filters.append(ChatProposal.id < before_id)
+    rows = session.execute(
+        select(ChatProposal, ChatMessage.session_id)
+        .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
+        .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+        .where(*filters)
+        .order_by(ChatProposal.id.desc())
+        .limit(limit + 1)
+    ).all()
+    next_cursor: str | None = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        next_cursor = str(rows[-1][0].id)
+    proposals = [
+        ProposalOut(
+            **proposal_out(proposal),
+            message_id=proposal.message_id,
+            session_id=chat_session_id,
+        )
+        for proposal, chat_session_id in rows
+    ]
+    return {"proposals": proposals, "next_cursor": next_cursor}
 
 
 def _load_proposals(session: Session, message_ids: list[int]) -> dict[int, list[Any]]:

@@ -109,6 +109,23 @@ export interface ChatProposal {
         conflict?: string
       }
     | null
+  message_id?: number | null
+  session_id?: number | null
+}
+
+export interface ChatProposalList {
+  proposals: ChatProposal[]
+  next_cursor: string | null
+}
+
+export async function listChatProposals(
+  status?: ChatProposal['status']
+): Promise<ChatProposalList> {
+  const params = new URLSearchParams()
+  if (status !== undefined) params.set('status', status)
+  const query = params.size > 0 ? `?${params.toString()}` : ''
+  const response = await apiFetch(`/api/v1/chat/proposals${query}`)
+  return json<ChatProposalList>(response)
 }
 
 export interface ChatMessage {

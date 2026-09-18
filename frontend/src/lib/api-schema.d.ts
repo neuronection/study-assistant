@@ -497,6 +497,27 @@ export interface paths {
         patch: operations["patch_message_state_api_v1_chat_messages__message_id__state_patch"];
         trace?: never;
     };
+    "/api/v1/chat/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Proposals
+         * @description Cross-session pending/inbox surface (plan 78-E): profile-scoped
+         *     proposal cards, newest first, for resolution from outside the chat.
+         */
+        get: operations["list_proposals_api_v1_chat_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat/proposals/{proposal_id}/approve": {
         parameters: {
             query?: never;
@@ -6942,6 +6963,8 @@ export interface components {
             exams: components["schemas"]["ExamEntryOut"][];
             /** Generated At */
             generated_at: string;
+            /** Pending Proposals */
+            pending_proposals: number;
             /** Plan Overdue Count */
             plan_overdue_count: number;
             /** Plan Today */
@@ -7280,12 +7303,21 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ProposalListOut */
+        ProposalListOut: {
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Proposals */
+            proposals: components["schemas"]["ProposalOut"][];
+        };
         /** ProposalOut */
         ProposalOut: {
             /** Action */
             action: string;
             /** Id */
             id: number;
+            /** Message Id */
+            message_id?: number | null;
             /** Payload */
             payload: {
                 [key: string]: unknown;
@@ -7294,6 +7326,8 @@ export interface components {
             result: {
                 [key: string]: unknown;
             } | null;
+            /** Session Id */
+            session_id?: number | null;
             /** Status */
             status: string;
         };
@@ -9869,6 +9903,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_proposals_api_v1_chat_proposals_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalListOut"];
                 };
             };
             /** @description Validation Error */

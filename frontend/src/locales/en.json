@@ -2459,7 +2459,10 @@
     "plan": "Plan",
     "exams": "Exams",
     "daysLeft": "· {{days}}d",
-    "moreOverdue": "+{{count}} more overdue"
+    "moreOverdue": "+{{count}} more overdue",
+    "pendingProposals": "Waiting for you",
+    "pendingProposalsCount_one": "{{count}} tutor suggestion to review",
+    "pendingProposalsCount_other": "{{count}} tutor suggestions to review"
   },
   "nudges": {
     "title": "{{count}} cards due",

@@ -6,6 +6,24 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 78 — COMPLETE (2026-09-18, A–E; ADR-192):** chat proposals adopt the
+family ADR-0015 Class-B contract in full — **A** HITL capability discovery
+(tools catalog `PROPOSE_EDITS`/`PROPOSE_GENERATIONS` entries with the warning
+badge; library bumped to 0.42.0) + drop-reason visibility (stable codes in
+warnings + `trace.proposals_dropped`); **B** full grounding gate (every
+singular target id manifest-checked; edit-in-place proposals require the
+target READ this turn, repair names the exact `READ [N#]`, ungrounded
+proposals dropped); **C** anchored `text_edits` for notes/materials
+(server-side in-order resolution at creation, exact-once anchors, surgical
+diffs, full-body kept as the rewrite fallback); **D** conflict re-diff
+(approve-time drift refreshes the diff and re-requires consent instead of
+stale-ending; `ChatProposalStatus` StrEnum) + structured resolution feedback
+(`PROPOSAL OUTCOMES` block, no-unprompted-re-propose rule); **E** cross-session
+surface (`GET /chat/proposals`, pending count in the bell + chat rail badge,
+one shared card serializer). Career's plan-99 mechanics were the Tier-2
+reference; the family ADR was amended pre-acceptance to bind them. Details in
+the per-slice feature paragraphs below and `docs/ai.md` (HITL proposals).
+
 **Planned next — plan 78, grounded chat proposals & ADR-0015 HITL
 conformance (user-approved 2026-09-18, ADR-192 reserved):** adopt the family
 ADR-0015 Class-B proposal contract in full (local plan doc
@@ -26,6 +44,24 @@ surface (`GET /chat/proposals` list, pending count in the computed
 notifications aggregate + chat rail badge, one shared card serializer for
 WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
 the family ADR was amended pre-acceptance this session to bind them.
+
+**Feature — chat proposal inbox (plan 78-E, ADR-192, 2026-09-18):** slice E
+of plan 78 (final) — proposals leave the transcript. **List endpoint**: new
+`GET /chat/proposals` (profile-scoped via the proposal→message→session join,
+`status` filter validated against `ChatProposalStatus`, id-cursor pagination,
+rows carry `session_id`/`message_id` for deep links) — OpenAPI + types
+regenerated. **Serializer unification**: `_proposal_out` becomes the public
+`proposal_out` in the chat service; the REST `ProposalOut` is built from it,
+so the WS event, message payloads and the list share one card shape.
+**Notification aggregate**: `GET /notifications` gains a computed
+`pending_proposals` count (join query, no tables — plan-68 design intact);
+the bell gains a "Waiting for you" section linking to `/chat` (counted in
+the dot total, en/de/el with plurals); the chat rail entry shows a badge via
+`usePendingProposalCount` (shares the bell's query cache, `useDueCount`
+pattern). Tests: backend list-scoping/filter/pagination/422 +
+notifications-aggregate test (+1), frontend bell section test (+1). Backend
+1,274 green, ruff/mypy clean; frontend 1,333 green, lint/typecheck/build/i18n
+green. AI alignment clean. **Plan 78 A–E COMPLETE.**
 
 **Feature — chat conflict re-diff + resolution feedback (plan 78-D, ADR-192,
 2026-09-18):** slice D of plan 78 — approve-time drift is no longer a dead

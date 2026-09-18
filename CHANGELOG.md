@@ -38,6 +38,10 @@ Release history from before the public launch lives in the
   edits preserve interim manual edits), and the tutor now learns the outcome
   of its earlier cards on the next turn so it stops re-proposing resolved
   changes (plan 78-D, ADR-192).
+- Tutor chat: suggested actions are now visible and resolvable outside the
+  conversation — a cross-session proposals list (`GET /chat/proposals`), a
+  pending count in the notification bell with a link to chat, and a badge on
+  the chat rail entry (plan 78-E, ADR-192).
 
 ### Changed
 

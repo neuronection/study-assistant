@@ -48,6 +48,7 @@ import { ChatPanel } from '@/features/chat/ChatPanel'
 import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { useDueCount } from '@/features/review/useDueCount'
+import { usePendingProposalCount } from '@/features/chat/usePendingProposalCount'
 import { useReviewNudgeInterval } from '@/lib/review-nudges'
 import { isTypingTarget } from '@/lib/shortcuts'
 import {
@@ -362,6 +363,7 @@ export function AppShell() {
   const palette = useCommandPaletteOpen()
   const shortViewport = useIsShortViewport()
   const dueCount = useDueCount()
+  const pendingProposals = usePendingProposalCount()
   useReviewNudgeInterval()
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -480,7 +482,11 @@ export function AppShell() {
             label: t(labelKey),
             icon,
             badge:
-              to === '/review' && dueCount > 0 ? String(dueCount) : undefined,
+              to === '/review' && dueCount > 0
+                ? String(dueCount)
+                : to === '/chat' && pendingProposals > 0
+                  ? String(pendingProposals)
+                  : undefined,
           }))}
           secondaryItems={[{ id: '/settings', label: t('nav.settings'), icon: Settings }]}
           activeId={resolveActiveId(location.pathname)}

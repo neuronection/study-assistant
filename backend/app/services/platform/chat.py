@@ -1701,7 +1701,7 @@ class ChatService:
                     "mentions": [entry.as_dict() for entry in used_mentions],
                     "reads": reads,
                     "tool_calls": final_tool_calls,
-                    "proposals": [_proposal_out(row) for row in proposal_rows],
+                    "proposals": [proposal_out(row) for row in proposal_rows],
                     "grounded": grounded,
                 },
             }
@@ -1709,7 +1709,7 @@ class ChatService:
         return message
 
 
-def _proposal_out(proposal: ChatProposal | None) -> dict[str, Any]:
+def proposal_out(proposal: ChatProposal | None) -> dict[str, Any]:
     if proposal is None:
         return {}
     return {
