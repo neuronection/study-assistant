@@ -45,6 +45,24 @@ notifications aggregate + chat rail badge, one shared card serializer for
 WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
 the family ADR was amended pre-acceptance this session to bind them.
 
+**Feature — rendered proposal previews (plan 78-F, ADR-192, 2026-09-18):**
+slice F of plan 78 (user-requested follow-up) — proposal content is no longer
+raw JSON. Content-bearing cards gain a **Preview** affordance: an eye button
+plus a clickable card subject open `ProposalPreviewModal`
+(`features/ai/`, built on the library `PanelModal` — modal shim extended —
+and `MarkdownSurface`, the same math/mermaid/table renderer chat and the
+print docs use): creates render their `body_md`, anchored edits render the
+**resolved result**, appends render the merged preview (original + heading +
+addition) — via a shared `proposalPreview.ts` helper that also decides
+preview availability (generation proposals render nothing honestly: their
+content only exists after the student approves and the generator dialog
+runs). Create-note cards additionally gained the inline rendered body that
+create-material cards already had. i18n `ai.proposals.previewTitle`/
+`openPreview` (en/de/el). Tests: frontend +4 (modal render via existing
+surface, subject-click path, resolved-result preview, generate has no
+preview) + re-scoped expand-toggle test — frontend 1,337 green,
+lint/typecheck/build/i18n green; backend untouched.
+
 **Feature — chat proposal inbox (plan 78-E, ADR-192, 2026-09-18):** slice E
 of plan 78 (final) — proposals leave the transcript. **List endpoint**: new
 `GET /chat/proposals` (profile-scoped via the proposal→message→session join,

@@ -42,6 +42,11 @@ Release history from before the public launch lives in the
   conversation — a cross-session proposals list (`GET /chat/proposals`), a
   pending count in the notification bell with a link to chat, and a badge on
   the chat rail entry (plan 78-E, ADR-192).
+- Tutor chat: content-bearing proposals (create/edit/append notes and
+  materials) gained a rendered preview — an eye button or clicking the card
+  subject opens a large modal rendering the actual content (math, diagrams,
+  tables) through the app's markdown surface, so nothing has to be judged
+  from raw JSON (plan 78-F, ADR-192).
 
 ### Changed
 

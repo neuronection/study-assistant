@@ -2219,7 +2219,9 @@
       "editPrepend": "Stellt voran: „{{text}}“",
       "status_conflict": "Geändert",
       "conflictHint": "Das Ziel hat sich seit diesem Vorschlag geändert — der Diff unten wurde mit dem aktuellen Inhalt aktualisiert. Um anzuwenden, erneut bestätigen.",
-      "approveRefreshed": "Aktualisierten Diff bestätigen"
+      "approveRefreshed": "Aktualisierten Diff bestätigen",
+      "previewTitle": "Vorschau des Vorschlags",
+      "openPreview": "Gerenderten Inhalt ansehen"
     },
     "mentions": {
       "material": "Material",

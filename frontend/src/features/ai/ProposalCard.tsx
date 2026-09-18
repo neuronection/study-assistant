@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
+import { ProposalPreviewModal } from './ProposalPreviewModal'
+import { proposalPreview } from './proposalPreview'
 import { SuccessBurst } from '@/components/motion/SuccessBurst'
 import {
   CalendarDays,
@@ -20,6 +22,7 @@ import {
   Loader2,
   Network,
   PenLine,
+  Eye,
   Sparkles,
   StickyNote,
   Tag,
@@ -343,6 +346,8 @@ export function ProposalCard({
   const materialId = proposal.result?.material_id
   const diff = proposalDiff(view)
   const edits = anchoredEdits(view)
+  const preview = proposalPreview(view)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const conflictNote =
     view.status === 'conflict'
       ? ((view.result?.conflict as string | undefined) ??
@@ -354,13 +359,41 @@ export function ProposalCard({
       <div className="flex items-center gap-2 px-3 py-2">
         <Icon className="text-primary size-4 shrink-0" aria-hidden />
         <p className="min-w-0 flex-1 truncate text-xs font-medium">
-          {actionLabel}
-          {subject ? <span className="text-muted-foreground"> · {subject}</span> : null}
+          {preview ? (
+            <button
+              type="button"
+              className="hover:text-foreground text-left underline-offset-2 hover:underline"
+              onClick={() => setPreviewOpen(true)}
+            >
+              {actionLabel}
+              {subject ? (
+                <span className="text-muted-foreground"> · {subject}</span>
+              ) : null}
+            </button>
+          ) : (
+            <>
+              {actionLabel}
+              {subject ? (
+                <span className="text-muted-foreground"> · {subject}</span>
+              ) : null}
+            </>
+          )}
         </p>
         {view.status === 'approved' || view.status === 'executed' ? (
           <SuccessBurst />
         ) : null}
         <StatusBadge status={view.status} />
+        {preview ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={() => setPreviewOpen(true)}
+            aria-label={t('ai.proposals.openPreview')}
+          >
+            <Eye className="size-3.5" aria-hidden />
+          </Button>
+        ) : null}
         <Button
           variant="ghost"
           size="icon"
@@ -484,7 +517,7 @@ export function ProposalCard({
           </div>
         </div>
       ) : null}
-      {view.action === 'create_material' &&
+      {(view.action === 'create_material' || view.action === 'create_note') &&
       typeof (view.payload as Record<string, unknown> | undefined)?.body_md ===
         'string' ? (
         <div className="border-border bg-surface mx-3 mb-2 max-h-48 overflow-y-auto rounded-md border p-2 text-xs">
@@ -597,6 +630,11 @@ export function ProposalCard({
           {String(view.result.error)}
         </div>
       ) : null}
+      <ProposalPreviewModal
+        proposal={view}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </div>
   )
 }

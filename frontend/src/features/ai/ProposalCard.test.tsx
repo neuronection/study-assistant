@@ -6,7 +6,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ProposalCard, type GenerateRequest } from './ProposalCard'
@@ -78,8 +78,10 @@ describe('ProposalCard', () => {
 
   test('expands the payload preview', async () => {
     renderCard(PROPOSAL)
-    fireEvent.click(await screen.findByRole('button', { name: /preview/i }))
-    expect(await screen.findByText(/The chain rule:/)).toBeInTheDocument()
+    fireEvent.click(
+      await screen.findByRole('button', { name: /show or hide/i }),
+    )
+    expect(screen.getAllByText(/The chain rule:/).length).toBeGreaterThan(0)
   })
 
   test('approve calls the API', async () => {
@@ -502,5 +504,66 @@ describe('ProposalCard conflict flow (plan 78-D)', () => {
       await screen.findByRole('button', { name: /approve refreshed diff/i }),
     )
     await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith(21))
+  })
+})
+
+describe('ProposalCard rendered preview (plan 78-F)', () => {
+  const CREATE: ChatProposal = {
+    id: 31,
+    action: 'create_note',
+    payload: {
+      title: 'Chain rule summary',
+      body_md: '# Chain rule\n\nThe derivative is $2x$.',
+    },
+    status: 'proposed',
+    result: null,
+  }
+
+  test('create_note cards gain a rendered preview via the existing markdown surface', async () => {
+    renderCard(CREATE)
+    fireEvent.click(await screen.findByRole('button', { name: /preview rendered content/i }))
+    const body = await screen.findByTestId('proposal-preview-body')
+    expect(within(body).getByRole('heading', { name: 'Chain rule summary' })).toBeInTheDocument()
+    expect(within(body).getByRole('heading', { name: 'Chain rule', level: 1 })).toBeInTheDocument()
+  })
+
+  test('clicking the card subject opens the preview too', async () => {
+    renderCard(CREATE)
+    fireEvent.click(
+      await screen.findByRole('button', { name: /chain rule summary/i }),
+    )
+    expect(await screen.findByTestId('proposal-preview-body')).toBeInTheDocument()
+  })
+
+  test('anchored edits preview the resolved result', async () => {
+    renderCard({
+      id: 32,
+      action: 'edit_note',
+      payload: {
+        note_id: 5,
+        original_md: '# Note\n\nalpha beta',
+        new_body_md: '# Note\n\nalpha BETA',
+      },
+      status: 'proposed',
+      result: null,
+    })
+    fireEvent.click(
+      await screen.findByRole('button', { name: /preview rendered content/i }),
+    )
+    const body = await screen.findByTestId('proposal-preview-body')
+    expect(within(body).getByText('alpha BETA', { exact: false })).toBeInTheDocument()
+  })
+
+  test('generate proposals have no rendered preview (content exists only after generation)', async () => {
+    renderCard({
+      id: 33,
+      action: 'generate_quiz',
+      payload: { topic: 'Chain rule', count: 5, difficulty: 2 },
+      status: 'proposed',
+      result: null,
+    })
+    expect(
+      screen.queryByRole('button', { name: /preview rendered content/i }),
+    ).not.toBeInTheDocument()
   })
 })

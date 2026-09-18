@@ -264,6 +264,15 @@ The model may end a chat turn with **up to three** fenced action proposals
   session context's `proposal_feedback_ids`, capped), with the rule "do not
   re-propose the same change unprompted"; this complements the existing
   dismissal-count note.
+- **Rendered previews (plan 78-F, ADR-192)**: content-bearing cards are
+  readable at a glance — a Preview (eye) button and a clickable card subject
+  open `ProposalPreviewModal` (`features/ai/`, library `PanelModal` +
+  `MarkdownSurface`), rendering the create's `body_md`, the edit's resolved
+  result, or the append's merged preview through the same math/mermaid/table
+  surface the chat and viewers use; create-note cards also gained the inline
+  rendered body create-material cards already had. Generation proposals
+  (`generate_*`, compose) honestly have no preview — their content does not
+  exist until the student approves and the generator dialog runs.
 - **Cross-session surface (plan 78-E, ADR-192)**: `GET /chat/proposals`
   (status filter + id-cursor pagination, profile-scoped via the
   proposal→message→session join, rows carry `session_id`/`message_id` for
