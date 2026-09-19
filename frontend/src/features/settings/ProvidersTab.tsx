@@ -11,7 +11,7 @@ import { getCountryFlag } from '@/lib/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { LocalEngines } from './LocalEngines'
-import { SetupPresetsCard } from './SetupPresetsCard'
+import { ProviderSetupModal } from './ProviderSetupModal'
 import { SearchProviderCard } from './SearchProviderCard'
 import { DiscoveryCard } from './DiscoveryCard'
 import { useConfirm } from '@/lib/use-confirm'
@@ -22,7 +22,8 @@ export function ProvidersTab() {
   const queryClient = useQueryClient()
   const openWizard = useWizardStore((state) => state.openWizard)
   const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
-  const [form, setForm] = useState<{ provider: Provider | null } | null>(null)
+  const [form, setForm] = useState<{ provider: Provider } | null>(null)
+  const [setupOpen, setSetupOpen] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [confirm, confirmElement] = useConfirm()
 
@@ -47,10 +48,9 @@ export function ProvidersTab() {
 
   return (
     <div className="space-y-3">
-      <SetupPresetsCard />
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-sm">{t('settings.providersHint')}</p>
-        <Button size="sm" variant="outline" onClick={() => setForm({ provider: null })}>
+        <Button size="sm" onClick={() => setSetupOpen(true)}>
           <Plus aria-hidden />
           {t('settings.addProvider')}
         </Button>
@@ -149,6 +149,7 @@ export function ProvidersTab() {
       ) : null}
       <SearchProviderCard />
       <DiscoveryCard />
+      {setupOpen ? <ProviderSetupModal onClose={() => setSetupOpen(false)} /> : null}
       {form ? (
         <ProviderFormDialog provider={form.provider} onClose={() => setForm(null)} />
       ) : null}

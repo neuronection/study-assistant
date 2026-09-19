@@ -18,6 +18,7 @@ vi.mock('@/features/spike/SpikePage', () => ({
 
 const listProviders = vi.fn()
 const listPresets = vi.fn()
+const setupProviderPreset = vi.fn()
 const listModels = vi.fn()
 const listTasks = vi.fn()
 const listTaskDefaults = vi.fn()
@@ -42,6 +43,8 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listTasks: () => listTasks(),
     listTaskDefaults: () => listTaskDefaults(),
     createProvider: (...args: unknown[]) => createProvider(...(args as [object])),
+    setupProviderPreset: (...args: unknown[]) =>
+      setupProviderPreset(...(args as [string, object])),
     updateProvider: (...args: unknown[]) =>
       updateProvider(...(args as [number, object])),
     testProvider: (...args: unknown[]) => testProvider(...(args as [number])),
@@ -320,65 +323,59 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(assignTaskDefault).toHaveBeenCalledWith('text', 11, null))
   })
 
-  test('add provider dialog: dropdown preset fills name, type and base URL', async () => {
+  test('add provider opens the setup modal with the preset grid', async () => {
     listProviders.mockResolvedValue([])
     listPresets.mockResolvedValue(PRESETS)
-    createProvider.mockResolvedValue(PROVIDER)
-    await await renderSettings('/settings?tab=providers')
+    await renderSettings('/settings?tab=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
-    fireEvent.change(await screen.findByLabelText(/^provider$/i), {
-      target: { value: 'ollama' },
-    })
-    expect(screen.getByLabelText(/name/i)).toHaveValue('Ollama (local)')
-    fireEvent.change(screen.getByLabelText(/api key/i), {
-      target: { value: 'sk-local' },
-    })
-
-    expect(screen.getByRole('button', { name: /local \/ on-premise/i })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    screen.getByRole('button', { name: /^add$/i }).click()
-    await waitFor(() =>
-      expect(createProvider).toHaveBeenCalledWith({
-        name: 'Ollama (local)',
-        type: 'openai_compatible',
-        base_url: 'http://localhost:11434/v1',
-        api_key: 'sk-local',
-        is_local: true,
-        country: null,
-      })
-    )
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    expect(screen.getByText('OpenAI')).toBeInTheDocument()
+    expect(screen.getByText(/custom \(openai-compatible\)/i)).toBeInTheDocument()
   })
 
-  test('add provider dialog: custom preset keeps a typed name and requires a base URL', async () => {
+  test('add provider: preset tile leads to the guided form with set-up-automatically', async () => {
     listProviders.mockResolvedValue([])
     listPresets.mockResolvedValue(PRESETS)
-    createProvider.mockResolvedValue(PROVIDER)
-    await await     renderSettings('/settings?tab=providers')
+    setupProviderPreset.mockResolvedValue({
+      ok: true,
+      provider: { ...PROVIDER, preset_key: 'openai' },
+      catalog_count: 2,
+      curated_missed: false,
+      assigned_chat_model: 'gpt-5.6-terra',
+      assigned_vision_model: null,
+      assigned_stt_model: 'whisper-1',
+    })
+    await renderSettings('/settings?tab=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
-    fireEvent.change(await screen.findByLabelText(/^provider$/i), {
-      target: { value: 'custom' },
+    fireEvent.click(await screen.findByText('OpenAI'))
+    await screen.findByLabelText(/connection name/i)
+    fireEvent.change(await screen.findByLabelText(/api key$/i), {
+      target: { value: 'sk-test' },
     })
-    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'LM Studio' } })
+    fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
+    await waitFor(() =>
+      expect(setupProviderPreset).toHaveBeenCalledWith('openai', { api_key: 'sk-test', name: null })
+    )
+    expect(await screen.findByText(/connected/i)).toBeInTheDocument()
+  })
 
-    fireEvent.change(await screen.findByLabelText(/^provider$/i), {
-      target: { value: 'openai' },
-    })
-    fireEvent.change(screen.getByLabelText(/^provider$/i), {
-      target: { value: 'custom' },
-    })
-    expect(screen.getByLabelText(/name/i)).toHaveValue('LM Studio')
+  test('add provider: custom tile keeps a typed name and requires a base URL', async () => {
+    listProviders.mockResolvedValue([])
+    listPresets.mockResolvedValue(PRESETS)
+    createProvider.mockResolvedValue({ ...PROVIDER, name: 'LM Studio' })
+    await renderSettings('/settings?tab=providers')
+    fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
+    fireEvent.click(await screen.findByText(/custom \(openai-compatible\)/i))
 
+    fireEvent.change(await screen.findByLabelText(/^name$/i), { target: { value: 'LM Studio' } })
     const submit = screen.getByRole('button', { name: /^add$/i })
     expect(submit).toBeDisabled()
-    expect(screen.getByText(/custom providers need a base url/i)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/base url/i), {
       target: { value: 'http://localhost:1234/v1' },
     })
     await waitFor(() => expect(submit).toBeEnabled())
-    submit.click()
+    fireEvent.click(submit)
     await waitFor(() =>
       expect(createProvider).toHaveBeenCalledWith({
         name: 'LM Studio',

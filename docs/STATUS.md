@@ -32,11 +32,22 @@ there are no dual-vocab shims — pre-release, no backward compatibility) and
 created on that provider, cross-provider → 409, capability guards via the
 task registry). **Batch 3** ported the uniform 12-case contract-test matrix
 verbatim (`tests/test_ai_provider_setup_contract.py`, mock transport) +
-a migration round-trip test. **Batch 4**: Settings → Providers gained the
-setup surface (`SetupPresetsCard`: neutral tiles in family order, guided key
-form with checklist/free-tier note/key URL, result panel with assigned
-models + `curated_missed` warning, i18n-routed error codes incl.
-`suspectedVendor` hints; manual advanced add stays); capability pickers and
+a migration round-trip test. **Batch 4** (plus a same-day follow-up pass):
+the **Add provider** button in Settings → Providers now opens a single
+`ProviderSetupModal` — provider grid (neutral tiles in family order +
+**Custom**) → per-provider guided form (checklist steps with copy buttons,
+key URL link, free-tier note, connection name, API key; local presets need
+no key) → result panel (assigned chat/vision/stt models +
+`curated_missed` honest-fallback warning) — desktop-wizard style with
+"Choose another provider" / "Set up automatically" as the footer pair.
+**Advanced** discloses the API base URL (read-only for fixed-base
+providers), the hosting toggle and the country; editing any of them saves
+through the manual form (desktop's `baseEdited` rule), as does the
+**Custom** tile (full manual fields: name, base URL, key, hosting,
+country). Setup failures are i18n-routed by stable error codes incl.
+`suspectedVendor` hints; nothing is persisted on a classified failure.
+The old `ProviderFormDialog` is now edit-only (create flows live in the
+modal; onboarding keeps its compact create form). Capability pickers and
 labels updated to `stt`/`tts`; OpenAPI + types regenerated. **Batch 5**:
 `check-byok-contract.sh --self` in CI (`.github/workflows/byok-contract.yml`,
 beside the alignment gate); docs + CHANGELOG same commit. §15 deltas noted

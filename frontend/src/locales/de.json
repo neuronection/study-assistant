@@ -147,7 +147,8 @@
     "actions": "Aktionen",
     "yes": "Ja",
     "no": "Nein",
-    "info": "Details"
+    "info": "Details",
+    "copy": "Kopieren"
   },
   "exercises": {
     "errors": {
@@ -1092,7 +1093,16 @@
         "local_not_running": "Die lokale Engine ist nicht erreichbar — stelle sicher, dass sie läuft.",
         "unknown": "Der Anbieter meldet einen unbekannten Fehler.",
         "suspectedVendor": "Das sieht nach einem {{vendor}}-Schlüssel im falschen Feld aus."
-      }
+      },
+      "formTitle": "{{name}} einrichten",
+      "modalHint": "Anbieter wählen oder manuell ausfüllen. Der Schlüssel geht direkt in den OS-Schlüsselspeicher.",
+      "connectionName": "Verbindungsname",
+      "advanced": "Erweitert",
+      "baseEditHint": "Eine geänderte Basis-URL, lokales Hosting oder ein Land wird über das manuelle Formular gespeichert.",
+      "chooseAnother": "Anderen Anbieter wählen",
+      "automatically": "Automatisch einrichten",
+      "noKeyNeeded": "Für diesen Anbieter wird kein API-Schlüssel benötigt.",
+      "manualHint": "Beliebiger OpenAI-kompatibler Endpunkt — die Basis-URL muss exakt zur API passen."
     }
   },
   "genesis": {

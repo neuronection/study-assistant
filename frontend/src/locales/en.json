@@ -47,7 +47,8 @@
     "actions": "Actions",
     "yes": "Yes",
     "no": "No",
-    "info": "Details"
+    "info": "Details",
+    "copy": "Copy"
   },
   "focus": {
     "details": "Details",
@@ -1130,7 +1131,16 @@
         "local_not_running": "Could not reach the local engine — make sure it is running.",
         "unknown": "The provider reported an unknown error.",
         "suspectedVendor": "This looks like a {{vendor}} key pasted into the wrong field."
-      }
+      },
+      "formTitle": "Set up {{name}}",
+      "modalHint": "Pick a provider or fill in manually. The key goes straight to the OS keyring.",
+      "connectionName": "Connection name",
+      "advanced": "Advanced",
+      "baseEditHint": "An edited base URL, local hosting or country saves through the manual form.",
+      "chooseAnother": "Choose another provider",
+      "automatically": "Set up automatically",
+      "noKeyNeeded": "No API key needed for this provider.",
+      "manualHint": "Any OpenAI-compatible endpoint — set the base URL exactly as its API expects."
     }
   },
   "spike": {

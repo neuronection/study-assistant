@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Plus, Save } from 'lucide-react'
+import { Loader2, Save } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -9,43 +9,6 @@ import { ProviderForm } from '@/components/ui/provider-form'
 import { updateProvider, type Provider } from '@/lib/api'
 import { COUNTRIES } from '@/lib/countries'
 import { useCloseFloatings } from '@/lib/ui-overlays'
-
-import { ProviderCreateFields } from './ProviderCreateFields'
-import { useProviderCreate } from './useProviderCreate'
-
-function ProviderCreateForm({
-  onSaved,
-  onClose,
-}: {
-  onSaved?: () => void
-  onClose: () => void
-}) {
-  const { t } = useTranslation()
-  const state = useProviderCreate({
-    onCreated: () => {
-      onSaved?.()
-      onClose()
-    },
-  })
-  return (
-    <CardContent className="space-y-3">
-      <ProviderCreateFields state={state} />
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          {t('settings.cancel')}
-        </Button>
-        <Button
-          size="sm"
-          disabled={!state.canSave || state.submitting}
-          onClick={state.submit}
-        >
-          {state.submitting ? <Loader2 className="animate-spin" aria-hidden /> : <Plus aria-hidden />}
-          {t('settings.add')}
-        </Button>
-      </div>
-    </CardContent>
-  )
-}
 
 function ProviderEditForm({
   provider,
@@ -155,29 +118,20 @@ export function ProviderFormDialog({
   onSaved,
   onClose,
 }: {
-  provider: Provider | null
+  provider: Provider
   onSaved?: () => void
   onClose: () => void
 }) {
   useCloseFloatings()
   const { t } = useTranslation()
-  const editing = provider !== null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto">
         <CardHeader>
-          <CardTitle className="text-base">
-            {editing ? t('settings.editProvider') : t('settings.addProvider')}
-          </CardTitle>
-          <CardDescription>
-            {editing ? t('settings.editProviderHint') : t('settings.addProviderHint')}
-          </CardDescription>
+          <CardTitle className="text-base">{t('settings.editProvider')}</CardTitle>
+          <CardDescription>{t('settings.editProviderHint')}</CardDescription>
         </CardHeader>
-        {editing ? (
-          <ProviderEditForm provider={provider} onSaved={onSaved} onClose={onClose} />
-        ) : (
-          <ProviderCreateForm onSaved={onSaved} onClose={onClose} />
-        )}
+        <ProviderEditForm provider={provider} onSaved={onSaved} onClose={onClose} />
       </Card>
     </div>
   )

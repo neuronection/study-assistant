@@ -54,23 +54,28 @@ something to count. Everything is editable or deletable like any other course.
 
 ## Connect an AI provider (required for AI features)
 
-**Quick way — one-click setup tiles.** Open **Settings → Providers** and pick a
-provider tile (OpenAI, Google Gemini, OpenRouter, Anthropic, Groq, Mistral,
-DeepSeek, or Ollama for a local setup). The guided form shows the provider's
-own key steps and, where one exists, the free-tier note and a "get an API key"
-link. Paste the key and press **Connect** — the key is validated against the
-provider's real catalog first (a rejected key stores nothing), a curated set
-of current models is saved, and default chat/vision models plus a
-speech-to-text model (where the provider offers one, e.g. OpenAI's whisper)
-are assigned automatically — without overwriting any model you already
-assigned to a task. If none of the curated ids match the provider's current
-catalog, the full catalog is saved instead and the result tells you so
-(then pick defaults manually under **Tasks**). If the key is mis-typed or
-belongs to a different vendor (e.g. an OpenRouter key pasted for OpenAI),
-the error says so with a hint.
+**Quick way — one-click setup tiles.** Open **Settings → Providers** and press
+**Add provider**: a dialog opens with a provider grid (OpenAI, Google Gemini,
+OpenRouter, Anthropic, Groq, Mistral, DeepSeek, Ollama for a local setup, or
+Custom for any OpenAI-compatible endpoint). Picking a tile shows that
+provider's own key steps (each with a copy button) and, where one exists, the
+free-tier note and a "get an API key" link. Paste the key and press **Set up
+automatically** — the key is validated against the provider's real catalog
+first (a rejected key stores nothing), a curated set of current models is
+saved, and default chat/vision models plus a speech-to-text model (where the
+provider offers one, e.g. OpenAI's whisper) are assigned automatically —
+without overwriting any model you already assigned to a task. If none of the
+curated ids match the provider's current catalog, the full catalog is saved
+instead and the result tells you so (then pick defaults manually under
+**Tasks**). If the key is mis-typed or belongs to a different vendor (e.g. an
+OpenRouter key pasted for OpenAI), the error says so with a hint. **Advanced**
+discloses the API base URL (fixed for providers that have one true endpoint),
+the hosting option and the country — changing any of them saves through the
+manual form, exactly like the **Custom** tile does (name, base URL, key,
+hosting, country).
 
-**Manual / advanced way.** Use **Add provider** for anything else (e.g. LM
-Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):
+**Manual / advanced way.** Use **Add provider → Custom** for anything else
+(e.g. LM Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):
 
 1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —
    e.g. `/settings?tab=models` — so you can bookmark or share deep links).
