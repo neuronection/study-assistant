@@ -38,7 +38,7 @@ class SpeechGateway(LLMGateway):
             base_url="http://localhost/v1",
             external_id="tts-1",
             label="tts-1",
-            caps=["speech"],
+            caps=["tts"],
             api_key=None,
         )
 
@@ -127,7 +127,7 @@ def test_speak_with_openai_compatible() -> None:
         base_url="http://localhost/v1",
         external_id="tts-1",
         label="tts-1",
-        caps=["speech"],
+        caps=["tts"],
         api_key=None,
     )
 
@@ -154,7 +154,7 @@ def test_speak_with_google_pcm_wrapped_as_wav() -> None:
         base_url="http://localhost",
         external_id="gemini-2.5-flash-preview-tts",
         label="gemini-tts",
-        caps=["speech"],
+        caps=["tts"],
         api_key="k",
     )
     pcm = struct.pack("<4h", 1, -1, 32767, -32768)
@@ -228,4 +228,4 @@ def test_tts_task_registered_and_speech_capability_seeded() -> None:
     from app.core.vocab import Capability
 
     assert "tts" in TASKS_BY_NAME
-    assert TASKS_BY_NAME["tts"].requires == Capability.SPEECH.value
+    assert TASKS_BY_NAME["tts"].requires == Capability.TTS.value

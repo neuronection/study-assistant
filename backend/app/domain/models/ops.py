@@ -70,6 +70,7 @@ class Provider(Base):
     type: Mapped[str] = mapped_column(String(30))
     base_url: Mapped[str] = mapped_column(String(300))
     keyring_ref: Mapped[str] = mapped_column(String(200))
+    preset_key: Mapped[str | None] = mapped_column(String(40))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     is_local: Mapped[bool | None] = mapped_column(Boolean)
     country: Mapped[str | None] = mapped_column(String(80))

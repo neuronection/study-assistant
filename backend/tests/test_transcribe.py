@@ -40,7 +40,7 @@ def resolved(provider_type: str, external_id: str = "whisper-1") -> Any:
         else "https://provider.test",
         external_id=external_id,
         label=external_id,
-        caps=["audio"],
+        caps=["stt"],
         api_key="KEY",
     )
 
@@ -145,14 +145,14 @@ def test_server_error_falls_back_to_fallback_model(tmp_path: object) -> None:
             provider_id=provider.id,
             external_id="primary",
             label="primary",
-            caps=["audio"],
+            caps=["stt"],
             enabled=True,
         )
         fallback = AiModel(
             provider_id=provider.id,
             external_id="fallback",
             label="fallback",
-            caps=["audio"],
+            caps=["stt"],
             enabled=True,
         )
         session.add_all([primary, fallback])
@@ -281,9 +281,9 @@ def test_transcribe_task_and_audio_default_seeded(
     with test_client:
         tasks = test_client.get("/api/v1/tasks").json()
         entry = next(item for item in tasks if item["task"] == "transcribe")
-        assert entry["requires"] == "audio"
+        assert entry["requires"] == "stt"
         defaults = test_client.get("/api/v1/tasks/defaults").json()
-        assert any(item["requires"] == "audio" for item in defaults)
+        assert any(item["requires"] == "stt" for item in defaults)
 
 
 def test_transcribe_skill_seeded(

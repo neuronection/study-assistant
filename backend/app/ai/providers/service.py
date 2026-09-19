@@ -6,9 +6,9 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core import secrets
-from ..core.vocab import Capability
-from ..domain.models import (
+from ...core import secrets
+from ...core.vocab import Capability
+from ...domain.models import (
     AiModel,
     CourseDefaultTaskAssignment,
     CourseTaskAssignment,
@@ -27,39 +27,16 @@ DEFAULT_BASE_URLS: dict[str, str] = {
     "anthropic": "https://api.anthropic.com",
 }
 
-PRESETS: dict[str, dict[str, str]] = {
-    "google": {"name": "Google Gemini", "type": "google", "base_url": DEFAULT_BASE_URLS["google"]},
-    "openai": {
-        "name": "OpenAI",
-        "type": "openai_compatible",
-        "base_url": "https://api.openai.com/v1",
-    },
-    "anthropic": {
-        "name": "Anthropic",
-        "type": "anthropic",
-        "base_url": DEFAULT_BASE_URLS["anthropic"],
-    },
-    "ollama": {
-        "name": "Ollama (local)",
-        "type": "openai_compatible",
-        "base_url": "http://localhost:11434/v1",
-    },
-    "llama_cpp": {
-        "name": "llama.cpp (local)",
-        "type": "openai_compatible",
-        "base_url": "http://localhost:8080/v1",
-    },
-    "lm_studio": {
-        "name": "LM Studio (local)",
-        "type": "openai_compatible",
-        "base_url": "http://localhost:1234/v1",
-    },
-}
-
 DETECT_TARGETS: dict[str, tuple[str, ...]] = {
     "ollama": ("http://localhost:11434/v1",),
     "llama_cpp": ("http://localhost:8080/v1", "http://localhost:8081/v1"),
     "lm_studio": ("http://localhost:1234/v1",),
+}
+
+DETECT_ENGINE_NAMES: dict[str, str] = {
+    "ollama": "Ollama (local)",
+    "llama_cpp": "llama.cpp (local)",
+    "lm_studio": "LM Studio (local)",
 }
 
 DETECT_CONNECT_TIMEOUT = 0.3
@@ -113,7 +90,6 @@ def detect_local_engines(
         transport=transport,
     ) as client:
         for preset_id, base_urls in DETECT_TARGETS.items():
-            preset = PRESETS[preset_id]
             for base_url in base_urls:
                 if base_url in configured_base_urls:
                     break
@@ -123,7 +99,7 @@ def detect_local_engines(
                 hits.append(
                     LocalEngineHit(
                         preset_id=preset_id,
-                        name=preset["name"],
+                        name=DETECT_ENGINE_NAMES[preset_id],
                         base_url=base_url,
                         models=models,
                     )
@@ -136,24 +112,22 @@ def infer_caps(external_id: str, methods: list[str] | None = None) -> list[str]:
     name = external_id.lower()
     if "embedding" in name or "bge" in name or (methods is not None and "embedContent" in methods):
         return ["embeddings"]
-    stt_hints = ("whisper", "transcribe")
+    stt_hints = ("whisper", "transcribe", "stt")
     if any(hint in name for hint in stt_hints):
-        return ["audio"]
-    tts_hints = ("tts",)
+        return ["stt"]
+    tts_hints = ("tts", "speech", "voice")
     if any(hint in name for hint in tts_hints):
-        return ["speech"]
+        return ["tts"]
     if methods is not None and "generateContent" not in methods:
         return []
     caps = ["text"]
     vision_hints = (
-        "gemini", "gpt-4o", "gpt-4.1", "gpt-4-turbo", "claude-3", "claude-4",
-        "claude-sonnet", "claude-opus", "claude-haiku", "vision", "-vl", "llava",
-        "pixtral", "gemma3",
+        "gemini", "gpt-4o", "gpt-4.1", "gpt-4-turbo", "gpt-5", "claude-3",
+        "claude-4", "claude-sonnet", "claude-opus", "claude-haiku", "vision",
+        "-vl", "llava", "pixtral", "gemma3",
     )
     if any(hint in name for hint in vision_hints):
         caps.append("vision")
-    if "gemini" in name:
-        caps.append("audio")
     tool_hints = (
         "gpt-4", "gpt-5", "o3", "o4", "claude", "gemini", "deepseek", "qwen",
         "llama-3", "mistral",
@@ -389,7 +363,7 @@ def assign_task(
     model_id: int | None,
     fallback_model_id: int | None,
 ) -> TaskAssignment:
-    from .tasks import TASKS_BY_NAME
+    from ..tasks import TASKS_BY_NAME
 
     task_def = TASKS_BY_NAME.get(task)
     if task_def is None:
@@ -441,8 +415,8 @@ def assign_course_task(
     model_id: int | None,
     fallback_model_id: int | None,
 ) -> CourseTaskAssignment:
-    from ..domain.models import Course
-    from .tasks import TASKS_BY_NAME
+    from ...domain.models import Course
+    from ..tasks import TASKS_BY_NAME
 
     if session.get(Course, course_id) is None:
         raise ProviderError(f"course {course_id} not found")
@@ -475,7 +449,7 @@ def assign_course_default_task(
     model_id: int | None,
     fallback_model_id: int | None,
 ) -> CourseDefaultTaskAssignment:
-    from ..domain.models import Course
+    from ...domain.models import Course
 
     if requires not in DEFAULT_REQUIRES:
         raise ProviderError(f"unknown capability '{requires}'")

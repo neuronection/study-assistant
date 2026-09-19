@@ -30,12 +30,12 @@ TASK_DEFS: list[TaskDef] = [
     TaskDef(
         "transcribe",
         "Speech-to-text dictation (Whisper-class models)",
-        "audio",
+        "stt",
     ),
     TaskDef(
         "tts",
         "Text-to-speech read-aloud (natural voices)",
-        "speech",
+        "tts",
     ),
 ]
 

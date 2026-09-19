@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
@@ -7,8 +9,12 @@ from sqlalchemy.orm import Session
 from ..ai.providers import (
     DEFAULT_REQUIRES,
     PRESETS,
+    CrossProviderModelError,
     ProviderError,
     ProvidersService,
+    SetupError,
+    SetupOptions,
+    UnknownPresetError,
     assign_course_default_task,
     assign_course_task,
     assign_default_task,
@@ -18,6 +24,8 @@ from ..ai.providers import (
     list_course_assignments,
     list_course_default_assignments,
     list_default_assignments,
+    set_default_model,
+    setup_provider_from_preset,
 )
 from ..ai.providers import (
     detect_local_engines as probe_local_engines,
@@ -141,6 +149,7 @@ def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
         name=provider.name,
         type=provider.type,
         base_url=provider.base_url,
+        preset_key=provider.preset_key,
         enabled=provider.enabled,
         is_local=provider.is_local,
         country=provider.country,
@@ -150,9 +159,138 @@ def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
     )
 
 
-@router.get("/providers/presets", response_model=dict[str, dict[str, str]])
-def provider_presets() -> dict[str, dict[str, str]]:
-    return PRESETS
+class PresetOut(BaseModel):
+    name: str
+    type: str
+    base_url: str
+    fixed_base: bool
+    local: bool
+    key_url: str | None = None
+    preferred_model: dict[str, Any] | None = None
+    curated_models: list[str] | None = None
+    stt_model: str | None = None
+    steps: list[str] | None = None
+    free_tier_note: str | None = None
+
+
+@router.get("/providers/presets", response_model=dict[str, PresetOut])
+def provider_presets() -> dict[str, PresetOut]:
+    return {
+        key: PresetOut(
+            name=preset["name"],
+            type=preset["type"],
+            base_url=preset["base_url"],
+            fixed_base=preset["fixed_base"],
+            local=preset["local"],
+            key_url=preset["key_url"],
+            preferred_model=preset["preferred_model"],
+            curated_models=preset["curated_models"],
+            stt_model=preset["stt_model"],
+            steps=preset["steps"],
+            free_tier_note=preset["free_tier_note"],
+        )
+        for key, preset in PRESETS.items()
+    }
+
+
+class SetupOptionsIn(BaseModel):
+    curated_ids: list[str] | None = Field(default=None, max_length=100)
+    bind_chat: bool = True
+    bind_vision: bool = True
+    bind_stt: bool = True
+
+
+class ProviderSetupIn(BaseModel):
+    api_key: str | None = Field(default=None, max_length=500)
+    name: str | None = Field(default=None, max_length=120)
+    options: SetupOptionsIn | None = None
+
+
+class SetupOut(BaseModel):
+    ok: bool
+    provider: ProviderOut
+    catalog_count: int
+    curated_missed: bool
+    assigned_chat_model: str | None = None
+    assigned_vision_model: str | None = None
+    assigned_stt_model: str | None = None
+
+
+@router.post("/providers/{preset_key}/setup", response_model=SetupOut)
+def setup_preset_provider(
+    preset_key: str,
+    body: ProviderSetupIn,
+    session: Session = Depends(get_session),
+) -> SetupOut:
+    service = ProvidersService(session)
+    options = None
+    if body.options is not None:
+        options = SetupOptions(
+            curated_ids=body.options.curated_ids,
+            bind_chat=body.options.bind_chat,
+            bind_vision=body.options.bind_vision,
+            bind_stt=body.options.bind_stt,
+        )
+    try:
+        outcome = setup_provider_from_preset(
+            session,
+            preset_key,
+            body.api_key,
+            name=body.name,
+            options=options,
+        )
+    except UnknownPresetError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except SetupError as error:
+        session.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": error.classified.code.value,
+                "suspected_vendor": error.classified.suspected_vendor,
+                "detail": error.vendor_message,
+            },
+        ) from error
+    except ProviderError as error:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    provider = session.get(Provider, outcome.provider_id)
+    assert provider is not None
+    return SetupOut(
+        ok=True,
+        provider=_provider_out(service, provider),
+        catalog_count=outcome.catalog_count,
+        curated_missed=outcome.curated_missed,
+        assigned_chat_model=outcome.assigned_chat_model,
+        assigned_vision_model=outcome.assigned_vision_model,
+        assigned_stt_model=outcome.assigned_stt_model,
+    )
+
+
+class SetDefaultIn(BaseModel):
+    model_name: str = Field(min_length=1, max_length=200)
+    task: str = Field(default="chat", max_length=40)
+
+
+@router.put("/providers/{provider_id}/set-default", response_model=TaskOut)
+def set_provider_default(
+    provider_id: int,
+    body: SetDefaultIn,
+    session: Session = Depends(get_session),
+) -> TaskOut:
+    try:
+        set_default_model(session, provider_id, body.model_name, body.task)
+    except ProviderError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except CrossProviderModelError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    session.commit()
+    labels = {model.id: model.label for model in session.scalars(select(AiModel))}
+    task_def = next(t for t in TASK_DEFS if t.task == body.task)
+    assignment = session.get(TaskAssignment, body.task)
+    default = session.get(DefaultTaskAssignment, task_def.requires)
+    return _task_out(task_def, assignment, default, labels)
 
 
 class LocalEngineHitOut(BaseModel):

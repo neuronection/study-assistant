@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 
 from ..core.vocab import MaterialKind, MaterialStatus, applicable_extraction_modes
 
-MODEL_CAPS = ("text", "vision", "tools", "embeddings", "audio")
+MODEL_CAPS = ("text", "vision", "tools", "embeddings", "stt", "tts")
 
 
 class HealthResponse(BaseModel):
@@ -88,6 +88,7 @@ class ProviderOut(BaseModel):
     name: str
     type: str
     base_url: str
+    preset_key: str | None = None
     enabled: bool
     is_local: bool | None = None
     country: str | None = None

@@ -166,8 +166,18 @@ class Capability(StrVocab):
     TEXT = "text"
     VISION = "vision"
     EMBEDDINGS = "embeddings"
-    AUDIO = "audio"
-    SPEECH = "speech"
+    STT = "stt"
+    TTS = "tts"
+
+
+class ProviderErrorCode(StrVocab):
+    INVALID_KEY = "invalid_key"
+    INSUFFICIENT_CREDIT = "insufficient_credit"
+    NEW_USER_QUOTA = "new_user_quota"
+    REGION_UNAVAILABLE = "region_unavailable"
+    TIMEOUT = "timeout"
+    LOCAL_NOT_RUNNING = "local_not_running"
+    UNKNOWN = "unknown"
 
 
 class DeriveOutcome(StrVocab):

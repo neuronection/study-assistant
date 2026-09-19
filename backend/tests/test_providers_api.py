@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from keyring.backend import KeyringBackend
 
-from app.ai import providers as providers_module
 from app.ai.providers import RemoteModel
+from app.ai.providers import service as providers_service_module
 from app.core.config import Settings
 from app.core.secrets import SERVICE
 from app.main import create_app
@@ -31,8 +31,8 @@ class FakeKeyring(KeyringBackend):
 
 
 FAKE_REMOTE_MODELS = [
-    RemoteModel(external_id="gemini-2.5-flash", caps=("text", "vision", "audio", "tools")),
-    RemoteModel(external_id="gemini-2.5-pro", caps=("text", "vision", "audio", "tools")),
+    RemoteModel(external_id="gemini-2.5-flash", caps=("text", "vision", "tts", "tools")),
+    RemoteModel(external_id="gemini-2.5-pro", caps=("text", "vision", "tts", "tools")),
     RemoteModel(external_id="text-embedding-004", caps=("embeddings",)),
 ]
 
@@ -43,7 +43,7 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
 ) -> list[RemoteModel]:
         return FAKE_REMOTE_MODELS
 
-    monkeypatch.setattr(providers_module, "fetch_remote_models", fake_fetch)
+    monkeypatch.setattr(providers_service_module, "fetch_remote_models", fake_fetch)
 
 
 @pytest.fixture
@@ -178,7 +178,7 @@ def test_remote_models_listing_does_not_persist(
     assert [entry["external_id"] for entry in body] == [
         model.external_id for model in FAKE_REMOTE_MODELS
     ]
-    assert body[0]["caps"] == ["text", "vision", "audio", "tools"]
+    assert body[0]["caps"] == ["text", "vision", "tts", "tools"]
     after = client.get("/api/v1/models", params={"provider_id": provider["id"]}).json()
     assert [model["id"] for model in after] == [model["id"] for model in before]
 
@@ -209,7 +209,7 @@ def test_manual_model_add_infers_caps_and_is_idempotent(
     assert created.status_code == 201, created.text
     body = created.json()
     assert body["external_id"] == "gemini-9-flash"
-    assert body["caps"] == ["text", "vision", "audio", "tools"]
+    assert body["caps"] == ["text", "vision", "tools"]
     assert body["enabled"] is True
 
     again = client.post(
@@ -275,7 +275,7 @@ def test_manual_model_add_rejects_unknown_caps(
     assert patched.status_code == 422
 
 
-def test_manual_model_add_accepts_audio_caps(
+def test_manual_model_add_accepts_stt_caps(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
     provider = create_provider(client)
@@ -284,18 +284,18 @@ def test_manual_model_add_accepts_audio_caps(
         json={
             "provider_id": provider["id"],
             "external_id": "whisper-1",
-            "caps": ["audio"],
+            "caps": ["stt"],
         },
     )
     assert created.status_code == 201, created.text
-    assert created.json()["caps"] == ["audio"]
+    assert created.json()["caps"] == ["stt"]
 
     patched = client.patch(
         f"/api/v1/models/{created.json()['id']}",
-        json={"caps": ["text", "audio"]},
+        json={"caps": ["text", "stt"]},
     )
     assert patched.status_code == 200, patched.text
-    assert patched.json()["caps"] == ["text", "audio"]
+    assert patched.json()["caps"] == ["text", "stt"]
 
 
 def test_manual_add_revives_missing_model(
@@ -409,7 +409,7 @@ def test_task_defaults_endpoints_and_inheritance(
 ) -> None:
     defaults = client.get("/api/v1/tasks/defaults").json()
     assert [entry["requires"] for entry in defaults] == [
-        "text", "vision", "embeddings", "audio", "speech",
+        "text", "vision", "embeddings", "stt", "tts",
     ]
     assert all(entry["model_id"] is None for entry in defaults)
 

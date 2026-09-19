@@ -7,21 +7,22 @@ from pydantic import SecretStr
 
 import app.api.ai_settings as ai_settings_module
 import app.core.secrets as secrets_module
-from app.ai import providers as providers_module
 from app.ai.chat_models import CaChatOpenAI, build_chat_model
 from app.ai.providers import (
+    DETECT_ENGINE_NAMES,
     DETECT_TARGETS,
     PRESETS,
     ProvidersService,
     detect_local_engines,
 )
+from app.ai.providers import service as providers_service_module
 from app.ai.types import ResolvedModel
 
 
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        providers_module,
+        providers_service_module,
         "fetch_remote_models",
         lambda provider_type, base_url, api_key, transport=None: [],
     )
@@ -36,17 +37,12 @@ def _empty_models_handler(request: httpx.Request) -> httpx.Response:
 
 
 def test_local_presets_registered() -> None:
-    assert PRESETS["llama_cpp"] == {
-        "name": "llama.cpp (local)",
-        "type": "openai_compatible",
-        "base_url": "http://localhost:8080/v1",
-    }
-    assert PRESETS["lm_studio"] == {
-        "name": "LM Studio (local)",
-        "type": "openai_compatible",
-        "base_url": "http://localhost:1234/v1",
-    }
+    assert "llama_cpp" not in PRESETS
+    assert "lm_studio" not in PRESETS
     assert PRESETS["ollama"]["type"] == "openai_compatible"
+    assert PRESETS["ollama"]["local"] is True
+    assert DETECT_ENGINE_NAMES["llama_cpp"] == "llama.cpp (local)"
+    assert DETECT_ENGINE_NAMES["lm_studio"] == "LM Studio (local)"
     assert set(DETECT_TARGETS) == {"ollama", "llama_cpp", "lm_studio"}
     assert DETECT_TARGETS["llama_cpp"] == (
         "http://localhost:8080/v1",

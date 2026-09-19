@@ -33,7 +33,7 @@ class AudioGateway(LLMGateway):
             base_url="http://localhost/v1",
             external_id="whisper-small",
             label="whisper-small",
-            caps=["audio"],
+            caps=["stt"],
             api_key=None,
         )
 
