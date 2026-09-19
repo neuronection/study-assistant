@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Database, Eye, FileText, AudioLines, Wrench } from 'lucide-react'
+import { Database, Eye, FileText, AudioLines, Volume2, Wrench } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -20,14 +20,15 @@ import {
 } from '@/lib/api'
 import { useConfirm } from '@/lib/use-confirm'
 
-const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'audio'] as const
+const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'stt', 'tts'] as const
 const REASONING_EFFORT_OPTIONS = ['none', 'low', 'medium', 'high', 'max', 'xhigh'] as const
 const CAP_ICONS = {
   text: FileText,
   vision: Eye,
   tools: Wrench,
   embeddings: Database,
-  audio: AudioLines,
+  stt: AudioLines,
+  tts: Volume2,
 } as const
 
 export function ModelsTab() {

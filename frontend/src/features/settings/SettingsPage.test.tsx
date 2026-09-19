@@ -58,10 +58,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
 })
 
 const PRESETS = {
-  google: { name: 'Google Gemini', type: 'google', base_url: 'https://generativelanguage.googleapis.com' },
-  openai: { name: 'OpenAI', type: 'openai_compatible', base_url: 'https://api.openai.com/v1' },
-  anthropic: { name: 'Anthropic', type: 'anthropic', base_url: 'https://api.anthropic.com' },
-  ollama: { name: 'Ollama (local)', type: 'openai_compatible', base_url: 'http://localhost:11434/v1' },
+  openai: { name: 'OpenAI', type: 'openai_compatible', base_url: 'https://api.openai.com/v1', fixed_base: false, local: false, key_url: null, preferred_model: null, curated_models: null, stt_model: null, steps: null, free_tier_note: null },
+  gemini: { name: 'Google Gemini', type: 'google', base_url: 'https://generativelanguage.googleapis.com', fixed_base: true, local: false, key_url: null, preferred_model: null, curated_models: null, stt_model: null, steps: null, free_tier_note: null },
+  anthropic: { name: 'Anthropic', type: 'anthropic', base_url: 'https://api.anthropic.com', fixed_base: true, local: false, key_url: null, preferred_model: null, curated_models: null, stt_model: null, steps: null, free_tier_note: null },
+  ollama: { name: 'Ollama (local)', type: 'openai_compatible', base_url: 'http://localhost:11434/v1', fixed_base: false, local: true, key_url: null, preferred_model: null, curated_models: null, stt_model: null, steps: null, free_tier_note: null },
 }
 
 async function renderSettings(initial = '/settings') {
@@ -326,8 +326,6 @@ describe('SettingsPage', () => {
     createProvider.mockResolvedValue(PROVIDER)
     await await renderSettings('/settings?tab=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
-    await screen.findByText('Google Gemini')
-
     fireEvent.change(await screen.findByLabelText(/^provider$/i), {
       target: { value: 'ollama' },
     })
@@ -359,8 +357,6 @@ describe('SettingsPage', () => {
     createProvider.mockResolvedValue(PROVIDER)
     await await     renderSettings('/settings?tab=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
-    await screen.findByText('Google Gemini')
-
     fireEvent.change(await screen.findByLabelText(/^provider$/i), {
       target: { value: 'custom' },
     })

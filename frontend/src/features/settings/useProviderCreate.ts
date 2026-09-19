@@ -5,28 +5,32 @@ import { createProvider, listPresets, type Provider } from '@/lib/api'
 
 export const CUSTOM_PRESET = 'custom'
 export const PROVIDER_PRESET_ORDER = [
-  'google',
   'openai',
+  'gemini',
+  'openrouter',
   'anthropic',
+  'groq',
+  'mistral',
+  'deepseek',
   'ollama',
-  'llama_cpp',
-  'lm_studio',
 ] as const
-const LOCAL_PRESETS = new Set(['ollama', 'llama_cpp', 'lm_studio'])
+const LOCAL_PRESETS = new Set(['ollama'])
 const PRESET_TYPES: Record<string, string> = {
-  google: 'google',
-  anthropic: 'anthropic',
   openai: 'openai_compatible',
+  openrouter: 'openai_compatible',
+  gemini: 'google',
+  anthropic: 'anthropic',
+  groq: 'openai_compatible',
+  mistral: 'openai_compatible',
+  deepseek: 'openai_compatible',
   ollama: 'openai_compatible',
-  llama_cpp: 'openai_compatible',
-  lm_studio: 'openai_compatible',
   [CUSTOM_PRESET]: 'openai_compatible',
 }
 
 export function useProviderCreate({ onCreated }: { onCreated: (provider: Provider) => void }) {
   const queryClient = useQueryClient()
   const presets = useQuery({ queryKey: ['presets'], queryFn: listPresets })
-  const [presetKey, setPresetKey] = useState<string>('google')
+  const [presetKey, setPresetKey] = useState<string>('openai')
   const [name, setName] = useState('')
   const [nameDirty, setNameDirty] = useState(false)
   const [baseUrl, setBaseUrl] = useState('')

@@ -24,7 +24,7 @@ import { SegmentedControl } from '@/components/motion/SegmentedControl'
 
 const SUB_TABS = ['general', 'tasks'] as const
 
-const CAP_ORDER = ['text', 'vision', 'embeddings', 'audio'] as const
+const CAP_ORDER = ['text', 'vision', 'embeddings', 'stt', 'tts'] as const
 
 type SubTab = (typeof SUB_TABS)[number]
 

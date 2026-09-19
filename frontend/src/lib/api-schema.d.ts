@@ -3277,6 +3277,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/providers/{preset_key}/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Setup Preset Provider */
+        post: operations["setup_preset_provider_api_v1_providers__preset_key__setup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/providers/{provider_id}": {
         parameters: {
             query?: never;
@@ -3322,6 +3339,23 @@ export interface paths {
         /** Remote Models */
         get: operations["remote_models_api_v1_providers__provider_id__remote_models_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/providers/{provider_id}/set-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Provider Default */
+        put: operations["set_provider_default_api_v1_providers__provider_id__set_default_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -7236,6 +7270,33 @@ export interface components {
              */
             use_embeddings: boolean;
         };
+        /** PresetOut */
+        PresetOut: {
+            /** Base Url */
+            base_url: string;
+            /** Curated Models */
+            curated_models?: string[] | null;
+            /** Fixed Base */
+            fixed_base: boolean;
+            /** Free Tier Note */
+            free_tier_note?: string | null;
+            /** Key Url */
+            key_url?: string | null;
+            /** Local */
+            local: boolean;
+            /** Name */
+            name: string;
+            /** Preferred Model */
+            preferred_model?: {
+                [key: string]: unknown;
+            } | null;
+            /** Steps */
+            steps?: string[] | null;
+            /** Stt Model */
+            stt_model?: string | null;
+            /** Type */
+            type: string;
+        };
         /** PreviewIn */
         PreviewIn: {
             /**
@@ -7367,12 +7428,22 @@ export interface components {
             masked_key: string | null;
             /** Name */
             name: string;
+            /** Preset Key */
+            preset_key?: string | null;
             /** Status */
             status: {
                 [key: string]: unknown;
             } | null;
             /** Type */
             type: string;
+        };
+        /** ProviderSetupIn */
+        ProviderSetupIn: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Name */
+            name?: string | null;
+            options?: components["schemas"]["SetupOptionsIn"] | null;
         };
         /** ProviderUpdate */
         ProviderUpdate: {
@@ -7815,6 +7886,16 @@ export interface components {
             /** Use Embeddings */
             use_embeddings?: boolean | null;
         };
+        /** SetDefaultIn */
+        SetDefaultIn: {
+            /** Model Name */
+            model_name: string;
+            /**
+             * Task
+             * @default chat
+             */
+            task: string;
+        };
         /** SetMirrorIn */
         SetMirrorIn: {
             /** Mirror Subdirs */
@@ -7826,6 +7907,42 @@ export interface components {
             path: string;
             /** Restart Required */
             restart_required: boolean;
+        };
+        /** SetupOptionsIn */
+        SetupOptionsIn: {
+            /**
+             * Bind Chat
+             * @default true
+             */
+            bind_chat: boolean;
+            /**
+             * Bind Stt
+             * @default true
+             */
+            bind_stt: boolean;
+            /**
+             * Bind Vision
+             * @default true
+             */
+            bind_vision: boolean;
+            /** Curated Ids */
+            curated_ids?: string[] | null;
+        };
+        /** SetupOut */
+        SetupOut: {
+            /** Assigned Chat Model */
+            assigned_chat_model?: string | null;
+            /** Assigned Stt Model */
+            assigned_stt_model?: string | null;
+            /** Assigned Vision Model */
+            assigned_vision_model?: string | null;
+            /** Catalog Count */
+            catalog_count: number;
+            /** Curated Missed */
+            curated_missed: boolean;
+            /** Ok */
+            ok: boolean;
+            provider: components["schemas"]["ProviderOut"];
         };
         /** SkillOut */
         SkillOut: {
@@ -16221,10 +16338,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: {
-                            [key: string]: string;
-                        };
+                        [key: string]: components["schemas"]["PresetOut"];
                     };
+                };
+            };
+        };
+    };
+    setup_preset_provider_api_v1_providers__preset_key__setup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                preset_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderSetupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -16342,6 +16492,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RemoteModelOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_provider_default_api_v1_providers__provider_id__set_default_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDefaultIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"];
                 };
             };
             /** @description Validation Error */

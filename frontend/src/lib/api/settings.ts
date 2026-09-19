@@ -1,5 +1,5 @@
 import type { components } from '@/lib/api-schema'
-import { json, apiFetch } from './client'
+import { json, apiFetch, ApiError } from './client'
 
 export type LocalEngineHit = components['schemas']['LocalEngineHitOut']
 
@@ -20,6 +20,14 @@ export interface ProviderPreset {
   name: string
   type: string
   base_url: string
+  fixed_base: boolean
+  local: boolean
+  key_url: string | null
+  preferred_model: { id: string; name: string; caps: string[] } | null
+  curated_models: string[] | null
+  stt_model: string | null
+  steps: string[] | null
+  free_tier_note: string | null
 }
 
 export async function listProviders(): Promise<Provider[]> {
@@ -30,6 +38,73 @@ export async function listProviders(): Promise<Provider[]> {
 export async function listPresets(): Promise<Record<string, ProviderPreset>> {
   const response = await apiFetch('/api/v1/providers/presets')
   return json<Record<string, ProviderPreset>>(response)
+}
+
+export interface ProviderSetupOptions {
+  curated_ids?: string[] | null
+  bind_chat?: boolean
+  bind_vision?: boolean
+  bind_stt?: boolean
+}
+
+export interface ProviderSetupResult {
+  ok: boolean
+  provider: Provider & { preset_key: string | null }
+  catalog_count: number
+  curated_missed: boolean
+  assigned_chat_model: string | null
+  assigned_vision_model: string | null
+  assigned_stt_model: string | null
+}
+
+export interface ProviderSetupErrorDetail {
+  code: string
+  suspected_vendor: string | null
+  detail: string
+}
+
+export async function setupProviderPreset(
+  presetKey: string,
+  body: { api_key?: string | null; name?: string | null; options?: ProviderSetupOptions | null }
+): Promise<ProviderSetupResult> {
+  const response = await apiFetch(`/api/v1/providers/${presetKey}/setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<ProviderSetupResult>(response)
+}
+
+export async function setProviderDefault(
+  providerId: number,
+  body: { model_name: string; task?: string }
+): Promise<void> {
+  const response = await apiFetch(`/api/v1/providers/${providerId}/set-default`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    throw new ApiError(`set-default failed: ${response.status}`, response.status)
+  }
+}
+
+export function setupErrorDetail(detail: unknown): ProviderSetupErrorDetail | null {
+  if (
+    detail !== null &&
+    typeof detail === 'object' &&
+    !Array.isArray(detail) &&
+    typeof (detail as { code?: unknown }).code === 'string'
+  ) {
+    const record = detail as ProviderSetupErrorDetail
+    return {
+      code: record.code,
+      suspected_vendor:
+        typeof record.suspected_vendor === 'string' ? record.suspected_vendor : null,
+      detail: typeof record.detail === 'string' ? record.detail : '',
+    }
+  }
+  return null
 }
 
 export async function detectLocalEngines(): Promise<LocalEngineHit[]> {

@@ -945,7 +945,8 @@
       "vision": "Bild / Bildverarbeitung",
       "tools": "Tools",
       "embeddings": "Embeddings",
-      "audio": "Audio / Spracherkennung"
+      "stt": "Sprache-zu-Text",
+      "tts": "Text-zu-Sprache"
     },
     "deleteModel": "Modell löschen",
     "confirmDeleteModel": "Dieses Modell entfernen? Die Zuweisungen zu diesem Modell werden aufgehoben.",
@@ -1065,7 +1066,34 @@
     "discoverySiteEnabled": "Aktiviert",
     "discoverySiteAdd": "Seite hinzufügen",
     "discoverySiteRemove": "Seite entfernen",
-    "discoverySave": "Entdecken-Einstellungen speichern"
+    "discoverySave": "Entdecken-Einstellungen speichern",
+    "setup": {
+      "title": "Anbieter verbinden",
+      "hint": "Anbieter wählen, API-Schlüssel einfügen — die Standardmodelle werden automatisch gesetzt.",
+      "cloud": "Cloud",
+      "local": "Läuft lokal",
+      "getKey": "API-Schlüssel holen",
+      "connect": "Verbinden",
+      "done": "{{name}} verbunden.",
+      "modelsPersisted": "{{count}} kuratierte Modelle gespeichert.",
+      "noDefaults": "Keine Standardmodelle gebunden — wähle sie unter Einstellungen → KI → Aufgaben.",
+      "curatedMissed": "Keine der kuratierten Modelle passte zum Katalog des Anbieters — stattdessen wurde die vollständige Liste gespeichert.",
+      "slot": {
+        "chat": "Chat",
+        "vision": "Vision",
+        "stt": "Sprache-zu-Text"
+      },
+      "errors": {
+        "invalid_key": "Der API-Schlüssel wurde abgelehnt — prüfe ihn und versuche es erneut.",
+        "insufficient_credit": "Auf dem Konto ist kein Guthaben oder Kontingent für diesen Schlüssel übrig.",
+        "new_user_quota": "Der Anbieter hat ein Limit erreicht — versuche es später erneut.",
+        "region_unavailable": "Dieser Anbieter oder dieses Modell ist in deiner Region nicht verfügbar.",
+        "timeout": "Der Anbieter hat zu lang geantwortet — versuche es erneut.",
+        "local_not_running": "Die lokale Engine ist nicht erreichbar — stelle sicher, dass sie läuft.",
+        "unknown": "Der Anbieter meldet einen unbekannten Fehler.",
+        "suspectedVendor": "Das sieht nach einem {{vendor}}-Schlüssel im falschen Feld aus."
+      }
+    }
   },
   "genesis": {
     "title": "Kurs erstellen",

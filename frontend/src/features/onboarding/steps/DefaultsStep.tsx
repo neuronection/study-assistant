@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { assignTaskDefault, listModels, listProviders, listTaskDefaults } from '@/lib/api'
 
-const CAP_ORDER = ['text', 'vision', 'embeddings', 'audio'] as const
+const CAP_ORDER = ['text', 'vision', 'embeddings', 'stt', 'tts'] as const
 
 export function DefaultsStep() {
   const { t } = useTranslation()

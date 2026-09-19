@@ -8998,6 +8998,112 @@
         "title": "PreferencesOut",
         "type": "object"
       },
+      "PresetOut": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "curated_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curated Models"
+          },
+          "fixed_base": {
+            "title": "Fixed Base",
+            "type": "boolean"
+          },
+          "free_tier_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Tier Note"
+          },
+          "key_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Url"
+          },
+          "local": {
+            "title": "Local",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preferred_model": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Model"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "stt_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stt Model"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "base_url",
+          "fixed_base",
+          "local"
+        ],
+        "title": "PresetOut",
+        "type": "object"
+      },
       "PreviewIn": {
         "properties": {
           "chunk_chars": {
@@ -9429,6 +9535,17 @@
             "title": "Name",
             "type": "string"
           },
+          "preset_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Key"
+          },
           "status": {
             "anyOf": [
               {
@@ -9457,6 +9574,46 @@
           "created_at"
         ],
         "title": "ProviderOut",
+        "type": "object"
+      },
+      "ProviderSetupIn": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetupOptionsIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ProviderSetupIn",
         "type": "object"
       },
       "ProviderUpdate": {
@@ -10861,6 +11018,27 @@
         "title": "SessionUpdate",
         "type": "object"
       },
+      "SetDefaultIn": {
+        "properties": {
+          "model_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "task": {
+            "default": "chat",
+            "maxLength": 40,
+            "title": "Task",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_name"
+        ],
+        "title": "SetDefaultIn",
+        "type": "object"
+      },
       "SetMirrorIn": {
         "properties": {
           "mirror_subdirs": {
@@ -10890,6 +11068,102 @@
           "restart_required"
         ],
         "title": "SetWorkingDirOut",
+        "type": "object"
+      },
+      "SetupOptionsIn": {
+        "properties": {
+          "bind_chat": {
+            "default": true,
+            "title": "Bind Chat",
+            "type": "boolean"
+          },
+          "bind_stt": {
+            "default": true,
+            "title": "Bind Stt",
+            "type": "boolean"
+          },
+          "bind_vision": {
+            "default": true,
+            "title": "Bind Vision",
+            "type": "boolean"
+          },
+          "curated_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curated Ids"
+          }
+        },
+        "title": "SetupOptionsIn",
+        "type": "object"
+      },
+      "SetupOut": {
+        "properties": {
+          "assigned_chat_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Chat Model"
+          },
+          "assigned_stt_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Stt Model"
+          },
+          "assigned_vision_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Vision Model"
+          },
+          "catalog_count": {
+            "title": "Catalog Count",
+            "type": "integer"
+          },
+          "curated_missed": {
+            "title": "Curated Missed",
+            "type": "boolean"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderOut"
+          }
+        },
+        "required": [
+          "ok",
+          "provider",
+          "catalog_count",
+          "curated_missed"
+        ],
+        "title": "SetupOut",
         "type": "object"
       },
       "SkillOut": {
@@ -25119,10 +25393,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "additionalProperties": {
-                      "type": "string"
-                    },
-                    "type": "object"
+                    "$ref": "#/components/schemas/PresetOut"
                   },
                   "title": "Response Provider Presets Api V1 Providers Presets Get",
                   "type": "object"
@@ -25133,6 +25404,58 @@
           }
         },
         "summary": "Provider Presets",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/providers/{preset_key}/setup": {
+      "post": {
+        "operationId": "setup_preset_provider_api_v1_providers__preset_key__setup_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preset_key",
+            "required": true,
+            "schema": {
+              "title": "Preset Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderSetupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Preset Provider",
         "tags": [
           "ai"
         ]
@@ -25310,6 +25633,58 @@
           }
         },
         "summary": "Remote Models",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/providers/{provider_id}/set-default": {
+      "put": {
+        "operationId": "set_provider_default_api_v1_providers__provider_id__set_default_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDefaultIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Provider Default",
         "tags": [
           "ai"
         ]

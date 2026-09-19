@@ -983,7 +983,8 @@
       "vision": "image / vision",
       "tools": "tools",
       "embeddings": "embeddings",
-      "audio": "audio / speech-to-text"
+      "stt": "speech-to-text",
+      "tts": "text-to-speech"
     },
     "deleteModel": "Delete model",
     "confirmDeleteModel": "Remove this model? Tasks assigned to it will be cleared.",
@@ -1103,7 +1104,34 @@
     "discoverySiteEnabled": "Enabled",
     "discoverySiteAdd": "Add site",
     "discoverySiteRemove": "Remove site",
-    "discoverySave": "Save discovery settings"
+    "discoverySave": "Save discovery settings",
+    "setup": {
+      "title": "Connect a provider",
+      "hint": "Pick a provider, paste its API key, and defaults are set up automatically.",
+      "cloud": "Cloud",
+      "local": "Runs locally",
+      "getKey": "Get an API key",
+      "connect": "Connect",
+      "done": "{{name}} connected.",
+      "modelsPersisted": "{{count}} curated models saved.",
+      "noDefaults": "No default models were bound — pick them under Settings → AI → Tasks.",
+      "curatedMissed": "None of the curated models matched the provider's catalog — the full list was saved instead.",
+      "slot": {
+        "chat": "Chat",
+        "vision": "Vision",
+        "stt": "Speech-to-text"
+      },
+      "errors": {
+        "invalid_key": "The API key was rejected — check it and try again.",
+        "insufficient_credit": "The account has no credit or quota left for this key.",
+        "new_user_quota": "The provider hit a rate or quota limit — try again later.",
+        "region_unavailable": "This provider or model is not available in your region.",
+        "timeout": "The provider took too long to answer — try again.",
+        "local_not_running": "Could not reach the local engine — make sure it is running.",
+        "unknown": "The provider reported an unknown error.",
+        "suspectedVendor": "This looks like a {{vendor}} key pasted into the wrong field."
+      }
+    }
   },
   "spike": {
     "title": "Rendering spike",

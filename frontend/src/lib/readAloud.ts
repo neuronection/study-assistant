@@ -143,7 +143,7 @@ export function useReadAloud(markdown: string): ReadAloudState {
         .then((defaults) => {
           if (!cancelled) {
             setProviderReady(
-              defaults.some((entry) => entry.requires === 'speech' && entry.model_id != null)
+              defaults.some((entry) => entry.requires === 'tts' && entry.model_id != null)
             )
           }
         })

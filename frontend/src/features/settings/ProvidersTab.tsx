@@ -11,6 +11,7 @@ import { getCountryFlag } from '@/lib/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { LocalEngines } from './LocalEngines'
+import { SetupPresetsCard } from './SetupPresetsCard'
 import { SearchProviderCard } from './SearchProviderCard'
 import { DiscoveryCard } from './DiscoveryCard'
 import { useConfirm } from '@/lib/use-confirm'
@@ -46,9 +47,10 @@ export function ProvidersTab() {
 
   return (
     <div className="space-y-3">
+      <SetupPresetsCard />
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-sm">{t('settings.providersHint')}</p>
-        <Button size="sm" onClick={() => setForm({ provider: null })}>
+        <Button size="sm" variant="outline" onClick={() => setForm({ provider: null })}>
           <Plus aria-hidden />
           {t('settings.addProvider')}
         </Button>

@@ -11,6 +11,7 @@ import {
   Puzzle,
   ScanText,
   Sparkles,
+  Volume2,
   Wrench,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -38,9 +39,9 @@ const CONSEQUENCE: Record<string, string> = {
   concepts: 'concept extraction is unavailable',
 }
 
-const CAP_ORDER = ['text', 'vision', 'embeddings', 'audio'] as const
+const CAP_ORDER = ['text', 'vision', 'embeddings', 'stt', 'tts'] as const
 const DEFAULT_PREFIX = 'default:'
-const CAP_ICONS = { text: FileText, vision: Eye, tools: Wrench, embeddings: Database, audio: AudioLines }
+const CAP_ICONS = { text: FileText, vision: Eye, tools: Wrench, embeddings: Database, stt: AudioLines, tts: Volume2 }
 const TASK_ICONS: Record<string, typeof ListChecks> = {
   quizgen: ListChecks,
   exgen: Puzzle,
