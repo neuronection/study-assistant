@@ -6,6 +6,44 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Feature — uniform BYOK one-click provider setup (plan 79, family plan 17
+Phase 2, 2026-09-19):** study ships the family-uniform BYOK contract
+(guidelines/ai-features.md §15, frozen 2026-09-19) ported from the
+desktop-assistant reference — all five batches green. **Batch 1** vendored the
+canonical data (`contracts/ai-presets.json` + `scripts/sync-ai-presets.mjs` +
+`scripts/check-byok-contract.sh`, byte-identical to the dev masters; the
+`--check-py` mode and Python gate branches were added to the dev master first,
+then re-vendored) and generated `backend/app/ai/providers/presets_data.py`
+(never hand-edited). **Batches 2–3**: `ai/providers.py` became a package
+(`service.py` + generated `presets_data.py` + hand-written `presets.py`
+overlay + `errors.py` + `setup.py` orchestration); the §15 capability split
+landed everywhere — `Capability` StrEnum `audio`/`speech` → `stt`/`tts`
+(drives `DEFAULT_REQUIRES` + the defaults UI), `infer_caps` split
+(`whisper|transcribe|stt` → stt; `tts|speech|voice` → tts; gemini no longer
+carries `audio`; `gpt-5` added to vision hints for uniform matrix parity),
+tasks.py `transcribe`/`tts` requires updated; migration **0064** added
+nullable `providers.preset_key` and rewrote stored caps/assignment rows on
+the new vocabulary (tested round-trip). New endpoints: `POST /providers/
+{preset_key}/setup` (fetch-first validation, snapshot-suffix curation, append
+union, gap-fill-never-clobber + dead-id rebind, `preset_key` adoption, 422
+`{code, suspected_vendor, detail}` with **nothing persisted** on failure;
+there are no dual-vocab shims — pre-release, no backward compatibility) and
+`PUT /providers/{provider_id}/set-default` (bind by wire id, unknown ids
+created on that provider, cross-provider → 409, capability guards via the
+task registry). **Batch 3** ported the uniform 12-case contract-test matrix
+verbatim (`tests/test_ai_provider_setup_contract.py`, mock transport) +
+a migration round-trip test. **Batch 4**: Settings → Providers gained the
+setup surface (`SetupPresetsCard`: neutral tiles in family order, guided key
+form with checklist/free-tier note/key URL, result panel with assigned
+models + `curated_missed` warning, i18n-routed error codes incl.
+`suspectedVendor` hints; manual advanced add stays); capability pickers and
+labels updated to `stt`/`tts`; OpenAPI + types regenerated. **Batch 5**:
+`check-byok-contract.sh --self` in CI (`.github/workflows/byok-contract.yml`,
+beside the alignment gate); docs + CHANGELOG same commit. §15 deltas noted
+in the family report: provider-logo tiles are text-only (no assistant-ui
+vendor marks yet — promotion candidate), and the chat-side "no model
+assigned" deep-link needs a stable chat error-code contract (open item).
+
 **Plan 78 — COMPLETE (2026-09-18, A–E; ADR-192):** chat proposals adopt the
 family ADR-0015 Class-B contract in full — **A** HITL capability discovery
 (tools catalog `PROPOSE_EDITS`/`PROPOSE_GENERATIONS` entries with the warning

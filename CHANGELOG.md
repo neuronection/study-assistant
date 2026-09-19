@@ -11,6 +11,25 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added
+- **BYOK one-click provider setup (plan 79, family plan 17 Phase 2)** —
+  Settings → Providers gains neutral one-click preset tiles (OpenAI, Gemini,
+  OpenRouter, Anthropic, Groq, Mistral, DeepSeek, Ollama — same family order
+  and curated model allowlists as every family app, synced from the family
+  contract file). Connecting validates the key by fetching the provider's
+  real catalog first (a rejected key persists nothing), saves a curated
+  model default (snapshot-dated ids recognized automatically; if none match,
+  the full catalog is saved and flagged), then sets up default chat/vision
+  and speech-to-text (whisper) models without ever overwriting live
+  assignments. Re-setup never duplicates providers (manual rows with the
+  same type + base URL are adopted) and appends instead of replacing.
+  Setup failures are routed by stable error codes with a vendor mis-paste
+  hint; model capabilities now use the family `stt`/`tts` vocabulary
+  end-to-end (migration 0064 rewrites stored values), with the gates
+  (`check-byok-contract.sh` + ai-alignment) enforcing the contract in CI.
+  Provider that is not set up is served by the manual advanced-add dialog
+  as before.
+
 ## [v0.10.0] - 2026-09-18
 
 ### Fixed

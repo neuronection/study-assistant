@@ -600,6 +600,56 @@ an **unmodified v1** in an existing DB is refreshed in place on startup/restore
 The seeded skill prompts are the single source — the pipeline-local
 copies were deleted.
 
+## BYOK one-click setup (`app/ai/providers/` — plan 79, family §15)
+
+Uniform BYOK provider setup ported from the family contract
+(`guidelines/ai-features.md` §15, frozen 2026-09-19; desktop-assistant is
+the reference implementation). The providers code lives in the
+`app/ai/providers/` package: `presets_data.py` (GENERATED — byte-identical
+emission from the family canonical file `contracts/ai-presets.json` via
+`scripts/sync-ai-presets.mjs`, never hand-edited), `presets.py`
+(hand-written local overlay: canonical `wireType` maps 1:1 to study's
+ADR-0008 types; the `gemini` base URL is overridden to drop the `/v1beta`
+suffix because study's google fetcher appends it), `service.py` (the
+former `providers.py` — Provider/model CRUD + capability-keyed assignment
+SQLAlchemy, unchanged), `errors.py` and `setup.py`.
+
+- **Setup semantics** (`POST /providers/{preset_key}/setup`): fetch-first
+  key validation (real catalog fetch under a 30 s timeout; a classified
+  failure → 422 `{code, suspected_vendor, detail}` and **nothing is
+  persisted**), curated allowlists matched exact-or-snapshot-suffix
+  (`gpt-5.6-terra` matches `gpt-5.6-terra-2026-09-11`; zero matches under
+  the preset's own list falls back to the full catalog with
+  `curated_missed`), append-union on re-run (dedupe by wire id, user-added
+  models never deleted), gap-fill only into empty or dead-id default slots
+  (chat/text always; vision preferrably on the chat-bound model; stt via
+  the preset's `stt_model`, e.g. openai `whisper-1` — live assignments
+  never clobbered), and `preset_key` stamping with manual-row adoption
+  (same type + base_url, earliest first). Options body (snake_case):
+  `curated_ids[] / bind_chat / bind_vision / bind_stt`.
+- **Error routing** (`app/ai/providers/errors.py` →
+  `ProviderErrorCode` StrEnum): `invalid_key | insufficient_credit |
+  new_user_quota | region_unavailable | timeout | local_not_running |
+  unknown`, with `suspected_vendor` mis-paste hints from the
+  most-specific-first prefix table (`sk-ant-`, `sk-or-v1-`, `gsk_`, `AIza`,
+  bare `sk-`). The settings surface routes the codes through i18n.
+- **set-default** (`PUT /providers/{provider_id}/set-default`, body
+  `{model_name, task="chat"}`): binds a task by wire-id — unknown ids are
+  created as enabled models on that provider; ids owned by another
+  provider → 409; capability guards reuse the task registry (`ocr` needs
+  vision, `transcribe` needs stt, `tts` needs tts).
+- **Capability vocabulary** is `text | vision | tools | stt | tts |
+  embeddings` (§15; no `audio`) — `Capability` StrEnum drives
+  `DEFAULT_REQUIRES` seeding; migration 0064 rewrote stored caps/rows.
+  Local engine detection (`GET /providers/detect-local`) remains outside
+  the canonical presets (study keeps llama.cpp/LM Studio probes).
+- **Gates**: `scripts/check-byok-contract.sh` (vendored byte-identical
+  from the dev repo; R1 generated-data drift, R2 no `audio` capability
+  literals in backend/app, R3 orchestration confined to
+  `app/ai/providers/` + API layer, R4 the 12-case contract-test matrix in
+  `tests/test_ai_provider_setup_contract.py`, R5 snake_case options) runs
+  in CI beside `check-ai-alignment.sh` (`.github/workflows/byok-contract.yml`).
+
 ## Gateway (`app/ai/gateway.py`)
 
 One entrypoint for all model calls. Resolves task → model → provider at call time

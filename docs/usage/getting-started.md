@@ -54,10 +54,29 @@ something to count. Everything is editable or deletable like any other course.
 
 ## Connect an AI provider (required for AI features)
 
+**Quick way — one-click setup tiles.** Open **Settings → Providers** and pick a
+provider tile (OpenAI, Google Gemini, OpenRouter, Anthropic, Groq, Mistral,
+DeepSeek, or Ollama for a local setup). The guided form shows the provider's
+own key steps and, where one exists, the free-tier note and a "get an API key"
+link. Paste the key and press **Connect** — the key is validated against the
+provider's real catalog first (a rejected key stores nothing), a curated set
+of current models is saved, and default chat/vision models plus a
+speech-to-text model (where the provider offers one, e.g. OpenAI's whisper)
+are assigned automatically — without overwriting any model you already
+assigned to a task. If none of the curated ids match the provider's current
+catalog, the full catalog is saved instead and the result tells you so
+(then pick defaults manually under **Tasks**). If the key is mis-typed or
+belongs to a different vendor (e.g. an OpenRouter key pasted for OpenAI),
+the error says so with a hint.
+
+**Manual / advanced way.** Use **Add provider** for anything else (e.g. LM
+Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):
+
 1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —
    e.g. `/settings?tab=models` — so you can bookmark or share deep links).
-2. Pick a provider from the dropdown (Google Gemini, OpenAI, Anthropic, Ollama for a
-   local setup, or Custom for any OpenAI-compatible endpoint — Custom needs a base
+2. Pick a provider from the dropdown (OpenAI, Google Gemini, OpenRouter,
+   Anthropic, Groq, Mistral, DeepSeek, Ollama for a local setup, or Custom for
+   any OpenAI-compatible endpoint — Custom needs a base
    URL). The choice sets the connection type; the name prefills but stays editable.
 3. Paste your API key — it is stored in your **operating system's keyring**, never in
    the database or any file.
@@ -76,12 +95,14 @@ something to count. Everything is editable or deletable like any other course.
      reasoning effort. The trash button removes it for good (with confirmation).
    - Existing providers can be renamed/re-keyed via their **edit** button.
 5. Go to **Tasks**. Set one **default model** per capability (text / vision /
-   embeddings) in the *Default models* section at the top — every task without a custom
-   model uses its capability's default. To pin a specific model to a single task, pick
+   embeddings / speech-to-text / text-to-speech) in the *Default models* section at the
+   top — every task without a custom model uses its capability's default. To pin a
+   specific model to a single task, pick
    it in that task's dropdown (it becomes an override; choose *— inherit default —* to
    go back). Notes:
    - **OCR** and **notes OCR** require a *vision-capable* model — the dropdown only
      offers those.
+   - **Transcribe** (dictation) requires a speech-to-text model.
    - All other tasks (chat, quizgen, outline, description, tutor…) accept any model.
    - **Embeddings** enables semantic search; without it, search falls back to
      keyword-only (still fully functional).

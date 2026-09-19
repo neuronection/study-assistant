@@ -46,9 +46,12 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **profiles**: id, name, color, **preferences JSON?** (0039 — user preferences, e.g.
   `use_embeddings`), created_at
 - **providers**: id, name, type (google | openai_compatible | anthropic), base_url,
-  keyring_ref (`provider:{id}`), enabled, status JSON (last test: ok/error/count)
+  keyring_ref (`provider:{id}`), **preset_key?** (String 40, 0064 — the §15 stamp
+  for preset setup rows; NULL = manually added), enabled, status JSON (last
+  test: ok/error/count)
 - **models**: id, provider_id, external_id, label, caps JSON (text/vision/tools/
-  embeddings), ctx_tokens, cost_in/out, **reasoning_effort?** (0038 — per-model reasoning
+  embeddings/stt/tts — vocabulary per family §15 after 0064), ctx_tokens,
+  cost_in/out, **reasoning_effort?** (0038 — per-model reasoning
   control: OpenAI `none/low/medium/high` (set `none` to enable function tools on reasoning
   models), Anthropic `minimal/low/medium/high`), enabled, missing — unique (provider, external_id)
 - **task_assignments**: task (PK: ocr, notes_ocr, description, outline, concepts,
@@ -327,6 +330,17 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0064 (plan 79)**: BYOK setup + `stt`/`tts` capability split — adds
+  nullable `providers.preset_key` (String 40; §15 stamp, NULL = manual
+  row); rewrites `models.caps` JSON lists (`audio` expands to
+  `['stt','tts']` per the frozen §15 contract, `speech` → `tts`);
+  renames `default_task_assignments.requires` and
+  `course_default_task_assignments.requires` rows (`audio` → `stt`,
+  `speech` → `tts`). Downgrade restores old vocabulary best-effort
+  (`stt` → `audio`, `tts` → `speech`; audio rows expanded during upgrade
+  keep the extra `speech` entry) and drops `preset_key`. Tests:
+  `tests/test_byok_migration.py` (legacy shape → upgrade → downgrade
+  round-trip).
 - **0063 (plan 73-E)**: `external_sources` table — profile FK indexed, course
   FK indexed (required), kind/url/label/options/enabled/scan_interval_sec/
   last_scan_error/last_scanned_at/cursor JSON/created_at. No data migration
