@@ -11,6 +11,12 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+- **assistant-ui 0.42.0 → 0.43.0** — family catch-up (drop-in).
+- **Sidebar family menu lists Desktop Assistant** — new row (library
+  `DesktopMark`, linking to neuronection.com/en/desktop/) alongside
+  Health / Career / Study.
+
 ### Added
 - **BYOK one-click provider setup (plan 79, family plan 17 Phase 2)** —
   **Add provider** in Settings → Providers now opens a setup dialog with
