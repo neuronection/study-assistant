@@ -11,6 +11,8 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.11.1] - 2026-09-20
+
 ### Added
 - **Resizable course structure sidebar** — drag the sidebar's right edge to
   resize it (220–420 px, persisted).
