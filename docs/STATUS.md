@@ -104,6 +104,36 @@ after ranking; existing active-course test re-pointed). Frontend gate green
 (lint/typecheck/1,359 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — recents: continue where you left off (plan 80-B, ADR-193,
+2026-09-20):** second slice of plan 80. New `lib/recent-nodes.ts` is the
+single recents owner: id-only `{courseId, nodeId, at}` entries under the
+profile-namespaced key `ca-recent-nodes.<profileId>` ('default' fallback),
+cap 20, re-visit-moves-to-front dedupe, corruption-tolerant parse, best-effort
+writes. **Titles are never stored** — consumers resolve them live through the
+shared `['tree', String(id)]` caches via `resolveRecentNodes`, so renamed
+sections show their new titles immediately and trashed sections silently drop
+out. **NodeWorkspace** records a visit per node view (effect on
+`courseId`/`currentId`, root included). **Home** gains the Continue card
+(below "Study now"): top 5 entries as course-color-dot rows with node title,
+breadcrumb subtitle, and `Intl.RelativeTimeFormat` relative time (native
+locale formatting — no catalog keys); layout-matched skeleton while trees
+resolve; the card is absent when history is empty and hides when every entry
+has gone stale. **Palette** gains a Recent section pinned above all actions
+at empty query (History icon, breadcrumb hint), reading the same store —
+cleaned up in tests so the persisted-localStorage gotcha can't leak rows
+between suites. New storage key `ca-recent-nodes` registered in
+`lib/constants.ts` (prefix lockstep test stays green). Deviation from plan:
+no palette section-header row exists in this palette's design — the History
+icon marks the section instead; relative time is Intl-native rather than
+catalog keys. i18n `home.continueTitle` (en/de/el). Tests: `recent-nodes`
+store suite (9: ordering, dedupe, cap, profile namespacing, corrupt JSON,
+malformed entries, title/breadcrumb resolution, root-title fallback,
+stale-entry dropping) + palette recent-section pinning (1) + Home Continue
+card live-resolution and empty/stale hiding (2) + NodeWorkspace visit
+recording (1); storage-key lockstep test intact. Frontend gate green
+(lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
+(1,299).
+
 **Planned next — plan 80, deep navigation: jump anywhere in one keystroke
 (user-approved 2026-09-20, ADRs 193–195 reserved):** close the deep-tree
 navigation pain — today a depth-3 section takes three drill-downs, and the
@@ -122,7 +152,8 @@ node workspace with the material docked (`?material=`) — closing the old
 "section deep-link from search" roadmap remainder. Plan doc:
 `dev/plans/80-deep-navigation-jump-anywhere.md` (gitignored local;
 non-goals: node pins/migration, backend node-search endpoint, outline-default
-landing page). **A COMPLETE (2026-09-20, ADR-194) — B/C/D remaining.**
+landing page). **A + B COMPLETE (2026-09-20, ADRs 194 + 193) — C/D
+remaining.**
 
 **Feature — rendered proposal previews (plan 78-F, ADR-192, 2026-09-18):**
 slice F of plan 78 (user-requested follow-up) — proposal content is no longer

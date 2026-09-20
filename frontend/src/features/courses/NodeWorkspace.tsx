@@ -135,6 +135,7 @@ import {
  } from '@/lib/api'
 import { useChatStore } from '@/lib/chat-store'
 import { formatDate } from '@/lib/format'
+import { recordRecentNode } from '@/lib/recent-nodes'
 import { SegmentedControl } from '@/components/motion/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { buildDragPayload } from '@/lib/dragPayload'
@@ -2968,6 +2969,12 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     [tree.data, currentId]
   )
   const dueCards = currentNodeCounts?.cards_due
+
+  useEffect(() => {
+    if (currentId !== undefined) {
+      recordRecentNode(Number(courseId), currentId)
+    }
+  }, [courseId, currentId])
 
   const studyHere = useMutation({
     mutationFn: (targetId: number) =>

@@ -24,4 +24,5 @@ export const storageKeys = {
   reviewNudges: 'ca-review-nudges',
   treeSidebarOpen: 'ca-tree-sidebar-open',
   notificationsSeen: 'ca-notifications-seen',
+  recentNodesPrefix: 'ca-recent-nodes',
 } as const

@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
-import { BookOpen, CalendarClock, Clock3, Flame, GraduationCap, Layers, Loader2, MessageSquare, NotebookPen, Sparkles, Target } from 'lucide-react'
-import { useState } from 'react'
+import { BookOpen, CalendarClock, Clock3, Flame, GraduationCap, History, Layers, Loader2, MessageSquare, NotebookPen, Sparkles, Target } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from '@tanstack/react-router'
 
@@ -21,6 +21,7 @@ import {
   createChatSession,
   createSampleCourse,
   createTeachBack,
+  courseTree,
   generateQuiz,
   getHealth,
   getOverview,
@@ -36,7 +37,8 @@ import {
   type Recommendation,
 } from '@/lib/api'
 
-import { formatDate } from '@/lib/format'
+import { formatDate, formatRelativeTime } from '@/lib/format'
+import { getRecentNodes, resolveRecentNodes } from '@/lib/recent-nodes'
 import { cn } from '@/lib/utils'
 
 function BackendBadge() {
@@ -489,6 +491,102 @@ function StudyNowCard() {
   )
 }
 
+function ContinueReadingCard() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const entries = useMemo(() => getRecentNodes().slice(0, 5), [])
+  const courseIds = useMemo(
+    () => [...new Set(entries.map((entry) => entry.courseId))],
+    [entries]
+  )
+  const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
+  const treeQueries = useQueries({
+    queries: courseIds.map((id) => ({
+      queryKey: ['tree', String(id)],
+      queryFn: () => courseTree(id),
+    })),
+  })
+  const trees = useMemo(() => {
+    const map = new Map<number, (typeof treeQueries)[number]['data']>()
+    courseIds.forEach((id, index) => {
+      map.set(id, treeQueries[index]?.data)
+    })
+    return map
+  }, [courseIds, treeQueries])
+  const loading =
+    courses.isLoading || courseIds.some((_, index) => treeQueries[index]?.isLoading === true)
+  const rows = useMemo(
+    () =>
+      resolveRecentNodes(
+        entries,
+        trees,
+        new Map((courses.data ?? []).map((course) => [course.id, course.title]))
+      ),
+    [entries, trees, courses.data]
+  )
+  if (entries.length === 0 || (!loading && rows.length === 0)) {
+    return null
+  }
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <History className="text-primary size-4" aria-hidden />
+          {t('home.continueTitle')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {loading
+          ? [0, 1, 2].map((index) => (
+              <div key={index} className="flex items-center gap-2.5 py-1.5" aria-hidden>
+                <span className="bg-muted-foreground/30 size-2.5 shrink-0 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-40" />
+                  <Skeleton className="h-2.5 w-56" />
+                </div>
+              </div>
+            ))
+          : rows.map((row) => {
+              const color = (courses.data ?? []).find(
+                (course) => course.id === row.courseId
+              )?.color
+              return (
+                <button
+                  key={`${row.courseId}-${row.nodeId}`}
+                  type="button"
+                  className="hover:bg-subtle/60 -mx-2 flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left"
+                  onClick={() =>
+                    void navigate({
+                      to: '/courses/$courseId/n/$nodeId',
+                      params: { courseId: String(row.courseId), nodeId: String(row.nodeId) },
+                    })
+                  }
+                >
+                  <span
+                    className={cn(
+                      'size-2.5 shrink-0 rounded-full',
+                      !color && 'bg-muted-foreground/40'
+                    )}
+                    style={color ? { backgroundColor: color } : undefined}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm">{row.title}</span>
+                    <span className="text-muted-foreground block truncate text-[10px]">
+                      {row.breadcrumb}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground shrink-0 text-[10px]">
+                    {formatRelativeTime(row.at)}
+                  </span>
+                </button>
+              )
+            })}
+      </CardContent>
+    </Card>
+  )
+}
+
 function NextBestActions() {
   const { t } = useTranslation()
   const recs = useQuery({ queryKey: ['recommendations'], queryFn: () => getRecommendations() })
@@ -832,6 +930,7 @@ export function HomePage() {
           <ReviewNudgeStrip />
           <ExamCard />
           <StudyNowCard />
+          <ContinueReadingCard />
           <NextBestActions />
           <UpcomingPlanStrip />
           {(captures.data?.items ?? []).length > 0 ? (

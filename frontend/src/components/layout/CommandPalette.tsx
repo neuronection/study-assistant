@@ -11,6 +11,7 @@ import {
   CornerDownLeft,
   Dumbbell,
   GraduationCap,
+  History,
   Home,
   MessageSquare,
   Link2,
@@ -27,6 +28,7 @@ import { useCaptureStore } from '@/lib/capture-store'
 import { useImportUrlStore } from '@/lib/import-url-store'
 import { fuzzyFilter } from '@/lib/fuzzy'
 import { useMotionPresets } from '@/lib/motion'
+import { getRecentNodes, resolveRecentNodes } from '@/lib/recent-nodes'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 import { cn } from '@/lib/utils'
 
@@ -343,6 +345,30 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     return openActions
   }, [treeCourseIds, trees, courses.data, t, navigate, onClose])
 
+  const recentActions = useMemo<Action[]>(() => {
+    if (query.trim() !== '') {
+      return []
+    }
+    const courseTitles = new Map(
+      (courses.data ?? []).map((course) => [course.id, course.title])
+    )
+    return resolveRecentNodes(getRecentNodes().slice(0, 5), trees, courseTitles).map(
+      (row) => ({
+        key: `recent-${row.courseId}-${row.nodeId}`,
+        label: row.title,
+        hint: row.breadcrumb,
+        icon: History,
+        run: () => {
+          void navigate({
+            to: '/courses/$courseId/n/$nodeId',
+            params: { courseId: String(row.courseId), nodeId: String(row.nodeId) },
+          })
+          onClose()
+        },
+      })
+    )
+  }, [query, trees, courses.data, navigate, onClose])
+
   const filtered = useMemo(() => {
     if (contentQuery !== null) {
       return (contentSearch.data?.hits ?? [])
@@ -365,10 +391,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
     const actionText = (action: Action) => (action.hint ? `${action.label} ${action.hint}` : action.label)
     return [
+      ...recentActions,
       ...fuzzyFilter(actions, query, actionText),
       ...fuzzyFilter(nodeActions, query, actionText).slice(0, 40),
     ]
-  }, [actions, nodeActions, query, contentQuery, contentSearch.data, t, navigate, onClose])
+  }, [actions, nodeActions, recentActions, query, contentQuery, contentSearch.data, t, navigate, onClose])
 
   useEffect(() => {
     if (open) {

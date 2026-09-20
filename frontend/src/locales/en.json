@@ -733,6 +733,7 @@
     "cardsDue": "{{count}} cards due",
     "overdueTasks": "{{count}} overdue tasks",
     "stripJoin": " · ",
+    "continueTitle": "Continue where you left off",
     "studyNow": "Study now",
     "studyNowAllClear": "Nothing needs you right now — nicely done.",
     "studyNowCards_one": "{{count}} card due",

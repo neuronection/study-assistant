@@ -653,6 +653,20 @@ describe('NodeWorkspace', () => {
     expect(screen.getByRole('button', { name: /ask about this node/i })).toBeInTheDocument()
   })
 
+  test('visiting a node records it in the profile recents store', async () => {
+    primeDefaults()
+    window.localStorage.removeItem('ca-recent-nodes.default')
+    renderWorkspace('/courses/3/n/5')
+    expect(await screen.findByRole('heading', { name: 'Derivatives' })).toBeInTheDocument()
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('ca-recent-nodes.default')
+      expect(raw).not.toBeNull()
+      const entries = JSON.parse(raw!) as Array<{ courseId: number; nodeId: number }>
+      expect(entries[0]).toMatchObject({ courseId: 3, nodeId: 5 })
+    })
+    window.localStorage.removeItem('ca-recent-nodes.default')
+  })
+
   test('child cards show the subsection description when set', async () => {
     primeDefaults()
     nodeWorkspace.mockImplementation((id: number) =>

@@ -62,6 +62,7 @@ describe('CommandPalette', () => {
     search.mockResolvedValue({ query: '', hits: [] })
     navigate.mockClear()
     useWorkspaceStore.getState().setCourse(null)
+    window.localStorage.removeItem('ca-recent-nodes.default')
   })
 
   test('hidden when closed', () => {
@@ -617,6 +618,58 @@ describe('CommandPalette', () => {
     )
     useWorkspaceStore.getState().setCourse(null)
   })
+
+  test('recent nodes are pinned as the first actions at empty query', async () => {
+    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 30000 }])
+    )
+    listCourses.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 5,
+            title: 'Derivatives',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    const view = renderPalette()
+    expect(await view.findByText('Derivatives')).toBeInTheDocument()
+    const list = view.getByRole('listbox')
+    expect(list.querySelectorAll('li')[0]).toHaveTextContent('Derivatives')
+    expect(list.querySelectorAll('li')[0]).toHaveTextContent('Calculus I')
+    window.localStorage.removeItem('ca-recent-nodes.default')
+    view.unmount()
+  })
 })
 
 describe('CommandPalette content search', () => {
@@ -631,6 +684,7 @@ describe('CommandPalette content search', () => {
     search.mockReset()
     navigate.mockClear()
     useWorkspaceStore.getState().setCourse(null)
+    window.localStorage.removeItem('ca-recent-nodes.default')
   })
 
   test('? prefix switches to content mode and lists hits with snippets', async () => {

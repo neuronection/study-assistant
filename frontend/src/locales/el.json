@@ -733,6 +733,7 @@
     "cardsDue": "{{count}} κάρτες προς εξέταση",
     "overdueTasks": "{{count}} εργασίες εκτός χρόνου",
     "stripJoin": " · ",
+    "continueTitle": "Συνέχεια από όπου σταθήκατε",
     "studyNow": "Μελέτη τώρα",
     "studyNowAllClear": "Τίποτα δεν σε χρειάζεται τώρα — μπράβο.",
     "studyNowCards_one": "{{count}} κάρτα προς επανάληψη",

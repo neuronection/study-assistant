@@ -42,6 +42,23 @@ export function formatWeekdayLong(value: DateInput): string {
   }).format(toDate(value))
 }
 
+export function formatRelativeTime(timestamp: number): string {
+  const formatter = new Intl.RelativeTimeFormat(currentLocale(), { numeric: 'auto' })
+  const deltaMinutes = Math.round((timestamp - Date.now()) / 60000)
+  if (Math.abs(deltaMinutes) < 60) {
+    return formatter.format(deltaMinutes, 'minute')
+  }
+  const deltaHours = Math.round(deltaMinutes / 60)
+  if (Math.abs(deltaHours) < 24) {
+    return formatter.format(deltaHours, 'hour')
+  }
+  const deltaDays = Math.round(deltaHours / 24)
+  if (Math.abs(deltaDays) < 7) {
+    return formatter.format(deltaDays, 'day')
+  }
+  return formatDate(timestamp)
+}
+
 export function formatMonth(month: string): string {
   const [year, part] = month.split('-')
   const date = new Date(Number(year), Number(part) - 1, 1)

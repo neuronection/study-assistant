@@ -10,6 +10,7 @@ const getExamStatus = vi.fn()
 const getStudyNext = vi.fn()
 const getRecommendations = vi.fn()
 const listCourses = vi.fn()
+const courseTree = vi.fn()
 const generateQuiz = vi.fn()
 const createChatSession = vi.fn()
 const listUpcomingItems = vi.fn()
@@ -24,6 +25,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     getStudyNext: () => getStudyNext(),
     getRecommendations: () => getRecommendations(),
     listCourses: () => listCourses(),
+    courseTree: (id: number) => courseTree(id),
     generateQuiz: (body: unknown) => generateQuiz(body),
     createChatSession: (courseId: number, nodeId: number | null, title?: string) =>
       createChatSession(courseId, nodeId, title),
@@ -130,6 +132,7 @@ describe('HomePage (Today screen)', () => {
     getExamStatus.mockReset()
     getRecommendations.mockReset()
     listCourses.mockReset()
+    courseTree.mockReset()
     generateQuiz.mockReset()
     createChatSession.mockReset()
     listUpcomingItems.mockReset()
@@ -137,6 +140,7 @@ describe('HomePage (Today screen)', () => {
     setDailyGoal.mockReset()
     listCourses.mockResolvedValue([])
     getExamStatus.mockResolvedValue([])
+    window.localStorage.removeItem('ca-recent-nodes.default')
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
     vi.stubGlobal(
       'fetch',
@@ -479,5 +483,111 @@ describe('HomePage exam card', () => {
     })
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
     expect(screen.queryByText(/activity heatmap builds up/i)).not.toBeInTheDocument()
+  })
+
+  test('continue card resolves recent nodes to live titles and breadcrumbs', async () => {
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 60000 }])
+    )
+    listCourses.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        subject: null,
+        level: null,
+        description: null,
+        color: '#3366cc',
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 5,
+            title: 'Derivatives',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    const view = renderHome()
+    expect(await screen.findByText('Derivatives')).toBeInTheDocument()
+    expect(screen.getByText('1 minute ago')).toBeInTheDocument()
+    expect(screen.getAllByText('Calculus I').length).toBeGreaterThan(0)
+    expect(screen.getByText('Continue where you left off')).toBeInTheDocument()
+    window.localStorage.removeItem('ca-recent-nodes.default')
+    view.unmount()
+  })
+
+  test('continue card hides itself when history is empty or fully stale', async () => {
+    getOverview.mockResolvedValue({
+      today: { day: '2026-08-19', answers_n: 8, correct_n: 6, cards_reviewed: 3, minutes: 12, study_seconds: 1320, xp: 75 },
+      unit: 'answers',
+      answers_per_day: 10,
+      minutes_per_day: 30,
+      streak: 4,
+      total_xp: 1200,
+      level: 4,
+      due_cards: 6,
+      study_seconds_week: 5400,
+    })
+    getExamStatus.mockResolvedValue([])
+    getRecommendations.mockResolvedValue([])
+    listUpcomingItems.mockResolvedValue([])
+    const emptyView = renderHome()
+    expect(screen.queryByText('Continue where you left off')).not.toBeInTheDocument()
+    emptyView.unmount()
+
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 999, at: Date.now() - 60000 }])
+    )
+    listCourses.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [],
+        materials: [],
+      },
+    ])
+    const staleView = renderHome()
+    await waitFor(() =>
+      expect(staleView.queryByText('Continue where you left off')).not.toBeInTheDocument()
+    )
+    staleView.unmount()
   })
 })

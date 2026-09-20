@@ -733,6 +733,7 @@
     "cardsDue": "{{count}} Karten fällig",
     "overdueTasks": "{{count}} überfällige Aufgaben",
     "stripJoin": " · ",
+    "continueTitle": "Weiterlesen",
     "studyNow": "Jetzt lernen",
     "studyNowAllClear": "Gerade braucht dich nichts — gut gemacht.",
     "studyNowCards_one": "{{count}} Karte fällig",
