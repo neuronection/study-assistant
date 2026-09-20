@@ -11,6 +11,17 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed
+- **Course structure sidebar was invisible in the real browser build** —
+  an unlayered `.hidden { display: none }` from the bundled library
+  stylesheet outranked layered responsive utilities in the CSS cascade
+  (layers beat source order), so `hidden md:flex` collapsed the sidebar to
+  zero size at every viewport — jsdom tests never see CSS, so it slipped
+  through. The sidebar (and the chat "Quiz me" label, same pattern) now
+  use layered `max-*` variants (`max-md:hidden` / `max-lg:hidden`); a
+  real-browser Playwright regression spec (`06-tree-sidebar`) asserts the
+  sidebar renders with actual size on a course workspace.
+
 ### Changed
 - **Course structure sidebar is always visible in the course workspace** —
   the hide toggle is gone (a previously closed sidebar can no longer stay

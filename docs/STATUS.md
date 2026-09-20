@@ -134,6 +134,22 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Fix — structure sidebar invisible in real builds (plan 80-G hotfix,
+2026-09-20):** the user reported the tree never appears even on latest
+main — and a real-browser Playwright diagnostic reproduced it: the sidebar
+aside rendered with **0×0 computed size**. Root cause: the bundled
+assistant-ui stylesheet ships an **unlayered** `.hidden { display:none }`,
+and unlayered declarations outrank every `@layer utilities` rule in the
+cascade — so `hidden md:flex` can never reach `display:flex` on screen at
+any viewport (jsdom tests don't load CSS, hence always green). Fix: the
+sidebar aside and the chat "Quiz me" label (same pattern) now use layered
+`max-*` variants (`max-md:hidden` / `max-lg:hidden`) that no unlayered
+rule can override; both verified in Chromium. New e2e
+`06-tree-sidebar.spec.ts` boots the real stack and asserts the sidebar
+renders with real size on a course workspace (regression pin for the
+exact user-reported bug). Frontend gate green (lint/typecheck/1,396
+tests/i18n/build) + e2e spec green; backend untouched.
+
 **Feature — course tree always-on + visual refresh (plan 80-G, 2026-09-20):**
 user-requested follow-up: the course structure sidebar is now **permanently
 displayed inside the course workspace** (`/courses/$id` and every node

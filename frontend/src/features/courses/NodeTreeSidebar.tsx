@@ -1037,7 +1037,7 @@ export function NodeTreeSidebar({
 
   return (
     <aside
-      className="border-border bg-subtle/40 sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r md:flex"
+      className="border-border bg-subtle/40 sticky top-0 max-md:hidden h-screen w-64 shrink-0 flex-col border-r md:flex"
       aria-label={t('workspace.treeSidebar')}
       onContextMenu={onTreeContextMenu}
     >

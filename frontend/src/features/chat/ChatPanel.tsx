@@ -527,7 +527,7 @@ export function ChatPanel({
         aria-pressed={quizmeOn}
       >
         <HelpCircle className="size-4" aria-hidden />
-        <span className="hidden lg:inline">{t('chat.quizmeToggle')}</span>
+        <span className="max-lg:hidden">{t('chat.quizmeToggle')}</span>
       </Button>
       <Button
         variant="ghost"
