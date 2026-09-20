@@ -61,7 +61,7 @@ starting scaffold, not a textbook replacement.
 
 ## Research tools on the web
 
-If a **web search provider** is configured (Settings → Providers → Web search —
+If a **web search provider** is configured (Settings → AI → Providers → Web search —
 any Tavily-compatible endpoint or a SearXNG instance; the API key lives in your
 system keyring), the tutor gains two research tools:
 

@@ -835,6 +835,7 @@
     "title": "Settings",
     "tabs": {
       "general": "General",
+      "ai": "AI",
       "providers": "Providers",
       "models": "Models",
       "tasks": "Tasks",
@@ -844,6 +845,14 @@
       "search": "Search & OCR",
       "mcp": "Integrations"
     },
+    "nav": {
+      "generalDesc": "Language, reminders & app behaviour",
+      "aiDesc": "Providers, models, tasks & integrations",
+      "searchDesc": "Web sources, search providers & local engines",
+      "dataDesc": "Backup, export & trash",
+      "developerDesc": "Diagnostics & developer tools"
+    },
+    "aiSectionsAria": "AI sections",
     "generalTitle": "General",
     "generalDescription": "App-wide preferences.",
     "languageLabel": "Language",

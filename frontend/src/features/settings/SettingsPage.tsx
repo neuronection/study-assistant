@@ -1,7 +1,16 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import {
+  Database,
+  Globe,
+  Settings,
+  SlidersHorizontal,
+  Sparkles,
+  Terminal,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/lib/utils'
+import { SegmentedTabs } from '@/components/ui/segmented-tabs'
+import { SettingsShell } from '@/components/ui/settings-shell'
 import { DataTab } from './DataTab'
 import { DeveloperTab } from './DeveloperTab'
 import { GeneralTab } from './GeneralTab'
@@ -12,70 +21,91 @@ import { SearchTab } from './SearchTab'
 import { SkillsTab } from './SkillsTab'
 import { TasksTab } from './TasksTab'
 
-const TABS = [
-  'general',
-  'providers',
-  'models',
-  'tasks',
-  'skills',
-  'data',
-  'developer',
-  'search',
-  'mcp',
-] as const
+const TABS = ['general', 'ai', 'search', 'data', 'developer'] as const
 type Tab = (typeof TABS)[number]
+
+const AI_SECTIONS = ['providers', 'models', 'tasks', 'skills', 'mcp'] as const
+type AiSection = (typeof AI_SECTIONS)[number]
+
+const TAB_ICONS = {
+  general: SlidersHorizontal,
+  ai: Sparkles,
+  search: Globe,
+  data: Database,
+  developer: Terminal,
+} as const satisfies Record<Tab, typeof SlidersHorizontal>
 
 export function SettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const search = useSearch({ strict: false }) as { tab?: string }
-  const raw = search.tab
-  const tab: Tab = (TABS as readonly string[]).includes(raw ?? '')
-    ? (raw as Tab)
+  const search = useSearch({ strict: false }) as {
+    tab?: string
+    section?: string
+  }
+  const tab: Tab = (TABS as readonly string[]).includes(search.tab ?? '')
+    ? (search.tab as Tab)
     : 'general'
+  const section: AiSection = (AI_SECTIONS as readonly string[]).includes(
+    search.section ?? '',
+  )
+    ? (search.section as AiSection)
+    : 'providers'
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'general', label: t('settings.tabs.general') },
-    { key: 'providers', label: t('settings.tabs.providers') },
-    { key: 'models', label: t('settings.tabs.models') },
-    { key: 'tasks', label: t('settings.tabs.tasks') },
-    { key: 'skills', label: t('settings.tabs.skills') },
-    { key: 'data', label: t('settings.tabs.data') },
-    { key: 'developer', label: t('settings.tabs.developer') },
-    { key: 'search', label: t('settings.tabs.search') },
-    { key: 'mcp', label: t('settings.tabs.mcp') },
-  ]
+  const open = (next: Tab, nextSection?: AiSection) =>
+    void navigate({
+      to: '/settings',
+      search: nextSection
+        ? { tab: next, section: nextSection }
+        : { tab: next },
+    })
+
+  const nav = TABS.map((key) => ({
+    id: key,
+    icon: TAB_ICONS[key],
+    label: t(`settings.tabs.${key}`),
+    description: t(`settings.nav.${key}Desc`),
+  }))
+
+  const sectionTabs = AI_SECTIONS.map((key) => ({
+    value: key,
+    label: t(`settings.tabs.${key}`),
+  }))
 
   return (
-    <div className="mx-auto max-w-3xl p-8">
-      <h1 className="mb-4 text-2xl font-semibold">{t('settings.title')}</h1>
-      <div className="mb-6 flex gap-1">
-        {tabs.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            aria-current={tab === item.key ? 'page' : undefined}
-            onClick={() => void navigate({ to: '/settings', search: { tab: item.key } })}
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition-colors',
-              tab === item.key
-                ? 'bg-subtle font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-      {tab === 'general' ? <GeneralTab /> : null}
-      {tab === 'providers' ? <ProvidersTab /> : null}
-      {tab === 'models' ? <ModelsTab /> : null}
-      {tab === 'tasks' ? <TasksTab /> : null}
-      {tab === 'skills' ? <SkillsTab /> : null}
-      {tab === 'data' ? <DataTab /> : null}
-      {tab === 'developer' ? <DeveloperTab /> : null}
-      {tab === 'search' ? <SearchTab /> : null}
-      {tab === 'mcp' ? <McpTab /> : null}
+    <div className="mx-auto max-w-6xl p-8">
+      <SettingsShell
+        nav={nav}
+        active={tab}
+        onNavigate={(id) => open(id as Tab)}
+        header={{ icon: Settings, title: t('settings.title') }}
+        navClassName="lg:top-0 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
+      >
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h2>
+            <p className="text-muted-foreground text-sm">
+              {t(`settings.nav.${tab}Desc`)}
+            </p>
+          </div>
+          {tab === 'ai' ? (
+            <SegmentedTabs
+              ariaLabel={t('settings.aiSectionsAria')}
+              items={sectionTabs}
+              value={section}
+              onValueChange={(next) => open('ai', next as AiSection)}
+            />
+          ) : null}
+          {tab === 'general' ? <GeneralTab /> : null}
+          {tab === 'ai' && section === 'providers' ? <ProvidersTab /> : null}
+          {tab === 'ai' && section === 'models' ? <ModelsTab /> : null}
+          {tab === 'ai' && section === 'tasks' ? <TasksTab /> : null}
+          {tab === 'ai' && section === 'skills' ? <SkillsTab /> : null}
+          {tab === 'ai' && section === 'mcp' ? <McpTab /> : null}
+          {tab === 'search' ? <SearchTab /> : null}
+          {tab === 'data' ? <DataTab /> : null}
+          {tab === 'developer' ? <DeveloperTab /> : null}
+        </div>
+      </SettingsShell>
     </div>
   )
 }

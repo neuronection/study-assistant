@@ -95,7 +95,7 @@ the attempt succeeds.
 1. The material's card shows a **failed** state pill; the activity button shows the
    red badge.
 2. Open the panel, read the error (for example "OCR provider unavailable").
-3. Fix the cause if there is one — check Settings → Models for provider issues —
+3. Fix the cause if there is one — check Settings → AI → Models for provider issues —
    then press **retry** on the row or **Retry all**.
 4. Watch the item move through *In progress* until it completes.
 

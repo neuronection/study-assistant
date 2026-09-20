@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@source '../node_modules/@neuronection/assistant-ui/dist';
 @import 'tw-animate-css';
 @import '@fontsource-variable/inter';
 @import '@fontsource/jetbrains-mono/400.css';

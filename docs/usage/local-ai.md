@@ -36,7 +36,7 @@ leave the key field empty, nothing is written to the keyring.
    wizard shows an "everything runs on this machine" hint.
 5. Done — no key ever entered, nothing leaves the machine.
 
-In Settings → Providers you get the same detection from the empty state, and
+In Settings → AI → Providers you get the same detection from the empty state, and
 every provider card has a **Connection** row that probes the engine
 (`GET /v1/models` + a tiny embedding round-trip when an embeddings model is
 discovered) so a wrong port or stale engine is caught in one click.
@@ -63,7 +63,7 @@ prompt-grammar fallback handles engines without reliable native tool calls.
 
 The app guesses each model's capabilities from its name (e.g. `vl` → vision,
 `embed` → embeddings). These are **initial guesses only** — fix them in the
-model draft panel (Settings → Models → expand a model). One real example:
+model draft panel (Settings → AI → Models → expand a model). One real example:
 `nomic-embed-text-v2-moe` is guessed text-only because the name contains
 `embed-text`, not `embedding`; flip its capability to **embeddings** and assign
 it as the embeddings default — exactly the correction flow the settings UI is

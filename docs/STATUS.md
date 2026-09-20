@@ -2416,6 +2416,29 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-20 — **feat(settings): two-pane settings shell (family-uniform
+  layout).** Settings adopts the assistant-ui `SettingsShell` — the same
+  component career-assistant (`SettingsShell` route glue) and desktop-assistant
+  (settings window) use — via new `settings-shell` + `segmented-tabs` shims:
+  sticky rail nav with icon + label + description per entry (collapses to a
+  wrapping chip row on narrow windows via container query) replaces the
+  wrapping tab-chip row. The nine flat tabs are grouped into five rail
+  sections — **General**, **AI** (Providers · Models · Tasks · Skills ·
+  Integrations through an internal `SegmentedTabs` switcher, mirroring
+  career's AI-hub page and desktop's API tab), **Search & OCR**, **Data**,
+  **Developer** — each panel headed by its own title + description. URLs
+  address both levels: `?tab=<general|ai|search|data|developer>` plus
+  `&section=<providers|models|tasks|skills|mcp>` (deep-linkable, ready for the
+  planned chat no-model deep-link); the old flat `?tab=providers`-style URLs
+  are gone (pre-release, no compat shims). The rail pins career-style
+  (`navClassName="lg:top-0 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"`).
+  Same commit fixed a latent library-adoption bug the rail exposed: study's
+  TW4 never emitted utility classes existing only in library JS (`lg:sticky`
+  on the shell navbox — the rail silently wasn't sticky; the same bug class
+  career's TW3 `content` glob guards against), so `index.css` now carries
+  `@source '../node_modules/@neuronection/assistant-ui/dist'`. en/de/el keys
+  added for the new labels/descriptions; usage-guide Settings paths updated.
+  Backend untouched; frontend 1,353 green (+2 tests).
 - 2026-09-15 — **feat(nudges): review nudges (plan 68-C, ADR-153).** Home
   strip with due-card/overdue counts and one-tap Review now (hidden at zero);
   opt-in browser notifications in Settings → General — permission handshake,

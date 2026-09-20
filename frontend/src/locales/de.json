@@ -797,6 +797,7 @@
     "title": "Einstellungen",
     "tabs": {
       "general": "Allgemein",
+      "ai": "KI",
       "providers": "Anbieter",
       "models": "Modelle",
       "tasks": "Aufgaben",
@@ -806,6 +807,14 @@
       "search": "Suche & OCR",
       "mcp": "Integrationen"
     },
+    "nav": {
+      "generalDesc": "Sprache, Erinnerungen & App-Verhalten",
+      "aiDesc": "Anbieter, Modelle, Aufgaben & Integrationen",
+      "searchDesc": "Webquellen, Suchanbieter & lokale Engines",
+      "dataDesc": "Backup, Export & Papierkorb",
+      "developerDesc": "Diagnose & Entwicklerwerkzeuge"
+    },
+    "aiSectionsAria": "KI-Bereiche",
     "searchProviderFlavorTavily": "Tavily-kompatibel",
     "searchProviderFlavorSearxng": "SearXNG (JSON API)",
     "searchProviderKey": "API-Schlüssel (optional)",

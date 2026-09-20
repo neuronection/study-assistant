@@ -75,6 +75,7 @@ async function renderSettings(initial = '/settings') {
     path: '/settings',
     validateSearch: (search: Record<string, unknown>) => ({
       tab: typeof search.tab === 'string' ? search.tab : undefined,
+      section: typeof search.section === 'string' ? search.section : undefined,
     }),
     component: () => <SettingsPage />,
   })
@@ -87,8 +88,13 @@ async function renderSettings(initial = '/settings') {
       <RouterProvider router={router} />
     </QueryClientProvider>
   )
-  await screen.findByRole('heading', { name: /settings/i })
+  await screen.findByRole('navigation', { name: 'Settings sections' })
   return result
+}
+
+async function openAiSection(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: /^AI/ }))
+  fireEvent.click(await screen.findByRole('tab', { name: label }))
 }
 
 const PROVIDER = {
@@ -105,7 +111,7 @@ const PROVIDER = {
 describe('SettingsPage', () => {
   test('providers tab lists providers with masked key', async () => {
     listProviders.mockResolvedValue([PROVIDER])
-    await await renderSettings('/settings?tab=providers')
+    await await renderSettings('/settings?tab=ai&section=providers')
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
     expect(screen.getByText(/••••1234/)).toBeInTheDocument()
     expect(screen.queryByText(/supersecret/i)).not.toBeInTheDocument()
@@ -134,7 +140,7 @@ describe('SettingsPage', () => {
       },
     ])
     await await renderSettings()
-    screen.getByRole('button', { name: /models/i }).click()
+    await openAiSection('Models')
     expect(await screen.findByText('gemini-2.5-flash')).toBeInTheDocument()
     expect(screen.getAllByText('image / vision').length).toBeGreaterThan(0)
     expect(screen.queryByText('gemini-2.5-pro')).not.toBeInTheDocument()
@@ -162,7 +168,7 @@ describe('SettingsPage', () => {
     ])
     listModels.mockResolvedValue([])
     await await renderSettings()
-    screen.getByRole('button', { name: /tasks/i }).click()
+    await openAiSection('Tasks')
     expect(await screen.findByText('OCR')).toBeInTheDocument()
     expect(screen.getByText('vision')).toBeInTheDocument()
     expect(
@@ -201,7 +207,7 @@ describe('SettingsPage', () => {
     ])
     listModels.mockResolvedValue([])
     await await renderSettings()
-    screen.getByRole('button', { name: /tasks/i }).click()
+    await openAiSection('Tasks')
     expect(
       await screen.findByText(/semantic search is off/i),
     ).toBeInTheDocument()
@@ -247,7 +253,7 @@ describe('SettingsPage', () => {
       },
     ])
     await await renderSettings()
-    screen.getByRole('button', { name: /tasks/i }).click()
+    await openAiSection('Tasks')
     expect(await screen.findByText(/default models/i)).toBeInTheDocument()
     expect(screen.getByText(/set one default per capability/i)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Text' })).toBeInTheDocument()
@@ -285,7 +291,7 @@ describe('SettingsPage', () => {
       },
     ])
     await await renderSettings()
-    screen.getByRole('button', { name: /tasks/i }).click()
+    await openAiSection('Tasks')
     await screen.findByText('Quizgen')
     const trigger = screen.getAllByRole('combobox').at(-1)!
     fireEvent.click(trigger)
@@ -314,7 +320,7 @@ describe('SettingsPage', () => {
       },
     ])
     await await renderSettings()
-    screen.getByRole('button', { name: /tasks/i }).click()
+    await openAiSection('Tasks')
     await screen.findByText(/default models/i)
     const textPrimary = screen.getByRole('combobox', { name: 'Text' })
     fireEvent.click(textPrimary)
@@ -326,7 +332,7 @@ describe('SettingsPage', () => {
   test('add provider opens the setup modal with the preset grid', async () => {
     listProviders.mockResolvedValue([])
     listPresets.mockResolvedValue(PRESETS)
-    await renderSettings('/settings?tab=providers')
+    await renderSettings('/settings?tab=ai&section=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
     expect(screen.getByText('OpenAI')).toBeInTheDocument()
@@ -345,7 +351,7 @@ describe('SettingsPage', () => {
       assigned_vision_model: null,
       assigned_stt_model: 'whisper-1',
     })
-    await renderSettings('/settings?tab=providers')
+    await renderSettings('/settings?tab=ai&section=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
     fireEvent.click(await screen.findByText('OpenAI'))
     await screen.findByLabelText(/connection name/i)
@@ -363,7 +369,7 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([])
     listPresets.mockResolvedValue(PRESETS)
     createProvider.mockResolvedValue({ ...PROVIDER, name: 'LM Studio' })
-    await renderSettings('/settings?tab=providers')
+    await renderSettings('/settings?tab=ai&section=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
     fireEvent.click(await screen.findByText(/custom/i))
 
@@ -388,17 +394,34 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('settings tabs are routable via the ?tab= search param', async () => {
+  test('settings tabs are routable via the ?tab= and ?section= search params', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([])
     listTasks.mockResolvedValue([])
     listTaskDefaults.mockResolvedValue([])
-    await renderSettings('/settings?tab=models')
+    await renderSettings('/settings?tab=ai&section=models')
     expect(await screen.findByRole('button', { name: 'Add model' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^tasks$/i }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
     await waitFor(() =>
       expect(screen.getByText(/default models/i)).toBeInTheDocument()
+    )
+  })
+
+  test('rail navigation switches top-level sections', async () => {
+    await renderSettings()
+    fireEvent.click(screen.getByRole('button', { name: /^data/i }))
+    expect(await screen.findByText(/backup & restore/i)).toBeInTheDocument()
+    expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
+  })
+
+  test('the AI section deep-links via ?section=', async () => {
+    listProviders.mockResolvedValue([])
+    await renderSettings('/settings?tab=ai&section=mcp')
+    expect((await screen.findAllByText(/mcp resource server/i)).length).toBeGreaterThan(0)
+    expect(screen.getByRole('tab', { name: 'Integrations' })).toHaveAttribute(
+      'aria-selected',
+      'true',
     )
   })
 
@@ -411,13 +434,13 @@ describe('SettingsPage', () => {
   test('developer tab shows the rendering spike content only when selected', async () => {
     await renderSettings()
     expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^developer$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^developer/i }))
     expect(await screen.findByText('spike-content')).toBeInTheDocument()
   })
 
   test('edit provider dialog patches without touching the key when blank', async () => {
     listProviders.mockResolvedValue([PROVIDER])
-    await await renderSettings('/settings?tab=providers')
+    await await renderSettings('/settings?tab=ai&section=providers')
     const edit = await screen.findByRole('button', { name: /edit provider/i })
     edit.click()
     const nameInput = await screen.findByLabelText(/name/i)
@@ -473,7 +496,7 @@ describe('SettingsPage', () => {
       max_tokens: null,
     })
     await await renderSettings()
-    screen.getByRole('button', { name: /models/i }).click()
+    await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
 
@@ -517,7 +540,7 @@ describe('SettingsPage', () => {
       missing: false,
     })
     await await renderSettings()
-    screen.getByRole('button', { name: /models/i }).click()
+    await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
 
@@ -556,7 +579,7 @@ describe('SettingsPage', () => {
       },
     ])
     await await renderSettings()
-    screen.getByRole('button', { name: /models/i }).click()
+    await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: /delete model gemini-2\.5-flash/i }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete model' }))
@@ -574,7 +597,7 @@ describe('SettingsPage', () => {
     createModel.mockResolvedValue({ id: 1 })
     createModel.mockClear()
     await await renderSettings()
-    screen.getByRole('button', { name: /models/i }).click()
+    await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
 
@@ -612,7 +635,7 @@ describe('SettingsPage', () => {
       missing: false,
     })
     await await renderSettings()
-    screen.getByRole('button', { name: /models/i }).click()
+    await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: /edit model gemini-2\.5-flash/i }))
     const dialog = await screen.findByRole('dialog')
 

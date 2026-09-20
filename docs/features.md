@@ -247,7 +247,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   structured items are stored in the material's provenance for future
   interactive practice
 - ✅ **Custom MCP connectors (plan 73-G, ADR-170, 2026-09-16)**: bring your
-  own source. Register an external MCP server (stdio) in **Settings →
+  own source. Register an external MCP server (stdio) in **Settings → AI →
   Integrations**, refresh to list its tools, and assign each tool a
   contract: **Discovery** tools appear as providers in the Discover dialog
   and behind chat DISCOVER; **Parser** tools (keyed by a URL pattern like
@@ -281,7 +281,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   toggle, manual **Scan now**, honest error badges (a dead feed shows its
   last error), overlap guard so slow scans never stack, and untrusted
   feed/yt-dlp metadata is HTML-stripped and http(s)-validated before
-  storage. Settings → Integrations (the former MCP tab) hosts the
+  storage. Settings → AI → Integrations (the former MCP tab) hosts the
   **Web sources** card with add/edit dialog (kind, URL, label, course,
   interval, per-kind options); sources are course-owned config that rides
   `ca-course/v2` bundles with fresh cursors on import
@@ -341,7 +341,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   normalized URL (`youtu.be/x` ≡ `youtube.com/watch?v=x`, tracking params
   stripped) — re-attaching the same link surfaces the existing material
 - ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
-  provider (Settings → Providers → Web search; Tavily-compatible or SearXNG,
+  provider (Settings → AI → Providers → Web search; Tavily-compatible or SearXNG,
   API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**
   (1/turn) tools — results render as source-domain chips, retrieved content is
   never stored, and an advisory contract nudges citation when search was used.
@@ -800,7 +800,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ **Browse your data in chat (plan 36)**: the tutor can list your courses and browse a
   node's quizzes, exercises and notes (`COURSES` / `NODE_OVERVIEW` / `NODE_QUIZZES` /
   `NODE_EXERCISES` / `NODE_NOTES`), read-only — the same tools external agents get via the
-  MCP server (documented under Settings → MCP server)
+  MCP server (documented under Settings → AI → Integrations)
 - ✅ **Attach menu (+)**: reference courses, materials, notes, quizzes,
   exercises, **course-tree nodes** (plan 72-F — flattened tree with
   summary/breadcrumb meta; picks send `kind:'node'` attachments the tutor can
@@ -901,6 +901,12 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   (inherit-or-custom) — I3/I7 (wizard polish pending); **per-course task-model
   overrides** via the workspace root's Settings tab → Tasks subtab (course title +
   description in the General subtab) — ADR-091
+- ✅ **Settings in a two-pane shell** (family-uniform, 2026-09-20): the assistant-ui
+  `SettingsShell` renders a sticky rail (icon + label + description per entry,
+  collapsing to a chip row on narrow windows) over five sections — General ·
+  **AI** (Providers · Models · Tasks · Skills · Integrations via a segmented
+  sub-tab switcher) · Search & OCR · Data · Developer; URLs address both levels
+  (`/settings?tab=ai&section=models`)
 - ✅ Light/dark/system theme; **UI languages en/el/de** — Settings → General switcher,
   instant apply, locale-aware date/number formatting, completeness-gated picker
   (`docs/usage/language.md`) — I4/I8 (plan 69)
@@ -968,7 +974,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   active skill version once per ingest job and threads it as the system
   prompt (byte-identical to the previous hardcoded constant; falling back to
   that constant when the skill row is missing). Editing the skill in
-  Settings → Skills immediately changes page OCR (it is a normal versioned
+  Settings → AI → Skills immediately changes page OCR (it is a normal versioned
   skill now — the duplicate constant in `gateway_ocr.py` is gone, one source).
   The document title rides along as page context
   (`Transcribe this page. Document: {title}`) so short pages (captions,

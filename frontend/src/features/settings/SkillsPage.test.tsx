@@ -45,7 +45,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   }
 })
 
-async function renderSettings(initial = '/settings?tab=skills') {
+async function renderSettings(initial = '/settings?tab=ai&section=skills') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
   const settingsRoute = createRoute({
@@ -53,6 +53,7 @@ async function renderSettings(initial = '/settings?tab=skills') {
     path: '/settings',
     validateSearch: (search: Record<string, unknown>) => ({
       tab: typeof search.tab === 'string' ? search.tab : undefined,
+      section: typeof search.section === 'string' ? search.section : undefined,
     }),
     component: () => <SettingsPage />,
   })
@@ -65,7 +66,7 @@ async function renderSettings(initial = '/settings?tab=skills') {
       <RouterProvider router={router} />
     </QueryClientProvider>
   )
-  await screen.findByRole('heading', { name: /settings/i })
+  await screen.findByRole('tab', { name: 'Skills' })
   return result
 }
 

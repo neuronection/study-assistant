@@ -158,7 +158,7 @@ If the tutor's task fails (for example no model is assigned to the *chat* task,
 or the provider is unreachable), the panel shows a red **"The tutor failed to
 answer"** banner with the underlying error instead of spinning forever — your
 message stays in the conversation and you can simply send it again after
-fixing the cause (check Settings → Tasks for unassigned models). A stalled
+fixing the cause (check Settings → AI → Tasks for unassigned models). A stalled
 turn also times out after 90 seconds with the same banner.
 
 ## Quiz-me

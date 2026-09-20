@@ -835,6 +835,7 @@
     "title": "Ρυθμίσεις",
     "tabs": {
       "general": "Γενικά",
+      "ai": "ΤΝ",
       "providers": "Πάροχοι",
       "models": "Μοντέλα",
       "tasks": "Εργασίες",
@@ -844,6 +845,14 @@
       "search": "Αναζήτηση και OCR",
       "mcp": "Ενσωματώσεις"
     },
+    "nav": {
+      "generalDesc": "Γλώσσα, υπενθυμίσεις & συμπεριφορά εφαρμογής",
+      "aiDesc": "Πάροχοι, μοντέλα, εργασίες & ενσωματώσεις",
+      "searchDesc": "Πηγές ιστού, πάροχοι αναζήτησης & τοπικές μηχανές",
+      "dataDesc": "Αντίγραφα ασφαλείας, εξαγωγή & κάδος",
+      "developerDesc": "Διαγνωστικά & εργαλεία προγραμματιστή"
+    },
+    "aiSectionsAria": "Ενότητες ΤΝ",
     "searchProviderFlavorTavily": "Συμβατό με Tavily",
     "searchProviderFlavorSearxng": "SearXNG (JSON API)",
     "searchProviderKey": "Κλειδί API (προαιρετικό)",

@@ -31,7 +31,7 @@ automatically. It walks you through the same steps described below, in order:
 3. **Models** — enable the models the provider discovered; *Enable all* takes one
    click.
 4. **Default models** — one default per capability (text / vision / embeddings /
-   audio); optional, editable later in Settings → Tasks.
+   audio); optional, editable later in Settings → AI → Tasks.
 5. **First course** — create your own, or load the ready-made *Calculus I (sample)*
    course.
 6. **First materials** — drop PDFs/slides/Markdown onto the course; extraction and
@@ -39,7 +39,7 @@ automatically. It walks you through the same steps described below, in order:
 
 Every step can be skipped, and the wizard is never forced on you again — but you
 can re-run it any time via **Run setup wizard** on the Home onboarding card or in
-the empty state of Settings → Providers.
+the empty state of Settings → AI → Providers.
 
 ## The sample course
 
@@ -54,7 +54,7 @@ something to count. Everything is editable or deletable like any other course.
 
 ## Connect an AI provider (required for AI features)
 
-**Quick way — one-click setup tiles.** Open **Settings → Providers** and press
+**Quick way — one-click setup tiles.** Open **Settings → AI → Providers** and press
 **Add provider**: a dialog opens with a provider grid (OpenAI, Google Gemini,
 OpenRouter, Anthropic, Groq, Mistral, DeepSeek, Ollama for a local setup, or
 Custom for any OpenAI-compatible endpoint). Picking a tile shows that
@@ -75,7 +75,7 @@ manual form, exactly like the **Custom** tile does (name, base URL, key,
 hosting, country).
 
 **Manual / advanced way.** Use **Add provider → Custom** for anything else
-(e.g. LM Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —
+(e.g. LM Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):1. Open **Settings → AI → Providers → Add provider** (settings tabs are URL-addressable —
    e.g. `/settings?tab=models` — so you can bookmark or share deep links).
 2. Pick a provider from the dropdown (OpenAI, Google Gemini, OpenRouter,
    Anthropic, Groq, Mistral, DeepSeek, Ollama for a local setup, or Custom for

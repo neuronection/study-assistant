@@ -6,7 +6,7 @@ contract** (the rules that gate the output, like "never reveal the answer"). By
 default these are the careful, tested prompts the app ships with — but you can read
 them and, if you want, customize them.
 
-**Settings → Skills** lists the skills and lets you manage **course types**.
+**Settings → AI → Skills** lists the skills and lets you manage **course types**.
 
 ## Reading and editing a skill
 
