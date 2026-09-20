@@ -477,6 +477,23 @@ describe('NodeTreeSidebar', () => {
     await waitFor(() => expect(moveNote).toHaveBeenCalledWith(22, 4))
   })
 
+  test('auto-expands the current node’s ancestors even with a persisted expansion map', async () => {
+    window.localStorage.setItem('ca-tree-expanded-9', JSON.stringify({ 4: true }))
+    renderSidebar(3)
+    expect(await screen.findByText('Continuity')).toBeInTheDocument()
+    expect(screen.getByText('Limits')).toBeInTheDocument()
+    expect(screen.getByRole('tree').getAttribute('aria-activedescendant')).toBe(
+      'ca-tree-row-3'
+    )
+  })
+
+  test('tree exposes a resize handle', async () => {
+    renderSidebar(undefined)
+    expect(
+      await screen.findByRole('separator', { name: /resize structure/i })
+    ).toBeInTheDocument()
+  })
+
   test('filter narrows the tree to scored matches and restores on clear', async () => {
     renderSidebar(undefined)
     await screen.findByText('Limits')

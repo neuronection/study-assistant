@@ -1678,7 +1678,8 @@
     "mirrorReused_other": "{{count}} nodes reused",
     "mirrorNone": "Nothing new to mirror",
     "mirrorSkipped": "{{count}} deeper level(s) stay in their folders — everything inside remains assigned",
-    "viaFolderTitle": "Assigned via folder “{{name}}” — move the file out of the folder or unassign the folder to remove it"
+    "viaFolderTitle": "Assigned via folder “{{name}}” — move the file out of the folder or unassign the folder to remove it",
+    "resizeTree": "Resize structure panel"
   },
   "materialPicker": {
     "title": "Assign materials",

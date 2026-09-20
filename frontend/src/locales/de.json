@@ -1678,7 +1678,8 @@
     "treeEmpty": "Noch keine untergeordneten Abschnitte.",
     "treeCount_materials_one": "{{count}} Material",
     "treeCount_materials_other": "{{count}} Materialien",
-    "treeCount_quizzes_one": "{{count}} Quiz"
+    "treeCount_quizzes_one": "{{count}} Quiz",
+    "resizeTree": "Strukturleiste in der Breite anpassen"
   },
   "materialPicker": {
     "title": "Materialien zuweisen",

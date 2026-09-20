@@ -43,12 +43,28 @@ import {
   type NodeInfo,
 } from '@/lib/api'
 import { fuzzyFilter } from '@/lib/fuzzy'
+import { storageKeys } from '@/lib/constants'
 import { ITEM_MIME, parseDragPayload } from '@/lib/dragPayload'
 import { useCurrentOrigin } from '@/lib/origin'
 import { useConfirm } from '@/lib/use-confirm'
 import { cn } from '@/lib/utils'
 
 const VIRTUALIZE_THRESHOLD = 40
+const TREE_WIDTH_BOUNDS = { min: 220, max: 420 }
+const DEFAULT_TREE_WIDTH = 256
+const treeWidthKey = `${storageKeys.treeWidth}`
+
+function readStoredTreeWidth(): number {
+  try {
+    const parsed = Number(window.localStorage.getItem(treeWidthKey))
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.min(TREE_WIDTH_BOUNDS.max, Math.max(TREE_WIDTH_BOUNDS.min, parsed))
+    }
+  } catch {
+    return DEFAULT_TREE_WIDTH
+  }
+  return DEFAULT_TREE_WIDTH
+}
 const DRAG_MIME = 'application/x-ca-node'
 const MATERIAL_DRAG_MIME = 'application/x-ca-material'
 const expandedKey = (courseId: string) => `ca-tree-expanded-${courseId}`
@@ -465,6 +481,34 @@ export function NodeTreeSidebar({
     readStoredExpanded(courseId) ?? {}
   )
   const restoredRef = useRef(readStoredExpanded(courseId) !== null)
+  const [treeWidth, setTreeWidth] = useState<number>(readStoredTreeWidth)
+  const treeWidthRef = useRef(treeWidth)
+  const treeDragRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const applyTreeWidth = (width: number) => {
+    const clamped = Math.min(TREE_WIDTH_BOUNDS.max, Math.max(TREE_WIDTH_BOUNDS.min, width))
+    treeWidthRef.current = clamped
+    setTreeWidth(clamped)
+  }
+  const onTreeResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    treeDragRef.current = { startX: event.clientX, startWidth: treeWidthRef.current }
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+  }
+  const onTreeResizeMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = treeDragRef.current
+    if (!drag) return
+    applyTreeWidth(drag.startWidth + (event.clientX - drag.startX))
+  }
+  const onTreeResizeEnd = () => {
+    if (treeDragRef.current === null) return
+    treeDragRef.current = null
+    try {
+      window.localStorage.setItem(treeWidthKey, String(treeWidthRef.current))
+    } catch {
+      return
+    }
+  }
   const [menu, setMenu] = useState<{ x: number; y: number; node: NodeInfo } | null>(null)
   const [studyNode, setStudyNode] = useState<NodeInfo | null>(null)
   const [generate, setGenerate] = useState<{
@@ -681,10 +725,11 @@ export function NodeTreeSidebar({
 
   useEffect(() => {
     const root = tree.data?.[0]
-    if (root === undefined || restoredRef.current) {
+    if (root === undefined) {
       return
     }
-    const ensure = [root.id, ...ancestors.slice(0, -1)]
+    const ensure =
+      currentId === undefined || ancestors.length <= 1 ? [root.id] : ancestors.slice(0, -1)
     setExpanded((current) => {
       const next = { ...current }
       let changed = false
@@ -696,7 +741,7 @@ export function NodeTreeSidebar({
       }
       return changed ? next : current
     })
-  }, [tree.data, ancestors])
+  }, [tree.data, ancestors, currentId])
 
   const flat = useMemo(() => {
     const rows: FlatRow[] = []
@@ -734,6 +779,26 @@ export function NodeTreeSidebar({
     estimateSize: () => 28,
     overscan: 10,
   })
+
+  const scrolledForRef = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (currentId === undefined || scrolledForRef.current === currentId) {
+      return
+    }
+    const index = rows.findIndex((row) => row.node.id === currentId)
+    if (index < 0) {
+      return
+    }
+    scrolledForRef.current = currentId
+    setFocusIndex(index)
+    if (virtualize) {
+      virtualizer.scrollToIndex(index, { align: 'center' })
+    } else {
+      document.getElementById(`ca-tree-row-${currentId}`)?.scrollIntoView({
+        block: 'nearest',
+      })
+    }
+  }, [currentId, rows, virtualize, virtualizer])
 
   const expandAll = () => {
     const next: Record<number, boolean> = {}
@@ -1037,7 +1102,8 @@ export function NodeTreeSidebar({
 
   return (
     <aside
-      className="border-border bg-subtle/40 sticky top-0 max-md:hidden h-screen w-64 shrink-0 flex-col border-r md:flex"
+      className="border-border bg-subtle/40 sticky top-0 max-md:hidden h-screen shrink-0 flex-col border-r md:flex"
+      style={{ width: treeWidth }}
       aria-label={t('workspace.treeSidebar')}
       onContextMenu={onTreeContextMenu}
     >
@@ -1310,6 +1376,17 @@ export function NodeTreeSidebar({
         </div>
       ) : null}
       {confirmElement}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('workspace.resizeTree')}
+        title={t('workspace.resizeTree')}
+        className="hover:bg-primary/40 active:bg-primary/60 absolute top-0 -right-0.5 z-10 h-full w-1 cursor-col-resize transition-colors"
+        onPointerDown={onTreeResizeStart}
+        onPointerMove={onTreeResizeMove}
+        onPointerUp={onTreeResizeEnd}
+        onPointerCancel={onTreeResizeEnd}
+      />
     </aside>
   )
 }

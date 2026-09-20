@@ -134,6 +134,23 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — resizable tree + deep-link auto-expansion (plan 80-G follow-up,
+2026-09-20):** two user-requested additions to the structure sidebar.
+**Resize**: the sidebar's right edge carries a chat-rail-style drag handle
+(`role="separator"`, pointer-capture, `workspace.resizeTree` en/de/el);
+width is clamped to 220–420 px, persists in `ca-tree-width`, and the
+keyboard cursor/active row follow the resize. **Deep-link auto-expansion**:
+navigating to any node at any depth now always expands its full ancestor
+chain and scrolls the row into view (virtualizer `scrollToIndex` when the
+tree exceeds 40 rows, `scrollIntoView` otherwise) and moves the keyboard
+cursor there — the old code skipped this whenever a persisted expansion map
+existed (`restoredRef` gate), which is why deep sections used to appear
+collapsed in the tree. Expansion is chain-only: the running node's own
+children stay collapsed (node-workspace tab tests pin that child rows don't
+leak into tab assertions). Tests: persisted-expansion + resize-handle tests
+in NodeTreeSidebar (30 total). Frontend gate green (lint/typecheck/1,398
+tests/i18n/build); backend gate green, untouched (1,302).
+
 **Fix — structure sidebar invisible in real builds (plan 80-G hotfix,
 2026-09-20):** the user reported the tree never appears even on latest
 main — and a real-browser Playwright diagnostic reproduced it: the sidebar

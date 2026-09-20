@@ -11,6 +11,14 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added
+- **Resizable course structure sidebar** — drag the sidebar's right edge to
+  resize it (220–420 px, persisted).
+- **Tree auto-expands to the current section** — navigating to any section
+  at any depth expands its full ancestor chain, scrolls it into view and
+  moves the keyboard cursor there (previously skipped whenever any expansion
+  state had been saved).
+
 ### Fixed
 - **Course structure sidebar was invisible in the real browser build** —
   an unlayered `.hidden { display: none }` from the bundled library
