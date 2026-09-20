@@ -10,10 +10,19 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { useReviewNudgeSetting } from '@/lib/review-nudges'
+import { useInterfacePrefsStore, type InterfacePrefKey } from '@/lib/interface-prefs'
+
+const INTERFACE_TOGGLES: { key: InterfacePrefKey; labelKey: string }[] = [
+  { key: 'homeContinue', labelKey: 'settings.interfaceHomeContinue' },
+  { key: 'paletteRecent', labelKey: 'settings.interfacePaletteRecent' },
+  { key: 'courseJumpBackIn', labelKey: 'settings.interfaceCourseJumpBackIn' },
+  { key: 'courseCardMeta', labelKey: 'settings.interfaceCourseCardMeta' },
+]
 
 export function GeneralTab() {
   const { t } = useTranslation()
   const { enabled, permission, setEnabled } = useReviewNudgeSetting()
+  const { prefs, setPref } = useInterfacePrefsStore()
 
   return (
     <div className="space-y-4">
@@ -50,6 +59,24 @@ export function GeneralTab() {
               ? t('settings.remindersDenied')
               : t('settings.remindersHint')}
           </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">{t('settings.interfaceTitle')}</CardTitle>
+          <CardDescription>{t('settings.interfaceDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-sm space-y-2">
+          {INTERFACE_TOGGLES.map(({ key, labelKey }) => (
+            <div key={key} className="flex items-center gap-2">
+              <CheckIndicator
+                checked={prefs[key]}
+                label={t(labelKey)}
+                onToggle={() => setPref(key, !prefs[key])}
+              />
+              <span className="text-foreground text-xs">{t(labelKey)}</span>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>

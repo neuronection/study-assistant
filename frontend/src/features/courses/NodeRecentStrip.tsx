@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { type NodeInfo } from '@/lib/api'
 import { formatRelativeTime } from '@/lib/format'
+import { useInterfacePrefs } from '@/lib/interface-prefs'
 import { getRecentNodes, resolveRecentNodes } from '@/lib/recent-nodes'
 
 export function NodeRecentStrip({
@@ -15,7 +16,11 @@ export function NodeRecentStrip({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { courseJumpBackIn } = useInterfacePrefs()
   const rows = useMemo(() => {
+    if (!courseJumpBackIn) {
+      return []
+    }
     const rootId = tree?.[0]?.id
     const entries = getRecentNodes()
       .filter((entry) => entry.courseId === Number(courseId) && entry.nodeId !== rootId)
@@ -24,7 +29,7 @@ export function NodeRecentStrip({
       return []
     }
     return resolveRecentNodes(entries, new Map([[Number(courseId), tree]]), new Map())
-  }, [courseId, tree])
+  }, [courseId, tree, courseJumpBackIn])
   if (rows.length === 0) {
     return null
   }

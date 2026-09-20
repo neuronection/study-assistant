@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { fuzzyScore } from '@/lib/fuzzy'
 import { formatRelativeTime } from '@/lib/format'
+import { useInterfacePrefs } from '@/lib/interface-prefs'
 import {
   courseExportUrl,
   courseTree,
@@ -31,6 +32,7 @@ export function CoursesPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
+  const { courseCardMeta } = useInterfacePrefs()
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
   const [subject, setSubject] = useState('')
@@ -60,6 +62,9 @@ export function CoursesPage() {
     })),
   })
   const lastVisitRows = useMemo(() => {
+    if (!courseCardMeta) {
+      return new Map<number, ResolvedRecentNode>()
+    }
     const trees = new Map<number, NodeInfo[] | undefined>()
     recentCourseIds.forEach((id, index) => {
       trees.set(id, recentTreeQueries[index]?.data)
@@ -79,7 +84,7 @@ export function CoursesPage() {
       }
     }
     return rows
-  }, [recentCourseIds, recentTreeQueries, lastVisitByCourse, courses.data])
+  }, [recentCourseIds, recentTreeQueries, lastVisitByCourse, courses.data, courseCardMeta])
   const [importFile, setImportFile] = useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const importInput = useRef<HTMLInputElement>(null)

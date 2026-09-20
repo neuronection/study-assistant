@@ -134,6 +134,31 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — interface feature-visibility toggles (plan 80-F, 2026-09-20):**
+user-requested follow-up: the recents surfaces become hideable in Settings.
+New `lib/interface-prefs.ts` — a zustand store over localStorage
+(`ca-interface-prefs`, single machine-level key following the
+`reviewNudges` precedent — UI visibility is per-machine, unlike the
+profile-namespaced recents DATA) with four boolean surfaces, all default
+ON: `homeContinue` (Home Continue card), `paletteRecent` (palette Recent
+section), `courseJumpBackIn` (course overview strip), `courseCardMeta`
+(courses-grid card meta). Corruption-tolerant read (partial/invalid JSON
+merges onto defaults), best-effort writes, and **instant live application**:
+all four surfaces subscribe to the same store, so flipping a switch in
+Settings → General's new **"Interface & features"** card hides them
+everywhere immediately without remounts — no backend, no API churn
+(backend `interface` preferences section named as the upgrade path if
+per-profile toggles are ever needed). CheckIndicator rows mirror the
+reminders-card pattern; extensible catalog (Home Study-now/heatmap,
+family footer, sidebar sections named as future candidates — deferred
+until real need). i18n `settings.interface*` (en/de/el). Tests: new
+`interface-prefs` suite (5: defaults, set+persist round-trip,
+localStorage re-read, corrupt/malformed fallback, missing-key defaults) +
+GeneralTab toggle persistence (1) + one hidden-when-off test per surface
+(Home, palette, strip, courses meta) + store resets in the existing
+suites' beforeEach. Frontend gate green (lint/typecheck/1,395 tests/i18n/
+build); backend gate green, untouched (1,302).
+
 **Feature — recents on course overview + course cards (plan 80-E,
 2026-09-20):** user-requested follow-up to plan 80 (approved in session):
 the recents store (ADR-193) surfaces on the two remaining navigation

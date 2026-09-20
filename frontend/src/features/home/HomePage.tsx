@@ -38,6 +38,7 @@ import {
 } from '@/lib/api'
 
 import { formatDate, formatRelativeTime } from '@/lib/format'
+import { useInterfacePrefs } from '@/lib/interface-prefs'
 import { getRecentNodes, resolveRecentNodes } from '@/lib/recent-nodes'
 import { cn } from '@/lib/utils'
 
@@ -494,7 +495,11 @@ function StudyNowCard() {
 function ContinueReadingCard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const entries = useMemo(() => getRecentNodes().slice(0, 5), [])
+  const { homeContinue } = useInterfacePrefs()
+  const entries = useMemo(
+    () => (homeContinue ? getRecentNodes().slice(0, 5) : []),
+    [homeContinue]
+  )
   const courseIds = useMemo(
     () => [...new Set(entries.map((entry) => entry.courseId))],
     [entries]

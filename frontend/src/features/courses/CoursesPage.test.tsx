@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { CoursesPage } from './CoursesPage'
+import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 
 const listCourses = vi.fn()
 const courseTree = vi.fn()
@@ -73,6 +74,15 @@ describe('CoursesPage', () => {
     deleteCourse.mockReset()
     importCourseBundle.mockReset()
     window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('ca-interface-prefs')
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: true,
+        paletteRecent: true,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      },
+    })
   })
 
   test('lists courses with subject and material count', async () => {
@@ -124,6 +134,51 @@ describe('CoursesPage', () => {
     listCourses.mockResolvedValue([COURSE])
     renderCourses()
     expect(await screen.findByText('Calculus I')).toBeInTheDocument()
+    expect(screen.queryByTitle('Calculus I')).not.toBeInTheDocument()
+  })
+
+  test('course cards show no last-visited meta when the course-card pref is off', async () => {
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: true,
+        paletteRecent: true,
+        courseJumpBackIn: true,
+        courseCardMeta: false,
+      },
+    })
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 2, at: Date.now() - 60000 }])
+    )
+    listCourses.mockResolvedValue([COURSE])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 2,
+            title: 'Limits',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    renderCourses()
+    expect(await screen.findByText('Calculus I')).toBeInTheDocument()
+    await waitFor(() => expect(courseTree).toHaveBeenCalled())
     expect(screen.queryByTitle('Calculus I')).not.toBeInTheDocument()
   })
 

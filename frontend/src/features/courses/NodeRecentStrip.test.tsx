@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { NodeRecentStrip } from './NodeRecentStrip'
+import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 import type { NodeInfo } from '@/lib/api'
 
 const navigate = vi.fn()
@@ -9,6 +10,13 @@ const navigate = vi.fn()
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigate,
 }))
+
+const ALL_ON = {
+  homeContinue: true,
+  paletteRecent: true,
+  courseJumpBackIn: true,
+  courseCardMeta: true,
+}
 
 const TREE: NodeInfo[] = [
   {
@@ -56,6 +64,19 @@ describe('NodeRecentStrip', () => {
   beforeEach(() => {
     navigate.mockClear()
     window.localStorage.removeItem('ca-recent-nodes.default')
+    useInterfacePrefsStore.setState({ prefs: { ...ALL_ON } })
+  })
+
+  test('hides when the course-jump-back-in interface pref is off', () => {
+    useInterfacePrefsStore.setState({
+      prefs: { ...ALL_ON, courseJumpBackIn: false },
+    })
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
+    )
+    const { container } = renderStrip(TREE)
+    expect(container).toBeEmptyDOMElement()
   })
 
   test('shows rows for this course’s recent nodes with breadcrumbs', () => {

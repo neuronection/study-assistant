@@ -29,6 +29,7 @@ import { useImportUrlStore } from '@/lib/import-url-store'
 import { fuzzyFilter } from '@/lib/fuzzy'
 import { useMotionPresets } from '@/lib/motion'
 import { getRecentNodes, resolveRecentNodes } from '@/lib/recent-nodes'
+import { useInterfacePrefs } from '@/lib/interface-prefs'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +49,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const queryClient = useQueryClient()
   const presets = useMotionPresets()
   const courseId = useWorkspaceStore((state) => state.courseId)
+  const interfacePrefs = useInterfacePrefs()
   const setCourse = useWorkspaceStore((state) => state.setCourse)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -346,7 +348,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [treeCourseIds, trees, courses.data, t, navigate, onClose])
 
   const recentActions = useMemo<Action[]>(() => {
-    if (query.trim() !== '') {
+    if (query.trim() !== '' || !interfacePrefs.paletteRecent) {
       return []
     }
     const courseTitles = new Map(
@@ -367,7 +369,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         },
       })
     )
-  }, [query, trees, courses.data, navigate, onClose])
+  }, [query, trees, courses.data, navigate, onClose, interfacePrefs])
 
   const filtered = useMemo(() => {
     if (contentQuery !== null) {

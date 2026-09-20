@@ -25,4 +25,5 @@ export const storageKeys = {
   treeSidebarOpen: 'ca-tree-sidebar-open',
   notificationsSeen: 'ca-notifications-seen',
   recentNodesPrefix: 'ca-recent-nodes',
+  interfacePrefs: 'ca-interface-prefs',
 } as const

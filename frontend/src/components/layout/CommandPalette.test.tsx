@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { CommandPalette } from './CommandPalette'
 import { useCaptureStore } from '@/lib/capture-store'
+import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 import { useWorkspaceStore } from '@/lib/workspace-store'
 
 const listCourses = vi.fn()
@@ -63,6 +64,16 @@ describe('CommandPalette', () => {
     navigate.mockClear()
     useWorkspaceStore.getState().setCourse(null)
     window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('ca-interface-prefs')
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: true,
+        paletteRecent: true,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      },
+    })
   })
 
   test('hidden when closed', () => {
@@ -583,6 +594,63 @@ describe('CommandPalette', () => {
       target: { value: 'determ' },
     })
     expect(await screen.findByText('Open Cofactor identities')).toBeInTheDocument()
+  })
+
+  test('recent section is hidden when the palette-recent interface pref is off', async () => {
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: true,
+        paletteRecent: false,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      },
+    })
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 30000 }])
+    )
+    listCourses.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 5,
+            title: 'Derivatives',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    renderPalette()
+    await screen.findByText('Quick capture')
+    await waitFor(() => expect(courseTree).toHaveBeenCalled())
+    expect(screen.queryByText('Derivatives')).not.toBeInTheDocument()
+    window.localStorage.removeItem('ca-recent-nodes.default')
   })
 
   test('open node actions are capped at 40 entries', async () => {

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { HomePage } from './HomePage'
 import { useWorkspaceStore } from '@/lib/workspace-store'
+import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 
 const getOverview = vi.fn()
 const getExamStatus = vi.fn()
@@ -141,6 +142,15 @@ describe('HomePage (Today screen)', () => {
     listCourses.mockResolvedValue([])
     getExamStatus.mockResolvedValue([])
     window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('ca-interface-prefs')
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: true,
+        paletteRecent: true,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      },
+    })
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
     vi.stubGlobal(
       'fetch',
@@ -401,6 +411,7 @@ describe('HomePage exam card', () => {
     getExamStatus.mockReset()
     getRecommendations.mockReset()
     listCourses.mockReset()
+    courseTree.mockReset()
     generateQuiz.mockReset()
     createChatSession.mockReset()
     listUpcomingItems.mockReset()
@@ -410,6 +421,16 @@ describe('HomePage exam card', () => {
     getExamStatus.mockResolvedValue([])
     getOverview.mockResolvedValue(OVERVIEW)
     getRecommendations.mockResolvedValue([])
+    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('ca-interface-prefs')
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: true,
+        paletteRecent: true,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      },
+    })
     useWorkspaceStore.setState({ courseId: null, hydrated: true })
     vi.stubGlobal(
       'fetch',
@@ -483,6 +504,62 @@ describe('HomePage exam card', () => {
     })
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
     expect(screen.queryByText(/activity heatmap builds up/i)).not.toBeInTheDocument()
+  })
+
+  test('continue card hides when the home-continue interface pref is off', async () => {
+    useInterfacePrefsStore.setState({
+      prefs: {
+        homeContinue: false,
+        paletteRecent: true,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      },
+    })
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 60000 }])
+    )
+    listCourses.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 5,
+            title: 'Derivatives',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    const view = renderHome()
+    await waitFor(() => expect(courseTree).not.toHaveBeenCalled())
+    expect(view.queryByText('Continue where you left off')).not.toBeInTheDocument()
+    view.unmount()
   })
 
   test('continue card resolves recent nodes to live titles and breadcrumbs', async () => {

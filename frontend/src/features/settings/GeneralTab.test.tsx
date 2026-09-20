@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { storageKeys } from '@/lib/constants'
 import { availableLocales } from '@/lib/locales'
+import { useInterfacePrefsStore } from '@/lib/interface-prefs'
 
 import { GeneralTab } from './GeneralTab'
 
@@ -54,5 +55,30 @@ describe('GeneralTab', () => {
       expect(document.documentElement.lang).toBe('en')
     })
     expect(localStorage.getItem(storageKeys.locale)).toBe('en')
+  })
+
+  test('interface toggles persist per surface and apply instantly', () => {
+    localStorage.removeItem(storageKeys.interfacePrefs)
+    render(<GeneralTab />)
+
+    const paletteToggle = screen.getByRole('checkbox', {
+      name: 'Recent sections in the command palette',
+    })
+    expect(paletteToggle).toBeChecked()
+    fireEvent.click(paletteToggle)
+    expect(paletteToggle).not.toBeChecked()
+    expect(useInterfacePrefsStore.getState().prefs.paletteRecent).toBe(false)
+    expect(localStorage.getItem(storageKeys.interfacePrefs)).toBe(
+      JSON.stringify({
+        homeContinue: true,
+        paletteRecent: false,
+        courseJumpBackIn: true,
+        courseCardMeta: true,
+      })
+    )
+
+    const homeToggle = screen.getByRole('checkbox', { name: 'Continue card on Home' })
+    expect(homeToggle).toBeChecked()
+    localStorage.removeItem(storageKeys.interfacePrefs)
   })
 })
