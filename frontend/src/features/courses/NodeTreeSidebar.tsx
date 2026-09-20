@@ -251,10 +251,11 @@ function TreeRow({
   focused,
   onDragStartRow,
   onDragOverRow,
-  onDropRow,
-  actions,
-  filtering,
-}: {
+    onDropRow,
+    actions,
+    filtering,
+    breadcrumb,
+  }: {
   row: FlatRow
   expanded: boolean
   onToggle: (nodeId: number) => void
@@ -272,6 +273,7 @@ function TreeRow({
   onDropRow: (event: React.DragEvent, node: NodeInfo) => void
   actions: TreeActions
   filtering: boolean
+  breadcrumb?: string
 }) {
   const { t } = useTranslation()
   const node = row.node
@@ -371,9 +373,18 @@ function TreeRow({
             params={{ courseId, nodeId: String(node.id) }}
             search={search}
             aria-current={active ? 'page' : undefined}
+            title={filtering && breadcrumb ? `${node.title} — ${breadcrumb}` : undefined}
             className={linkClass}
           >
             <span className="min-w-0 flex-1 truncate">{node.title}</span>
+            {filtering && breadcrumb ? (
+              <span
+                className="text-muted-foreground w-[45%] shrink-0 truncate text-right text-[10px]"
+                title={breadcrumb}
+              >
+                {breadcrumb}
+              </span>
+            ) : null}
             {node.counts !== undefined && node.counts.materials > 0 ? (
               <ProgressRing
                 studied={node.counts.studied ?? 0}
@@ -565,6 +576,24 @@ export function NodeTreeSidebar({
       walk(root, 0)
     }
     return rows
+  }, [tree.data])
+
+  const breadcrumbOf = useMemo(() => {
+    const map = new Map<number, string>()
+    const root = tree.data?.[0]
+    if (root !== undefined) {
+      const walk = (node: NodeInfo, ancestorTitles: string[]) => {
+        const childAncestors = node.is_root
+          ? [node.title]
+          : [...ancestorTitles, node.title]
+        for (const child of node.children) {
+          map.set(child.id, childAncestors.join(' › '))
+          walk(child, childAncestors)
+        }
+      }
+      walk(root, [])
+    }
+    return map
   }, [tree.data])
 
   const siblingsOf = useMemo(() => {
@@ -969,6 +998,7 @@ export function NodeTreeSidebar({
     onDropRow,
     actions,
     filtering,
+    breadcrumb: filtering ? breadcrumbOf.get(row.node.id) : undefined,
   })
 
   return (
@@ -997,10 +1027,37 @@ export function NodeTreeSidebar({
             placeholder={t('workspace.treeFilter')}
             aria-label={t('workspace.treeFilter')}
             value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+            onChange={(event) => {
+              setFilter(event.target.value)
+              setFocusIndex(0)
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
                 setFilter('')
+                return
+              }
+              if (!filtering || rows.length === 0) {
+                return
+              }
+              const current = focusIndex >= 0 && focusIndex < rows.length ? focusIndex : 0
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                const next = event.key === 'ArrowDown'
+                  ? Math.min(current + 1, rows.length - 1)
+                  : Math.max(current - 1, 0)
+                setFocusIndex(next)
+                document
+                  .getElementById(`ca-tree-row-${rows[next].node.id}`)
+                  ?.scrollIntoView({ block: 'nearest' })
+                return
+              }
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                const row = rows[current]
+                if (row !== undefined) {
+                  openNode(row.node)
+                  setFilter('')
+                }
               }
             }}
           />

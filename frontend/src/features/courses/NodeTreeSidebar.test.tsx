@@ -131,13 +131,14 @@ function renderSidebar(
   const nodeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/courses/$courseId/n/$nodeId',
-    component: () => null,
+    component: () => <div data-testid="node-probe" />,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([courseRoute, nodeRoute]),
     history: createMemoryHistory({ initialEntries: ['/courses/9'] }),
   })
-  return render(<RouterProvider router={router} />)
+  const view = render(<RouterProvider router={router} />)
+  return { router, view }
 }
 
 describe('NodeTreeSidebar', () => {
@@ -489,6 +490,72 @@ describe('NodeTreeSidebar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /clear search/i }))
     await waitFor(() => expect(screen.getByText('Limits')).toBeInTheDocument())
+  })
+
+  test('Enter in the filter jumps to the top match, navigates, and clears', async () => {
+    const { router } = renderSidebar(undefined)
+    await screen.findByText('Limits')
+
+    const input = screen.getByPlaceholderText('Find a node…')
+    fireEvent.change(input, { target: { value: 'contin' } })
+    expect(await screen.findByText('Continuity')).toBeInTheDocument()
+    expect(screen.getByRole('tree').getAttribute('aria-activedescendant')).toBe(
+      'ca-tree-row-3'
+    )
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/courses/9/n/3')
+    )
+  })
+
+  test('ArrowDown in the filter moves the active match before Enter jumps', async () => {
+    const { router } = renderSidebar(undefined)
+    await screen.findByText('Limits')
+
+    const input = screen.getByPlaceholderText('Find a node…')
+    fireEvent.change(input, { target: { value: 'ti' } })
+    const treeEl = screen.getByRole('tree')
+    await waitFor(() =>
+      expect(treeEl.getAttribute('aria-activedescendant')).not.toBeNull()
+    )
+    const firstActive = treeEl.getAttribute('aria-activedescendant')
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    const secondActive = treeEl.getAttribute('aria-activedescendant')
+    expect(secondActive).not.toBe(firstActive)
+    expect(secondActive).toMatch(/^ca-tree-row-\d+$/)
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/courses/9/n/${(secondActive ?? '').replace('ca-tree-row-', '')}`
+      )
+    )
+  })
+
+  test('Escape in the filter clears without navigating', async () => {
+    const { router } = renderSidebar(undefined)
+    await screen.findByText('Limits')
+
+    const input = screen.getByPlaceholderText('Find a node…')
+    fireEvent.change(input, { target: { value: 'contin' } })
+    expect(await screen.findByText('Continuity')).toBeInTheDocument()
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    await waitFor(() => expect(screen.getByText('Limits')).toBeInTheDocument())
+    expect((input as HTMLInputElement).value).toBe('')
+    expect(router.state.location.pathname).toBe('/courses/9')
+  })
+
+  test('filtered matches show their breadcrumb for disambiguation', async () => {
+    renderSidebar(undefined)
+    await screen.findByText('Limits')
+
+    const input = screen.getByPlaceholderText('Find a node…')
+    fireEvent.change(input, { target: { value: 'contin' } })
+    const link = await screen.findByRole('link', { name: /continuity/i })
+    expect(link).toHaveAttribute('title', 'Continuity — Calculus › Limits')
+    expect(screen.getByText('Calculus › Limits')).toBeInTheDocument()
   })
 
   test('keyboard navigation moves focus, expands, and collapses', async () => {

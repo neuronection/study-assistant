@@ -134,6 +134,24 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — sidebar filter becomes a jump (plan 80-C, 2026-09-20):** third
+slice of plan 80. The course sidebar's fuzzy filter is now a keyboard jump:
+the top match is auto-selected on each keystroke (`focusIndex` reset +
+`aria-activedescendant`), ArrowDown/Up move through matches with
+scroll-into-view, **Enter navigates** to the active match and clears the
+filter, Escape still clears without navigating (expansion state is never
+mutated while filtering, so there is nothing to restore — as-built note).
+Filtered match rows gain an inline **breadcrumb subtitle** (`Calculus ›
+Limits`, right-aligned muted crumb) plus a full `title` tooltip via a new
+`breadcrumbOf` map (root-exclusive ancestor chain — fixes the double-root
+prefix a naive trail walk produced). Empty-filter Enter stays a no-op; tree
+keyboard semantics outside the input unchanged. i18n unchanged (breadcrumb is
+data). Tests: NodeTreeSidebar suite 24 → 28 (Enter-jump navigates via a new
+`node-probe` route in the harness, ArrowDown-then-Enter with
+ranking-agnostic assertions, Escape-clears-without-navigating, breadcrumb
+subtitle + tooltip). Frontend gate green (lint/typecheck/1,375 tests/i18n/
+build); backend gate green, untouched (1,299).
+
 **Planned next — plan 80, deep navigation: jump anywhere in one keystroke
 (user-approved 2026-09-20, ADRs 193–195 reserved):** close the deep-tree
 navigation pain — today a depth-3 section takes three drill-downs, and the
@@ -152,7 +170,7 @@ node workspace with the material docked (`?material=`) — closing the old
 "section deep-link from search" roadmap remainder. Plan doc:
 `dev/plans/80-deep-navigation-jump-anywhere.md` (gitignored local;
 non-goals: node pins/migration, backend node-search endpoint, outline-default
-landing page). **A + B COMPLETE (2026-09-20, ADRs 194 + 193) — C/D
+landing page). **A + B + C COMPLETE (2026-09-20, ADRs 194 + 193) — D
 remaining.**
 
 **Feature — rendered proposal previews (plan 78-F, ADR-192, 2026-09-18):**
