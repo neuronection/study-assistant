@@ -685,6 +685,32 @@ describe('LibraryPage', () => {
     expect(screen.getAllByText('1 result').length).toBeGreaterThan(0)
   })
 
+  test('search hits with node placements offer open-in-node chips', async () => {
+    listCourses.mockResolvedValue(COURSES)
+    listFolders.mockResolvedValue([])
+    listMaterials.mockResolvedValue([])
+    listSources.mockResolvedValue([])
+    searchMock.mockResolvedValue({
+      query: 'limits',
+      hits: [
+        {
+          material_id: 7,
+          title: 'chain-rule.pdf',
+          snippet: '…chain rule…',
+          score: 0.5,
+          nodes: [{ course_id: 3, node_id: 12, node_title: 'Limits' }],
+        },
+      ],
+    })
+    renderAt('/library?course=3')
+    fireEvent.click(await screen.findByRole('button', { name: 'Search' }))
+    const input = await screen.findByPlaceholderText('Search all materials…')
+    fireEvent.change(input, { target: { value: 'limits' } })
+    const chip = await screen.findByTitle('Open in Limits')
+    fireEvent.click(chip)
+    expect(await screen.findByText('node page')).toBeInTheDocument()
+  })
+
   test('zero courses shows the workspace gate', async () => {
     listCourses.mockResolvedValue([])
     renderAt('/library')

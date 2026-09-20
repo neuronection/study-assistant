@@ -284,11 +284,18 @@ class MaterialDetailOut(BaseModel):
     images: list[MaterialImageOut] = Field(default_factory=list)
 
 
+class SearchHitNode(BaseModel):
+    course_id: int
+    node_id: int
+    node_title: str
+
+
 class SearchHit(BaseModel):
     material_id: int
     title: str
     snippet: str
     score: float | None = None
+    nodes: list[SearchHitNode] = []
 
 
 class SearchOut(BaseModel):

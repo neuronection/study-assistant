@@ -707,6 +707,34 @@ describe('CommandPalette content search', () => {
     expect(screen.queryByRole('button', { name: /new note/i })).not.toBeInTheDocument()
   })
 
+  test('content hits with node placements offer open-in-node deep links', async () => {
+    search.mockResolvedValue({
+      query: 'chain rule',
+      hits: [
+        {
+          material_id: 9,
+          title: 'Lecture 3',
+          snippet: "The chain rule states $(fg)' = f'g + fg'$",
+          score: 0.9,
+          nodes: [{ course_id: 3, node_id: 7, node_title: 'Series' }],
+        },
+      ],
+    })
+    renderPalette()
+    fireEvent.change(screen.getByRole('textbox', { name: /search/i }), {
+      target: { value: '?chain rule' },
+    })
+    const action = await screen.findByText('Open in Series')
+    fireEvent.click(action)
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/courses/$courseId/n/$nodeId',
+        params: { courseId: '3', nodeId: '7' },
+        search: { material: 9 },
+      })
+    )
+  })
+
   test('enter on a content hit navigates to the material page', async () => {
     search.mockResolvedValue({
       query: 'limits',

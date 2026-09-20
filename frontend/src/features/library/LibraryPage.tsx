@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowUp,
+  BookOpen,
   ChevronRight,
   GraduationCap,
   Link2,
@@ -1671,22 +1672,45 @@ export function LibraryPage() {
             ) : (
             <div className="flex flex-col gap-1">
               {(searchResults.data?.hits ?? []).map((hit) => (
-                <MaterialHoverCard key={hit.material_id} materialId={hit.material_id}>
-                  <button
-                    type="button"
-                    className="hover:bg-subtle w-full rounded-md px-2 py-1.5 text-left text-xs"
-                    onClick={() =>
-                      void navigate({
-                        to: '/library/$materialId',
-                        search: { from },
-                        params: { materialId: String(hit.material_id) },
-                      })
-                    }
-                  >
-                    <span className="font-medium">{hit.title}</span>
-                    <span className="text-muted-foreground block truncate">{hit.snippet}</span>
-                  </button>
-                </MaterialHoverCard>
+                <div key={hit.material_id} className="flex items-center gap-1">
+                  <MaterialHoverCard materialId={hit.material_id}>
+                    <button
+                      type="button"
+                      className="hover:bg-subtle min-w-0 flex-1 rounded-md px-2 py-1.5 text-left text-xs"
+                      onClick={() =>
+                        void navigate({
+                          to: '/library/$materialId',
+                          search: { from },
+                          params: { materialId: String(hit.material_id) },
+                        })
+                      }
+                    >
+                      <span className="font-medium">{hit.title}</span>
+                      <span className="text-muted-foreground block truncate">{hit.snippet}</span>
+                    </button>
+                  </MaterialHoverCard>
+                  {(hit.nodes ?? []).slice(0, 2).map((placement) => (
+                    <button
+                      key={placement.node_id}
+                      type="button"
+                      className="bg-subtle text-muted-foreground hover:text-foreground hidden max-w-[30%] shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] md:flex"
+                      title={t('library.openInNode', { node: placement.node_title })}
+                      onClick={() =>
+                        void navigate({
+                          to: '/courses/$courseId/n/$nodeId',
+                          params: {
+                            courseId: String(placement.course_id),
+                            nodeId: String(placement.node_id),
+                          },
+                          search: { material: hit.material_id },
+                        })
+                      }
+                    >
+                      <BookOpen className="size-3 shrink-0" aria-hidden />
+                      <span className="truncate">{placement.node_title}</span>
+                    </button>
+                  ))}
+                </div>
               ))}
               {searchResults.data && searchResults.data.hits.length === 0 ? (
                 <p className="text-muted-foreground px-2 text-sm">{t('library.noResults')}</p>

@@ -10877,6 +10877,14 @@
             "title": "Material Id",
             "type": "integer"
           },
+          "nodes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SearchHitNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
           "score": {
             "anyOf": [
               {
@@ -10903,6 +10911,29 @@
           "snippet"
         ],
         "title": "SearchHit",
+        "type": "object"
+      },
+      "SearchHitNode": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "node_title": {
+            "title": "Node Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "node_id",
+          "node_title"
+        ],
+        "title": "SearchHitNode",
         "type": "object"
       },
       "SearchOut": {

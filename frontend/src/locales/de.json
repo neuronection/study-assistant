@@ -613,6 +613,7 @@
     "gridView": "Rasteransicht",
     "listView": "Listenansicht",
     "openFolder": "Öffnen",
+    "openInNode": "In {{node}} öffnen",
     "noResults": "Nichts gefunden.",
     "noCourses": "Noch keine Kurse — erstelle zuerst einen.",
     "courseCount_one": "{{count}} Kurs",
@@ -1873,6 +1874,7 @@
     "escKey": "Esc",
     "ctrlK": "Strg K",
     "contentResult": "In „{{title}}“: {{snippet}}",
+    "openInNode": "In {{node}} öffnen",
     "contentSearching": "Alle Kursinhalte werden durchsucht…",
     "contentHint": "Gib vor deiner Suchanfrage ? ein, um in deinen Materialien zu suchen.",
     "searchLabel": "Suchen…"

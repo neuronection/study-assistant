@@ -95,11 +95,18 @@ export interface UploadResult {
   warnings?: UploadWarning[]
 }
 
+export interface SearchHitNodeDto {
+  course_id: number
+  node_id: number
+  node_title: string
+}
+
 export interface SearchHitDto {
   material_id: number
   title: string
   snippet: string
   score?: number
+  nodes: SearchHitNodeDto[]
 }
 
 export async function uploadMaterial(

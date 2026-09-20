@@ -613,6 +613,7 @@
     "gridView": "Grid view",
     "listView": "List view",
     "openFolder": "Open",
+    "openInNode": "Open in {{node}}",
     "noResults": "Nothing found.",
     "noCourses": "No courses yet — create one first.",
     "courseCount_one": "{{count}} course",
@@ -1895,6 +1896,7 @@
     "escKey": "Esc",
     "ctrlK": "Ctrl K",
     "contentResult": "In \"{{title}}\": {{snippet}}",
+    "openInNode": "Open in {{node}}",
     "contentSearching": "Searching all course content…",
     "contentHint": "Type ? before your query to search inside your material.",
     "searchLabel": "Search…"

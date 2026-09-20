@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from ...domain.models import MaterialLink, TreeNode
 from ...storage import vectors
 from .fusion import (
     TIER_WEIGHT_EXACT,
@@ -133,6 +135,40 @@ def _vector_ranking(
             }
         )
     return results
+
+
+def node_placements_for_materials(
+    session: Session,
+    material_ids: Sequence[int],
+    cap: int = 5,
+) -> dict[int, list[dict[str, Any]]]:
+    ids = [int(material_id) for material_id in material_ids]
+    if not ids:
+        return {}
+    statement = (
+        select(
+            MaterialLink.material_id,
+            MaterialLink.course_id,
+            MaterialLink.node_id,
+            TreeNode.title,
+        )
+        .join(TreeNode, TreeNode.id == MaterialLink.node_id)
+        .where(MaterialLink.material_id.in_(ids))
+        .order_by(TreeNode.sort_path, MaterialLink.id)
+    )
+    placements: dict[int, list[dict[str, Any]]] = {}
+    for row in session.execute(statement):
+        rows = placements.setdefault(int(row.material_id), [])
+        if len(rows) >= cap:
+            continue
+        rows.append(
+            {
+                "course_id": int(row.course_id),
+                "node_id": int(row.node_id),
+                "node_title": str(row.title),
+            }
+        )
+    return placements
 
 
 def hybrid_search(

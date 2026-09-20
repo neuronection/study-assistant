@@ -7855,12 +7855,26 @@ export interface components {
         SearchHit: {
             /** Material Id */
             material_id: number;
+            /**
+             * Nodes
+             * @default []
+             */
+            nodes: components["schemas"]["SearchHitNode"][];
             /** Score */
             score?: number | null;
             /** Snippet */
             snippet: string;
             /** Title */
             title: string;
+        };
+        /** SearchHitNode */
+        SearchHitNode: {
+            /** Course Id */
+            course_id: number;
+            /** Node Id */
+            node_id: number;
+            /** Node Title */
+            node_title: string;
         };
         /** SearchOut */
         SearchOut: {

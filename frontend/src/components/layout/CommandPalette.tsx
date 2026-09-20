@@ -371,9 +371,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const filtered = useMemo(() => {
     if (contentQuery !== null) {
-      return (contentSearch.data?.hits ?? [])
-        .slice(0, 8)
-        .map<Action>((hit) => ({
+      const contentActions: Action[] = []
+      for (const hit of contentSearch.data?.hits.slice(0, 8) ?? []) {
+        contentActions.push({
           key: `content-${hit.material_id}`,
           label: t('palette.contentResult', {
             title: hit.title,
@@ -387,7 +387,29 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             })
             onClose()
           },
-        }))
+        })
+        const placement = hit.nodes?.[0]
+        if (placement !== undefined && contentActions.length < 12) {
+          contentActions.push({
+            key: `content-node-${hit.material_id}-${placement.node_id}`,
+            label: t('palette.openInNode', { node: placement.node_title }),
+            hint: hit.title,
+            icon: BookOpen,
+            run: () => {
+              void navigate({
+                to: '/courses/$courseId/n/$nodeId',
+                params: {
+                  courseId: String(placement.course_id),
+                  nodeId: String(placement.node_id),
+                },
+                search: { material: hit.material_id },
+              })
+              onClose()
+            },
+          })
+        }
+      }
+      return contentActions
     }
     const actionText = (action: Action) => (action.hint ? `${action.label} ${action.hint}` : action.label)
     return [

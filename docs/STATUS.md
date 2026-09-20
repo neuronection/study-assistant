@@ -134,6 +134,32 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — search hits deep-link into node context (plan 80-D, ADR-195,
+2026-09-20):** final slice of plan 80 — content search now answers "where
+does it live?", closing the old "section deep-link from search" roadmap
+remainder. **Backend**: `GET /search` hits gain an additive `nodes` field —
+after `hybrid_search` returns its id set, one query joins
+`material_links` × `tree_nodes` for the hit materials and emits
+`[{course_id, node_id, node_title}]` per hit, ordered deterministically by
+tree `sort_path` then link id, capped at 5 per hit (`node_placements_for_materials`
+in `services/search/materials.py`; FTS/trigram/embedding paths untouched —
+annotation reflects current placement truth, never a second index;
+`material_links.node_id` is non-nullable so course-level placements resolve
+to the root node route). OpenAPI + types regenerated. **Frontend**: palette
+`?query` results gain an "Open in \<node\>" action after hits that have a
+placement (first placement per hit, ≤12 rows total — recorded as a plan
+deviation from per-placement chips; the palette's single-list design can't
+host nested buttons), navigating to the node workspace with the material
+docked (`?material=`); Library search-hit rows gain placement chips (first
+2, ScopeChip-style) beside the existing material-page row. Default row
+clicks still open the material page; placement-free hits render no
+affordance. i18n `palette.openInNode`/`library.openInNode` (en/de/el).
+`SearchHitDto` hand-type updated alongside the generated schema. Tests:
+backend `test_search_node_annotations.py` (3: single-placement annotation,
+honest `[]` without placements, `sort_path` ordering + cap 5) — full backend
+gate 1,302 green, ruff/mypy clean; frontend palette deep-link test + Library
+chip test — full gate 1,377 green, lint/typecheck/i18n/build green.
+
 **Feature — sidebar filter becomes a jump (plan 80-C, 2026-09-20):** third
 slice of plan 80. The course sidebar's fuzzy filter is now a keyboard jump:
 the top match is auto-selected on each keystroke (`focusIndex` reset +
@@ -170,8 +196,13 @@ node workspace with the material docked (`?material=`) — closing the old
 "section deep-link from search" roadmap remainder. Plan doc:
 `dev/plans/80-deep-navigation-jump-anywhere.md` (gitignored local;
 non-goals: node pins/migration, backend node-search endpoint, outline-default
-landing page). **A + B + C COMPLETE (2026-09-20, ADRs 194 + 193) — D
-remaining.**
+landing page). **Plan 80 COMPLETE (2026-09-20, A–D; ADRs 194 + 193 + 195):**
+four slices landed — palette indexes every course at every depth with
+breadcrumb-subtitle matching, profile-local recents with Home Continue card
+and palette Recent section, sidebar filter jumps on Enter, and search hits
+carry node placements deep-linking into the docked workspace (old
+"section deep-link from search" remainder closed). The transient course
+selection is now the only multi-click navigation left.
 
 **Feature — rendered proposal previews (plan 78-F, ADR-192, 2026-09-18):**
 slice F of plan 78 (user-requested follow-up) — proposal content is no longer

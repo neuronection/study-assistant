@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
-from ..services.search import hybrid_search
+from ..services.search import hybrid_search, node_placements_for_materials
 from .deps import get_session
-from .schemas import SearchHit, SearchOut
+from .schemas import SearchHit, SearchHitNode, SearchOut
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -21,7 +21,16 @@ def search(
         return result
 
     hits = hybrid_search(session, q, limit, embed_query, course_id)
+    placements = node_placements_for_materials(
+        session, [int(hit["material_id"]) for hit in hits]
+    )
     return SearchOut(
         query=q,
-        hits=[SearchHit(**hit) for hit in hits],
+        hits=[
+            SearchHit(
+                **hit,
+                nodes=[SearchHitNode(**row) for row in placements.get(int(hit["material_id"]), [])],
+            )
+            for hit in hits
+        ],
     )
