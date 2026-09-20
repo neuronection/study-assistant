@@ -1,5 +1,4 @@
 import { useNavigate } from '@tanstack/react-router'
-import { History } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -17,8 +16,9 @@ export function NodeRecentStrip({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const rows = useMemo(() => {
+    const rootId = tree?.[0]?.id
     const entries = getRecentNodes()
-      .filter((entry) => entry.courseId === Number(courseId))
+      .filter((entry) => entry.courseId === Number(courseId) && entry.nodeId !== rootId)
       .slice(0, 3)
     if (tree === undefined || tree.length === 0 || entries.length === 0) {
       return []
@@ -29,17 +29,14 @@ export function NodeRecentStrip({
     return null
   }
   return (
-    <section className="space-y-2" aria-label={t('workspace.jumpBackIn')}>
-      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-        <History className="size-3.5" aria-hidden />
-        {t('workspace.jumpBackIn')}
-      </p>
-      <div className="flex flex-wrap gap-2">
+    <section className="space-y-1.5" aria-label={t('workspace.jumpBackIn')}>
+      <p className="text-muted-foreground text-xs font-medium">{t('workspace.jumpBackIn')}</p>
+      <div className="border-border bg-surface divide-border divide-y rounded-lg border">
         {rows.map((row) => (
           <button
             key={row.nodeId}
             type="button"
-            className="bg-subtle hover:bg-subtle/70 text-foreground flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-xs"
+            className="hover:bg-subtle/60 flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm first:rounded-t-lg last:rounded-b-lg"
             title={row.breadcrumb}
             onClick={() =>
               void navigate({
@@ -48,7 +45,7 @@ export function NodeRecentStrip({
               })
             }
           >
-            <span className="truncate">{row.title}</span>
+            <span className="min-w-0 flex-1 truncate font-medium">{row.title}</span>
             <span className="text-muted-foreground shrink-0 text-[10px]">
               {formatRelativeTime(row.at)}
             </span>

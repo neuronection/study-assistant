@@ -58,7 +58,7 @@ describe('NodeRecentStrip', () => {
     window.localStorage.removeItem('ca-recent-nodes.default')
   })
 
-  test('shows pills for this course’s recent nodes with breadcrumbs', () => {
+  test('shows rows for this course’s recent nodes with breadcrumbs', () => {
     window.localStorage.setItem(
       'ca-recent-nodes.default',
       JSON.stringify([
@@ -74,6 +74,19 @@ describe('NodeRecentStrip', () => {
     )
     expect(screen.getByText('Limits')).toBeInTheDocument()
     expect(screen.getByText('Jump back in')).toBeInTheDocument()
+  })
+
+  test('never offers the course root itself as a jump target', () => {
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([
+        { courseId: 9, nodeId: 1, at: Date.now() - 30000 },
+        { courseId: 9, nodeId: 2, at: Date.now() - 3600000 },
+      ])
+    )
+    renderStrip(TREE)
+    expect(screen.queryByText('Calculus I')).not.toBeInTheDocument()
+    expect(screen.getByText('Limits')).toBeInTheDocument()
   })
 
   test('clicking a pill navigates to the node workspace', () => {

@@ -138,11 +138,16 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 2026-09-20):** user-requested follow-up to plan 80 (approved in session):
 the recents store (ADR-193) surfaces on the two remaining navigation
 surfaces, no new storage. **Course overview** (`/courses/$id`, root only):
-new `NodeRecentStrip` (`features/courses/`) — a "Jump back in" pill row
-between the organizer bar and the child cards showing this course's last 3
-visited sections (title + `Intl` relative time, breadcrumb tooltip), fed by
-the tree already in hand (zero extra fetches), hidden when the course has no
-history or entries went stale. **Courses page** (`/courses`): course cards
+new `NodeRecentStrip` (`features/courses/`) — a "Jump back in" **compact
+bordered list** between the organizer bar and the child cards showing this
+course's last 3 visited sections (truncated title, right-aligned `Intl`
+relative time, breadcrumb tooltip, hover highlight), fed by the tree
+already in hand (zero extra fetches), hidden when the course has no history
+or entries went stale; **redesigned same day after user review** — the
+first pill-chip version stretched into ragged text blobs on long section
+titles and offered the course root itself as a target, so the strip is a
+list now and root entries are excluded by test. **Courses page**
+(`/courses`): course cards
 whose course has recents gain a one-line "↩ \<node\> · \<relative\>" resume
 meta under the material count (History icon, breadcrumb tooltip, click →
 node workspace) — the resume point lives on the card itself instead of
