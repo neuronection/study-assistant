@@ -9,6 +9,9 @@ import { ProviderSetupModal } from './ProviderSetupModal'
 const listPresets = vi.fn()
 const setupMutation = vi.fn()
 const createProvider = vi.fn()
+const listModels = vi.fn()
+const listTaskDefaults = vi.fn()
+const assignTaskDefault = vi.fn()
 const clipboardWrite = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -18,6 +21,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listPresets: () => listPresets(),
     setupProviderPreset: (presetKey: string, body: unknown) => setupMutation(presetKey, body),
     createProvider: (body: unknown) => createProvider(body),
+    listModels: () => listModels(),
+    listTaskDefaults: () => listTaskDefaults(),
+    assignTaskDefault: (requires: string, modelId: number | null, fallback: number | null) =>
+      assignTaskDefault(requires, modelId, fallback),
   }
 })
 
@@ -85,10 +92,27 @@ function renderModal() {
   )
 }
 
+const PROVIDER_MODELS = [
+  { id: 11, provider_id: 1, external_id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', caps: ['text', 'vision', 'tools'], enabled: true, missing: false, reasoning_effort: null },
+  { id: 12, provider_id: 1, external_id: 'whisper-1', label: 'whisper-1', caps: ['stt'], enabled: true, missing: false, reasoning_effort: null },
+]
+const TASK_DEFAULTS = [
+  { requires: 'text', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
+  { requires: 'vision', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
+  { requires: 'stt', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
+  { requires: 'embeddings', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
+]
+
 beforeEach(() => {
   listPresets.mockReset()
   setupMutation.mockReset()
   createProvider.mockReset()
+  listModels.mockReset()
+  listTaskDefaults.mockReset()
+  assignTaskDefault.mockReset()
+  listModels.mockResolvedValue(PROVIDER_MODELS)
+  listTaskDefaults.mockResolvedValue(TASK_DEFAULTS)
+  assignTaskDefault.mockResolvedValue(TASK_DEFAULTS[0])
   listPresets.mockResolvedValue(PRESETS)
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: clipboardWrite },

@@ -5,9 +5,13 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ModelPicker, type ModelPickerProvider } from '@/components/ui/model-picker'
 import {
+  assignTaskDefault,
   createProvider,
+  listModels,
   listPresets,
+  listTaskDefaults,
   setupErrorDetail,
   setupProviderPreset,
   type ProviderPreset,
@@ -160,6 +164,93 @@ function ErrorPanel({ error, plainError }: { error: ProviderSetupErrorDetail | n
   return null
 }
 
+function SuccessDefaults({
+  providerId,
+  providerName,
+  result,
+}: {
+  providerId: number
+  providerName: string
+  result: ProviderSetupResult
+}) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const models = useQuery({ queryKey: ['models'], queryFn: listModels })
+  const defaults = useQuery({ queryKey: ['task-defaults'], queryFn: listTaskDefaults })
+  const [error, setError] = useState<string | null>(null)
+
+  const providerModels = (models.data ?? []).filter(
+    (model) => model.provider_id === providerId && model.enabled
+  )
+  const catalog: ModelPickerProvider[] = [
+    {
+      id: String(providerId),
+      name: providerName,
+      models: providerModels.map((model) => ({
+        id: String(model.id),
+        name: model.label || model.external_id,
+        capabilities: model.caps,
+      })),
+    },
+  ]
+  const externalToId = new Map(providerModels.map((model) => [model.external_id, String(model.id)]))
+  const defaultByCap = new Map((defaults.data ?? []).map((entry) => [entry.requires, entry]))
+
+  const bind = useMutation({
+    mutationFn: ({ requires, modelId }: { requires: string; modelId: string }) => {
+      const fallback = defaultByCap.get(requires)?.fallback_model_id ?? null
+      return assignTaskDefault(requires, Number(modelId), fallback)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      await queryClient.invalidateQueries({ queryKey: ['task-defaults'] })
+    },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  const slotValue = (requires: string, assignedExternal: string | null): string => {
+    const fromExternal = assignedExternal ? externalToId.get(assignedExternal) : undefined
+    if (fromExternal !== undefined) return fromExternal
+    const entry = defaultByCap.get(requires)
+    return entry?.model_id != null ? String(entry.model_id) : ''
+  }
+
+  const hasCap = (cap: string) => providerModels.some((model) => model.caps.includes(cap))
+  const rows = [
+    { requires: 'text', label: t('settings.setup.slot.chat'), assigned: result.assigned_chat_model },
+    ...(hasCap('vision')
+      ? [{ requires: 'vision', label: t('settings.setup.slot.vision'), assigned: result.assigned_vision_model }]
+      : []),
+    ...(hasCap('stt')
+      ? [{ requires: 'stt', label: t('settings.setup.slot.stt'), assigned: result.assigned_stt_model }]
+      : []),
+  ]
+
+  if (providerModels.length === 0) {
+    return <p className="text-muted-foreground text-xs">{t('settings.setup.noDefaults')}</p>
+  }
+
+  return (
+    <div className="border-border space-y-2 rounded-md border p-3">
+      <h3 className="text-sm font-semibold">{t('settings.defaultModelsTitle')}</h3>
+      {rows.map((row) => (
+        <ModelPicker
+          key={row.requires}
+          providers={catalog}
+          value={slotValue(row.requires, row.assigned)}
+          onChange={(modelId) => {
+            setError(null)
+            bind.mutate({ requires: row.requires, modelId })
+          }}
+          clearable={false}
+          label={row.label}
+        />
+      ))}
+      {error ? <p className="text-danger text-xs">{error}</p> : null}
+    </div>
+  )
+}
+
 function SuccessPanel({
   result,
   presetName,
@@ -168,11 +259,6 @@ function SuccessPanel({
   presetName: string
 }) {
   const { t } = useTranslation()
-  const assigned = [
-    ['chat', result.assigned_chat_model],
-    ['vision', result.assigned_vision_model],
-    ['stt', result.assigned_stt_model],
-  ].filter((entry): entry is [string, string] => entry[1] !== null)
   return (
     <div className="space-y-2">
       <p className="flex items-center gap-2 text-sm font-medium">
@@ -182,20 +268,14 @@ function SuccessPanel({
       <p className="text-muted-foreground text-xs">
         {t('settings.setup.modelsPersisted', { count: result.catalog_count })}
       </p>
-      {assigned.length > 0 ? (
-        <ul className="text-muted-foreground space-y-1 text-xs">
-          {assigned.map(([slot, model]) => (
-            <li key={slot}>
-              {t(`settings.setup.slot.${slot}`)}: <span className="font-mono">{model}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground text-xs">{t('settings.setup.noDefaults')}</p>
-      )}
       {result.curated_missed ? (
         <p className="text-warning text-xs">{t('settings.setup.curatedMissed')}</p>
       ) : null}
+      <SuccessDefaults
+        providerId={result.provider.id}
+        providerName={result.provider.name}
+        result={result}
+      />
     </div>
   )
 }
