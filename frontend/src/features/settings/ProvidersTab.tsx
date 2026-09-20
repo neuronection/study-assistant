@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { House, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { House, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -60,7 +60,7 @@ export function ProvidersTab() {
       {(providers.data ?? []).map((provider) => (
         <Card key={provider.id}>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 space-y-0.5">
               <p className="truncate text-sm font-medium">
                 {provider.name} <span className="text-muted-foreground">· {provider.type}</span>
                 {provider.is_local ? (
@@ -82,7 +82,6 @@ export function ProvidersTab() {
               </p>
               <ConnectionTestRow
                 variant="inline"
-                className="mt-1"
                 label={t('settings.connection')}
                 status={
                   busyId === provider.id
@@ -100,49 +99,59 @@ export function ProvidersTab() {
                     ? `${provider.status.model_count} ${t('settings.modelsCount')}`
                     : undefined
                 }
-                testLabel={t('settings.test')}
                 okLabel={t('settings.testOk')}
                 failLabel={t('settings.testFail')}
-                onTest={() => test.mutate(provider.id)}
-                disabled={busyId === provider.id}
               />
             </div>
-            {provider.preset_key ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {provider.preset_key ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title={t('settings.setup.automatically')}
+                  onClick={() => setReSetupProvider(provider)}
+                >
+                  <Sparkles className="size-4" aria-hidden />
+                  {t('settings.setup.automatically')}
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"
-                title={t('settings.setup.automatically')}
-                onClick={() => setReSetupProvider(provider)}
+                disabled={busyId === provider.id}
+                onClick={() => test.mutate(provider.id)}
               >
-                <Sparkles className="size-4" aria-hidden />
-                {t('settings.setup.automatically')}
+                {busyId === provider.id ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : null}
+                {t('settings.test')}
               </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="icon"
-              title={t('settings.editProvider')}
-              onClick={() => setForm({ provider })}
-            >
-              <Pencil className="size-4" aria-hidden />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title={t('settings.deleteProvider')}
-              onClick={async () => {
-                const ok = await confirm({
-                  title: t('settings.deleteProvider'),
-                  description: t('settings.confirmDeleteProvider'),
-                  confirmLabel: t('settings.deleteProvider'),
-                  cancelLabel: t('common.cancel'),
-                  destructive: true,
-                })
-                if (ok) remove.mutate(provider.id)
-              }}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title={t('settings.editProvider')}
+                onClick={() => setForm({ provider })}
+              >
+                <Pencil className="size-4" aria-hidden />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title={t('settings.deleteProvider')}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: t('settings.deleteProvider'),
+                    description: t('settings.confirmDeleteProvider'),
+                    confirmLabel: t('settings.deleteProvider'),
+                    cancelLabel: t('common.cancel'),
+                    destructive: true,
+                  })
+                  if (ok) remove.mutate(provider.id)
+                }}
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ))}
