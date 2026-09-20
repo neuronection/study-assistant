@@ -136,6 +136,7 @@ import {
 import { useChatStore } from '@/lib/chat-store'
 import { formatDate } from '@/lib/format'
 import { recordRecentNode } from '@/lib/recent-nodes'
+import { NodeRecentStrip } from '@/features/courses/NodeRecentStrip'
 import { SegmentedControl } from '@/components/motion/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { buildDragPayload } from '@/lib/dragPayload'
@@ -810,6 +811,7 @@ function OverviewTab({
   currentId,
   isRoot,
   workspace,
+  tree,
   onPractice,
   onAsk,
   studyTargetId,
@@ -823,6 +825,7 @@ function OverviewTab({
   currentId: number
   isRoot: boolean
   workspace: NonNullable<ReturnType<typeof useWorkspaceQuery>['data']>
+  tree: NodeInfo[] | undefined
   onPractice: (nodeId: number) => void
   onAsk: (child: WorkspaceChild) => void
   studyTargetId: number | null
@@ -954,6 +957,8 @@ function OverviewTab({
           }}
         />
       ) : null}
+
+      {isRoot ? <NodeRecentStrip courseId={courseId} tree={tree} /> : null}
 
       {!isRoot ? (
         <section className="space-y-3" aria-label={t('courses.childrenTitle')}>
@@ -3331,6 +3336,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
           currentId={currentId}
           isRoot={node.is_root}
           workspace={data}
+          tree={tree.data}
           onPractice={(targetId) => studyHere.mutate(targetId)}
           onAsk={(child) => askAbout.mutate({ targetId: child.id, title: child.title })}
           studyTargetId={studyTargetId}

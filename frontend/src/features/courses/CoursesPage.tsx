@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Download, GraduationCap, Loader2, Plus, Trash2, Upload } from 'lucide-react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { BookOpen, Download, GraduationCap, History, Loader2, Plus, Trash2, Upload } from 'lucide-react'
 import { useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from '@tanstack/react-router'
@@ -8,14 +8,22 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { fuzzyScore } from '@/lib/fuzzy'
+import { formatRelativeTime } from '@/lib/format'
 import {
   courseExportUrl,
+  courseTree,
   createCourse,
   deleteCourse,
   importCourseBundle,
   listCourses,
   type CourseBundlePreview,
+  type NodeInfo,
 } from '@/lib/api'
+import {
+  getRecentNodes,
+  resolveRecentNodes,
+  type ResolvedRecentNode,
+} from '@/lib/recent-nodes'
 import { useConfirm } from '@/lib/use-confirm'
 
 export function CoursesPage() {
@@ -28,6 +36,50 @@ export function CoursesPage() {
   const [subject, setSubject] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [importPreview, setImportPreview] = useState<CourseBundlePreview | null>(null)
+
+  const lastVisitByCourse = useMemo(() => {
+    const map = new Map<number, { nodeId: number; at: number }>()
+    for (const entry of getRecentNodes()) {
+      if (!map.has(entry.courseId)) {
+        map.set(entry.courseId, { nodeId: entry.nodeId, at: entry.at })
+      }
+    }
+    return map
+  }, [])
+  const recentCourseIds = useMemo(
+    () =>
+      (courses.data ?? [])
+        .filter((course) => lastVisitByCourse.has(course.id))
+        .map((course) => course.id),
+    [courses.data, lastVisitByCourse]
+  )
+  const recentTreeQueries = useQueries({
+    queries: recentCourseIds.map((id) => ({
+      queryKey: ['tree', String(id)],
+      queryFn: () => courseTree(id),
+    })),
+  })
+  const lastVisitRows = useMemo(() => {
+    const trees = new Map<number, NodeInfo[] | undefined>()
+    recentCourseIds.forEach((id, index) => {
+      trees.set(id, recentTreeQueries[index]?.data)
+    })
+    const titles = new Map(
+      (courses.data ?? []).map((course) => [course.id, course.title])
+    )
+    const rows = new Map<number, ResolvedRecentNode>()
+    for (const [courseId, entry] of lastVisitByCourse) {
+      const resolved = resolveRecentNodes(
+        [{ courseId, nodeId: entry.nodeId, at: entry.at }],
+        trees,
+        titles
+      )[0]
+      if (resolved !== undefined) {
+        rows.set(courseId, resolved)
+      }
+    }
+    return rows
+  }, [recentCourseIds, recentTreeQueries, lastVisitByCourse, courses.data])
   const [importFile, setImportFile] = useState<File | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const importInput = useRef<HTMLInputElement>(null)
@@ -245,6 +297,29 @@ export function CoursesPage() {
                     count: course.material_count,
                   })}
                 </p>
+                {lastVisitRows.get(course.id) ? (
+                  <button
+                    type="button"
+                    className="text-primary hover:text-primary/80 mt-1 flex max-w-full items-center gap-1 rounded text-xs"
+                    title={lastVisitRows.get(course.id)!.breadcrumb}
+                    onClick={() => {
+                      const lastVisit = lastVisitRows.get(course.id)!
+                      void navigate({
+                        to: '/courses/$courseId/n/$nodeId',
+                        params: {
+                          courseId: String(course.id),
+                          nodeId: String(lastVisit.nodeId),
+                        },
+                      })
+                    }}
+                  >
+                    <History className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{lastVisitRows.get(course.id)!.title}</span>
+                    <span className="text-muted-foreground shrink-0 text-[10px]">
+                      · {formatRelativeTime(lastVisitRows.get(course.id)!.at)}
+                    </span>
+                  </button>
+                ) : null}
                 {course.description ? (
                   <p className="text-muted-foreground mt-1 line-clamp-2 text-xs" title={course.description}>
                     {course.description}

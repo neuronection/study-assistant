@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { CoursesPage } from './CoursesPage'
 
 const listCourses = vi.fn()
+const courseTree = vi.fn()
 const createCourse = vi.fn()
 const deleteCourse = vi.fn()
 const importCourseBundle = vi.fn()
@@ -15,6 +16,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     listCourses: () => listCourses(),
+    courseTree: (id: number) => courseTree(id),
     createCourse: (...args: unknown[]) => createCourse(...(args as [object])),
     deleteCourse: (...args: unknown[]) => deleteCourse(...(args as [number])),
     importCourseBundle: (...args: unknown[]) =>
@@ -33,13 +35,18 @@ const detailRoute = createRoute({
   path: '/courses/$courseId',
   component: () => null,
 })
-const router = createRouter({
-  routeTree: rootRoute.addChildren([coursesRoute, detailRoute]),
-  history: createMemoryHistory({ initialEntries: ['/courses'] }),
+const nodeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/courses/$courseId/n/$nodeId',
+  component: () => <div>node page</div>,
 })
 
 function renderCourses() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([coursesRoute, detailRoute, nodeRoute]),
+    history: createMemoryHistory({ initialEntries: ['/courses'] }),
+  })
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
@@ -61,9 +68,11 @@ const COURSE = {
 describe('CoursesPage', () => {
   beforeEach(() => {
     listCourses.mockReset()
+    courseTree.mockReset()
     createCourse.mockReset()
     deleteCourse.mockReset()
     importCourseBundle.mockReset()
+    window.localStorage.removeItem('ca-recent-nodes.default')
   })
 
   test('lists courses with subject and material count', async () => {
@@ -71,6 +80,51 @@ describe('CoursesPage', () => {
     renderCourses()
     expect(await screen.findByText('Calculus I')).toBeInTheDocument()
     expect(screen.getByText('mathematics · 5 materials')).toBeInTheDocument()
+  })
+
+  test('course cards show the last visited node when the course has recents', async () => {
+    window.localStorage.setItem(
+      'ca-recent-nodes.default',
+      JSON.stringify([{ courseId: 3, nodeId: 2, at: Date.now() - 60000 }])
+    )
+    listCourses.mockResolvedValue([COURSE])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 2,
+            title: 'Limits',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    renderCourses()
+    const meta = await screen.findByTitle('Calculus I')
+    expect(meta).toHaveTextContent('Limits')
+    fireEvent.click(meta)
+    expect(await screen.findByText('node page')).toBeInTheDocument()
+  })
+
+  test('course cards without recents show no last-visited meta', async () => {
+    listCourses.mockResolvedValue([COURSE])
+    renderCourses()
+    expect(await screen.findByText('Calculus I')).toBeInTheDocument()
+    expect(screen.queryByTitle('Calculus I')).not.toBeInTheDocument()
   })
 
   test('course cards show the course description when set', async () => {
@@ -112,7 +166,7 @@ describe('CoursesPage', () => {
     listCourses.mockResolvedValue([])
     createCourse.mockResolvedValue({ ...COURSE, id: 9, title: 'Linear Algebra' })
     renderCourses()
-    screen.getByRole('button', { name: /new course/i }).click()
+    fireEvent.click(await screen.findByRole('button', { name: /new course/i }))
     const titleInput = await screen.findByPlaceholderText('Course title')
     expect(titleInput).toBeInTheDocument()
     expect(createCourse).not.toHaveBeenCalled()

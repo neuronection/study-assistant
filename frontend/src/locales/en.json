@@ -1637,6 +1637,7 @@
     "treeCount_notes_one": "{{count}} note",
     "treeCount_notes_other": "{{count}} notes",
     "treeFilter": "Find a node…",
+    "jumpBackIn": "Jump back in",
     "treeMatches_one": "{{count}} match",
     "treeMatches_other": "{{count}} matches",
     "treeNoMatches": "No matching nodes.",

@@ -1637,6 +1637,7 @@
     "treeCount_notes_one": "{{count}} σημείωση",
     "treeCount_notes_other": "{{count}} σημειώσεις",
     "treeFilter": "Αναζήτηση ενότητας…",
+    "jumpBackIn": "Συνέχεια από εδώ",
     "treeMatches_one": "{{count}} αποτέλεσμα",
     "treeMatches_other": "{{count}} αποτελέσματα",
     "treeNoMatches": "Δεν βρέθηκαν αντίστοιχες ενότητες.",

@@ -1597,6 +1597,7 @@
     "treeCount_notes_one": "{{count}} Notiz",
     "treeCount_notes_other": "{{count}} Notizen",
     "treeFilter": "Abschnitt suchen…",
+    "jumpBackIn": "Zuletzt besucht",
     "treeMatches_one": "{{count}} Treffer",
     "treeMatches_other": "{{count}} Treffer",
     "treeNoMatches": "Keine passenden Abschnitte.",

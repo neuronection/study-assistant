@@ -134,6 +134,30 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — recents on course overview + course cards (plan 80-E,
+2026-09-20):** user-requested follow-up to plan 80 (approved in session):
+the recents store (ADR-193) surfaces on the two remaining navigation
+surfaces, no new storage. **Course overview** (`/courses/$id`, root only):
+new `NodeRecentStrip` (`features/courses/`) — a "Jump back in" pill row
+between the organizer bar and the child cards showing this course's last 3
+visited sections (title + `Intl` relative time, breadcrumb tooltip), fed by
+the tree already in hand (zero extra fetches), hidden when the course has no
+history or entries went stale. **Courses page** (`/courses`): course cards
+whose course has recents gain a one-line "↩ \<node\> · \<relative\>" resume
+meta under the material count (History icon, breadcrumb tooltip, click →
+node workspace) — the resume point lives on the card itself instead of
+duplicating Home's strip; per-course tree resolution reuses the shared
+`['tree', String(id)]` cache for courses with recents only (usually 1–3
+fetches). i18n `workspace.jumpBackIn` (en/de/el). Tests: new
+`NodeRecentStrip` suite (5: pill rendering + breadcrumb tooltip, navigate,
+other-course exclusion, loading-hidden, stale-drop) + CoursesPage (2:
+meta-line render + click-through to the node route via a new node probe
+route; per-render router to stop the navigation poisoning later tests;
+without-recents stays bare) — harness note: the pre-existing sync
+`getByRole` after render was flushed to `findByRole` matching the file's
+own await-everything convention. Frontend gate green (lint/typecheck/1,384
+tests/i18n/build); backend gate green, untouched (1,302).
+
 **Feature — search hits deep-link into node context (plan 80-D, ADR-195,
 2026-09-20):** final slice of plan 80 — content search now answers "where
 does it live?", closing the old "section deep-link from search" roadmap
