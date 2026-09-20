@@ -298,7 +298,7 @@ describe('CommandPalette', () => {
     expect(navigate).toHaveBeenCalledWith({ to: '/chat' })
   })
 
-  test('node actions quiz and open node workspaces', async () => {
+  test('open node and quiz actions work for the active course', async () => {
     useWorkspaceStore.getState().setCourse(3)
     listCourses.mockResolvedValue([])
     courseTree.mockResolvedValue([
@@ -357,6 +357,263 @@ describe('CommandPalette', () => {
         to: '/courses/$courseId/n/$nodeId',
         params: { courseId: '3', nodeId: '11' },
       })
+    )
+    useWorkspaceStore.getState().setCourse(null)
+  })
+
+  test('open node actions reach depth-3 sections of other courses with breadcrumb hints', async () => {
+    useWorkspaceStore.getState().setCourse(null)
+    listCourses.mockResolvedValue([
+      {
+        id: 3,
+        title: 'Calculus I',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+      {
+        id: 4,
+        title: 'Linear Algebra',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockImplementation((id: number) => {
+      if (id === 4) {
+        return Promise.resolve([
+          {
+            id: 2,
+            title: 'Linear Algebra',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 0,
+            is_root: true,
+            children: [
+              {
+                id: 7,
+                title: 'Matrices',
+                summary: null,
+                objectives: [],
+                order_idx: 0,
+                depth: 1,
+                is_root: false,
+                children: [
+                  {
+                    id: 9,
+                    title: 'Determinants',
+                    summary: null,
+                    objectives: [],
+                    order_idx: 0,
+                    depth: 2,
+                    is_root: false,
+                    children: [
+                      {
+                        id: 18,
+                        title: 'Laplace expansion',
+                        summary: null,
+                        objectives: [],
+                        order_idx: 0,
+                        depth: 3,
+                        is_root: false,
+                        children: [],
+                        materials: [],
+                      },
+                    ],
+                    materials: [],
+                  },
+                ],
+                materials: [],
+              },
+            ],
+            materials: [],
+          },
+        ])
+      }
+      return Promise.resolve([
+        {
+          id: 1,
+          title: 'Calculus I',
+          summary: null,
+          objectives: [],
+          order_idx: 0,
+          depth: 0,
+          is_root: true,
+          children: [],
+          materials: [],
+        },
+      ])
+    })
+    renderPalette()
+    fireEvent.change(screen.getByRole('textbox', { name: /type a command/i }), {
+      target: { value: 'laplace' },
+    })
+    const option = await screen.findByText('Open Laplace expansion')
+    expect(screen.getByText('Linear Algebra › Matrices › Determinants')).toBeInTheDocument()
+    fireEvent.click(option)
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/courses/$courseId/n/$nodeId',
+        params: { courseId: '4', nodeId: '18' },
+      })
+    )
+  })
+
+  test('quiz-me actions stay capped at depth 2 while open nodes reach deeper', async () => {
+    useWorkspaceStore.getState().setCourse(4)
+    listCourses.mockResolvedValue([])
+    courseTree.mockResolvedValue([
+      {
+        id: 2,
+        title: 'Linear Algebra',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 7,
+            title: 'Matrices',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [
+              {
+                id: 9,
+                title: 'Determinants',
+                summary: null,
+                objectives: [],
+                order_idx: 0,
+                depth: 2,
+                is_root: false,
+                children: [
+                  {
+                    id: 18,
+                    title: 'Laplace expansion',
+                    summary: null,
+                    objectives: [],
+                    order_idx: 0,
+                    depth: 3,
+                    is_root: false,
+                    children: [],
+                    materials: [],
+                  },
+                ],
+                materials: [],
+              },
+            ],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    renderPalette()
+    expect(await screen.findByText('Quiz me on Matrices')).toBeInTheDocument()
+    expect(screen.getByText('Quiz me on Determinants')).toBeInTheDocument()
+    expect(screen.getByText('Open Laplace expansion')).toBeInTheDocument()
+    expect(screen.queryByText('Quiz me on Laplace expansion')).not.toBeInTheDocument()
+    useWorkspaceStore.getState().setCourse(null)
+  })
+
+  test('typing a parent chapter name surfaces child node actions via breadcrumb matching', async () => {
+    useWorkspaceStore.getState().setCourse(null)
+    listCourses.mockResolvedValue([
+      {
+        id: 4,
+        title: 'Linear Algebra',
+        subject: null,
+        level: null,
+        description: null,
+        color: null,
+        archived_at: null,
+        material_count: 0,
+      },
+    ])
+    courseTree.mockResolvedValue([
+      {
+        id: 2,
+        title: 'Linear Algebra',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: [
+          {
+            id: 9,
+            title: 'Determinants',
+            summary: null,
+            objectives: [],
+            order_idx: 0,
+            depth: 1,
+            is_root: false,
+            children: [
+              {
+                id: 21,
+                title: 'Cofactor identities',
+                summary: null,
+                objectives: [],
+                order_idx: 0,
+                depth: 2,
+                is_root: false,
+                children: [],
+                materials: [],
+              },
+            ],
+            materials: [],
+          },
+        ],
+        materials: [],
+      },
+    ])
+    renderPalette()
+    fireEvent.change(screen.getByRole('textbox', { name: /type a command/i }), {
+      target: { value: 'determ' },
+    })
+    expect(await screen.findByText('Open Cofactor identities')).toBeInTheDocument()
+  })
+
+  test('open node actions are capped at 40 entries', async () => {
+    useWorkspaceStore.getState().setCourse(3)
+    listCourses.mockResolvedValue([])
+    courseTree.mockResolvedValue([
+      {
+        id: 1,
+        title: 'Calculus I',
+        summary: null,
+        objectives: [],
+        order_idx: 0,
+        depth: 0,
+        is_root: true,
+        children: Array.from({ length: 45 }, (_, index) => ({
+          id: 100 + index,
+          title: `Section ${index + 1}`,
+          summary: null,
+          objectives: [],
+          order_idx: index,
+          depth: 1,
+          is_root: false,
+          children: [],
+          materials: [],
+        })),
+        materials: [],
+      },
+    ])
+    renderPalette()
+    await screen.findByText('Open Section 1')
+    await waitFor(() =>
+      expect(screen.getAllByText(/^Open Section /)).toHaveLength(40)
     )
     useWorkspaceStore.getState().setCourse(null)
   })

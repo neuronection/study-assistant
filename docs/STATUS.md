@@ -83,26 +83,46 @@ one shared card serializer). Career's plan-99 mechanics were the Tier-2
 reference; the family ADR was amended pre-acceptance to bind them. Details in
 the per-slice feature paragraphs below and `docs/ai.md` (HITL proposals).
 
-**Planned next — plan 78, grounded chat proposals & ADR-0015 HITL
-conformance (user-approved 2026-09-18, ADR-192 reserved):** adopt the family
-ADR-0015 Class-B proposal contract in full (local plan doc
-`dev/plans/78-grounded-chat-proposals-hitl-contract.md`). Five slices, no
-migrations: **A** capability discovery + drop-reason visibility (tools
-catalog gains `kind: tool|capability` entries with the amber HITL badge;
-silently-dropped proposals surface machine reason codes in message
-warnings); **B** full grounding gate (every singular target id checked
-against the offered manifest; read-before-edit required for note/material
-edits); **C** anchored text edits for notes/materials (`replace` with an
-exact-unique anchor, in-order server-side resolution at creation — surgical
-diffs instead of full-document regeneration, full-body replacement kept as
-the rewrite fallback); **D** conflict re-diff (approve-time drift recomputes
-the diff against current content and re-requires explicit approval instead
-of dead-ending stale; `ChatProposalStatus` StrEnum per ADR-128; the model
-receives structured resolution feedback on its next turn); **E** cross-session
-surface (`GET /chat/proposals` list, pending count in the computed
-notifications aggregate + chat rail badge, one shared card serializer for
-WS/REST/list). Career-assistant's plan-99 mechanics are the Tier-2 reference;
-the family ADR was amended pre-acceptance this session to bind them.
+**Feature — palette as universal launcher (plan 80-A, ADR-194, 2026-09-20):**
+first slice of plan 80 (deep navigation). The command palette's "Open node"
+actions no longer stop at the active course's depth-2 sections — they now
+index **every non-archived course at every depth**: `useQueries` fans out over
+all courses (union of the course list + the active course, so a stale list
+never drops the active tree) fetching `GET /courses/{id}/tree` under the
+unified string-keyed `['tree', String(id)]` cache (fixing the latent
+number-vs-string key split with NodeWorkspace/FocusShell), and each node
+action carries its **breadcrumb subtitle** (`Course › Chapter › …`) in the
+hint slot, truncated at 45% row width. Fuzzy matching now scores **label +
+hint**, so typing a parent chapter's name surfaces its descendants.
+Deliberately unchanged: "Quiz me on X" stays active-course-only and capped at
+depth ≤ 2 (shallow-scope action; pinned by test). Rendered node actions cap
+at 40 AFTER fuzzy ranking (relevance decides what surfaces). No backend
+changes; no new i18n keys (breadcrumbs are data, not copy). Tests: palette
+suite 14 → 18 (depth-3 node in another course navigates with breadcrumb
+visible, quiz-me depth cap, parent-name query surfaces child, 40-action cap
+after ranking; existing active-course test re-pointed). Frontend gate green
+(lint/typecheck/1,359 tests/i18n/build); backend gate green, untouched
+(1,299).
+
+**Planned next — plan 80, deep navigation: jump anywhere in one keystroke
+(user-approved 2026-09-20, ADRs 193–195 reserved):** close the deep-tree
+navigation pain — today a depth-3 section takes three drill-downs, and the
+command palette only offers node actions for the active course at depth ≤ 2
+(`CommandPalette.tsx:239-241`). Four slices, three frontend-only: **A** the
+palette becomes the universal launcher — open-node actions for every course
+at every depth over the shared `['tree', courseId]` caches with breadcrumb
+subtitles (quiz-me stays depth ≤ 2 by design); **B** recents — a
+profile-namespaced localStorage store of id-only entries
+(`sa.recents.v1.<profileId>`), titles resolved live from the tree caches, a
+Home "Continue" card, and a Recent section atop the palette; **C** the
+sidebar filter becomes Enter-to-jump with Escape restore; **D** (backend)
+`GET /search` hits gain an additive `nodes` placement annotation
+(`material_links` join post-search) so content results deep-link into the
+node workspace with the material docked (`?material=`) — closing the old
+"section deep-link from search" roadmap remainder. Plan doc:
+`dev/plans/80-deep-navigation-jump-anywhere.md` (gitignored local;
+non-goals: node pins/migration, backend node-search endpoint, outline-default
+landing page). **A COMPLETE (2026-09-20, ADR-194) — B/C/D remaining.**
 
 **Feature — rendered proposal previews (plan 78-F, ADR-192, 2026-09-18):**
 slice F of plan 78 (user-requested follow-up) — proposal content is no longer

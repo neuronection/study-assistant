@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { useCurrentOrigin } from '@/lib/origin'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BarChart3,
   BookOpen,
@@ -70,11 +70,32 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     return null
   }, [courseId, courses.data])
 
-  const tree = useQuery({
-    queryKey: ['tree', courseId],
-    queryFn: () => courseTree(courseId!),
-    enabled: open && courseId !== null,
+  const treeCourseIds = useMemo(() => {
+    const ids = (courses.data ?? []).map((course) => course.id)
+    if (courseId !== null && !ids.includes(courseId)) {
+      ids.push(courseId)
+    }
+    return ids
+  }, [courses.data, courseId])
+
+  const treeQueries = useQueries({
+    queries: treeCourseIds.map((id) => ({
+      queryKey: ['tree', String(id)],
+      queryFn: () => courseTree(id),
+      enabled: open,
+    })),
   })
+
+  const trees = useMemo(() => {
+    const map = new Map<number, NodeInfo[]>()
+    treeCourseIds.forEach((id, index) => {
+      const data = treeQueries[index]?.data
+      if (data !== undefined) {
+        map.set(id, data as NodeInfo[])
+      }
+    })
+    return map
+  }, [treeCourseIds, treeQueries])
 
   const notes = useQuery({
     queryKey: ['notes', 'palette'],
@@ -234,59 +255,44 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 onClose()
               },
             }))
-    const nodeActions: Action[] = []
+    const quizNodeActions: Action[] = []
     if (courseId !== null) {
-      const collect = (entries: NodeInfo[]) => {
+      const collectQuiz = (entries: NodeInfo[]) => {
         for (const entry of entries) {
           if (entry.depth >= 1 && entry.depth <= 2) {
             const courseRef = courseId
-            nodeActions.push(
-              {
-                key: `quiz-node-${entry.id}`,
-                label: t('palette.quizMeOn', { title: entry.title }),
-                hint: t('palette.nodeHint'),
-                indent: entry.depth,
-                icon: ClipboardList,
-                run: async () => {
-                  const activity = await generateQuiz({
-                    course_id: courseRef,
-                    node_id: entry.id,
-                    count: 8,
-                  })
-                  await queryClient.invalidateQueries({ queryKey: ['quizzes'] })
-                  void navigate({
-                    to: '/quiz/$activityId',
-                    params: { activityId: String(activity.id) },
-                    search: { from },
-                  })
-                  onClose()
-                },
+            quizNodeActions.push({
+              key: `quiz-node-${entry.id}`,
+              label: t('palette.quizMeOn', { title: entry.title }),
+              hint: t('palette.nodeHint'),
+              indent: entry.depth,
+              icon: ClipboardList,
+              run: async () => {
+                const activity = await generateQuiz({
+                  course_id: courseRef,
+                  node_id: entry.id,
+                  count: 8,
+                })
+                await queryClient.invalidateQueries({ queryKey: ['quizzes'] })
+                void navigate({
+                  to: '/quiz/$activityId',
+                  params: { activityId: String(activity.id) },
+                  search: { from },
+                })
+                onClose()
               },
-              {
-                key: `open-node-${entry.id}`,
-                label: t('palette.openNode', { title: entry.title }),
-                indent: entry.depth,
-                icon: BookOpen,
-                run: () => {
-                  void navigate({
-                    to: '/courses/$courseId/n/$nodeId',
-                    params: { courseId: String(courseRef), nodeId: String(entry.id) },
-                  })
-                  onClose()
-                },
-              }
-            )
+            })
           }
-          collect(entry.children)
+          collectQuiz(entry.children)
         }
       }
-      collect(tree.data ?? [])
+      collectQuiz(trees.get(courseId) ?? [])
     }
-    return [...quick, ...nav, ...noteActions, ...quizActions, ...exerciseActions, ...courseActions, ...nodeActions]
+    return [...quick, ...nav, ...noteActions, ...quizActions, ...exerciseActions, ...courseActions, ...quizNodeActions]
   }, [
     t,
     courses.data,
-    tree.data,
+    trees,
     notes.data,
     quizzes.data,
     exercises.data,
@@ -299,6 +305,43 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     setCourse,
     resolveCourseId,
   ])
+
+  const nodeActions = useMemo<Action[]>(() => {
+    const openActions: Action[] = []
+    for (const id of treeCourseIds) {
+      const root = trees.get(id)
+      if (root === undefined || root.length === 0) {
+        continue
+      }
+      const courseTitle = (courses.data ?? []).find((course) => course.id === id)?.title ?? root[0]!.title
+      const collect = (entries: NodeInfo[], trail: string[]) => {
+        for (const entry of entries) {
+          if (entry.depth >= 1) {
+            const breadcrumb = trail.join(' › ')
+            openActions.push({
+              key: `open-node-${id}-${entry.id}`,
+              label: t('palette.openNode', { title: entry.title }),
+              hint: breadcrumb,
+              indent: entry.depth,
+              icon: BookOpen,
+              run: () => {
+                void navigate({
+                  to: '/courses/$courseId/n/$nodeId',
+                  params: { courseId: String(id), nodeId: String(entry.id) },
+                })
+                onClose()
+              },
+            })
+            collect(entry.children, [...trail, entry.title])
+          } else {
+            collect(entry.children, trail)
+          }
+        }
+      }
+      collect(root, [courseTitle])
+    }
+    return openActions
+  }, [treeCourseIds, trees, courses.data, t, navigate, onClose])
 
   const filtered = useMemo(() => {
     if (contentQuery !== null) {
@@ -320,8 +363,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           },
         }))
     }
-    return fuzzyFilter(actions, query, (action) => action.label)
-  }, [actions, query, contentQuery, contentSearch.data, t, navigate, onClose])
+    const actionText = (action: Action) => (action.hint ? `${action.label} ${action.hint}` : action.label)
+    return [
+      ...fuzzyFilter(actions, query, actionText),
+      ...fuzzyFilter(nodeActions, query, actionText).slice(0, 40),
+    ]
+  }, [actions, nodeActions, query, contentQuery, contentSearch.data, t, navigate, onClose])
 
   useEffect(() => {
     if (open) {
@@ -460,7 +507,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     {action.label}
                   </span>
                   {action.hint ? (
-                    <span className="text-muted-foreground relative shrink-0 text-[10px]">
+                    <span className="text-muted-foreground relative max-w-[45%] shrink-0 truncate text-[10px]">
                       {action.hint}
                     </span>
                   ) : null}
