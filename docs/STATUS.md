@@ -2416,6 +2416,30 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-09-20 — **feat(mcp): remote transports + keyring secrets for custom
+  connectors (desktop-assistant parity).** MCP connector config catches up
+  with the desktop reference implementation: servers can register over
+  **stdio, Streamable HTTP or SSE** (new `McpTransport` StrEnum in
+  `core/vocab.py`; remote servers take an http(s) URL, stdio keeps
+  command + args), carry an optional **auth token** (sent as
+  `Authorization: Bearer` on remote transports) and a **stdio env map**
+  (JSON, merged over the minimal default environment) — both stored ONLY in
+  the OS keyring (`mcp:<id>:token` / `mcp:<id>:env` via
+  `app/core/secrets.py`; the stored `mcp.servers` prefs and every API
+  response stay secret-free, the wire exposes `has_token`/`has_env`
+  booleans; delete clears the keyring entries). Plus per-server
+  **max_concurrent** (1-8, enforced by a per-server semaphore in the bridge)
+  and the timeout now editable in the UI (5-120 s). The client bridge
+  (`app/ai/mcp_client.py`) dispatches transports through one
+  `AsyncExitStack`-owned session (lazy launch/reaped per call, unchanged) —
+  HTTP uses the SDK's `create_mcp_http_client` + `streamable_http_client`.
+  Settings → AI → Integrations: the add dialog grew the transport picker +
+  URL/token/env/timeout/concurrency fields, and rows gained Edit (blank
+  token keeps the stored one; explicit clear checkboxes) + transport badge +
+  stored-secret hints. No schema change (servers still live in
+  `profile.preferences`); OpenAPI + types regenerated. Backend 1,299 green
+  (+4 tests incl. keyring round-trip), frontend 1,355 green (+2), alignment
+  gate clean.
 - 2026-09-20 — **feat(settings): two-pane settings shell (family-uniform
   layout).** Settings adopts the assistant-ui `SettingsShell` — the same
   component career-assistant (`SettingsShell` route glue) and desktop-assistant

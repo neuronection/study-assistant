@@ -29,6 +29,11 @@ const SERVER = {
   args: ['-m', 'coursehub_server'],
   enabled: false,
   timeout_sec: 30,
+  transport: 'stdio',
+  url: '',
+  max_concurrent: 4,
+  has_token: false,
+  has_env: false,
   tools: [
     {
       name: 'search_courses',
@@ -67,7 +72,7 @@ describe('McpConnectorsCard', () => {
     expect(screen.getByText('Off')).toBeInTheDocument()
   })
 
-  test('adding a server posts name, command and parsed args', async () => {
+  test('adding a stdio server posts name, command and parsed args', async () => {
     createMcpServer.mockResolvedValue(SERVER)
     renderCard()
     fireEvent.click(await screen.findByRole('button', { name: /add server/i }))
@@ -86,7 +91,62 @@ describe('McpConnectorsCard', () => {
         name: 'new-hub',
         command: '/usr/bin/python -m their_server',
         args: ['-m', 'their_server', '--port', '8080'],
+        timeout_sec: 30,
+        transport: 'stdio',
+        url: '',
+        max_concurrent: 4,
+        token: null,
+        env: null,
       }),
+    )
+  })
+
+  test('adding a remote http server posts url and token instead of a command', async () => {
+    createMcpServer.mockResolvedValue(SERVER)
+    renderCard()
+    fireEvent.click(await screen.findByRole('button', { name: /add server/i }))
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'remote-hub' },
+    })
+    fireEvent.change(screen.getByLabelText(/transport/i), {
+      target: { value: 'http' },
+    })
+    fireEvent.change(screen.getByLabelText(/server url/i), {
+      target: { value: 'https://mcp.example.com/mcp' },
+    })
+    fireEvent.change(screen.getByLabelText(/auth token/i), {
+      target: { value: 'tok_123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    await waitFor(() =>
+      expect(createMcpServer).toHaveBeenCalledWith({
+        name: 'remote-hub',
+        timeout_sec: 30,
+        transport: 'http',
+        url: 'https://mcp.example.com/mcp',
+        max_concurrent: 4,
+        token: 'tok_123',
+        env: null,
+      }),
+    )
+    expect(createMcpServer).toHaveBeenCalledWith(
+      expect.not.objectContaining({ command: expect.anything() }),
+    )
+  })
+
+  test('editing a server with a stored token keeps it when left blank', async () => {
+    listMcpServers.mockResolvedValue([
+      { ...SERVER, has_token: true },
+    ])
+    updateMcpServer.mockResolvedValue(SERVER)
+    renderCard()
+    fireEvent.click(await screen.findByRole('button', { name: /edit/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    await waitFor(() =>
+      expect(updateMcpServer).toHaveBeenCalledWith(
+        'abc123',
+        expect.not.objectContaining({ token: expect.anything() }),
+      ),
     )
   })
 

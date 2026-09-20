@@ -6367,8 +6367,20 @@ export interface components {
         McpServerIn: {
             /** Args */
             args?: string[];
-            /** Command */
+            /**
+             * Command
+             * @default
+             */
             command: string;
+            /** Env */
+            env?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Max Concurrent
+             * @default 4
+             */
+            max_concurrent: number;
             /** Name */
             name: string;
             /**
@@ -6376,6 +6388,18 @@ export interface components {
              * @default 30
              */
             timeout_sec: number;
+            /** Token */
+            token?: string | null;
+            /**
+             * Transport
+             * @default stdio
+             */
+            transport: string;
+            /**
+             * Url
+             * @default
+             */
+            url: string;
         };
         /** McpServerOut */
         McpServerOut: {
@@ -6385,10 +6409,16 @@ export interface components {
             command: string;
             /** Enabled */
             enabled: boolean;
+            /** Has Env */
+            has_env: boolean;
+            /** Has Token */
+            has_token: boolean;
             /** Id */
             id: string;
             /** Last Error */
             last_error: string | null;
+            /** Max Concurrent */
+            max_concurrent: number;
             /** Name */
             name: string;
             /** Refreshed At */
@@ -6399,17 +6429,33 @@ export interface components {
             tools: {
                 [key: string]: unknown;
             }[];
+            /** Transport */
+            transport: string;
+            /** Url */
+            url: string;
         };
         /** McpServerPatch */
         McpServerPatch: {
             /** Enabled */
             enabled?: boolean | null;
+            /** Env */
+            env?: {
+                [key: string]: string;
+            } | null;
+            /** Max Concurrent */
+            max_concurrent?: number | null;
             /** Name */
             name?: string | null;
             /** Timeout Sec */
             timeout_sec?: number | null;
+            /** Token */
+            token?: string | null;
             /** Tools */
             tools?: components["schemas"]["McpToolPatch"][];
+            /** Transport */
+            transport?: string | null;
+            /** Url */
+            url?: string | null;
         };
         /** McpToolOut */
         McpToolOut: {

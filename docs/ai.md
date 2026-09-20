@@ -892,11 +892,15 @@ arguments, scope). The chat panel's wrench button renders it as tool cards.
 
 ## MCP client bridge — custom connectors (plan 73-G, ADR-170)
 
-User-registered **external** MCP servers (stdio) become discovery and parse
-connectors, invoked **deterministically by services** — the agent is never
-the gatekeeper. Config is machine-local profile preferences
-(`mcp.servers`: name, stdio command + args, timeout 5-120 s) — servers read
-their own configuration, nothing secret is stored. Posture (ADR-0012):
+User-registered **external** MCP servers (stdio, Streamable HTTP or SSE)
+become discovery and parse connectors, invoked **deterministically by
+services** — the agent is never the gatekeeper. Config is machine-local
+profile preferences (`mcp.servers`: name, transport (`stdio` command + args
+or `http`/`sse` URL), timeout 5-120 s, max 1-8 parallel calls per server) —
+auth tokens (remote servers; sent as `Authorization: Bearer`) and stdio env
+maps live in the **OS keyring** (`mcp:<id>:token` / `mcp:<id>:env`, isolated
+through `app/core/secrets.py`; the API exposes only `has_token`/`has_env`
+booleans and delete clears them). Posture (ADR-0012):
 servers **disabled by default**; tool lists arrive only through an explicit
 **Refresh** (`POST /mcp/servers/{id}/refresh`), and a refresh never
 auto-enables; each tool carries a user-assigned **contract** —

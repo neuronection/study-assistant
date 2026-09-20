@@ -247,7 +247,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   structured items are stored in the material's provenance for future
   interactive practice
 - ✅ **Custom MCP connectors (plan 73-G, ADR-170, 2026-09-16)**: bring your
-  own source. Register an external MCP server (stdio) in **Settings → AI →
+  own source. Register an external MCP server (stdio, Streamable HTTP or
+  SSE — auth tokens in the OS keyring) in **Settings → AI →
   Integrations**, refresh to list its tools, and assign each tool a
   contract: **Discovery** tools appear as providers in the Discover dialog
   and behind chat DISCOVER; **Parser** tools (keyed by a URL pattern like

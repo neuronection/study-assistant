@@ -5,7 +5,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..ai import mcp_client
+from ..ai.mcp_client import env_secret_ref, token_secret_ref
+from ..core.secrets import get_secret
+from ..core.vocab import McpTransport
 from ..services.platform.mcp_servers import (
+    UNSET,
     McpServersError,
     build_mcp_config,
     create_server,
@@ -23,9 +27,14 @@ router = APIRouter(prefix="/mcp/servers", tags=["mcp-servers"])
 
 class McpServerIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
-    command: str = Field(min_length=1, max_length=500)
+    command: str = Field(default="", max_length=500)
     args: list[str] = Field(default_factory=list, max_length=20)
     timeout_sec: int = Field(default=30, ge=5, le=120)
+    transport: str = Field(default=McpTransport.STDIO)
+    url: str = Field(default="", max_length=500)
+    max_concurrent: int = Field(default=4, ge=1, le=8)
+    token: str | None = Field(default=None, max_length=2000)
+    env: dict[str, str] | None = None
 
 
 class McpToolPatch(BaseModel):
@@ -40,6 +49,11 @@ class McpServerPatch(BaseModel):
     enabled: bool | None = None
     timeout_sec: int | None = Field(default=None, ge=5, le=120)
     tools: list[McpToolPatch] = Field(default_factory=list, max_length=30)
+    transport: str | None = None
+    url: str | None = Field(default=None, max_length=500)
+    max_concurrent: int | None = Field(default=None, ge=1, le=8)
+    token: str | None = Field(default=None, max_length=2000)
+    env: dict[str, str] | None = None
 
 
 class McpServerOut(BaseModel):
@@ -52,11 +66,17 @@ class McpServerOut(BaseModel):
     tools: list[dict[str, Any]]
     last_error: str | None
     refreshed_at: str | None
+    transport: str
+    url: str
+    max_concurrent: int
+    has_token: bool
+    has_env: bool
 
 
 def _out(entry: dict[str, Any]) -> McpServerOut:
+    server_id = str(entry.get("id") or "")
     return McpServerOut(
-        id=str(entry.get("id") or ""),
+        id=server_id,
         name=str(entry.get("name") or ""),
         command=str(entry.get("command") or ""),
         args=[str(arg) for arg in entry.get("args", [])],
@@ -65,6 +85,11 @@ def _out(entry: dict[str, Any]) -> McpServerOut:
         tools=[tool for tool in entry.get("tools", []) if isinstance(tool, dict)],
         last_error=entry.get("last_error"),
         refreshed_at=entry.get("refreshed_at"),
+        transport=str(entry.get("transport") or McpTransport.STDIO),
+        url=str(entry.get("url") or ""),
+        max_concurrent=int(entry.get("max_concurrent") or 4),
+        has_token=get_secret(token_secret_ref(server_id)) is not None,
+        has_env=get_secret(env_secret_ref(server_id)) is not None,
     )
 
 
@@ -88,6 +113,11 @@ def add_server(
             command=body.command,
             args=body.args,
             timeout_sec=body.timeout_sec,
+            transport=body.transport,
+            url=body.url,
+            max_concurrent=body.max_concurrent,
+            token=body.token,
+            env=body.env,
         )
         session.commit()
     except McpServersError as error:
@@ -103,6 +133,7 @@ def update_server(
     session: Session = Depends(get_session),
 ) -> McpServerOut:
     profile = ensure_default_profile(session)
+    provided = body.model_fields_set
     try:
         entry = patch_server(
             session,
@@ -112,6 +143,13 @@ def update_server(
             timeout_sec=body.timeout_sec,
             name=body.name,
             tool_updates=[tool.model_dump(exclude_none=True) for tool in body.tools],
+            transport=body.transport if "transport" in provided else UNSET,
+            url=body.url if "url" in provided else UNSET,
+            max_concurrent=(
+                body.max_concurrent if "max_concurrent" in provided else UNSET
+            ),
+            token=body.token if "token" in provided else UNSET,
+            env=body.env if "env" in provided else UNSET,
         )
         session.commit()
     except McpServersError as error:

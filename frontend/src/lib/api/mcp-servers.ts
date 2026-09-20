@@ -18,9 +18,14 @@ export async function listMcpServers(): Promise<McpServerRow[]> {
 
 export async function createMcpServer(body: {
   name: string
-  command: string
+  command?: string
   args?: string[]
   timeout_sec?: number
+  transport?: string
+  url?: string
+  max_concurrent?: number
+  token?: string | null
+  env?: Record<string, string> | null
 }): Promise<McpServerRow> {
   const response = await apiFetch('/api/v1/mcp/servers', {
     method: 'POST',
@@ -35,6 +40,14 @@ export async function updateMcpServer(
   body: {
     enabled?: boolean
     timeout_sec?: number
+    name?: string
+    command?: string
+    args?: string[]
+    transport?: string
+    url?: string
+    max_concurrent?: number
+    token?: string | null
+    env?: Record<string, string> | null
     tools?: {
       name: string
       enabled?: boolean

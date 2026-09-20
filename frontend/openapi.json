@@ -6126,10 +6126,31 @@
             "type": "array"
           },
           "command": {
+            "default": "",
             "maxLength": 500,
-            "minLength": 1,
             "title": "Command",
             "type": "string"
+          },
+          "env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Env"
+          },
+          "max_concurrent": {
+            "default": 4,
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Max Concurrent",
+            "type": "integer"
           },
           "name": {
             "maxLength": 80,
@@ -6143,11 +6164,33 @@
             "minimum": 5.0,
             "title": "Timeout Sec",
             "type": "integer"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "transport": {
+            "default": "stdio",
+            "title": "Transport",
+            "type": "string"
+          },
+          "url": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Url",
+            "type": "string"
           }
         },
         "required": [
-          "name",
-          "command"
+          "name"
         ],
         "title": "McpServerIn",
         "type": "object"
@@ -6169,6 +6212,14 @@
             "title": "Enabled",
             "type": "boolean"
           },
+          "has_env": {
+            "title": "Has Env",
+            "type": "boolean"
+          },
+          "has_token": {
+            "title": "Has Token",
+            "type": "boolean"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -6183,6 +6234,10 @@
               }
             ],
             "title": "Last Error"
+          },
+          "max_concurrent": {
+            "title": "Max Concurrent",
+            "type": "integer"
           },
           "name": {
             "title": "Name",
@@ -6210,6 +6265,14 @@
             },
             "title": "Tools",
             "type": "array"
+          },
+          "transport": {
+            "title": "Transport",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
           }
         },
         "required": [
@@ -6221,7 +6284,12 @@
           "timeout_sec",
           "tools",
           "last_error",
-          "refreshed_at"
+          "refreshed_at",
+          "transport",
+          "url",
+          "max_concurrent",
+          "has_token",
+          "has_env"
         ],
         "title": "McpServerOut",
         "type": "object"
@@ -6238,6 +6306,33 @@
               }
             ],
             "title": "Enabled"
+          },
+          "env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Env"
+          },
+          "max_concurrent": {
+            "anyOf": [
+              {
+                "maximum": 8.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrent"
           },
           "name": {
             "anyOf": [
@@ -6265,6 +6360,18 @@
             ],
             "title": "Timeout Sec"
           },
+          "token": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
           "tools": {
             "items": {
               "$ref": "#/components/schemas/McpToolPatch"
@@ -6272,6 +6379,29 @@
             "maxItems": 30,
             "title": "Tools",
             "type": "array"
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
           }
         },
         "title": "McpServerPatch",

@@ -394,3 +394,132 @@ def test_parse_contract_lands_in_url_import(
     assert audit_rows
     suggestions = list(db_session.scalars(select(MaterialSuggestion)))
     assert suggestions == []
+
+
+def test_create_remote_server_stores_secrets_in_keyring(
+    client: TestClient, db_session: Session
+) -> None:
+    with client:
+        created = client.post(
+            "/api/v1/mcp/servers",
+            json={
+                "name": "remote-hub",
+                "transport": "http",
+                "url": "https://mcp.example.com/mcp",
+                "token": "tok_123",
+                "env": {"MCP_DEBUG": "1"},
+                "max_concurrent": 2,
+            },
+        )
+        assert created.status_code == 201, created.text
+        body = created.json()
+        assert body["transport"] == "http"
+        assert body["url"] == "https://mcp.example.com/mcp"
+        assert body["command"] == ""
+        assert body["max_concurrent"] == 2
+        assert body["has_token"] is True
+        assert body["has_env"] is True
+        assert "tok_123" not in json.dumps(body)
+
+        listed = client.get("/api/v1/mcp/servers").json()
+        assert "tok_123" not in json.dumps(listed)
+
+        profile = db_session.scalars(select(Profile)).first()
+        assert profile is not None
+        prefs = json.dumps(profile.preferences)
+        assert "tok_123" not in prefs
+        assert "MCP_DEBUG" not in prefs
+
+        from app.ai.mcp_client import env_secret_ref, token_secret_ref
+        from app.core.secrets import get_secret
+
+        assert get_secret(token_secret_ref(body["id"])) == "tok_123"
+        assert get_secret(env_secret_ref(body["id"])) == '{"MCP_DEBUG": "1"}'
+
+        cleared = client.patch(
+            f"/api/v1/mcp/servers/{body['id']}", json={"token": None}
+        )
+        assert cleared.status_code == 200
+        assert cleared.json()["has_token"] is False
+        assert get_secret(token_secret_ref(body["id"])) is None
+
+        kept = client.patch(f"/api/v1/mcp/servers/{body['id']}", json={"name": "renamed"})
+        assert kept.status_code == 200
+        assert kept.json()["has_env"] is True
+
+        assert (
+            client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 204
+        )
+        assert get_secret(env_secret_ref(body["id"])) is None
+
+
+def test_create_server_validation_for_transports(client: TestClient) -> None:
+    with client:
+        remote_without_url = client.post(
+            "/api/v1/mcp/servers",
+            json={"name": "x", "transport": "http"},
+        )
+        assert remote_without_url.status_code == 422
+
+        bad_scheme = client.post(
+            "/api/v1/mcp/servers",
+            json={"name": "x", "transport": "sse", "url": "ftp://host"},
+        )
+        assert bad_scheme.status_code == 422
+
+        unknown_transport = client.post(
+            "/api/v1/mcp/servers",
+            json={"name": "x", "transport": "carrier-pigeon", "command": "y"},
+        )
+        assert unknown_transport.status_code == 422
+
+        stdio_without_command = client.post(
+            "/api/v1/mcp/servers", json={"name": "x"}
+        )
+        assert stdio_without_command.status_code == 422
+
+        bad_concurrency = client.post(
+            "/api/v1/mcp/servers",
+            json={"name": "x", "command": "y", "max_concurrent": 99},
+        )
+        assert bad_concurrency.status_code == 422
+
+
+def test_build_mcp_config_loads_secrets(
+    client: TestClient, db_session: Session
+) -> None:
+    from app.services.platform.mcp_servers import build_mcp_config
+
+    with client:
+        created = client.post(
+            "/api/v1/mcp/servers",
+            json={
+                "name": "sse-hub",
+                "transport": "sse",
+                "url": "https://mcp.example.com/sse",
+                "token": "sse-token",
+                "env": {"A": "B"},
+            },
+        )
+        body = created.json()
+
+    profile = db_session.scalars(select(Profile)).first()
+    assert profile is not None
+    prefs = profile.preferences or {}
+    servers = json.loads(json.dumps(prefs["mcp"]["servers"]))
+    entry = next(s for s in servers if s["id"] == body["id"])
+    config = build_mcp_config(entry)
+    assert config.transport == "sse"
+    assert config.url == "https://mcp.example.com/sse"
+    assert config.token == "sse-token"
+    assert config.env == {"A": "B"}
+
+
+def test_parse_env_json_rejects_non_objects() -> None:
+    from app.ai.mcp_client import parse_env_json
+
+    assert parse_env_json(None) == {}
+    assert parse_env_json("") == {}
+    assert parse_env_json("not json") == {}
+    assert parse_env_json("[1, 2]") == {}
+    assert parse_env_json('{"A": "B"}') == {"A": "B"}

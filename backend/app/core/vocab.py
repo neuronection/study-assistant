@@ -38,6 +38,12 @@ class ToolEntryKind(StrVocab):
     CAPABILITY = "capability"
 
 
+class McpTransport(StrVocab):
+    STDIO = "stdio"
+    HTTP = "http"
+    SSE = "sse"
+
+
 class ChatProposalStatus(StrVocab):
     PROPOSED = "proposed"
     APPROVED = "approved"
