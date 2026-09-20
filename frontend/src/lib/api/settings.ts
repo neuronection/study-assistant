@@ -8,6 +8,7 @@ export interface Provider {
   name: string
   type: string
   base_url: string
+  preset_key: string | null
   enabled: boolean
   is_local: boolean | null
   country: string | null

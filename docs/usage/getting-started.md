@@ -75,9 +75,7 @@ manual form, exactly like the **Custom** tile does (name, base URL, key,
 hosting, country).
 
 **Manual / advanced way.** Use **Add provider → Custom** for anything else
-(e.g. LM Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):
-
-1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —
+(e.g. LM Studio, llama.cpp, or a self-hosted OpenAI-compatible endpoint):1. Open **Settings → Providers → Add provider** (settings tabs are URL-addressable —
    e.g. `/settings?tab=models` — so you can bookmark or share deep links).
 2. Pick a provider from the dropdown (OpenAI, Google Gemini, OpenRouter,
    Anthropic, Groq, Mistral, DeepSeek, Ollama for a local setup, or Custom for
@@ -99,6 +97,10 @@ hosting, country).
      correct its capabilities (OCR tasks only see vision-capable models), or set
      reasoning effort. The trash button removes it for good (with confirmation).
    - Existing providers can be renamed/re-keyed via their **edit** button.
+   - Providers connected from a preset tile also show **Set up automatically**:
+     re-run their setup anytime with the stored key — pick which curated models
+     to save and which empty defaults (chat / vision / transcription) to fill.
+     Whatever you already assigned is never touched.
 5. Go to **Tasks**. Set one **default model** per capability (text / vision /
    embeddings / speech-to-text / text-to-speech) in the *Default models* section at the
    top — every task without a custom model uses its capability's default. To pin a

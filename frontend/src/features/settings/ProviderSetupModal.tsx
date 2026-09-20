@@ -22,6 +22,7 @@ import { COUNTRIES } from '@/lib/countries'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
 import { ProviderLogo } from './ProviderLogo'
+import { SetupErrorPanel } from './setupErrors'
 
 const TILE_ORDER = [
   'openai',
@@ -33,20 +34,6 @@ const TILE_ORDER = [
   'deepseek',
   'ollama',
 ] as const
-
-const ERROR_CODES = [
-  'invalid_key',
-  'insufficient_credit',
-  'new_user_quota',
-  'region_unavailable',
-  'timeout',
-  'local_not_running',
-  'unknown',
-] as const
-
-function errorLabel(code: string): string {
-  return (ERROR_CODES as readonly string[]).includes(code) ? code : 'unknown'
-}
 
 type Phase = 'tiles' | 'form' | 'manual' | 'done'
 
@@ -143,25 +130,6 @@ function CountrySelect({ country, onChange }: { country: string; onChange: (c: s
       </select>
     </label>
   )
-}
-
-function ErrorPanel({ error, plainError }: { error: ProviderSetupErrorDetail | null; plainError: string | null }) {
-  const { t } = useTranslation()
-  if (error) {
-    return (
-      <div className="text-danger space-y-1 rounded-md border border-dashed border-current/40 px-3 py-2 text-xs">
-        <p>{t(`settings.setup.errors.${errorLabel(error.code)}`)}</p>
-        {error.suspected_vendor ? (
-          <p>{t('settings.setup.errors.suspectedVendor', { vendor: error.suspected_vendor })}</p>
-        ) : null}
-        {error.detail ? <p className="text-muted-foreground break-words">{error.detail}</p> : null}
-      </div>
-    )
-  }
-  if (plainError) {
-    return <p className="text-danger text-xs">{plainError}</p>
-  }
-  return null
 }
 
 function SuccessDefaults({
@@ -533,7 +501,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
               <CountrySelect country={country} onChange={setCountry} />
             </div>
           </details>
-          <ErrorPanel error={error} plainError={plainError} />
+          <SetupErrorPanel error={error} plainError={plainError} />
           <div className="flex items-center justify-between gap-2">
             <Button variant="ghost" size="sm" onClick={backToTiles}>
               {t('settings.setup.chooseAnother')}
@@ -587,7 +555,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
           </label>
           <HostingToggle local={isLocal} onChange={setIsLocal} />
           <CountrySelect country={country} onChange={setCountry} />
-          <ErrorPanel error={null} plainError={plainError} />
+          <SetupErrorPanel error={null} plainError={plainError} />
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={backToTiles}>
               {t('settings.setup.chooseAnother')}

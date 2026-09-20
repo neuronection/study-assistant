@@ -48,7 +48,17 @@ country). Setup failures are i18n-routed by stable error codes incl.
 `suspectedVendor` hints; nothing is persisted on a classified failure.
 The old `ProviderFormDialog` is now edit-only (create flows live in the
 modal; onboarding keeps its compact create form). Capability pickers and
-labels updated to `stt`/`tts`; OpenAPI + types regenerated. **Batch 5**:
+labels updated to `stt`/`tts`; OpenAPI + types regenerated. **Same-day
+follow-ups:** the success panel's defaults card gained per-slot `ModelPicker`
+rows (chat/vision/stt, pre-set to the auto-bound models, immediate rebind via
+`assignTaskDefault` with fallbacks preserved — desktop's success-phase
+rebinding); preset-connected provider rows gained a **Set up automatically**
+button opening the re-setup review dialog (`ReRunSetupDialog`: stored-key
+note, curated-model multi-select cards with capability icons, fill-empty-slot
+switch rows with current values, never-removes footnote — Apply runs setup
+with the §15 options body). Provider tiles/mark: vendor marks via
+`simple-icons` (`ProviderLogo`, app-side until the two-app library
+promotion). **Batch 5**:
 `check-byok-contract.sh --self` in CI (`.github/workflows/byok-contract.yml`,
 beside the alignment gate); docs + CHANGELOG same commit. §15 deltas noted
 in the family report: provider-logo tiles are text-only (no assistant-ui

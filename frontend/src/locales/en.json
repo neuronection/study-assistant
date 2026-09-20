@@ -1141,7 +1141,18 @@
       "automatically": "Set up automatically",
       "noKeyNeeded": "No API key needed for this provider.",
       "manualHint": "Any OpenAI-compatible endpoint — set the base URL exactly as its API expects.",
-      "custom": "Custom"
+      "custom": "Custom",
+      "review": {
+        "keyNote": "Uses the stored key for “{{name}}”.",
+        "modelsLabel": "Curated models",
+        "fillText": "Fill the empty default chat model",
+        "fillVision": "Fill the empty default vision model",
+        "fillStt": "Fill the empty default transcription model",
+        "now": "now: {{model}}",
+        "unset": "unset",
+        "footnote": "Existing assignments and models are never removed.",
+        "apply": "Apply"
+      }
     }
   },
   "spike": {

@@ -1103,7 +1103,18 @@
       "automatically": "Automatisch einrichten",
       "noKeyNeeded": "Für diesen Anbieter wird kein API-Schlüssel benötigt.",
       "manualHint": "Beliebiger OpenAI-kompatibler Endpunkt — die Basis-URL muss exakt zur API passen.",
-      "custom": "Benutzerdefiniert"
+      "custom": "Benutzerdefiniert",
+      "review": {
+        "keyNote": "Verwendet den gespeicherten Schlüssel für „{{name}}“.",
+        "modelsLabel": "Kuratierte Modelle",
+        "fillText": "Leeres Standard-Chat-Modell füllen",
+        "fillVision": "Leeres Standard-Vision-Modell füllen",
+        "fillStt": "Leeres Standard-Transkriptionsmodell füllen",
+        "now": "aktuell: {{model}}",
+        "unset": "nicht gesetzt",
+        "footnote": "Bestehende Zuweisungen und Modelle werden nie entfernt.",
+        "apply": "Anwenden"
+      }
     }
   },
   "genesis": {

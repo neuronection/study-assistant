@@ -12,6 +12,7 @@ import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { LocalEngines } from './LocalEngines'
 import { ProviderSetupModal } from './ProviderSetupModal'
+import { ReRunSetupDialog } from './ReRunSetupDialog'
 import { SearchProviderCard } from './SearchProviderCard'
 import { DiscoveryCard } from './DiscoveryCard'
 import { useConfirm } from '@/lib/use-confirm'
@@ -24,6 +25,7 @@ export function ProvidersTab() {
   const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
   const [form, setForm] = useState<{ provider: Provider } | null>(null)
   const [setupOpen, setSetupOpen] = useState(false)
+  const [reSetupProvider, setReSetupProvider] = useState<Provider | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [confirm, confirmElement] = useConfirm()
 
@@ -105,6 +107,17 @@ export function ProvidersTab() {
                 disabled={busyId === provider.id}
               />
             </div>
+            {provider.preset_key ? (
+              <Button
+                variant="outline"
+                size="sm"
+                title={t('settings.setup.automatically')}
+                onClick={() => setReSetupProvider(provider)}
+              >
+                <Sparkles className="size-4" aria-hidden />
+                {t('settings.setup.automatically')}
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
@@ -150,6 +163,9 @@ export function ProvidersTab() {
       <SearchProviderCard />
       <DiscoveryCard />
       {setupOpen ? <ProviderSetupModal onClose={() => setSetupOpen(false)} /> : null}
+      {reSetupProvider ? (
+        <ReRunSetupDialog provider={reSetupProvider} onClose={() => setReSetupProvider(null)} />
+      ) : null}
       {form ? (
         <ProviderFormDialog provider={form.provider} onClose={() => setForm(null)} />
       ) : null}
