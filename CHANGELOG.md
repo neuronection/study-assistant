@@ -11,13 +11,27 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
-### Changed
-- **assistant-ui 0.42.0 → 0.43.0** — family catch-up (drop-in).
-- **Sidebar family menu lists Desktop Assistant** — new row (library
-  `DesktopMark`, linking to neuronection.com/en/desktop/) alongside
-  Health / Career / Study.
+## [v0.11.0] - 2026-09-20
 
 ### Added
+- **Deep navigation: jump anywhere in a course (plan 80)** — the command
+  palette now indexes every section of every course at every depth (with
+  breadcrumb subtitles and matching on parent names, not just titles), so a
+  depth-3 section opens in a few keystrokes instead of three drill-downs.
+  Profile recents power a **"Continue where you left off" card** on Home, a
+  Recent section atop the palette, a **"Jump back in" list** on the course
+  overview and last-visited links on the course cards; the sidebar filter
+  jumps to the selected match on Enter; and content-search results (palette
+  `?query` and Library) deep-link into their section with the material
+  docked in the workspace.
+- **Interface feature-visibility toggles (plan 80)** — Settings → General
+  → "Interface & features" hides or shows the recents surfaces (Home
+  continue card, palette recents, course overview strip, course card meta)
+  instantly; preferences persist locally.
+- **MCP remote transports (custom connectors)** — stdio servers gain
+  remote-transport and keyring secret support (desktop parity).
+- **Two-pane family settings shell** — Settings is reorganized into
+  grouped AI sections shared with the family apps.
 - **BYOK one-click provider setup (plan 79, family plan 17 Phase 2)** —
   **Add provider** in Settings → Providers now opens a setup dialog with
   neutral one-click preset tiles (OpenAI, Gemini, OpenRouter, Anthropic,
@@ -39,6 +53,12 @@ Release history from before the public launch lives in the
   use the family `stt`/`tts` vocabulary end-to-end (migration 0064
   rewrites stored values), with the gates (`check-byok-contract.sh` +
   ai-alignment) enforcing the contract in CI.
+
+### Changed
+- **assistant-ui 0.42.0 → 0.43.0** — family catch-up (drop-in).
+- **Sidebar family menu lists Desktop Assistant** — new row (library
+  `DesktopMark`, linking to neuronection.com/en/desktop/) alongside
+  Health / Career / Study.
 
 ## [v0.10.0] - 2026-09-18
 
