@@ -164,7 +164,11 @@ def test_reingest_forced_ocr_on_text_pdf() -> None:
         def settled_ocr() -> bool:
             detail = client.get(f"/api/v1/materials/{material_id}").json()
             extraction = detail.get("extraction")
-            return extraction is not None and extraction["extractor"] == "ocr:forced"
+            return (
+                detail["material"]["status"] == "ready"
+                and extraction is not None
+                and extraction["extractor"] == "ocr:forced"
+            )
 
         wait_until(settled_ocr)
         detail = client.get(f"/api/v1/materials/{material_id}").json()
@@ -194,7 +198,8 @@ def test_reingest_forced_text_on_text_pdf_is_free() -> None:
                 detail = client.get(f"/api/v1/materials/{material_id}").json()
                 extraction = detail.get("extraction")
                 return (
-                    extraction is not None
+                    detail["material"]["status"] == "ready"
+                    and extraction is not None
                     and extraction["version"] > version
                     and extraction["extractor"] == "pymupdf:forced"
                 )
@@ -347,7 +352,11 @@ def test_auto_hybrid_routes_only_weak_pages_to_ocr() -> None:
         def settled() -> tuple[str, int]:
             detail = client.get(f"/api/v1/materials/{material_id}").json()
             extraction = detail.get("extraction")
-            if extraction is None or extraction["version"] <= version:
+            if (
+                detail["material"]["status"] != "ready"
+                or extraction is None
+                or extraction["version"] <= version
+            ):
                 return "", 0
             return str(extraction["extractor"]), int(extraction["version"])
 
@@ -382,7 +391,11 @@ def test_auto_degrades_to_text_when_ocr_unassigned() -> None:
         def settled_degraded() -> bool:
             detail = client.get(f"/api/v1/materials/{material_id}").json()
             extraction = detail.get("extraction")
-            return extraction is not None and extraction["version"] > version
+            return (
+                detail["material"]["status"] == "ready"
+                and extraction is not None
+                and extraction["version"] > version
+            )
 
         wait_until(settled_degraded, timeout=30.0)
         detail = client.get(f"/api/v1/materials/{material_id}").json()
