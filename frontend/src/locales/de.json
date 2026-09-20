@@ -1102,7 +1102,8 @@
       "chooseAnother": "Anderen Anbieter wählen",
       "automatically": "Automatisch einrichten",
       "noKeyNeeded": "Für diesen Anbieter wird kein API-Schlüssel benötigt.",
-      "manualHint": "Beliebiger OpenAI-kompatibler Endpunkt — die Basis-URL muss exakt zur API passen."
+      "manualHint": "Beliebiger OpenAI-kompatibler Endpunkt — die Basis-URL muss exakt zur API passen.",
+      "custom": "Benutzerdefiniert"
     }
   },
   "genesis": {

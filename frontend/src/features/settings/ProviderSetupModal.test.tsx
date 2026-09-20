@@ -104,7 +104,7 @@ describe('ProviderSetupModal', () => {
     const ollama = screen.getByText('Ollama (local)')
     expect(openai.compareDocumentPosition(gemini) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(gemini.compareDocumentPosition(ollama) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.getByText(/custom \(openai-compatible\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/custom/i)).toBeInTheDocument()
   })
 
   test('preset form shows steps, key link, and advanced base URL; copies steps', async () => {
@@ -207,7 +207,7 @@ describe('ProviderSetupModal', () => {
       created_at: '',
     })
     renderModal()
-    fireEvent.click(await screen.findByText(/custom \(openai-compatible\)/i))
+    fireEvent.click(await screen.findByText(/custom/i))
     expect(await screen.findByLabelText(/^name$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/base url/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /local \/ on-premise/i })).toBeInTheDocument()

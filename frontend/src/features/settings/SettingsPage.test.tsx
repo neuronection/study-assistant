@@ -330,7 +330,7 @@ describe('SettingsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
     expect(screen.getByText('OpenAI')).toBeInTheDocument()
-    expect(screen.getByText(/custom \(openai-compatible\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/custom/i)).toBeInTheDocument()
   })
 
   test('add provider: preset tile leads to the guided form with set-up-automatically', async () => {
@@ -365,7 +365,7 @@ describe('SettingsPage', () => {
     createProvider.mockResolvedValue({ ...PROVIDER, name: 'LM Studio' })
     await renderSettings('/settings?tab=providers')
     fireEvent.click(await screen.findByRole('button', { name: /add provider/i }))
-    fireEvent.click(await screen.findByText(/custom \(openai-compatible\)/i))
+    fireEvent.click(await screen.findByText(/custom/i))
 
     fireEvent.change(await screen.findByLabelText(/^name$/i), { target: { value: 'LM Studio' } })
     const submit = screen.getByRole('button', { name: /^add$/i })

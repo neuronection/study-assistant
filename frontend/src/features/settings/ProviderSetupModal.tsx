@@ -17,6 +17,8 @@ import {
 import { COUNTRIES } from '@/lib/countries'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
+import { ProviderLogo } from './ProviderLogo'
+
 const TILE_ORDER = [
   'openai',
   'gemini',
@@ -58,7 +60,7 @@ function ModalShell({
   const { t } = useTranslation()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto">
+      <Card className="max-h-[90vh] w-full max-w-lg overflow-y-auto">
         <CardContent className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1">
@@ -351,23 +353,24 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
               <button
                 key={key}
                 type="button"
-                className="bg-surface border-border hover:bg-subtle flex flex-col items-center gap-1 rounded-lg border px-3 py-4"
+                className="border-border bg-surface hover:bg-subtle flex h-auto flex-col items-center gap-2 rounded-lg border px-3 py-4"
                 onClick={() => openForm(key)}
               >
-                <span className="truncate text-sm font-medium">{presetTile.name}</span>
-                <span className="text-muted-foreground text-[11px]">
-                  {presetTile.local ? t('settings.setup.local') : t('settings.setup.cloud')}
-                </span>
+                <ProviderLogo presetKey={key} label={presetTile.name} />
+                <span className="w-full truncate text-center text-sm font-medium">{presetTile.name}</span>
+                {presetTile.local ? (
+                  <span className="text-muted-foreground text-[11px]">{t('settings.setup.local')}</span>
+                ) : null}
               </button>
             )
           })}
           <button
             type="button"
-            className="bg-surface border-border hover:bg-subtle flex flex-col items-center gap-1 rounded-lg border px-3 py-4"
+            className="border-border bg-surface hover:bg-subtle flex h-auto flex-col items-center gap-2 rounded-lg border px-3 py-4"
             onClick={openManual}
           >
             <Settings2 className="text-muted-foreground size-5" aria-hidden />
-            <span className="truncate text-sm font-medium">{t('settings.presetCustom')}</span>
+            <span className="w-full truncate text-center text-sm font-medium">{t('settings.setup.custom')}</span>
           </button>
         </div>
       ) : null}
