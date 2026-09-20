@@ -7,6 +7,8 @@ import {
   ChevronRight,
   ClipboardList,
   Dumbbell,
+  FolderClosed,
+  FolderOpen,
   FolderTree,
   Layers,
   Loader2,
@@ -308,7 +310,7 @@ function TreeRow({
         aria-selected={active}
         className={cn(
           'group relative flex items-center gap-1 rounded-md pr-1.5',
-          active ? 'bg-primary/10' : 'hover:bg-subtle',
+          active ? 'bg-primary/10' : 'hover:bg-subtle/70',
           focused && 'ring-ring ring-1',
           dropTarget !== null &&
             dropTarget.id === node.id &&
@@ -323,6 +325,21 @@ function TreeRow({
         onDrop={(event) => onDropRow(event, node)}
         onContextMenu={(event) => onMenu(event, node)}
       >
+        {active ? (
+          <span
+            className="bg-primary absolute top-1/2 left-0.5 h-4 w-0.5 -translate-y-1/2 rounded-full"
+            aria-hidden
+          />
+        ) : null}
+        {!filtering &&
+          Array.from({ length: row.depth }, (_, level) => (
+            <span
+              key={level}
+              className="border-border/70 absolute inset-y-0 w-px"
+              style={{ left: level * 14 + 10 }}
+              aria-hidden
+            />
+          ))}
         {dropLine ? (
           <span
             className={cn(
@@ -341,12 +358,22 @@ function TreeRow({
             onClick={() => onToggle(node.id)}
           >
             <ChevronRight
-              className={cn('size-3.5 transition-transform', expanded && 'rotate-90')}
+              className={cn(
+                'size-3.5 transition-transform duration-150',
+                expanded && 'rotate-90'
+              )}
               aria-hidden
             />
           </button>
         ) : (
-          <span className="w-[21px] shrink-0" aria-hidden />
+          <span
+            className="flex w-[21px] shrink-0 items-center justify-center"
+            aria-hidden
+          >
+            {node.is_root ? null : row.hasChildren ? null : (
+              <span className="bg-muted-foreground/40 size-1 rounded-full" />
+            )}
+          </span>
         )}
         {node.is_root ? (
           <Link
@@ -376,6 +403,13 @@ function TreeRow({
             title={filtering && breadcrumb ? `${node.title} — ${breadcrumb}` : undefined}
             className={linkClass}
           >
+            {row.hasChildren ? (
+              expanded ? (
+                <FolderOpen className="text-primary/70 size-3.5 shrink-0" aria-hidden />
+              ) : (
+                <FolderClosed className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+              )
+            ) : null}
             <span className="min-w-0 flex-1 truncate">{node.title}</span>
             {filtering && breadcrumb ? (
               <span

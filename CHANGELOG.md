@@ -11,6 +11,13 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+- **Course structure sidebar is always visible in the course workspace** —
+  the hide toggle is gone (a previously closed sidebar can no longer stay
+  hidden), and the tree gained a visual refresh: indent guides, folder
+  icons that reflect expansion, leaf dots, an accent bar on the active
+  section and softened hover states.
+
 ## [v0.11.0] - 2026-09-20
 
 ### Added

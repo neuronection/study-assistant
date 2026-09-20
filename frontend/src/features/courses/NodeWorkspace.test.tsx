@@ -667,6 +667,16 @@ describe('NodeWorkspace', () => {
     window.localStorage.removeItem('ca-recent-nodes.default')
   })
 
+  test('tree sidebar renders permanently and ignores the legacy closed flag', async () => {
+    window.localStorage.setItem('ca-tree-sidebar-open', '0')
+    primeDefaults()
+    renderWorkspace('/courses/3')
+    expect(await screen.findByRole('heading', { name: 'Calculus I' })).toBeInTheDocument()
+    expect(screen.getByRole('tree')).toBeInTheDocument()
+    expect(screen.queryByTitle(/toggle structure sidebar/i)).not.toBeInTheDocument()
+    window.localStorage.removeItem('ca-tree-sidebar-open')
+  })
+
   test('child cards show the subsection description when set', async () => {
     primeDefaults()
     nodeWorkspace.mockImplementation((id: number) =>

@@ -1626,7 +1626,6 @@
     "tutorStartChat": "Start a chat",
     "notesEmptyDesc": "Notes you write here stay attached to this node and feed the tutor and AI tools.",
     "firstNote": "Create your first note",
-    "toggleTree": "Toggle structure sidebar",
     "treeSidebar": "Course structure",
     "treeSidebarTitle": "Structure",
     "treeNodeCount_one": "{{count}} node",

@@ -134,6 +134,25 @@ recording (1); storage-key lockstep test intact. Frontend gate green
 (lint/typecheck/1,371 tests/i18n/build); backend gate green, untouched
 (1,299).
 
+**Feature — course tree always-on + visual refresh (plan 80-G, 2026-09-20):**
+user-requested follow-up: the course structure sidebar is now **permanently
+displayed inside the course workspace** (`/courses/$id` and every node
+route, across all tabs — md+ viewports; the persisted open/closed toggle
+and its `ca-tree-sidebar-open` storage key are gone, so a stray old "closed"
+flag can no longer hide it), and the tree itself got a next-gen file-explorer
+pass: VS Code-style indent guides per ancestor level (hidden while
+filtering), folder icons that open/close with expansion
+(`FolderClosed`/`FolderOpen`), leaf dots for childless sections, a
+course-primary accent bar on the active row, softened hover
+(`bg-subtle/70`), and a smoother chevron rotation. Row height unchanged —
+the virtualizer estimate and keyboard nav, DnD, context menus, filter and
+breadcrumb tooltip all behave exactly as before (i18n `workspace.toggleTree`
+removed, en/de/el). Tests: NodeWorkspace gains an always-on pin (legacy
+`ca-tree-sidebar-open='0'` flag ignored, no toggle button rendered);
+NodeTreeSidebar + NodeWorkspace suites green. Frontend gate green
+(lint/typecheck/1,396 tests/i18n/build); backend gate green, untouched
+(1,302).
+
 **Feature — interface feature-visibility toggles (plan 80-F, 2026-09-20):**
 user-requested follow-up: the recents surfaces become hideable in Settings.
 New `lib/interface-prefs.ts` — a zustand store over localStorage

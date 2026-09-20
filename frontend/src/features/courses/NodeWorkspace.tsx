@@ -14,8 +14,6 @@ import {
   Loader2,
   MessageSquare,
   NotebookPen,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   ScrollText,
   Settings,
@@ -2943,20 +2941,6 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   const from = useCurrentOrigin()
   const queryClient = useQueryClient()
   const parsedTab = parseTab(search.tab)
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try {
-      return window.localStorage.getItem(storageKeys.treeSidebarOpen) !== '0'
-    } catch {
-      return true
-    }
-  })
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(storageKeys.treeSidebarOpen, sidebarOpen ? '1' : '0')
-    } catch {
-      // preference persistence is best-effort only
-    }
-  }, [sidebarOpen])
 
   const tree = useQuery({
     queryKey: ['tree', courseId],
@@ -3179,26 +3163,14 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   return (
     <>
       <div className="flex min-h-full items-start">
-        {sidebarOpen ? (
-          <NodeTreeSidebar
-            courseId={courseId}
-            currentId={currentId}
-            tab={effectiveTab}
-            courseOrigin={courseQuery.data?.origin ?? null}
-          />
-        ) : null}
+        <NodeTreeSidebar
+          courseId={courseId}
+          currentId={currentId}
+          tab={effectiveTab}
+          courseOrigin={courseQuery.data?.origin ?? null}
+        />
         <div className="mx-auto flex min-w-0 max-w-5xl flex-1 flex-col space-y-4 self-stretch p-8">
       <header className="flex flex-wrap items-center gap-x-2 gap-y-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="hidden md:inline-flex"
-          title={t('workspace.toggleTree')}
-          aria-pressed={sidebarOpen}
-          onClick={() => setSidebarOpen((current) => !current)}
-        >
-          {sidebarOpen ? <PanelLeftClose aria-hidden /> : <PanelLeftOpen aria-hidden />}
-        </Button>
         <nav
           className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-xs"
           aria-label={t('workspace.breadcrumb')}

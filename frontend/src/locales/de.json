@@ -1669,7 +1669,6 @@
     "tutorStartChat": "Chat starten",
     "notesEmptyDesc": "Notizen, die du hier schreibst, bleiben diesem Abschnitt zugeordnet und stehen dem Tutor und den KI-Tools zur Verfügung.",
     "firstNote": "Erstelle deine erste Notiz",
-    "toggleTree": "Seitenleiste mit der Struktur ein-/ausblenden",
     "treeSidebar": "Kursstruktur",
     "treeSidebarTitle": "Struktur",
     "treeNodeCount_one": "{{count}} Abschnitt",
