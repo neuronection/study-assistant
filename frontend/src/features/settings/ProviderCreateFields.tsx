@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next'
 
 import { ProviderForm } from '@/components/ui/provider-form'
-import { COUNTRIES } from '@/lib/countries'
+import { COUNTRIES, countryDisplayName } from '@neuronection/assistant-ui/countries'
 
 import { CUSTOM_PRESET, PROVIDER_PRESET_ORDER, type ProviderCreateState } from './useProviderCreate'
 
 export function ProviderCreateFields({ state }: { state: ProviderCreateState }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage ?? 'en'
   const custom = state.presetKey === CUSTOM_PRESET
   return (
     <>
@@ -51,7 +52,7 @@ export function ProviderCreateFields({ state }: { state: ProviderCreateState }) 
         countryPlaceholder={t('settings.countryPlaceholder')}
         countryOptions={COUNTRIES.map((entry) => ({
           value: entry.code,
-          label: `${entry.flag} ${entry.name}`,
+          label: `${entry.flag} ${countryDisplayName(entry.code, locale)}`,
         }))}
         error={state.error ?? undefined}
       >

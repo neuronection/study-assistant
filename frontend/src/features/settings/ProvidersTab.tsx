@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConnectionTestRow } from '@/components/ui/connection-test-row'
 import { deleteProvider, listProviders, testProvider, type Provider } from '@/lib/api'
-import { getCountryFlag } from '@/lib/countries'
+import { getCountryFlag } from '@neuronection/assistant-ui/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
 import { LocalEngines } from './LocalEngines'

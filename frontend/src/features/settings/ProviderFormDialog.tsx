@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProviderForm } from '@/components/ui/provider-form'
 import { updateProvider, type Provider } from '@/lib/api'
-import { COUNTRIES } from '@/lib/countries'
+import { COUNTRIES, countryDisplayName } from '@neuronection/assistant-ui/countries'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
 function ProviderEditForm({
@@ -19,7 +19,8 @@ function ProviderEditForm({
   onSaved?: () => void
   onClose: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage ?? 'en'
   const queryClient = useQueryClient()
   const [name, setName] = useState(provider.name)
   const [baseUrl, setBaseUrl] = useState(provider.base_url ?? '')
@@ -84,7 +85,7 @@ function ProviderEditForm({
         countryPlaceholder={t('settings.countryPlaceholder')}
         countryOptions={COUNTRIES.map((entry) => ({
           value: entry.code,
-          label: `${entry.flag} ${entry.name}`,
+          label: `${entry.flag} ${countryDisplayName(entry.code, locale)}`,
         }))}
       />
       <label className="flex cursor-pointer items-center gap-2 text-sm">

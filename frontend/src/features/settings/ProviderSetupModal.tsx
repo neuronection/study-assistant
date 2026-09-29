@@ -18,7 +18,8 @@ import {
   type ProviderSetupErrorDetail,
   type ProviderSetupResult,
 } from '@/lib/api'
-import { COUNTRIES } from '@/lib/countries'
+import { COUNTRIES, countryDisplayName } from '@neuronection/assistant-ui/countries'
+import { Combobox } from '@/components/ui/combobox'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
 import { ProviderLogo } from './ProviderLogo'
@@ -111,24 +112,25 @@ function HostingToggle({
 }
 
 function CountrySelect({ country, onChange }: { country: string; onChange: (c: string) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage ?? 'en'
+  const options = COUNTRIES.map((entry) => ({
+    value: entry.code,
+    label: `${entry.flag} ${countryDisplayName(entry.code, locale)}`,
+  }))
   return (
-    <label className="block space-y-1 text-sm">
-      <span className="text-muted-foreground">{t('settings.country')}</span>
-      <select
-        className="bg-surface border-border w-full rounded-md border px-3 py-2"
-        aria-label={t('settings.country')}
-        value={country}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">{t('settings.countryPlaceholder')}</option>
-        {COUNTRIES.map((entry) => (
-          <option key={entry.code} value={entry.code}>
-            {entry.flag} {entry.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Combobox
+      options={options}
+      value={country}
+      onChange={onChange}
+      label={t('settings.country')}
+      placeholder={t('settings.countryPlaceholder')}
+      searchPlaceholder={t('settings.countrySearch')}
+      searchLabel={t('settings.countrySearch')}
+      emptyLabel={t('settings.countryEmpty')}
+      clearable
+      clearLabel={t('settings.countryClear')}
+    />
   )
 }
 

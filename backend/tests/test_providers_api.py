@@ -78,6 +78,31 @@ def test_create_provider_stores_masked_key_not_plaintext(
     )
 
 
+def test_provider_country_accepts_iso_alpha2_rejects_everything_else(
+    client: TestClient, fake_keyring: FakeKeyring
+) -> None:
+    # Pattern-level validation (ADR-0024 §3.4): ISO-shaped alpha-2 only.
+    # Membership (assigned-code) checking is the synced-JSON channel,
+    # not this repo. Pickers only ever offer catalog codes.
+    provider = create_provider(client, country="GR")
+    assert provider["country"] == "GR"
+    provider = create_provider(client, country="GB")
+    assert provider["country"] == "GB"
+
+    for invalid in ("Greece", "gr", " G", "USA", ""):
+        response = client.post(
+            "/api/v1/providers",
+            json={"name": "Bad", "type": "google", "api_key": "k", "country": invalid},
+        )
+        assert response.status_code == 422, (invalid, response.text)
+
+    response = client.patch(f"/api/v1/providers/{provider['id']}", json={"country": "USA"})
+    assert response.status_code == 422, response.text
+    response = client.patch(f"/api/v1/providers/{provider['id']}", json={"country": None})
+    assert response.status_code == 200
+    assert response.json()["country"] is None
+
+
 def test_update_provider_replaces_key_only_when_given(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
