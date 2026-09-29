@@ -10,6 +10,158 @@ Release history from before the public launch lives in the
 [GitHub Releases](https://github.com/neuronection/study-assistant/releases).
 
 ## [Unreleased]
+### Added
+- **Uniform family turn-error display**: failed turns persist a
+  display-only `turn_failed` marker row (survives refresh; excluded
+  from the model context), `turn_error` events carry stable codes,
+  family-uniform `TaskUnassigned` wording surfaces as
+  `ai_not_configured` with an "Open AI settings" deep-link, and the
+  streaming error card replaces the footer alert (`ChatMessage` error
+  card + regenerate; `chat.openAiSettings` in en/de/el).
+- **ADR-0023 desktop dev loop**: `run-dev.sh` runs shell-less desktop
+  dev (SQLite profile, desktop identity) with the §11 shell gate armed
+  only when the shell attaches (`SA_SHELL=1`); `--web` runs server
+  identity against the Postgres dev-db. The DIM exchange mints the
+  implicit owner to **loopback callers only** (kit-side).
+
+- **Demo flavor + demo seeding + "Demo — synthetic data" badge (S8,
+  identity-auth §13):** `docker/docker-compose.demo.yml` runs the real app
+  as a public demo — own compose project, `demo-net` `internal: true`
+  (zero egress) + an `edge` network only for the gateway (loopback-bound),
+  database `neuro_study_demo`, `SA_DEMO_MODE=true` with `SA_APP_ENV=demo`
+  (the entrypoint's production guard), registration disabled, and a
+  one-shot `demo-seed` service (the app never auto-seeds); optional
+  reset-on-restart via `--profile reset` (`demo-reset`). Demo data is
+  synthetic-only and seeded exclusively by the new `scripts/seed-demo.py`
+  (idempotent; clearly fictional users/courses/materials/notes/flashcards,
+  several study profiles per persona) — the seeder **refuses anything
+  else** loudly: a non-`*_demo` Postgres target or a SQLite target without
+  an explicit `--demo-dir`, and any instance without
+  `instance_settings.demo_mode=true` (`--init-demo` initializes that flag
+  on an **empty** demo database only). The SPA shows a persistent
+  "Demo — synthetic data" badge on demo instances — rendered before login
+  (boot gate) with i18n (en/de/el) — fed by the new public read-only
+  `GET /api/v1/instance/config` (`demo_mode` / `auth_mode` /
+  `registration_enabled`, no secrets; session- and profile-exempt). The
+  credential-free `demo` principal stays kit-owned (`POST /api/v1/auth/demo`,
+  `demo` tokens rejected on non-demo instances).
+- **Admin users UI + account self-service (ADR-0013 rollout, S7-users):**
+  a Settings → **Users** tab (admins only) rendering the shared
+  `AdminUserTable` from `@neuronection/assistant-ui` — list with activity
+  counts, promote/demote, activate/deactivate, inline reset password,
+  force logout, guard-rail errors surfaced as friendly messages — plus
+  an **Account** card on the General tab: own sessions list with revoke
+  (current device flagged and confirmed), self-serve password change
+  (other sessions end, you stay signed in), and account deletion with
+  password confirmation. Full i18n (en/de/el).
+- **User management + account self-service API (ADR-0013 rollout,
+  S7-users):** the family contract's §12 surface now ships from the auth
+  kit — `GET /api/v1/admin/users` (listing with activity counts),
+  `PATCH /api/v1/admin/users/{id}` (activate/deactivate, promote/demote
+  — guard rails: no self-demotion/deactivation, no demoting the last
+  admin, `ver` bump on change), `POST /api/v1/admin/users/{id}/
+  reset-password` + `/force-logout`, `PATCH /api/v1/admin/instance`
+  (admin + password re-verification, §4.5 transitions via the
+  `request_transition` guard), `GET/DELETE /api/v1/me/sessions`
+  (device labels from the User-Agent), `PATCH /api/v1/me/password`
+  (other sessions die, the caller stays signed in), and
+  `DELETE /api/v1/me` (password confirmed, cascades). `auth_sessions`
+  gains an additive `created_at` column (migration 0067).
+
+- **Session enforcement + login gate (ADR-0013 rollout, S4b):** every
+  `/api/*` request requires a valid session (health and auth flows
+  exempt); the WebSocket handshake verifies Origin and the session
+  cookie; the app establishes its session before rendering (live
+  cookie → refresh rotation → desktop one-time exchange) and shows a
+  sign-in/register gate when there is none. `apiFetch` transparently
+  refreshes expired sessions and returns to the gate when they are
+  really gone. Desktop stays zero-setup: the shell token drives a
+  silent exchange on first boot.
+- **Family auth surface (ADR-0013 rollout):** `/api/v1/auth/*`
+  (register, login, refresh, logout, logout-all, me, demo) with cookie
+  sessions + double-submit CSRF; identity tables `users`,
+  `auth_sessions`, `instance_settings`, `audit_events` (migration
+  0065). Instance `auth_mode` is initialized once (`SA_AUTH_MODE` —
+  server ⇒ `authenticated`, desktop ⇒ `open`) and read from the
+  database on every request; desktop builds send a per-boot shell
+  secret and the CSRF token with every API call. Session enforcement
+  and the login UI follow in the same rollout.
+
+### Changed
+- **PostgreSQL 16 for web/server mode (ADR-0022 rollout, S3 — deployment
+  breaking):** one dialect-aware schema family-wide. The migration chain
+  (incl. the raw-DDL migrations 0002/0019/0020/0026/0045/0053/0057/
+  0061) now runs cleanly on PostgreSQL 16 as well as SQLite. Search
+  keeps identical behavior across dialects — `material_fts` ↔ tsvector +
+  GIN (`'simple'` config), `material_fts_trigram` ↔ pg_trgm,
+  sqlite-vec `chunk_vecs` ↔ pgvector HNSW (cosine), shared RRF fusion —
+  verified by a two-dialect parity gate (same corpus + queries, ≥80%
+  top-5 overlap). Backup archives carry `database.sqlite` or
+  `pg_dump -Fc` `database.dump` and restore via `pg_restore`; the
+  LangGraph checkpointer runs `AsyncPostgresSaver` on server mode and
+  prunes on both dialects. Config: `SA_DATABASE_URL` (wins) /
+  `SA_DB_NAME` / `SA_DB_USER` / `SA_DB_PASSWORD` / `SA_DB_HOST` /
+  `SA_DB_PORT`; desktop + tests stay SQLite. SQLite files follow the
+  family convention now: `<data_dir>/study.sqlite3` +
+  `checkpoints.sqlite3`. Compose (`standalone`/`prod`/`dev-db`) runs
+  `db + app + nginx + backup` on `neuro_study` with owner/app roles;
+  `scripts/backup.sh`/`restore.sh` + a documented restore drill
+  (`docker/README.md`); CI verifies migrations on **both** dialects.
+  Known divergence: PG fuzzy recall uses whole-column trigram
+  similarity (long materials can miss where SQLite's per-trigram match
+  hits; precision identical via the shared post-filter) — follow-up:
+  `strict_word_similarity`.
+- **Per-user profiles with UUID ids (ADR-0013 rollout, S2b — breaking):**
+  `profiles` now matches the family normative schema
+  (guidelines/identity-auth.md §5): app-generated UUID `id`, `user_id`
+  (NOT NULL, FK → `users`, ON DELETE CASCADE), `is_default` (exactly one
+  per user), `updated_at`, product columns `color`/`preferences` kept,
+  plus `last_used_at` (§6). Every `profile_id` column is a UUID and its
+  rows cascade on profile delete. User creation auto-provisions the
+  Default profile in the same transaction; deleting the last profile
+  re-provisions it. The `/api/v1/profiles` surface is user-scoped,
+  `ProfileOut.id` is a string and carries `is_default`, `PATCH
+  /api/v1/profiles/{id}` (rename/recolour/set Default) is new, and
+  delete cascades content instead of refusing. Migration **0066** is the
+  destructive, irreversible greenfield baseline (no backwards
+  compatibility — recreate dev databases and reindex; see
+  docs/dev/data-model.md Migration notes).
+- **Profile binding (ADR-0013 rollout, S5):** `X-Profile-Id` is
+  ownership-validated on every domain call (identity-auth §15) and its
+  value is a string UUID — server mode requires it (absent ⇒ 400;
+  malformed, unknown, or foreign ⇒ 403), desktop falls back to the
+  last-used profile, and auth/`/me`/`/profiles`/`/admin` stay exempt.
+
+- **Documentation is now split by audience** — the manual lives under
+  [`docs/user/`](docs/user/README.md) (end-user guides) and
+  [`docs/dev/`](docs/dev/README.md) (developer and operator guides), with a
+  machine-readable [`docs/docs-tree.json`](docs/docs-tree.json) navigation
+  tree consumed by the website's docs section. The local-AI settings hint now
+  points at `docs/user/local-ai.md`.
+
+### Fixed
+- **Blob loads over browser navigations** (PDF iframe documents,
+  `<img>` subresources): both header gates (`X-Profile-Id` web-mode
+  400, `X-Shell-Token` desktop 403) can never be satisfied by a
+  navigation — `/api/v1/blobs` is exempt from both and owner-scopes
+  the sha itself (ADR-0025). Also closes a data leak: any sha was
+  previously fetchable by any authenticated caller; foreign and
+  unreferenced shas now answer 404.
+- **WS surface owner-scoped** (identity-auth §10): topic subscriptions
+  must resolve to resources the caller owns (fail closed); client-side
+  `publish` removed from the protocol (event-injection vector); editor
+  transform jobs stamp their creator and answer 404 for foreign ids.
+
+### Security
+- Turn errors and job error rows are sanitized before persist/emit
+  (credential-shaped material — DSNs, bearer tokens, API keys, JWTs —
+  scrubbed).
+
+- **Unauthenticated web surfaces closed** (family ADR-0013 rollout, S1):
+  filesystem browsing is confined to granted roots (`SA_FS_ROOTS` +
+  data dir + home), the WebSocket verifies its `Origin` before accept,
+  CORS is explicit and deny-by-default (`SA_CORS_ORIGINS`), and the
+  desktop-only file endpoints are no longer mounted in web/server mode.
 
 ## [v0.11.1] - 2026-09-20
 

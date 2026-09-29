@@ -144,13 +144,13 @@ def test_migration_0026_folds_flashcards_into_exercises(tmp_path: Path) -> None:
     raw.commit()
     raw.close()
 
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "0065_identity_core")
 
     raw = sqlite3.connect(db_path)
     cur = raw.cursor()
     assert cur.execute("SELECT version_num FROM alembic_version").fetchone()[
         0
-    ] == "0064_byok_setup_stt_tts"
+    ] == "0065_identity_core"
     assert (
         cur.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='flashcards'"
@@ -253,7 +253,7 @@ def test_migration_downgrade_restores_flashcards(tmp_path: Path) -> None:
     db_path = tmp_path / "down.db"
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "0065_identity_core")
 
     raw = sqlite3.connect(db_path)
     now = "2026-08-20 10:00:00+00:00"

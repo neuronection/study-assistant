@@ -1,0 +1,123 @@
+# Study Assistant — production stack (db + app + backup; proxy handled
+# externally or via docker-compose.standalone.yml, which ships the family
+# nginx flavor).
+#
+#   cp docker/.env.production.example docker/.env   # then set SA_DB_PASSWORD
+#   docker compose -f docker/docker-compose.prod.yml up -d --build
+#   # scheduled DB + data backups: add --profile backup
+#
+# Registry images (built by the release workflow): set
+# STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag> instead of building locally.
+#
+# The app port is bound to 127.0.0.1 only — put a proxy in front for public
+# traffic. Host port knob: SA_PORT (default 8200, study's backend band); the
+# container always listens on 8000 (SA_PORT is pinned in the service env).
+
+name: study-assistant
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-10m}"
+    max-file: "${LOG_MAX_FILE:-3}"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16 # pgvector provisioned; embeddings migrations need it
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SA_DB_NAME:-neuro_study}
+      POSTGRES_USER: neuro_study_owner
+      POSTGRES_PASSWORD: ${SA_DB_PASSWORD:?Set SA_DB_PASSWORD in docker/.env (see docker/.env.production.example)}
+      SA_DB_APP_USER: neuro_study_app
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuro_study_owner -d ${SA_DB_NAME:-neuro_study}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      # Family auth-kit is an editable path dep (../auth-kit) — see
+      # docker/Dockerfile. Resolved relative to this compose file.
+      additional_contexts:
+        auth-kit: ../../auth-kit
+    image: ${STUDY_IMAGE:-study-assistant:local}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SA_DEBUG: "0"
+      SA_PORT: 8000
+      SA_HOST: 0.0.0.0
+      SA_DATA_DIR: /data
+      SA_SPA_DIST: /app/frontend/dist
+      # ADR-0022: web mode runs PostgreSQL 16. SA_DATABASE_URL wins over the
+      # SA_DB_* credentials (keep the password URL-safe — it is embedded in
+      # the URLs). Runtime connects as the least-privilege app role.
+      SA_DB_NAME: ${SA_DB_NAME:-neuro_study}
+      SA_DB_USER: neuro_study_app
+      SA_DB_PASSWORD: ${SA_DB_PASSWORD}
+      SA_DB_HOST: db
+      SA_DB_PORT: "5432"
+      SA_DATABASE_URL: postgresql+psycopg://neuro_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuro_study}
+      # Migrations run automatically on boot (entrypoint.sh) as the owner
+      # role — the app process itself never runs DDL.
+      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuro_study}
+    ports:
+      # Bound to localhost only — put a proxy in front for public traffic
+      # (docker-compose.standalone.yml ships the family nginx flavor).
+      - "127.0.0.1:${SA_PORT:-8200}:8000"
+    volumes:
+      - data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3); sys.exit(0 if r.status < 500 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+
+  backup:
+    # Scheduled instance backups (database dump + data volume) written to the
+    # ./backups bind mount (= docker/backups/). Enable with --profile backup.
+    # Host-side one-shots incl. manifests: scripts/backup.sh + scripts/restore.sh.
+    image: pgvector/pgvector:pg16 # pg_dump from the same image as the server
+    profiles: ["backup"]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${SA_DB_PASSWORD}
+      PGHOST: db
+      POSTGRES_DB: ${SA_DB_NAME:-neuro_study}
+      POSTGRES_USER: neuro_study_owner
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+    volumes:
+      - ./backups:/backups
+      - data:/data:ro
+    command: >
+      sh -c 'while true; do
+        ts=$$(date -u +%Y%m%d-%H%M%S);
+        pg_dump -U $$POSTGRES_USER -Fc $$POSTGRES_DB > /backups/db-$$ts.dump;
+        tar czf /backups/data-$$ts.tar.gz -C /data . || true;
+        find /backups -name "db-*.dump" | sort | head -n -$$BACKUP_KEEP | xargs -r rm --;
+        find /backups -name "data-*.tar.gz" | sort | head -n -$$BACKUP_KEEP | xargs -r rm --;
+        sleep $$((BACKUP_INTERVAL_HOURS * 3600));
+      done'
+    logging: *default-logging
+
+volumes:
+  db_data:
+  data:

@@ -204,7 +204,7 @@ def _deck_name(connection: sqlite3.Connection) -> str:
 
 
 def import_apkg(
-    data: bytes, session: Session, profile_id: int, course_id: int
+    data: bytes, session: Session, profile_id: str, course_id: int
 ) -> AnkiImportResult:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:

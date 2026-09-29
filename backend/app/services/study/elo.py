@@ -45,7 +45,7 @@ class EloService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def record(self, profile_id: int, question: Question, score: float) -> None:
+    def record(self, profile_id: str, question: Question, score: float) -> None:
         score = max(0.0, min(1.0, float(score)))
         stat = self._session.scalars(
             select(ItemStat).where(ItemStat.question_id == question.id)
@@ -82,7 +82,7 @@ class EloService:
             cell.rating = base + student_delta
             cell.rating_count = (cell.rating_count or 0) + 1
 
-    def student_rating(self, profile_id: int, concept: str, skill: str | None) -> float | None:
+    def student_rating(self, profile_id: str, concept: str, skill: str | None) -> float | None:
         if not concept:
             return None
         statement = select(ConceptSkillRating.rating).where(
@@ -96,7 +96,7 @@ class EloService:
         ).first()
 
     def _student_cells(
-        self, profile_id: int, question: Question
+        self, profile_id: str, question: Question
     ) -> list[ConceptSkillRating]:
         concepts = [str(tag) for tag in (question.tags or [])][:3]
         skill = question.skill or "procedural"

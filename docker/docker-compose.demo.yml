@@ -1,0 +1,197 @@
+# Study Assistant — DEMO flavor: isolated, egress-blocked stack with
+# synthetic-only data (identity-auth §13 / deployment.md). NEVER production.
+#
+# The real app on a demo instance: PostgreSQL 16 database `neuro_study_demo`
+# (naming law: `neuro_<product>_demo`), the SPA badged "Demo — synthetic
+# data" (the demo banner reads the public /api/v1/instance/config), the
+# credential-free `demo` principal enabled, registration disabled. Demo data
+# is seeded ONLY by the one-shot `demo-seed` service running
+# `scripts/seed-demo.py` — the app never auto-seeds — and the seeder refuses
+# any target that is not a demo database on a `demo_mode=true` instance.
+#
+# Security model (deployment.md demo rules):
+#   • own compose project (`name:` below) + own networks — never joins the
+#     production/standalone stack;
+#   • `demo-net` is `internal: true` — containers reach each other but
+#     nothing can egress to the internet (AI/web-import stay dark);
+#   • only the gateway publishes a host port, on the non-internal `edge`
+#     network (Docker drops port bindings on internal networks), bound to
+#     127.0.0.1 by default — put a tunnel or reverse proxy in front;
+#   • registration disabled (`SA_REGISTRATION_ENABLED=false`); the gateway
+#     only starts after `demo-seed` has completed successfully;
+#   • `entrypoint.sh` aborts on demo configuration unless `SA_APP_ENV=demo`
+#     — a production deployment can never run this flavor's config.
+#
+#   SA_DB_PASSWORD=... docker compose -f docker/docker-compose.demo.yml up -d --build
+#   # optional reset-on-restart (pristine synthetic workspace on every up):
+#   SA_DB_PASSWORD=... docker compose -f docker/docker-compose.demo.yml --profile reset up -d
+#   # full wipe (demo data is disposable):
+#   docker compose -f docker/docker-compose.demo.yml --profile reset down -v
+
+name: study-assistant-demo
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-10m}"
+    max-file: "${LOG_MAX_FILE:-3}"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16 # pgvector provisioned; embeddings migrations need it
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: neuro_study_demo
+      POSTGRES_USER: neuro_study_owner
+      POSTGRES_PASSWORD: ${SA_DB_PASSWORD:?Set SA_DB_PASSWORD for the demo stack (docker/.env or the shell)}
+      SA_DB_APP_USER: neuro_study_app
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuro_study_owner -d neuro_study_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+    networks:
+      - demo-net
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      # Family auth-kit is an editable path dep (../auth-kit) — see
+      # docker/Dockerfile. Resolved relative to this compose file.
+      additional_contexts:
+        auth-kit: ../../auth-kit
+    image: ${STUDY_IMAGE:-study-assistant:local}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SA_DEBUG: "0"
+      SA_PORT: 8000
+      SA_HOST: 0.0.0.0
+      SA_DATA_DIR: /data
+      SA_SPA_DIST: /app/frontend/dist
+      # Demo flavor markers (identity-auth §13): entrypoint.sh only accepts
+      # SA_DEMO_MODE=true together with SA_APP_ENV=demo.
+      SA_APP_ENV: demo
+      SA_DEMO_MODE: "true"
+      SA_REGISTRATION_ENABLED: "false"
+      # ADR-0022: the demo database is neuro_<product>_demo — never a
+      # production database. SA_DATABASE_URL wins over the SA_DB_* form.
+      SA_DB_NAME: neuro_study_demo
+      SA_DB_USER: neuro_study_app
+      SA_DB_PASSWORD: ${SA_DB_PASSWORD}
+      SA_DB_HOST: db
+      SA_DB_PORT: "5432"
+      SA_DATABASE_URL: postgresql+psycopg://neuro_study_app:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+      # Migrations run automatically on boot (entrypoint.sh) as the owner
+      # role — the app process itself never runs DDL.
+      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+    # No host ports: only the gateway is reachable (via `edge`).
+    volumes:
+      - data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3); sys.exit(0 if r.status < 500 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
+    networks:
+      - demo-net
+
+  demo-seed:
+    # One-shot synthetic seeding (belt-and-suspenders: the app does NOT
+    # auto-seed). scripts/seed-demo.py is bind-mounted because the image
+    # ships only the backend — the script's guard rails accept exactly this
+    # target: database `neuro_study_demo` on a demo_mode=true instance, or
+    # `--init-demo` on an empty demo database. Connects as the owner role so
+    # it can bootstrap the schema when it runs before the app ever has.
+    image: ${STUDY_IMAGE:-study-assistant:local}
+    restart: "no"
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SA_DATA_DIR: /data
+      SA_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+    volumes:
+      - data:/data
+      - ../scripts/seed-demo.py:/app/scripts/seed-demo.py:ro
+    entrypoint: ["/app/.venv/bin/python", "/app/scripts/seed-demo.py"]
+    command: ["--init-demo"]
+    logging: *default-logging
+    networks:
+      - demo-net
+
+  demo-reset:
+    # Optional reset-on-restart (identity-auth §13): with `--profile reset`
+    # this one-shot purges previously seeded demo rows (and the demo
+    # principal's) and reseeds the pristine synthetic workspace on every
+    # `up` — visitor changes never accumulate on a public demo. Runs after
+    # demo-seed (never concurrently — two seeders would race migrations).
+    image: ${STUDY_IMAGE:-study-assistant:local}
+    profiles: ["reset"]
+    restart: "no"
+    depends_on:
+      app:
+        condition: service_healthy
+      demo-seed:
+        condition: service_completed_successfully
+    environment:
+      SA_DATA_DIR: /data
+      SA_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+    volumes:
+      - data:/data
+      - ../scripts/seed-demo.py:/app/scripts/seed-demo.py:ro
+    entrypoint: ["/app/.venv/bin/python", "/app/scripts/seed-demo.py"]
+    command: ["--reset", "--init-demo"]
+    logging: *default-logging
+    networks:
+      - demo-net
+
+  gateway:
+    # Single public entry point (nginx routes /api + /ws + SPA like the
+    # standalone flavor). Starts only after demo-seed succeeded, so the
+    # demo is badged and seeded before the first visitor arrives.
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+      demo-seed:
+        condition: service_completed_successfully
+    ports:
+      # Gateway bind address: 127.0.0.1 by default (front it with a tunnel
+      # or reverse proxy). Set DEMO_BIND to a private interface if a tunnel
+      # runs on another host. NEVER bind a public interface without a host
+      # firewall in front.
+      - "${DEMO_BIND:-127.0.0.1}:${DEMO_PORT:-8090}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    logging: *default-logging
+    networks:
+      - demo-net
+      - edge
+
+volumes:
+  db_data:
+  data:
+
+networks:
+  demo-net:
+    driver: bridge
+    internal: true # ← no container egress to the internet.
+  # edge is NOT internal — only the gateway is on it, so the host port can
+  # be published (Docker silently drops port bindings on internal networks).
+  # db/app/demo-seed stay on demo-net alone (zero egress); nginx proxies at
+  # L7, so nothing can route out via the gateway.
+  edge:
+    driver: bridge

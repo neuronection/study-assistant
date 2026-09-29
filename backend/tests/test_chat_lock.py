@@ -60,8 +60,9 @@ class LockCheckGateway(LLMGateway):
 
 def test_chat_turn_commits_pre_stream_writes_before_streaming(
     db_session: Session,
+    owner: Any,
 ) -> None:
-    profile = ensure_default_profile(db_session)
+    profile = ensure_default_profile(db_session, owner.id)
     session_row = ChatSession(profile_id=profile.id, title="t")
     db_session.add(session_row)
     db_session.flush()

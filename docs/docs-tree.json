@@ -1,0 +1,339 @@
+{
+  "version": 1,
+  "project": "study",
+  "title": "Study Assistant",
+  "description": "Local-first, AI-powered study workbench — ingest your material, structure it into courses, and learn it with quizzes, flashcards, exercises and a grounded tutor.",
+  "audiences": [
+    {
+      "id": "user",
+      "title": "User Guide",
+      "description": "How to install Study Assistant, connect an AI provider, organise your material, and study with quizzes, flashcards, exercises and the tutor.",
+      "categories": [
+        {
+          "id": "start",
+          "title": "Start here",
+          "icon": "Play",
+          "items": [
+            {
+              "id": "overview",
+              "file": "user/README.md",
+              "title": "User guide overview",
+              "description": "How to use Study Assistant — the guided tour and the full list of user guides."
+            },
+            {
+              "id": "getting-started",
+              "file": "user/getting-started.md",
+              "title": "Getting started",
+              "description": "Launch modes, the first-run wizard, connecting an AI provider, and the study loop."
+            },
+            {
+              "id": "features",
+              "file": "user/features.md",
+              "title": "Feature catalog",
+              "description": "Everything Study Assistant ships, as built — ingestion, courses, quizzes, flashcards, exercises, chat, AI and more."
+            }
+          ]
+        },
+        {
+          "id": "courses",
+          "title": "Courses & exploring",
+          "icon": "GraduationCap",
+          "items": [
+            {
+              "id": "courses",
+              "file": "user/courses.md",
+              "title": "Courses and outlines",
+              "description": "Build a course tree, draft an AI outline from your material, and work in the node workspace."
+            },
+            {
+              "id": "exploring",
+              "file": "user/exploring.md",
+              "title": "Exploring topics — the Scratchpad",
+              "description": "A private playground for capturing ideas and material before they become a course."
+            }
+          ]
+        },
+        {
+          "id": "library",
+          "title": "Library & material",
+          "icon": "Library",
+          "items": [
+            {
+              "id": "library",
+              "file": "user/library.md",
+              "title": "Library: materials, folders, search",
+              "description": "Uploads, folders, OCR review, hybrid search and the material detail view."
+            },
+            {
+              "id": "sources-and-profiles",
+              "file": "user/sources-and-profiles.md",
+              "title": "Linked folders and profiles",
+              "description": "Watch a folder that keeps changing, and keep separate profiles for separate lives."
+            }
+          ]
+        },
+        {
+          "id": "study",
+          "title": "Study tools",
+          "icon": "BookOpen",
+          "items": [
+            {
+              "id": "notes",
+              "file": "user/notes.md",
+              "title": "Notes and handwriting",
+              "description": "Markdown notes with LaTeX math and drawings, plus the inline AI helper."
+            },
+            {
+              "id": "flashcards",
+              "file": "user/flashcards.md",
+              "title": "Flashcards",
+              "description": "Spaced repetition with FSRS scheduling, fed by your own material."
+            },
+            {
+              "id": "quiz",
+              "file": "user/quiz.md",
+              "title": "Quizzes",
+              "description": "Generate, take, and import or export quizzes with deterministic grading."
+            },
+            {
+              "id": "exercises",
+              "file": "user/exercises.md",
+              "title": "Exercises and the tutor",
+              "description": "Multi-step guided problems with a hint ladder that never reveals the answer."
+            }
+          ]
+        },
+        {
+          "id": "assistant",
+          "title": "The AI assistant",
+          "icon": "Sparkles",
+          "items": [
+            {
+              "id": "chat",
+              "file": "user/chat.md",
+              "title": "Tutor chat",
+              "description": "Grounded answers with citations, research tools, and reviewable edit proposals."
+            },
+            {
+              "id": "skills",
+              "file": "user/skills.md",
+              "title": "Skills & prompt library",
+              "description": "How the app's AI behaviours are defined, versioned and customized."
+            },
+            {
+              "id": "local-ai",
+              "file": "user/local-ai.md",
+              "title": "Local AI — fully offline setup",
+              "description": "Run every AI feature against local models with no cloud calls."
+            }
+          ]
+        },
+        {
+          "id": "progress",
+          "title": "Progress & activity",
+          "icon": "LineChart",
+          "items": [
+            {
+              "id": "progress",
+              "file": "user/progress.md",
+              "title": "Today screen and progress",
+              "description": "Streaks, goals, scores, diagnostics and the Study-now guided session."
+            },
+            {
+              "id": "activity",
+              "file": "user/activity.md",
+              "title": "Task activity and retries",
+              "description": "Background jobs, failures and how to retry them."
+            }
+          ]
+        },
+        {
+          "id": "settings",
+          "title": "Settings & platform",
+          "icon": "Settings",
+          "items": [
+            {
+              "id": "settings",
+              "file": "user/settings.md",
+              "title": "Settings reference",
+              "description": "Every settings page explained: general, AI, search & OCR, data and developer."
+            },
+            {
+              "id": "language",
+              "file": "user/language.md",
+              "title": "Language",
+              "description": "Switch the interface between English, Greek and German."
+            },
+            {
+              "id": "printing",
+              "file": "user/printing.md",
+              "title": "Printing & PDF export",
+              "description": "Print any view to PDF with math and diagrams rendered correctly."
+            },
+            {
+              "id": "backup",
+              "file": "user/backup.md",
+              "title": "Backups, trash & restore",
+              "description": "Automatic backups, the trash, and restoring your data."
+            },
+            {
+              "id": "desktop-app",
+              "file": "user/desktop-app.md",
+              "title": "Desktop app",
+              "description": "The native window, the folder-picker bridge, and the browser-first fallback."
+            },
+            {
+              "id": "privacy-and-security",
+              "file": "user/privacy-and-security.md",
+              "title": "Privacy and security",
+              "description": "Where your data lives, what leaves your machine, and how keys are protected."
+            },
+            {
+              "id": "troubleshooting",
+              "file": "user/troubleshooting.md",
+              "title": "Troubleshooting",
+              "description": "Common problems and fixes — AI setup, OCR, uploads, blank window, backups."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dev",
+      "title": "Developer Guide",
+      "description": "Architecture, workflow and internal systems for people building, extending, testing or self-hosting Study Assistant.",
+      "categories": [
+        {
+          "id": "start",
+          "title": "Start here",
+          "icon": "Play",
+          "items": [
+            {
+              "id": "overview",
+              "file": "dev/README.md",
+              "title": "Developer overview",
+              "description": "Where to start as a contributor: the map of the codebase and the ground rules for changing it."
+            },
+            {
+              "id": "development",
+              "file": "dev/development.md",
+              "title": "Development workflow",
+              "description": "Local setup, run modes, commands, git worktrees for concurrent sessions, and the verification gates."
+            },
+            {
+              "id": "testing",
+              "file": "dev/testing.md",
+              "title": "Testing",
+              "description": "pytest with xdist and an isolated keyring, vitest, Playwright e2e, and the golden evals."
+            }
+          ]
+        },
+        {
+          "id": "architecture",
+          "title": "Architecture",
+          "icon": "Boxes",
+          "items": [
+            {
+              "id": "architecture",
+              "file": "dev/architecture.md",
+              "title": "Architecture overview",
+              "description": "Runtime topology, the backend and frontend layout, startup, storage and security posture."
+            },
+            {
+              "id": "data-model",
+              "file": "dev/data-model.md",
+              "title": "Data model",
+              "description": "The SQLite schema as built: entity map, scoping, tables, derived structures and migration notes."
+            },
+            {
+              "id": "frontend",
+              "file": "dev/frontend.md",
+              "title": "Frontend",
+              "description": "The React 19 + Vite SPA: routing, state, the typed API client, assistant-ui and i18n."
+            },
+            {
+              "id": "ui-conventions",
+              "file": "dev/ui-conventions.md",
+              "title": "UI conventions",
+              "description": "Component placement, design tokens, the workspace pattern, motion, accessibility and testability."
+            },
+            {
+              "id": "security",
+              "file": "dev/security.md",
+              "title": "Security model",
+              "description": "Keyring secrets, the AI trust boundary, upload and blob guards, and test isolation."
+            }
+          ]
+        },
+        {
+          "id": "backend",
+          "title": "Backend systems",
+          "icon": "Server",
+          "items": [
+            {
+              "id": "api",
+              "file": "dev/api.md",
+              "title": "REST API",
+              "description": "The /api/v1 surface, profile scoping, errors, pagination, the WebSocket, and OpenAPI generation."
+            },
+            {
+              "id": "ai",
+              "file": "dev/ai.md",
+              "title": "AI layer",
+              "description": "Gateway-only model access, tasks and capabilities, providers, the chat engine, tools, skills and MCP."
+            },
+            {
+              "id": "math-verification",
+              "file": "dev/math-verification.md",
+              "title": "Math verification",
+              "description": "The deterministic equivalence chain and the hint-leak guard that make math trustworthy."
+            },
+            {
+              "id": "import-export",
+              "file": "dev/import-export.md",
+              "title": "Import & export formats",
+              "description": "The caq/v1 quiz, ca-course/v2 bundle and ca-skills/v1 pack interchange formats."
+            },
+            {
+              "id": "jobs",
+              "file": "dev/jobs.md",
+              "title": "Background jobs",
+              "description": "The durable job runner, job types, retries, cancellation and the schedulers."
+            },
+            {
+              "id": "migrations",
+              "file": "dev/migrations.md",
+              "title": "Migrations",
+              "description": "Alembic discipline: sequential ids, model-first changes, tested downgrades and SQLite pitfalls."
+            }
+          ]
+        },
+        {
+          "id": "operations",
+          "title": "Operations",
+          "icon": "Wrench",
+          "items": [
+            {
+              "id": "deployment",
+              "file": "dev/deployment.md",
+              "title": "Deployment",
+              "description": "The standalone Docker stack, nginx and TLS, the data volume, upgrades and backups."
+            },
+            {
+              "id": "desktop-packaging",
+              "file": "dev/desktop-packaging.md",
+              "title": "Desktop packaging",
+              "description": "The PyInstaller build, deb/AppImage/Windows packaging and the tag-driven release workflow."
+            },
+            {
+              "id": "adding-features",
+              "file": "dev/adding-features.md",
+              "title": "Adding features",
+              "description": "End-to-end recipes: a new endpoint, a job, an AI task, a UI page and a schema change."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

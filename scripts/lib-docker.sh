@@ -2,8 +2,9 @@
 
 # Study Assistant — shared helpers for the Docker ops scripts.
 #
-# Sourced by scripts/run-docker.sh and scripts/update-docker.sh; not meant
-# to be run directly. Family-adapted from Health Assistant's lib-docker.sh.
+# Sourced by scripts/run-docker.sh, scripts/update-docker.sh,
+# scripts/backup.sh-style tooling; not meant to be run directly.
+# Family-adapted from Health Assistant's lib-docker.sh.
 
 # Colors for output
 # shellcheck disable=SC2034  # YELLOW is used by the sourcing scripts
@@ -13,8 +14,9 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 COMPOSE_FILE="docker/docker-compose.standalone.yml"
-COMPOSE_ENV_ARGS=(--env-file .env -f "${COMPOSE_FILE}")
+COMPOSE_ENV_ARGS=(--env-file docker/.env -f "${COMPOSE_FILE}")
 HEALTH_URL="http://127.0.0.1:${HTTP_PORT:-80}/api/v1/health"
+APP_URL="http://127.0.0.1:${HTTP_PORT:-80}/"
 
 die() {
     echo -e "${RED}Error: $1${NC}" >&2
@@ -45,11 +47,16 @@ check_docker() {
 }
 
 require_env() {
-    # Optional for study: the standalone stack has no required secrets
-    # (SQLite, no admin bootstrap). A root .env is honored when present.
-    if [ ! -f ".env" ]; then
-        echo -e "${YELLOW}Note: no root .env — using built-in defaults (SA_DATA_DIR=/data volume).${NC}"
-        COMPOSE_ENV_ARGS=(-f "${COMPOSE_FILE}")
+    # Web mode runs PostgreSQL 16 (ADR-0022): SA_DB_PASSWORD is required by
+    # the compose `:?` guards. Prefer docker/.env (family convention), fall
+    # back to a root .env.
+    if [ -f "docker/.env" ]; then
+        COMPOSE_ENV_ARGS=(--env-file docker/.env -f "${COMPOSE_FILE}")
+    elif [ -f ".env" ]; then
+        echo -e "${YELLOW}Note: using root .env (docker/.env is the family convention).${NC}"
+        COMPOSE_ENV_ARGS=(--env-file .env -f "${COMPOSE_FILE}")
+    else
+        die "docker/.env not found. Run: cp docker/.env.production.example docker/.env && set SA_DB_PASSWORD"
     fi
 }
 
@@ -60,16 +67,34 @@ run_compose() {
     $DOCKER_COMPOSE_CMD "${COMPOSE_ENV_ARGS[@]}" "$@"
 }
 
-# Wait until the backend reports healthy via the nginx entrypoint.
+# refresh_images — pull the registry image when STUDY_IMAGE points at one;
+# a no-op for local builds (compose builds instead).
+refresh_images() {
+    if [ -n "${STUDY_IMAGE:-}" ]; then
+        run_compose pull
+    fi
+}
+
+# up_stack — bring the stack up: registry image → no local build; otherwise
+# build the image from docker/Dockerfile.
+up_stack() {
+    if [ -n "${STUDY_IMAGE:-}" ]; then
+        run_compose up -d --no-build
+    else
+        run_compose up --build -d
+    fi
+}
+
+# Wait until the app reports healthy via the nginx entrypoint.
 wait_for_backend_healthy() {
-    echo -e "${GREEN}Waiting for the backend to become healthy...${NC}"
+    echo -e "${GREEN}Waiting for the app to become healthy...${NC}"
     for _ in $(seq 1 60); do
         if curl -fsS "$HEALTH_URL" 2>/dev/null | grep -q '"status"'; then
-            echo -e "${GREEN}Backend is healthy: ${HEALTH_URL}${NC}"
+            echo -e "${GREEN}App is healthy: ${HEALTH_URL}${NC}"
             return 0
         fi
         sleep 2
     done
-    echo -e "${RED}Backend did not become healthy within 120s. Check: ${DOCKER_COMPOSE_CMD[*]} ${COMPOSE_ENV_ARGS[*]} logs backend${NC}" >&2
+    echo -e "${RED}App did not become healthy within 120s. Check: ${DOCKER_COMPOSE_CMD[*]} ${COMPOSE_ENV_ARGS[*]} logs app${NC}" >&2
     return 1
 }

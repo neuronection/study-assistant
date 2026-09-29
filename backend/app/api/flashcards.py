@@ -98,7 +98,7 @@ def card_out(card: Exercise, state: FsrsState | None) -> CardOut:
     )
 
 
-def _load_card(db: Session, card_id: int, profile_id: int) -> Exercise:
+def _load_card(db: Session, card_id: int, profile_id: str) -> Exercise:
     card = db.scalar(
         select(Exercise)
         .options(selectinload(Exercise.steps), selectinload(Exercise.fsrs_state))
@@ -113,7 +113,7 @@ def _load_card(db: Session, card_id: int, profile_id: int) -> Exercise:
     return card
 
 
-def _source_content(session: Session, profile_id: int, body: GenerateIn) -> str:
+def _source_content(session: Session, profile_id: str, body: GenerateIn) -> str:
     if body.source == "note":
         if body.note_id is None:
             raise HTTPException(status_code=422, detail="note_id required for source=note")

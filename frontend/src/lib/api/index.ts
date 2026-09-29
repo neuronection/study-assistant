@@ -126,15 +126,38 @@ export {
   updateChatSessionQuizme,
 } from './chat'
 
+export type {
+  AdminUser,
+  AdminUserPatch,
+  PublicUser,
+  UserSession,
+} from './admin'
+
+export {
+  changeMyPassword,
+  deleteMyAccount,
+  forceLogoutUser,
+  listAdminUsers,
+  listMySessions,
+  patchAdminUser,
+  resetAdminUserPassword,
+  revokeMySession,
+} from './admin'
+
 export {
   ApiError,
   apiDetailMessage,
   apiFetch,
   blobUrl,
   getActiveProfile,
+  markProfileSettled,
   setActiveProfile,
   unsupportedTypeDetail,
 } from './client'
+
+export type { InstanceConfig } from './instance'
+
+export { getInstanceConfig } from './instance'
 
 export type {
   AllocationInfo,
@@ -568,6 +591,7 @@ export {
   listDesktopFolder,
   listFsDirs,
   listProfiles,
+  patchProfile,
   purgeDeletedItem,
   registerDesktopDrops,
   resetWorkingDir,

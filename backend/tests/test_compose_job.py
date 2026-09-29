@@ -199,9 +199,9 @@ def _compose_job(course_id: int, **extra: Any) -> dict[str, Any]:
 
 
 def test_handler_runs_through_progress_checkpoints(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile = _profile(db_session)
+    profile = _profile(db_session, owner.id)
     course = _course(db_session, profile.id)
     job = Job(type="compose", payload=_compose_job(int(course.id)), status="running")
     db_session.add(job)
@@ -225,12 +225,12 @@ def test_handler_runs_through_progress_checkpoints(
 
 
 def test_handler_fails_honestly_when_live_artifact_appeared(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
     from app.domain.models import TreeNode
     from app.pipelines.compose import ComposeService
 
-    profile = _profile(db_session)
+    profile = _profile(db_session, owner.id)
     course = _course(db_session, profile.id)
     node = TreeNode(
         course_id=course.id,
@@ -270,9 +270,9 @@ def test_handler_fails_honestly_when_live_artifact_appeared(
 
 
 def test_handler_honors_cancel_before_persist(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile = _profile(db_session)
+    profile = _profile(db_session, owner.id)
     course = _course(db_session, profile.id)
     job = Job(type="compose", payload=_compose_job(int(course.id)), status="running")
     db_session.add(job)
@@ -286,16 +286,16 @@ def test_handler_honors_cancel_before_persist(
     assert db_session.scalars(select(Material)).first() is None
 
 
-def _profile(db_session: Session) -> Any:
+def _profile(db_session: Session, user_id: str) -> Any:
     from app.domain.models import Profile
 
-    profile = Profile(name="p")
+    profile = Profile(user_id=user_id, name="p")
     db_session.add(profile)
     db_session.flush()
     return profile
 
 
-def _course(db_session: Session, profile_id: int) -> Any:
+def _course(db_session: Session, profile_id: str) -> Any:
     from app.domain.models import Course, TreeNode
 
     course = Course(profile_id=profile_id, title="Calc")

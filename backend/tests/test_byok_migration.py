@@ -56,7 +56,7 @@ def test_byok_migration_renames_capabilities_and_backfills_preset_key(
     raw.commit()
     raw.close()
 
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "0065_identity_core")
 
     raw = sqlite3.connect(db_path)
     caps = dict(
@@ -118,4 +118,4 @@ def test_byok_migration_renames_capabilities_and_backfills_preset_key(
     assert "preset_key" not in columns
     raw.close()
 
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "0065_identity_core")

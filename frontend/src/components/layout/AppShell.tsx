@@ -14,6 +14,7 @@ import {
   FolderClosed,
   GraduationCap,
   Home,
+  Info,
   Keyboard,
   Layers,
   MessageSquare,
@@ -21,7 +22,6 @@ import {
   Plus,
   Search,
   Settings,
-  UserRound,
   X,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -39,9 +39,10 @@ import { UrlImportDialog } from '@/components/capture/UrlImportDialog'
 import { WindowDropOverlay } from './WindowDropOverlay'
 import { ActivityButton } from './ActivityPopover'
 import { NotificationBell } from './NotificationBell'
-import { ProfileDialog } from './ProfileDialog'
+import { ProfileSwitcherMenu } from './ProfileSwitcherMenu'
 import { SidebarFooter } from './SidebarFooter'
-import { ThemeToggle } from '@/components/theme/ThemeToggle'
+import { useThemePreference } from '@/components/theme/use-theme-preference'
+import { UserMenu } from '@/components/ui/user-menu'
 import { Popover } from '@/components/ui/popover'
 import { SidebarNav } from '@/components/ui/sidebar-nav'
 import { ChatPanel } from '@/features/chat/ChatPanel'
@@ -60,10 +61,15 @@ import {
   getScratchpad,
   listCourses,
   listProfiles,
+  markProfileSettled,
   setActiveProfile,
   type ChatSession,
   type Course,
 } from '@/lib/api'
+import { getCurrentUser, logoutSession } from '@/lib/auth-session'
+import { setLocale } from '@/lib/i18n'
+import { availableLocales } from '@/lib/locales'
+import { loadDemoMode, loadInstanceConfig } from './DemoBanner'
 import { useChatStore } from '@/lib/chat-store'
 import { useChatFitsAlongsideFile, useRailLayout } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
@@ -335,7 +341,7 @@ function AppLogo() {
 }
 
 export function AppShell() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -357,13 +363,27 @@ export function AppShell() {
   const scratchpad = useQuery({ queryKey: ['scratchpad'], queryFn: getScratchpad })
   const courseId = useWorkspaceStore((state) => state.courseId)
   const setCourse = useWorkspaceStore((state) => state.setCourse)
-  const [selected, setSelected] = useState<number | null>(null)
-  const [profilesOpen, setProfilesOpen] = useState(false)
+  const [selected, setSelected] = useState<string | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const palette = useCommandPaletteOpen()
   const shortViewport = useIsShortViewport()
   const dueCount = useDueCount()
   const pendingProposals = usePendingProposalCount()
+  // User-menu state: the signed-in identity (module state, fixed by the
+  // boot flow), the shared theme preference and the demo-instance flag
+  // (identity-auth §13) for the status pill.
+  const user = getCurrentUser()
+  const [theme, setTheme] = useThemePreference()
+  const [demoMode, setDemoMode] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void loadDemoMode().then((value) => {
+      if (alive) setDemoMode(value)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
   useReviewNudgeInterval()
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -376,18 +396,17 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   const courseList = courses.data ?? []
-  const profileList = profiles.data ?? []
+  // memoized: the §15 reconciliation effect below depends on the list and
+  // must not see a fresh `[]` identity on every render
+  const profileList = useMemo(() => profiles.data ?? [], [profiles.data])
   const activeCourse = courseList.find((course) => course.id === courseId) ?? null
 
   useEffect(() => {
-    let storedProfileId: number | null = null
+    let storedProfileId: string | null = null
     try {
       const raw = window.localStorage.getItem(storageKeys.profileId)
-      if (raw) {
-        const value = Number(raw)
-        if (Number.isFinite(value)) {
-          storedProfileId = value
-        }
+      if (raw && raw.length > 0) {
+        storedProfileId = raw
       }
     } catch {
       storedProfileId = null
@@ -395,6 +414,53 @@ export function AppShell() {
     setSelected(storedProfileId)
     setActiveProfile(storedProfileId)
   }, [])
+
+  // Profile-selection reconciliation (identity-auth §15): server (web)
+  // mode has no silent default — a null selection must adopt the Default
+  // profile once the list loads, or every non-exempt boot query 400s
+  // with "X-Profile-Id required". Desktop keeps null = the middleware's
+  // last-used fallback. Both modes repair a selection that no longer
+  // exists (dev DBs get recreated; profiles can be deleted elsewhere).
+  const [authMode, setAuthMode] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    let alive = true
+    void loadInstanceConfig().then((config) => {
+      if (alive) {
+        setAuthMode(config?.auth_mode)
+        // config unresolvable: fail open — release the gate so requests
+        // behave exactly as before this reconciliation existed
+        if (config === undefined) markProfileSettled()
+      }
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (authMode === undefined) {
+      return // instance facts still loading — profile-scoped requests stay gated
+    }
+    if (profileList.length > 0) {
+      const known = selected !== null && profileList.some((profile) => profile.id === selected)
+      if (!known && !(selected === null && authMode !== 'authenticated')) {
+        const fallback = profileList.find((profile) => profile.is_default) ?? profileList[0]
+        if (fallback !== undefined && fallback.id !== selected) {
+          setSelected(fallback.id)
+          setActiveProfile(fallback.id)
+          try {
+            window.localStorage.setItem(storageKeys.profileId, fallback.id)
+          } catch {
+            // best-effort persistence; the in-memory switch still works
+          }
+          void queryClient.invalidateQueries()
+        }
+      }
+    }
+    // the selection is decided (or there is nothing to scope with) —
+    // release the §15 boot gate; later switches are explicit user actions
+    markProfileSettled()
+  }, [selected, profileList, authMode, queryClient])
 
   useEffect(() => {
     if (courses.data === undefined || courseId === null) {
@@ -458,14 +524,14 @@ export function AppShell() {
     }
   }, [chatOpen, location.pathname, setOpen])
 
-  const switchProfile = async (profileId: number | null) => {
+  const switchProfile = async (profileId: string | null) => {
     setSelected(profileId)
     setActiveProfile(profileId)
     try {
       if (profileId === null) {
         window.localStorage.removeItem(storageKeys.profileId)
       } else {
-        window.localStorage.setItem(storageKeys.profileId, String(profileId))
+        window.localStorage.setItem(storageKeys.profileId, profileId)
       }
     } catch {
       // profile persistence is best-effort; the in-memory switch still works
@@ -488,7 +554,6 @@ export function AppShell() {
                   ? String(pendingProposals)
                   : undefined,
           }))}
-          secondaryItems={[{ id: '/settings', label: t('nav.settings'), icon: Settings }]}
           activeId={resolveActiveId(location.pathname)}
           onNavigate={(id) => void navigate({ to: id })}
           labels={{ navAria: t('nav.primary') }}
@@ -560,44 +625,66 @@ export function AppShell() {
           }
           footer={
             <div className="space-y-2">
-              <button
-                type="button"
-                className={cn(
-                  'focus-visible:outline-ring flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-                  'text-muted-foreground hover:text-foreground'
-                )}
-                title={t('profiles.manage')}
-                onClick={() => setProfilesOpen(true)}
-              >
-                <UserRound className="size-4" aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-left">
-                  {selected === null
-                    ? t('profiles.default')
-                    : (profileList.find((profile) => profile.id === selected)?.name ??
-                      t('profiles.default'))}
-                </span>
-                <ChevronDown className="size-3.5 shrink-0" aria-hidden />
-              </button>
-              <div className="flex items-center justify-between pt-1">
-                <ThemeToggle />
-              <div className="flex items-center gap-1">
+              <UserMenu
+                className="w-full"
+                triggerClassName="w-full rounded-md"
+                switcher={
+                  <ProfileSwitcherMenu
+                    profiles={profileList}
+                    selectedId={selected}
+                    loading={profiles.isLoading}
+                    onSelect={(profileId) => void switchProfile(profileId)}
+                  />
+                }
+                contentClassName="overflow-visible"
+                user={
+                  user
+                    ? { name: user.full_name || undefined, email: user.email }
+                    : undefined
+                }
+                labels={{ openMenu: t('auth.accountMenu') }}
+                status={demoMode ? { label: t('demo.badge'), tone: 'warning' } : undefined}
+                theme={theme}
+                onThemeChange={setTheme}
+                themeLabels={{
+                  light: t('theme.light'),
+                  dark: t('theme.dark'),
+                  system: t('theme.system'),
+                }}
+                language={i18n.resolvedLanguage ?? 'en'}
+                onLanguageChange={(code) => void setLocale(code)}
+                languages={availableLocales().map((locale) => ({
+                  id: locale.code,
+                  label: locale.name,
+                }))}
+                items={[
+                  { id: 'settings', label: t('nav.settings'), icon: Settings },
+                  { id: 'about', label: t('nav.about'), icon: Info },
+                ]}
+                onItemSelect={(id) => {
+                  if (id === 'settings') void navigate({ to: '/settings' })
+                  if (id === 'about') void navigate({ to: '/about' })
+                }}
+                onLogout={() => void logoutSession()}
+                logoutLabel={t('auth.signOut')}
+              />
+              <div className="flex items-center justify-end gap-1 pt-1">
                 <NotificationBell />
                 <ActivityButton />
-                  <button
-                    type="button"
-                    className={cn(
-                      'focus-visible:outline-ring rounded-md p-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
-                      chatOpen
-                        ? 'bg-surface text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                    title={chatOpen ? t('chat.close') : t('chat.open')}
-                    aria-pressed={chatOpen}
-                    onClick={toggleChat}
-                  >
-                    <MessageSquare className="size-4" aria-hidden />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className={cn(
+                    'focus-visible:outline-ring rounded-md p-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1',
+                    chatOpen
+                      ? 'bg-surface text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title={chatOpen ? t('chat.close') : t('chat.open')}
+                  aria-pressed={chatOpen}
+                  onClick={toggleChat}
+                >
+                  <MessageSquare className="size-4" aria-hidden />
+                </button>
               </div>
               {shortViewport ? (
                 <div className="pt-1">
@@ -641,14 +728,6 @@ export function AppShell() {
       <SnapIntoNote />
       <UrlImportDialog />
       <WindowDropOverlay />
-      {profilesOpen ? (
-        <ProfileDialog
-          profiles={profileList}
-          selectedId={selected}
-          onSelect={(profileId) => void switchProfile(profileId)}
-          onClose={() => setProfilesOpen(false)}
-        />
-      ) : null}
       <OnboardingWizard />
     </div>
   )

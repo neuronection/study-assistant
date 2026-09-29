@@ -23,6 +23,7 @@ def upgrade() -> None:
         ["source_url"],
         unique=False,
         sqlite_where=sa.text("source_url IS NOT NULL"),
+        postgresql_where=sa.text("source_url IS NOT NULL"),
     )
     op.create_index(
         "uq_materials_course_source_url_norm",
@@ -30,6 +31,7 @@ def upgrade() -> None:
         ["course_id", "source_url_norm"],
         unique=True,
         sqlite_where=sa.text("kind = 'link' AND source_url_norm IS NOT NULL"),
+        postgresql_where=sa.text("kind = 'link' AND source_url_norm IS NOT NULL"),
     )
 
 

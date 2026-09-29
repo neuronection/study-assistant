@@ -9,6 +9,10 @@ VEC_TABLE = "chunk_vecs"
 VEC_META = "vec_meta"
 
 
+def _is_postgres(session: Session) -> bool:
+    return session.get_bind().dialect.name == "postgresql"
+
+
 def _load_meta(session: Session) -> dict[str, str]:
     session.execute(
         text(
@@ -28,12 +32,28 @@ def ensure_table(session: Session, dim: int, model: str) -> bool:
         return False
     if current_dim is not None:
         session.execute(text(f"DROP TABLE IF EXISTS {VEC_TABLE}"))
-    session.execute(
-        text(
-            f"CREATE VIRTUAL TABLE {VEC_TABLE} USING vec0("
-            f"chunk_embedding float[{dim}] distance_metric=cosine)"
+    if _is_postgres(session):
+        # ADR-0022 S3 twin: sqlite-vec vec0 → pgvector + HNSW (cosine).
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        session.execute(
+            text(
+                f"CREATE TABLE {VEC_TABLE} "
+                f"(rowid BIGINT PRIMARY KEY, chunk_embedding vector({int(dim)}))"
+            )
         )
-    )
+        session.execute(
+            text(
+                f"CREATE INDEX ix_{VEC_TABLE}_embedding ON {VEC_TABLE} "
+                "USING hnsw (chunk_embedding vector_cosine_ops)"
+            )
+        )
+    else:
+        session.execute(
+            text(
+                f"CREATE VIRTUAL TABLE {VEC_TABLE} USING vec0("
+                f"chunk_embedding float[{dim}] distance_metric=cosine)"
+            )
+        )
     session.execute(
         text(
             f"INSERT INTO {VEC_META} (key, value) VALUES ('dim', :dim) "
@@ -57,24 +77,41 @@ def store(
     dim = len(vectors[0])
     ensure_table(session, dim, model)
     for chunk_id, vector in zip(chunk_ids, vectors, strict=True):
-        session.execute(
-            text(
-                f"INSERT OR REPLACE INTO {VEC_TABLE} (rowid, chunk_embedding) "
-                "VALUES (:rowid, :vec)"
-            ),
-            {"rowid": chunk_id, "vec": serialize_vector(vector)},
-        )
+        if _is_postgres(session):
+            # serialize_vector emits JSON text, which pgvector parses as input.
+            session.execute(
+                text(
+                    f"INSERT INTO {VEC_TABLE} (rowid, chunk_embedding) "
+                    "VALUES (:rowid, CAST(:vec AS vector)) "
+                    "ON CONFLICT (rowid) DO UPDATE "
+                    "SET chunk_embedding = excluded.chunk_embedding"
+                ),
+                {"rowid": chunk_id, "vec": serialize_vector(vector)},
+            )
+        else:
+            session.execute(
+                text(
+                    f"INSERT OR REPLACE INTO {VEC_TABLE} (rowid, chunk_embedding) "
+                    "VALUES (:rowid, :vec)"
+                ),
+                {"rowid": chunk_id, "vec": serialize_vector(vector)},
+            )
 
 
 def delete_for_extraction(session: Session, chunk_ids: list[int]) -> None:
     if not chunk_ids:
         return
-    exists = session.execute(
-        text(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name = :name"
-        ),
-        {"name": VEC_TABLE},
-    ).first()
+    if _is_postgres(session):
+        exists = session.execute(
+            text("SELECT to_regclass(:name)"), {"name": VEC_TABLE}
+        ).scalar()
+    else:
+        exists = session.execute(
+            text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name = :name"
+            ),
+            {"name": VEC_TABLE},
+        ).first()
     if exists is None:
         return
     placeholders = ",".join(str(int(chunk_id)) for chunk_id in chunk_ids)
@@ -89,14 +126,24 @@ def search(
     meta = _load_meta(session)
     if meta.get("dim") != str(len(query_vector)):
         return []
-    rows = session.execute(
-        text(
-            f"SELECT rowid, distance FROM {VEC_TABLE} "
-            "WHERE chunk_embedding MATCH :query AND k = :k "
-            "ORDER BY distance"
-        ),
-        {"query": serialize_vector(query_vector), "k": limit},
-    ).mappings()
+    if _is_postgres(session):
+        rows = session.execute(
+            text(
+                f"SELECT rowid, chunk_embedding <=> CAST(:query AS vector) AS distance "
+                f"FROM {VEC_TABLE} "
+                "ORDER BY chunk_embedding <=> CAST(:query AS vector) LIMIT :k"
+            ),
+            {"query": serialize_vector(query_vector), "k": limit},
+        ).mappings()
+    else:
+        rows = session.execute(
+            text(
+                f"SELECT rowid, distance FROM {VEC_TABLE} "
+                "WHERE chunk_embedding MATCH :query AND k = :k "
+                "ORDER BY distance"
+            ),
+            {"query": serialize_vector(query_vector), "k": limit},
+        ).mappings()
     return [(int(row["rowid"]), float(row["distance"])) for row in rows]
 
 

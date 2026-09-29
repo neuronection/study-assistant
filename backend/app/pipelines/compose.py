@@ -405,7 +405,7 @@ class ComposeService:
     def compose(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         course_id: int,
         node_id: int | None,
         kind: str,
@@ -603,7 +603,7 @@ class ComposeService:
     def compose_organizer_artifact(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         course_id: int,
         node_id: int,
         kind: str,
@@ -724,7 +724,7 @@ def make_compose_handler(
             raise JobCancelled()
         report(30, "compose")
         material = ComposeService(session, gateway).compose(
-            profile_id=int(payload.get("profile_id") or course.profile_id),
+            profile_id=str(payload.get("profile_id") or course.profile_id),
             course_id=course_id,
             node_id=node_id,
             kind=kind,

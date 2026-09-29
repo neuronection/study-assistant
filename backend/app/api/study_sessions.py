@@ -72,7 +72,7 @@ def _session_out(row: StudySession) -> StudySessionOut:
     )
 
 
-def _load_session(db: Session, session_id: int, profile_id: int) -> StudySession:
+def _load_session(db: Session, session_id: int, profile_id: str) -> StudySession:
     row = db.get(StudySession, session_id)
     if row is None or row.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="study session not found")

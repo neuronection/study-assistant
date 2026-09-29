@@ -63,7 +63,7 @@ def _out(source: ExternalSource) -> ExternalSourceOut:
 
 
 def _owned_source(
-    session: Session, profile_id: int, source_id: int
+    session: Session, profile_id: str, source_id: int
 ) -> ExternalSource:
     source = session.get(ExternalSource, source_id)
     if source is None or source.profile_id != profile_id:

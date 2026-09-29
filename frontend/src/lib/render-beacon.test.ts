@@ -6,7 +6,7 @@ async function loadBeacon() {
 }
 
 function stubFramesAndFetch() {
-  const fetchMock = vi.fn().mockResolvedValue(undefined)
+  const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
   vi.stubGlobal('fetch', fetchMock)
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     cb(0)
@@ -25,7 +25,10 @@ describe('signalShellRendered', () => {
     const { signalShellRendered } = await loadBeacon()
     signalShellRendered()
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/shell/rendered', { method: 'POST' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/shell/rendered',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('signals only once per page load', async () => {
@@ -37,7 +40,7 @@ describe('signalShellRendered', () => {
   })
 
   it('does not post before frames fire', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(undefined)
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
     const frames: FrameRequestCallback[] = []
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {

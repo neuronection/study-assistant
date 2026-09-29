@@ -1,10 +1,10 @@
 from collections.abc import Iterator
 from urllib.parse import quote
 
-from fastapi import Header, Request
+from fastapi import Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from ..services.platform.profiles import get_profile
+from ..core.profile_context import active_profile_id
 
 
 def content_disposition(filename: str, kind: str = "attachment") -> str:
@@ -25,12 +25,15 @@ def get_session(request: Request) -> Iterator[Session]:
 
 def get_profile_id(
     request: Request,
-    x_profile_id: int | None = Header(default=None),
-) -> int:
-    with request.app.state.session_factory() as session:
-        profile = get_profile(session, x_profile_id)
-        if profile is None:
-            from fastapi import HTTPException
+    x_profile_id: str | None = Header(default=None),
+) -> str:
+    """The request's bound profile (identity-auth §15).
 
-            raise HTTPException(status_code=404, detail="profile not found")
-        return profile.id
+    `ProfileBindingMiddleware` validated ownership already — trust its
+    context, never the raw header.
+    """
+    del request, x_profile_id
+    profile_id = active_profile_id()
+    if profile_id is None:
+        raise HTTPException(status_code=400, detail="X-Profile-Id required")
+    return profile_id

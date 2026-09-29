@@ -173,10 +173,26 @@ def upgrade() -> None:
         batch_op.create_index(
             batch_op.f("ix_chunks_extraction_id"), ["extraction_id"], unique=False
         )
-    op.execute(
-        "CREATE VIRTUAL TABLE material_fts USING fts5("
-        "title, markdown, description, topics, material_id UNINDEXED)"
-    )
+    if op.get_bind().dialect.name == "postgresql":
+        # ADR-0022 S3 twin: PG has no fts5 — a generated tsvector + GIN index.
+        op.execute(
+            "CREATE TABLE material_fts ("
+            "material_id BIGINT, "
+            "title TEXT, "
+            "markdown TEXT, "
+            "description TEXT, "
+            "topics TEXT, "
+            "tsv tsvector GENERATED ALWAYS AS ("
+            "  to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(markdown,'') || ' '"
+            "    || coalesce(description,'') || ' ' || coalesce(topics,''))"
+            ") STORED)"
+        )
+        op.execute("CREATE INDEX ix_material_fts_tsv ON material_fts USING gin (tsv)")
+    else:
+        op.execute(
+            "CREATE VIRTUAL TABLE material_fts USING fts5("
+            "title, markdown, description, topics, material_id UNINDEXED)"
+        )
 
 
 def downgrade() -> None:

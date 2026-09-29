@@ -1,6 +1,6 @@
 """Dialect-picked LangGraph checkpointer (dual-mode, plan 10 §5.1).
 
-Desktop mode runs SQLite (`AsyncSqliteSaver` on `data_dir/checkpoints.db`);
+Desktop mode runs SQLite (`AsyncSqliteSaver` on `data_dir/checkpoints.sqlite3`);
 server mode picks Postgres (`AsyncPostgresSaver`) when the engine dialect is
 postgresql and a URI is provided. The saver is opened once in the app lifespan
 and held for the whole process; `setup()` runs at boot so the checkpoint
@@ -22,6 +22,8 @@ from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 _GREGORIAN_100NS = 122192928000000000
 _MS_PER_100NS = 10_000
@@ -41,7 +43,17 @@ async def open_checkpointer(
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
         async with AsyncPostgresSaver.from_conn_string(postgres_uri) as saver:
-            await saver.setup()
+            try:
+                await saver.setup()
+            except Exception as error:  # narrowed below
+                # Least-privilege runtime roles cannot DDL — the checkpoint
+                # tables are provisioned by the migrations role (entrypoint /
+                # docker/init-db.sh). setup() runs CREATE TABLE IF NOT EXISTS
+                # on every boot; tolerate its denial when the schema exists.
+                if "permission denied" not in str(error).lower() or not (
+                    await _checkpoint_tables_ready(postgres_uri)
+                ):
+                    raise
             yield saver
     else:
         async with AsyncSqliteSaver.from_conn_string(str(sqlite_path)) as saver:
@@ -49,20 +61,68 @@ async def open_checkpointer(
             yield saver
 
 
+async def _checkpoint_tables_ready(postgres_uri: str) -> bool:
+    """True when the langgraph checkpoint schema already exists."""
+    import psycopg
+
+    async with await psycopg.AsyncConnection.connect(postgres_uri) as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name IN "
+                "('checkpoints', 'checkpoint_writes', 'checkpoint_blobs')"
+            )
+        ).fetchall()
+    return {row[0] for row in rows} >= {"checkpoints", "checkpoint_writes"}
+
+
 def _stale_prefix(now_ms: int, ttl_days: int) -> str:
     cutoff_100ns = (now_ms - ttl_days * 86_400_000) * _MS_PER_100NS + _GREGORIAN_100NS
     return f"{cutoff_100ns >> 12:012x}"
 
 
-def prune_checkpoints(db_path: Path, ttl_days: int, now_ms: int | None = None) -> int:
+def prune_checkpoints(
+    db_path: Path,
+    ttl_days: int,
+    now_ms: int | None = None,
+    engine: Engine | None = None,
+) -> int:
     """Delete checkpoint threads whose latest write is older than the TTL.
 
-    Returns the number of checkpoint rows removed. Orphaned `writes` rows are
-    dropped with it. No-op when the checkpoint database does not exist yet.
+    Returns the number of checkpoint rows removed. Orphaned write-log rows
+    (`writes` on sqlite, `checkpoint_writes` on postgresql) are dropped with
+    it. The checkpoint store is picked exactly like `open_checkpointer`: on
+    postgresql it is the `engine` database and the pruning SQL runs over
+    SQLAlchemy (dialect-portable `sa.text`), on sqlite it
+    is the `db_path` file, edited in place. Nothing happens when the SQLite
+    checkpoint database does not exist yet.
     """
+    prefix = _stale_prefix(now_ms if now_ms is not None else int(time.time() * 1000), ttl_days)
+    if engine is not None and engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            deleted = conn.execute(
+                text(
+                    "delete from checkpoints where thread_id || checkpoint_ns in ("
+                    "select thread_id || checkpoint_ns from checkpoints "
+                    "group by thread_id, checkpoint_ns "
+                    "having max(replace(checkpoint_id, '-', '')) < :prefix)"
+                ),
+                {"prefix": prefix},
+            ).rowcount
+            # langgraph-checkpoint-postgres names the write log
+            # `checkpoint_writes` (sqlite uses `writes`)
+            conn.execute(
+                text(
+                    "delete from checkpoint_writes where not exists ("
+                    "select 1 from checkpoints c "
+                    "where c.thread_id = checkpoint_writes.thread_id "
+                    "and c.checkpoint_ns = checkpoint_writes.checkpoint_ns "
+                    "and c.checkpoint_id = checkpoint_writes.checkpoint_id)"
+                )
+            )
+        return deleted
     if not db_path.exists():
         return 0
-    prefix = _stale_prefix(now_ms if now_ms is not None else int(time.time() * 1000), ttl_days)
     connection = sqlite3.connect(db_path)
     try:
         stale = (

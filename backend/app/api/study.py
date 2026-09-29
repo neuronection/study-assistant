@@ -49,7 +49,7 @@ class StudyNextOut(BaseModel):
     streak: int
 
 
-def _review_course_titles(session: Session, profile_id: int) -> list[str]:
+def _review_course_titles(session: Session, profile_id: str) -> list[str]:
     now = utcnow()
     rows = session.execute(
         select(Course.title)
@@ -69,7 +69,7 @@ def _review_course_titles(session: Session, profile_id: int) -> list[str]:
 
 def _weak_cells(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     course: int | None,
 ) -> list[StudyWeakCellOut]:
     candidates: list[int] = []

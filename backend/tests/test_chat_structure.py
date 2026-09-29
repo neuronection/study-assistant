@@ -11,8 +11,10 @@ from app.services.knowledge.tree import TreeService
 from app.services.platform.chat import ChatService
 
 
-def build_course(db_session: Session, title: str = "Calculus I") -> tuple[Course, Any]:
-    profile = Profile(name="p")
+def build_course(
+    db_session: Session, owner: Any, title: str = "Calculus I"
+) -> tuple[Course, Any]:
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title=title)
@@ -43,8 +45,10 @@ def make_session(
     return session_row
 
 
-def test_structure_block_renders_neighborhood(db_session: Session) -> None:
-    course, profile = build_course(db_session)
+def test_structure_block_renders_neighborhood(
+    db_session: Session, owner: Any
+) -> None:
+    course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
     chapter = tree.create_node(
@@ -74,8 +78,10 @@ def test_structure_block_renders_neighborhood(db_session: Session) -> None:
     assert base is not None and base.summary == "Integration by parts"
 
 
-def test_structure_block_course_level_lists_chapters(db_session: Session) -> None:
-    course, profile = build_course(db_session)
+def test_structure_block_course_level_lists_chapters(
+    db_session: Session, owner: Any
+) -> None:
+    course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
     chapter = tree.create_node(course.id, root.id, "Limits", summary="Approaching values")
@@ -91,8 +97,10 @@ def test_structure_block_course_level_lists_chapters(db_session: Session) -> Non
     assert registry.get(f"T{chapter.id}") is not None
 
 
-def test_structure_group_cap_trims_with_marker(db_session: Session) -> None:
-    course, profile = build_course(db_session)
+def test_structure_group_cap_trims_with_marker(
+    db_session: Session, owner: Any
+) -> None:
+    course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
     chapter = tree.create_node(course.id, root.id, "Big chapter")
@@ -109,8 +117,8 @@ def test_structure_group_cap_trims_with_marker(db_session: Session) -> None:
     assert "… +3 more" in children_line
 
 
-def test_leaf_node_omits_children_group(db_session: Session) -> None:
-    course, profile = build_course(db_session)
+def test_leaf_node_omits_children_group(db_session: Session, owner: Any) -> None:
+    course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
     section = tree.create_node(course.id, root.id, "Alone")
@@ -134,8 +142,10 @@ def test_registry_add_enriches_missing_summary() -> None:
     assert again.summary == "Techniques"
 
 
-def test_prepared_sources_block_starts_with_structure(db_session: Session) -> None:
-    course, profile = build_course(db_session)
+def test_prepared_sources_block_starts_with_structure(
+    db_session: Session, owner: Any
+) -> None:
+    course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
     chapter = tree.create_node(course.id, root.id, "Derivatives", summary="Rates of change")
@@ -163,13 +173,15 @@ class NoGateway(LLMGateway):
         raise AssertionError("gateway must not be used while building structure context")
 
 
-def test_read_node_registers_children_and_materials(db_session: Session) -> None:
+def test_read_node_registers_children_and_materials(
+    db_session: Session, owner: Any
+) -> None:
     from app.domain.models import (
         Material,
         MaterialLink,
     )
 
-    course, profile = build_course(db_session)
+    course, profile = build_course(db_session, owner)
     tree = TreeService(db_session)
     root = tree.ensure_root(course.id)
     chapter = tree.create_node(course.id, root.id, "Chapter 1", summary="First chapter")

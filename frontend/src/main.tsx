@@ -10,6 +10,7 @@ import 'mathlive/static.css'
 import { router } from '@/app/router'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { RenderBeacon } from '@/components/RenderBeacon'
+import { SessionGate } from '@/features/auth/SessionGate'
 import { installGlobalErrorSurface } from '@/lib/boot-errors'
 import { initI18n } from '@/lib/i18n'
 
@@ -29,7 +30,9 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <MotionConfig reducedMotion="user">
           <RenderBeacon />
-          <RouterProvider router={router} />
+          <SessionGate>
+            <RouterProvider router={router} />
+          </SessionGate>
         </MotionConfig>
       </QueryClientProvider>
     </ErrorBoundary>

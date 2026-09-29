@@ -6,6 +6,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14",
+    "neuronection-auth-kit",
     "fastapi>=0.115",
     "httpx>=0.28",
     "jinja2>=3.1",
@@ -37,6 +38,7 @@ dependencies = [
     "mutagen>=1.48.1",
     "yt-dlp>=2025.1",
     "feedparser>=6.0",
+    "psycopg[binary]>=3.2",
 ]
 dynamic = ["version"]
 
@@ -85,3 +87,8 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-n auto"
+markers = [
+    # identity-auth §18 contract cases — the drift gate against the family
+    # test kit (CI runs `pytest -m contract` as an explicit step).
+    "contract: implements an identity-auth §18 contract case (family drift gate)",
+]

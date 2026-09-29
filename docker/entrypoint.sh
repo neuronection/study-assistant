@@ -1,9 +1,59 @@
 #!/bin/sh
 set -e
 
-echo "Running database migrations..."
+# Demo guard (deployment.md): this image is the production deployment —
+# abort on demo configuration. The demo flavor (docker-compose.demo.yml, S8)
+# runs its own isolated stack and must set SA_APP_ENV=demo explicitly.
+case "${SA_DEMO_MODE:-0}" in
+    1|true|TRUE|True)
+        if [ "${SA_APP_ENV:-production}" != "demo" ]; then
+            echo "SA_DEMO_MODE=true is demo configuration — refusing to start a production deployment (deployment.md demo guards)." >&2
+            exit 1
+        fi
+        ;;
+esac
+
+echo "Waiting for the database..."
+python -c '
+import os, socket, sys, time
+from urllib.parse import urlparse
+raw = os.environ.get("SA_MIGRATIONS_DATABASE_URL") or os.environ.get("SA_DATABASE_URL") or ""
+u = urlparse(raw)
+host = u.hostname or os.environ.get("SA_DB_HOST", "localhost")
+port = u.port or int(os.environ.get("SA_DB_PORT", "5432") or 5432)
+deadline = time.monotonic() + 60
+while time.monotonic() < deadline:
+    try:
+        socket.create_connection((host, port), timeout=2).close()
+        sys.exit(0)
+    except OSError:
+        time.sleep(1)
+sys.exit(f"database not reachable at {host}:{port}")
+'
+
+echo "Running database migrations (owner role)..."
 cd /app/backend
-PYTHONPATH=/app/backend /app/.venv/bin/alembic upgrade head
+if [ -n "${SA_MIGRATIONS_DATABASE_URL:-}" ]; then
+    # Two-role split (deployment.md): migrations run as the owner role, the
+    # app process connects as the least-privilege app role (SA_DATABASE_URL).
+    SA_DATABASE_URL="$SA_MIGRATIONS_DATABASE_URL" PYTHONPATH=/app/backend \
+        /app/.venv/bin/alembic upgrade head
+    # langgraph's checkpoint schema is DDL too — provision it as the owner
+    # role; the app's checkpointer tolerates its existence at boot.
+    CHECKPOINT_URI="${SA_MIGRATIONS_DATABASE_URL/+psycopg/}" PYTHONPATH=/app/backend \
+        /app/.venv/bin/python -c '
+import asyncio, os
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+async def main() -> None:
+    async with AsyncPostgresSaver.from_conn_string(os.environ["CHECKPOINT_URI"]) as saver:
+        await saver.setup()
+
+asyncio.run(main())
+'
+else
+    PYTHONPATH=/app/backend /app/.venv/bin/alembic upgrade head
+fi
 
 echo "Starting Study Assistant (web mode) on ${SA_HOST:-0.0.0.0}:${SA_PORT:-8000}"
 exec env PYTHONPATH=/app/backend \

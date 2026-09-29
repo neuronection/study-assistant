@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ...storage import vectors
 from .fusion import RRF_K
-from .matching import or_terms_match, trigram_match
+from .matching import Match, or_terms_match, trigram_match
 from .scoring import fuzzy_text_match
 from .types import EmbedQuery
 
@@ -20,6 +20,26 @@ _CHUNK_SELECT = (
     "WHERE {table} MATCH :match {course_filter}{extra} "
     "ORDER BY rank LIMIT :limit"
 )
+
+# PostgreSQL twin of _CHUNK_SELECT (ADR-0022): same joins/filters/limits, the
+# fts5 MATCH/rank pair becomes a tsquery predicate + ts_rank (or a pg_trgm
+# predicate + similarity for the trigram table).
+_CHUNK_SELECT_PG = (
+    "SELECT chunks.id AS chunk_id, chunks.text AS chunk_text, chunks.ordinal, "
+    "materials.id AS material_id, materials.title AS title, {table}.markdown AS markdown "
+    "FROM {table} "
+    "JOIN materials ON materials.id = {table}.material_id "
+    "JOIN extractions ON extractions.material_id = materials.id "
+    "JOIN chunks ON chunks.extraction_id = extractions.id "
+    "WHERE {where} {course_filter}{extra} "
+    "ORDER BY {order} LIMIT :limit"
+)
+
+_PG_TRIGRAM_ORDER = "similarity(search_text, :match) DESC"
+
+
+def _is_postgres(session: Session) -> bool:
+    return session.get_bind().dialect.name == "postgresql"
 
 
 def _chunk_rows(
@@ -92,7 +112,7 @@ def _vector_chunk_ranking(
 
 def _fts_chunk_rows(
     session: Session,
-    match: str,
+    match: Match,
     limit: int,
     *,
     course_id: int | None = None,
@@ -100,17 +120,34 @@ def _fts_chunk_rows(
     table: str = "material_fts",
     verify_query: str | None = None,
 ) -> list[dict[str, Any]]:
-    if not match:
+    if match.is_empty:
         return []
     course_filter = "AND materials.course_id = :course_id" if course_id is not None else ""
-    params: dict[str, Any] = {"match": match, "limit": limit, "course_id": course_id}
+    params: dict[str, Any] = {"limit": limit, "course_id": course_id}
     extra = ""
     if material_ids is not None:
         if not material_ids:
             return []
         extra = " AND materials.id IN :material_ids"
         params["material_ids"] = material_ids
-    statement = text(_CHUNK_SELECT.format(table=table, course_filter=course_filter, extra=extra))
+    if _is_postgres(session):
+        params.update(match.pg.params)
+        if match.pg.kind == "trigram":
+            where = match.pg.sql
+            order = _PG_TRIGRAM_ORDER
+        else:
+            where = f"{table}.tsv @@ ({match.pg.sql})"
+            order = f"ts_rank({table}.tsv, ({match.pg.sql})) DESC"
+        statement = text(
+            _CHUNK_SELECT_PG.format(
+                table=table, where=where, order=order, course_filter=course_filter, extra=extra
+            )
+        )
+    else:
+        params["match"] = match.fts5
+        statement = text(
+            _CHUNK_SELECT.format(table=table, course_filter=course_filter, extra=extra)
+        )
     if material_ids is not None:
         statement = statement.bindparams(bindparam("material_ids", expanding=True))
     try:

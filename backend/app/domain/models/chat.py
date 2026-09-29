@@ -1,5 +1,8 @@
 from ...core.vocab import ChatProposalStatus
 from .core import (
+    _UUID as _UUID,
+)
+from .core import (
     JSON as JSON,
 )
 from .core import (
@@ -50,13 +53,18 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"]
+            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ondelete="CASCADE",
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
     node_id: Mapped[int | None] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(300), default="New chat")
     use_embeddings: Mapped[bool | None] = mapped_column(Boolean)
@@ -76,7 +84,9 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("chat_sessions.id"), index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
+    )
     parent_id: Mapped[int | None] = mapped_column(Integer, index=True)
     active_child_id: Mapped[int | None] = mapped_column(Integer)
     role: Mapped[str] = mapped_column(String(20))
@@ -96,7 +106,7 @@ class ChatProposal(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     message_id: Mapped[int] = mapped_column(
-        ForeignKey("chat_messages.id"), index=True
+        ForeignKey("chat_messages.id", ondelete="CASCADE"), index=True
     )
     action: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
@@ -112,11 +122,11 @@ class QuizmeAnswer(Base):
     __tablename__ = "quizme_answers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(
-        ForeignKey("profiles.id"), index=True
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
     session_id: Mapped[int] = mapped_column(
-        ForeignKey("chat_sessions.id"), index=True
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
     )
     correct: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime] = mapped_column(

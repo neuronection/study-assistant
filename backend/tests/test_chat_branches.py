@@ -243,8 +243,9 @@ def test_branch_tree_endpoint_exposes_full_tree(tmp_path: Path) -> None:
 
 def test_pending_message_chains_under_later_assistant_reply(
     db_session: Session,
+    owner: Any,
 ) -> None:
-    profile = ensure_default_profile(db_session)
+    profile = ensure_default_profile(db_session, owner.id)
     session_row = ChatSession(profile_id=profile.id, title="t")
     db_session.add(session_row)
     db_session.flush()

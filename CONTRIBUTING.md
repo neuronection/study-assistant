@@ -41,8 +41,9 @@ behavior, add them in the same commit.
 
 - **Docs are part of the change.** Code changes that alter behavior,
   architecture, schema, or APIs update `docs/STATUS.md` (and the relevant
-  doc under `docs/`) in the same commit. CI enforces the CHANGELOG half via
-  `scripts/check-changelog.sh`: user-visible changes need a
+  page under [`docs/user/`](docs/user/README.md) or
+  [`docs/dev/`](docs/dev/README.md)) in the same commit. CI enforces the
+  CHANGELOG half via `scripts/check-changelog.sh`: user-visible changes need a
   `## [Unreleased]` entry.
 - **Typed vocabularies.** Closed sets of values come from the StrEnums in
   `backend/app/core/vocab.py` — never introduce new bare-string
@@ -58,8 +59,9 @@ behavior, add them in the same commit.
 - **Never commit secrets.** API keys live in the OS keyring (configured in
   the app's Settings UI), never in files, env blocks, or the database.
 - **Schema changes** (SQLAlchemy/Alembic) are model-first with a tested
-  downgrade and a single linear revision chain — see the Migration notes in
-  [`docs/data-model.md`](docs/data-model.md).
+  downgrade and a single linear revision chain — see
+  [`docs/dev/migrations.md`](docs/dev/migrations.md) and the Migration notes in
+  [`docs/dev/data-model.md`](docs/dev/data-model.md).
 
 ## UI components
 

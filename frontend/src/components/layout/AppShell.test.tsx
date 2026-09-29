@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { AppShell } from './AppShell'
+import { clearDemoModeCache } from './DemoBanner'
+import { getActiveProfile } from '@/lib/api'
 import { useChatStore } from '@/lib/chat-store'
 import { useDockStore } from '@/lib/dock-store'
 import { useWorkspaceStore } from '@/lib/workspace-store'
@@ -20,6 +23,7 @@ const routerHolder = vi.hoisted(() => ({
 const listCourses = vi.fn()
 const listProfiles = vi.fn()
 const createProfileFn = vi.fn()
+const getInstanceConfigFn = vi.fn()
 const navigate = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -29,6 +33,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listCourses: () => listCourses(),
     listProfiles: () => listProfiles(),
     createProfile: (name: string) => createProfileFn(name),
+    getInstanceConfig: () => getInstanceConfigFn(),
   }
 })
 
@@ -127,8 +132,18 @@ describe('AppShell rail', () => {
     listCourses.mockReset()
     listProfiles.mockReset()
     createProfileFn.mockReset()
+    getInstanceConfigFn.mockReset()
     listCourses.mockResolvedValue(COURSES)
-    listProfiles.mockResolvedValue([{ id: 1, name: 'Default', color: null }])
+    listProfiles.mockResolvedValue([{ id: 'p-default', name: 'Default', color: null, is_default: true }])
+    // desktop-like default: a null selection keeps the server-side
+    // last-used fallback (adoption only fires in authenticated mode)
+    getInstanceConfigFn.mockResolvedValue({
+      demo_mode: false,
+      auth_mode: 'open',
+      registration_enabled: true,
+    })
+    localStorage.removeItem('ca-profile-id')
+    clearDemoModeCache()
     navigate.mockReset()
     useWorkspaceStore.getState().setCourse(null)
     useChatStore.setState({ open: false, session: null })
@@ -141,7 +156,8 @@ describe('AppShell rail', () => {
 
   test('renders primary navigation without removed flat pages', async () => {
     renderShell()
-    expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
+    const nav = await screen.findByRole('navigation', { name: 'Main navigation' })
+    expect(nav).toBeInTheDocument()
     expect(screen.queryByText('Dev')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /rendering spike/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Flashcards' })).not.toBeInTheDocument()
@@ -149,11 +165,11 @@ describe('AppShell rail', () => {
     expect(screen.queryByRole('link', { name: 'Exercises' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Notes' })).not.toBeInTheDocument()
     // primary nav entries are controlled buttons (SidebarNav) — the router
-    // stays app-side; Settings is pinned via secondaryItems, About lives in
-    // the footer project block
-    expect(screen.getByRole('button', { name: 'Scores' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Tutor' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument()
+    // stays app-side; Settings lives in the account menu (UserMenu), About
+    // in the footer project block
+    expect(within(nav).getByRole('button', { name: 'Scores' })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: 'Tutor' })).toBeInTheDocument()
+    expect(within(nav).queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
   })
 
   test('sidebar footer shows the family block, About pill and app version', async () => {
@@ -186,8 +202,8 @@ describe('AppShell rail', () => {
       expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
       // the Neuronection mark sits on the same row (left) linking to the site
       expect(screen.getByLabelText('Part of Neuronection')).toBeInTheDocument()
-      // the profile/theme controls stay too
-      expect(screen.getByTitle('Profiles')).toBeInTheDocument()
+      // the account menu (carrying the profile switcher slot) stays too
+      expect(screen.getByRole('button', { name: 'Account menu' })).toBeInTheDocument()
     } finally {
       vi.unstubAllGlobals()
     }
@@ -221,23 +237,49 @@ describe('AppShell rail', () => {
     await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe(null))
   })
 
-  test('profile button opens an overlay to switch and create profiles', async () => {
-    createProfileFn.mockResolvedValue({ id: 9, name: 'New', color: null })
+  test('profile switcher opens a panel to switch and create profiles', async () => {
+    createProfileFn.mockResolvedValue({ id: 'p-new', name: 'New', color: null, is_default: false })
     renderShell()
-    fireEvent.click(await screen.findByTitle('Profiles'))
+    // the profile switcher lives in the account menu's switcher slot — one
+    // identity button in the footer, no separate profile row
+    await userEvent.click(await screen.findByRole('button', { name: 'Account menu' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Profiles' }))
     const dialog = await screen.findByRole('dialog', { name: 'Profiles' })
-    expect(within(dialog).getByText('Default profile')).toBeInTheDocument()
-    expect(within(dialog).queryByPlaceholderText('Profile name…')).not.toBeInTheDocument()
+    // the Default row: its name plus the "Default" badge, and it is the current one
+    expect(within(dialog).getAllByText('Default')).toHaveLength(2)
+    expect(within(dialog).getByText('Current')).toBeInTheDocument()
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /add a profile/i }))
-    fireEvent.change(await within(dialog).findByPlaceholderText('Profile name…'), {
+    fireEvent.change(within(dialog).getByPlaceholderText('Profile name…'), {
       target: { value: 'New' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: /^add$/i }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(createProfileFn).toHaveBeenCalledWith('New'))
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'Profiles' })).not.toBeInTheDocument()
-    )
+  })
+
+  test('web mode adopts the Default profile when no selection is stored', async () => {
+    getInstanceConfigFn.mockResolvedValue({
+      demo_mode: false,
+      auth_mode: 'authenticated',
+      registration_enabled: true,
+    })
+    listProfiles.mockResolvedValue([
+      { id: 'p-second', name: 'Second', color: null, is_default: false },
+      { id: 'p-default', name: 'Default', color: null, is_default: true },
+    ])
+    renderShell()
+    // server mode has no silent default (§15) — the null selection must
+    // adopt the is_default row so boot queries carry X-Profile-Id
+    await waitFor(() => expect(getActiveProfile()).toBe('p-default'))
+    expect(localStorage.getItem('ca-profile-id')).toBe('p-default')
+  })
+
+  test('a stale stored selection is repaired to the Default profile', async () => {
+    // auth_mode open (desktop) — repair is mode-independent, adoption is not
+    listProfiles.mockResolvedValue([{ id: 'p-default', name: 'Default', color: null, is_default: true }])
+    localStorage.setItem('ca-profile-id', 'p-deleted')
+    renderShell()
+    await waitFor(() => expect(getActiveProfile()).toBe('p-default'))
+    expect(localStorage.getItem('ca-profile-id')).toBe('p-default')
   })
 
   test('active course shows quick destinations for workspace, materials, notes and practice', async () => {

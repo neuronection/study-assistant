@@ -44,6 +44,9 @@ from sqlalchemy import (
     UniqueConstraint as UniqueConstraint,
 )
 from sqlalchemy import (
+    Uuid as Uuid,
+)
+from sqlalchemy import (
     text as text,
 )
 from sqlalchemy.orm import Mapped as Mapped
@@ -56,14 +59,27 @@ from ...storage.db import Base as Base
 def utcnow() -> datetime:
     return datetime.now(UTC)
 
+_UUID = Uuid(as_uuid=False)
+
+
 class Profile(Base):
+    """Family-normative `profiles` (identity-auth §5) + product columns."""
+
     __tablename__ = "profiles"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     name: Mapped[str] = mapped_column(String(120))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     color: Mapped[str | None] = mapped_column(String(16))
     preferences: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 class Course(Base):
     __tablename__ = "courses"
@@ -73,11 +89,14 @@ class Course(Base):
             "profile_id",
             unique=True,
             sqlite_where=text("origin = 'scratch'"),
+            postgresql_where=text("origin = 'scratch'"),
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str | None] = mapped_column(Text)
     subject: Mapped[str | None] = mapped_column(String(120))
@@ -105,8 +124,12 @@ class MaterialGroup(Base):
     __tablename__ = "material_groups"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
     title: Mapped[str] = mapped_column(String(300))
     kind: Mapped[str] = mapped_column(String(30), default="image-set")
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
@@ -118,15 +141,22 @@ class TreeNode(Base):
         Index("ix_tree_nodes_course_parent", "course_id", "parent_id"),
         Index("uq_tree_nodes_path", "path", unique=True),
         UniqueConstraint("id", "course_id", name="uq_tree_nodes_id_course"),
-        Index("uq_tree_nodes_root", "course_id", unique=True, sqlite_where=text("is_root = 1")),
+        Index(
+            "uq_tree_nodes_root",
+            "course_id",
+            unique=True,
+            sqlite_where=text("is_root = 1"),
+            postgresql_where=text("is_root"),
+        ),
         ForeignKeyConstraint(
-            ["parent_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"]
+            ["parent_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ondelete="CASCADE",
         ),
         CheckConstraint("depth >= 0 AND depth <= 4", name="ck_tree_nodes_depth"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
     parent_id: Mapped[int | None] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str | None] = mapped_column(Text)

@@ -16,7 +16,7 @@ class SearchError(ValueError):
     pass
 
 
-def search_provider_config(session: Session, profile_id: int) -> dict[str, str] | None:
+def search_provider_config(session: Session, profile_id: str) -> dict[str, str] | None:
     profile = session.get(Profile, profile_id)
     preferences = profile.preferences if profile is not None else None
     if not isinstance(preferences, dict):

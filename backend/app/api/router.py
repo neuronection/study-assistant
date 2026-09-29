@@ -8,7 +8,6 @@ from . import (
     chat,
     config,
     courses,
-    desktop,
     discovery,
     exercises,
     external_sources,
@@ -16,6 +15,7 @@ from . import (
     folders,
     fs,
     health,
+    instance,
     jobs,
     materials,
     mcp_servers,
@@ -36,6 +36,7 @@ from . import (
 
 api_router = APIRouter()
 api_router.include_router(health.router)
+api_router.include_router(instance.router)
 api_router.include_router(jobs.router)
 api_router.include_router(materials.router)
 api_router.include_router(materials.blobs_router)
@@ -62,7 +63,6 @@ api_router.include_router(plan.upcoming_router)
 api_router.include_router(config.router)
 api_router.include_router(sources.router)
 api_router.include_router(fs.router)
-api_router.include_router(desktop.router)
 api_router.include_router(skills.router)
 api_router.include_router(onboarding.router)
 api_router.include_router(ai_settings.router)

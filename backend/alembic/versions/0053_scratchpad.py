@@ -40,6 +40,7 @@ def upgrade() -> None:
         ["profile_id"],
         unique=True,
         sqlite_where=sa.text("origin = 'scratch'"),
+        postgresql_where=sa.text("origin = 'scratch'"),
     )
 
 

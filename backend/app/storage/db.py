@@ -17,10 +17,19 @@ class Base(DeclarativeBase):
     pass
 
 
-def make_engine(db_path: Path) -> Engine:
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+def make_engine(db_path: Path | str) -> Engine:
+    """Engine for either datastore (ADR-0022): SQLite (desktop + tests)
+    gets the desktop pragmas and sqlite-vec; PostgreSQL 16 (web/server)
+    gets pre-ping pooling."""
+    if isinstance(db_path, Path):
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        url = f"sqlite:///{db_path}"
+    else:
+        url = db_path
+    if not url.startswith("sqlite"):
+        return create_engine(url, pool_pre_ping=True)
     engine = create_engine(
-        f"sqlite:///{db_path}",
+        url,
         connect_args={"check_same_thread": False},
     )
 

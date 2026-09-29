@@ -160,7 +160,7 @@ class MaterialsService:
     def upload(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         filename: str,
         data: bytes,
         mime: str | None,
@@ -217,7 +217,7 @@ class MaterialsService:
     def create_text(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         course_id: int,
         filename: str,
         content: str,
@@ -248,7 +248,7 @@ class MaterialsService:
     def create_link(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         course_id: int,
         url: str,
         title: str | None = None,
@@ -599,7 +599,7 @@ class MaterialsService:
 
     def _find_duplicate(
         self,
-        profile_id: int,
+        profile_id: str,
         course_id: int,
         content_hash: str,
         exclude_id: int | None = None,
@@ -625,7 +625,7 @@ class MaterialsService:
     def list_materials(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         course_id: int | None = None,
         folder_id: int | None = None,
         unfiled: bool = False,
@@ -658,7 +658,7 @@ class MaterialsService:
         self._session.flush()
         return material
 
-    def get(self, material_id: int, *, profile_id: int) -> Material | None:
+    def get(self, material_id: int, *, profile_id: str) -> Material | None:
         material = self._session.get(Material, material_id)
         if material is None or material.profile_id != profile_id:
             return None

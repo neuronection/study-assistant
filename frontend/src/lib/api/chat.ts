@@ -142,6 +142,8 @@ export interface ChatMessage {
   trace?: ChatTrace | null
   warnings?: string[]
   parent_id?: number | null
+  /** Persisted turn-failure marker (uniform chat error display). */
+  state?: { turn_failed?: { code: string; detail: string } } | null
   variant_index?: number
   variant_count?: number
   sibling_ids?: number[]

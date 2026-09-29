@@ -368,7 +368,8 @@ def test_transcribe_unassigned_409(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         response = post_audio(test_client)
         assert response.status_code == 409
-        assert "unassigned" in response.json()["detail"].lower()
+        # Family-uniform TaskUnassigned wording (career-matched).
+        assert "not configured" in response.json()["detail"].lower()
 
 
 def test_transcribe_provider_error_502(

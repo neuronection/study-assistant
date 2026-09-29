@@ -16,8 +16,30 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        # ADR-0022: web mode runs PostgreSQL 16 (pgvector) — migrations must
+        # upgrade cleanly on both dialects (SQLite runs via pytest + alembic).
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neuro_study
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
+      - name: Provide family auth-kit (editable path dep)
+        run: |
+          if [ ! -d ../auth-kit ]; then
+            git clone --depth 1 https://github.com/neuronection/auth-kit ../auth-kit \
+              || echo "::warning::neuronection/auth-kit not fetchable — required while pyproject.toml pins it as an editable ../auth-kit path dep"
+          fi
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
@@ -46,6 +68,28 @@ jobs:
       - run: uv run --directory backend alembic upgrade head
         env:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data
+      - name: Migrations on PostgreSQL 16 (second dialect)
+        run: uv run --directory backend alembic upgrade head
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data-pg
+          SA_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/neuro_study
+      - name: Create PostgreSQL test database (neuro_study_test)
+        run: >
+          docker run --rm --network host pgvector/pgvector:pg16
+          psql "postgresql://postgres:postgres@localhost:5432/postgres"
+          -c "CREATE DATABASE neuro_study_test"
+      - name: PostgreSQL dialect tests (postgres-gated modules)
+        env:
+          SA_DATA_DIR: ${{ runner.temp }}/sa-data-pg
+          SA_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/neuro_study_test
+        run: |
+          set +e
+          uv run --directory backend pytest tests/ -k postgres
+          code=$?
+          set -e
+          # Exit 5 = no tests matched the postgres selection (the gated
+          # modules are still landing) — tolerate that and nothing else.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 5 ]; then exit "$code"; fi
       - name: E2E smoke (Playwright, mock provider)
         run: |
           pnpm --filter frontend exec playwright install --with-deps chromium
@@ -60,6 +104,12 @@ jobs:
       UV_PYTHON_PREFERENCE: only-system
     steps:
       - uses: actions/checkout@v4
+      - name: Provide family auth-kit (editable path dep)
+        run: |
+          if [ ! -d ../auth-kit ]; then
+            git clone --depth 1 https://github.com/neuronection/auth-kit ../auth-kit \
+              || echo "::warning::neuronection/auth-kit not fetchable — required while pyproject.toml pins it as an editable ../auth-kit path dep"
+          fi
       - uses: astral-sh/setup-uv@v5
       - uses: pnpm/action-setup@v4
         with:
@@ -137,6 +187,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Provide family auth-kit (editable path dep)
+        shell: bash
+        run: |
+          if [ ! -d ../auth-kit ]; then
+            git clone --depth 1 https://github.com/neuronection/auth-kit ../auth-kit \
+              || echo "::warning::neuronection/auth-kit not fetchable — required while pyproject.toml pins it as an editable ../auth-kit path dep"
+          fi
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
@@ -199,6 +256,12 @@ jobs:
       DOCKER_BUILD_RECORD_UPLOAD: false
     steps:
       - uses: actions/checkout@v4
+      - name: Provide family auth-kit (editable build dep)
+        run: |
+          if [ ! -d ../auth-kit ]; then
+            git clone --depth 1 https://github.com/neuronection/auth-kit ../auth-kit \
+              || echo "::warning::neuronection/auth-kit not fetchable — the image build needs it (named context `auth-kit`, see docker/Dockerfile)"
+          fi
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -216,6 +279,7 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
+          build-contexts: auth-kit=../auth-kit
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -47,8 +47,10 @@ class SelfStoppingGateway(LLMGateway):
         yield StreamChunk("text", "tail [1]")
 
 
-def test_stop_mid_stream_persists_prefix_and_marks_trace(db_session: Session) -> None:
-    profile = ensure_default_profile(db_session)
+def test_stop_mid_stream_persists_prefix_and_marks_trace(
+    db_session: Session, owner: Any
+) -> None:
+    profile = ensure_default_profile(db_session, owner.id)
     session_row = ChatSession(profile_id=profile.id, title="t")
     db_session.add(session_row)
     db_session.flush()

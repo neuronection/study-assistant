@@ -1,6 +1,9 @@
 import json
+import os
 import re
 import sqlite3
+import subprocess
+import tempfile
 import threading
 import zipfile
 from collections.abc import Callable
@@ -11,17 +14,96 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+import structlog
+from sqlalchemy.engine import make_url
+
 from ... import __version__
+
+logger = structlog.get_logger(__name__)
 
 MANIFEST_NAME = "manifest.json"
 DB_NAME = "database.sqlite"
+DB_NAME_PG = "database.dump"
 BLOBS_PREFIX = "blobs/"
 BACKUP_FORMAT = "ca-backup/v1"
 STAMP_PATTERN = re.compile(r"^(auto|manual)-(\d{8}-\d{6})\.zip$")
 
+DB_KIND_SQLITE = "sqlite"
+DB_KIND_POSTGRES = "postgres"
+
 
 class BackupError(Exception):
     pass
+
+
+@dataclass
+class DatabaseDump:
+    """The database member of a backup archive, tagged with its kind."""
+
+    kind: str
+    data: bytes
+
+
+def postgres_url(database_url: str | None) -> str | None:
+    """The URL when it targets PostgreSQL, else None (SQLite/file mode)."""
+    if database_url is not None and make_url(database_url).get_backend_name() == "postgresql":
+        return database_url
+    return None
+
+
+def pg_connection(database_url: str) -> tuple[list[str], dict[str, str]]:
+    """Connection args and env for the PostgreSQL client tools (pg_dump & co).
+
+    Host/port/user/database come from the SQLAlchemy URL; the password goes
+    into `PGPASSWORD` so it never shows up on a command line.
+    """
+    url = make_url(database_url)
+    args: list[str] = []
+    if url.host:
+        args += ["-h", url.host]
+    if url.port:
+        args += ["-p", str(url.port)]
+    if url.username:
+        args += ["-U", url.username]
+    if url.database:
+        args += ["-d", url.database]
+    env = dict(os.environ)
+    if url.password:
+        env["PGPASSWORD"] = url.password
+    return args, env
+
+
+def dump_database_pg(database_url: str) -> bytes:
+    """A custom-format (`pg_dump -Fc`) dump of the target database."""
+    args, env = pg_connection(database_url)
+    result = subprocess.run(["pg_dump", "-Fc", *args], capture_output=True, env=env)
+    if result.returncode != 0:
+        detail = result.stderr.decode(errors="replace").strip()
+        raise BackupError(f"pg_dump failed: {detail}")
+    return result.stdout
+
+
+def restore_database_pg(database_url: str, dump: bytes) -> None:
+    """Restore a custom-format dump into the target database.
+
+    `--clean --if-exists` drops the existing objects first, so the archive's
+    schema and rows land in an empty-ish database.
+    """
+    args, env = pg_connection(database_url)
+    with tempfile.NamedTemporaryFile(suffix=".dump", delete=False) as handle:
+        handle.write(dump)
+        path = handle.name
+    try:
+        result = subprocess.run(
+            ["pg_restore", "--clean", "--if-exists", *args, path],
+            capture_output=True,
+            env=env,
+        )
+        if result.returncode != 0:
+            detail = result.stderr.decode(errors="replace").strip()
+            raise BackupError(f"pg_restore failed: {detail}")
+    finally:
+        Path(path).unlink(missing_ok=True)
 
 
 @dataclass
@@ -103,16 +185,28 @@ def _snapshot_database(db_path: Path) -> bytes:
     return data
 
 
-def build_backup(db_path: Path, blobs_dir: Path) -> bytes:
+def build_backup(db_path: Path, blobs_dir: Path, *, database_url: str | None = None) -> bytes:
+    """Build a `ca-backup/v1` archive.
+
+    The database member depends on the dialect: SQLite deployments get the
+    online-backup snapshot as `database.sqlite`, PostgreSQL deployments a
+    `pg_dump -Fc` payload as `database.dump`. Manifest and blob handling are
+    shared.
+    """
     manifest = {
         "format": BACKUP_FORMAT,
         "app_version": __version__,
         "created_at": datetime.now(UTC).isoformat(),
     }
+    pg_url = postgres_url(database_url)
+    if pg_url is not None:
+        db_member, db_bytes = DB_NAME_PG, dump_database_pg(pg_url)
+    else:
+        db_member, db_bytes = DB_NAME, _snapshot_database(db_path)
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(MANIFEST_NAME, json.dumps(manifest))
-        archive.writestr(DB_NAME, _snapshot_database(db_path))
+        archive.writestr(db_member, db_bytes)
         blobs = Path(blobs_dir)
         if blobs.is_dir():
             for path in sorted(blobs.rglob("*")):
@@ -122,13 +216,13 @@ def build_backup(db_path: Path, blobs_dir: Path) -> bytes:
     return buffer.getvalue()
 
 
-def read_archive(data: bytes) -> tuple[bytes, dict[str, bytes]]:
+def read_archive(data: bytes) -> tuple[DatabaseDump, dict[str, bytes]]:
     try:
         archive = zipfile.ZipFile(BytesIO(data))
     except zipfile.BadZipFile as error:
         raise BackupError("not a backup archive") from error
     names = archive.namelist()
-    if MANIFEST_NAME not in names or DB_NAME not in names:
+    if MANIFEST_NAME not in names:
         raise BackupError("backup archive is incomplete")
     try:
         manifest = json.loads(archive.read(MANIFEST_NAME))
@@ -136,7 +230,12 @@ def read_archive(data: bytes) -> tuple[bytes, dict[str, bytes]]:
         raise BackupError("unreadable manifest") from error
     if manifest.get("format") != BACKUP_FORMAT:
         raise BackupError("unsupported backup format")
-    database = archive.read(DB_NAME)
+    if DB_NAME_PG in names:
+        database = DatabaseDump(DB_KIND_POSTGRES, archive.read(DB_NAME_PG))
+    elif DB_NAME in names:
+        database = DatabaseDump(DB_KIND_SQLITE, archive.read(DB_NAME))
+    else:
+        raise BackupError("backup archive is incomplete")
     blobs: dict[str, bytes] = {}
     for name in names:
         if name.startswith(BLOBS_PREFIX) and not name.endswith("/"):
@@ -144,9 +243,7 @@ def read_archive(data: bytes) -> tuple[bytes, dict[str, bytes]]:
     return database, blobs
 
 
-def database_is_healthy(database: bytes) -> bool:
-    import tempfile
-
+def _sqlite_is_healthy(database: bytes) -> bool:
     with tempfile.NamedTemporaryFile(suffix=".db", delete=True) as handle:
         handle.write(database)
         handle.flush()
@@ -168,6 +265,25 @@ def database_is_healthy(database: bytes) -> bool:
             connection.close()
 
 
+def _pg_is_healthy(database: bytes) -> bool:
+    """A custom-format dump is healthy when `pg_restore` can read its table of
+    contents (exit 0)."""
+    with tempfile.NamedTemporaryFile(suffix=".dump", delete=False) as handle:
+        handle.write(database)
+        path = handle.name
+    try:
+        result = subprocess.run(["pg_restore", "--list", path], capture_output=True)
+        return result.returncode == 0
+    finally:
+        Path(path).unlink(missing_ok=True)
+
+
+def database_is_healthy(database: DatabaseDump) -> bool:
+    if database.kind == DB_KIND_POSTGRES:
+        return _pg_is_healthy(database.data)
+    return _sqlite_is_healthy(database.data)
+
+
 def validate_backup_file(path: Path) -> bool:
     try:
         database, _blobs = read_archive(path.read_bytes())
@@ -182,11 +298,13 @@ def create_backup(
     target_dir: Path,
     prefix: str = "auto",
     now: datetime | None = None,
+    *,
+    database_url: str | None = None,
 ) -> Path:
     target_dir.mkdir(parents=True, exist_ok=True)
     stamp = (now or datetime.now(UTC)).strftime("%Y%m%d-%H%M%S")
     path = target_dir / f"{prefix}-{stamp}.zip"
-    data = build_backup(db_path, blobs_dir)
+    data = build_backup(db_path, blobs_dir, database_url=database_url)
     path.write_bytes(data)
     if not validate_backup_file(path):
         path.unlink(missing_ok=True)
@@ -270,8 +388,23 @@ def _corrupt_stamp() -> str:
 
 
 def boot_integrity_check(
-    db_path: Path, backups_dir: Path, blobs_dir: Path
+    db_path: Path,
+    backups_dir: Path,
+    blobs_dir: Path,
+    *,
+    database_url: str | None = None,
 ) -> dict[str, Any] | None:
+    """SQLite-only boot repair: quarantine a corrupt database file and put the
+    newest healthy backup in its place.
+
+    On PostgreSQL there is no database file to quarantine, so the check is
+    skipped (server-mode databases are repaired through `pg_restore`, not by
+    swapping files at boot).
+    """
+    if postgres_url(database_url) is not None:
+        logger.info("boot_integrity_check_skipped", reason="postgres")
+        return None
+
     def database_ok(path: Path) -> bool:
         try:
             connection = sqlite3.connect(str(path))
@@ -285,7 +418,8 @@ def boot_integrity_check(
         finally:
             connection.close()
 
-    if db_path.exists() and database_ok(db_path):
+    existed = db_path.exists()
+    if existed and database_ok(db_path):
         return None
 
     recovery: dict[str, Any] = {
@@ -312,16 +446,24 @@ def boot_integrity_check(
             database, blobs = read_archive(candidate.read_bytes())
         except (BackupError, OSError):
             continue
+        if database.kind != DB_KIND_SQLITE:
+            continue
         if not database_is_healthy(database):
             continue
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.write_bytes(database)
+        db_path.write_bytes(database.data)
         for rel, data in blobs.items():
             target = blobs_dir / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
         recovery["from_backup"] = candidate.name
         break
+
+    if not existed and recovery["from_backup"] is None:
+        # No sqlite database file and nothing sqlite-shaped to restore: a
+        # fresh install (or a PostgreSQL deployment reached without a URL).
+        logger.info("boot_integrity_check_skipped", reason="no_sqlite_database")
+        return None
 
     recovery_path = backups_dir.parent / "last-recovery.json"
     recovery_path.parent.mkdir(parents=True, exist_ok=True)
@@ -339,6 +481,8 @@ class BackupScheduler:
         publish: Callable[[str, dict[str, Any]], None] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         startup_delay_sec: float = 60.0,
+        *,
+        database_url: str | None = None,
     ) -> None:
         self._settings_provider = settings_provider
         self._db_path = Path(db_path)
@@ -347,6 +491,7 @@ class BackupScheduler:
         self._publish = publish
         self._clock = clock
         self._startup_delay = startup_delay_sec
+        self._database_url = database_url
         self._stop = threading.Event()
         self._cycle = threading.Event()
         self._thread: threading.Thread | None = None
@@ -403,6 +548,7 @@ class BackupScheduler:
                 self._backups_dir,
                 prefix=prefix,
                 now=self._clock(),
+                database_url=self._database_url,
             )
             apply_retention(
                 self._backups_dir, effective.keep_daily, effective.keep_weekly

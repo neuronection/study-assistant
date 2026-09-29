@@ -90,12 +90,15 @@ def test_teach_back_result_lands_in_diagnostics(
     test_client, gateway, app = client
     with test_client:
         course_id = make_course(test_client)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         db = app.state.session_factory()
         try:
             from app.domain.models import Exercise, ExerciseStep
 
             exercise = Exercise(
-                profile_id=1,
+                profile_id=profile_id,
                 course_id=course_id,
                 title="Teach-back: Eigenvalues",
                 kind="explain",
@@ -158,15 +161,21 @@ def test_teach_back_result_lands_in_diagnostics(
 def test_teachback_recommendation_after_repeated_drilling(
     client: tuple[TestClient, ScriptedGateway, FastAPI],
 ) -> None:
-    test_client, _gateway, _app = client
+    test_client, _gateway, app = client
     with test_client:
         course_id = make_course(test_client)
 
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         db = test_client.app.state.session_factory()  # type: ignore[attr-defined]
         try:
             db.add(
                 Activity(
-                    profile_id=1, course_id=course_id, type="quiz", title="drills"
+                    profile_id=profile_id,
+                    course_id=course_id,
+                    type="quiz",
+                    title="drills",
                 )
             )
             db.commit()

@@ -1,6 +1,12 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import { markProfileSettled } from '@/lib/api'
 import { exportMarkdownWithDrawings } from './exportMarkdown'
+
+// drawing refs fetch through apiFetch — settle the §15 boot gate
+beforeEach(() => {
+  markProfileSettled()
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()

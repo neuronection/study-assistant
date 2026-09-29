@@ -1,0 +1,46 @@
+name: study-assistant-dev
+
+# Dev infrastructure only — PostgreSQL 16 for `./scripts/run-dev.sh --web`
+# (web/server identity mode per ADR-0022). Desktop/dev mode stays SQLite and
+# needs none of this. NOT a deployment stack — see docker-compose.standalone.yml.
+#
+# First run: `docker compose -f docker/docker-compose.dev-db.yml up -d`
+# (creates `neuro_study` + `neuro_study_test`). Reset: `down -v` (wipes data).
+#
+# Roles per deployment.md: the bootstrap superuser IS the migration owner
+# (`neuro_study_owner`, hardcoded so a stale env cannot resurrect a
+# single-admin-role layout on fresh volumes); `neuro_study_app` is the
+# runtime least-privilege role. `./scripts/run-dev.sh --web` connects with
+# SA_DATABASE_URL (owner) — swap to the app role for hardening.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: study-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neuro_study}
+      # The bootstrap superuser IS the migration owner role (deployment.md).
+      POSTGRES_USER: neuro_study_owner
+      # Pinned on purpose: a stray POSTGRES_PASSWORD in the shell/env must
+      # not silently initialize the dev DB with credentials the run script
+      # does not know (that mismatch produced a login failure).
+      POSTGRES_PASSWORD: neuro_study_dev
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-neuro_study_test}
+    volumes:
+      - study_postgres_dev_data:/var/lib/postgresql/data
+      - ./init-dev-db.sh:/docker-entrypoint-initdb.d/01-init-dev-db.sh:ro
+    ports:
+      - "127.0.0.1:${SA_DB_PORT:-5434}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuro_study_owner -d neuro_study"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - study-dev
+
+networks:
+  study-dev:
+
+volumes:
+  study_postgres_dev_data:

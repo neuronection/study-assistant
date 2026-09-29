@@ -167,7 +167,9 @@ def test_generate_groups_when_more_nodes_than_days(client: TestClient) -> None:
     assert any("more" in item["title"] for item in study_items)
 
 
-def test_generate_biases_weak_concepts(client: TestClient) -> None:
+def test_generate_biases_weak_concepts(
+    client: TestClient, profile_id: str
+) -> None:
     course_id = make_course(client)
     set_exam(client, course_id, days_out=14)
     root = root_node(client, course_id)
@@ -180,7 +182,7 @@ def test_generate_biases_weak_concepts(client: TestClient) -> None:
     try:
         db.add(
             Activity(
-                profile_id=1, course_id=course_id, type="quiz", title="weak quiz"
+                profile_id=profile_id, course_id=course_id, type="quiz", title="weak quiz"
             )
         )
         db.commit()
@@ -267,14 +269,16 @@ def test_course_purge_removes_plan_items(client: TestClient) -> None:
         db.close()
 
 
-def _seed_answers(client: TestClient, course_id: int, results: list[bool]) -> None:
+def _seed_answers(
+    client: TestClient, course_id: int, profile_id: str, results: list[bool]
+) -> None:
     from app.domain.models import Activity, Answer, Attempt, Question
 
     db_factory = client.app.state.session_factory  # type: ignore[attr-defined]
     db = db_factory()
     try:
         db.add(
-            Activity(profile_id=1, course_id=course_id, type="quiz", title="quiz")
+            Activity(profile_id=profile_id, course_id=course_id, type="quiz", title="quiz")
         )
         db.commit()
         row = db.scalars(
@@ -316,7 +320,9 @@ def test_readiness_not_enough_data_gate(client: TestClient) -> None:
     assert entry["trend"] is None
 
 
-def test_readiness_formula_trend_and_weakest(client: TestClient) -> None:
+def test_readiness_formula_trend_and_weakest(
+    client: TestClient, profile_id: str
+) -> None:
     course_id = make_course(client)
     set_exam(client, course_id, days_out=10)
     root = root_node(client, course_id)
@@ -331,7 +337,9 @@ def test_readiness_formula_trend_and_weakest(client: TestClient) -> None:
         },
     )
     assert note.status_code == 201
-    _seed_answers(client, course_id, [False, False, False, False, True, True, True, True])
+    _seed_answers(
+        client, course_id, profile_id, [False, False, False, False, True, True, True, True]
+    )
 
     status = client.get("/api/v1/analytics/exams").json()
     entry = next(item for item in status if item["course_id"] == course_id)
@@ -344,12 +352,14 @@ def test_readiness_formula_trend_and_weakest(client: TestClient) -> None:
     assert entry["readiness"] == expected
 
 
-def test_generate_biases_first_practice_item_first_day(client: TestClient) -> None:
+def test_generate_biases_first_practice_item_first_day(
+    client: TestClient, profile_id: str
+) -> None:
     course_id = make_course(client)
     set_exam(client, course_id, days_out=14)
     root = root_node(client, course_id)
     make_nodes(client, course_id, root, ["Node one", "Node two"])
-    _seed_answers(client, course_id, [False, False, True])
+    _seed_answers(client, course_id, profile_id, [False, False, True])
 
     response = client.post(f"/api/v1/courses/{course_id}/plan/generate")
     assert response.status_code == 200

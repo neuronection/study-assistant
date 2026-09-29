@@ -1055,7 +1055,7 @@ def bundle_preview(bundle: BundleData) -> dict[str, Any]:
 def import_course_bundle(
     session: Session,
     bundle: BundleData,
-    profile_id: int,
+    profile_id: str,
     blobs_root: Path,
     blob_store: Any,
     existing_titles: set[str],

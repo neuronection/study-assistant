@@ -167,7 +167,11 @@ def test_backup_export_restore_round_trip() -> None:
             snapshot_path.unlink(missing_ok=True)
 
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
+        names = archive.namelist()
         exported_db = archive.read(DB_NAME)
+    # sqlite deployments snapshot the file as `database.sqlite`; only
+    # PostgreSQL deployments emit `database.dump`
+    assert "database.dump" not in names
     assert "Survivor note" in db_titles(exported_db), "export snapshot lacks the note"
 
     target_dir = Path(tempfile.mkdtemp(prefix="ca-p7s2-t-"))
@@ -187,7 +191,14 @@ def test_backup_export_restore_round_trip() -> None:
         assert restored.status_code == 200, restored.text
         assert restored.json()["status"] == "restored"
 
-        listing = target.get("/api/v1/notes")
+        # restore swaps the database file: the minted session's user row
+        # was replaced by the export's — re-mint against the restored DB.
+        from conftest import mint_session
+
+        cookie, _csrf, pid = mint_session(target_app)
+        listing = target.get(
+            "/api/v1/notes", headers={"Cookie": cookie, "X-Profile-Id": pid}
+        )
         titles = [entry["title"] for entry in listing.json()["items"]]
         if "Survivor note" not in titles:
             raise AssertionError(

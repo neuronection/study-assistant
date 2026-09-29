@@ -41,7 +41,7 @@ def build_registry(
     transport: Any = None,
     language: str | None = None,
     session: Any = None,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> list[URLParser]:
     from .direct_file import DirectFileParser
     from .html import HtmlParser

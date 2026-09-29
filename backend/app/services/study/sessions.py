@@ -26,7 +26,7 @@ def _clamped_duration(started_at: datetime, ended_at: datetime) -> int:
 
 def start_session(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     kind: StudySessionKind,
     source: StudySessionSource,
@@ -89,7 +89,7 @@ def beat_session(
     return row
 
 
-def session_summary(session: Session, profile_id: int, days: int) -> dict[str, Any]:
+def session_summary(session: Session, profile_id: str, days: int) -> dict[str, Any]:
     horizon_start = (utcnow() - timedelta(days=max(1, min(days, 365)))).date()
     rows = session.execute(
         select(

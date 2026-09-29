@@ -42,7 +42,7 @@ class ProposalActionError(ValueError):
 class ProposalContext:
     blobs: BlobStore | None = None
     jobs: JobRunner | None = None
-    profile_id: int | None = None
+    profile_id: str | None = None
 
 
 Executor = Callable[

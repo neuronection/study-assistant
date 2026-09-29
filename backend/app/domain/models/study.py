@@ -1,4 +1,7 @@
 from .core import (
+    _UUID as _UUID,
+)
+from .core import (
     JSON as JSON,
 )
 from .core import (
@@ -61,13 +64,16 @@ class Activity(Base):
     __tablename__ = "activities"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"]
+            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ondelete="CASCADE",
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
     node_id: Mapped[int | None] = mapped_column(Integer)
     type: Mapped[str] = mapped_column(String(20), default="quiz")
     title: Mapped[str] = mapped_column(String(300))
@@ -87,8 +93,10 @@ class Question(Base):
     __tablename__ = "questions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id"), index=True)
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("questions.id"))
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.id", ondelete="CASCADE"), index=True
+    )
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
     type: Mapped[str] = mapped_column(String(20))
     stem: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     options: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
@@ -116,7 +124,9 @@ class Attempt(Base):
     __tablename__ = "attempts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id"), index=True)
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.id", ondelete="CASCADE"), index=True
+    )
     mode: Mapped[str] = mapped_column(String(10), default="practice")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -133,8 +143,12 @@ class Answer(Base):
     __tablename__ = "answers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    attempt_id: Mapped[int] = mapped_column(ForeignKey("attempts.id"), index=True)
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), index=True)
+    attempt_id: Mapped[int] = mapped_column(
+        ForeignKey("attempts.id", ondelete="CASCADE"), index=True
+    )
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("questions.id", ondelete="CASCADE"), index=True
+    )
     response: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     input_mode: Mapped[str | None] = mapped_column(String(10))
     correct: Mapped[bool | None] = mapped_column(Boolean)
@@ -153,8 +167,12 @@ class Mistake(Base):
     __tablename__ = "mistakes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("questions.id", ondelete="CASCADE"), index=True
+    )
     concept_ids: Mapped[list[int] | None] = mapped_column(JSON)
     error_tags: Mapped[list[str] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -164,13 +182,16 @@ class Exercise(Base):
     __tablename__ = "exercises"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"]
+            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ondelete="CASCADE",
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
     node_id: Mapped[int | None] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(300))
     kind: Mapped[str] = mapped_column(String(30), default="multi_step")
@@ -197,7 +218,9 @@ class ExerciseStep(Base):
     __tablename__ = "exercise_steps"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercises.id"), index=True)
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    )
     order_idx: Mapped[int] = mapped_column(Integer)
     prompt: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     expected: Mapped[dict[str, Any] | None] = mapped_column(JSON)
@@ -210,7 +233,9 @@ class ExerciseSession(Base):
     __tablename__ = "exercise_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    exercise_id: Mapped[int] = mapped_column(ForeignKey("exercises.id"), index=True)
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercises.id", ondelete="CASCADE"), index=True
+    )
     current_step_idx: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="active")
     socratic: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -227,7 +252,9 @@ class StepAttempt(Base):
     __tablename__ = "step_attempts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("exercise_sessions.id"), index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("exercise_sessions.id", ondelete="CASCADE"), index=True
+    )
     step_idx: Mapped[int] = mapped_column(Integer)
     response: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     correct: Mapped[bool | None] = mapped_column(Boolean)
@@ -246,8 +273,8 @@ class QuizHelpEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    attempt_id: Mapped[int] = mapped_column(ForeignKey("attempts.id"))
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"))
+    attempt_id: Mapped[int] = mapped_column(ForeignKey("attempts.id", ondelete="CASCADE"))
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
     level: Mapped[int] = mapped_column(Integer)
     markdown: Mapped[str] = mapped_column(Text)
     violations: Mapped[str | None] = mapped_column(Text)
@@ -258,7 +285,7 @@ class FsrsState(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     card_id: Mapped[int] = mapped_column(
-        ForeignKey("exercises.id"), index=True, unique=True
+        ForeignKey("exercises.id", ondelete="CASCADE"), index=True, unique=True
     )
     state: Mapped[str] = mapped_column(String(20), default="new")
     stability: Mapped[float | None] = mapped_column(Float)
@@ -276,7 +303,7 @@ class ReviewLog(Base):
     __tablename__ = "review_log"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    card_id: Mapped[int] = mapped_column(ForeignKey("exercises.id"), index=True)
+    card_id: Mapped[int] = mapped_column(ForeignKey("exercises.id", ondelete="CASCADE"), index=True)
     rating: Mapped[int] = mapped_column(Integer)
     interval_days: Mapped[float] = mapped_column(Float)
     elapsed_days: Mapped[float] = mapped_column(Float)
@@ -308,8 +335,12 @@ class StudySession(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
     node_id: Mapped[int | None] = mapped_column(Integer)
     kind: Mapped[str] = mapped_column(String(20))
     source: Mapped[str] = mapped_column(String(10))
@@ -324,15 +355,18 @@ class PlanItem(Base):
     __tablename__ = "plan_items"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"]
+            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ondelete="CASCADE",
         ),
         Index("ix_plan_items_course_due", "course_id", "due_date"),
         Index("ix_plan_items_profile_due", "profile_id", "due_date"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
     node_id: Mapped[int | None] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(300))
     detail: Mapped[str | None] = mapped_column(String(500))

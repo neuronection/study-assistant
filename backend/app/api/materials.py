@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError, TaskUnassigned
+from ..core.profile_context import active_user_id
 from ..core.vocab import (
     DeriveOutcome,
     ExtractionMode,
@@ -17,7 +18,17 @@ from ..core.vocab import (
     MaterialStatus,
     applicable_extraction_modes,
 )
-from ..domain.models import Extraction, Material, MaterialDrawing, MaterialLink, utcnow
+from ..domain.models import (
+    Extraction,
+    Material,
+    MaterialDrawing,
+    MaterialImage,
+    MaterialLink,
+    Note,
+    NoteDrawing,
+    Profile,
+    utcnow,
+)
 from ..jobs.payloads import UrlImportPayload
 from ..jobs.runner import JobRunner
 from ..services.content.diffs import unified_text_diff
@@ -725,7 +736,7 @@ def material_links(
     return StructureService(session).material_links(material_id)
 
 
-_URL_IMPORTS_IN_FLIGHT: set[int] = set()
+_URL_IMPORTS_IN_FLIGHT: set[str] = set()
 
 
 class UrlImportIn(BaseModel):
@@ -1317,6 +1328,41 @@ def delete_material_drawing(
     return _material_detail(session, service, material)
 
 
+def _blob_owned_by_user(session: Session, sha256: str, user_id: str) -> bool:
+    """Owner-scoped blob visibility (identity-auth §15/§10).
+
+    Browser *navigations* (PDF iframe documents, `<img>` subresources)
+    cannot carry the `X-Profile-Id` header, so the blobs route is
+    profile-bind exempt and enforces ownership here instead: the sha
+    must be referenced by content the caller owns, resolved through the
+    profile chain (material/image/drawing → material → profile; note
+    drawing → note → profile). Fail closed — an unreferenced or foreign
+    sha is indistinguishable from a missing one.
+    """
+    owned_profiles = select(Profile.id).where(Profile.user_id == user_id)
+    owned_materials = select(Material.id).where(Material.profile_id.in_(owned_profiles))
+    owned_notes = select(Note.id).where(Note.profile_id.in_(owned_profiles))
+    referenced = (
+        select(Material.id).where(
+            Material.blob_sha == sha256,
+            Material.profile_id.in_(owned_profiles),
+        ),
+        select(MaterialImage.id).where(
+            MaterialImage.blob_sha == sha256,
+            MaterialImage.material_id.in_(owned_materials),
+        ),
+        select(MaterialDrawing.id).where(
+            MaterialDrawing.png_sha == sha256,
+            MaterialDrawing.material_id.in_(owned_materials),
+        ),
+        select(NoteDrawing.id).where(
+            NoteDrawing.png_sha == sha256,
+            NoteDrawing.note_id.in_(owned_notes),
+        ),
+    )
+    return any(session.scalars(stmt.limit(1)).first() is not None for stmt in referenced)
+
+
 @blobs_router.get("/{sha256}")
 def get_blob(
     request: Request,
@@ -1325,6 +1371,10 @@ def get_blob(
 ) -> Response:
     if not _SHA256_RE.match(sha256):
         raise HTTPException(status_code=422, detail="invalid blob id")
+    user_id = active_user_id()
+    if user_id is None or not _blob_owned_by_user(session, sha256, user_id):
+        # 404 (not 403): a foreign sha is indistinguishable from missing.
+        raise HTTPException(status_code=404, detail="blob not found")
     service = _service(request, session)
     blob_row = service.blob_row(sha256)
     if blob_row is None:

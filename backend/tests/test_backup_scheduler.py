@@ -10,12 +10,15 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 from app.services.platform.backup import (
+    DB_KIND_SQLITE,
     BackupScheduler,
     EffectiveBackupSettings,
     apply_retention,
     boot_integrity_check,
     create_backup,
+    database_is_healthy,
     list_backups,
+    read_archive,
 )
 
 
@@ -68,6 +71,13 @@ def test_create_backup_writes_validated_archive(tmp_path: Path) -> None:
             names = archive.namelist()
         assert "manifest.json" in names
         assert "database.sqlite" in names
+
+        # the archive carries one tagged database member: sqlite deployments
+        # snapshot the file, never a pg dump
+        database, blobs = read_archive(path.read_bytes())
+        assert database.kind == DB_KIND_SQLITE
+        assert database_is_healthy(database)
+        assert blobs == {}
 
 
 def test_retention_keeps_dailies_and_one_weekly_per_week(tmp_path: Path) -> None:

@@ -216,6 +216,10 @@ def save_window_state(data_dir: Path, state: WindowState) -> None:
 
 def run_browser() -> None:
     settings = get_settings()
+    # Attach the shell gate (identity-auth §11) before the app is built —
+    # create_app arms the X-Shell-Token gate only for shell-attached
+    # processes; shell-less desktop dev (run-dev.sh) stays ungated.
+    os.environ["SA_SHELL"] = "1"
     app = create_app(settings)
     url = f"http://{settings.host}:{settings.port}"
     threading.Timer(0.5, webbrowser.open, args=(url,)).start()
@@ -353,6 +357,10 @@ class DesktopBridge:
 
 def run() -> None:
     sanitize_environment()
+    os.environ.setdefault("SA_IDENTITY_MODE", "desktop")
+    # Attach the shell gate (identity-auth §11) before create_app — see
+    # run_browser().
+    os.environ["SA_SHELL"] = "1"
     settings = get_settings()
     apply_webkit_compat_env(marker=Path(settings.data_dir) / "webkit_soft_fallback")
     app = create_app(settings)
@@ -388,9 +396,13 @@ def run() -> None:
             daemon=True,
         ).start()
     state = load_window_state(settings.data_dir, webview.screens)
+    shell_secret = getattr(getattr(app.state, "auth", None), "shell_secret", None)
+    spa_url = f"http://{settings.host}:{port}"
+    if shell_secret:
+        spa_url = f"{spa_url}?shell={shell_secret}"
     created = webview.create_window(
         settings.app_name,
-        f"http://{settings.host}:{port}",
+        spa_url,
         width=state["width"],
         height=state["height"],
         x=state.get("x"),

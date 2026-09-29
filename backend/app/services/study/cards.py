@@ -45,7 +45,7 @@ def front_title(front: list[dict[str, Any]]) -> str:
 def create_card_exercise(
     session: Session,
     *,
-    profile_id: int,
+    profile_id: str,
     course_id: int,
     node_id: int | None,
     kind: str,

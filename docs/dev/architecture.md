@@ -28,7 +28,7 @@ without touching app code.
 │      ├─ math/        equivalence chain, hint-leak guard              │
 │      ├─ ocr/         OcrEngine interface + task-routed implementation│
 │      ├─ jobs/        durable runner (jobs table, worker thread)      │
-│      └─ storage/     SQLite engine (+FTS5 +sqlite-vec), blobs, fts   │
+│      └─ storage/     dialect-aware engine (SQLite/PG), blobs, fts    │
 └──────────────────────────────────────────────────────────────────────┘
          │ (only AI calls leave the machine)
          ▼
@@ -54,7 +54,7 @@ without touching app code.
 | `math/` | Deterministic math trust layer — see [math-verification.md](math-verification.md) |
 | `ocr/` | `OcrEngine` interface; `GatewayOcr` routes page images through the `ocr` task (any assigned vision model); `imaging.py` caps the long edge and re-encodes payloads (WebP q85) before any vision call (ADR-102) |
 | `search/` | hybrid FTS/trigram/vector engine (`materials.py` — `GET /search`; hits annotated post-search with `nodes` placements from `material_links`, plan 80-D/ADR-195) + `provider.py` (chat SEARCH/FETCH adapter — Tavily POST / SearXNG JSON, key in keyring) + **`discovery.py` (plan 73-C, ADR-166): one normalized-result registry over pluggable providers — `web` (existing flavors), `youtube` (yt-dlp flat search), site-filtered SearXNG/Tavily presets (Khan Academy ships as a preset, no ToS-restricted first-party code); `POST /discovery/search` returns normalized rows + per-provider errors, never persisted; unconfigured requested providers are an honest 503** |
-| `storage/` | Engine with WAL/foreign-key/busy-timeout pragmas + sqlite-vec extension load; content-addressed blob store; FTS sync; vector store |
+| `storage/` | Dialect-aware engine (SQLite WAL/foreign-key/busy-timeout pragmas + sqlite-vec load; PostgreSQL 16 + pgvector in web mode, ADR-0022); content-addressed blob store; FTS sync; vector store |
 | `jobs/` | Claim-based worker **pool** over the `jobs` table (default 4 workers) — durable, crash-safe: failed jobs are recorded + **logged** (structlog `job_failed`), the worker pool continues, **`running` jobs left by a restart are reclaimed as `failed`/interrupted on startup**, and an optional per-job timeout (`job_timeout_sec`) is available; progress via EventBus → WS. **Retry surface (2026-08-27): `api/jobs.py` exposes `GET /jobs` (+`/summary`), `POST /jobs/{id}/retry` and `POST /jobs/retry-failed`; a failed job is retriable iff its type has a registered handler and isn't a chat turn — retry resets status→queued, clears error/stage, wakes the pool**. **Cancellation (54-A, ADR-126): `cancellation.py` + terminal `cancelled` status — cancel-on-purge, cooperative checkpoints, commit-time stale re-checks; `payloads.py` TypedDicts type every enqueue/handler payload (55-C)** |
 
 ## Frontend layout (`frontend/src/`)
@@ -69,9 +69,10 @@ without touching app code.
 
 ## Runtime behavior
 
-- **Startup**: migrate to head → **boot integrity check** (corrupt `app.db`
-  quarantined as `corrupt-<ts>.db`, newest valid backup restored automatically,
-  event recorded in `last-recovery.json`) → seed default profile + task
+- **Startup**: migrate to head → **boot integrity check** (corrupt
+  `study.sqlite3` quarantined as `corrupt-<ts>.db`, newest valid backup
+  restored automatically — SQLite-only repair; event recorded in
+  `last-recovery.json`) → seed default profile + task
   assignment rows + purge expired trash → start job runner + scan scheduler +
   **external-source scheduler (plan 73-E)** + **backup scheduler** threads →
   serve built SPA from `frontend/dist` (or hint to build it).
@@ -94,11 +95,14 @@ without touching app code.
   source into `last_scan_error` and publish on WS `externalsource:{id}`.
 - **WebSocket**: `/ws` with subscribe/unsubscribe/publish/ping frames; the backend
   EventBus bridges worker threads to subscribers via `publish_threadsafe`.
-- **Storage**: SQLite in WAL mode, FTS5 full-text, sqlite-vec vectors (runtime-created
+- **Storage**: SQLite (`study.sqlite3`, WAL mode) or PostgreSQL 16 in web
+  mode — one dialect-aware schema (ADR-0022) — FTS5/tsvector full-text,
+  sqlite-vec/pgvector vectors (runtime-created
   `chunk_vecs`, rebuilt automatically when the embedding model/dimension changes),
   originals in a content-addressed blob store (`blobs/ab/cd/<sha256>`) — dedup by
   content hash, never modified.
-- **Data dir**: `~/.local/share/StudyAssistant/` (`app.db`, `blobs/`, `cache/`,
+- **Data dir**: `~/.local/share/StudyAssistant/` (`study.sqlite3` on
+  desktop/tests — web mode runs PostgreSQL per ADR-0022; `blobs/`, `cache/`,
   `thumbnails/`, `backups/`, `backup-settings.json`, `last-recovery.json`). Config
   via `SA_*` env vars; API keys only in the OS keyring
   (`StudyAssistant/provider:{id}`). A pre-rename `CourseAssistant` data dir is
@@ -108,10 +112,46 @@ without touching app code.
 
 ## Security posture
 
-- Server binds loopback only; no external exposure.
+Identity, sessions, profiles, and admin user management come from the family
+auth-kit (plan 16, ADR-0013) mounted at `/api/v1/auth/*`, `/api/v1/me/*`,
+`/api/v1/admin/*`; the threat model (identity-auth §20) lives in
+[`SECURITY.md`](../../SECURITY.md) (see also [security.md](security.md)).
+
+- **Dual-mode exposure:** desktop binds `127.0.0.1` on a random port and every
+  request carries the per-boot `X-Shell-Token` shell secret; web runs
+  `SA_HOST=0.0.0.0` behind nginx (the shipped `nginx.conf` is HTTP-only for
+  loopback/VPN/dev; `nginx-TLS.conf` + HSTS + `SA_COOKIE_SECURE=true` for
+  internet-facing). `/api/v1/desktop/*` mounts only in desktop mode.
+- **Auth is deny-by-default:** every `/api/` route requires a session (401)
+  except the auth/health/docs/shell-exempt prefixes; cookie sessions +
+  double-submit CSRF, bcrypt ≥12, lockout (5 failures ⇒ 423 for 15 min),
+  per-IP (10/min) and per-email (30/min) rate limits. `X-Profile-Id` is
+  ownership-bound per §15 (server: absent ⇒ 400, foreign ⇒ 403; desktop:
+  last-used fallback) and out-of-ownership rows answer a hidden 404.
+  Instance `auth_mode`/`demo_mode` are DB-stored, init-only facts (§4/§13);
+  mode changes are admin actions with password re-verification (§4.5,
+  audited); demo instances admit one fixed credential-free `demo` principal.
 - API keys never touch the DB, logs, or files — keyring only, masked in every API
-  response (`••••1234`).
-- Parameterized SQL only (SQLAlchemy core/ORM).
+  response (`••••1234`). Token material is three separate per-instance keys
+  (`SA_SESSION_KEY`/`SA_REFRESH_KEY`/`SA_DATA_KEY`, else 0600
+  `auth_keys.json`) — never derived from each other.
+- Parameterized SQL only (SQLAlchemy core/ORM); every domain query filters on
+  the bound `profile_id` (ownership, not just UX).
 - Upload size cap (200 MB); blob ids validated (strict sha256 pattern) before serving.
-- `eval`-based math calculator runs with an empty builtins namespace, a math-function
-  allowlist, and dunder/charset guards.
+- `eval`-based chat calculator runs with an empty builtins namespace, a math-function
+  allowlist, and dunder/charset guards; deterministic grading goes through the
+  SymPy equivalence chain, never the model's verdict.
+- Audit: identity and admin flows append to `audit_events`; no API endpoint
+  edits or deletes the trail.
+
+## ADR-0022 adoption (datastore, 2026-09-24)
+
+Study adopted the family datastore standard: **SQLite (`study.sqlite3`) for
+desktop/tests, PostgreSQL 16 for web/server**, one dialect-aware schema with
+Alembic migrations verified on both dialects (raw-DDL twins where needed).
+The web database is `neuro_study` (family `neuro_*` naming) with the two-role
+split — `neuro_study_owner` for migrations, `neuro_study_app` as the
+least-privilege runtime role — backed up via `pg_dump -Fc` (compose backup
+sidecar + `scripts/backup.sh`/`scripts/restore.sh`, restore drill in
+`docker/README.md`). ADR-0006's "SQLite everywhere" clauses are superseded;
+its single-`SA_DATA_DIR`-volume and desktop-deps-excluded clauses stand.

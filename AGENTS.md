@@ -5,8 +5,17 @@ as a desktop app (pywebview window, `pnpm app`) or in the browser
 (`pnpm webapp`) — both modes first-class.
 Math-first (calculus), subject-agnostic by design. **`docs/STATUS.md` is the
 single source of truth for what exists and what phase we are in.** Longer-range
-planning documents live in a gitignored local `dev/` directory and are not part
-of this repository.
+planning documents (plans, roadmap, ADR register) live outside this
+repository and are not part of it — there is no repo-root `dev/` directory.
+
+**Identity class D** (family ADR-0013): web/server mode is always
+authenticated with user management; desktop initializes `auth_mode=open`
+(implicit local owner + Default profile, zero auth UI) unless explicitly
+initialized as `authenticated`. Study spaces are **profiles** — 1:N per user,
+owned via `users`; `X-Profile-Id` is validated against the session user (403
+on mismatch, 400 when absent in web mode). Datastore (family ADR-0022):
+SQLite for desktop, **PostgreSQL 16 for web/server** — supersedes
+SQLite-in-Docker; the FTS5/sqlite-vec stack gains Postgres dialect twins.
 
 ## Non-negotiable rules
 
@@ -19,8 +28,8 @@ of this repository.
 3. **Scope discipline.** Work only on the current phase (see `docs/STATUS.md`).
    Features outside the current phase need explicit approval first.
 4. **Decisions before implementation.** Architecture decisions are recorded before
-   they are built (see `docs/architecture.md`); if a recorded decision must change,
-   propose the change explicitly — don't silently contradict it.
+   they are built (see `docs/dev/architecture.md`); if a recorded decision must
+   change, propose the change explicitly — don't silently contradict it.
 5. **No comments in code** unless requested. Conventions: mimic existing style, ruff +
    mypy strict (backend), eslint + vitest (frontend). Typed vocabularies:
    closed sets come from `backend/app/core/vocab.py` StrEnums (never new bare-string
@@ -47,7 +56,7 @@ write them first or in the same commit.
 
 | Path | Contents |
 |---|---|
-| `docs/` | All product docs, tracked: `STATUS.md` (source of truth), `architecture.md`, `features.md`, `ai.md`, `math-verification.md`, `data-model.md`, `import-export.md`, `usage/` (user guides) |
+| `docs/` | All product docs, tracked and audience-split: `STATUS.md` (source of truth), `docs-tree.json` (nav source of truth), `user/` (end-user guides), `dev/` (developer & operator guides) — see `docs/README.md` |
 | `backend/app/` | FastAPI, services, pipelines, ai, ocr, storage, jobs |
 | `frontend/src/` | React app (features/, components/, lib/) |
 
@@ -73,5 +82,5 @@ write them first or in the same commit.
 Read `docs/STATUS.md` → confirm scope → implement → verify (suite above) →
 update docs → commit. Schema/Alembic changes are model-first with a tested
 downgrade and a single linear revision chain (see the Migration notes section
-of `docs/data-model.md`). When multiple agent sessions run concurrently,
+of `docs/dev/data-model.md`). When multiple agent sessions run concurrently,
 each works in its own git worktree; branches merge back fast-forward only.

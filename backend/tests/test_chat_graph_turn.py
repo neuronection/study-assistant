@@ -272,7 +272,7 @@ def test_app_boots_the_graph_turn_engine(tmp_path: Path) -> None:
     assert getattr(graph_app.state, "chat_turns", None) is None
     with TestClient(graph_app):
         assert getattr(graph_app.state, "chat_turns", None) is not None
-        assert (tmp_path / "graph-app" / "checkpoints.db").exists()
+        assert (tmp_path / "graph-app" / "checkpoints.sqlite3").exists()
 
 
 def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
@@ -298,7 +298,7 @@ def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
     assert events[2]["phase"] == "thinking"
     assert events[3]["id"] == "thinking"
     assert messages[-1]["trace"]["repair_rounds"] == 0
-    assert thread_ids(tmp_path / "checkpoints.db") == [str(h.session_id)]
+    assert thread_ids(tmp_path / "checkpoints.sqlite3") == [str(h.session_id)]
 
 
 def test_graph_streams_the_production_delta_path(
@@ -479,11 +479,11 @@ def test_graph_stop_mid_stream_persists_prefix(tmp_path: Path) -> None:
 
 def test_open_checkpointer_creates_schema(tmp_path: Path) -> None:
     async def main() -> None:
-        async with open_checkpointer("sqlite", tmp_path / "checkpoints.db"):
+        async with open_checkpointer("sqlite", tmp_path / "checkpoints.sqlite3"):
             pass
 
     asyncio.run(main())
-    connection = sqlite3.connect(tmp_path / "checkpoints.db")
+    connection = sqlite3.connect(tmp_path / "checkpoints.sqlite3")
     try:
         tables = {
             row[0]
@@ -498,7 +498,7 @@ def test_open_checkpointer_creates_schema(tmp_path: Path) -> None:
 
 def test_open_checkpointer_postgres_without_uri_raises(tmp_path: Path) -> None:
     async def main() -> None:
-        async with open_checkpointer("postgresql", tmp_path / "checkpoints.db"):
+        async with open_checkpointer("postgresql", tmp_path / "checkpoints.sqlite3"):
             pass
 
     try:
@@ -514,7 +514,7 @@ def test_prune_checkpoints_removes_stale_threads_only(tmp_path: Path) -> None:
         x: int
 
     async def build() -> None:
-        async with open_checkpointer("sqlite", tmp_path / "checkpoints.db") as saver:
+        async with open_checkpointer("sqlite", tmp_path / "checkpoints.sqlite3") as saver:
             graph = (
                 StateGraph(Probe)
                 .add_node("n", lambda state: {"x": 1})
@@ -526,7 +526,7 @@ def test_prune_checkpoints_removes_stale_threads_only(tmp_path: Path) -> None:
 
     asyncio.run(build())
 
-    db_path = tmp_path / "checkpoints.db"
+    db_path = tmp_path / "checkpoints.sqlite3"
     connection = sqlite3.connect(db_path)
     try:
         rows = connection.execute(

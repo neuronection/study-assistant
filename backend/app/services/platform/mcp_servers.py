@@ -49,7 +49,7 @@ def _validate_transport_fields(
     return "", clean_url[:500]
 
 
-def load_servers(session: Session, profile_id: int) -> list[dict[str, Any]]:
+def load_servers(session: Session, profile_id: str) -> list[dict[str, Any]]:
     from ...domain.models import Profile
 
     profile = session.get(Profile, profile_id)
@@ -65,7 +65,7 @@ def load_servers(session: Session, profile_id: int) -> list[dict[str, Any]]:
     return [entry for entry in servers if isinstance(entry, dict)]
 
 
-def save_servers(session: Session, profile_id: int, servers: list[dict[str, Any]]) -> None:
+def save_servers(session: Session, profile_id: str, servers: list[dict[str, Any]]) -> None:
     from sqlalchemy.orm.attributes import flag_modified
 
     from ...domain.models import Profile
@@ -82,7 +82,7 @@ def save_servers(session: Session, profile_id: int, servers: list[dict[str, Any]
     session.flush()
 
 
-def get_server(session: Session, profile_id: int, server_id: str) -> dict[str, Any] | None:
+def get_server(session: Session, profile_id: str, server_id: str) -> dict[str, Any] | None:
     for entry in load_servers(session, profile_id):
         if entry.get("id") == server_id:
             return entry
@@ -90,7 +90,7 @@ def get_server(session: Session, profile_id: int, server_id: str) -> dict[str, A
 
 
 def _replace_server(
-    session: Session, profile_id: int, updated: dict[str, Any]
+    session: Session, profile_id: str, updated: dict[str, Any]
 ) -> None:
     servers = load_servers(session, profile_id)
     save_servers(
@@ -102,7 +102,7 @@ def _replace_server(
 
 def create_server(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     name: str,
     command: str = "",
@@ -154,7 +154,7 @@ UNSET = object()
 
 def patch_server(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     server_id: str,
     *,
     enabled: bool | None = None,
@@ -231,7 +231,7 @@ def patch_server(
     return server
 
 
-def delete_server(session: Session, profile_id: int, server_id: str) -> bool:
+def delete_server(session: Session, profile_id: str, server_id: str) -> bool:
     servers = load_servers(session, profile_id)
     remaining = [entry for entry in servers if entry.get("id") != server_id]
     if len(remaining) == len(servers):
@@ -271,7 +271,7 @@ def merge_refreshed_tools(
 
 
 def enabled_tools(
-    session: Session, profile_id: int, contract: str
+    session: Session, profile_id: str, contract: str
 ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
     pairs: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for server in load_servers(session, profile_id):

@@ -2,13 +2,22 @@ import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from nx_auth.deps import get_current_user
+from nx_auth.principal import Principal
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..core.vocab import DiscoveryKind
 from ..ocr.imaging import ALLOWED_IMAGE_MAX_EDGE, DEFAULT_IMAGE_MAX_EDGE
 from ..search.discovery import DEFAULT_ENABLED
-from ..services.platform.profiles import create_profile, ensure_default_profile, list_profiles
+from ..services.platform.profiles import (
+    create_profile,
+    delete_profile,
+    ensure_default_profile,
+    get_owned_profile,
+    list_profiles,
+    set_default_profile,
+)
 from .deps import get_session
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -37,10 +46,17 @@ class ProfileIn(BaseModel):
     color: str | None = Field(default=None, max_length=16)
 
 
+class ProfilePatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    color: str | None = Field(default=None, max_length=16)
+    is_default: bool | None = None
+
+
 class ProfileOut(BaseModel):
-    id: int
+    id: str
     name: str
     color: str | None
+    is_default: bool
 
 
 class PreferencesOut(BaseModel):
@@ -163,43 +179,60 @@ def update_preferences(
     return _preferences(profile)
 
 
+def _out(profile: Any) -> ProfileOut:
+    return ProfileOut(
+        id=str(profile.id),
+        name=profile.name,
+        color=profile.color,
+        is_default=bool(profile.is_default),
+    )
+
+
 @router.get("", response_model=list[ProfileOut])
-def get_profiles(session: Session = Depends(get_session)) -> list[ProfileOut]:
-    return [
-        ProfileOut(id=profile.id, name=profile.name, color=profile.color)
-        for profile in list_profiles(session)
-    ]
+def get_profiles(
+    user: Principal = Depends(get_current_user), session: Session = Depends(get_session)
+) -> list[ProfileOut]:
+    return [_out(profile) for profile in list_profiles(session, user.user_id)]
 
 
 @router.post("", response_model=ProfileOut, status_code=201)
 def add_profile(
-    body: ProfileIn, session: Session = Depends(get_session)
+    body: ProfileIn,
+    user: Principal = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ) -> ProfileOut:
-    profile = create_profile(session, body.name, body.color)
+    profile = create_profile(session, user.user_id, body.name, body.color)
     session.commit()
-    return ProfileOut(id=profile.id, name=profile.name, color=profile.color)
+    return _out(profile)
+
+
+@router.patch("/{profile_id}", response_model=ProfileOut)
+def patch_profile(
+    profile_id: str,
+    body: ProfilePatch,
+    user: Principal = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> ProfileOut:
+    profile = get_owned_profile(session, user.user_id, profile_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="profile not found")
+    if body.name is not None:
+        profile.name = body.name.strip() or "Profile"
+    if body.color is not None or "color" in body.model_fields_set:
+        profile.color = body.color
+    if body.is_default:
+        set_default_profile(session, user.user_id, profile_id)
+    session.commit()
+    return _out(profile)
 
 
 @router.delete("/{profile_id}", status_code=204)
-def remove_profile(profile_id: int, session: Session = Depends(get_session)) -> None:
-    from sqlalchemy.exc import IntegrityError
-
-    from ..services.platform.profiles import list_profiles
-
-    profiles = list_profiles(session)
-    if len(profiles) <= 1:
-        raise HTTPException(status_code=422, detail="cannot delete the last profile")
-    profile = next((entry for entry in profiles if entry.id == profile_id), None)
-    if profile is None:
+def remove_profile(
+    profile_id: str,
+    user: Principal = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
+    """Delete an owned profile (identity-auth §12): profile-scoped rows
+    cascade; deleting the last profile re-provisions Default."""
+    if delete_profile(session, user.user_id, profile_id) is None:
         raise HTTPException(status_code=404, detail="profile not found")
-    if profile_id == profiles[0].id and len(profiles) > 1:
-        raise HTTPException(status_code=422, detail="cannot delete the default profile")
-    try:
-        session.delete(profile)
-        session.commit()
-    except IntegrityError as error:
-        session.rollback()
-        raise HTTPException(
-            status_code=422,
-            detail="profile still has content (courses, notes, cards) — delete those first",
-        ) from error

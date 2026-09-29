@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -30,8 +31,10 @@ def test_fts_is_queryable_and_empty(db_session: Session) -> None:
     assert rows == 0
 
 
-def test_material_lifecycle_roundtrip(db_session: Session, tmp_path: Path) -> None:
-    profile = Profile(name="Alex")
+def test_material_lifecycle_roundtrip(
+    db_session: Session, tmp_path: Path, owner: Any
+) -> None:
+    profile = Profile(user_id=owner.id, name="Alex")
     db_session.add(profile)
     db_session.flush()
 
@@ -72,9 +75,9 @@ def test_material_lifecycle_roundtrip(db_session: Session, tmp_path: Path) -> No
     assert loaded.profile_id == profile.id
 
 
-def test_profile_scoping_on_courses(db_session: Session) -> None:
-    p1 = Profile(name="a")
-    p2 = Profile(name="b")
+def test_profile_scoping_on_courses(db_session: Session, owner: Any) -> None:
+    p1 = Profile(user_id=owner.id, name="a")
+    p2 = Profile(user_id=owner.id, name="b")
     db_session.add_all([p1, p2])
     db_session.flush()
     db_session.add(Course(profile_id=p1.id, title="Calc"))

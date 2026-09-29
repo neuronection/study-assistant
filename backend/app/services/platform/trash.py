@@ -144,7 +144,7 @@ def persist(
     session: Session,
     entity_type: str,
     title: str,
-    profile_id: int,
+    profile_id: str,
     payload: dict[str, Any],
 ) -> int:
     item = DeletedItem(
@@ -165,7 +165,7 @@ def snapshot(
     entity_type: str,
     root_id: int,
     title: str,
-    profile_id: int,
+    profile_id: str,
     blobs_store: Any = None,
 ) -> int:
     payload = _serialize(session, entity_type, root_id)
@@ -354,7 +354,7 @@ def restore(session: Session, item: DeletedItem, blobs_store: Any = None) -> str
     return item.entity_type
 
 
-def list_items(session: Session, profile_id: int) -> list[dict[str, Any]]:
+def list_items(session: Session, profile_id: str) -> list[dict[str, Any]]:
     purge_expired(session)
     rows = list(
         session.scalars(

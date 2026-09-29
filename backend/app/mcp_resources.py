@@ -91,7 +91,7 @@ class ResourceError(ValueError):
     pass
 
 
-def _resolve_profile(session: Session, profile_id: int | None) -> Profile:
+def _resolve_profile(session: Session, profile_id: str | None) -> Profile:
     statement = select(Profile).order_by(Profile.id)
     if profile_id is not None:
         statement = statement.where(Profile.id == profile_id)
@@ -101,7 +101,7 @@ def _resolve_profile(session: Session, profile_id: int | None) -> Profile:
     return profile
 
 
-def _scoped_node(session: Session, node_id: int, profile_id: int | None) -> TreeNode:
+def _scoped_node(session: Session, node_id: int, profile_id: str | None) -> TreeNode:
     try:
         node = TreeService(session).get(node_id)
     except ValueError as error:
@@ -113,7 +113,7 @@ def _scoped_node(session: Session, node_id: int, profile_id: int | None) -> Tree
     return node
 
 
-def _list_courses(session: Session, profile_id: int | None = None) -> dict[str, Any]:
+def _list_courses(session: Session, profile_id: str | None = None) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     courses = list(
         session.scalars(
@@ -176,7 +176,7 @@ def _get_node_flashcards(
     session: Session,
     node_id: int,
     include_children: bool = True,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     node = _scoped_node(session, node_id, profile.id)
@@ -228,7 +228,7 @@ def _course_cards(
 
 
 def _get_course_due(
-    session: Session, course_id: int, profile_id: int | None = None
+    session: Session, course_id: int, profile_id: str | None = None
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     _course_for_profile(session, course_id, profile)
@@ -253,7 +253,7 @@ def _get_course_due(
 
 
 def _get_course_mistakes(
-    session: Session, course_id: int, profile_id: int | None = None
+    session: Session, course_id: int, profile_id: str | None = None
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     _course_for_profile(session, course_id, profile)
@@ -312,7 +312,7 @@ def _get_course_mistakes(
 
 
 def _get_course_plan(
-    session: Session, course_id: int, profile_id: int | None = None
+    session: Session, course_id: int, profile_id: str | None = None
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     course = _course_for_profile(session, course_id, profile)
@@ -370,7 +370,7 @@ def _get_course_plan(
 
 
 def _get_node_overview(
-    session: Session, node_id: int, profile_id: int | None = None
+    session: Session, node_id: int, profile_id: str | None = None
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     _scoped_node(session, node_id, profile.id)
@@ -386,7 +386,7 @@ def _get_node_materials(
     session: Session,
     node_id: int,
     include_children: bool = True,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     _scoped_node(session, node_id, profile.id)
@@ -399,7 +399,7 @@ def _get_node_materials(
 
 
 def _get_node_concepts(
-    session: Session, node_id: int, profile_id: int | None = None
+    session: Session, node_id: int, profile_id: str | None = None
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     _scoped_node(session, node_id, profile.id)
@@ -411,7 +411,7 @@ def _get_node_exercises(
     session: Session,
     node_id: int,
     include_children: bool = True,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     node = _scoped_node(session, node_id, profile.id)
@@ -453,7 +453,7 @@ def _get_node_quizzes(
     session: Session,
     node_id: int,
     include_children: bool = True,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     node = _scoped_node(session, node_id, profile.id)
@@ -495,7 +495,7 @@ def _get_node_notes(
     session: Session,
     node_id: int,
     include_children: bool = True,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     profile = _resolve_profile(session, profile_id)
     node = _scoped_node(session, node_id, profile.id)
@@ -534,7 +534,7 @@ def _get_node_context(
     scope: str = "subtree",
     query: str | None = None,
     max_chunks: int = 12,
-    profile_id: int | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
     from .services.knowledge.context import (
         ContextError,
@@ -723,16 +723,16 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
                 return {"error": str(error)}
 
     @server.tool(name="list_courses", description=LIST_COURSES_DESC)
-    def list_courses(profile_id: int | None = None) -> Any:
+    def list_courses(profile_id: str | None = None) -> Any:
         return run(lambda session: _list_courses(session, profile_id))
 
     @server.tool(name="get_node_overview", description=GET_NODE_OVERVIEW_DESC)
-    def get_node_overview(node_id: int, profile_id: int | None = None) -> Any:
+    def get_node_overview(node_id: int, profile_id: str | None = None) -> Any:
         return run(lambda session: _get_node_overview(session, node_id, profile_id))
 
     @server.tool(name="get_node_materials", description=GET_NODE_MATERIALS_DESC)
     def get_node_materials(
-        node_id: int, include_children: bool = True, profile_id: int | None = None
+        node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
             lambda session: _get_node_materials(
@@ -741,12 +741,12 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         )
 
     @server.tool(name="get_node_concepts", description=GET_NODE_CONCEPTS_DESC)
-    def get_node_concepts(node_id: int, profile_id: int | None = None) -> Any:
+    def get_node_concepts(node_id: int, profile_id: str | None = None) -> Any:
         return run(lambda session: _get_node_concepts(session, node_id, profile_id))
 
     @server.tool(name="get_node_exercises", description=GET_NODE_EXERCISES_DESC)
     def get_node_exercises(
-        node_id: int, include_children: bool = True, profile_id: int | None = None
+        node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
             lambda session: _get_node_exercises(
@@ -756,7 +756,7 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
 
     @server.tool(name="get_node_quizzes", description=GET_NODE_QUIZZES_DESC)
     def get_node_quizzes(
-        node_id: int, include_children: bool = True, profile_id: int | None = None
+        node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
             lambda session: _get_node_quizzes(
@@ -766,7 +766,7 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
 
     @server.tool(name="get_node_notes", description=GET_NODE_NOTES_DESC)
     def get_node_notes(
-        node_id: int, include_children: bool = True, profile_id: int | None = None
+        node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
             lambda session: _get_node_notes(
@@ -778,7 +778,7 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         name="get_node_flashcards", description=GET_NODE_FLASHCARDS_DESC
     )
     def get_node_flashcards(
-        node_id: int, include_children: bool = True, profile_id: int | None = None
+        node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
             lambda session: _get_node_flashcards(
@@ -790,16 +790,16 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         name="get_course_mistakes", description=GET_COURSE_MISTAKES_DESC
     )
     def get_course_mistakes(
-        course_id: int, profile_id: int | None = None
+        course_id: int, profile_id: str | None = None
     ) -> Any:
         return run(lambda session: _get_course_mistakes(session, course_id, profile_id))
 
     @server.tool(name="get_course_plan", description=GET_COURSE_PLAN_DESC)
-    def get_course_plan(course_id: int, profile_id: int | None = None) -> Any:
+    def get_course_plan(course_id: int, profile_id: str | None = None) -> Any:
         return run(lambda session: _get_course_plan(session, course_id, profile_id))
 
     @server.tool(name="get_course_due", description=GET_COURSE_DUE_DESC)
-    def get_course_due(course_id: int, profile_id: int | None = None) -> Any:
+    def get_course_due(course_id: int, profile_id: str | None = None) -> Any:
         return run(lambda session: _get_course_due(session, course_id, profile_id))
 
     @server.tool(name="get_node_context", description=GET_NODE_CONTEXT_DESC)
@@ -808,7 +808,7 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         scope: str = "subtree",
         query: str | None = None,
         max_chunks: int = 12,
-        profile_id: int | None = None,
+        profile_id: str | None = None,
     ) -> Any:
         return run(
             lambda session: _get_node_context(

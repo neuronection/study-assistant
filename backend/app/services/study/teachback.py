@@ -45,7 +45,7 @@ def teach_back_subject(
 def create_teach_back(
     session: Session,
     *,
-    profile_id: int,
+    profile_id: str,
     course_id: int,
     node_id: int | None = None,
     concept: str | None = None,
@@ -90,7 +90,7 @@ def create_teach_back(
     return exercise
 
 
-def teach_back_cells(session: Session, profile_id: int) -> list[dict[str, Any]]:
+def teach_back_cells(session: Session, profile_id: str) -> list[dict[str, Any]]:
     """Rubric results of teach-back exercises as (concept, skill=explanation)
     weakness-matrix samples, so explanation practice is visible in
     diagnostics (plan 53-D)."""

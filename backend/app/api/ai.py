@@ -80,6 +80,28 @@ class EditorTransformStatusOut(BaseModel):
     rounds: int = 0
 
 
+def _caller_user_id(request: Request) -> str | None:
+    """The verified principal's user id (identity-auth §10 — the kit
+    middleware stashed it in scope state)."""
+    principal = request.scope.get("state", {}).get("nx_principal")
+    return str(principal.user_id) if principal is not None else None
+
+
+def _owned_editor_job(request: Request, job_id: int) -> Any:
+    """The job when the caller owns it (or is admin) — 404 otherwise,
+    so foreign job ids are indistinguishable from missing ones."""
+    service: EditorTransformService = request.app.state.editor_ai
+    job = service.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="editor transform job not found")
+    principal = request.scope.get("state", {}).get("nx_principal")
+    is_admin = bool(principal is not None and principal.is_admin)
+    owner = job.user_id
+    if not is_admin and (owner is None or str(owner) != _caller_user_id(request)):
+        raise HTTPException(status_code=404, detail="editor transform job not found")
+    return job
+
+
 @router.post("/editor/transform", response_model=EditorTransformJobOut)
 def editor_transform(
     body: EditorTransformIn,
@@ -118,15 +140,14 @@ def editor_transform(
         course_id=body.course_id,
         bus=request.app.state.bus,
         diagnostic=body.diagnostic or None,
+        user_id=_caller_user_id(request),
     )
     return EditorTransformJobOut(job_id=job.id)
 
 
 @router.get("/editor/jobs/{job_id}", response_model=EditorTransformStatusOut)
 def editor_transform_job(job_id: int, request: Request) -> EditorTransformStatusOut:
-    job = request.app.state.editor_ai.get_job(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="editor transform job not found")
+    job = _owned_editor_job(request, job_id)
     return EditorTransformStatusOut(
         status=job.status,
         result_md=job.result_md,
@@ -142,6 +163,7 @@ class EditorCancelOut(BaseModel):
 
 @router.post("/editor/jobs/{job_id}/cancel", response_model=EditorCancelOut)
 def editor_transform_cancel(job_id: int, request: Request) -> dict[str, bool]:
+    _owned_editor_job(request, job_id)
     cancelled = request.app.state.editor_ai.cancel_job(job_id)
     if not cancelled:
         raise HTTPException(status_code=404, detail="editor transform job not found or finished")

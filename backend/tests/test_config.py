@@ -10,7 +10,7 @@ def test_defaults() -> None:
     assert settings.app_name == "Study Assistant"
     assert settings.host == "127.0.0.1"
     assert settings.port == 8200
-    assert settings.db_path.name == "app.db"
+    assert settings.db_path.name == "study.sqlite3"
     assert settings.blobs_dir.name == "blobs"
     assert settings.cache_dir.name == "cache"
     assert settings.thumbnails_dir.name == "thumbnails"

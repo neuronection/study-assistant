@@ -85,6 +85,11 @@
   }
 }
 
+[data-as='profile-switcher'] > button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .markmap-foreign,
 .markmap-foreign * {
   cursor: pointer;

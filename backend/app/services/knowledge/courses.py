@@ -124,7 +124,7 @@ _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 SCRATCHPAD_TITLE = "Scratchpad"
 
 
-def ensure_scratch_course(session: Session, profile_id: int) -> Course:
+def ensure_scratch_course(session: Session, profile_id: str) -> Course:
     course = session.scalars(
         select(Course).where(
             Course.profile_id == profile_id,
@@ -221,7 +221,7 @@ class OutlineService:
     def draft_genesis(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         topic: str,
         level: str | None = None,
         sources_block: str | None = None,
@@ -330,7 +330,7 @@ def genesis_task_estimate(
     return node_count * sum((lessons, quizzes, flashcards))
 
 
-def genesis_task_cap(session: Session, profile_id: int) -> int:
+def genesis_task_cap(session: Session, profile_id: str) -> int:
     profile = session.get(Profile, profile_id)
     preferences = profile.preferences if profile is not None else None
     if isinstance(preferences, dict):
@@ -346,7 +346,7 @@ def genesis_task_cap(session: Session, profile_id: int) -> int:
 def commit_genesis(
     session: Session,
     *,
-    profile_id: int,
+    profile_id: str,
     draft: dict[str, Any],
     lessons: bool = True,
     quizzes: bool = False,
@@ -940,7 +940,7 @@ class StructureService:
         }
 
     def set_study_state(
-        self, material_id: int, profile_id: int, status: str, progress: float | None = None
+        self, material_id: int, profile_id: str, status: str, progress: float | None = None
     ) -> MaterialStudyState:
         try:
             status_value = StudyStatus.parse(status)
@@ -969,7 +969,7 @@ class StructureService:
         self._session.flush()
         return state
 
-    def study_states(self, profile_id: int) -> dict[int, dict[str, Any]]:
+    def study_states(self, profile_id: str) -> dict[int, dict[str, Any]]:
         rows = self._session.scalars(
             select(MaterialStudyState).where(MaterialStudyState.profile_id == profile_id)
         )

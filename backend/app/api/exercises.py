@@ -168,7 +168,7 @@ class TranscriptEntry(BaseModel):
 def _run_exgen(
     request: Request,
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     course_id: int | None,
     node_id: int | None,
@@ -210,7 +210,7 @@ def _run_exgen(
 
 
 def _recent_wrong_answers(
-    session: Session, course_id: int, profile_id: int, limit: int = 30
+    session: Session, course_id: int, profile_id: str, limit: int = 30
 ) -> list[dict[str, Any]]:
     from ..domain.models import Answer
     from ..domain.models import Question as _Question
@@ -770,7 +770,7 @@ def start_session(
 
 
 def _load_session(
-    db: Session, session_id: int, profile_id: int
+    db: Session, session_id: int, profile_id: str
 ) -> tuple[ExerciseSession, Exercise]:
     exercise_session = db.get(ExerciseSession, session_id)
     if exercise_session is None:

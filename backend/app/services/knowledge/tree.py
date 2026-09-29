@@ -665,7 +665,7 @@ class TreeService:
         return chain
 
     def _direct_counts(
-        self, node_ids: list[int], profile_id: int | None = None
+        self, node_ids: list[int], profile_id: str | None = None
     ) -> dict[int, dict[str, int]]:
         empty = {
             "materials": 0,
@@ -769,7 +769,7 @@ class TreeService:
                     result[node_id] |= folder_member_ids(self._session, folder)
         return result
 
-    def tree(self, course_id: int, profile_id: int | None = None) -> list[dict[str, Any]]:
+    def tree(self, course_id: int, profile_id: str | None = None) -> list[dict[str, Any]]:
         root = self.ensure_root(course_id)
         nodes = list(
             self._session.scalars(
@@ -884,7 +884,7 @@ class TreeService:
             )
         return result
 
-    def workspace(self, node_id: int, profile_id: int) -> dict[str, Any]:
+    def workspace(self, node_id: int, profile_id: str) -> dict[str, Any]:
         node = self.get(node_id)
         course = self._session.get(Course, node.course_id)
         scope_ids = self.subtree_ids(node)
@@ -1145,7 +1145,7 @@ class TreeService:
             "child_nodes": len(child_ids),
         }
 
-    def delete_node_to_trash(self, node_id: int, profile_id: int) -> int:
+    def delete_node_to_trash(self, node_id: int, profile_id: str) -> int:
         node = self.get(node_id)
         if node.is_root:
             raise TreeError("the course root cannot be deleted")
@@ -1185,7 +1185,7 @@ class TreeService:
         self._rewrite_child_sorts(parent)
         return item_id
 
-    def snapshot_subtree_to_trash(self, node_id: int, profile_id: int) -> int:
+    def snapshot_subtree_to_trash(self, node_id: int, profile_id: str) -> int:
         node = self.get(node_id)
         keys: dict[int, int] = {}
         node_entries: list[dict[str, Any]] = []

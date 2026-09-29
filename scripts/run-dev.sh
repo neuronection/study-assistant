@@ -6,7 +6,9 @@
 # either process dies honcho exits loud with the traceback in the foreground.
 #
 # Usage:
-#   ./scripts/run-dev.sh                  # start the honcho group
+#   ./scripts/run-dev.sh                  # desktop dev: SQLite profile +
+#                                         # desktop identity (no login UI;
+#                                         # ADR-0023)
 #   ./scripts/run-dev.sh --force          # kill processes holding the ports first
 #   ./scripts/run-dev.sh --force-stop     # stop all study dev processes, exit
 #   ./scripts/run-dev.sh --reset [--yes] [--all]
@@ -14,17 +16,22 @@
 #                                         # before starting (confirmation prompt;
 #                                         # --yes to skip it, --all to include backups)
 #   ./scripts/run-dev.sh --no-bootstrap   # skip dep bootstrap, just start
+#   ./scripts/run-dev.sh --web            # web/server mode (ADR-0022):
+#                                         #   SA_IDENTITY_MODE=server + PostgreSQL
+#                                         #   (docker/docker-compose.dev-db.yml,
+#                                         #   neuro_study @ 127.0.0.1:5434) — the SPA
+#                                         #   shows the login/register UI
 #   ./scripts/run-dev.sh -h | --help      # print this help and exit
 #
 # Ports (family dev-port bands, dev/guidelines/dev-ports.md): study is slot 2,
-# so SA_PORT defaults to 8200 and VITE_PORT to 3200.
+# so SA_PORT defaults to 8200 and VITE_PORT to 3200 (dev-db Postgres: 5434).
 # Desktop mode (pywebview) is a single process: scripts/app.sh (`pnpm app`).
 # Built-SPA mode served by the backend: scripts/webapp.sh (`pnpm webapp`).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 cd "$SCRIPT_DIR/.."
-# shellcheck source=lib/dev-common.sh
+# shellcheck source=scripts/lib/dev-common.sh
 source scripts/lib/dev-common.sh
 
 BACKEND_PORT="${SA_PORT:-8200}"
@@ -34,6 +41,7 @@ export SA_PORT="$BACKEND_PORT" VITE_PORT="$VITE_PORT"
 RESET=0
 RESET_ARGS=()
 NO_BOOTSTRAP=false
+WEB=false
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --force-stop)
@@ -52,16 +60,55 @@ while [[ "$#" -gt 0 ]]; do
     --yes) RESET_ARGS+=(--yes) ;;
     --all) RESET_ARGS+=(--all) ;;
     --no-bootstrap) NO_BOOTSTRAP=true ;;
+    --web) WEB=true ;;
     -h|--help) dc_help "$SCRIPT_PATH" ;;
-    *) dc_die "unknown option: $1 (expected --force, --force-stop, --reset, --no-bootstrap or --help)" ;;
+    *) dc_die "unknown option: $1 (expected --force, --force-stop, --reset, --web, --no-bootstrap or --help)" ;;
   esac
   shift
 done
 
 if [[ "$RESET" -eq 1 ]]; then
+  if [[ "$WEB" = true ]]; then
+    dc_die "--reset is desktop-mode only; reset web mode with: docker compose -f docker/docker-compose.dev-db.yml down -v && up -d"
+  fi
   dc_kill_port "$BACKEND_PORT"
   dc_kill_port "$VITE_PORT"
   uv run --directory backend python -m studyassistant reset "${RESET_ARGS[@]}"
+fi
+
+if [[ "$WEB" = true ]]; then
+  # Web/server mode (ADR-0022): PostgreSQL 16 + authentication. The SPA
+  # shows the login/register UI; first registered user becomes admin.
+  export SA_IDENTITY_MODE=server
+  : "${SA_DATABASE_URL:=postgresql+psycopg://neuro_study_owner:neuro_study_dev@127.0.0.1:5434/neuro_study}"
+  export SA_DATABASE_URL
+  dc_info "web mode   → identity: server, database: ${SA_DATABASE_URL%%\?*}"
+  if ! dc_port_in_use 5434; then
+    if command -v docker >/dev/null 2>&1; then
+      dc_info "dev-db not reachable on 5434 — starting docker/docker-compose.dev-db.yml"
+      docker compose -f docker/docker-compose.dev-db.yml up -d
+      dc_info "waiting for the dev-db to accept connections"
+      ready=""
+      for _ in $(seq 1 60); do
+        if (exec 3<>/dev/tcp/127.0.0.1/5434) 2>/dev/null; then
+          exec 3>&- 3<&- || true
+          ready=1
+          break
+        fi
+        sleep 1
+      done
+      [[ -n "$ready" ]] || dc_die "dev-db did not become ready on 5434"
+    else
+      dc_die "Postgres not reachable on 5434 and docker is unavailable — start a dev Postgres or set SA_DATABASE_URL"
+    fi
+  fi
+else
+  # Desktop dev (ADR-0023): local SQLite profile + desktop identity — no
+  # login UI. Exported explicitly because the Settings default is
+  # "server"; without this the "desktop" dev loop silently ran server
+  # identity on SQLite.
+  export SA_IDENTITY_MODE=desktop
+  dc_info "desktop mode → identity: desktop, database: SQLite (local profile)"
 fi
 
 if [[ "$NO_BOOTSTRAP" = false ]]; then

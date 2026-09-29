@@ -134,9 +134,15 @@ def test_quiz_delete_and_restore_with_attempts() -> None:
         course_id = make_course(client)
         app = client.app
         assert isinstance(app, FastAPI)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
             activity = Activity(
-                profile_id=1, course_id=course_id, type="quiz", title="Trash quiz"
+                profile_id=profile_id,
+                course_id=course_id,
+                type="quiz",
+                title="Trash quiz",
             )
             db.add(activity)
             db.flush()
@@ -157,7 +163,7 @@ def test_quiz_delete_and_restore_with_attempts() -> None:
                     attempt_id=attempt.id, question_id=question.id, correct=False
                 )
             )
-            db.add(Mistake(profile_id=1, question_id=question.id))
+            db.add(Mistake(profile_id=profile_id, question_id=question.id))
             db.commit()
             activity_id = activity.id
 
@@ -191,9 +197,12 @@ def test_exercise_delete_and_restore_with_review_log() -> None:
         course_id = make_course(client)
         app = client.app
         assert isinstance(app, FastAPI)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
             exercise = Exercise(
-                profile_id=1, course_id=course_id, title="Trashed exercise"
+                profile_id=profile_id, course_id=course_id, title="Trashed exercise"
             )
             db.add(exercise)
             db.flush()
@@ -283,8 +292,11 @@ def test_trash_expiry_purges_old_items() -> None:
 
         app = client.app
         assert isinstance(app, FastAPI)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
-            item_id = snapshot(db, "note", note_id, "Expired", 1)
+            item_id = snapshot(db, "note", note_id, "Expired", profile_id)
             item = db.get(DeletedItem, item_id)
             assert item is not None
             item.purge_after = datetime.now(UTC) - timedelta(days=1)

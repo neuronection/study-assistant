@@ -182,8 +182,10 @@ def test_flag_set_before_start_never_runs_handler(tmp_path: Path) -> None:
         clear_cancel(job_id)
 
 
-def test_ensure_target_exists_raises_after_delete(db_session: Session) -> None:
-    profile = Profile(name="cancels")
+def test_ensure_target_exists_raises_after_delete(
+    db_session: Session, owner: Any
+) -> None:
+    profile = Profile(user_id=owner.id, name="cancels")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title="Cancel fixture")

@@ -537,11 +537,11 @@ def test_course_purge_removes_folder_links(client: TestClient) -> None:
 
 
 def test_organizer_counts_folder_members_as_assigned(
-    db_session: Any, tmp_path: Path
+    db_session: Any, tmp_path: Path, owner: Any
 ) -> None:
     from app.domain.models import MaterialFolderLink, Profile
 
-    profile = Profile(name="p")
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title="Organizer")

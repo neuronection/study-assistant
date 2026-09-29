@@ -21,6 +21,8 @@ export interface StudyWsEvent {
   duration_ms?: number | null
   detail?: string
   message?: string
+  /** Stable machine code (e.g. `ai_not_configured`) for error events. */
+  code?: string
   trace?: unknown
 }
 
@@ -86,7 +88,7 @@ export function mapStudyEvent(
     case 'turn_error':
       return {
         event: 'flow_failed',
-        code: 'turn_error',
+        code: event.code || 'turn_error',
         message: event.detail || event.message || 'turn_error',
         retryable: true,
         run_id: runId,

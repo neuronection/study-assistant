@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 
 from ..agui.family import to_family_events
 from ..agui.state import apply_patch
-from ..ai.gateway import ProviderError
+from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS
+from ..core.errors import sanitize_error_detail
 from ..core.events import EventBus
 from ..core.vocab import ChatProposalStatus, WsTopic
 from ..domain.models import (
@@ -135,6 +136,7 @@ class MessageOut(BaseModel):
     trace: dict[str, Any] | None = None
     warnings: list[str] = Field(default_factory=list)
     parent_id: int | None = None
+    state: dict[str, Any] | None = None
     variant_index: int = 1
     variant_count: int = 1
     sibling_ids: list[int] = Field(default_factory=list)
@@ -331,6 +333,7 @@ def _message_out(
         trace=message.trace,
         warnings=list(message.warnings or []),
         parent_id=message.parent_id,
+        state=message.state,
         variant_index=variant_index,
         variant_count=variant_count,
         sibling_ids=sibling_ids or [],
@@ -501,7 +504,7 @@ def patch_message_state(
 
 
 def _load_proposal_for_profile(
-    session: Session, proposal_id: int, profile_id: int
+    session: Session, proposal_id: int, profile_id: str
 ) -> tuple[ChatProposal, ChatSession]:
     proposal = session.get(ChatProposal, proposal_id)
     if proposal is None:
@@ -702,7 +705,7 @@ def _execute_compose_material(
 
 
 def _execute_create_note(
-    session: Session, profile_id: int, chat_session: ChatSession, proposal: ChatProposal
+    session: Session, profile_id: str, chat_session: ChatSession, proposal: ChatProposal
 ) -> dict[str, Any]:
     payload = proposal.payload or {}
     try:
@@ -891,7 +894,7 @@ def send_message(
 
 
 def _load_message_for_profile(
-    session: Session, message_id: int, profile_id: int
+    session: Session, message_id: int, profile_id: str
 ) -> tuple[ChatMessage, ChatSession]:
     message = session.get(ChatMessage, message_id)
     if message is None:
@@ -1203,12 +1206,21 @@ def make_chat_turn_handler(
                     session, service, gateway, chat_session, pending, emit, stop_event
                 )
             except Exception as error:
-                emit(
-                    {
-                        "type": "turn_error",
-                        "detail": str(error)[:300] or error.__class__.__name__,
-                    }
+                detail = sanitize_error_detail(str(error)) or error.__class__.__name__
+                code = (
+                    "ai_not_configured"
+                    if isinstance(error, TaskUnassigned)
+                    else "turn_error"
                 )
+                emit({"type": "turn_error", "code": code, "detail": detail})
+                # Persist the failure on the turn (uniform chat error
+                # display): the transcript keeps rendering it after a
+                # refresh, with Retry through the regenerate endpoint.
+                failure = service.add_message(
+                    chat_session.id, "assistant", "", parent_id=pending.id
+                )
+                failure.state = {"turn_failed": {"code": code, "detail": detail}}
+                session.commit()
                 raise
             finally:
                 _release_stop_event(chat_session.id, stop_event)

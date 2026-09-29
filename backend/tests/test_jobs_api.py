@@ -5,13 +5,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from app.domain.models import Blob, Course, Job, Material, Profile
+from app.domain.models import Blob, Course, Job, Material
 
 
 def _make_session(client: TestClient, tmp_path: Path) -> tuple[Session, Engine]:
     from app.storage.db import make_engine, make_session_factory
 
-    engine = make_engine(tmp_path / "app.db")
+    engine = make_engine(tmp_path / "study.sqlite3")
     return make_session_factory(engine)(), engine
 
 
@@ -139,7 +139,9 @@ def test_job_types_lists_handlers(client: TestClient) -> None:
     assert "chat_turn" not in types
 
 
-def test_reingest_material_requeues(client: TestClient, tmp_path: Path) -> None:
+def test_reingest_material_requeues(
+    client: TestClient, tmp_path: Path, profile_id: str
+) -> None:
     from app.storage.blobs import BlobStore
 
     client.app.state.jobs.stop()  # type: ignore[attr-defined]
@@ -147,10 +149,8 @@ def test_reingest_material_requeues(client: TestClient, tmp_path: Path) -> None:
     try:
         blobs = BlobStore(tmp_path / "blobs")
         stored = blobs.put(b"pdf-bytes", session=session)
-        if session.get(Profile, 1) is None:
-            session.add(Profile(id=1, name="Default"))
         if session.get(Course, 1) is None:
-            session.add(Course(id=1, profile_id=1, title="Calculus I"))
+            session.add(Course(id=1, profile_id=profile_id, title="Calculus I"))
         if session.get(Blob, stored.sha256) is None:
             session.add(
                 Blob(
@@ -162,7 +162,7 @@ def test_reingest_material_requeues(client: TestClient, tmp_path: Path) -> None:
         session.commit()
         sha = stored.sha256
         material = Material(
-            profile_id=1,
+            profile_id=profile_id,
             course_id=1,
             kind="pdf",
             title="Lecture",
@@ -195,22 +195,20 @@ def test_reingest_material_requeues(client: TestClient, tmp_path: Path) -> None:
 
 
 def _insert_material(
-    session: Session, tmp_path: Path, title: str = "Lecture"
+    session: Session, tmp_path: Path, profile_id: str, title: str = "Lecture"
 ) -> Material:
     from app.storage.blobs import BlobStore
 
     blobs = BlobStore(tmp_path / "blobs")
     stored = blobs.put(b"pdf-bytes", session=session)
-    if session.get(Profile, 1) is None:
-        session.add(Profile(id=1, name="Default"))
     if session.get(Course, 1) is None:
-        session.add(Course(id=1, profile_id=1, title="Calculus I"))
+        session.add(Course(id=1, profile_id=profile_id, title="Calculus I"))
     if session.get(Blob, stored.sha256) is None:
         session.add(
             Blob(sha256=stored.sha256, rel_path=str(stored.rel_path), size=stored.size)
         )
     material = Material(
-        profile_id=1,
+        profile_id=profile_id,
         course_id=1,
         kind="pdf",
         title=title,
@@ -302,12 +300,12 @@ def test_delete_failed_bulk_includes_chat_turn_and_type_filter(
 
 
 def test_stale_flag_marks_missing_material_and_session(
-    client: TestClient, tmp_path: Path
+    client: TestClient, tmp_path: Path, profile_id: str
 ) -> None:
     client.app.state.jobs.stop()  # type: ignore[attr-defined]
     session, engine = _make_session(client, tmp_path)
     try:
-        material = _insert_material(session, tmp_path)
+        material = _insert_material(session, tmp_path, profile_id)
         material_id = material.id
         alive = _insert_job(
             session, payload={"material_id": material_id}, error="material x not found"

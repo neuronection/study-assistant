@@ -88,7 +88,7 @@ def to_family_events(event: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "type": FlowEvent.FLOW_FAILED,
                 "flow": CHAT_FLOW,
-                "code": "turn_error",
+                "code": event.get("code") or "turn_error",
                 "message": str(event.get("detail") or ""),
                 "retryable": False,
             }

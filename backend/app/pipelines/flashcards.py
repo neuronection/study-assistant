@@ -50,7 +50,7 @@ class FlashcardsService:
 
     def generate(
         self,
-        profile_id: int,
+        profile_id: str,
         *,
         course_id: int,
         node_id: int | None = None,
@@ -129,7 +129,7 @@ class FlashcardsService:
             )
         return cards, []
 
-    def _existing_fronts(self, profile_id: int) -> set[str]:
+    def _existing_fronts(self, profile_id: str) -> set[str]:
         rows = self._session.execute(
             select(ExerciseStep.prompt)
             .join(Exercise, Exercise.id == ExerciseStep.exercise_id)

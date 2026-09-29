@@ -79,9 +79,12 @@ def make_chat_with_messages(
 
 
 def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
+    from conftest import mint_session
+
+    _, _, profile_id = mint_session(app)
     db = app.state.session_factory()
     activity = Activity(
-        profile_id=1, course_id=course_id, type="quiz", title="Old quiz title"
+        profile_id=profile_id, course_id=course_id, type="quiz", title="Old quiz title"
     )
     db.add(activity)
     db.flush()
@@ -98,7 +101,7 @@ def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
     db.add(attempt)
     db.flush()
     db.add(Answer(attempt_id=attempt.id, question_id=question.id, correct=False))
-    db.add(Mistake(profile_id=1, question_id=question.id))
+    db.add(Mistake(profile_id=profile_id, question_id=question.id))
     db.add(ItemStat(question_id=question.id, n_attempts=3, p_correct=0.5))
     db.commit()
     activity_id = activity.id
@@ -107,9 +110,15 @@ def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
 
 
 def make_exercise_with_reviews(app: FastAPI, course_id: int) -> int:
+    from conftest import mint_session
+
+    _, _, profile_id = mint_session(app)
     db = app.state.session_factory()
     exercise = Exercise(
-        profile_id=1, course_id=course_id, title="Old exercise title", kind="multi_step"
+        profile_id=profile_id,
+        course_id=course_id,
+        title="Old exercise title",
+        kind="multi_step",
     )
     db.add(exercise)
     db.flush()

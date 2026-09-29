@@ -6,6 +6,111 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Security docs — threat model filled (family plan 16 S9, ADR-0013,
+2026-09-25):** `SECURITY.md` rewritten for the dual-mode reality — the
+"no accounts / server deployments out of scope" scope is gone — and now
+carries the filled identity-auth **§20 threat model**: all nine surfaces
+(auth surface, instance mode, session storage, trust boundaries, data
+isolation, secrets at rest, audit, admin surface, deployment exposure)
+answered concretely for study (unauthenticated endpoints + 10/min-IP,
+30/min-email rate limits + 5-fail/15-min lockout; cookie names/flags,
+CSRF, revocation paths; §4.5 mode transitions with password
+re-verification; §15 profile binding; keyring + key-separated
+SESSION/REFRESH/DATA tokens; the full `audit_events` action list; admin
+guard rails and blast radius; loopback/shell-secret vs nginx-TLS
+exposure, backup/restore, demo guards). One source of truth:
+`docs/dev/security.md` links the table and drops its stale "no auth
+layer" prose; `docs/dev/architecture.md` Security posture refreshed +
+ADR-0022 adoption note (SQLite desktop / PostgreSQL 16 web, `neuro_study`
+owner/app roles, both-dialect migrations — adopted 2026-09-24). Known
+gaps recorded in SECURITY.md rather than papered over: rate-limit
+ceilings are code defaults (no `SA_RATELIMIT_*` env knobs), domain
+reads/writes are not audited. (Closed since: Bearer session access
+works on enforced routes — kit §9; WS topics are owner-scoped per
+subscriber.)
+
+**Turn-error display, ADR-0023 dev loop & security hardening
+(2026-09-29):** failed chat turns persist a display-only `turn_failed`
+marker (survives refresh, never enters the model context) rendered as
+the family error card with regenerate + an "Open AI settings" deep-link
+(`ai_not_configured`); `run-dev.sh` runs shell-less desktop dev (SQLite
++ desktop identity, `SA_SHELL` gate arming, loopback-only DIM) with
+`--web` on the Postgres dev-db; the WS surface is owner-scoped
+fail-closed with client-side publish removed, editor jobs stamp their
+creator, and error details are sanitized before persist/emit. Blob
+loads over browser navigations (PDF iframes, `<img>`) now work in both
+modes — the header gates (`X-Profile-Id`/`X-Shell-Token`) can never be
+satisfied by a navigation, so `/api/v1/blobs` is exempt from both and
+owner-scopes the sha (ADR-0025), which also closed a cross-user sha
+leak. Pins: `@neuronection/assistant-ui ^0.48.0` (UserMenu v2 without
+the legacy flat props).
+
+**Shared auth UI adopted (family plan 16 Phase 5 closeout, 2026-09-26):**
+the login/register surface now renders the shared
+`LoginForm`/`RegisterForm` (`@neuronection/assistant-ui`, plan 16
+§5.10/U1 — pin `^0.48.0`) — the overlay shell, mode switch and API error
+mapping stay
+study-local; the field markup, validation, visibility toggles and the
+register confirm-password gate moved into the library (same-commit
+delete of the local form markup). The sidebar's `ProfileDialog` is
+replaced by the shared `ProfileSwitcher`
+(`ProfileSwitcherMenu`): select/create/rename/set-Default/delete over
+the same profile API (`patchProfile` gains rename/set-Default UI), the
+confirm-before-delete stays, and "Default" remains the `null`
+selection (no `X-Profile-Id` header). Desktop-mode zero-UI DIM boot is
+untouched — the components only mount when a login surface actually
+renders.
+
+**Admin users UI (family plan 16 S7-users, ADR-0013, 2026-09-25):**
+Settings gains an admin-only **Users** tab backed by the shared
+`AdminUserTable` (assistant-ui component bar complete: tests incl.
+keyboard-nav + axe, Ladle stories, docs page, a11y row, changeset)
+and an **Account** card (sessions list + revoke, password change,
+account deletion) — the §12 admin-UI minimum is now met in study.
+Note: study's `@neuronection/assistant-ui` pin moves to `^0.45.0`
+when the pending changeset releases (same family-publish queue as
+the auth-kit path dependency).
+
+**User management API (family plan 16 S7-users, ADR-0013, 2026-09-25):**
+the §12 identity surface is complete server-side — admin users
+listing/patch/reset/force-logout with the guard rails (no
+self-demotion, no last-admin demotion), `PATCH /admin/instance` with
+password + §4.5 transitions, `me/sessions` list + revoke,
+`me/password` change, `DELETE /me` — all kit-owned at the identical
+family paths (auth-kit 51 → 85 contract tests). Study adapters carry
+activity counts (courses + materials + notes per user);
+`auth_sessions.created_at` added (migration 0067).
+
+**Datastore — PostgreSQL 16 for web mode (family plan 16 S3, ADR-0022,
+2026-09-24):** study now runs one dialect-aware schema — SQLite for
+desktop/tests, PostgreSQL 16 (`pgvector/pgvector`) for web/server via
+`SA_DATABASE_URL` (or `SA_DB_*`). Migrations verify on both dialects
+(incl. raw-DDL twins for the fts5/trigram/FSRS migrations); search has
+dialect twins (tsvector+GIN / pg_trgm / pgvector HNSW) behind the same
+API with a two-dialect parity gate (85.7% top-5 overlap on the fixed
+benchmark corpus; known PG fuzzy-recall divergence documented in
+CHANGELOG); backup/restore twins `pg_dump -Fc`/`pg_restore`; the
+checkpointer uses `AsyncPostgresSaver` on server mode. SQLite files
+renamed to the family convention (`study.sqlite3`,
+`checkpoints.sqlite3`). Compose stacks run `db + app + nginx + backup`
+(`neuro_study`, owner/app roles) with `scripts/backup.sh`/`restore.sh`
+and a live-verified restore drill.
+
+**Identity — per-user profiles + profile binding (family plan 16 S2b/S5,
+ADR-0013, 2026-09-24):** study's `profiles` schema is now the
+family-normative one (identity-auth §5 — UUID `id`, `user_id` NOT NULL
+FK→users, `is_default`, `updated_at`, `last_used_at`; product columns
+`color`/`preferences` kept) and every `profile_id` column is a UUID with
+cascade delete. User creation auto-provisions the Default profile in the
+same transaction; deleting the last profile re-provisions it; profile
+CRUD is user-scoped (`ProfileOut.id` string + `is_default`, new
+`PATCH /api/v1/profiles/{id}`, delete cascades content). `X-Profile-Id`
+is ownership-validated per §15 (server: absent ⇒ 400, foreign/malformed
+⇒ 403; desktop: last-used fallback; auth/`/me`/`/profiles`/`/admin`
+exempt). Migration **0066** is the destructive, irreversible greenfield
+baseline (no backwards compatibility — recreate dev DBs and reindex;
+see docs/dev/data-model.md Migration notes).
+
 **Feature — uniform BYOK one-click provider setup (plan 79, family plan 17
 Phase 2, 2026-09-19):** study ships the family-uniform BYOK contract
 (guidelines/ai-features.md §15, frozen 2026-09-19) ported from the
@@ -299,10 +404,9 @@ sidebar filter becomes Enter-to-jump with Escape restore; **D** (backend)
 `GET /search` hits gain an additive `nodes` placement annotation
 (`material_links` join post-search) so content results deep-link into the
 node workspace with the material docked (`?material=`) — closing the old
-"section deep-link from search" roadmap remainder. Plan doc:
-`dev/plans/80-deep-navigation-jump-anywhere.md` (gitignored local;
-non-goals: node pins/migration, backend node-search endpoint, outline-default
-landing page). **Plan 80 COMPLETE (2026-09-20, A–D; ADRs 194 + 193 + 195):**
+"section deep-link from search" roadmap remainder. Plan doc 80 (internal
+planning record; non-goals: node pins/migration, backend node-search
+endpoint, outline-default landing page). **Plan 80 COMPLETE (2026-09-20, A–D; ADRs 194 + 193 + 195):**
 four slices landed — palette indexes every course at every depth with
 breadcrumb-subtitle matching, profile-local recents with Home Continue card
 and palette Recent section, sidebar filter jumps on Enter, and search hits
@@ -2495,7 +2599,7 @@ palette** (Ctrl+K: fuzzy navigation, quick note, tutor chat, course jumps) ·
 concept analytics (weakness matrix + materialize write `concept_id`; quiz
 generation accepts `concept_id`).
 
-Plans: `dev/plans/` (01–55; 47–55 planned rounds from the 2026-08-31 audit — order 54 → 55 → 47–53) — **gitignored, local-only**. Roadmap: `dev/plans/05-roadmap.md`. ADRs: `dev/plans/06-decisions-and-risks.md` (102 recorded; 103–130 reserved by plans 47–55 — 046–051 plan 22, 052–055 plan 23, 056–059 plan 24, 058–059 plan 25, 060–061 plan 26, 062 plan 27, 063 plan 28, 064 plan 29, 065 folder delete-refusal UX, 066 folder-delete cascade, 067 multi-item drag, 068 inline editor AI helper plan 31, 069 unified practice plan 32, 070 cheat-sheet compose menu plan 33, 071 AG-UI contract plan 34, 072 widget layer plan 34, 073 renderers plan 34, 074 state channel plan 34, 075 exercise widgets plan 34, 076 chat widgets plan 34, 077 turn-trace observability plan 35, 078 per-tool component registry plan 35, 079 incremental memoized streaming rendering plan 35, 080 shared MCP resource-tool registry + chat resource tools plan 36, 081–084 AI gateway framework plan 37, 085–087 AI gateway best-practices plan 38, 088 per-capability default task models, 090 insert-only seeding of `default_task_assignments` (plan 39 — fixes the restart wipe), 089 job lifecycle hygiene: explicit deletion + stale detection + done-history pruning (plan 39), 097 dictation/transcribe task plan 42, 098 infinite drawing canvas + crop-on-save + view-box scale metadata (plan 43), 102 OCR payload efficiency + async drawing OCR (plan 46), 099 shell reaffirmed (pywebview) + PyInstaller/deb/AppImage/exe packaging + tag-driven release. Tracked docs: AGENTS.md, `docs/` (`.opencode/` and `dev/` are gitignored, local-only).
+Plans (internal planning record, outside this repository): 01–55; 47–55 planned rounds from the 2026-08-31 audit — order 54 → 55 → 47–53. Roadmap: plan 05. ADR register: plan 06 (102 recorded; 103–130 reserved by plans 47–55 — 046–051 plan 22, 052–055 plan 23, 056–059 plan 24, 058–059 plan 25, 060–061 plan 26, 062 plan 27, 063 plan 28, 064 plan 29, 065 folder delete-refusal UX, 066 folder-delete cascade, 067 multi-item drag, 068 inline editor AI helper plan 31, 069 unified practice plan 32, 070 cheat-sheet compose menu plan 33, 071 AG-UI contract plan 34, 072 widget layer plan 34, 073 renderers plan 34, 074 state channel plan 34, 075 exercise widgets plan 34, 076 chat widgets plan 34, 077 turn-trace observability plan 35, 078 per-tool component registry plan 35, 079 incremental memoized streaming rendering plan 35, 080 shared MCP resource-tool registry + chat resource tools plan 36, 081–084 AI gateway framework plan 37, 085–087 AI gateway best-practices plan 38, 088 per-capability default task models, 090 insert-only seeding of `default_task_assignments` (plan 39 — fixes the restart wipe), 089 job lifecycle hygiene: explicit deletion + stale detection + done-history pruning (plan 39), 097 dictation/transcribe task plan 42, 098 infinite drawing canvas + crop-on-save + view-box scale metadata (plan 43), 102 OCR payload efficiency + async drawing OCR (plan 46), 099 shell reaffirmed (pywebview) + PyInstaller/deb/AppImage/exe packaging + tag-driven release. Tracked docs: AGENTS.md, `docs/` (`.opencode/` is gitignored, local-only).
 
 ## Module status
 
@@ -2541,7 +2645,7 @@ sandbox test-run covers the mention/proposal protocol by construction (chat
 contract builders now include those constraints) |
 | **Chat-engine cutover (family AI-alignment Phase 8)** | done | `SA_CHAT_ENGINE` defaults to `graph` (soaked: paced-token live soak + e2e smoke on the default engine; ordering gap in the round-end delta flush fixed via `on_round_stream_end`); `legacy` retained as rollback and pins the legacy-streaming tests; deletion after one clean graph-default release. D2 (`interrupt()` proposals) reserved. |
 | **Family events + FlowStatusCard (family AI-alignment Phase 6)** | done (study slice) | `app/agui/family.py` — chat turns emit the family event vocabulary (`FlowEvent` StrEnum) additively alongside legacy WS names, from one pure mapper shared by both chat engines; `stream_interrupted` intentionally unmapped. Frontend adopts library `FlowStatusCard` (^0.18.0, shim `components/ui/flow-status.ts`) in the shared editor's AI helper (running: Transform → Review + Cancel; failed: retryable Retry); chat keeps `TraceTimeline` (plan 10 §6.3 study surface). Library `flow-status` itself landed in the assistant-ui repo (0.18.0). |
-| **Chat-turn graph engine (family AI-alignment Phase 5, ADR-0008)** | done (flag-gated, default `legacy`) | `app/ai/graphs/chat_turn.py` — the chat turn as a checkpointed LangGraph `StateGraph` (`retrieve → contract_guard → agent_round ⇄ → validate_repair → finalize`) mirroring `answer_streaming`: dual tool modes (native `.bind_tools()` + in-memory degradation to the prompt grammar), per-kind budgets (math 2/READ 3/STATE 3/resource 5), deterministic contract repair loop; shared `ChatService` `prepare_turn_context`/`prepare_turn_contract`/`finalize_turn` helpers serve both engines so WS events, proposal cards, message rows, and the ledger are identical by construction (parity tests compare normalized event sequences over a scripted SSE model). `ChatTurnEngine` adapter consumes `astream(stream_mode=["updates", "messages"])` (messages → `stream_delta`, updates → round flush + finalize payload, `__interrupt__` reserved for future `interrupt()` proposals; v3 swap is a one-file adapter change); dialect-picked checkpointer (`AsyncSqliteSaver`/`AsyncPostgresSaver`) held open in the app lifespan, `thread_id` = chat session id, boot-time prune (`SA_CHECKPOINT_TTL_DAYS`). Flag `SA_CHAT_ENGINE=legacy|graph`; `TaskRunner` single-call tasks untouched. See [ai.md](ai.md) |
+| **Chat-turn graph engine (family AI-alignment Phase 5, ADR-0008)** | done (flag-gated, default `legacy`) | `app/ai/graphs/chat_turn.py` — the chat turn as a checkpointed LangGraph `StateGraph` (`retrieve → contract_guard → agent_round ⇄ → validate_repair → finalize`) mirroring `answer_streaming`: dual tool modes (native `.bind_tools()` + in-memory degradation to the prompt grammar), per-kind budgets (math 2/READ 3/STATE 3/resource 5), deterministic contract repair loop; shared `ChatService` `prepare_turn_context`/`prepare_turn_contract`/`finalize_turn` helpers serve both engines so WS events, proposal cards, message rows, and the ledger are identical by construction (parity tests compare normalized event sequences over a scripted SSE model). `ChatTurnEngine` adapter consumes `astream(stream_mode=["updates", "messages"])` (messages → `stream_delta`, updates → round flush + finalize payload, `__interrupt__` reserved for future `interrupt()` proposals; v3 swap is a one-file adapter change); dialect-picked checkpointer (`AsyncSqliteSaver`/`AsyncPostgresSaver`) held open in the app lifespan, `thread_id` = chat session id, boot-time prune (`SA_CHECKPOINT_TTL_DAYS`). Flag `SA_CHAT_ENGINE=legacy|graph`; `TaskRunner` single-call tasks untouched. See [ai.md](dev/ai.md) |
 | **AI gateway (plan 37A, ADR-081)** | done | `LLMGateway` speaks to providers through **LangChain chat models** behind the same surface (`resolve`/`generate`/`stream`/`stream_events`): `ChatOpenAI` (Ollama via the `openai_compatible` preset) / `ChatAnthropic` / `ChatGoogleGenerativeAI`; budget gate, keyring read, and `ai_interactions` ledger unchanged. **First-class retry loop** (transient-only: ≥500/429 or `httpx` cause; streams retry only before the first chunk) + **ADR-029 fallback chain** now real (`[primary, fallback]`, `_ledger` + trace attributed to the answering model). **Real `usage_metadata` tokens** into the ledger (estimate kept only for offline/mock). Reasoning: OpenAI-compatible `reasoning_content` via the `CaChatOpenAI` subclass, Anthropic/Google `{"type":"thinking"}` content blocks. Mid-stream chat failures persist the streamed prefix with `trace.stream_interrupted` + a `stream_interrupted` event (no replay). **Native tool calling (37B, ADR-082):** `tools`-capable models get `.bind_tools()` schemas (generated from the prompt catalogs) and stream structured `tool_call` events; chat executes the same deterministic tool body and feeds `ToolMessage`s back (prompt-grammar fallback for text-only models, identical `tool_call` events; **auto-degrades to the prompt grammar in-memory when a model's endpoint rejects bound tools**). **Structured generation (37C, ADR-083):** `generate_structured` uses `.with_structured_output()` (cap-gated, permissive Pydantic schemas, degrades to plain `generate` on unsupported errors) as a fast path for quizgen/exgen/flashcards/rubric/pattern.discover. **Prompt caching (37D, ADR-084):** Anthropic `cache_control` on the chat turn's first system block + OpenAI cache-read accounting; ledger persists `cached_input_tokens` (migration 0037) with cost discounted at 0.1×; Google `cachedContent` descoped. **Plan 38 hardening (ADR-085…087):** `reasoning_effort` now reaches Google (filtered to `minimal/low/medium/high`) and is filtered per-provider on Anthropic too — an out-of-set stored value drops to the provider default instead of failing model construction; `generate_structured` bills real `usage_metadata` tokens via `with_structured_output(include_raw=True)`; a `model.profile["structured_output"]` pre-gate skips the structured fast path (no round trip) when the profile confidently says unsupported, keeping the error-based degrade for unknown profiles. New `app/ai/chat_models.py`, `app/ai/types.py`, `app/ai/structured.py`; **socket-blocking suite guard** (no live network in tests) + telemetry-off test (no `LANGSMITH_*`/`LANGCHAIN_TRACING_V2`). **Per-capability default task models (2026-08-26, ADR-088, migration 0041):** `default_task_assignments` keyed by capability (`text`/`vision`/`embeddings`) with `model_id`/`fallback_model_id`; `_resolve_chain` null-coalesces task → capability default (a per-task assignment is an override, partial overrides inherit the default fallback); `GET/PUT /api/v1/tasks/defaults` + `PUT /tasks/defaults/{requires}`; `TaskOut` gains `inherits_default` + default labels; Settings → Tasks shows a Default models section and per-task "(Inherit default)" / custom override; budgets stay per-task; provider/model delete + backup restore null/reseed defaults. |
 | **AI task layer & context engine (P10)** | done | `services/context.py` (ContextSpec→ContextBundle: scope/material include-exclude/notes/concepts/hints; hybrid chunk retrieval FTS⊕sqlite-vec via RRF, FTS-only fallback; manifest + budgeted render) · `ai/runner.py` (TaskRunner: skill resolution, JSON repair loop, uniform audit w/ model+latency; **plan 31 added `stream_text`** — streaming generator w/ repair re-stream + `stop` callable) · `ai/parsing.py` (shared extract/fence/blocks→md/tokens) · quizgen/exgen/flashcards run on it · generate endpoints accept `scope/include_material_ids/exclude_material_ids/note_ids/concept_ids/context_hint` · `POST /ai/context/preview` · `tree_nodes.ai_hint` (0021; root = course-level; inherited from ancestors) · frontend `features/ai/GenerateDialog` (uniform dialog + preview) + `AiHintCard` (workspace overview). **Plan 31 inline editor AI**: `editor_transform` task + `editor.transform` seed skill + `EditorTransformService` (`app.state.editor_ai`, in-memory job registry, `POST /ai/editor/transform` → WS `ai-editor:{job_id}` streaming + cancel + poll fallback, optional course grounding via the resolver). Deferred (10E): all closed — chat on the resolver + READ tool (11B), MCP `get_node_context` (plan 17 F). **Per-course task-model overrides (ADR-091, 2026-08-27)**: `course_task_assignments` + `course_default_task_assignments` (0042/0043) with `GET/PUT /courses/{id}/tasks[/{task}]` and `…/tasks/defaults[/{requires}]`; `LLMGateway`/`TaskRunner` thread an optional course_id so resolution is per-slot global default → global task → course default → course task; workspace root **Settings tab** (General: title/description; Tasks subtab: defaults card + override list). **Plan 42 added the `transcribe` task (`audio` capability) for dictation — `LLMGateway.transcribe` (provider-native STT: openai_compatible `/audio/transcriptions`, Gemini inline audio, ledger + fallback like `generate`) behind `POST /ai/transcribe`, mic buttons in the shared editor + chat composer** |
 | Repo scaffolding (uv + pnpm workspaces, CI) | done | Root uv workspace → `backend/`, pnpm workspace → `frontend/`; GH Actions runs both suites + `alembic upgrade head` |
@@ -2621,6 +2725,74 @@ a backend node binding) |
 | Analytics/diagnostics (P7 first slice) | in progress | Migration 0010: concept_skill_stats, daily_rollups, item_stats, study_goals. `services/metrics.py` = single source of truth (doc 10 definitions): weakness matrix (concepts×skills, sample-size aware — <3 answers flagged not-enough-data), error-pattern profile (totals + 7d trend), speed–accuracy quadrants (fluent/rushing/effortful/struggling vs expected time), item analysis (p-correct, avg-time ratio, distractor selection; n≥20 + p outside [0.1,0.95] auto-flags question `review`), streak/daily-history/XP/level, due-card counts, recommendations engine (review > weak cells [conceptual→read, else drill] > strong-but-stale challenge; each with evidence numbers; exam attempts excluded from mastery). API: /analytics/overview, /diagnostics, /recommendations, /items, /goal (PUT), /materialize (writes rollup tables + question flags). Frontend: **Today screen** (streak, goal ring w/ editable daily goal, due reviews, next-best-action cards with evidence + one-tap actions, 90-day heatmap), **Scores page → 4 tabs** (History, Diagnostics w/ matrix heatmap + error tags + quadrants, Tips, Mistakes). Slice 2: **weak-area sessions (H4)** — quiz generate accepts topic+skill focus (FOCUS TOPIC / SKILL FOCUS directives in the quizgen prompt; topic-scoped retrieval; title carries topic); Today drill/challenge buttons generate a targeted quiz and jump straight in. **Backup/restore (I6)** — `GET /backup/export` = consistent sqlite snapshot (backup API, converted to rollback-journal so archives are portable) + all blobs + manifest (`ca-backup/v1`); `POST /backup/restore` validates zip+manifest+integrity+alembic history, replaces DB (WAL sidecars removed) + blobs, re-runs migrations, reseeds; Settings→Data tab. **Automatic backups (plan 22 C, 2026-08-21)**: BackupScheduler (startup + interval), post-write archive validation, 14+8 daily/weekly retention, optional sync-folder copy, boot integrity check w/ auto-recovery + quarantine, `GET /backup/status` · `PUT /backup/settings` · `POST /backup/create` · `POST /backup/{name}/restore` · `DELETE /backup/{name}`, Automatic-backups card in Settings→Data (ADR-047). **Print export (I16 first cut)** — print CSS (rail/buttons hidden) + Print on quiz rows. Pending: mastery rings/tree visualizations, rollups on quiz-finish |
 
 ## Changelog
+
+- 2026-09-24 — **feat(auth): enforcement + boot session + login gate
+  (family plan 16, S4b + S7 login).** The study hole is closed: the
+  family auth-kit's `SessionAuthMiddleware` now requires a valid session
+  on **every `/api/*` request** (auth flows, health probe, docs and the
+  render beacon exempt; instance rules applied — `local-boot`/`demo`
+  cookies checked against live DB state), with the verified principal
+  stashed in scope state so endpoints never re-verify. The WebSocket
+  handshake now verifies **Origin → session cookie** through the same
+  `authenticate_session` path (browsers can't set WS headers). The SPA
+  gains `AuthGate`: before anything renders it establishes a session —
+  live cookie → refresh-rotate → **desktop one-time exchange** (zero
+  setup on `open` instances, 404 → login on `authenticated` ones) →
+  otherwise the new `LoginOverlay` (sign-in/register, i18n keys
+  en/de/el — de/el values are English placeholders pending
+  `scripts/translations/check_translations.py --fix` with the
+  TRANSLATION_API_KEY). `apiFetch` transparently refreshes expired
+  access once and dispatches `nx:unauthenticated` on failure (the gate
+  drops back to login). Test strategy: conftest installs an
+  **auto-authorizing TestClient** (pytest imports conftest first, so
+  every helper-built client across ~90 files carries a minted session;
+  `raw_client`/`AnonymousTestClient` observe first-user-admin and
+  anonymous states) — one cached bcrypt per suite, not per test. Gates:
+  backend ruff + mypy strict + **1320 passed**; frontend lint +
+  typecheck + **1404 passed** + build (182 files). **Public behavior
+  change:** web deployments now show the login gate (desktop unchanged:
+  silent exchange, no auth UI).
+
+- 2026-09-24 — **feat(auth): identity schema + family auth-kit mount +
+  desktop shell gating (family plan 16, S2/S4a/S6).** Migration
+  **0065** adds the family-normative identity tables — `users`,
+  `auth_sessions`, `instance_settings`, `audit_events` (uuid ids;
+  native uuid on Postgres per ADR-0022) — and the app mounts
+  `neuronection-auth-kit` (editable path dep via root
+  `[tool.uv.sources]`): `/api/v1/auth/*` (register / login / refresh /
+  logout / logout-all / me / demo) with cookie sessions + double-submit
+  CSRF, study-owned identity models, and the kit's store protocols
+  ported as `app/auth/stores.py` adapters (SQLite-naive datetimes
+  normalized on read; audit rows land in `audit_events`). Instance
+  `auth_mode` is **init-only** (`SA_AUTH_MODE`; server ⇒
+  `authenticated`, desktop ⇒ `open`) and re-read from the DB on every
+  request — changing the env later changes nothing. Desktop entrypoints
+  now generate a **per-boot shell secret**: the SPA URL carries
+  `?shell=` and `apiFetch` sends `X-Shell-Token` + `X-CSRF-Token` on
+  every API call (render-beacon included); `/api` is gated by the
+  secret, `/ws` stays on the S1 Origin gate (browsers cannot set WS
+  headers). **Interim, documented:** request *enforcement* (401 until
+  session), the SPA boot exchange, and the login/users UI land together
+  in S4b/S5/S7 — web deployments keep the S1 loopback/VPN posture until
+  then; the `profiles` rework (`user_id NOT NULL`, UUID ids) is S2b.
+  Gates: backend ruff + mypy strict + **1319 passed**; frontend lint +
+  typecheck + **1398 passed** + build; OpenAPI regenerated (259 paths).
+
+- 2026-09-24 — **security(p0): close the unauthenticated web surfaces
+  (family plan 16, S1).** `GET /api/v1/fs/dirs` resolves paths and confines
+  browsing to granted roots (data dir + home + `SA_FS_ROOTS`; 403 outside,
+  `parent` capped, symlink escapes resolve before the check); `/ws`
+  verifies `Origin` before accept (same-origin or `SA_CORS_ORIGINS`;
+  missing Origin = non-browser client); CORS is explicit and
+  deny-by-default (`SA_CORS_ORIGINS`, empty = none — the SPA is
+  same-origin behind the vite proxy); `/api/v1/desktop/*` now mounts only
+  under `SA_IDENTITY_MODE=desktop` (pywebview entrypoint), so web mode has
+  no desktop routes at all (plus the existing state guard). The stray root
+  `.env` translation key was removed — rotation is a provider-side action,
+  then set a fresh `TRANSLATION_API_KEY`. New tests: `test_fs_roots`,
+  `test_ws_origin`, `test_cors`, desktop mount gating. **Open:** full
+  session-cookie auth for web mode = plan 16 S4 (auth-kit); desktop
+  shell-secret gate = S6.
 
 - 2026-09-20 — **feat(mcp): remote transports + keyring secrets for custom
   connectors (desktop-assistant parity).** MCP connector config catches up

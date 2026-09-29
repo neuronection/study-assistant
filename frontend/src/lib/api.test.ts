@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import { resetProfileGateForTests } from './api/client'
 import {
   apiDetailMessage,
   apiFetch,
@@ -13,8 +14,16 @@ import {
   importQpkg,
   listNotes,
   listQuizzes,
+  markProfileSettled,
   setActiveProfile,
 } from './api'
+
+// every apiFetch caller in this file runs with the §15 boot gate
+// settled — the gate behavior itself has its own describe block below
+beforeEach(() => {
+  resetProfileGateForTests()
+  markProfileSettled()
+})
 
 describe('getHealth', () => {
   test('returns parsed health payload on ok response', async () => {
@@ -102,10 +111,48 @@ describe('apiFetch', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/courses', { headers: new Headers() })
   })
 
+  test('holds profile-scoped requests until the §15 boot gate settles', async () => {
+    resetProfileGateForTests()
+    const fetchMock = makeFetchMock()
+    vi.stubGlobal('fetch', fetchMock)
+    let settled = false
+    const pending = apiFetch('/api/v1/courses').then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+    markProfileSettled()
+    await pending
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('the gated request carries the adopted profile header', async () => {
+    resetProfileGateForTests()
+    setActiveProfile('p-default')
+    const fetchMock = makeFetchMock()
+    vi.stubGlobal('fetch', fetchMock)
+    const pending = apiFetch('/api/v1/courses')
+    markProfileSettled()
+    await pending
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(new Headers(init.headers).get('X-Profile-Id')).toBe('p-default')
+  })
+
+  test('exempt paths bypass the §15 boot gate', async () => {
+    resetProfileGateForTests()
+    const fetchMock = makeFetchMock()
+    vi.stubGlobal('fetch', fetchMock)
+    await apiFetch('/api/v1/instance/config')
+    await apiFetch('/api/v1/auth/refresh', { method: 'POST' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   test('attaches active profile header', async () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
-    setActiveProfile(7)
+    setActiveProfile("7")
     await apiFetch('/api/v1/courses')
     const init = fetchMock.mock.calls[0][1] as RequestInit
     expect(new Headers(init.headers).get('X-Profile-Id')).toBe('7')

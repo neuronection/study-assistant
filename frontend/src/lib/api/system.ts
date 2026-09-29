@@ -91,9 +91,10 @@ export async function purgeDeletedItem(id: number): Promise<void> {
 }
 
 export interface ProfileInfo {
-  id: number
+  id: string
   name: string
   color: string | null
+  is_default: boolean
 }
 
 export async function listProfiles(): Promise<ProfileInfo[]> {
@@ -110,11 +111,23 @@ export async function createProfile(name: string): Promise<ProfileInfo> {
   return json<ProfileInfo>(response)
 }
 
-export async function deleteProfile(profileId: number): Promise<void> {
+export async function deleteProfile(profileId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/profiles/${profileId}`, { method: 'DELETE' })
   if (!response.ok) {
     throw new Error(`Failed to delete profile (${response.status})`)
   }
+}
+
+export async function patchProfile(
+  profileId: string,
+  body: { name?: string; color?: string | null; is_default?: boolean },
+): Promise<ProfileInfo> {
+  const response = await apiFetch(`/api/v1/profiles/${profileId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<ProfileInfo>(response)
 }
 
 export interface DiscoverySitePreset {

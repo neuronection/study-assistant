@@ -66,7 +66,7 @@ class ScanScheduler:
                     select(MaterialSource).where(MaterialSource.enabled.is_(True))
                 )
             )
-            due: list[tuple[int, int]] = []
+            due: list[tuple[str, int]] = []
             for source in sources:
                 if force or source.last_scanned_at is None:
                     due.append((source.profile_id, source.id))
@@ -80,7 +80,7 @@ class ScanScheduler:
                 results[source_id] = stats
         return results
 
-    def _scan_one(self, profile_id: int, source_id: int) -> dict[str, int] | None:
+    def _scan_one(self, profile_id: str, source_id: int) -> dict[str, int] | None:
         try:
             with self._session_factory() as session:
                 service = SourcesService(session, self._blobs_dir)

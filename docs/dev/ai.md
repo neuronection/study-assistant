@@ -5,7 +5,7 @@ user-configured in **Settings**; Gemini is just one example. **Everything can ru
 fully local** — llama.cpp, LM Studio, Ollama and whisper-class servers are
 presets, the wizard auto-detects running local engines, and API keys are optional
 for local engines (ADR-105: no in-process ML models, ever). See
-`docs/usage/local-ai.md`.
+`../user/local-ai.md`.
 
 ## Concepts
 
@@ -810,7 +810,7 @@ contract), seeded from code and stored in `skills` / `skill_versions`
 **course → course_type → system** (most specific wins). Templates render
 server-side only. Every `ai_interactions` row logs `skill_version_id`, so any
 prompt + contract + model + result is reproducible. The same contract validators
-run in pipelines and the sandbox UI. See [usage/skills.md](usage/skills.md).
+run in pipelines and the sandbox UI. See [skills](../user/skills.md).
 
 ## Contracts engine (`app/ai/contracts/`)
 

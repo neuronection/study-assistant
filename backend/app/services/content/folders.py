@@ -97,16 +97,16 @@ class FoldersService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def _get(self, folder_id: int, profile_id: int) -> MaterialFolder | None:
+    def _get(self, folder_id: int, profile_id: str) -> MaterialFolder | None:
         folder = self._session.get(MaterialFolder, folder_id)
         if folder is None or folder.profile_id != profile_id:
             return None
         return folder
 
-    def get(self, folder_id: int, *, profile_id: int) -> MaterialFolder | None:
+    def get(self, folder_id: int, *, profile_id: str) -> MaterialFolder | None:
         return self._get(folder_id, profile_id)
 
-    def _path_exists(self, profile_id: int, course_id: int, path: str) -> bool:
+    def _path_exists(self, profile_id: str, course_id: int, path: str) -> bool:
         return (
             self._session.scalars(
                 select(MaterialFolder).where(
@@ -121,7 +121,7 @@ class FoldersService:
     def create(
         self,
         *,
-        profile_id: int,
+        profile_id: str,
         name: str,
         course_id: int,
         parent_id: int | None = None,
@@ -153,7 +153,7 @@ class FoldersService:
         return folder
 
     def list(
-        self, *, profile_id: int, course_id: int | None = None
+        self, *, profile_id: str, course_id: int | None = None
     ) -> list[MaterialFolder]:
         query = select(MaterialFolder).where(MaterialFolder.profile_id == profile_id)
         if course_id is not None:
@@ -162,7 +162,7 @@ class FoldersService:
             self._session.scalars(query.order_by(MaterialFolder.path))
         )
 
-    def rename(self, folder_id: int, *, profile_id: int, name: str) -> MaterialFolder:
+    def rename(self, folder_id: int, *, profile_id: str, name: str) -> MaterialFolder:
         folder = self._get(folder_id, profile_id)
         if folder is None:
             raise FolderError("folder not found")
@@ -182,7 +182,7 @@ class FoldersService:
         self._session.flush()
         return folder
 
-    def move(self, folder_id: int, *, profile_id: int, new_parent_id: int | None) -> MaterialFolder:
+    def move(self, folder_id: int, *, profile_id: str, new_parent_id: int | None) -> MaterialFolder:
         folder = self._get(folder_id, profile_id)
         if folder is None:
             raise FolderError("folder not found")
@@ -212,7 +212,7 @@ class FoldersService:
         self._session.flush()
         return folder
 
-    def unlink(self, folder_id: int, *, profile_id: int) -> None:
+    def unlink(self, folder_id: int, *, profile_id: str) -> None:
         folder = self._get(folder_id, profile_id)
         if folder is None:
             raise FolderError("folder not found")
@@ -227,7 +227,7 @@ class FoldersService:
         self._session.flush()
 
     def delete(
-        self, folder_id: int, *, profile_id: int, force: bool = False
+        self, folder_id: int, *, profile_id: str, force: bool = False
     ) -> None:
         folder = self._get(folder_id, profile_id)
         if folder is None:

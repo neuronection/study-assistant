@@ -1,3 +1,6 @@
+from typing import Any
+from uuid import uuid4
+
 import httpx
 import pytest
 from sqlalchemy.orm import Session
@@ -124,14 +127,16 @@ def test_search_videos_builds_ytsearch_query(
     assert len(rows) == 1
 
 
-def test_resolve_providers_defaults_and_filtering(db_session: Session) -> None:
+def test_resolve_providers_defaults_and_filtering(
+    db_session: Session, owner: Any
+) -> None:
     from app.domain.models import Profile
 
-    profile = Profile(name="p")
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.commit()
 
-    providers = resolve_providers(db_session, int(profile.id))
+    providers = resolve_providers(db_session, str(profile.id))
     assert [provider.id for provider in providers] == ["youtube"]
 
     profile.preferences = {
@@ -151,7 +156,7 @@ def test_resolve_providers_defaults_and_filtering(db_session: Session) -> None:
         },
     }
     db_session.commit()
-    providers = resolve_providers(db_session, int(profile.id))
+    providers = resolve_providers(db_session, str(profile.id))
     assert [provider.id for provider in providers] == [
         "web",
         "youtube",
@@ -159,7 +164,7 @@ def test_resolve_providers_defaults_and_filtering(db_session: Session) -> None:
     ]
 
     filtered = resolve_providers(
-        db_session, int(profile.id), requested=["youtube"]
+        db_session, str(profile.id), requested=["youtube"]
     )
     assert [provider.id for provider in filtered] == ["youtube"]
 
@@ -168,4 +173,4 @@ def test_resolve_providers_unconfigured_request_is_honest(
     db_session: Session,
 ) -> None:
     with pytest.raises(DiscoveryError, match="not configured"):
-        resolve_providers(db_session, 1, requested=["web"])
+        resolve_providers(db_session, str(uuid4()), requested=["web"])

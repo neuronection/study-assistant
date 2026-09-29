@@ -536,7 +536,7 @@ def test_hybrid_retrieval_uses_vector_hits(tmp_path: Path, monkeypatch: Any) -> 
         target = upload_txt(client, "target.txt", course_id, b"obscure syllabus content")
         link_material(client, chapter, target)
 
-        raw = sqlite3.connect(tmp_path / "app.db")
+        raw = sqlite3.connect(tmp_path / "study.sqlite3")
         chunk_row = raw.execute(
             "SELECT c.id FROM chunks c JOIN extractions e ON e.id = c.extraction_id "
             "WHERE e.material_id = ? LIMIT 1",

@@ -38,7 +38,7 @@ def test_migration_links_legacy_messages_into_a_branch_chain(
     raw.commit()
     raw.close()
 
-    _run_migrations(db_path)
+    _run_migrations(db_path, "0065_identity_core")
 
     check = sqlite3.connect(db_path)
     try:
@@ -67,7 +67,7 @@ def test_migration_links_legacy_messages_into_a_branch_chain(
 
 def test_branch_columns_exist(tmp_path: Path) -> None:
     db_path = tmp_path / "head.db"
-    _run_migrations(db_path)
+    _run_migrations(db_path, "0065_identity_core")
 
     import sqlite3
 

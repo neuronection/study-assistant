@@ -1005,7 +1005,7 @@ def submit_answer(
 
 
 def _load_attempt_question(
-    db: Session, attempt_id: int, profile_id: int, question_id: int
+    db: Session, attempt_id: int, profile_id: str, question_id: int
 ) -> tuple[Attempt, Activity, Question]:
     attempt = db.get(Attempt, attempt_id)
     if attempt is None:

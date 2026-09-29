@@ -44,7 +44,7 @@ class UrlImportPayload(TypedDict, total=False):
 
 class ComposePayload(TypedDict, total=False):
     course_id: Required[int]
-    profile_id: int | None
+    profile_id: str | None
     node_id: int | None
     kind: str | None
     title: str | None

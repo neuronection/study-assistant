@@ -17,11 +17,26 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "CREATE VIRTUAL TABLE material_fts_trigram USING fts5("
-        "title, markdown, description, topics, material_id UNINDEXED, "
-        "tokenize='trigram')"
-    )
+    if op.get_bind().dialect.name == "postgresql":
+        # ADR-0022 S3 twin: pg_trgm GIN index over a generated search text.
+        op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+        op.execute(
+            "CREATE TABLE material_fts_trigram ("
+            "material_id BIGINT, "
+            "title TEXT, markdown TEXT, description TEXT, topics TEXT, "
+            "search_text TEXT GENERATED ALWAYS AS "
+            "(coalesce(title,'') || ' ' || coalesce(markdown,'')) STORED)"
+        )
+        op.execute(
+            "CREATE INDEX ix_material_fts_trigram_search_text "
+            "ON material_fts_trigram USING gin (search_text gin_trgm_ops)"
+        )
+    else:
+        op.execute(
+            "CREATE VIRTUAL TABLE material_fts_trigram USING fts5("
+            "title, markdown, description, topics, material_id UNINDEXED, "
+            "tokenize='trigram')"
+        )
     op.execute(
         "INSERT INTO material_fts_trigram (title, markdown, description, topics, "
         "material_id) SELECT title, markdown, description, topics, material_id "

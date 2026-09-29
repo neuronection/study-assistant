@@ -297,7 +297,7 @@ def test_saved_suggestion_is_never_resurfaced(
 
 
 def test_site_search_scan_uses_provider_and_site_filter(
-    db_session: Session, monkeypatch: pytest.MonkeyPatch
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, owner: Any
 ) -> None:
     seen_queries: list[str] = []
 
@@ -316,6 +316,7 @@ def test_site_search_scan_uses_provider_and_site_filter(
     monkeypatch.setattr(ext, "_perform_site_search", fake_search)
 
     profile = Profile(
+        user_id=owner.id,
         name="p",
         preferences={
             "search_provider": {
@@ -329,12 +330,12 @@ def test_site_search_scan_uses_provider_and_site_filter(
 
     from app.domain.models import Course
 
-    course = Course(profile_id=int(profile.id), title="Calc")
+    course = Course(profile_id=str(profile.id), title="Calc")
     db_session.add(course)
     db_session.commit()
 
     source = ExternalSource(
-        profile_id=int(profile.id),
+        profile_id=str(profile.id),
         course_id=int(course.id),
         kind="site_search",
         url="https://khanacademy.org",
@@ -490,16 +491,22 @@ def test_scheduler_due_logic_overlap_guard_and_error_isolation(
     )
 
     with app.state.session_factory() as session:
-        profile = Profile(name="extsched")
+        from uuid import uuid4
+
+        from app.domain.models import Course, User
+
+        user = User(id=str(uuid4()), email="sched@ext.local", password_hash=None)
+        session.add(user)
+        session.flush()
+        profile = Profile(user_id=user.id, name="extsched")
         session.add(profile)
         session.flush()
-        from app.domain.models import Course
 
-        course = Course(profile_id=int(profile.id), title="Ext")
+        course = Course(profile_id=str(profile.id), title="Ext")
         session.add(course)
         session.flush()
         source = ExternalSource(
-            profile_id=int(profile.id),
+            profile_id=str(profile.id),
             course_id=int(course.id),
             kind="rss",
             url="https://broken.example/feed",

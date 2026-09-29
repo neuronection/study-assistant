@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Any
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -176,8 +177,9 @@ def test_streak_accepts_five_minutes_of_session_time() -> None:
 
 def test_daily_history_and_materialize_fold_session_seconds(
     db_session: Session,
+    owner: Any,
 ) -> None:
-    profile = ensure_default_profile(db_session)
+    profile = ensure_default_profile(db_session, owner.id)
     today = utcnow()
     db_session.add(
         StudySession(

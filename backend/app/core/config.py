@@ -2,6 +2,7 @@ import sys
 from functools import lru_cache
 from os import environ
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -65,6 +66,12 @@ class Settings(BaseSettings):
     port: int = 8200
     debug: bool = False
     log_level: str = "INFO"
+    identity_mode: Literal["server", "desktop"] = "server"
+    auth_mode: Literal["open", "authenticated"] | None = None
+    demo_mode: bool = False
+    shell_secret: str | None = None
+    cors_origins: str = ""
+    fs_roots: str = ""
     config_dir: Path = Field(default_factory=default_config_dir)
     data_dir: Path = Field(default_factory=_resolve_data_dir)
     spa_dist: Path | None = None
@@ -76,14 +83,34 @@ class Settings(BaseSettings):
     backup_sync_dir: Path | None = None
     jobs_done_ttl_days: int = Field(default=14, ge=1)
     checkpoint_ttl_days: int = Field(default=14, ge=1)
+    # ADR-0022 / deployment.md — web/server runs PostgreSQL 16
+    database_url: str | None = None
+    db_name: str = "neuro_study"
+    db_user: str | None = None
+    db_password: str | None = None
+    db_host: str = "localhost"
+    db_port: int = 5434
 
     @property
     def db_path(self) -> Path:
-        return self.data_dir / "app.db"
+        return self.data_dir / "study.sqlite3"
 
     @property
     def checkpoints_path(self) -> Path:
-        return self.data_dir / "checkpoints.db"
+        return self.data_dir / "checkpoints.sqlite3"
+
+    @property
+    def db_url(self) -> str:
+        """SQLAlchemy URL (deployment.md): `SA_DATABASE_URL` wins, then
+        `SA_DB_*` credentials, else desktop/test SQLite."""
+        if self.database_url:
+            return self.database_url
+        if self.db_user and self.db_password:
+            return (
+                f"postgresql+psycopg://{self.db_user}:{self.db_password}"
+                f"@{self.db_host}:{self.db_port}/{self.db_name}"
+            )
+        return f"sqlite:///{self.db_path}"
 
     @property
     def inbox_dir(self) -> Path:
@@ -92,6 +119,15 @@ class Settings(BaseSettings):
     @property
     def blobs_dir(self) -> Path:
         return self.data_dir / "blobs"
+
+    @property
+    def granted_fs_roots(self) -> tuple[Path, ...]:
+        roots = {Path.home().resolve(), self.data_dir.resolve()}
+        for raw in self.fs_roots.split(","):
+            candidate = raw.strip()
+            if candidate:
+                roots.add(Path(candidate).expanduser().resolve())
+        return tuple(sorted(roots, key=lambda item: len(item.parts), reverse=True))
 
     @property
     def cache_dir(self) -> Path:

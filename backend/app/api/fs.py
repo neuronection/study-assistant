@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -21,13 +21,26 @@ class FsDirsOut(BaseModel):
     dirs: list[FsDir]
 
 
+def _within(path: Path, roots: tuple[Path, ...]) -> bool:
+    return any(path == root or path.is_relative_to(root) for root in roots)
+
+
 @router.get("/dirs", response_model=FsDirsOut)
-def list_dirs(path: str | None = None, session: Session = Depends(get_session)) -> FsDirsOut:
+def list_dirs(
+    request: Request, path: str | None = None, session: Session = Depends(get_session)
+) -> FsDirsOut:
     del session
+    settings = request.app.state.settings
+    roots = settings.granted_fs_roots
     home = str(Path.home())
     target = Path(path).expanduser() if path else Path(home)
     try:
         resolved = target.resolve()
+    except (OSError, RuntimeError) as error:
+        raise HTTPException(status_code=422, detail=f"cannot open directory: {error}") from error
+    if not _within(resolved, roots):
+        raise HTTPException(status_code=403, detail="path outside granted roots")
+    try:
         if not resolved.is_dir():
             raise HTTPException(status_code=422, detail="not a directory")
         entries = sorted(resolved.iterdir(), key=lambda entry: entry.name.lower())
@@ -39,5 +52,7 @@ def list_dirs(path: str | None = None, session: Session = Depends(get_session)) 
         if entry.is_dir() and not entry.name.startswith(".")
         and not entry.is_symlink()
     ]
-    parent = str(resolved.parent) if resolved.parent != resolved else None
+    parent: str | None = None
+    if resolved.parent != resolved and _within(resolved.parent, roots):
+        parent = str(resolved.parent)
     return FsDirsOut(path=str(resolved), parent=parent, home=home, dirs=dirs)

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card'
 import { useReviewNudgeSetting } from '@/lib/review-nudges'
 import { useInterfacePrefsStore, type InterfacePrefKey } from '@/lib/interface-prefs'
+import { AccountCard } from './AccountCard'
 
 const INTERFACE_TOGGLES: { key: InterfacePrefKey; labelKey: string }[] = [
   { key: 'homeContinue', labelKey: 'settings.interfaceHomeContinue' },
@@ -79,6 +80,7 @@ export function GeneralTab() {
           ))}
         </CardContent>
       </Card>
+      <AccountCard />
     </div>
   )
 }

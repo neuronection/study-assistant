@@ -64,7 +64,7 @@ def session_factory(tmp_path: Path) -> Any:
 
     from alembic import command
 
-    db_path = tmp_path / "app.db"
+    db_path = tmp_path / "study.sqlite3"
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
     command.upgrade(alembic_cfg, "head")

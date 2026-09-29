@@ -86,10 +86,12 @@ def test_hybrid_retrieval_calls_embed_when_enabled(db_session: Session) -> None:
     assert calls  # the query was embedded
 
 
-def test_chat_turn_uses_per_chat_override(db_session: Session) -> None:
+def test_chat_turn_uses_per_chat_override(
+    db_session: Session, owner: Any
+) -> None:
     from app.domain.models import ChatSession, Profile
 
-    profile = Profile(name="p")
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     db_session.add(

@@ -13,35 +13,61 @@ from .fusion import (
     TIER_WEIGHT_VECTOR,
     fuse_rrf,
 )
-from .matching import phrase_match, prefix_terms_match, trigram_match
+from .matching import Match, phrase_match, prefix_terms_match, trigram_match
 from .scoring import fuzzy_text_match
 from .types import EmbedQuery
 
 _COURSE_FILTER = "AND materials.course_id = :course_id"
 
+# snippet(material_fts, 1, '…', '…', '…', 12) twin for PostgreSQL: one
+# highlighted fragment of at most 12 words over the markdown column.
+_PG_HEADLINE_OPTIONS = (
+    "'MaxFragments=1, MaxWords=12, MinWords=1, StartSel=…, StopSel=…'"
+)
+_PG_TRIGRAM_ORDER = "similarity(search_text, :match) DESC"
+_PG_TRIGRAM_SNIPPET = "left(material_fts_trigram.markdown, 72)"
+
+
+def _is_postgres(session: Session) -> bool:
+    return session.get_bind().dialect.name == "postgresql"
+
 
 def _fts_ranking(
     session: Session,
-    match: str,
+    match: Match,
     limit: int,
     course_id: int | None = None,
     *,
     table: str = "material_fts",
 ) -> list[dict[str, Any]]:
-    if not match:
+    if match.is_empty:
         return []
     course_filter = _COURSE_FILTER if course_id is not None else ""
     try:
-        rows = session.execute(
-            text(
-                f"SELECT {table}.material_id AS material_id, materials.title AS title, "
-                f"snippet({table}, 1, '…', '…', '…', 12) AS snippet "
-                f"FROM {table} JOIN materials ON materials.id = {table}.material_id "
-                f"WHERE {table} MATCH :match {course_filter} "
-                "ORDER BY rank LIMIT :limit"
-            ),
-            {"match": match, "limit": limit, "course_id": course_id},
-        ).mappings()
+        if _is_postgres(session):
+            expr = match.pg.sql
+            rows = session.execute(
+                text(
+                    f"SELECT {table}.material_id AS material_id, materials.title AS title, "
+                    f"ts_headline('simple', {table}.markdown, ({expr}), "
+                    f"{_PG_HEADLINE_OPTIONS}) AS snippet "
+                    f"FROM {table} JOIN materials ON materials.id = {table}.material_id "
+                    f"WHERE {table}.tsv @@ ({expr}) {course_filter} "
+                    f"ORDER BY ts_rank({table}.tsv, ({expr})) DESC LIMIT :limit"
+                ),
+                {"limit": limit, "course_id": course_id, **match.pg.params},
+            ).mappings()
+        else:
+            rows = session.execute(
+                text(
+                    f"SELECT {table}.material_id AS material_id, materials.title AS title, "
+                    f"snippet({table}, 1, '…', '…', '…', 12) AS snippet "
+                    f"FROM {table} JOIN materials ON materials.id = {table}.material_id "
+                    f"WHERE {table} MATCH :match {course_filter} "
+                    "ORDER BY rank LIMIT :limit"
+                ),
+                {"match": match.fts5, "limit": limit, "course_id": course_id},
+            ).mappings()
     except Exception:
         return []
     return [dict(row) for row in rows]
@@ -54,23 +80,38 @@ def _trigram_ranking(
     course_id: int | None = None,
 ) -> list[dict[str, Any]]:
     match = trigram_match(query)
-    if not match:
+    if match.is_empty:
         return []
     course_filter = _COURSE_FILTER if course_id is not None else ""
     try:
-        rows = session.execute(
-            text(
-                "SELECT material_fts_trigram.material_id AS material_id, "
-                "material_fts_trigram.title AS title, "
-                "material_fts_trigram.markdown AS markdown, "
-                "snippet(material_fts_trigram, 1, '…', '…', '…', 12) AS snippet "
-                "FROM material_fts_trigram "
-                "JOIN materials ON materials.id = material_fts_trigram.material_id "
-                f"WHERE material_fts_trigram MATCH :match {course_filter} "
-                "ORDER BY rank LIMIT :limit"
-            ),
-            {"match": match, "limit": limit * 3, "course_id": course_id},
-        ).mappings()
+        if _is_postgres(session):
+            rows = session.execute(
+                text(
+                    "SELECT material_fts_trigram.material_id AS material_id, "
+                    "material_fts_trigram.title AS title, "
+                    "material_fts_trigram.markdown AS markdown, "
+                    f"{_PG_TRIGRAM_SNIPPET} AS snippet "
+                    "FROM material_fts_trigram "
+                    "JOIN materials ON materials.id = material_fts_trigram.material_id "
+                    f"WHERE {match.pg.sql} {course_filter} "
+                    f"ORDER BY {_PG_TRIGRAM_ORDER} LIMIT :limit"
+                ),
+                {"limit": limit * 3, "course_id": course_id, **match.pg.params},
+            ).mappings()
+        else:
+            rows = session.execute(
+                text(
+                    "SELECT material_fts_trigram.material_id AS material_id, "
+                    "material_fts_trigram.title AS title, "
+                    "material_fts_trigram.markdown AS markdown, "
+                    "snippet(material_fts_trigram, 1, '…', '…', '…', 12) AS snippet "
+                    "FROM material_fts_trigram "
+                    "JOIN materials ON materials.id = material_fts_trigram.material_id "
+                    f"WHERE material_fts_trigram MATCH :match {course_filter} "
+                    "ORDER BY rank LIMIT :limit"
+                ),
+                {"match": match.fts5, "limit": limit * 3, "course_id": course_id},
+            ).mappings()
     except Exception:
         return []
     hits: list[dict[str, Any]] = []

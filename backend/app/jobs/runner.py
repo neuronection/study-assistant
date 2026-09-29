@@ -6,6 +6,8 @@ import structlog
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.errors import sanitize_error_detail
+
 from ..core.events import EventBus
 from ..core.vocab import JobStatus, JobType, WsTopic
 from ..domain.models import Job, utcnow
@@ -256,7 +258,7 @@ class JobRunner:
             if cancelled.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
                 return
             cancelled.status = JobStatus.CANCELLED
-            cancelled.error = str(error)[:4000]
+            cancelled.error = sanitize_error_detail(str(error), 4000)
             cancelled.finished_at = utcnow()
             session.commit()
             self._bus.publish_threadsafe(
@@ -275,7 +277,7 @@ class JobRunner:
             if failed is None:
                 return
             failed.status = JobStatus.FAILED
-            failed.error = str(error)[:4000]
+            failed.error = sanitize_error_detail(str(error), 4000)
             failed.finished_at = utcnow()
             session.commit()
             self._bus.publish_threadsafe(

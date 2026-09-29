@@ -47,7 +47,7 @@ def _inner_nodes(tree: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _weak_concepts(
-    session: Session, profile_id: int, course_id: int
+    session: Session, profile_id: str, course_id: int
 ) -> list[str]:
     rows = answer_rows(session, profile_id, course_id=course_id)
     cells = [
@@ -83,7 +83,7 @@ def _distribute(
 
 
 def generate_plan(
-    session: Session, course: Course, profile_id: int
+    session: Session, course: Course, profile_id: str
 ) -> list[PlanItem]:
     today = utcnow().date()
     exam = course.exam_date
@@ -210,7 +210,7 @@ def generate_plan(
     return list(ordered)
 
 
-def upcoming_items(session: Session, profile_id: int, days: int = 7) -> list[dict[str, Any]]:
+def upcoming_items(session: Session, profile_id: str, days: int = 7) -> list[dict[str, Any]]:
     today = utcnow().date()
     end = today + timedelta(days=max(1, min(days, 60)))
     rows = session.execute(

@@ -103,7 +103,7 @@ class McpParseParser:
         )
 
 
-def build_mcp_parsers(session: Any, profile_id: int) -> list[McpParseParser]:
+def build_mcp_parsers(session: Any, profile_id: str) -> list[McpParseParser]:
     """All enabled parse-contract tools across enabled servers, ordered."""
     from ..services.platform.mcp_servers import enabled_tools
 

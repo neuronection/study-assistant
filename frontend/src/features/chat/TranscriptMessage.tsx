@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -135,6 +136,8 @@ export function TranscriptMessage({
     setEditing(false)
   }
 
+  const turnFailed = !isUser ? (message.state?.turn_failed ?? null) : null
+
   const readAloud = !isUser ? <ReadAloudButton markdown={message.markdown} /> : null
   const meta =
     hasMessageMeta(message) || readAloud !== null ? (
@@ -147,11 +150,20 @@ export function TranscriptMessage({
   return (
     <ChatMessage
       role={view.role}
-      status="done"
-      content={<MessageContent message={message} />}
+      status={turnFailed !== null ? 'error' : 'done'}
+      content={turnFailed !== null ? null : <MessageContent message={message} />}
       meta={meta}
+      error={
+        turnFailed !== null
+          ? {
+              code: turnFailed.code,
+              message: turnFailed.detail,
+              retryable: message.parent_id != null,
+            }
+          : undefined
+      }
       editing={
-        editing
+        turnFailed === null && editing
           ? {
               value: editDraft,
               onValueChange: setEditDraft,
@@ -161,17 +173,28 @@ export function TranscriptMessage({
             }
           : false
       }
-      actions={{
-        onCopy: () => void copyMessage(),
-        onEdit:
-          isUser && onEditResend !== undefined && !actionPending
-            ? startEdit
-            : undefined,
-        onRegenerate:
-          !isUser && onRegenerate !== undefined && message.parent_id != null && !actionPending
-            ? () => onRegenerate(message.parent_id as number)
-            : undefined,
-      }}
+      actions={
+        turnFailed !== null
+          ? {
+              onRegenerate:
+                message.parent_id != null &&
+                onRegenerate !== undefined &&
+                !actionPending
+                  ? () => onRegenerate(message.parent_id as number)
+                  : undefined,
+            }
+          : {
+              onCopy: () => void copyMessage(),
+              onEdit:
+                isUser && onEditResend !== undefined && !actionPending
+                  ? startEdit
+                  : undefined,
+              onRegenerate:
+                !isUser && onRegenerate !== undefined && message.parent_id != null && !actionPending
+                  ? () => onRegenerate(message.parent_id as number)
+                  : undefined,
+            }
+      }
       variants={view.variants}
       onSelectVariant={(id) => onSwitchVariant?.(Number(id))}
       chips={
@@ -195,6 +218,15 @@ export function TranscriptMessage({
         next: t('chat.msg.nextVariant'),
       }}
     >
+      {turnFailed !== null && turnFailed.code === 'ai_not_configured' ? (
+        <a
+          href="/settings?tab=ai&section=providers"
+          className="text-danger border-danger/60 hover:bg-danger/10 inline-flex items-center gap-1 self-start rounded-md border px-2 py-1 text-xs font-medium transition-colors"
+        >
+          <Settings className="size-3.5" aria-hidden />
+          {t('chat.openAiSettings')}
+        </a>
+      ) : null}
       {!isUser && (message.tool_calls ?? []).length > 0 ? (
         <>
           {(message.tool_calls ?? []).map((tool, index) => (

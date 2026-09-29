@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -118,8 +120,10 @@ def test_create_link_rejects_non_http(client: TestClient) -> None:
             assert response.status_code == 422, f"{bad}: {response.text}"
 
 
-def test_partial_unique_index_enforces_dedupe(db_session: Session) -> None:
-    profile = Profile(name="p")
+def test_partial_unique_index_enforces_dedupe(
+    db_session: Session, owner: Any
+) -> None:
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title="Calc")
@@ -154,8 +158,10 @@ def test_partial_unique_index_enforces_dedupe(db_session: Session) -> None:
         db_session.flush()
 
 
-def test_non_link_rows_are_not_deduped_by_index(db_session: Session) -> None:
-    profile = Profile(name="p")
+def test_non_link_rows_are_not_deduped_by_index(
+    db_session: Session, owner: Any
+) -> None:
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title="Calc")

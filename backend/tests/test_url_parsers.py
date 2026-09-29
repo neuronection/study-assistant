@@ -222,7 +222,7 @@ def test_parse_endpoint_full_lifecycle(client: tuple[TestClient, FastAPI]) -> No
 
 
 def test_no_parser_url_is_an_honest_job_error(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
     from app.domain.models import Course, Profile
     from app.domain.models import Material as MaterialRow
@@ -230,7 +230,7 @@ def test_no_parser_url_is_an_honest_job_error(
     from app.pipelines.url_import import make_url_import_handler
     from app.storage.blobs import BlobStore
 
-    profile = Profile(name="p")
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title="Calc")

@@ -5,3 +5,6 @@ members = ["backend"]
 dev = [
     "honcho>=2.0.0",
 ]
+
+[tool.uv.sources]
+neuronection-auth-kit = { path = "../auth-kit", editable = true }

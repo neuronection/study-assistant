@@ -32,7 +32,7 @@ class RestoreDeletedOut(BaseModel):
 
 
 
-def _load_item(session: Session, item_id: int, profile_id: int) -> DeletedItem:
+def _load_item(session: Session, item_id: int, profile_id: str) -> DeletedItem:
     item = session.get(DeletedItem, item_id)
     if item is None or item.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="deleted item not found")

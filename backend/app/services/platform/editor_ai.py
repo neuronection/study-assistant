@@ -196,6 +196,7 @@ class EditorTransformResult:
 @dataclass
 class EditorTransformJob:
     id: int
+    user_id: str | None = None
     status: str = JobStatus.QUEUED.value
     result_md: str = ""
     error: str | None = None
@@ -274,9 +275,10 @@ class EditorTransformService:
         course_id: int | None = None,
         bus: EventBus | None = None,
         diagnostic: str | None = None,
+        user_id: str | None = None,
     ) -> EditorTransformJob:
         with self._jobs_lock:
-            job = EditorTransformJob(id=self._next_job_id)
+            job = EditorTransformJob(id=self._next_job_id, user_id=user_id)
             self._next_job_id += 1
             self._jobs[job.id] = job
         thread = threading.Thread(

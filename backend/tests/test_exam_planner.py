@@ -150,12 +150,15 @@ def test_exam_status_pacing_and_most_behind(tmp_path: Any) -> None:
         assert note.status_code == 201
         app = client.app
         assert isinstance(app, FastAPI)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
             from app.domain.models import Activity
 
             db.add(
                 Activity(
-                    profile_id=1,
+                    profile_id=profile_id,
                     course_id=course_id,
                     node_id=nodes[2],
                     type="quiz",

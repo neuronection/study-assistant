@@ -100,6 +100,11 @@ def test_failed_turn_emits_turn_error_and_fails_job(
         messages = test_client.get(
             f"/api/v1/chat/sessions/{session['id']}/messages"
         ).json()
-        assert [m["role"] for m in messages] == ["user"]
+        # The failed turn persists a display-only marker row (uniform chat
+        # error display): an empty assistant message with state.turn_failed;
+        # excluded from the model context on the next turn.
+        assert [m["role"] for m in messages] == ["user", "assistant"]
+        assert messages[-1]["markdown"] == ""
+        assert messages[-1]["state"]["turn_failed"]["code"] == "turn_error"
         error_event = next(e for e in events if e.get("type") == "turn_error")
         assert error_event["detail"] == "provider offline"

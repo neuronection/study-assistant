@@ -77,7 +77,9 @@ def _validate_target(current: Path, raw: str) -> tuple[Path | None, str | None, 
         if not _is_writable(candidate):
             return None, "not_writable", info
         info["empty"] = not any(candidate.iterdir())
-        info["has_app_db"] = (candidate / "app.db").is_file()
+        info["has_app_db"] = any(
+            (candidate / name).is_file() for name in ("study.sqlite3", "app.db")
+        )
         if not info["empty"] and not info["has_app_db"]:
             return None, "not_empty", info
         return candidate, None, info

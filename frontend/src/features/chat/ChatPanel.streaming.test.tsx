@@ -1,4 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, test, vi } from 'vitest'
@@ -35,6 +42,7 @@ type ChatEvent = {
   title?: string
   detail?: string
   message?: unknown
+  code?: string
 }
 
 let chatHandler: ((payload: unknown) => void) | null = null
@@ -260,7 +268,7 @@ describe('ChatPanel streaming', () => {
     expect(await screen.findByText(/The answer is/)).toBeInTheDocument()
   })
 
-  test('turn_error clears pending and shows the failure banner', async () => {
+  test('turn_error clears pending and renders the transcript error card', async () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
@@ -275,12 +283,66 @@ describe('ChatPanel streaming', () => {
     chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
     chatHandler!({ type: 'stream_delta', delta: 'Partial answ' } satisfies ChatEvent)
     chatHandler!({ type: 'turn_error', detail: 'provider offline' } satisfies ChatEvent)
+    // The uniform card replaces the thinking indicator in the transcript…
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('The tutor failed to answer. (provider offline)')
-    await waitFor(() =>
-      expect(screen.queryByRole('status')).not.toBeInTheDocument(),
+    expect(screen.queryByText('Thinking…')).not.toBeInTheDocument()
+    expect(alert).toHaveTextContent('provider offline')
+    // The uniform card's actions: regenerate the failed turn. The old
+    // footer's dismiss button is gone — the card clears via retry or
+    // navigation instead.
+    expect(screen.getByRole('button', { name: 'Regenerate answer' })).toBeInTheDocument()
+  })
+
+  test('unconfigured AI renders the uniform card with the settings affordance', async () => {
+    listChatSessions.mockResolvedValue([SESSION])
+    listChatMessages.mockResolvedValue([])
+    sendChatMessage.mockResolvedValue({
+      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: 13,
+    })
+    // The settings deep-link is a router Link — mount under a minimal tree.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const rootRoute = createRootRoute({
+      component: () => (
+        <QueryClientProvider client={client}>
+          <StudyChatProvider sessionId={4}>
+            <ChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
+          </StudyChatProvider>
+        </QueryClientProvider>
+      ),
+    })
+    const stub = (path: string) =>
+      createRoute({ getParentRoute: () => rootRoute, path, component: () => null })
+    const settingsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/settings',
+      validateSearch: (search: Record<string, unknown>) => ({
+        tab: typeof search.tab === 'string' ? search.tab : undefined,
+        section: typeof search.section === 'string' ? search.section : undefined,
+      }),
+      component: () => null,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([settingsRoute, stub('/chat')]),
+      history: createMemoryHistory({ initialEntries: ['/chat'] }),
+    })
+    render(<RouterProvider router={router} />)
+    const input = await screen.findByPlaceholderText('Ask about your material…')
+    fireEvent.change(input, { target: { value: 'hello?' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(chatHandler).not.toBeNull())
+    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
+    chatHandler!({
+      type: 'turn_error',
+      code: 'ai_not_configured',
+      detail: 'AI is not configured yet. An admin can add a provider and assign models in Settings → AI Configuration.',
+    } satisfies ChatEvent)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'AI is not configured yet. An admin can add a provider and assign models in Settings → AI Configuration.',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Dismiss error' }))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // The settings deep-link renders when the kit carries the affordance;
+    // the card itself (message + regenerate + dismiss) is the uniform part.
+    expect(await screen.findByText('Open AI settings')).toBeInTheDocument()
   })
 })

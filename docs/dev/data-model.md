@@ -43,8 +43,14 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 ## Table reference
 
 ### Profiles & machine config
-- **profiles**: id, name, color, **preferences JSON?** (0039 — user preferences, e.g.
-  `use_embeddings`), created_at
+- **profiles** (family-normative, identity-auth §5 — 0066): id (app
+  generated UUID), **user_id** (NOT NULL, FK users ON DELETE CASCADE —
+  1:N per user), name, **is_default** (exactly one per user), color,
+  **preferences JSON?** (0039 — user preferences, e.g.
+  `use_embeddings`), **last_used_at?** (§6 last-used profile), created_at,
+  updated_at. Every `profile_id` column is a UUID with ON DELETE CASCADE;
+  user creation auto-provisions Default in the same transaction and
+  deleting the last profile re-provisions it.
 - **providers**: id, name, type (google | openai_compatible | anthropic), base_url,
   keyring_ref (`provider:{id}`), **preset_key?** (String 40, 0064 — the §15 stamp
   for preset setup rows; NULL = manually added), enabled, status JSON (last
@@ -329,6 +335,41 @@ staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
 signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
+
+- **S3 Postgres twins (2026-09-24, no revision numbers):** the
+  existing migrations were made dialect-aware in place (no backwards
+  compatibility — greenfield doctrine): `0002`/`0045` create
+  tsvector+GIN / pg_trgm tables on PostgreSQL instead of fts5 virtual
+  tables (`tsv`/`search_text` are generated columns, so app-side
+  DELETE+INSERT sync stays shared), `0026`'s hand DDL swaps
+  `DATETIME`→`TIMESTAMP`, `0019`/`0020` use bare `is_root`/`TRUE`
+  booleans, `0053`/`0057`/`0061` carry `postgresql_where` twins,
+  `0001` widens `alembic_version` to VARCHAR(64) on PG (long revision
+  ids overflow Alembic's default), `0066` renders portable boolean
+  defaults. Vector index: `chunk_vecs` is a vec0 virtual table on
+  SQLite and `chunk_vecs(rowid BIGINT PK, chunk_embedding vector(N))`
+  + HNSW cosine on PostgreSQL (drop+recreate on dim change, `vec_meta`
+  shared). SQLite files: `<data_dir>/study.sqlite3` +
+  `checkpoints.sqlite3` (was `app.db`/`checkpoints.db`).
+
+- **0066 (family plan 16 S2b, ADR-0013)**: profiles identity rework —
+  the whole profile domain is rebuilt from the model metadata:
+  `profiles` gains `user_id` (NOT NULL, FK users, CASCADE), `is_default`,
+  `updated_at`, `last_used_at`, UUID ids; every `profile_id` column
+  becomes UUID with ON DELETE CASCADE. **Destructive and irreversible**
+  (no backwards compatibility — user directive 2026-09-24): no rows are
+  carried over, derived fts5/vec0 virtual tables are cleared, and
+  `downgrade()` raises NotImplementedError. Recreate dev databases and
+  reindex search/vectors after upgrading. Legacy-chain data tests stop at
+  `0065_identity_core`; `tests/test_profile_identity_migration.py` pins
+  the head + schema shape.
+
+- **0065 (family plan 16 S2, ADR-0013)**: identity core — `users`,
+  `auth_sessions`, `instance_settings`, `audit_events` (family-normative
+  shapes; uuid ids — native `uuid` on PostgreSQL, CHAR(32) hex on
+  SQLite). Fresh-schema only: recreate pre-0065 dev databases
+  (greenfield posture). The `profiles` rework (UUID ids +
+  `user_id NOT NULL`) landed in 0066 (see above).
 
 - **0064 (plan 79)**: BYOK setup + `stt`/`tts` capability split — adds
   nullable `providers.preset_key` (String 40; §15 stamp, NULL = manual

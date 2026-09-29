@@ -87,9 +87,9 @@ def test_bundle_coverage_property_and_stats() -> None:
 
 
 def test_resolver_second_round_fires_below_gate(
-    db_session: Session, monkeypatch: Any
+    db_session: Session, monkeypatch: Any, owner: Any
 ) -> None:
-    _profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 8)
+    _profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     queries: list[str] = []
 
     def fake_retrieve(
@@ -126,9 +126,9 @@ def test_resolver_second_round_fires_below_gate(
 
 
 def test_resolver_second_round_skipped_at_exact_gate(
-    db_session: Session, monkeypatch: Any
+    db_session: Session, monkeypatch: Any, owner: Any
 ) -> None:
-    _profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 8)
+    _profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     calls: list[str] = []
 
     def fake_retrieve(
@@ -157,10 +157,10 @@ def test_resolver_second_round_skipped_at_exact_gate(
 
 
 def test_resolver_second_round_skipped_below_material_floor(
-    db_session: Session, monkeypatch: Any
+    db_session: Session, monkeypatch: Any, owner: Any
 ) -> None:
     _profile_id, course_id, node_id, material_ids = _scoped_course(
-        db_session, COVERAGE_MIN_MATERIALS - 1
+        db_session, COVERAGE_MIN_MATERIALS - 1, owner.id
     )
     calls: list[str] = []
 
@@ -187,9 +187,9 @@ def test_resolver_second_round_skipped_below_material_floor(
 
 
 def test_compose_records_coverage_and_flags_needs_review(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8)
+    profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
         {"id": material_id, "title": f"M{index}"}
         for index, material_id in enumerate(material_ids)
@@ -220,9 +220,9 @@ def test_compose_records_coverage_and_flags_needs_review(
 
 
 def test_compose_at_gate_records_coverage_without_flag(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8)
+    profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
         {"id": material_id, "title": f"M{index}"}
         for index, material_id in enumerate(material_ids)
@@ -249,9 +249,9 @@ def test_compose_at_gate_records_coverage_without_flag(
 
 
 def test_compose_regenerate_replaces_stale_flag(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8)
+    profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
         {"id": material_id, "title": f"M{index}"}
         for index, material_id in enumerate(material_ids)
@@ -301,9 +301,9 @@ def test_compose_regenerate_replaces_stale_flag(
 
 
 def test_include_unassigned_merges_ready_orphans(
-    db_session: Session, monkeypatch: Any
+    db_session: Session, monkeypatch: Any, owner: Any
 ) -> None:
-    profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 2)
+    profile_id, course_id, node_id, material_ids = _scoped_course(db_session, 2, owner.id)
     for material_id in material_ids:
         db_session.add(
             MaterialLink(
@@ -380,9 +380,9 @@ def gateway() -> ScriptedGateway:
 
 
 def _scoped_course(
-    session: Session, count: int
-) -> tuple[int, int, int, list[int]]:
-    profile = Profile(name="p")
+    session: Session, count: int, user_id: str
+) -> tuple[str, int, int, list[int]]:
+    profile = Profile(user_id=user_id, name="p")
     session.add(profile)
     session.flush()
     course = Course(profile_id=profile.id, title="Calc")
@@ -410,7 +410,7 @@ def _scoped_course(
         session.add(material)
         session.flush()
         ids.append(int(material.id))
-    return int(profile.id), int(course.id), int(node.id), ids
+    return str(profile.id), int(course.id), int(node.id), ids
 
 
 def _practice_json() -> str:
@@ -514,9 +514,9 @@ def test_render_practice_set_keeps_problems_then_answers_contract() -> None:
 
 
 def test_compose_practice_set_persists_markdown_and_provenance(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1)
+    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1, owner.id)
     gateway = ScriptedGateway([_practice_json()])
     service = ComposeService(db_session, gateway)
     blobs = BlobStore(tmp_path)
@@ -546,9 +546,9 @@ def test_compose_practice_set_persists_markdown_and_provenance(
 
 
 def test_compose_practice_set_repairs_then_succeeds(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1)
+    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1, owner.id)
     bad = json.dumps(
         {
             "items": [
@@ -580,9 +580,9 @@ def test_compose_practice_set_repairs_then_succeeds(
 
 
 def test_compose_practice_set_exhausts_repair_and_raises(
-    db_session: Session, tmp_path: Path
+    db_session: Session, tmp_path: Path, owner: Any
 ) -> None:
-    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1)
+    profile_id, course_id, _node_id, _material_ids = _scoped_course(db_session, 1, owner.id)
     bad = json.dumps(
         {
             "items": [

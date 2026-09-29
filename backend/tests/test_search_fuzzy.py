@@ -1,6 +1,7 @@
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import fitz
 from alembic.config import Config
@@ -128,8 +129,10 @@ def test_unmatched_query_returns_no_hits(client: TestClient) -> None:
     assert hit_ids(client, "xylophone") == []
 
 
-def test_retrieve_chunks_fuzzy_fallback(db_session: Session) -> None:
-    profile = Profile(name="p")
+def test_retrieve_chunks_fuzzy_fallback(
+    db_session: Session, owner: Any
+) -> None:
+    profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
     course = Course(profile_id=profile.id, title="C")
@@ -192,7 +195,7 @@ def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
     raw.commit()
     raw.close()
 
-    _run_migrations(db_path)
+    _run_migrations(db_path, "0065_identity_core")
 
     check = sqlite3.connect(db_path)
     try:

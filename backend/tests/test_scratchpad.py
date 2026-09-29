@@ -230,7 +230,9 @@ def test_shared_material_stays_owned_by_the_scratchpad(client: TestClient) -> No
     assert link_courses == {scratch_id, int(promoted.json()["id"])}
 
 
-def test_analytics_exclude_scratch_courses(client: TestClient) -> None:
+def test_analytics_exclude_scratch_courses(
+    client: TestClient, profile_id: str
+) -> None:
     scratch = get_scratch(client)["course"]
     scratch_id = int(scratch["id"])
     normal_id = make_course(client, "Normal course")
@@ -240,7 +242,7 @@ def test_analytics_exclude_scratch_courses(client: TestClient) -> None:
     try:
         for course_id, title in ((scratch_id, "scratch activity"), (normal_id, "normal activity")):
             activity = Activity(
-                profile_id=1, course_id=course_id, type="quiz", title=title
+                profile_id=profile_id, course_id=course_id, type="quiz", title=title
             )
             db.add(activity)
             db.flush()
@@ -259,7 +261,7 @@ def test_analytics_exclude_scratch_courses(client: TestClient) -> None:
             db.add(Answer(attempt_id=attempt.id, question_id=question.id, correct=True))
             db.add(
                 Exercise(
-                    profile_id=1,
+                    profile_id=profile_id,
                     course_id=course_id,
                     title=f"card {course_id}",
                     kind="card_basic",
@@ -268,12 +270,12 @@ def test_analytics_exclude_scratch_courses(client: TestClient) -> None:
         db.commit()
         from app.services.platform.metrics import answer_rows, due_cards_count
 
-        profile_rows = answer_rows(db, 1)
+        profile_rows = answer_rows(db, profile_id)
         assert {row.concept for row in profile_rows} == {"untagged"}
         rows = db.scalars(select(Activity.id).where(Activity.course_id == normal_id)).all()
         assert len(rows) == 1
         assert len(profile_rows) == 1
-        assert due_cards_count(db, 1) == 1
-        assert due_cards_count(db, 1, course_id=scratch_id) == 1
+        assert due_cards_count(db, profile_id) == 1
+        assert due_cards_count(db, profile_id, course_id=scratch_id) == 1
     finally:
         db.close()

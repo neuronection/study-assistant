@@ -214,7 +214,8 @@ def test_unassigned_task_fails_the_job(tmp_path: Path) -> None:
         job_id = int(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "error"
-        assert "unassigned" in (body["error"] or "").lower()
+        # Family-uniform TaskUnassigned wording (career-matched).
+        assert "not configured" in (body["error"] or "").lower()
 
 
 def test_contract_failure_after_repair_fails_the_job(

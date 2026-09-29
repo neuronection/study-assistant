@@ -245,7 +245,7 @@ def test_mcp_server_read_only_by_construction(seeded: dict[str, Any]) -> None:
                 assert not tool.name.startswith("update")
 
     anyio.run(scenario)
-    engine = make_engine(seeded["tmp"] / "app.db")
+    engine = make_engine(seeded["tmp"] / "study.sqlite3")
     factory = make_session_factory(engine)
     with factory() as session:
         assert len(list(session.scalars(select(Note)))) == 1

@@ -330,9 +330,14 @@ def test_scan_scheduler_cycles_sources(tmp_path: Path) -> None:
     assert scans.scan_all() == {}
 
     with app.state.session_factory() as session:
-        from app.domain.models import Course, MaterialSource, Profile
+        from uuid import uuid4
 
-        profile = Profile(name="sched")
+        from app.domain.models import Course, MaterialSource, Profile, User
+
+        user = User(id=str(uuid4()), email="sched@scan.local", password_hash=None)
+        session.add(user)
+        session.flush()
+        profile = Profile(user_id=user.id, name="sched")
         session.add(profile)
         session.flush()
         course = Course(profile_id=profile.id, title="Sched")
@@ -432,7 +437,10 @@ def test_fs_dirs_picker(client: TestClient, tmp_path: Path) -> None:
     assert default["path"] == default["home"]
 
     bad = client.get("/api/v1/fs/dirs", params={"path": "/nonexistent-dir-xyz"})
-    assert bad.status_code == 422
+    assert bad.status_code == 403
+
+    not_a_dir = client.get("/api/v1/fs/dirs", params={"path": str(scope / "file.txt")})
+    assert not_a_dir.status_code == 422
 
 
 def test_scan_mirrors_subdirs_and_scopes_folder_membership(

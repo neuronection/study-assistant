@@ -1,5 +1,6 @@
 # Local-only developer areas (plans, agent sessions) — never part of the repo
-dev/
+# Anchored to the repo root so tracked docs/dev/ is not ignored.
+/dev/
 .opencode/
 .claude/
 .agent/
@@ -66,3 +67,7 @@ packaging/*.AppImage
 
 # Runtime logs
 logs/
+
+# deployment artifacts — never committed
+docker/backups/
+backups/

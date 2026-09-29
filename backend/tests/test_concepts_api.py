@@ -184,12 +184,15 @@ def test_concept_graph_mastery_buckets(
     assert all(entry["mastery"] is None for entry in graph["concepts"])
 
     assert isinstance(client.app, FastAPI)
+    from conftest import mint_session
+
+    _, _, profile_id = mint_session(client.app)
     with client.app.state.session_factory() as session:
         from app.domain.models import ConceptSkillStat
 
         session.add(
             ConceptSkillStat(
-                profile_id=1,
+                profile_id=profile_id,
                 concept="alpha",
                 concept_id=ids["alpha"],
                 skill="compute",
@@ -200,7 +203,7 @@ def test_concept_graph_mastery_buckets(
         )
         session.add(
             ConceptSkillStat(
-                profile_id=1,
+                profile_id=profile_id,
                 concept="alpha",
                 concept_id=ids["alpha"],
                 skill="explain",
@@ -211,7 +214,7 @@ def test_concept_graph_mastery_buckets(
         )
         session.add(
             ConceptSkillStat(
-                profile_id=1,
+                profile_id=profile_id,
                 concept="beta",
                 concept_id=None,
                 skill="compute",

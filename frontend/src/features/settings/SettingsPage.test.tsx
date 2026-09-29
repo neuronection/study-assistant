@@ -32,11 +32,21 @@ const deleteModel = vi.fn()
 const assignTask = vi.fn()
 const assignTaskDefault = vi.fn()
 const deleteProvider = vi.fn()
+const listMySessions = vi.fn().mockResolvedValue([])
+const listAdminUsers = vi.fn().mockResolvedValue([])
+const getCurrentUser = vi.fn().mockReturnValue(null)
+
+vi.mock('@/lib/auth-session', () => ({
+  getCurrentUser: () => getCurrentUser(),
+  setCurrentUser: vi.fn(),
+}))
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
+    listMySessions: () => listMySessions(),
+    listAdminUsers: () => listAdminUsers(),
     listProviders: () => listProviders(),
     listPresets: () => listPresets(),
     listModels: () => listModels(),
@@ -653,5 +663,43 @@ describe('SettingsPage', () => {
         max_tokens: null,
       })
     )
+  })
+
+  test('users tab appears for admins and lists the users', async () => {
+    getCurrentUser.mockReturnValue({
+      id: 'u-admin',
+      email: 'ada@example.com',
+      full_name: 'Ada Lovelace',
+      is_admin: true,
+      is_active: true,
+    })
+    listAdminUsers.mockResolvedValue([
+      {
+        id: 'u-admin',
+        email: 'ada@example.com',
+        full_name: 'Ada Lovelace',
+        is_admin: true,
+        is_active: true,
+        created_at: '2026-01-01T00:00:00Z',
+        activity_count: 3,
+      },
+    ])
+    await renderSettings('/settings?tab=users')
+    expect(screen.getAllByText('User management & account').length).toBeGreaterThan(0)
+    expect(await screen.findByText('ada@example.com')).toBeInTheDocument()
+  })
+
+  test('users tab is hidden and unreachable for non-admins', async () => {
+    getCurrentUser.mockReturnValue({
+      id: 'u-plain',
+      email: 'grace@example.com',
+      full_name: '',
+      is_admin: false,
+      is_active: true,
+    })
+    await renderSettings('/settings?tab=users')
+    expect(screen.queryAllByText('User management & account')).toHaveLength(0)
+    // deep-linking `?tab=users` falls back to the general tab
+    expect(await screen.findByRole('combobox', { name: 'Language' })).toBeInTheDocument()
   })
 })

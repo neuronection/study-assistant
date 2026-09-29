@@ -113,11 +113,14 @@ def seed_course(client: TestClient) -> int:
 
     app_pre = client.app
     assert isinstance(app_pre, FastAPI)
+    from conftest import mint_session
+
+    _, _, profile_id = mint_session(app_pre)
     with app_pre.state.session_factory() as db:
         from app.domain.models import Activity
 
         activity = Activity(
-            profile_id=1,
+            profile_id=profile_id,
             course_id=course_id,
             node_id=node_id,
             type="quiz",
@@ -158,7 +161,7 @@ def seed_course(client: TestClient) -> int:
             b"chain rule original bytes", mime="text/markdown", session=db
         )
         material = Material(
-            profile_id=1,
+            profile_id=profile_id,
             course_id=course_id,
             kind="md",
             title="Chain rule notes",
@@ -239,12 +242,15 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
         course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         app = client.app
         assert isinstance(app, FastAPI)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
             from app.domain.models import MaterialDrawing
 
             png = app.state.blobs.put(b"\x89PNG draw", mime="image/png", session=db)
             material = Material(
-                profile_id=1,
+                profile_id=profile_id,
                 course_id=course_id,
                 kind="md",
                 title="With drawing",
@@ -665,6 +671,9 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
 
         app = client.app
         assert isinstance(app, FastAPI)
+        from conftest import mint_session
+
+        _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
             quiz_activity = (
                 db.query(Activity).filter(Activity.course_id == course_id).first()
@@ -699,7 +708,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
             db.add(
                 NoteVersion(
                     note_id=note_row.id,
-                    profile_id=1,
+                    profile_id=profile_id,
                     title="Whiteboard (old)",
                     tags=["calc"],
                     body=[{"type": "text", "md": "older body"}],

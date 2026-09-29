@@ -64,15 +64,17 @@ DISCOVERY_ROWS = [
 ]
 
 
-def seed_servers(db_session: Session, *servers: dict[str, Any]) -> int:
+def seed_servers(
+    db_session: Session, *servers: dict[str, Any], user_id: str | None = None
+) -> str:
     from app.services.platform.profiles import ensure_default_profile
 
-    profile = ensure_default_profile(db_session)
+    profile = ensure_default_profile(db_session, user_id)
     prefs = dict(profile.preferences or {})
     prefs["mcp"] = {"servers": list(servers)}
     profile.preferences = prefs
     db_session.commit()
-    return int(profile.id)
+    return str(profile.id)
 
 
 def test_mcp_server_crud_and_validation(client: TestClient) -> None:
@@ -197,9 +199,9 @@ def test_refresh_failure_is_recorded(
 
 
 def test_mcp_discovery_provider_normalizes_and_dedupes(
-    db_session: Session, monkeypatch: pytest.MonkeyPatch
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, owner: Any
 ) -> None:
-    profile_id = seed_servers(db_session, SERVER)
+    profile_id = seed_servers(db_session, SERVER, user_id=owner.id)
 
     def fake_call(
         config: object,
@@ -216,7 +218,7 @@ def test_mcp_discovery_provider_normalizes_and_dedupes(
 
     profile = db_session.scalars(select(Profile)).first()
     assert profile is not None
-    providers = resolve_providers(db_session, int(profile.id))
+    providers = resolve_providers(db_session, str(profile.id))
     provider = next(p for p in providers if p.id == "mcp.coursehub.search_courses")
     results = provider.search("calculus", cap=5)
     assert [row.title for row in results] == ["Intro course"]
@@ -322,8 +324,9 @@ def test_mcp_parse_parser_rejects_contract_violations(
 
 def test_build_registry_includes_mcp_parsers_first(
     db_session: Session,
+    owner: Any,
 ) -> None:
-    profile_id = seed_servers(db_session, SERVER)
+    profile_id = seed_servers(db_session, SERVER, user_id=owner.id)
     registry = build_registry(session=db_session, profile_id=profile_id)
     assert isinstance(registry[0], McpParseParser)
     hit = resolve_parser(registry, "https://coursehub.example/learn/9")

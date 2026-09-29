@@ -93,13 +93,13 @@ def test_migration_0020_moves_orphans_to_unsorted(tmp_path: Path) -> None:
     raw.commit()
     raw.close()
 
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "0065_identity_core")
 
     raw = sqlite3.connect(db_path)
     cur = raw.cursor()
     assert cur.execute("SELECT version_num FROM alembic_version").fetchone()[
         0
-    ] == "0064_byok_setup_stt_tts"
+    ] == "0065_identity_core"
     unsorted_id, root_id = cur.execute(
         "SELECT c.id, r.id FROM courses c JOIN tree_nodes r "
         "ON r.course_id = c.id AND r.is_root = 1 "

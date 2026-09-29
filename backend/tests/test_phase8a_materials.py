@@ -99,13 +99,13 @@ def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
     raw.commit()
     raw.close()
 
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "0065_identity_core")
 
     raw = sqlite3.connect(db_path)
     cur = raw.cursor()
     assert (
         cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0064_byok_setup_stt_tts"
+        == "0065_identity_core"
     )
     unsorted_id = cur.execute(
         "SELECT id FROM courses WHERE title = 'Unsorted' AND profile_id = 1"

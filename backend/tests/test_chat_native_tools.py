@@ -432,7 +432,7 @@ class FailingGateway(NativeGateway):
         raise ProviderError(self.resolve(task), "HTTP 500 service unavailable")
 
 
-def test_pre_stream_failure_persists_no_empty_message_and_fires_turn_error(
+def test_pre_stream_failure_persists_marker_and_fires_turn_error(
     tmp_path: Path,
 ) -> None:
     sys.path.insert(0, "tests")
@@ -470,5 +470,11 @@ def test_pre_stream_failure_persists_no_empty_message_and_fires_turn_error(
             assert time.monotonic() < deadline, "no turn_error event"
             time.sleep(0.05)
         messages = client.get(f"/api/v1/chat/sessions/{session}/messages").json()
-    assert [m["role"] for m in messages] == ["user"]
+    # The failed turn persists a display-only marker row (uniform chat
+    # error display): an empty assistant message carrying state.turn_failed
+    # — never fed back into the model context.
+    assert [m["role"] for m in messages] == ["user", "assistant"]
+    failure = messages[-1]
+    assert failure["markdown"] == ""
+    assert failure["state"]["turn_failed"]["code"] == "turn_error"
     assert any(e["type"] == "turn_error" for e in events)

@@ -1,14 +1,17 @@
-# Quiz interchange format — `caq/v1`
+# Import and export formats
 
-`caq` is the single-file JSON format for sharing quizzes and for authoring them with
-external AI assistants. Import runs through the **same validators as generated
-quizzes** — external output is never trusted, validators decide.
+Study Assistant exchanges data through a small family of documented formats: the
+`caq/v1` quiz format, `ca-course/v2` course bundles and `ca-skills/v1` skill
+packs, alongside Anki `.apkg` decks and full `ca-backup/v1` archives. Imports
+run through the **same validators as generated content** — external output is
+never trusted, validators decide.
 
-(Companion formats: `qpkg` quiz packages, Anki `.apkg` decks, full-app
-`ca-backup/v1` archives, and **course bundles `ca-course/v2`** — see the bottom
-of this page.)
+## Quiz interchange format — `caq/v1`
 
-## Document
+`caq` is the single-file JSON format for sharing quizzes and for authoring them
+with external AI assistants.
+
+### Document
 
 ```jsonc
 {
@@ -18,7 +21,7 @@ of this page.)
 }
 ```
 
-## Question object
+### Question object
 
 ```jsonc
 {
@@ -50,7 +53,7 @@ of this page.)
 - `options_md` required for single/multi (≥2 options). `sympy_check` optional but
   recommended for equation questions — grading uses it preferentially.
 
-## Validation rules (dry-run shows these per question)
+### Validation rules (dry-run shows these per question)
 
 - Known type; non-empty stem; well-formed answer for the type (index in range, etc.)
 - Explanation required; concepts required (1–3) — diagnostics depend on them
@@ -60,7 +63,7 @@ of this page.)
 
 Questions that fail are importable only flagged `review`; the preview marks them.
 
-## API
+### API
 
 ```
 POST /api/v1/quiz/import?dry_run=true|false   body: caq document
@@ -72,7 +75,7 @@ agent self-serve `schema.json`.
 
 ---
 
-# Course bundles — `ca-course/v2` (plan 22 F → plan 50 A, ADR-050/ADR-109)
+## Course bundles — `ca-course/v2` (plan 22 F → plan 50 A, ADR-050/ADR-109)
 
 Whole-course sharing without personal data by default — a classmate (or
 next-semester you) receives the *content*: materials with their extractions,
@@ -84,7 +87,7 @@ mistakes, analytics, chats and read-status **never travel** — that is what
 importer accepts **v1 and v2** (v1 → v2 defaults: no card schedules, no exam
 date, no history).
 
-## Archive layout (zip)
+### Archive layout (zip)
 
 | Entry | Contents |
 |---|---|
@@ -113,7 +116,7 @@ surfaces those same warnings. Folder assignments of **linked-source folders**
 are machine-local and never travel (a warning says so; their materials still
 export, landing unfiled).
 
-## Validation & import
+### Validation & import
 
 `dry_run=true` returns a preview (title, counts, warnings — e.g. materials
 without extraction). Commit always **imports as a new course** with full id
@@ -145,7 +148,7 @@ UI: Courses page — **Export** link on each course card, **Import course** with
 dry-run preview → confirm → opens the imported workspace (postprocess progress
 in the activity rail).
 
-# Skill packs — `ca-skills/v1` (plan 50 B, ADR-110)
+## Skill packs — `ca-skills/v1` (plan 50 B, ADR-110)
 
 Custom skill prompts travel as plain JSON: **skill definitions (task/key/name/
 description) + their full system-scope version history** (templates, params,
@@ -153,7 +156,7 @@ contracts, active flags). Course-type and course-scope overrides never travel
 (they reference machine-local ids); skills contain prompts only — no secrets —
 by construction.
 
-## Pack shape
+### Pack shape
 
 ```json
 {
@@ -173,7 +176,7 @@ by construction.
 }
 ```
 
-## API
+### API
 
 ```
 POST /api/v1/skills/export            {keys: [key…]}            → pack JSON

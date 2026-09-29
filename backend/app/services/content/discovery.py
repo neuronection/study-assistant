@@ -40,7 +40,7 @@ def _validated_kind(kind: str | None) -> str:
 
 def _validated_placement(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     course_id: int | None,
     node_id: int | None,
 ) -> tuple[int | None, int | None]:
@@ -62,7 +62,7 @@ def _validated_placement(
 
 def save_suggestion(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     provider: str,
     url: str,
@@ -118,7 +118,7 @@ def save_suggestion(
 
 def list_suggestions(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     course_id: int | None = None,
     node_id: int | None = None,
@@ -150,7 +150,7 @@ def list_suggestions(
 
 
 def get_suggestion(
-    session: Session, profile_id: int, suggestion_id: int
+    session: Session, profile_id: str, suggestion_id: int
 ) -> MaterialSuggestion | None:
     row = session.get(MaterialSuggestion, suggestion_id)
     if row is None or row.profile_id != profile_id:
@@ -159,7 +159,7 @@ def get_suggestion(
 
 
 def forget_suggestion(
-    session: Session, profile_id: int, suggestion_id: int
+    session: Session, profile_id: str, suggestion_id: int
 ) -> None:
     row = get_suggestion(session, profile_id, suggestion_id)
     if row is None:
@@ -170,7 +170,7 @@ def forget_suggestion(
 
 def update_suggestion(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     suggestion_id: int,
     *,
     status: str | None = None,
@@ -214,7 +214,7 @@ def revert_suggestions_for_material(session: Session, material_id: int) -> None:
 
 def record_scan_suggestion(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     provider: str,
     url: str,
@@ -272,7 +272,7 @@ def record_scan_suggestion(
 
 
 def suggestion_states_for_urls(
-    session: Session, profile_id: int, urls: list[str]
+    session: Session, profile_id: str, urls: list[str]
 ) -> dict[str, MaterialSuggestion]:
     norm_by_url = {url: normalize_url(url) for url in urls if url}
     norms = {norm for norm in norm_by_url.values() if norm}

@@ -11,7 +11,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Browser%20%7C%20Docker-lightgrey.svg)](#quick-start)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
+[![SQLite | PostgreSQL](https://img.shields.io/badge/SQLite%20%7C%20PostgreSQL-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
 
   <p>
     <small>Part of</small><br>
@@ -86,12 +86,12 @@ It is **beta** software, built for technical students first.
 - **Runs fully local.** Point it at llama.cpp, LM Studio or Ollama and every
   capability — chat, vision OCR, embeddings, dictation — runs on your machine,
   keyless and free. The first-run wizard detects running engines for you.
-  See [docs/usage/local-ai.md](docs/usage/local-ai.md).
+  See [docs/user/local-ai.md](docs/user/local-ai.md).
 - **Math answers aren't string-matched.** A deterministic equivalence chain grades typed
   math semantically, and a code-enforced leak guard proves hints never reveal the answer.
 - **English, Ελληνικά, Deutsch.** Switch the interface language in Settings → General —
   it applies instantly, and dates, times and numbers follow the chosen locale.
-  See [docs/usage/language.md](docs/usage/language.md).
+  See [docs/user/language.md](docs/user/language.md).
 
 ## Features
 
@@ -219,8 +219,8 @@ All installers and older versions: [Releases](https://github.com/neuronection/st
 ### Run as a web service (Docker)
 
 Self-host the web app on a server with the family-standard standalone stack
-(backend image + nginx; SQLite stays by design — all state lives in one
-volume):
+(db + app + nginx + backup; PostgreSQL 16 per ADR-0022 — desktop installs
+keep SQLite):
 
 ```bash
 docker compose -f docker/docker-compose.standalone.yml up -d --build
@@ -230,8 +230,9 @@ docker compose -f docker/docker-compose.standalone.yml up -d --build
 TLS-terminating config, backups, and ops scripts (`scripts/run-docker.sh`,
 `scripts/update-docker.sh`) are covered in [docker/README.md](docker/README.md).
 Pre-built images are published on GHCR with every release
-(`STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag>`). Note: SQLite + a single data
-volume mean one backend replica — horizontal scale is out of scope by design.
+(`STUDY_IMAGE=ghcr.io/<owner>/<repo>:<tag>`). Tier note: web/Docker runs
+PostgreSQL 16, desktop runs SQLite (ADR-0022) — both share one dialect-aware
+schema verified in CI.
 
 ### Run from source (developers)
 
@@ -263,7 +264,7 @@ AI features need at least one provider: open **Settings → Providers → Add pr
 API key — it goes into your OS keyring — then assign default models per capability
 (text / vision / embeddings) in **Tasks**. OCR needs a vision-capable model; without
 embeddings, search falls back to keyword-only. Details in the
-[getting started guide](docs/usage/getting-started.md).
+[getting started guide](docs/user/getting-started.md).
 
 ## Architecture at a glance
 
@@ -291,27 +292,30 @@ The frontend talks only REST + WebSocket, which keeps the window shell replaceab
 (pywebview today, browser mode daily, Tauri a future option) without touching app code.
 Background work (OCR, embeddings, generation, chat turns) runs in a durable job pool
 with progress streamed over WebSocket. Only AI calls leave the machine.
-Deep dive: [docs/architecture.md](docs/architecture.md).
+Deep dive: [docs/dev/architecture.md](docs/dev/architecture.md).
 
 ## Documentation
 
-**Getting started**
-- [Getting started](docs/usage/getting-started.md) — launch modes, provider setup, the study loop
-- [Courses & structure](docs/usage/courses.md) — outlines, node tree, the workspace
-- [Library](docs/usage/library.md) — uploads, folders, linked sources
-- [Sources & profiles](docs/usage/sources-and-profiles.md)
+The full manual lives in [`docs/`](docs/README.md), split into a
+**[user guide](docs/user/README.md)** and a
+**[developer guide](docs/dev/README.md)**.
 
-**Everyday use**
-- [Notes](docs/usage/notes.md) · [Flashcards](docs/usage/flashcards.md) · [Quizzes](docs/usage/quiz.md) · [Exercises](docs/usage/exercises.md)
-- [Tutor chat](docs/usage/chat.md) · [Progress & analytics](docs/usage/progress.md) · [Activity & jobs](docs/usage/activity.md)
-- [Backup & restore](docs/usage/backup.md) · [Skills](docs/usage/skills.md)
+**User guide** — how to use the app
+- [Getting started](docs/user/getting-started.md) — launch modes, provider setup, the study loop
+- [Courses & structure](docs/user/courses.md) · [Library](docs/user/library.md) · [Sources & profiles](docs/user/sources-and-profiles.md)
+- [Notes](docs/user/notes.md) · [Flashcards](docs/user/flashcards.md) · [Quizzes](docs/user/quiz.md) · [Exercises](docs/user/exercises.md)
+- [Tutor chat](docs/user/chat.md) · [Progress & analytics](docs/user/progress.md) · [Activity & jobs](docs/user/activity.md)
+- [Backup & restore](docs/user/backup.md) · [Settings](docs/user/settings.md) · [Troubleshooting](docs/user/troubleshooting.md)
+- [Feature catalog](docs/user/features.md) — everything, as built
 
-**Platform**
-- [Architecture](docs/architecture.md) — layout, runtime behavior, security posture
-- [Feature catalog](docs/features.md) — everything, as built
-- [Math verification](docs/math-verification.md) — the equivalence chain and leak guard
-- [AI layer](docs/ai.md) · [Data model](docs/data-model.md) · [Import/export](docs/import-export.md)
-- [Packaging](docs/usage/packaging.md) — deb / AppImage / Windows exe
+**Developer guide** — how to build, extend and self-host it
+- [Architecture](docs/dev/architecture.md) — layout, runtime behavior, security posture
+- [Development](docs/dev/development.md) · [Testing](docs/dev/testing.md)
+- [Data model](docs/dev/data-model.md) · [REST API](docs/dev/api.md) · [AI layer](docs/dev/ai.md)
+- [Math verification](docs/dev/math-verification.md) · [Import/export](docs/dev/import-export.md)
+- [Deployment](docs/dev/deployment.md) · [Packaging](docs/dev/desktop-packaging.md)
+
+**Project**
 - [Current status](docs/STATUS.md) — single source of truth for what exists
 - [Changelog](CHANGELOG.md) — every user-visible change
 
@@ -324,7 +328,7 @@ Deep dive: [docs/architecture.md](docs/architecture.md).
 | Editor | Tiptap, KaTeX, MathLive, mermaid |
 | Visualization | Plotly.js charts, JSXGraph geometry (lazy-loaded) |
 | AI | LangChain chat models behind one gateway — Google, OpenAI-compatible, Anthropic |
-| Storage | SQLite (WAL) + FTS5 + sqlite-vec, content-addressed blob store |
+| Storage | SQLite (WAL, FTS5, sqlite-vec) desktop · PostgreSQL 16 + pgvector web (ADR-0022), content-addressed blob store |
 | Desktop shell | pywebview (WebKitGTK / WebView2 / WKWebView) |
 | Packaging | PyInstaller, deb + AppImage, tag-driven release workflow |
 | Tooling | uv + pnpm workspaces, ruff + mypy + pytest, eslint + vitest |

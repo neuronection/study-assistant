@@ -19,6 +19,7 @@ def upgrade() -> None:
         "materials",
         ["starred"],
         sqlite_where=sa.text("starred = 1"),
+        postgresql_where=sa.text("starred"),
     )
 
 

@@ -277,7 +277,7 @@ class ExgenService:
 
     def generate(
         self,
-        profile_id: int,
+        profile_id: str,
         *,
         course_id: int | None = None,
         node_id: int | None = None,
@@ -427,7 +427,7 @@ class ExgenService:
 
     def _generate_structural(
         self,
-        profile_id: int,
+        profile_id: str,
         *,
         course_id: int | None,
         node_id: int | None,
@@ -502,7 +502,7 @@ class ExgenService:
 
     def generate_error_spot_drill(
         self,
-        profile_id: int,
+        profile_id: str,
         *,
         course_id: int | None,
         node_id: int | None = None,

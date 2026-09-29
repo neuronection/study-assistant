@@ -106,7 +106,7 @@ hooks up and pulls a full system GTK stack into the bundle.
 - **PyGObject is pinned `>=3.50,<3.51`** — 3.51.0 switched to girepository-2.0
   and requires glib ≥ 2.80 (Ubuntu 24.04+), which would force the Linux build
   floor up to glibc 2.39. Revisit only together with the runner (both must move
-  at once), and update `docs/usage/packaging.md` + the workflow assertions in
+  at once), and update `desktop-packaging.md` + the workflow assertions in
   `backend/tests/test_packaging_assets.py` in the same commit.
 - **Draft releases are manual** — the workflow creates a draft; publishing is a
   human step.

@@ -45,7 +45,7 @@ def _unsorted_course_id(bind: sa.Connection, profile_id: int) -> int:
 
 def _root_node_id(bind: sa.Connection, course_id: int) -> int:
     existing = bind.execute(
-        sa.text("SELECT id FROM tree_nodes WHERE course_id = :cid AND is_root = 1"),
+        sa.text("SELECT id FROM tree_nodes WHERE course_id = :cid AND is_root"),
         {"cid": course_id},
     ).scalar()
     if existing is not None:
@@ -55,7 +55,7 @@ def _root_node_id(bind: sa.Connection, course_id: int) -> int:
             sa.text(
                 "INSERT INTO tree_nodes (course_id, parent_id, title, order_idx, depth, "
                 "path, sort_path, is_root, created_at) VALUES ("
-                ":cid, NULL, :title, 0, 0, '/', '/', 1, CURRENT_TIMESTAMP) RETURNING id"
+                ":cid, NULL, :title, 0, 0, '/', '/', TRUE, CURRENT_TIMESTAMP) RETURNING id"
             ),
             {"cid": course_id, "title": UNSORTED_TITLE},
         ).scalar_one()

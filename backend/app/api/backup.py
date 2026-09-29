@@ -8,6 +8,8 @@ from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 
 from ..services.platform.backup import (
+    DB_KIND_POSTGRES,
+    DB_KIND_SQLITE,
     STAMP_PATTERN,
     BackupError,
     BackupSettingsOverride,
@@ -16,10 +18,12 @@ from ..services.platform.backup import (
     database_is_healthy,
     list_backups,
     load_effective_settings,
+    postgres_url,
     read_archive,
+    restore_database_pg,
     store_settings_override,
 )
-from ..services.platform.profiles import ensure_default_profile
+from ..services.platform.profiles import get_or_create_default
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -173,7 +177,9 @@ def delete_backup(name: str, request: Request) -> dict[str, Any]:
 @router.get("/export")
 def export_backup(request: Request) -> Response:
     settings = request.app.state.settings
-    package = build_backup(settings.db_path, settings.blobs_dir)
+    package = build_backup(
+        settings.db_path, settings.blobs_dir, database_url=settings.db_url
+    )
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     return Response(
         content=package,
@@ -197,19 +203,31 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
         )
 
     settings = request.app.state.settings
+    target_pg = postgres_url(settings.db_url)
+    expected_kind = DB_KIND_POSTGRES if target_pg is not None else DB_KIND_SQLITE
+    if database.kind != expected_kind:
+        raise HTTPException(
+            status_code=422, detail="backup database kind does not match this deployment"
+        )
+
     request.app.state.engine.dispose()
-    settings.db_path.parent.mkdir(parents=True, exist_ok=True)
-    for sidecar in (
-        settings.db_path.with_name(settings.db_path.name + "-wal"),
-        settings.db_path.with_name(settings.db_path.name + "-shm"),
-    ):
-        sidecar.unlink(missing_ok=True)
-    tmp_path = settings.db_path.with_name(settings.db_path.name + ".restore-tmp")
-    try:
-        tmp_path.write_bytes(database)
-        os.replace(tmp_path, settings.db_path)
-    finally:
-        tmp_path.unlink(missing_ok=True)
+    if target_pg is not None:
+        # server mode: the dump goes through `pg_restore --clean --if-exists`
+        # into the configured database (no file to swap)
+        restore_database_pg(target_pg, database.data)
+    else:
+        settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+        for sidecar in (
+            settings.db_path.with_name(settings.db_path.name + "-wal"),
+            settings.db_path.with_name(settings.db_path.name + "-shm"),
+        ):
+            sidecar.unlink(missing_ok=True)
+        tmp_path = settings.db_path.with_name(settings.db_path.name + ".restore-tmp")
+        try:
+            tmp_path.write_bytes(database.data)
+            os.replace(tmp_path, settings.db_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
     for rel_path, blob_data in blobs.items():
         target = settings.blobs_dir / rel_path
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -219,14 +237,19 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
 
     _run_migrations(request.app.state.engine)
 
-    from sqlalchemy import text
+    from sqlalchemy import select, text
 
     from ..ai.providers import seed_default_task_assignments
     from ..ai.tasks import TASK_DEFS
     from ..domain.models import TaskAssignment
 
     with request.app.state.session_factory() as db:
-        ensure_default_profile(db)
+        # identity-auth §6: every restored user keeps a profile — the
+        # requester's own identity may not exist in the restored database
+        from ..domain.models import User
+
+        for user_id in db.scalars(select(User.id)):
+            get_or_create_default(db, user_id)
         for task_def in TASK_DEFS:
             if db.get(TaskAssignment, task_def.task) is None:
                 db.add(

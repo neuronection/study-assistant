@@ -204,18 +204,36 @@ def test_profiles_create_and_header_scoping() -> None:
 
         listing = client.get("/api/v1/profiles").json()
         assert len(listing) == 2
+        assert all(isinstance(entry["id"], str) for entry in listing)
 
-        blocked = client.delete(f"/api/v1/profiles/{second_id}")
-        assert blocked.status_code == 422
-        assert "content" in blocked.json()["detail"]
-
-        client.delete(
-            f"/api/v1/courses/{scoped_course}",
-            headers=scoped_headers,
-            params={"confirmed_backup": True},
-        )
+        # DELETE now cascades: the profile goes even while it has content,
+        # and its profile-scoped rows go with it (§12)
         removed = client.delete(f"/api/v1/profiles/{second_id}")
         assert removed.status_code == 204
+
+        app = client.app
+        assert isinstance(app, FastAPI)
+        with app.state.session_factory() as db:
+            from app.domain.models import Course as CourseRow
+            from app.domain.models import Note as NoteRow
+
+            assert (
+                db.query(CourseRow).filter(CourseRow.profile_id == second_id).count()
+                == 0
+            )
+            assert (
+                db.query(NoteRow).filter(NoteRow.profile_id == second_id).count() == 0
+            )
+
+        remaining_notes = client.get("/api/v1/notes").json()
+        assert [note["title"] for note in remaining_notes["items"]] == ["Default note"]
+
+        # deleting the last profile re-provisions a fresh Default (§6)
+        last_id = client.get("/api/v1/profiles").json()[0]["id"]
+        assert client.delete(f"/api/v1/profiles/{last_id}").status_code == 204
+        reprovisioned = client.get("/api/v1/profiles").json()
+        assert [entry["name"] for entry in reprovisioned] == ["Default"]
+        assert reprovisioned[0]["is_default"] is True
 
 
 def test_qpkg_round_trip_and_integrity() -> None:

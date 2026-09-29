@@ -1,4 +1,7 @@
 from .core import (
+    _UUID as _UUID,
+)
+from .core import (
     JSON as JSON,
 )
 from .core import (
@@ -118,7 +121,7 @@ class CourseTaskAssignment(Base):
     __tablename__ = "course_task_assignments"
 
     course_id: Mapped[int] = mapped_column(
-        ForeignKey("courses.id"), primary_key=True
+        ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     task: Mapped[str] = mapped_column(String(40), primary_key=True)
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
@@ -128,7 +131,7 @@ class CourseDefaultTaskAssignment(Base):
     __tablename__ = "course_default_task_assignments"
 
     course_id: Mapped[int] = mapped_column(
-        ForeignKey("courses.id"), primary_key=True
+        ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
@@ -138,7 +141,9 @@ class DeletedItem(Base):
     __tablename__ = "deleted_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"), index=True)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
     entity_type: Mapped[str] = mapped_column(String(20))
     title: Mapped[str] = mapped_column(String(300))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
@@ -152,7 +157,7 @@ class ConceptSkillStat(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"))
+    profile_id: Mapped[str] = mapped_column(_UUID, ForeignKey("profiles.id", ondelete="CASCADE"))
     concept: Mapped[str] = mapped_column(String(200))
     concept_id: Mapped[int | None] = mapped_column(Integer)
     skill: Mapped[str] = mapped_column(String(20))
@@ -167,7 +172,7 @@ class DailyRollup(Base):
     __table_args__ = (Index("uq_daily_rollups", "profile_id", "day", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"))
+    profile_id: Mapped[str] = mapped_column(_UUID, ForeignKey("profiles.id", ondelete="CASCADE"))
     day: Mapped[str] = mapped_column(String(10))
     answers_n: Mapped[int] = mapped_column(Integer)
     correct_n: Mapped[int] = mapped_column(Integer)
@@ -181,7 +186,7 @@ class ItemStat(Base):
     __table_args__ = (Index("uq_item_stats", "question_id", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"))
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
     n_attempts: Mapped[int] = mapped_column(Integer)
     p_correct: Mapped[float] = mapped_column(Float)
     avg_time_ms: Mapped[float | None] = mapped_column(Float)
@@ -205,7 +210,7 @@ class ConceptSkillRating(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profile_id: Mapped[int] = mapped_column(ForeignKey("profiles.id"))
+    profile_id: Mapped[str] = mapped_column(_UUID, ForeignKey("profiles.id", ondelete="CASCADE"))
     concept: Mapped[str] = mapped_column(String(200))
     skill: Mapped[str] = mapped_column(String(20))
     rating: Mapped[float | None] = mapped_column(Float)
@@ -214,8 +219,8 @@ class ConceptSkillRating(Base):
 class StudyGoal(Base):
     __tablename__ = "study_goals"
 
-    profile_id: Mapped[int] = mapped_column(
-        ForeignKey("profiles.id"), primary_key=True
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
     )
     answers_per_day: Mapped[int] = mapped_column(Integer, default=20)
     unit: Mapped[str] = mapped_column(

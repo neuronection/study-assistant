@@ -287,7 +287,7 @@ class McpDiscoveryProvider(DiscoveryProvider):
         return results
 
 
-def discovery_preferences(session: Session, profile_id: int) -> dict[str, Any]:
+def discovery_preferences(session: Session, profile_id: str) -> dict[str, Any]:
     profile = session.get(Profile, profile_id)
     preferences = profile.preferences if profile is not None else None
     if not isinstance(preferences, dict):
@@ -298,7 +298,7 @@ def discovery_preferences(session: Session, profile_id: int) -> dict[str, Any]:
 
 def resolve_providers(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     transport: httpx.BaseTransport | None = None,
     requested: list[str] | None = None,
 ) -> list[DiscoveryProvider]:

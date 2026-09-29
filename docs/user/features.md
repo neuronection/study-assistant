@@ -1,7 +1,7 @@
 # Feature catalog (as built)
 
 P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
-`STATUS.md` for phase placement of the gaps.
+`docs/STATUS.md` for phase placement of the gaps.
 
 ## Ingestion & library
 
@@ -910,7 +910,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   (`/settings?tab=ai&section=models`)
 - ✅ Light/dark/system theme; **UI languages en/el/de** — Settings → General switcher,
   instant apply, locale-aware date/number formatting, completeness-gated picker
-  (`docs/usage/language.md`) — I4/I8 (plan 69)
+  (`docs/user/language.md`) — I4/I8 (plan 69)
 - ✅ CI mirroring the full verification suites (ruff, mypy strict, pytest; eslint,
   tsc, vitest, build + migrations) — I13
 - ✅ Translation-readiness audit: test scans all `t()` literals against the
@@ -1114,7 +1114,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   `MarkdownSurface`), and a **Planner week sheet**. `?autoprint=1`-style
   surfaces open the dialog automatically; in the desktop shell `window.print()`
   opens the GTK print dialog (export-to-PDF included), and the documented
-  fallback is printing from webapp mode. See `docs/usage/printing.md`
+  fallback is printing from webapp mode. See `docs/user/printing.md`
 - ✅ **Read-aloud TTS (plan 53-E, ADR-119)**: ▶ buttons on the extraction
   reading view, the note editor, chat assistant messages, and lessons
   (ai-composed materials) — zero-config **browser `speechSynthesis` first**

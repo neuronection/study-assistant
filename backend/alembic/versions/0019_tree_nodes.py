@@ -106,7 +106,7 @@ def _add_placement(table: str, section_index: str | None) -> None:
         sa.text(
             f"UPDATE {table} SET node_id = ("
             " SELECT r.id FROM tree_nodes r"
-            f" WHERE r.course_id = {table}.course_id AND r.is_root = 1)"
+            f" WHERE r.course_id = {table}.course_id AND r.is_root)"
             " WHERE node_id IS NULL AND course_id IS NOT NULL"
         )
     )
@@ -155,6 +155,7 @@ def upgrade() -> None:
         ["course_id"],
         unique=True,
         sqlite_where=sa.text("is_root = 1"),
+        postgresql_where=sa.text("is_root"),
     )
 
     for course_id, title, description in bind.execute(
@@ -198,7 +199,7 @@ def upgrade() -> None:
             if parent_id is None:
                 root_id = bind.execute(
                     sa.text(
-                        "SELECT id FROM tree_nodes WHERE course_id = :cid AND is_root = 1"
+                        "SELECT id FROM tree_nodes WHERE course_id = :cid AND is_root"
                     ),
                     {"cid": course_id},
                 ).scalar_one()
@@ -303,7 +304,7 @@ def upgrade() -> None:
             "SELECT mat.course_id, "
             "CASE ml.owner_type "
             "  WHEN 'course' THEN (SELECT r.id FROM tree_nodes r "
-            "    WHERE r.course_id = ml.owner_id AND r.is_root = 1) "
+            "    WHERE r.course_id = ml.owner_id AND r.is_root) "
             "  WHEN 'chapter' THEN (SELECT m.new_node_id FROM _chapter_map m "
             "    WHERE m.old_id = ml.owner_id) "
             "  ELSE (SELECT m.new_node_id FROM _section_map m WHERE m.old_id = ml.owner_id) "

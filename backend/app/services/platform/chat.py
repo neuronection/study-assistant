@@ -239,7 +239,7 @@ class ChatService:
 
     def create_session(
         self,
-        profile_id: int,
+        profile_id: str,
         course_id: int | None = None,
         node_id: int | None = None,
         title: str = "New chat",
@@ -259,7 +259,7 @@ class ChatService:
         return chat_session
 
     def list_sessions(
-        self, profile_id: int, node_id: int | None = None
+        self, profile_id: str, node_id: int | None = None
     ) -> list[ChatSession]:
         statement = select(ChatSession).where(ChatSession.profile_id == profile_id)
         if node_id is not None:
@@ -268,7 +268,7 @@ class ChatService:
             self._session.scalars(statement.order_by(ChatSession.id.desc()))
         )
 
-    def get_session(self, session_id: int, profile_id: int) -> ChatSession | None:
+    def get_session(self, session_id: int, profile_id: str) -> ChatSession | None:
         chat_session = self._session.get(ChatSession, session_id)
         if chat_session is None or chat_session.profile_id != profile_id:
             return None
@@ -1377,6 +1377,10 @@ class ChatService:
                 Message(role="system", content=f"Verified tool results:\n{tool_log}")
             )
         for entry in history:
+            if entry.state and entry.state.get("turn_failed"):
+                # Failed-turn markers are display-only — never feed the
+                # error placeholder into the model context.
+                continue
             messages.append(
                 Message(
                     role="assistant" if entry.role == "assistant" else "user",

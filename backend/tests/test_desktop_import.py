@@ -17,6 +17,13 @@ def _install(client: TestClient, folder: Path) -> None:
     app.state.desktop_files = access
 
 
+def test_router_absent_in_server_mode(client: TestClient, tmp_path: Path) -> None:
+    assert isinstance(client.app, FastAPI)
+    _install(client, tmp_path)
+    assert client.get("/api/v1/desktop/folder", params={"path": str(tmp_path)}).status_code == 404
+    assert client.post("/api/v1/desktop/drops", json={"paths": [str(tmp_path)]}).status_code == 404
+
+
 def test_endpoints_hidden_without_desktop_access(client: TestClient) -> None:
     assert isinstance(client.app, FastAPI)
     assert not hasattr(client.app.state, "desktop_files")
@@ -26,15 +33,15 @@ def test_endpoints_hidden_without_desktop_access(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_folder_listing_streams_files(client: TestClient, tmp_path: Path) -> None:
+def test_folder_listing_streams_files(desktop_client: TestClient, tmp_path: Path) -> None:
     root = tmp_path / "docs"
     (root / "sub").mkdir(parents=True)
     (root / "a.pdf").write_bytes(b"AAA")
     (root / "sub" / "b.txt").write_bytes(b"BB")
     (root / ".DS_Store").write_bytes(b"junk")
-    _install(client, root)
+    _install(desktop_client, root)
 
-    response = client.get("/api/v1/desktop/folder", params={"path": str(root)})
+    response = desktop_client.get("/api/v1/desktop/folder", params={"path": str(root)})
     assert response.status_code == 200
     payload = response.json()
     assert payload["path"] == str(root.resolve())
@@ -44,39 +51,53 @@ def test_folder_listing_streams_files(client: TestClient, tmp_path: Path) -> Non
     assert sizes["docs/a.pdf"] == 3
 
     listed = {entry["rel"]: entry["path"] for entry in payload["files"]}
-    file_response = client.get(
+    file_response = desktop_client.get(
         "/api/v1/desktop/file", params={"path": listed["docs/sub/b.txt"]}
     )
     assert file_response.status_code == 200
     assert file_response.content == b"BB"
 
 
-def test_paths_outside_roots_rejected(client: TestClient, tmp_path: Path) -> None:
+def test_paths_outside_roots_rejected(desktop_client: TestClient, tmp_path: Path) -> None:
     root = tmp_path / "docs"
     root.mkdir()
     outside = tmp_path / "secret.txt"
     outside.write_bytes(b"secret")
-    _install(client, root)
+    _install(desktop_client, root)
 
-    assert client.get("/api/v1/desktop/folder", params={"path": str(outside)}).status_code == 404
-    assert client.get("/api/v1/desktop/file", params={"path": str(outside)}).status_code == 404
-    missing = root / "missing.pdf"
-    assert client.get("/api/v1/desktop/file", params={"path": str(missing)}).status_code == 404
-    traversal = str(root / ".." / "secret.txt")
-    assert client.get("/api/v1/desktop/file", params={"path": traversal}).status_code == 404
     assert (
-        client.get("/api/v1/desktop/folder", params={"path": str(root / "a.pdf")}).status_code
-        == 422
+        desktop_client.get("/api/v1/desktop/folder", params={"path": str(outside)}).status_code
+        == 404
     )
+    assert (
+        desktop_client.get("/api/v1/desktop/file", params={"path": str(outside)}).status_code
+        == 404
+    )
+    missing = root / "missing.pdf"
+    assert (
+        desktop_client.get("/api/v1/desktop/file", params={"path": str(missing)}).status_code
+        == 404
+    )
+    traversal = str(root / ".." / "secret.txt")
+    assert (
+        desktop_client.get("/api/v1/desktop/file", params={"path": traversal}).status_code == 404
+    )
+    not_a_dir = desktop_client.get(
+        "/api/v1/desktop/folder", params={"path": str(root / "a.pdf")}
+    )
+    assert not_a_dir.status_code == 422
 
 
-def test_folder_path_must_be_directory(client: TestClient, tmp_path: Path) -> None:
+def test_folder_path_must_be_directory(desktop_client: TestClient, tmp_path: Path) -> None:
     root = tmp_path / "docs"
     root.mkdir()
     target = root / "file.txt"
     target.write_bytes(b"x")
-    _install(client, root)
-    assert client.get("/api/v1/desktop/folder", params={"path": str(target)}).status_code == 422
+    _install(desktop_client, root)
+    assert (
+        desktop_client.get("/api/v1/desktop/folder", params={"path": str(target)}).status_code
+        == 422
+    )
 
 
 def test_register_root_rejects_non_directory(tmp_path: Path) -> None:
@@ -87,15 +108,15 @@ def test_register_root_rejects_non_directory(tmp_path: Path) -> None:
         access.register_root(str(target))
 
 
-def test_register_drops_files_and_folder(client: TestClient, tmp_path: Path) -> None:
+def test_register_drops_files_and_folder(desktop_client: TestClient, tmp_path: Path) -> None:
     root = tmp_path / "dropdir"
     (root / "sub").mkdir(parents=True)
     (root / "sub" / "n.pdf").write_bytes(b"NN")
     single = tmp_path / "solo.txt"
     single.write_bytes(b"S")
-    _install(client, root)
+    _install(desktop_client, root)
 
-    response = client.post(
+    response = desktop_client.post(
         "/api/v1/desktop/drops",
         json={"paths": [str(root), str(single), str(tmp_path / "missing.txt")]},
     )
@@ -104,7 +125,7 @@ def test_register_drops_files_and_folder(client: TestClient, tmp_path: Path) -> 
     assert files["dropdir/sub/n.pdf"] == str((root / "sub" / "n.pdf").resolve())
     assert files["solo.txt"] == str(single.resolve())
 
-    streamed = client.get("/api/v1/desktop/file", params={"path": str(single.resolve())})
+    streamed = desktop_client.get("/api/v1/desktop/file", params={"path": str(single.resolve())})
     assert streamed.status_code == 200
     assert streamed.content == b"S"
 
@@ -117,7 +138,7 @@ def test_drops_gated_without_desktop_access(client: TestClient) -> None:
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="symlink support")
-def test_symlinks_escape_is_contained(client: TestClient, tmp_path: Path) -> None:
+def test_symlinks_escape_is_contained(desktop_client: TestClient, tmp_path: Path) -> None:
     root = tmp_path / "docs"
     (root / "real").mkdir(parents=True)
     (root / "real" / "in.txt").write_bytes(b"in")
@@ -126,9 +147,9 @@ def test_symlinks_escape_is_contained(client: TestClient, tmp_path: Path) -> Non
     (secret / "out.txt").write_bytes(b"out")
     os.symlink(secret / "out.txt", root / "linked.txt")
     os.symlink(secret, root / "linked-dir")
-    _install(client, root)
+    _install(desktop_client, root)
 
-    response = client.get("/api/v1/desktop/folder", params={"path": str(root)})
+    response = desktop_client.get("/api/v1/desktop/folder", params={"path": str(root)})
     assert response.status_code == 200
     rels = [entry["rel"] for entry in response.json()["files"]]
     assert rels == ["docs/real/in.txt"]

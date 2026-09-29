@@ -20,7 +20,13 @@ depends_on: str | Sequence[str] | None = None
 
 CARD_KIND_MAP = {"basic": "card_basic", "cloze": "card_cloze", "reverse": "card_reverse"}
 
-FSRS_DDL = """
+
+def _ddl(dialect: str, card_table: str) -> tuple[str, str]:
+    """Hand-written rebuild DDL twinned per dialect (ADR-0022 S3): SQLite
+    keeps its `DATETIME` affinity idiom; PostgreSQL 16 has no DATETIME
+    type and needs `TIMESTAMP`. Returns (fsrs_states_new, review_log_new)."""
+    ts = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+    fsrs_ddl = f"""
 CREATE TABLE fsrs_states_new (
     id INTEGER NOT NULL PRIMARY KEY,
     card_id INTEGER NOT NULL,
@@ -29,23 +35,23 @@ CREATE TABLE fsrs_states_new (
     difficulty FLOAT,
     reps INTEGER DEFAULT '0' NOT NULL,
     lapses INTEGER DEFAULT '0' NOT NULL,
-    due_at DATETIME NOT NULL,
-    last_review_at DATETIME,
-    FOREIGN KEY(card_id) REFERENCES exercises (id)
+    due_at {ts} NOT NULL,
+    last_review_at {ts},
+    FOREIGN KEY(card_id) REFERENCES {card_table} (id)
 )
 """
-
-REVIEW_DDL = """
+    review_ddl = f"""
 CREATE TABLE review_log_new (
     id INTEGER NOT NULL PRIMARY KEY,
     card_id INTEGER NOT NULL,
     rating INTEGER NOT NULL,
     interval_days FLOAT NOT NULL,
     elapsed_days FLOAT NOT NULL,
-    reviewed_at DATETIME NOT NULL,
-    FOREIGN KEY(card_id) REFERENCES exercises (id)
+    reviewed_at {ts} NOT NULL,
+    FOREIGN KEY(card_id) REFERENCES {card_table} (id)
 )
 """
+    return fsrs_ddl, review_ddl
 
 
 def _front_title(front_json: str) -> str:
@@ -109,8 +115,9 @@ def upgrade() -> None:
             {"new_id": new_id, "old_id": row.id},
         )
 
+    fsrs_ddl, review_ddl = _ddl(bind.dialect.name, "exercises")
     bind.execute(sa.text("DROP TABLE IF EXISTS fsrs_states_new"))
-    bind.execute(sa.text(FSRS_DDL))
+    bind.execute(sa.text(fsrs_ddl))
     bind.execute(
         sa.text(
             "INSERT INTO fsrs_states_new (id, card_id, state, stability, difficulty, "
@@ -129,7 +136,7 @@ def upgrade() -> None:
     )
 
     bind.execute(sa.text("DROP TABLE IF EXISTS review_log_new"))
-    bind.execute(sa.text(REVIEW_DDL))
+    bind.execute(sa.text(review_ddl))
     bind.execute(
         sa.text(
             "INSERT INTO review_log_new (id, card_id, rating, interval_days, "
@@ -196,16 +203,9 @@ def downgrade() -> None:
                 "created_at": row.created_at,
             },
         )
+    fsrs_ddl, review_ddl = _ddl(bind.dialect.name, "flashcards")
     bind.execute(sa.text("DROP TABLE IF EXISTS fsrs_states_new"))
-    bind.execute(
-        sa.text(
-            "CREATE TABLE fsrs_states_new (id INTEGER NOT NULL PRIMARY KEY, "
-            "card_id INTEGER NOT NULL, state VARCHAR(20) DEFAULT 'new' NOT NULL, "
-            "stability FLOAT, difficulty FLOAT, reps INTEGER DEFAULT '0' NOT NULL, "
-            "lapses INTEGER DEFAULT '0' NOT NULL, due_at DATETIME NOT NULL, "
-            "last_review_at DATETIME, FOREIGN KEY(card_id) REFERENCES flashcards (id))"
-        )
-    )
+    bind.execute(sa.text(fsrs_ddl))
     bind.execute(
         sa.text(
             "INSERT INTO fsrs_states_new (id, card_id, state, stability, difficulty, "
@@ -223,15 +223,7 @@ def downgrade() -> None:
     )
 
     bind.execute(sa.text("DROP TABLE IF EXISTS review_log_new"))
-    bind.execute(
-        sa.text(
-            "CREATE TABLE review_log_new (id INTEGER NOT NULL PRIMARY KEY, "
-            "card_id INTEGER NOT NULL, rating INTEGER NOT NULL, "
-            "interval_days FLOAT NOT NULL, elapsed_days FLOAT NOT NULL, "
-            "reviewed_at DATETIME NOT NULL, "
-            "FOREIGN KEY(card_id) REFERENCES flashcards (id))"
-        )
-    )
+    bind.execute(sa.text(review_ddl))
     bind.execute(
         sa.text(
             "INSERT INTO review_log_new (id, card_id, rating, interval_days, "

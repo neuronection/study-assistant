@@ -17,7 +17,7 @@ from .deps import get_session
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 
-_DISCOVERY_IN_FLIGHT: set[int] = set()
+_DISCOVERY_IN_FLIGHT: set[str] = set()
 
 
 class DiscoverySearchIn(BaseModel):

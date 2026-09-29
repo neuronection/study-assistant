@@ -247,7 +247,7 @@ def commit_concepts(
 
 
 def concept_mastery(
-    session: Session, course_id: int, profile_id: int, names: list[str]
+    session: Session, course_id: int, profile_id: str, names: list[str]
 ) -> dict[str, str | None]:
     stats = session.execute(
         select(ConceptSkillStat).where(
@@ -288,7 +288,7 @@ def concept_mastery(
 
 
 def concept_graph(
-    session: Session, course_id: int, profile_id: int | None = None
+    session: Session, course_id: int, profile_id: str | None = None
 ) -> dict[str, Any]:
     concepts = list(
         session.scalars(

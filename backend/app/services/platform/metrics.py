@@ -63,7 +63,7 @@ class AnswerRow:
 
 
 def answer_rows(
-    session: Session, profile_id: int, course_id: int | None = None
+    session: Session, profile_id: str, course_id: int | None = None
 ) -> list[AnswerRow]:
     statement = (
         select(Answer, Question, Activity)
@@ -169,7 +169,7 @@ def _weakness(accuracy: float, n: int, last_seen: datetime) -> float:
 
 
 def error_profile(
-    session: Session, profile_id: int, course_id: int | None = None
+    session: Session, profile_id: str, course_id: int | None = None
 ) -> list[dict[str, Any]]:
     now = utcnow()
     week_ago = now - timedelta(days=7)
@@ -259,7 +259,7 @@ def _quadrant(time_ratio: float, accuracy: float) -> SpeedQuadrant:
     return SpeedQuadrant.STRUGGLING
 
 
-def item_analysis(session: Session, profile_id: int) -> list[dict[str, Any]]:
+def item_analysis(session: Session, profile_id: str) -> list[dict[str, Any]]:
     rows = session.execute(
         select(Answer, Question)
         .join(Question, Answer.question_id == Question.id)
@@ -315,7 +315,7 @@ def _day_key(moment: datetime) -> str:
     return moment.date().isoformat()
 
 
-def daily_history(session: Session, profile_id: int) -> list[dict[str, Any]]:
+def daily_history(session: Session, profile_id: str) -> list[dict[str, Any]]:
     rows = session.execute(
         select(Answer.time_ms, Answer.correct, Answer.created_at)
         .join(Attempt, Answer.attempt_id == Attempt.id)
@@ -440,7 +440,7 @@ def streak(history: list[dict[str, Any]]) -> int:
 
 
 def due_cards_count(
-    session: Session, profile_id: int, course_id: int | None = None
+    session: Session, profile_id: str, course_id: int | None = None
 ) -> int:
     now = utcnow()
     due_statement = (
@@ -478,7 +478,7 @@ def due_cards_count(
     return due + len(unscheduled)
 
 
-def get_goal(session: Session, profile_id: int) -> dict[str, Any]:
+def get_goal(session: Session, profile_id: str) -> dict[str, Any]:
     goal = session.get(StudyGoal, profile_id)
     if goal is None:
         return {
@@ -495,7 +495,7 @@ def get_goal(session: Session, profile_id: int) -> dict[str, Any]:
 
 def set_goal(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     *,
     unit: GoalUnit | None = None,
     answers_per_day: int | None = None,
@@ -528,7 +528,7 @@ TREND_SCORES = {"improving": 1.0, "flat": 0.6, "declining": 0.2}
 
 def course_readiness(
     session: Session,
-    profile_id: int,
+    profile_id: str,
     course_id: int,
     *,
     total_nodes: int,
@@ -595,7 +595,7 @@ def course_readiness(
     }
 
 
-def exam_status(session: Session, profile_id: int) -> list[dict[str, Any]]:
+def exam_status(session: Session, profile_id: str) -> list[dict[str, Any]]:
     from ..knowledge.tree import TreeService
 
     courses = list(
@@ -673,7 +673,7 @@ def exam_status(session: Session, profile_id: int) -> list[dict[str, Any]]:
     return result
 
 
-def overview(session: Session, profile_id: int) -> dict[str, Any]:
+def overview(session: Session, profile_id: str) -> dict[str, Any]:
     history = daily_history(session, profile_id)
     today_key = _day_key(utcnow())
     today = next((entry for entry in history if entry["day"] == today_key), None)
@@ -703,7 +703,7 @@ def overview(session: Session, profile_id: int) -> dict[str, Any]:
 
 
 def recommendations(
-    session: Session, profile_id: int, course_id: int | None = None
+    session: Session, profile_id: str, course_id: int | None = None
 ) -> list[dict[str, Any]]:
     rows = answer_rows(session, profile_id, course_id)
     matrix = weakness_matrix(rows)
@@ -788,7 +788,7 @@ def recommendations(
     return recs
 
 
-def materialize(session: Session, profile_id: int) -> None:
+def materialize(session: Session, profile_id: str) -> None:
     from ..study.teachback import teach_back_cells
 
     rows = answer_rows(session, profile_id)

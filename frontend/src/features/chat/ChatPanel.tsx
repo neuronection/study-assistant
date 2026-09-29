@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import {
-  AlertTriangle,
   Bot,
   Camera,
   ChevronDown,
@@ -11,6 +11,7 @@ import {
   Minimize2,
   PenTool,
   Plus,
+  Settings,
   Sigma,
   Sparkles,
   Wrench,
@@ -273,6 +274,21 @@ export function ChatPanel({
     void chat.send(parent?.markdown ?? ' ')
   }
 
+  // Uniform turn-error retry (family chat error card): re-run the failed
+  // turn's user message through the regenerate endpoint.
+  const retryLastTurn = () => {
+    if (sending) {
+      return
+    }
+    const lastUser = [...(messages.data ?? [])]
+      .reverse()
+      .find((message) => message.role === 'user')
+    if (lastUser === undefined) {
+      return
+    }
+    handleRegenerate(Number(lastUser.id))
+  }
+
   useEffect(() => {
     const list = messages.data
     if (
@@ -515,6 +531,41 @@ export function ChatPanel({
     [messages.data],
   )
 
+  // Uniform family turn-error card (ADR-0023 chat error display): renders
+  // in the transcript — independent of `sending` — with the regenerate
+  // action and, for not-configured failures, the settings deep-link.
+  const turnErrorCard =
+    stream.status === 'error' && stream.error !== null ? (
+      <div className="flex w-full max-w-[92%] animate-in fade-in flex-col gap-1 duration-200 motion-reduce:animate-none">
+        <ChatMessage
+          role="assistant"
+          status="error"
+          content={null}
+          error={{
+            code: stream.error.code,
+            message:
+              stream.error.code === 'timeout'
+                ? t('chat.timeout')
+                : stream.error.message,
+            retryable: true,
+          }}
+          actions={{ onRetry: retryLastTurn }}
+          labels={{ retry: t('chat.msg.retry') }}
+        />
+        {stream.error.code === 'ai_not_configured' ? (
+          <Link
+            to="/settings"
+            search={{ tab: 'ai', section: 'providers' }}
+            onClick={() => stream.reset()}
+            className="text-danger border-danger/60 hover:bg-danger/10 inline-flex items-center gap-1 self-start rounded-md border px-2 py-1 text-xs font-medium transition-colors"
+          >
+            <Settings className="size-3.5" aria-hidden />
+            {t('chat.openAiSettings')}
+          </Link>
+        ) : null}
+      </div>
+    ) : null
+
   const headerActions = (
     <>
       {activeSession !== null ? <BranchTreeButton sessionId={activeSession} /> : null}
@@ -666,7 +717,11 @@ export function ChatPanel({
             )
           }}
           live={
-            sending ? (
+            sending ||
+            (stream.status === 'error' && stream.error !== null) ? (
+            <>
+              {turnErrorCard}
+              {sending ? (
               <>
                 {stream.reasoning !== null ? (
                   <ChatReasoning
@@ -689,7 +744,7 @@ export function ChatPanel({
                         </>
                       }
                     />
-                    {stream.startedAt !== null ? (
+                    {stream.startedAt !== null && stream.status !== 'error' ? (
                       <ChatTurnStatus
                         variant="row"
                         label={`${t(`chat.phase.${livePhase}`)}…`}
@@ -720,12 +775,15 @@ export function ChatPanel({
                     ))}
                   </div>
                 ) : null}
-                {stream.text === null && stream.reasoning === null ? (
+                {stream.status !== 'error' &&
+                stream.text === null &&
+                stream.reasoning === null ? (
                   <ChatTurnStatus variant="card" label={t('chat.thinking')} />
                 ) : null}
               </>
-            ) : undefined
-          }
+            ) : undefined}
+            </>
+          ) : undefined}
           emptyState={
             <div className="flex animate-in fade-in flex-col items-center gap-3 pt-10 text-center duration-300 motion-reduce:animate-none">
               <span className="bg-subtle flex size-10 items-center justify-center rounded-full">
@@ -860,30 +918,7 @@ export function ChatPanel({
           }
           />
         }
-        footer={
-          stream.status === 'error' && stream.error !== null ? (
-            <div
-              role="alert"
-              className="text-danger border-danger/40 flex w-full items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-xs"
-            >
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span className="min-w-0 flex-1 break-words text-left">
-                {stream.error.code === 'timeout'
-                  ? t('chat.timeout')
-                  : `${t('chat.turnFailed')} (${stream.error.message})`}
-              </span>
-              <button
-                type="button"
-                aria-label={t('chat.dismissError')}
-                title={t('chat.dismissError')}
-                onClick={() => stream.reset()}
-                className="text-danger rounded-full p-0.5 transition-colors hover:opacity-70"
-              >
-                <X className="size-3.5" aria-hidden />
-              </button>
-            </div>
-          ) : undefined
-        }
+        footer={undefined}
       />
 
       {composerDialog === 'equation' ? (

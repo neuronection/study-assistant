@@ -174,7 +174,7 @@ def _note_detail(session: Session, note: Note) -> NoteDetail:
     )
 
 
-def _load_note(db: Session, note_id: int, profile_id: int) -> Note:
+def _load_note(db: Session, note_id: int, profile_id: str) -> Note:
     note = db.get(Note, note_id)
     if note is None or note.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="note not found")

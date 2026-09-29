@@ -11,7 +11,7 @@ config = context.config
 if not config.get_main_option("sqlalchemy.url"):
     settings = get_settings()
     settings.ensure_dirs()
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{settings.db_path}")
+    config.set_main_option("sqlalchemy.url", settings.db_url)
 
 target_metadata = Base.metadata
 

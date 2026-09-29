@@ -230,7 +230,7 @@ def test_genesis_commit_enforces_budget_cap(
     with test_client:
         stored = app.state.session_factory()
         try:
-            profile = stored.get(Profile, 1)
+            profile = stored.get(Profile, test_client.headers["X-Profile-Id"])
             assert profile is not None
             profile.preferences = {"genesis_task_cap": 1}
             stored.commit()

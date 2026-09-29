@@ -102,6 +102,18 @@ from .core import relationship as relationship
 from .core import text as text
 from .core import utcnow as utcnow
 from .core import uuid4 as uuid4
+from .identity import (
+    AuditEvent as AuditEvent,
+)
+from .identity import (
+    AuthSession as AuthSession,
+)
+from .identity import (
+    InstanceSetting as InstanceSetting,
+)
+from .identity import (
+    User as User,
+)
 from .ops import (
     AiInteraction as AiInteraction,
 )
