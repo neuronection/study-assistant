@@ -13,6 +13,14 @@
 [![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![SQLite | PostgreSQL](https://img.shields.io/badge/SQLite%20%7C%20PostgreSQL-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org/)
 
+<br>
+
+<a href="docs/SCREENSHOTS.md">
+  <img src="docs/images/visual-tour.gif" width="800" alt="Study Assistant visual tour">
+</a>
+
+<br>
+
   <p>
     <small>Part of</small><br>
     <picture>

@@ -31,6 +31,12 @@
               "file": "user/features.md",
               "title": "Feature catalog",
               "description": "Everything Study Assistant ships, as built — ingestion, courses, quizzes, flashcards, exercises, chat, AI and more."
+            },
+            {
+              "id": "visual-tour",
+              "file": "SCREENSHOTS.md",
+              "title": "Visual tour",
+              "description": "Screenshots of Study Assistant — the Today screen, courses, library, review, tutor chat and settings, generated from a seeded demo workspace."
             }
           ]
         },
@@ -225,6 +231,12 @@
               "file": "dev/testing.md",
               "title": "Testing",
               "description": "pytest with xdist and an isolated keyring, vitest, Playwright e2e, and the golden evals."
+            },
+            {
+              "id": "visual-tour",
+              "file": "dev/visual-tour.md",
+              "title": "Demo tour captures",
+              "description": "Regenerating the README GIF, screenshot gallery and tour manifest from a seeded demo instance."
             }
           ]
         },

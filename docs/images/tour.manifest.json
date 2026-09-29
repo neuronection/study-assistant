@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "templateVersion": "1.2.2",
+  "project": "Study Assistant",
+  "generatedBy": "scripts/ui-capture (Neuronection family template)",
+  "gallery": {
+    "desktop": "docs/SCREENSHOTS.md",
+    "mobile": null
+  },
+  "gif": "docs/images/visual-tour.gif",
+  "scenes": [
+    {
+      "name": "login",
+      "group": "Authentication",
+      "caption": "Sign-in overlay — cookie-session auth over the Today screen.",
+      "narration": "Sign in — your courses, notes and review schedule are waiting.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "login-desktop.png"
+      }
+    },
+    {
+      "name": "today",
+      "group": "Study loop",
+      "caption": "Today screen — the daily study dashboard.",
+      "narration": "Today greets you with what matters: due reviews, goals and where you left off.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "today-desktop.png"
+      }
+    },
+    {
+      "name": "courses",
+      "group": "Study loop",
+      "caption": "Courses — the student's course list.",
+      "narration": "Every course holds its own tree of chapters, materials, notes and practice.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "courses-desktop.png"
+      }
+    },
+    {
+      "name": "course-detail",
+      "group": "Study loop",
+      "caption": "Course detail — chapters, materials and study actions.",
+      "narration": "Open a course to see its structure at a glance.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "course-detail-desktop.png"
+      }
+    },
+    {
+      "name": "node-workspace",
+      "group": "Study loop",
+      "caption": "Node workspace — the rich-text editor with notes and materials for a chapter.",
+      "narration": "The workspace is where studying happens — notes in a rich editor, materials side by side.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "node-workspace-desktop.png"
+      }
+    },
+    {
+      "name": "library",
+      "group": "Material",
+      "caption": "Library — every ingested material, searchable.",
+      "narration": "The library keeps every ingested document searchable.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "library-desktop.png"
+      }
+    },
+    {
+      "name": "material-detail",
+      "group": "Material",
+      "caption": "Material detail — the extraction view over an ingested document.",
+      "narration": "Each material is parsed into a structured extraction you can study from.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "material-detail-desktop.png"
+      }
+    },
+    {
+      "name": "review",
+      "group": "Study loop",
+      "caption": "Review — FSRS-scheduled flashcards due today.",
+      "narration": "Spaced repetition decides what comes back and when.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "review-desktop.png"
+      }
+    },
+    {
+      "name": "review-revealed",
+      "group": "Study loop",
+      "caption": "Review — a flashcard with the answer revealed and FSRS ratings.",
+      "narration": "Reveal, rate — again, hard, good, easy — and the scheduler learns.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "review-revealed-desktop.png"
+      }
+    },
+    {
+      "name": "chat",
+      "group": "Material",
+      "caption": "Tutor chat — a demo study answer with math, a recall chart and a flashcard-deck proposal card.",
+      "narration": "Ask the tutor for flashcards — the answer arrives with the math, your recall trend and a deck proposal to approve.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "chat-desktop.png"
+      }
+    },
+    {
+      "name": "scores",
+      "group": "Progress",
+      "caption": "Scores — performance across quizzes, exercises and reviews.",
+      "narration": "Scores turn all that effort into a trend you can steer by.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "scores-desktop.png"
+      }
+    },
+    {
+      "name": "settings",
+      "group": "Progress",
+      "caption": "Settings — profiles, AI providers and preferences.",
+      "narration": "Everything is configurable — profiles, AI providers, privacy.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "settings-desktop.png"
+      }
+    },
+    {
+      "name": "study-session",
+      "group": "Study loop",
+      "caption": "Guided study session — the focused flow across review and practice.",
+      "narration": "Or let the study session drive — review, practice and recall in one guided loop.",
+      "viewports": [
+        "desktop"
+      ],
+      "files": {
+        "desktop": "study-session-desktop.png"
+      }
+    }
+  ]
+}

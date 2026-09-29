@@ -37,6 +37,7 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | [architecture.md](architecture.md) | Runtime topology, backend and frontend layout, startup, storage, security posture |
 | [development.md](development.md) | Prerequisites, bootstrap, run modes, commands, worktrees, verification gates |
 | [testing.md](testing.md) | pytest (xdist, fixtures, isolated keyring), vitest, Playwright e2e, golden evals |
+| [visual-tour.md](visual-tour.md) | Regenerating the README GIF, screenshot gallery and tour manifest from the demo instance |
 | [data-model.md](data-model.md) | SQLite schema as built: entity map, scoping, tables, derived structures, migration notes |
 | [api.md](api.md) | The `/api/v1` REST surface, profile scoping, errors, pagination, WebSocket, OpenAPI |
 | [ai.md](ai.md) | Gateway-only model access, tasks and capabilities, providers, chat engine, tools, skills, MCP |

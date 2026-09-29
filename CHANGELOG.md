@@ -11,6 +11,23 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 ### Added
+- **Demo scripted tutor + use-case tour:** the local mock provider
+  (frontend/e2e/mock_provider.py) gained prompt-keyed demo answers that
+  the real pipeline renders as KaTeX math, a Plotly chart, a flashcard
+  proposal card and grounded citations; `scripts/ui-capture/seed-demo-ai.py`
+  provisions it as the demo instance's text/embeddings model (guarded,
+  idempotent). The tour grew to 13 scenes including the node workspace,
+  study session, material detail and a revealed flashcard with FSRS
+  ratings.
+- **Demo tour capture pipeline (family demo-tour standard):** reproducible
+  screenshot gallery + `visual-tour.gif` generated from a seeded demo
+  workspace via `./scripts/capture_ui.sh` (`scripts/ui-capture/`, family
+  template v1.2.0). Cookie-session auth as the demo users, webapp-mode
+  single-origin capture, `tour.manifest.json` emitted for the website; boot
+  recipe in `docs/dev/visual-tour.md`. The capture seed also provisions the
+  local scripted tutor (`scripts/ui-capture/seed-demo-ai.py` +
+  `frontend/e2e/mock_provider.py` demo scripts) so the tutor chat demo
+  renders math, charts and flashcard proposals with no AI configured.
 - **Uniform family turn-error display**: failed turns persist a
   display-only `turn_failed` marker row (survives refresh; excluded
   from the model context), `turn_error` events carry stable codes,

@@ -38,6 +38,7 @@ tour below. For the exhaustive list of everything the app does, see the
 | [Desktop app](desktop-app.md) | The native window and how it differs from the browser |
 | [Privacy and security](privacy-and-security.md) | Where your data lives and how it is protected |
 | [Troubleshooting](troubleshooting.md) | Common problems and fixes |
+| [Visual tour](../SCREENSHOTS.md) | The screenshot gallery — every main screen, generated from the demo instance |
 
 ## The five-minute version
 

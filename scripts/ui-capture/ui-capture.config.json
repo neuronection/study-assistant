@@ -1,0 +1,67 @@
+{
+  "project": {
+    "name": "Study Assistant",
+    "intro": "Welcome to the visual tour of Study Assistant. These reproducible screenshots showcase the main pages and use cases of the application, generated against a deterministic seeded demo workspace (synthetic students, courses and material).",
+    "frontendDir": "frontend"
+  },
+  "app": {
+    "base": "http://localhost:8200",
+    "api": "http://localhost:8200/api/v1",
+    "apiPath": "/api/v1",
+    "healthUrls": ["{base}/api/v1/health", "{base}"],
+    "env": {
+      "basePort": "SA_PORT",
+      "apiPort": "SA_PORT",
+      "email": "SA_DEMO_EMAIL",
+      "password": "SA_DEMO_PASSWORD"
+    }
+  },
+  "auth": {
+    "type": "cookie-session",
+    "endpoint": "/auth/login",
+    "sessionCheck": "/auth/me",
+    "demoEmail": "ava.lindqvist@demo.study.local",
+    "demoPassword": "DemoStudy!2026"
+  },
+  "session": {
+    "windowFlag": "__SA_SCREENSHOT_CAPTURE__",
+    "apiHeaders": { "X-Profile-Id": "{profileId}" },
+    "apiEntries": [
+      { "key": "ca-profile-id", "path": "/profiles", "match": { "name": "Computer Science BSc" }, "pick": "id" },
+      { "key": "ca-course-id", "path": "/courses", "pick": "[0].id" }
+    ]
+  },
+  "pathTokens": {
+    "profileId": { "path": "/profiles", "match": { "name": "Computer Science BSc" }, "pick": "id" },
+    "courseId": { "path": "/courses", "pick": "[0].id" },
+    "nodeId": { "path": "/courses/{courseId}/tree", "pick": "[0].children[0].id" },
+    "materialId": { "path": "/materials", "pick": "[0].id" }
+  },
+  "capture": {
+    "outDir": "docs/images",
+    "gallery": "docs/SCREENSHOTS.md",
+    "fixedNow": "2026-09-15T10:00:00Z",
+    "settleMs": 800,
+    "headless": true,
+    "reducedMotion": true,
+    "viewports": {
+      "desktop": { "width": 1440, "height": 1200, "deviceScaleFactor": 1 },
+      "mobile": { "width": 390, "height": 844, "deviceScaleFactor": 2 }
+    }
+  },
+  "gallery": {
+    "title": "Study Assistant — Visual Tour",
+    "mobileTitle": "Study Assistant — Visual Tour (Mobile)",
+    "regenCommand": "./scripts/capture_ui.sh"
+  },
+  "gif": {
+    "output": "docs/images/visual-tour.gif",
+    "order": ["login", "today", "courses", "course-detail", "node-workspace", "library", "material-detail", "review", "review-revealed", "chat", "scores", "settings"],
+    "width": 800,
+    "frameSeconds": 2,
+    "holdLast": 3
+  },
+  "seed": {
+    "command": "bash scripts/ui-capture/seed-demo.sh"
+  }
+}
