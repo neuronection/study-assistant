@@ -1,6 +1,7 @@
 import de from '@/locales/de.json'
 import el from '@/locales/el.json'
 import en from '@/locales/en.json'
+import { findLanguage } from '@neuronection/assistant-ui/languages'
 
 export interface LocaleOption {
   code: string
@@ -9,11 +10,12 @@ export interface LocaleOption {
 
 export const MAX_MISSING_RATIO = 0.02
 
-export const LOCALES: LocaleOption[] = [
-  { code: 'en', name: 'English' },
-  { code: 'el', name: 'Ελληνικά' },
-  { code: 'de', name: 'Deutsch' },
-]
+/** Locale registry: which dictionaries ship. Display names come from
+ * the shared language catalog (ADR-0024) — endonyms, no local list. */
+export const LOCALES: LocaleOption[] = (['en', 'el', 'de'] as const).map((code) => ({
+  code,
+  name: findLanguage(code)?.nativeName ?? code,
+}))
 
 const catalogs: Record<string, unknown> = { en, el, de }
 

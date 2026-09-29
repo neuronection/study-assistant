@@ -18,7 +18,7 @@ import {
   type ProviderSetupErrorDetail,
   type ProviderSetupResult,
 } from '@/lib/api'
-import { COUNTRIES } from '@/lib/countries'
+import { COUNTRIES, countryDisplayName } from '@neuronection/assistant-ui/countries'
 import { useCloseFloatings } from '@/lib/ui-overlays'
 
 import { ProviderLogo } from './ProviderLogo'
@@ -111,7 +111,8 @@ function HostingToggle({
 }
 
 function CountrySelect({ country, onChange }: { country: string; onChange: (c: string) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage ?? 'en'
   return (
     <label className="block space-y-1 text-sm">
       <span className="text-muted-foreground">{t('settings.country')}</span>
@@ -124,7 +125,7 @@ function CountrySelect({ country, onChange }: { country: string; onChange: (c: s
         <option value="">{t('settings.countryPlaceholder')}</option>
         {COUNTRIES.map((entry) => (
           <option key={entry.code} value={entry.code}>
-            {entry.flag} {entry.name}
+            {entry.flag} {countryDisplayName(entry.code, locale)}
           </option>
         ))}
       </select>

@@ -41,7 +41,7 @@ class FolderOut(BaseModel):
 
 class ProviderCreate(BaseModel):
     is_local: bool | None = None
-    country: str | None = Field(default=None, max_length=80)
+    country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
     name: str = Field(min_length=1, max_length=120)
     type: str = Field(pattern="^(google|openai_compatible|anthropic)$")
     base_url: str | None = None
@@ -54,7 +54,7 @@ class ProviderUpdate(BaseModel):
     enabled: bool | None = None
     api_key: str | None = None
     is_local: bool | None = None
-    country: str | None = Field(default=None, max_length=80)
+    country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
 
 
 class RemoteModelOut(BaseModel):
