@@ -252,11 +252,11 @@ def git_release(cfg: dict, version: str, push: bool) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Neuronection family version manager (family-unified)",
-        epilog="Config: version_manager.toml (family-unified script — edit the config, not the script)",
+        description="Neuronection version manager — config-driven",
+        epilog="Config: version_manager.toml (edit the config, not the script)",
     )
     parser.add_argument("--version", action="version",
-                        version=f"version_manager {TEMPLATE_VERSION} (family template)")
+                        version=f"version_manager {TEMPLATE_VERSION}")
     git_parser = argparse.ArgumentParser(add_help=False)
     git_parser.add_argument("--git", "-g", action="store_true", help="commit the bump and create the tag")
     git_parser.add_argument("--push", "-p", action="store_true", help="push commit + tag to every remote (implies --git)")
