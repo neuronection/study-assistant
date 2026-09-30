@@ -1,5 +1,6 @@
-import shutil
+import os
 import socket
+import sqlite3
 from collections.abc import Iterator, Sequence
 from functools import lru_cache
 from pathlib import Path
@@ -92,10 +93,35 @@ def migrated_db_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
     template = tmp_path_factory.getbasetemp().parent / "migrated_template.db"
     with FileLock(f"{template}.lock"):
         if not template.exists():
+            # Build on a staging path and publish atomically: a reader must
+            # never observe the template mid-migration (that produces
+            # "no such table" copies), and the WAL is checkpointed so the
+            # published file is complete on its own.
+            staging = template.with_suffix(".building")
             alembic_cfg = Config("alembic.ini")
-            alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{template}")
+            alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{staging}")
             command.upgrade(alembic_cfg, "head")
+            with sqlite3.connect(staging) as conn:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            os.replace(staging, template)
     return template
+
+
+def _clone_template(template: Path, database: str | Path) -> None:
+    """Consistent snapshot of the migrated template (SQLite backup API).
+
+    `shutil.copyfile` copies the main file only and truncates a WAL'd
+    template — the backup API serializes page-by-page into the target.
+    """
+    src = sqlite3.connect(f"file:{template}?mode=ro", uri=True)
+    try:
+        dst = sqlite3.connect(str(database))
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+    finally:
+        src.close()
 
 
 @pytest.fixture(autouse=True)
@@ -107,7 +133,7 @@ def _fast_fresh_db_migrations(
     def fast_or_real(engine: Engine) -> None:
         database = engine.url.database
         if engine.dialect.name == "sqlite" and database and not Path(database).exists():
-            shutil.copyfile(migrated_db_template, database)
+            _clone_template(migrated_db_template, database)
             return
         real_run_migrations(engine)
 
@@ -242,7 +268,12 @@ def desktop_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
 @pytest.fixture
 def db_session(tmp_path: Path, migrated_db_template: Path) -> Iterator[Session]:
     db_path = tmp_path / "study.sqlite3"
-    shutil.copyfile(migrated_db_template, db_path)
+    # Share the app's database (same data_dir file) — clone only when no
+    # app has created it yet. Overwriting a live DB was always wrong: it
+    # only ever "worked" because shutil.copyfile left the app's WAL
+    # sidecar behind, which replayed the clobbered rows back in.
+    if not db_path.exists():
+        _clone_template(migrated_db_template, db_path)
     engine = make_engine(db_path)
     factory = make_session_factory(engine)
     with factory() as session:
