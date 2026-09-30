@@ -2,8 +2,7 @@
 r"""Neuronection family version manager — canonical, config-driven.
 
 One implementation for all family repos. All repo-specific facts live in
-``version_manager.toml`` at the repo root (family config example is
-distributed internally with the standards):
+``version_manager.toml`` at the repo root (each repo ships its own):
 
     [project]
     name = "App Name"
