@@ -36,7 +36,7 @@ export interface paths {
         head?: never;
         /**
          * Update Instance
-         * @description `auth_mode` transitions per identity-auth §4.5 (audited).
+         * @description `auth_mode` transitions per contract §4.5 (audited).
          *
          *     `password` re-verifies the caller's current password (403 on
          *     mismatch, generic). Exception per §4.5: an `open → authenticated`
@@ -6809,6 +6809,10 @@ export interface components {
             role: string;
             /** Sibling Ids */
             sibling_ids?: number[];
+            /** State */
+            state?: {
+                [key: string]: unknown;
+            } | null;
             /** Tool Calls */
             tool_calls: components["schemas"]["ToolCallOut"][];
             /** Trace */

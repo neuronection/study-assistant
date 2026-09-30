@@ -6748,6 +6748,18 @@
             "title": "Sibling Ids",
             "type": "array"
           },
+          "state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
           "tool_calls": {
             "items": {
               "$ref": "#/components/schemas/ToolCallOut"
@@ -9691,7 +9703,7 @@
           "country": {
             "anyOf": [
               {
-                "maxLength": 80,
+                "pattern": "^[A-Z]{2}$",
                 "type": "string"
               },
               {
@@ -9894,7 +9906,7 @@
           "country": {
             "anyOf": [
               {
-                "maxLength": 80,
+                "pattern": "^[A-Z]{2}$",
                 "type": "string"
               },
               {
@@ -15509,7 +15521,7 @@
     },
     "/api/v1/admin/instance": {
       "patch": {
-        "description": "`auth_mode` transitions per identity-auth \u00a74.5 (audited).\n\n`password` re-verifies the caller's current password (403 on\nmismatch, generic). Exception per \u00a74.5: an `open \u2192 authenticated`\ntransition performed by the password-less implicit owner *sets*\ncredentials for that owner (\"it becomes a normal admin user\") \u2014\nre-verification cannot apply to a row without a password, and\nrequiring one first would make the \u00a74.5 transition unreachable.\n`authenticated \u2192 open` additionally needs the explicit `auth_mode`\nin the body (the \u00a74.5 \"explicit confirmation\"), is refused while\nother user rows exist, and revokes every session. Server entrypoints\nnever run `open` (\u00a74.4).",
+        "description": "`auth_mode` transitions per contract \u00a74.5 (audited).\n\n`password` re-verifies the caller's current password (403 on\nmismatch, generic). Exception per \u00a74.5: an `open \u2192 authenticated`\ntransition performed by the password-less implicit owner *sets*\ncredentials for that owner (\"it becomes a normal admin user\") \u2014\nre-verification cannot apply to a row without a password, and\nrequiring one first would make the \u00a74.5 transition unreachable.\n`authenticated \u2192 open` additionally needs the explicit `auth_mode`\nin the body (the \u00a74.5 \"explicit confirmation\"), is refused while\nother user rows exist, and revokes every session. Server entrypoints\nnever run `open` (\u00a74.4).",
         "operationId": "update_instance_api_v1_admin_instance_patch",
         "requestBody": {
           "content": {
