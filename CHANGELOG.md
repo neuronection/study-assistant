@@ -10,6 +10,20 @@ Release history from before the public launch lives in the
 [GitHub Releases](https://github.com/neuronection/study-assistant/releases).
 
 ## [Unreleased]
+
+## [v0.12.0] - 2026-10-01
+
+**Breaking changes:** web/server deployments now enforce the login gate
+(identity class D — `users`/`auth_sessions`/`instance_settings`/
+`audit_events`, cookie sessions + CSRF), and the web datastore was renamed
+`neuro_*` → `neuronection_*` (ADR-0022 revision).
+
+**Operational notes for deploy:** existing installs migrate the datastore
+names automatically (`run-docker.sh` / `update-docker.sh` boot hook;
+manual recipe in `docker/README.md` → "Renaming `neuro_*` →
+`neuronection_*`"). Web deployments surface the login gate on upgrade —
+the first registered user bootstraps as admin (§12).
+
 ### Added
 - **Demo scripted tutor + use-case tour:** the local mock provider
   (frontend/e2e/mock_provider.py) gained prompt-keyed demo answers that
