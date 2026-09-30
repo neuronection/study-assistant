@@ -8,6 +8,7 @@ const FRONTEND = process.cwd()
 const ROOT = path.resolve(FRONTEND, '..')
 const BACKEND = path.join(ROOT, 'backend')
 const STATE_FILE = path.join(FRONTEND, 'e2e', '.state.json')
+const AUTH_STATE_FILE = path.join(FRONTEND, 'e2e', '.auth-state.json')
 
 async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -87,6 +88,83 @@ export default async function setup() {
   const baseUrl = `http://127.0.0.1:${backendPort}`
   await waitHealthy(`${baseUrl}/api/v1/health`, 60_000)
 
+  // Bootstrap the e2e service session. Since S4b enforces a session on
+  // every /api/* request, the suite's node helpers and the SPA's own
+  // queries need a real login: register on the fresh instance (user #1,
+  // admin — the instance is re-created per run so this is always new).
+  // The onboarding wizard's "fresh" state is provider/course-based, not
+  // user-count-based, so test 01's fresh-boot expectation is unaffected.
+  const register = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'e2e-runner@example.test',
+      password: 'E2E-service-not-a-real-secret',
+    }),
+  })
+  if (!register.ok) {
+    throw new Error(`e2e service registration failed: ${register.status} ${await register.text()}`)
+  }
+  const setCookies: string[] =
+    typeof register.headers.getSetCookie === 'function'
+      ? register.headers.getSetCookie()
+      : [register.headers.get('set-cookie') ?? ''].filter(Boolean)
+  const cookies = setCookies.map((raw) => {
+    const [pair, ...attrs] = raw.split(';')
+    const eq = pair.indexOf('=')
+    const parsed: {
+      name: string
+      value: string
+      domain: string
+      path: string
+      expires: number
+      httpOnly: boolean
+      secure: boolean
+      sameSite: 'Lax' | 'Strict' | 'None'
+    } = {
+      name: pair.slice(0, eq).trim(),
+      value: pair.slice(eq + 1).trim(),
+      domain: '127.0.0.1',
+      path: '/',
+      expires: -1,
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax',
+    }
+    for (const attr of attrs) {
+      const [k, v] = attr.split('=')
+      const key = k.trim().toLowerCase()
+      if (key === 'path') parsed.path = (v ?? '/').trim()
+      else if (key === 'httponly') parsed.httpOnly = true
+      else if (key === 'secure') parsed.secure = true
+      else if (key === 'samesite') {
+        const raw = (v ?? 'Lax').trim().toLowerCase()
+        parsed.sameSite = raw === 'strict' ? 'Strict' : raw === 'none' ? 'None' : 'Lax'
+      }
+    }
+    return parsed
+  })
+  const csrfToken = cookies.find((c) => c.name === 'nx_csrf')?.value ?? ''
+  const serviceCookie = cookies.map((c) => `${c.name}=${c.value}`).join('; ')
+  // Profile binding (S5): API calls must name the profile — resolve the
+  // auto-provisioned Default profile of the service account.
+  const profilesRes = await fetch(`${baseUrl}/api/v1/profiles`, {
+    headers: { Cookie: serviceCookie },
+  })
+  if (!profilesRes.ok) {
+    throw new Error(`e2e profile lookup failed: ${profilesRes.status} ${await profilesRes.text()}`)
+  }
+  const profiles = (await profilesRes.json()) as Array<{ id: string; is_default?: boolean }>
+  const profileId = (profiles.find((p) => p.is_default) ?? profiles[0])?.id ?? ''
+  if (!profileId) throw new Error('e2e service account has no profile')
+  // Browser contexts get the same session via storageState (cookies
+  // only — origins stays empty so per-context localStorage is fresh and
+  // the onboarding wizard's dismissal flag never leaks between tests).
+  writeFileSync(
+    AUTH_STATE_FILE,
+    JSON.stringify({ cookies, origins: [] }),
+  )
+
   writeFileSync(
     STATE_FILE,
     JSON.stringify({
@@ -95,6 +173,9 @@ export default async function setup() {
       mockBaseUrl: `http://127.0.0.1:${mockPort}/v1`,
       backendPid: backend.pid,
       mockPid: mock.pid,
+      serviceCookie,
+      csrfToken,
+      profileId,
     })
   )
 }

@@ -10,12 +10,27 @@ interface SeedState {
 
 const seed: SeedState = { provider: false }
 
+interface RunState {
+  baseUrl: string
+  mockBaseUrl: string
+  /** Cookie header for the e2e service session (bootstrapped in global-setup). */
+  serviceCookie: string
+  /** Double-submit CSRF token (the nx_csrf cookie value). */
+  csrfToken: string
+  /** Default profile of the service account (S5: X-Profile-Id required). */
+  profileId: string
+}
+
+function runState(): RunState {
+  return JSON.parse(readFileSync(STATE_FILE, 'utf-8')) as RunState
+}
+
 export function baseUrl(): string {
-  return (JSON.parse(readFileSync(STATE_FILE, 'utf-8')) as { baseUrl: string }).baseUrl
+  return runState().baseUrl
 }
 
 function mockBaseUrl(): string {
-  return (JSON.parse(readFileSync(STATE_FILE, 'utf-8')) as { mockBaseUrl: string }).mockBaseUrl
+  return runState().mockBaseUrl
 }
 
 export function apiUrl(route: string): string {
@@ -23,9 +38,20 @@ export function apiUrl(route: string): string {
 }
 
 export async function api<T>(verb: string, route: string, body?: unknown): Promise<T> {
+  // Session-authenticated like any real client — since S4b enforces a
+  // session on every /api/* request, bare fetches get 401. The service
+  // session is bootstrapped once in global-setup; unsafe methods also
+  // carry the double-submit CSRF token.
+  const run = runState()
+  const headers: Record<string, string> = {
+    Cookie: run.serviceCookie,
+    'X-Profile-Id': run.profileId,
+  }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (verb !== 'GET' && verb !== 'HEAD') headers['X-CSRF-Token'] = run.csrfToken
   const response = await fetch(apiUrl(route), {
     method: verb,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (!response.ok) {
