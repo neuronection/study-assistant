@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from filelock import FileLock
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, RowMapping, make_url
@@ -100,9 +101,15 @@ def migrated_pg(_loopback_sockets: None) -> Iterator[Engine]:
 
 
 def test_upgrade_reaches_head(migrated_pg: Engine) -> None:
+    """The migrated database sits at alembic's *current* head.
+
+    The expected revision is derived from the migration scripts, never
+    hardcoded — landing a new migration must not require editing tests.
+    """
+    expected = ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
     with migrated_pg.connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    assert version == "0066_profile_identity"
+    assert version == expected
 
 
 def test_material_fts_has_tsvector_column(migrated_pg: Engine) -> None:
