@@ -546,7 +546,7 @@ def load_prompt(cfg: Config, name: str, kind: str) -> str:
             return path.read_text(encoding="utf-8")
         sys.exit(
             f"Error: {kind} prompt not found at {path}.\n"
-            f"Restore the prompts/ tree (scripts/translations/prompts/)."
+            f"Copy the family prompts/ tree from dev/templates/scripts/translations/."
         )
     sys.exit(f"Error: [prompts].dir not set in translations.toml — required for --{kind}")
 

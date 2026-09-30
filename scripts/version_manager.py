@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-r"""Version manager — config-driven, single implementation.
+r"""Neuronection family version manager — canonical, config-driven.
 
-All repo-specific facts live in ``version_manager.toml`` at the repo root:
+One implementation for all family repos. All repo-specific facts live in
+``version_manager.toml`` at the repo root (family config example is
+distributed internally with the standards):
 
     [project]
     name = "App Name"
