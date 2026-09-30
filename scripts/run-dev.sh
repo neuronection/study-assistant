@@ -19,7 +19,7 @@
 #   ./scripts/run-dev.sh --web            # web/server mode (ADR-0022):
 #                                         #   SA_IDENTITY_MODE=server + PostgreSQL
 #                                         #   (docker/docker-compose.dev-db.yml,
-#                                         #   neuro_study @ 127.0.0.1:5434) — the SPA
+#                                         #   neuronection_study @ 127.0.0.1:5434) — the SPA
 #                                         #   shows the login/register UI
 #   ./scripts/run-dev.sh -h | --help      # print this help and exit
 #
@@ -80,7 +80,7 @@ if [[ "$WEB" = true ]]; then
   # Web/server mode (ADR-0022): PostgreSQL 16 + authentication. The SPA
   # shows the login/register UI; first registered user becomes admin.
   export SA_IDENTITY_MODE=server
-  : "${SA_DATABASE_URL:=postgresql+psycopg://neuro_study_owner:neuro_study_dev@127.0.0.1:5434/neuro_study}"
+  : "${SA_DATABASE_URL:=postgresql+psycopg://neuronection_study_owner:neuronection_study_dev@127.0.0.1:5434/neuronection_study}"
   export SA_DATABASE_URL
   dc_info "web mode   → identity: server, database: ${SA_DATABASE_URL%%\?*}"
   if ! dc_port_in_use 5434; then

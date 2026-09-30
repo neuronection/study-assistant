@@ -6,6 +6,40 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**auth-kit contract drift closed (2026-09-30):** the family kit's
+fresh-history 0.1.0 landed after this repo's last commit and turned the
+gate red — `StudyUserStore.create` now follows the kit's tri-state
+`is_admin` (`None` ⇒ §12 first-user-admin bootstrap, `False` ⇒ never
+admin even as user #1 — the demo principal, which the old
+`False`-as-unspecified coercion could bootstrap to admin — `True` ⇒
+forced admin), and `test_admin_instance_transition_refusal_paths`
+follows §11.3 (an `open` instance answers 404 to `/auth/register`; the
+"other user" row is created after the open→authenticated flip).
+ruff + mypy strict + full suite green again.
+
+**Datastore naming amended — `neuro_*` → `neuronection_*` (ADR-0022
+revision, 2026-09-30):** the family prefix was spelled out (ADR-0022
+clause 5 + family `guidelines/deployment.md`); study adopts it end to end —
+database `neuronection_study` (+ `neuronection_study_test` /
+`neuronection_study_demo` flavors) with roles `neuronection_study_owner` /
+`neuronection_study_app`
+across every compose flavor (`standalone`, `prod`, `dev-db`, `demo`),
+`init-db.sh` / `init-dev-db.sh`, the backup/restore scripts and dev URLs,
+the CI + release test jobs (test database *and* the bare `postgres`
+bootstrap user moved onto the family owner role), `config.py`, seeder
+guard messages (suffix `_demo`/`_test` guards unchanged — text only),
+SECURITY and docs. Existing installs migrate automatically:
+`migrate_legacy_db_names()` (`scripts/lib-docker.sh`, called by
+`run-docker.sh` / `update-docker.sh` before boot) starts `db`, probes the
+legacy bootstrap role (`neuronection_study_owner` → `neuro_study_owner` →
+`admin`) and renames legacy databases + roles — guarded (rename only when
+the old name exists and the new one is absent; both present ⇒ abort with
+instructions), idempotent, owner role through a throwaway `sa_db_migrator`
+superuser. Dev DBs stay disposable
+(`docker compose -f docker/docker-compose.dev-db.yml down -v`); the demo
+database renames by the manual recipe or re-seeds. Recipes:
+`docker/README.md` → "Renaming `neuro_*` → `neuronection_*`".
+
 **Security docs — threat model filled (family plan 16 S9, ADR-0013,
 2026-09-25):** `SECURITY.md` rewritten for the dual-mode reality — the
 "no accounts / server deployments out of scope" scope is gone — and now
@@ -21,7 +55,7 @@ guard rails and blast radius; loopback/shell-secret vs nginx-TLS
 exposure, backup/restore, demo guards). One source of truth:
 `docs/dev/security.md` links the table and drops its stale "no auth
 layer" prose; `docs/dev/architecture.md` Security posture refreshed +
-ADR-0022 adoption note (SQLite desktop / PostgreSQL 16 web, `neuro_study`
+ADR-0022 adoption note (SQLite desktop / PostgreSQL 16 web, `neuronection_study`
 owner/app roles, both-dialect migrations — adopted 2026-09-24). Known
 gaps recorded in SECURITY.md rather than papered over: rate-limit
 ceilings are code defaults (no `SA_RATELIMIT_*` env knobs), domain
@@ -93,7 +127,7 @@ CHANGELOG); backup/restore twins `pg_dump -Fc`/`pg_restore`; the
 checkpointer uses `AsyncPostgresSaver` on server mode. SQLite files
 renamed to the family convention (`study.sqlite3`,
 `checkpoints.sqlite3`). Compose stacks run `db + app + nginx + backup`
-(`neuro_study`, owner/app roles) with `scripts/backup.sh`/`restore.sh`
+(`neuronection_study`, owner/app roles) with `scripts/backup.sh`/`restore.sh`
 and a live-verified restore drill.
 
 **Identity — per-user profiles + profile binding (family plan 16 S2b/S5,

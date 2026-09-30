@@ -3,7 +3,7 @@
 
 Demo data (synthetic user content) may only be seeded by this explicit
 script, only on a `demo_mode=true` instance, only into the demo database
-(`neuro_study_demo`) / an isolated demo data dir (identity-auth §13,
+(`neuronection_study_demo`) / an isolated demo data dir (identity-auth §13,
 deployment.md). **The seeder refuses anything else** — loudly, non-zero:
 
 * target guard: a PostgreSQL target must be a database named `*_demo`;
@@ -22,7 +22,7 @@ this script only *ensures* the course-type catalog exists.
 Usage (interpreter with the app's dependencies, e.g. `.venv/bin/python`):
 
     # PostgreSQL demo database (the docker demo flavor):
-    SA_DATABASE_URL=postgresql+psycopg://user:pass@db:5432/neuro_study_demo \\
+    SA_DATABASE_URL=postgresql+psycopg://user:pass@db:5432/neuronection_study_demo \\
         python scripts/seed-demo.py
 
     # Isolated demo data dir (SQLite), first run on an empty database:
@@ -792,7 +792,7 @@ def ensure_demo_target(url: str, demo_dir: Path | None, blobs_dir: Path) -> Targ
         if not name.endswith("_demo"):
             raise Refusal(
                 f"target database {name!r} is not a demo database — expected a "
-                "name ending '_demo' (deployment.md: neuro_study_demo); refusing "
+                "name ending '_demo' (deployment.md: neuronection_study_demo); refusing "
                 "(identity-auth §13)."
             )
         return Target(url=url, demo_dir=demo_dir, blobs_dir=blobs_dir)

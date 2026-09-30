@@ -47,8 +47,8 @@ the prompt, `--all` includes backups) and `--no-bootstrap`.
 `./scripts/run-dev.sh` run is **desktop mode** — SQLite
 (`<data dir>/study.sqlite3`), no login surface, the shell/exchange flow.
 Add **`--web`** for **server mode**: `SA_IDENTITY_MODE=server` against
-PostgreSQL 16 (`docker/docker-compose.dev-db.yml` — `neuro_study` +
-`neuro_study_test` on 127.0.0.1:5434, auto-started when unreachable;
+PostgreSQL 16 (`docker/docker-compose.dev-db.yml` — `neuronection_study` +
+`neuronection_study_test` on 127.0.0.1:5434, auto-started when unreachable;
 override with `SA_DATABASE_URL`). The SPA then shows the login/register
 UI and the first registered user becomes admin. `--reset` is desktop-only
 in web mode; reset by recreating the dev-db volume.

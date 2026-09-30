@@ -22,9 +22,9 @@ jobs:
         # upgrade cleanly on both dialects (SQLite runs via pytest + alembic).
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: postgres
+          POSTGRES_USER: neuronection_study_owner
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: neuro_study
+          POSTGRES_DB: neuronection_study
         ports:
           - 5432:5432
         options: >-
@@ -72,16 +72,16 @@ jobs:
         run: uv run --directory backend alembic upgrade head
         env:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data-pg
-          SA_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/neuro_study
-      - name: Create PostgreSQL test database (neuro_study_test)
+          SA_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:postgres@localhost:5432/neuronection_study
+      - name: Create PostgreSQL test database (neuronection_study_test)
         run: >
           docker run --rm --network host pgvector/pgvector:pg16
-          psql "postgresql://postgres:postgres@localhost:5432/postgres"
-          -c "CREATE DATABASE neuro_study_test"
+          psql "postgresql://neuronection_study_owner:postgres@localhost:5432/postgres"
+          -c "CREATE DATABASE neuronection_study_test"
       - name: PostgreSQL dialect tests (postgres-gated modules)
         env:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data-pg
-          SA_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/neuro_study_test
+          SA_TEST_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:postgres@localhost:5432/neuronection_study_test
         run: |
           set +e
           uv run --directory backend pytest tests/ -k postgres

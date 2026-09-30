@@ -40,13 +40,20 @@ Both scripts are idempotent and never touch the `data` volume.
 ## Databases (ADR-0022)
 
 Web/server mode runs **PostgreSQL 16** (`pgvector/pgvector` image, database
-`neuro_study`, owner + app roles — see `docker/README.md`): the `db` service
+`neuronection_study`, owner + app roles — see `docker/README.md`): the `db` service
 holds all structured state and the app connects through `SA_DATABASE_URL`
 (or `SA_DB_NAME`/`SA_DB_USER`/`SA_DB_PASSWORD`/`SA_DB_HOST`/`SA_DB_PORT`).
 Desktop mode keeps SQLite (`<data_dir>/study.sqlite3` +
 `checkpoints.sqlite3`). Blobs, cache and backups stay under
 `SA_DATA_DIR=/data` (named `data` volume). Migrations run automatically on
 start (owner role) and are verified on both dialects in CI.
+
+Legacy installs adopt the amended ADR-0022 names automatically: both deploy
+scripts run `migrate_legacy_db_names()` (`scripts/lib-docker.sh`) before the
+stack boots — a guarded, idempotent `ALTER DATABASE` / `ALTER ROLE` rename of
+`neuro_*` databases and roles that no-ops on fresh or already-renamed
+stacks. Manual recipes (dev DBs, demo) live in `docker/README.md` →
+"Renaming `neuro_*` → `neuronection_*`".
 
 ## Environment
 
@@ -104,7 +111,7 @@ server. The desktop app remains the default local mode.
 docker compose -f docker/docker-compose.standalone.yml exec app bash
 docker compose -f docker/docker-compose.standalone.yml logs -f app
 docker compose -f docker/docker-compose.standalone.yml exec db \
-    psql -U neuro_study_owner -d neuro_study
+    psql -U neuronection_study_owner -d neuronection_study
 ```
 
 Changes to `docker/`, the ops scripts or the dev entrypoints must update this

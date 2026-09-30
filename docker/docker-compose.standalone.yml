@@ -28,15 +28,15 @@ services:
     image: pgvector/pgvector:pg16 # pgvector provisioned; embeddings migrations need it
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${SA_DB_NAME:-neuro_study}
-      POSTGRES_USER: neuro_study_owner
+      POSTGRES_DB: ${SA_DB_NAME:-neuronection_study}
+      POSTGRES_USER: neuronection_study_owner
       POSTGRES_PASSWORD: ${SA_DB_PASSWORD:?Set SA_DB_PASSWORD in docker/.env (see docker/.env.production.example)}
-      SA_DB_APP_USER: neuro_study_app
+      SA_DB_APP_USER: neuronection_study_app
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U neuro_study_owner -d ${SA_DB_NAME:-neuro_study}"]
+      test: ["CMD-SHELL", "pg_isready -U neuronection_study_owner -d ${SA_DB_NAME:-neuronection_study}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,15 +68,15 @@ services:
       # ADR-0022: web mode runs PostgreSQL 16. SA_DATABASE_URL wins over the
       # SA_DB_* credentials (keep the password URL-safe — it is embedded in
       # the URLs). Runtime connects as the least-privilege app role.
-      SA_DB_NAME: ${SA_DB_NAME:-neuro_study}
-      SA_DB_USER: neuro_study_app
+      SA_DB_NAME: ${SA_DB_NAME:-neuronection_study}
+      SA_DB_USER: neuronection_study_app
       SA_DB_PASSWORD: ${SA_DB_PASSWORD}
       SA_DB_HOST: db
       SA_DB_PORT: "5432"
-      SA_DATABASE_URL: postgresql+psycopg://neuro_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuro_study}
+      SA_DATABASE_URL: postgresql+psycopg://neuronection_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
       # Migrations run automatically on boot (entrypoint.sh) as the owner
       # role — the app process itself never runs DDL.
-      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuro_study}
+      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
     # No host ports: all traffic is routed via the nginx service.
     volumes:
       - data:/data
@@ -103,8 +103,8 @@ services:
     environment:
       PGPASSWORD: ${SA_DB_PASSWORD}
       PGHOST: db
-      POSTGRES_DB: ${SA_DB_NAME:-neuro_study}
-      POSTGRES_USER: neuro_study_owner
+      POSTGRES_DB: ${SA_DB_NAME:-neuronection_study}
+      POSTGRES_USER: neuronection_study_owner
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
       BACKUP_KEEP: ${BACKUP_KEEP:-14}
     volumes:

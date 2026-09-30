@@ -12,13 +12,13 @@ For development on the host see `docs/` and `scripts/run-dev.sh`.
 
 | File | Purpose |
 |---|---|
-| `docker-compose.dev-db.yml` | Dev infrastructure only: Postgres :5434 (`neuro_study` + `neuro_study_test`) for host-based development and tests (`scripts/run-dev.sh`). |
+| `docker-compose.dev-db.yml` | Dev infrastructure only: Postgres :5434 (`neuronection_study` + `neuronection_study_test`) for host-based development and tests (`scripts/run-dev.sh`). |
 | `docker-compose.prod.yml` | Production services (db + app + backup). Proxy handled externally or via the standalone flavor. App bound to `127.0.0.1:${SA_PORT:-8200}`. Supports `STUDY_IMAGE` to deploy pre-built GHCR images. |
 | `docker-compose.standalone.yml` | Canonical self-hosted single-host stack: **db + app + nginx + backup** (TLS-ready). |
-| `docker-compose.demo.yml` | Demo flavor (S8): isolated compose project/network, `neuro_study_demo`, synthetic-only data seeded by `scripts/seed-demo.py`, SPA badged "Demo — synthetic data". Never production. |
+| `docker-compose.demo.yml` | Demo flavor (S8): isolated compose project/network, `neuronection_study_demo`, synthetic-only data seeded by `scripts/seed-demo.py`, SPA badged "Demo — synthetic data". Never production. |
 | `Dockerfile` | Multi-stage: pnpm frontend bundle → single uvicorn image serving API + SPA. Builds with the named `auth-kit` build context (family auth-kit, an editable `../auth-kit` path dep in the root `pyproject.toml`/`uv.lock`). |
 | `entrypoint.sh` | Demo guard → waits for the DB → runs migrations (owner role) → starts uvicorn. |
-| `init-db.sh` | First-boot Postgres bootstrap: family roles + optional `neuro_study_test` (mounted into `/docker-entrypoint-initdb.d`). |
+| `init-db.sh` | First-boot Postgres bootstrap: family roles + optional `neuronection_study_test` (mounted into `/docker-entrypoint-initdb.d`). |
 | `nginx.conf` | HTTP-only reverse proxy incl. the `/ws` WebSocket endpoint (loopback / VPN). |
 | `nginx-TLS.conf` | TLS-terminating variant (certbot webroot ACME + HSTS). |
 | `.env.production.example` | Template for `docker/.env` (the one required secret: `SA_DB_PASSWORD`). |
@@ -34,28 +34,81 @@ Naming and env vars follow deployment.md:
 
 | Item | Value |
 |---|---|
-| Database | `neuro_study` (test: `neuro_study_test`) |
-| Roles | `neuro_study_owner` (owns schema, runs migrations/DDL) + `neuro_study_app` (runtime, CONNECT + DML only — never DDL) |
+| Database | `neuronection_study` (test: `neuronection_study_test`) |
+| Roles | `neuronection_study_owner` (owns schema, runs migrations/DDL) + `neuronection_study_app` (runtime, CONNECT + DML only — never DDL) |
 | Env vars | `SA_DB_NAME`, `SA_DB_USER`, `SA_DB_PASSWORD`, `SA_DATABASE_URL` (**URL wins** when set); `SA_DB_HOST`/`SA_DB_PORT` for the non-URL form |
 
 **Two-role split — what exactly happens here:** `docker/init-db.sh` creates
 both roles on first boot of the data volume and grants the app role DML-only
 privileges (plus `ALTER DEFAULT PRIVILEGES` so tables the owner creates during
 migrations are covered automatically). The app container gets **two URLs**:
-`SA_DATABASE_URL` connects as `neuro_study_app` (the runtime, least
+`SA_DATABASE_URL` connects as `neuronection_study_app` (the runtime, least
 privilege) and `SA_MIGRATIONS_DATABASE_URL` is used *only* by
-`entrypoint.sh` to run `alembic upgrade head` as `neuro_study_owner` on
+`entrypoint.sh` to run `alembic upgrade head` as `neuronection_study_owner` on
 every boot — migrations are never a manual step. Both roles share the single
 `SA_DB_PASSWORD`, so the env surface stays exactly at the law's four vars;
 the split is privilege-based, not credential-based. Consequences: the app
 container holds the owner password (it must, to auto-migrate), and the
 runtime role can never alter the schema.
 
+### Renaming `neuro_*` → `neuronection_*` (ADR-0022 amendment, 2026-09-30)
+
+The family datastore prefix was spelled out (ADR-0022 revision history):
+databases `neuronection_study` (+ `neuronection_study_test` /
+`neuronection_study_demo`), roles `neuronection_study_owner` /
+`neuronection_study_app`. **Existing installations migrate automatically**
+(guarded, one-time, no-op when the names already match):
+
+- `scripts/run-docker.sh` (first deploy) and `scripts/update-docker.sh`
+  (refresh) run `migrate_legacy_db_names()` from `scripts/lib-docker.sh`
+  before the stack boots: start the `db` service, probe-connect as the
+  legacy bootstrap role (`neuronection_study_owner` → `neuro_study_owner` →
+  `admin`), then rename a legacy `neuro_study` database (and
+  `neuro_study_test` / `neuro_study_demo` if they live in the same server)
+  plus the `neuro_study_owner` / `neuro_study_app` roles.
+- Every rename is guarded: a database or role is renamed only when the old
+  name exists **and** the new one is absent; if both exist, the script
+  aborts with instructions instead of guessing (dump/restore or drop).
+- A pending rename stops the stack first — `ALTER DATABASE` needs every
+  client off the database and `stop` also cuts the backup sidecar's
+  `pg_dump` tick — then starts `db` again for the rename; the calling
+  script brings the rest straight back up.
+- PostgreSQL refuses to rename the session's own user, so the owner role is
+  renamed through a throwaway `sa_db_migrator` superuser (created, used and
+  dropped in the same step) — you'll see it in the log.
+- **Dev databases are disposable:** the dev-db flavor
+  (`docker-compose.dev-db.yml`) is recreated by
+  `docker compose -f docker/docker-compose.dev-db.yml down -v` followed by
+  `up -d` (that is study's `reset` — `./scripts/run-dev.sh --reset` prints
+  the same command for web mode). The new bootstrap user/password only take
+  effect on a fresh volume.
+- **Demo: rename or re-seed.** The demo stack runs its own `db` volume: run
+  the manual recipe below with `-f docker/docker-compose.demo.yml` to keep
+  the seeded workspace, or wipe it — `docker compose -f
+  docker/docker-compose.demo.yml --profile reset down -v` then `up -d
+  --build` re-seeds the synthetic demo from scratch (demo data is
+  disposable).
+
+Manual equivalent (run from the repo root; `docker/.env` must hold
+`SA_DB_PASSWORD`):
+
+```bash
+docker compose --env-file docker/.env -f docker/docker-compose.standalone.yml up -d db
+C="docker compose --env-file docker/.env -f docker/docker-compose.standalone.yml exec -T db psql -d postgres -v ON_ERROR_STOP=1"
+$C -U neuro_study_owner -c 'ALTER DATABASE neuro_study RENAME TO neuronection_study;'
+$C -U neuro_study_owner -c 'ALTER DATABASE neuro_study_test RENAME TO neuronection_study_test;'   # if present
+$C -U neuro_study_owner -c 'ALTER DATABASE neuro_study_demo RENAME TO neuronection_study_demo;'   # if present
+$C -U neuro_study_owner -c 'ALTER ROLE neuro_study_app RENAME TO neuronection_study_app;'
+$C -U neuro_study_owner -c 'CREATE ROLE sa_db_migrator LOGIN SUPERUSER;'
+$C -U sa_db_migrator -c 'ALTER ROLE neuro_study_owner RENAME TO neuronection_study_owner;'
+$C -U neuronection_study_owner -c 'DROP ROLE sa_db_migrator;'
+```
+
 ## Dev infrastructure (host-based development)
 
 ```bash
 SA_DB_PASSWORD=study_dev_pw docker compose -f docker/docker-compose.dev-db.yml up -d
-# → Postgres on 127.0.0.1:5434 (neuro_study + neuro_study_test)
+# → Postgres on 127.0.0.1:5434 (neuronection_study + neuronection_study_test)
 ./scripts/run-dev.sh                                        # backend :8200 + frontend :3200
 ```
 
@@ -66,7 +119,7 @@ SA_DB_PASSWORD=study_dev_pw docker compose -f docker/docker-compose.dev-db.yml u
   (`SA_DB_CONTAINER`, `COMPOSE_PROJECT_NAME`, `SA_DB_PORT`) so git-worktree
   sessions can run side by side.
 - Host-based dev connects with `SA_DB_HOST=localhost SA_DB_PORT=5434
-  SA_DB_USER=neuro_study_owner SA_DB_PASSWORD=…` (or `SA_DATABASE_URL`).
+  SA_DB_USER=neuronection_study_owner SA_DB_PASSWORD=…` (or `SA_DATABASE_URL`).
 
 ## Self-hosting (standalone flavor)
 
@@ -155,7 +208,7 @@ curl -s -X POST http://localhost/api/v1/auth/login \
 curl -s -b /tmp/drill-jar http://localhost/api/v1/courses                 # → "Restore Drill Course"
 ```
 
-`scripts/restore.sh` prints exactly what it destroys (the `neuro_study`
+`scripts/restore.sh` prints exactly what it destroys (the `neuronection_study`
 database + the `data` volume) and refuses to run without `--yes` (or
 `FORCE=1`). It uses `pg_restore --clean --if-exists`, so restoring over a
 running instance works too.
@@ -164,7 +217,7 @@ running instance works too.
 
 The demo flavor (`docker-compose.demo.yml`) runs the real app as a public
 demo instance: isolated compose project + networks, database
-**`neuro_study_demo`** (deployment.md: `neuro_<product>_demo`, never on a
+**`neuronection_study_demo`** (deployment.md: `neuronection_<product>_demo`, never on a
 production instance), synthetic-only data, badged **"Demo — synthetic
 data"** in the SPA (the banner renders before login via the public
 `GET /api/v1/instance/config`).
@@ -208,7 +261,7 @@ SA_DB_PASSWORD=… docker compose -f docker/docker-compose.demo.yml up -d --buil
 - **Restore drill:** the demo stack is disposable — no backup service. If
   you need one anyway, `scripts/backup.sh`/`restore.sh` work against any
   running stack (see the drill above; the database there is
-  `neuro_study_demo`).
+  `neuronection_study_demo`).
 
 ## Docker CLI cheat sheet
 
@@ -220,5 +273,5 @@ docker compose -f docker/docker-compose.standalone.yml exec app \
     sh -c 'SA_DATABASE_URL="$SA_MIGRATIONS_DATABASE_URL" /app/.venv/bin/alembic upgrade head'   # migrate manually (owner role)
 docker compose -f docker/docker-compose.standalone.yml up -d --profile backup   # enable backups
 docker compose -f docker/docker-compose.standalone.yml exec -T db \
-    pg_isready -U neuro_study_owner -d neuro_study                         # DB health
+    pg_isready -U neuronection_study_owner -d neuronection_study                         # DB health
 ```

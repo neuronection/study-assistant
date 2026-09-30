@@ -56,6 +56,11 @@ echo -e "${GREEN}Refreshing images and restarting the stack...${NC}"
 if [ "$NO_PULL" -eq 0 ]; then
     refresh_images
 fi
+
+# One-time ADR-0022 DB/role rename (neuro_* → neuronection_*), before the
+# stack boots against the new names. No-op on fresh installs and re-runs.
+migrate_legacy_db_names
+
 up_stack || die "docker compose up failed — see the output above (try: ${DOCKER_COMPOSE_CMD[*]} ${COMPOSE_ENV_ARGS[*]} logs app)"
 
 if [ "$NO_WAIT" -eq 0 ]; then

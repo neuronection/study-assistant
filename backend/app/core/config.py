@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     checkpoint_ttl_days: int = Field(default=14, ge=1)
     # ADR-0022 / deployment.md — web/server runs PostgreSQL 16
     database_url: str | None = None
-    db_name: str = "neuro_study"
+    db_name: str = "neuronection_study"
     db_user: str | None = None
     db_password: str | None = None
     db_host: str = "localhost"

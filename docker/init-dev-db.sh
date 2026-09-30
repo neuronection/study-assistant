@@ -1,5 +1,5 @@
 #!/bin/bash
-# Creates the per-variant test database alongside neuro_study on first boot
+# Creates the per-variant test database alongside neuronection_study on first boot
 # (career's init-test-db.sh pattern).
 set -euo pipefail
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL

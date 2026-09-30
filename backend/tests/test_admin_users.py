@@ -446,11 +446,13 @@ def test_admin_instance_transition_refusal_paths(desktop_client: TestClient) -> 
     assert isinstance(app, FastAPI)
     factory = app.state.session_factory
     plain = AnonymousTestClient(app, headers={"X-Shell-Token": "test-shell-secret"})
+    # §11.3: an open instance mounts no self-signup — /register answers 404
+    # there and 201 once the instance is authenticated.
     assert (
         plain.post(
             "/api/v1/auth/register", json={"email": PLAIN_EMAIL, "password": PLAIN_PASSWORD}
         ).status_code
-        == 201
+        == 404
     )
     wrong = desktop_client.patch(
         "/api/v1/admin/instance",
@@ -467,6 +469,12 @@ def test_admin_instance_transition_refusal_paths(desktop_client: TestClient) -> 
     assert flipped.status_code == 200
     assert flipped.json() == {"auth_mode": "authenticated", "demo_mode": False}
     assert StudyInstanceStore(factory).get("auth_mode") == "authenticated"
+    assert (
+        plain.post(
+            "/api/v1/auth/register", json={"email": PLAIN_EMAIL, "password": PLAIN_PASSWORD}
+        ).status_code
+        == 201
+    )
     # authenticated → open is refused while other user rows exist (§4.5)
     refused = desktop_client.patch(
         "/api/v1/admin/instance",

@@ -85,6 +85,111 @@ up_stack() {
     fi
 }
 
+# One-time database/role rename for the ADR-0022 amendment (2026-09-30):
+# legacy `neuro_study*` names → `neuronection_study*` (database
+# neuronection_study (+ _test / _demo), roles neuronection_study_owner /
+# neuronection_study_app). Existing volumes ignore POSTGRES_DB after first
+# boot, so the db service is started first and the names are inspected
+# inside it. PostgreSQL refuses to rename the session's own user, so the
+# owner role is renamed through a throwaway superuser, and it refuses to
+# rename a database other clients are connected to, so a pending rename
+# stops the stack first (the caller brings it straight back up). No-op on
+# fresh installs and on re-runs (nothing legacy left to rename); a
+# connected bootstrap role is required, else we fail loud with the manual
+# recipe (docker/README.md → "Renaming neuro_* → neuronection_*").
+migrate_legacy_db_names() {
+    local PAIR ROLE OLD_DB NEW_DB OLD_EXISTS NEW_EXISTS CONNECTED="" PENDING=""
+    local -a PSQL
+    run_compose up -d db >/dev/null \
+        || die "Could not start postgres to check legacy database names."
+    for _ in $(seq 1 30); do
+        for ROLE in neuronection_study_owner neuro_study_owner admin; do
+            if run_compose exec -T db psql -U "$ROLE" -d postgres -tAc "select 1" >/dev/null 2>&1; then
+                CONNECTED="$ROLE"
+                break 2
+            fi
+        done
+        sleep 2
+    done
+    [ -z "$CONNECTED" ] && die "Cannot connect to postgres to check legacy database names — see docker/README.md → \"Renaming neuro_* → neuronection_*\"."
+    PSQL=(exec -T db psql -U "$CONNECTED" -d postgres -v ON_ERROR_STOP=1)
+
+    # Inspect before mutating: rename only when the legacy name exists and
+    # the new one is absent — a stack that already carries both is a manual
+    # call — and remember that something is pending, because ALTER DATABASE
+    # cannot run while clients hold a connection to the old database.
+    for PAIR in \
+        "neuro_study:neuronection_study" \
+        "neuro_study_test:neuronection_study_test" \
+        "neuro_study_demo:neuronection_study_demo"; do
+        OLD_DB="${PAIR%%:*}"
+        NEW_DB="${PAIR##*:}"
+        OLD_EXISTS="$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_database where datname='$OLD_DB'")"
+        [ "$OLD_EXISTS" = "1" ] || continue
+        NEW_EXISTS="$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_database where datname='$NEW_DB'")"
+        [ "$NEW_EXISTS" = "1" ] && die "Both ${OLD_DB} and ${NEW_DB} exist — resolve manually (dump the old one, restore into ${NEW_DB}) before re-running."
+        PENDING=1
+    done
+    if [ "$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname='neuro_study_app'")" = "1" ]; then
+        [ "$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname='neuronection_study_app'")" = "1" ] \
+            && die "Both neuro_study_app and neuronection_study_app exist — resolve manually before re-running."
+        PENDING=1
+    fi
+    if [ "$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname='neuro_study_owner'")" = "1" ]; then
+        [ "$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname='neuronection_study_owner'")" = "1" ] \
+            && die "Both neuro_study_owner and neuronection_study_owner exist — resolve manually before re-running."
+        PENDING=1
+    fi
+
+    if [ -n "$PENDING" ]; then
+        run_compose stop >/dev/null 2>&1 || true
+        run_compose up -d db >/dev/null \
+            || die "Could not restart postgres for the legacy rename."
+        for _ in $(seq 1 30); do
+            run_compose exec -T db psql -U "$CONNECTED" -d postgres -tAc "select 1" >/dev/null 2>&1 && break
+            sleep 2
+        done
+        run_compose exec -T db psql -U "$CONNECTED" -d postgres -tAc "select 1" >/dev/null 2>&1 \
+            || die "postgres did not come back for the legacy rename — see docker/README.md → \"Renaming neuro_* → neuronection_*\"."
+    fi
+
+    for PAIR in \
+        "neuro_study:neuronection_study" \
+        "neuro_study_test:neuronection_study_test" \
+        "neuro_study_demo:neuronection_study_demo"; do
+        OLD_DB="${PAIR%%:*}"
+        NEW_DB="${PAIR##*:}"
+        OLD_EXISTS="$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_database where datname='$OLD_DB'")"
+        [ "$OLD_EXISTS" = "1" ] || continue
+        run_compose "${PSQL[@]}" -c "ALTER DATABASE \"${OLD_DB}\" RENAME TO \"${NEW_DB}\";" >/dev/null \
+            || die "Could not rename database ${OLD_DB} → ${NEW_DB} — see docker/README.md → \"Renaming neuro_* → neuronection_*\"."
+        echo -e "${GREEN}Renamed database ${OLD_DB} → ${NEW_DB}${NC}"
+    done
+
+    if [ "$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname='neuro_study_app'")" = "1" ]; then
+        run_compose "${PSQL[@]}" -c "ALTER ROLE neuro_study_app RENAME TO neuronection_study_app;" >/dev/null \
+            || die "Could not rename role neuro_study_app — see docker/README.md → \"Renaming neuro_* → neuronection_*\"."
+        echo -e "${GREEN}Renamed role neuro_study_app → neuronection_study_app${NC}"
+    fi
+
+    # The owner role goes last: once renamed, the bootstrap session user we
+    # connected as may no longer exist.
+    if [ "$(run_compose "${PSQL[@]}" -tAc "select 1 from pg_roles where rolname='neuro_study_owner'")" = "1" ]; then
+        run_compose "${PSQL[@]}" -c "DROP ROLE IF EXISTS sa_db_migrator;" >/dev/null
+        run_compose "${PSQL[@]}" -c "CREATE ROLE sa_db_migrator LOGIN SUPERUSER;" >/dev/null \
+            || die "Could not create the throwaway sa_db_migrator role — see docker/README.md → \"Renaming neuro_* → neuronection_*\"."
+        run_compose exec -T db \
+            psql -U sa_db_migrator -d postgres -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE neuro_study_owner RENAME TO neuronection_study_owner;" >/dev/null \
+            || die "Could not rename role neuro_study_owner — see docker/README.md → \"Renaming neuro_* → neuronection_*\"."
+        run_compose exec -T db \
+            psql -U neuronection_study_owner -d postgres -v ON_ERROR_STOP=1 \
+            -c "DROP ROLE sa_db_migrator;" >/dev/null
+        echo -e "${GREEN}Renamed role neuro_study_owner → neuronection_study_owner${NC}"
+    fi
+    run_compose "${PSQL[@]}" -c "DROP ROLE IF EXISTS sa_db_migrator;" >/dev/null 2>&1 || true
+}
+
 # Wait until the app reports healthy via the nginx entrypoint.
 wait_for_backend_healthy() {
     echo -e "${GREEN}Waiting for the app to become healthy...${NC}"

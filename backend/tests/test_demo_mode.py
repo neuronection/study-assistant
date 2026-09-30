@@ -80,7 +80,7 @@ def db_counts(data_dir: Path) -> dict[str, int]:
 
 def test_seeder_refuses_non_demo_targets(tmp_path: Path) -> None:
     postgres = run_seeder(
-        "--database-url", "postgresql+psycopg://u:p@localhost:5432/neuro_study"
+        "--database-url", "postgresql+psycopg://u:p@localhost:5432/neuronection_study"
     )
     assert postgres.returncode != 0
     assert postgres.returncode == 2

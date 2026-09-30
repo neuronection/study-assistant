@@ -86,7 +86,7 @@ Model output is **untrusted input**. The rules:
 - The data directory (`~/.local/share/StudyAssistant/` by default) holds the
   SQLite database (`study.sqlite3`, desktop/tests), blobs, cache, thumbnails
   and backups; `SA_DATA_DIR` and the working-directory setting relocate it.
-  Web mode runs PostgreSQL 16 (`neuro_study`) instead — see ADR-0022 in
+  Web mode runs PostgreSQL 16 (`neuronection_study`) instead — see ADR-0022 in
   [architecture.md](architecture.md).
 
 ## Network surface & access roots (family plan 16, S1; ADR-0013/0022)

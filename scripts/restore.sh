@@ -41,8 +41,8 @@ for env_file in "$ROOT/docker/.env" "$ROOT/.env"; do
   fi
 done
 
-DB_NAME="${SA_DB_NAME:-neuro_study}"
-DB_OWNER="${SA_DB_OWNER:-neuro_study_owner}"
+DB_NAME="${SA_DB_NAME:-neuronection_study}"
+DB_OWNER="${SA_DB_OWNER:-neuronection_study_owner}"
 DB_PASSWORD="${SA_DB_PASSWORD:?Set SA_DB_PASSWORD (env or docker/.env)}"
 PROJECT="${SA_COMPOSE_PROJECT:-study-assistant}"
 COMPOSE_FILE="${SA_COMPOSE_FILE:-docker/docker-compose.standalone.yml}"

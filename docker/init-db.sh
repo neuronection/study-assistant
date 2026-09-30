@@ -3,20 +3,20 @@
 # /docker-entrypoint-initdb.d, on first boot of an empty data volume).
 #
 # Creates the family roles from deployment.md / ADR-0022:
-#   neuro_study_owner — POSTGRES_USER: owns the schema and runs migrations (DDL).
-#   neuro_study_app  — runtime role: CONNECT + DML only, never DDL.
+#   neuronection_study_owner — POSTGRES_USER: owns the schema and runs migrations (DDL).
+#   neuronection_study_app  — runtime role: CONNECT + DML only, never DDL.
 #
 # Both roles share one password (SA_DB_PASSWORD / POSTGRES_PASSWORD) so the
 # env surface stays at the law's SA_DB_NAME / SA_DB_USER / SA_DB_PASSWORD /
 # SA_DATABASE_URL; the split is privilege-based, not credential-based.
 #
 # Optionally creates the companion test database (POSTGRES_TEST_DB) next to
-# the main DB — the dev-db flavor sets it to neuro_study_test.
+# the main DB — the dev-db flavor sets it to neuronection_study_test.
 set -e
 
-DB="${POSTGRES_DB:-neuro_study}"
-OWNER="${POSTGRES_USER:-neuro_study_owner}"
-APP_USER="${SA_DB_APP_USER:-neuro_study_app}"
+DB="${POSTGRES_DB:-neuronection_study}"
+OWNER="${POSTGRES_USER:-neuronection_study_owner}"
+APP_USER="${SA_DB_APP_USER:-neuronection_study_app}"
 APP_PASSWORD="${SA_DB_PASSWORD:-${POSTGRES_PASSWORD:-}}"
 TEST_DB="${POSTGRES_TEST_DB:-}"
 

@@ -149,8 +149,8 @@ auth-kit (plan 16, ADR-0013) mounted at `/api/v1/auth/*`, `/api/v1/me/*`,
 Study adopted the family datastore standard: **SQLite (`study.sqlite3`) for
 desktop/tests, PostgreSQL 16 for web/server**, one dialect-aware schema with
 Alembic migrations verified on both dialects (raw-DDL twins where needed).
-The web database is `neuro_study` (family `neuro_*` naming) with the two-role
-split — `neuro_study_owner` for migrations, `neuro_study_app` as the
+The web database is `neuronection_study` (family `neuronection_*` naming) with the two-role
+split — `neuronection_study_owner` for migrations, `neuronection_study_app` as the
 least-privilege runtime role — backed up via `pg_dump -Fc` (compose backup
 sidecar + `scripts/backup.sh`/`scripts/restore.sh`, restore drill in
 `docker/README.md`). ADR-0006's "SQLite everywhere" clauses are superseded;

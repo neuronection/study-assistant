@@ -1,8 +1,8 @@
 # Study Assistant — DEMO flavor: isolated, egress-blocked stack with
 # synthetic-only data (identity-auth §13 / deployment.md). NEVER production.
 #
-# The real app on a demo instance: PostgreSQL 16 database `neuro_study_demo`
-# (naming law: `neuro_<product>_demo`), the SPA badged "Demo — synthetic
+# The real app on a demo instance: PostgreSQL 16 database `neuronection_study_demo`
+# (naming law: `neuronection_<product>_demo`), the SPA badged "Demo — synthetic
 # data" (the demo banner reads the public /api/v1/instance/config), the
 # credential-free `demo` principal enabled, registration disabled. Demo data
 # is seeded ONLY by the one-shot `demo-seed` service running
@@ -41,15 +41,15 @@ services:
     image: pgvector/pgvector:pg16 # pgvector provisioned; embeddings migrations need it
     restart: unless-stopped
     environment:
-      POSTGRES_DB: neuro_study_demo
-      POSTGRES_USER: neuro_study_owner
+      POSTGRES_DB: neuronection_study_demo
+      POSTGRES_USER: neuronection_study_owner
       POSTGRES_PASSWORD: ${SA_DB_PASSWORD:?Set SA_DB_PASSWORD for the demo stack (docker/.env or the shell)}
-      SA_DB_APP_USER: neuro_study_app
+      SA_DB_APP_USER: neuronection_study_app
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U neuro_study_owner -d neuro_study_demo"]
+      test: ["CMD-SHELL", "pg_isready -U neuronection_study_owner -d neuronection_study_demo"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -83,17 +83,17 @@ services:
       SA_APP_ENV: demo
       SA_DEMO_MODE: "true"
       SA_REGISTRATION_ENABLED: "false"
-      # ADR-0022: the demo database is neuro_<product>_demo — never a
+      # ADR-0022: the demo database is neuronection_<product>_demo — never a
       # production database. SA_DATABASE_URL wins over the SA_DB_* form.
-      SA_DB_NAME: neuro_study_demo
-      SA_DB_USER: neuro_study_app
+      SA_DB_NAME: neuronection_study_demo
+      SA_DB_USER: neuronection_study_app
       SA_DB_PASSWORD: ${SA_DB_PASSWORD}
       SA_DB_HOST: db
       SA_DB_PORT: "5432"
-      SA_DATABASE_URL: postgresql+psycopg://neuro_study_app:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+      SA_DATABASE_URL: postgresql+psycopg://neuronection_study_app:${SA_DB_PASSWORD}@db:5432/neuronection_study_demo
       # Migrations run automatically on boot (entrypoint.sh) as the owner
       # role — the app process itself never runs DDL.
-      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/neuronection_study_demo
     # No host ports: only the gateway is reachable (via `edge`).
     volumes:
       - data:/data
@@ -111,7 +111,7 @@ services:
     # One-shot synthetic seeding (belt-and-suspenders: the app does NOT
     # auto-seed). scripts/seed-demo.py is bind-mounted because the image
     # ships only the backend — the script's guard rails accept exactly this
-    # target: database `neuro_study_demo` on a demo_mode=true instance, or
+    # target: database `neuronection_study_demo` on a demo_mode=true instance, or
     # `--init-demo` on an empty demo database. Connects as the owner role so
     # it can bootstrap the schema when it runs before the app ever has.
     image: ${STUDY_IMAGE:-study-assistant:local}
@@ -121,7 +121,7 @@ services:
         condition: service_healthy
     environment:
       SA_DATA_DIR: /data
-      SA_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+      SA_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/neuronection_study_demo
     volumes:
       - data:/data
       - ../scripts/seed-demo.py:/app/scripts/seed-demo.py:ro
@@ -147,7 +147,7 @@ services:
         condition: service_completed_successfully
     environment:
       SA_DATA_DIR: /data
-      SA_DATABASE_URL: postgresql+psycopg://neuro_study_owner:${SA_DB_PASSWORD}@db:5432/neuro_study_demo
+      SA_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/neuronection_study_demo
     volumes:
       - data:/data
       - ../scripts/seed-demo.py:/app/scripts/seed-demo.py:ro

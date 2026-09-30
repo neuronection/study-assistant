@@ -5,7 +5,7 @@
 # Reads docker/.env (or environment) for SA_DB_* settings. Output:
 #   <output-dir>/study-assistant-YYYYMMDD-HHMMSS.tar.gz
 #     manifest.json   — what this archive contains
-#     database.dump   — pg_dump custom format (neuro_study)
+#     database.dump   — pg_dump custom format (neuronection_study)
 #     data.tar.gz     — the `data` volume (SA_DATA_DIR=/data)
 set -euo pipefail
 
@@ -25,8 +25,8 @@ for env_file in "$ROOT/docker/.env" "$ROOT/.env"; do
   fi
 done
 
-DB_NAME="${SA_DB_NAME:-neuro_study}"
-DB_OWNER="${SA_DB_OWNER:-neuro_study_owner}"
+DB_NAME="${SA_DB_NAME:-neuronection_study}"
+DB_OWNER="${SA_DB_OWNER:-neuronection_study_owner}"
 DB_PASSWORD="${SA_DB_PASSWORD:?Set SA_DB_PASSWORD (env or docker/.env)}"
 PROJECT="${SA_COMPOSE_PROJECT:-study-assistant}"
 COMPOSE_FILE="${SA_COMPOSE_FILE:-docker/docker-compose.standalone.yml}"

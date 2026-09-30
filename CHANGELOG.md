@@ -105,6 +105,29 @@ Release history from before the public launch lives in the
   and the login UI follow in the same rollout.
 
 ### Changed
+- **Family datastore naming amended (ADR-0022 revision): `neuro_` →
+  `neuronection_` prefix.** The truncated prefix read as meaningless to
+  users — "neuro" suggests neurology, not the Neuronection family — and
+  self-hosters see these names in psql, backups and error messages. The
+  pattern shape is unchanged: study's database is `neuronection_study`
+  (+ `neuronection_study_test` / `neuronection_study_demo`) with roles
+  `neuronection_study_owner` / `neuronection_study_app`. Family law
+  (ADR-0022 clause 5 + `guidelines/deployment.md`) was amended first;
+  this repo adopts it across compose defaults (`standalone` / `prod` /
+  `dev-db` / `demo`), `init-db.sh` / `init-dev-db.sh`, the
+  backup/restore scripts, CI + release test jobs (test database *and*
+  the bare `postgres` bootstrap user moved onto the family owner role),
+  `config.py`, seeder messages, SECURITY and docs. **Existing installs
+  migrate automatically**: `run-docker.sh` / `update-docker.sh` gain
+  `migrate_legacy_db_names()` (`scripts/lib-docker.sh`) — a guarded,
+  idempotent `ALTER DATABASE` / `ALTER ROLE` rename run before the stack
+  boots; PostgreSQL can't rename the session's own user, so the owner
+  role goes through a throwaway `sa_db_migrator` superuser. Fresh or
+  already-renamed stacks no-op; an old+new pair that both exist aborts
+  with instructions. Dev DBs are disposable (recreate with
+  `docker compose -f docker/docker-compose.dev-db.yml down -v`), and the
+  demo database is renamed by the manual recipe or re-seeded — recipes
+  in `docker/README.md` → "Renaming `neuro_*` → `neuronection_*`".
 - **PostgreSQL 16 for web/server mode (ADR-0022 rollout, S3 — deployment
   breaking):** one dialect-aware schema family-wide. The migration chain
   (incl. the raw-DDL migrations 0002/0019/0020/0026/0045/0053/0057/
@@ -157,6 +180,15 @@ Release history from before the public launch lives in the
   points at `docs/user/local-ai.md`.
 
 ### Fixed
+- **auth-kit contract drift closed (identity kit refresh):** the
+  `UserStore.create` adapter follows the kit's tri-state `is_admin`
+  (`None` = §12 first-user-admin bootstrap; `False` = never admin — the
+  demo principal stays a non-admin even as user #1, which the old
+  `False`-as-unspecified coercion could bootstrap to admin; `True` =
+  forced admin), and the instance-transition contract test follows §11.3:
+  an `open` instance answers 404 to `/auth/register`, so the second
+  account is now created after the open→authenticated flip. Green again
+  under mypy strict and the full suite against auth-kit 0.1.0.
 - **Blob loads over browser navigations** (PDF iframe documents,
   `<img>` subresources): both header gates (`X-Profile-Id` web-mode
   400, `X-Shell-Token` desktop 403) can never be satisfied by a

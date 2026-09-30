@@ -84,7 +84,7 @@ class StudyUserStore:
         email: str,
         password_hash: str | None,
         full_name: str = "",
-        is_admin: bool = False,
+        is_admin: bool | None = None,
         user_id: str | None = None,
     ) -> UserRecord:
         normalized = email.lower().strip()
@@ -92,12 +92,14 @@ class StudyUserStore:
             if session.scalar(select(UserRow.id).where(UserRow.email == normalized)):
                 raise EmailAlreadyExists(normalized)
             first = session.scalar(select(func.count()).select_from(UserRow)) or 0
+            # is_admin: None lets §12's first-user-admin bootstrap apply; an
+            # explicit False (demo principal, §13) is honored even as user #1.
             row = UserRow(
                 id=user_id if user_id is not None else str(uuid.uuid4()),
                 email=normalized,
                 password_hash=password_hash,
                 full_name=full_name,
-                is_admin=is_admin or int(first) == 0,
+                is_admin=int(first) == 0 if is_admin is None else is_admin,
             )
             session.add(row)
             session.flush()  # the profile FK needs the user row visible
