@@ -6,6 +6,11 @@ license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14",
+    # Family auth kit — resolved by [tool.uv.sources] below to the pinned
+    # git SHA (never PyPI while the org is pending — and a bare name there
+    # would be squat-able). Direct URLs can't live in core metadata, so
+    # the pin is the uv source's `rev`. Phase 0.8 (PyPI) switches it to
+    # the published `neuronection-auth-kit==X.Y.Z`.
     "neuronection-auth-kit",
     "fastapi>=0.115",
     "httpx>=0.28",
