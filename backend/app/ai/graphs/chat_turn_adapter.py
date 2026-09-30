@@ -22,6 +22,7 @@ AG-UI mapping on top of it are unchanged. `thread_id` is the chat session id.
 """
 
 import asyncio
+import threading
 import time
 from typing import Any
 
@@ -55,12 +56,15 @@ class _DeltaPump:
     legitimate tail the same way (CI flake: `test_stream_deltas_are_coalesced`
     lost the answer's last chunk), so tool-free rounds only flush and stay
     open. The adapter reopens a closed pump when a chunk from a later
-    `langgraph_step` arrives (next round / next node execution).
+    `langgraph_step` arrives (next round / next node execution). All mutations
+    run under an RLock: `close_round` runs on the node's worker thread while
+    chunks arrive on the event loop.
     """
 
     def __init__(self, emit: Emitter, started: float) -> None:
         self._emit = emit
         self._started = started
+        self._lock = threading.RLock()
         self._text_buf: list[str] = []
         self._reason_buf: list[str] = []
         self._pending_line = ""
@@ -72,59 +76,65 @@ class _DeltaPump:
         return int((time.monotonic() - self._started) * 1000)
 
     def on_text(self, text: str) -> None:
-        if self.closed:
-            return
-        self._pending_line += text
-        while "\n" in self._pending_line:
-            line, self._pending_line = self._pending_line.split("\n", 1)
-            if not TOOL_LINE_RE.match(line):
-                self._text_buf.append(line + "\n")
-        self._maybe_flush()
+        with self._lock:
+            if self.closed:
+                return
+            self._pending_line += text
+            while "\n" in self._pending_line:
+                line, self._pending_line = self._pending_line.split("\n", 1)
+                if not TOOL_LINE_RE.match(line):
+                    self._text_buf.append(line + "\n")
+            self._maybe_flush()
 
     def on_reasoning(self, text: str) -> None:
-        if self.closed:
-            return
-        self._reason_buf.append(text)
-        self._maybe_flush()
+        with self._lock:
+            if self.closed:
+                return
+            self._reason_buf.append(text)
+            self._maybe_flush()
 
     def close_round(self, had_tools: bool) -> None:
-        self.flush_round_end()
-        self.closed = had_tools
+        with self._lock:
+            self.flush_round_end()
+            self.closed = had_tools
 
     def reopen(self) -> None:
-        self.closed = False
+        with self._lock:
+            self.closed = False
 
     def _maybe_flush(self) -> None:
         if time.monotonic() - self._last_flush >= STREAM_DELTA_INTERVAL:
             self.flush()
 
     def flush(self) -> None:
-        if self._reason_buf:
-            self._emit(
-                {
-                    "type": "stream_delta",
-                    "delta": "".join(self._reason_buf),
-                    "kind": "reasoning",
-                    "elapsed_ms": self._elapsed_ms(),
-                }
-            )
-            self._reason_buf.clear()
-        if self._text_buf:
-            self._emit(
-                {
-                    "type": "stream_delta",
-                    "delta": "".join(self._text_buf),
-                    "elapsed_ms": self._elapsed_ms(),
-                }
-            )
-            self._text_buf.clear()
-        self._last_flush = time.monotonic()
+        with self._lock:
+            if self._reason_buf:
+                self._emit(
+                    {
+                        "type": "stream_delta",
+                        "delta": "".join(self._reason_buf),
+                        "kind": "reasoning",
+                        "elapsed_ms": self._elapsed_ms(),
+                    }
+                )
+                self._reason_buf.clear()
+            if self._text_buf:
+                self._emit(
+                    {
+                        "type": "stream_delta",
+                        "delta": "".join(self._text_buf),
+                        "elapsed_ms": self._elapsed_ms(),
+                    }
+                )
+                self._text_buf.clear()
+            self._last_flush = time.monotonic()
 
     def flush_round_end(self) -> None:
-        if self._pending_line and not TOOL_LINE_RE.match(self._pending_line):
-            self._text_buf.append(self._pending_line)
-        self._pending_line = ""
-        self.flush()
+        with self._lock:
+            if self._pending_line and not TOOL_LINE_RE.match(self._pending_line):
+                self._text_buf.append(self._pending_line)
+            self._pending_line = ""
+            self.flush()
 
 
 class ChatTurnEngine:
@@ -195,7 +205,7 @@ class ChatTurnEngine:
                             thread_id=str(chat_session.id),
                         )
         finally:
-            pump.flush()
+            pump.flush_round_end()
         for event in final_events:
             emit(event)
         if message_id is None:

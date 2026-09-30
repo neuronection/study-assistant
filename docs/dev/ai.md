@@ -741,7 +741,10 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   one-file change confined to the adapter): `messages` tuples
   (`AIMessageChunk`, metadata) map onto throttled `stream_delta` WS events
    (tool lines filtered at round boundaries), text and reasoning in
-   exact arrival order; `updates` flush the pending line at round boundaries
+   exact arrival order — the pump's buffers are shared across the node
+   worker thread and the event loop, so all mutations run under an RLock
+   and teardown flushes the pending line (2026-09-30 tail-loss fix);
+   `updates` flush the pending line at round boundaries
    and carry the `finalize` node's persisted event payload (emitted after the
    stream ends so deltas always precede it on the wire) plus the reserved
    `__interrupt__` mapping point for `interrupt()`-based proposals (today's

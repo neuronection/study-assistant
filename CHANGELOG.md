@@ -180,6 +180,15 @@ Release history from before the public launch lives in the
   points at `docs/user/local-ai.md`.
 
 ### Fixed
+- **Chat streaming no longer drops an answer's tail chunk** (the
+  `test_stream_deltas_are_coalesced` CI flake): LangGraph's merged
+  `updates`/`messages` queue can deliver a round's final token chunk
+  after the last `updates` tuple, and the chat engine's teardown then
+  flushed only the assembled buffer, silently dropping the pending
+  tail. Teardown now flushes the pending line at round-end semantics,
+  and the delta pump's buffers — shared between the node worker thread
+  and the event loop — are serialized under a lock (the unlocked
+  read-then-clear windows dropped text under thread interleaving).
 - **auth-kit contract drift closed (identity kit refresh):** the
   `UserStore.create` adapter follows the kit's tri-state `is_admin`
   (`None` = §12 first-user-admin bootstrap; `False` = never admin — the
