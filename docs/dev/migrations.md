@@ -1,11 +1,15 @@
 # Migrations
 
 Study Assistant's schema is SQLAlchemy 2 models managed by Alembic on a single
-linear revision chain. The app runs `alembic upgrade head` on startup, and
-every migration must have a tested downgrade. This page is the working
-discipline; the tables themselves are documented in
-[data-model.md](data-model.md), whose "Migration notes" section records each
-revision.
+linear revision chain. **Migrations are an entrypoint/ops responsibility
+(ADR-0028, plan 20 Phase 4) — `create_app` never runs them**: the desktop
+entrypoint (`app/local.py:run_migrations`, via `python -m studyassistant`),
+the docker one-shot `migrate` service (`entrypoint.sh migrate`, owner role),
+`scripts/run-dev.sh`, and the test fixtures each apply
+`alembic upgrade head` explicitly. Every migration must have a tested
+downgrade. This page is the working discipline; the tables themselves are
+documented in [data-model.md](data-model.md), whose "Migration notes" section
+records each revision.
 
 ## Revision scheme
 

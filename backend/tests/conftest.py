@@ -132,19 +132,28 @@ def _clone_template(template: Path, database: str | Path) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _fast_fresh_db_migrations(
-    migrated_db_template: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    real_run_migrations = app_main._run_migrations
+def _fresh_test_db(migrated_db_template: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every app gets a migrated database (D6: `create_app` never migrates).
 
-    def fast_or_real(engine: Engine) -> None:
+    SQLite: clone the migrated template when the DB file is missing (the
+    old fast path). Other dialects: migrate the engine's database with a
+    connection-scoped `alembic upgrade head` — parity with the pre-split
+    behavior (PG tests that pre-migrate scratch DBs see a no-op).
+    """
+    real_make_engine = app_main.make_engine  # type: ignore[attr-defined]
+
+    def make_engine_migrated(url: str) -> Engine:
+        engine = real_make_engine(url)
         database = engine.url.database
         if engine.dialect.name == "sqlite" and database and not Path(database).exists():
-            _clone_template(migrated_db_template, database)
-            return
-        real_run_migrations(engine)
+            _clone_template(migrated_db_template, Path(database))
+        elif engine.dialect.name != "sqlite":
+            from app.local import run_migrations
 
-    monkeypatch.setattr(app_main, "_run_migrations", fast_or_real)
+            run_migrations(engine)
+        return engine
+
+    monkeypatch.setattr(app_main, "make_engine", make_engine_migrated)
 
 
 @lru_cache(maxsize=1)

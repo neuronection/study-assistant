@@ -111,10 +111,33 @@ def test_data_dir_untouched_without_legacy(
 def test_unrelated_env_file_keys_are_ignored(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (tmp_path / ".env").write_text(
+    env_file = tmp_path / ".env"
+    env_file.write_text(
         "TRANSLATION_API_KEY=sk-test\nTRANSLATION_MODEL=gpt-test\nSA_PORT=9124\n",
         encoding="utf-8",
     )
-    monkeypatch.chdir(tmp_path)
-    settings = Settings()
+    settings = Settings(_env_file=str(env_file))
     assert settings.port == 9124
+
+
+def test_env_file_resolution_explicit_dev_and_production(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR-0028 §4 resolution: explicit `SA_ENV_FILE` always wins; the
+    walk-up only applies in dev/test (S9 — a baked-in `.env` must never
+    downgrade a production boot)."""
+    from app.core.config import _resolve_env_file
+
+    env_file = tmp_path / "deployment.env"
+    env_file.write_text("SA_PORT=9125\n", encoding="utf-8")
+
+    monkeypatch.delenv("SA_ENV_FILE", raising=False)
+    monkeypatch.setenv("SA_APP_ENV", "production")
+    assert _resolve_env_file() is None, "no silent .env in production"
+
+    monkeypatch.setenv("SA_ENV_FILE", str(env_file))
+    assert _resolve_env_file() == str(env_file), "explicit file is deliberate"
+
+    monkeypatch.delenv("SA_ENV_FILE", raising=False)
+    monkeypatch.setenv("SA_APP_ENV", "development")
+    assert _resolve_env_file() is not None, "dev walk-up still finds the checkout .env"

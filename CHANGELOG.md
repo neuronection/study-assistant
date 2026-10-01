@@ -12,6 +12,32 @@ Release history from before the public launch lives in the
 ## [Unreleased]
 
 ### Changed
+- **Plan 20 Phase 4 — uniform family skeleton:** `main.py` is wiring
+  only (≤250 lines): identity install → `app/auth/install.py`, profile
+  binding + SPA fallback → `app/middleware.py`, per-boot seeding →
+  `app/seeds.py`, job handlers → `app/jobs/registry.py`. The desktop
+  bootstrap moves to `app/local.py` (career's reference shape: data dir,
+  `SA_IDENTITY_MODE=desktop` env defaults, migrations) and
+  `studyassistant` runs it before any `Settings` is built.
+- **Migrations are never run by app code (D6):** `create_app` no longer
+  runs `alembic upgrade head`. The desktop entrypoint migrates
+  (`app/local.py:run_migrations`), the docker stack gained a one-shot
+  `migrate` service (`entrypoint.sh migrate` / `serve` modes; `app`
+  depends on its successful completion — the owner-role two-role split
+  is unchanged), `scripts/run-dev.sh` migrates explicitly, and the
+  backup **restore** flow migrates the restored DB through the same
+  helper.
+- **`.env` resolution (ADR-0028 §4):** explicit `SA_ENV_FILE` →
+  source-anchored walk-up → none — and the walk-up is **disabled outside
+  dev/test**, so a baked-in `.env` can never downgrade a production boot
+  (health audit rule C-5). Production operators point `SA_ENV_FILE` at
+  the deployment file explicitly.
+
+### Added
+- `tests/test_local.py` (bootstrap: desktop env defaults, entrypoint
+  migrations) and S9 coverage for the `.env` resolution rules.
+
+### Changed
 - **Identity glue unified on the auth-kit (plan 20 Phase 2, ADR-0028):**
   the instance-init logic is now `nx_auth.instance.initialize_instance`
   — fixing two contract bugs in the old inline copy:

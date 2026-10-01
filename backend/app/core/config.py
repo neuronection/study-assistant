@@ -12,6 +12,30 @@ from .working_dir import read_override
 APP_DIR_NAME = "StudyAssistant"
 LEGACY_APP_DIR_NAME = "CourseAssistant"
 
+_DEV_ENVS = ("development", "test", "testing")
+
+
+def _resolve_env_file() -> str | None:
+    """Locate the `.env` file (ADR-0028 §4): explicit `SA_ENV_FILE`, else
+    the nearest walk-up hit — but only in dev/test.
+
+    OS environment variables always override file values. The walk-up is
+    **disabled outside dev/test** so a baked-in `.env` can never downgrade
+    a production boot (health audit rule C-5); production operators point
+    `SA_ENV_FILE` at their deployment file explicitly.
+    """
+    explicit = environ.get("SA_ENV_FILE")
+    if explicit:
+        return explicit
+    if environ.get("SA_APP_ENV") not in _DEV_ENVS:
+        return None
+    here = Path(__file__).resolve().parent
+    for parent in [here, *here.parents]:
+        candidate = parent / ".env"
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
 
 def _platform_base() -> Path:
     if sys.platform == "win32":
@@ -47,7 +71,7 @@ def default_config_dir() -> Path:
     return _platform_config_base() / APP_DIR_NAME
 
 
-def _resolve_data_dir() -> Path:
+def resolve_data_dir() -> Path:
     configured = environ.get("SA_CONFIG_DIR")
     config_dir = Path(configured) if configured else default_config_dir()
     override = read_override(config_dir)
@@ -58,7 +82,7 @@ def _resolve_data_dir() -> Path:
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="SA_", env_file=".env", extra="ignore"
+        env_prefix="SA_", env_file=_resolve_env_file(), extra="ignore"
     )
 
     app_name: str = "Study Assistant"
@@ -82,7 +106,7 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     fs_roots: str = ""
     config_dir: Path = Field(default_factory=default_config_dir)
-    data_dir: Path = Field(default_factory=_resolve_data_dir)
+    data_dir: Path = Field(default_factory=resolve_data_dir)
     spa_dist: Path | None = None
     source_scan_interval_sec: int = Field(default=300, ge=15)
     auto_backup: bool = True

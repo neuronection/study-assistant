@@ -121,6 +121,12 @@ fi
 dc_check_port_free "$BACKEND_PORT" "backend"
 dc_check_port_free "$VITE_PORT" "frontend"
 
+# D6: migrations are an explicit dev step — `create_app` never migrates
+# (plan 20 Phase 4). Desktop profile: local SQLite; --web: the dev
+# Postgres on 5434.
+dc_info "migrations  → alembic upgrade head"
+(cd backend && uv run alembic upgrade head)
+
 dc_info "backend  → http://127.0.0.1:$BACKEND_PORT (api docs: /api/docs when SA_DEBUG=1)"
 dc_info "frontend → http://localhost:$VITE_PORT"
 dc_info "Press Ctrl+C to stop all services."

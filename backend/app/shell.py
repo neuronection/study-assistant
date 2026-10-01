@@ -215,16 +215,11 @@ def save_window_state(data_dir: Path, state: WindowState) -> None:
 
 
 def run_browser() -> None:
-    # Local entrypoint ⇒ desktop-class identity (all `python -m
-    # studyassistant` modes; docker/uvicorn stays server) — same shape as
-    # run() and career's local.py bootstrap. This also keeps the §8 boot
-    # guards from demanding pinned keys on a self-hosting laptop. Must
-    # precede get_settings() (the Settings singleton caches at first call).
-    os.environ.setdefault("SA_IDENTITY_MODE", "desktop")
     settings = get_settings()
     # Attach the shell gate (identity-auth §11) before the app is built —
     # create_app arms the X-Shell-Token gate only for shell-attached
-    # processes; shell-less desktop dev (run-dev.sh) stays ungated.
+    # processes; shell-less desktop dev (run-dev.sh) stays ungated. (The
+    # desktop identity itself is declared by app/local.py's bootstrap.)
     os.environ["SA_SHELL"] = "1"
     app = create_app(settings)
     # Per-boot shell secret (identity-auth §11): the SPA URL carries it as
@@ -370,9 +365,9 @@ class DesktopBridge:
 
 def run() -> None:
     sanitize_environment()
-    os.environ.setdefault("SA_IDENTITY_MODE", "desktop")
     # Attach the shell gate (identity-auth §11) before create_app — see
-    # run_browser().
+    # run_browser(). (The desktop identity itself is declared by
+    # app/local.py's bootstrap.)
     os.environ["SA_SHELL"] = "1"
     settings = get_settings()
     apply_webkit_compat_env(marker=Path(settings.data_dir) / "webkit_soft_fallback")

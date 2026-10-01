@@ -149,13 +149,16 @@ def test_boot_resolution_pointer_then_env_wins(
     monkeypatch.setenv("SA_CONFIG_DIR", str(config_dir))
     monkeypatch.delenv("SA_DATA_DIR", raising=False)
 
-    settings = Settings()
+    # `_env_file=None` pins the resolution source: the walk-up `.env` is
+    # resolved once per process (ADR-0028) and must not leak into this
+    # pointer-resolution case.
+    settings = Settings(_env_file=None)
     assert settings.data_dir == target
 
     env_dir = tmp_path / "env-wins"
     monkeypatch.setenv("SA_DATA_DIR", str(env_dir))
-    assert Settings().data_dir == env_dir
+    assert Settings(_env_file=None).data_dir == env_dir
 
     monkeypatch.delenv("SA_DATA_DIR")
     (config_dir / POINTER_FILENAME).write_text("relative/path\n", encoding="utf-8")
-    assert Settings().data_dir == default_data_dir()
+    assert Settings(_env_file=None).data_dir == default_data_dir()

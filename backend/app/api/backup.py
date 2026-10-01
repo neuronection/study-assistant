@@ -233,9 +233,9 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(blob_data)
 
-    from ..main import _run_migrations
+    from ..local import run_migrations
 
-    _run_migrations(request.app.state.engine)
+    run_migrations(request.app.state.engine)
 
     from sqlalchemy import select, text
 

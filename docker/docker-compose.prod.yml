@@ -41,6 +41,30 @@ services:
       start_period: 10s
     logging: *default-logging
 
+  migrate:
+    # One-shot migrations (plan 20 Phase 4, D6): `entrypoint.sh migrate`
+    # applies the owner-role DDL and exits; the app never runs migrations.
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ${STUDY_IMAGE:-study-assistant:local}
+    init: true
+    restart: "no"
+    command: ["migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SA_DATA_DIR: /data
+      SA_DB_NAME: ${SA_DB_NAME:-neuronection_study}
+      SA_DB_USER: neuronection_study_app
+      SA_DB_PASSWORD: ${SA_DB_PASSWORD}
+      SA_DB_HOST: db
+      SA_DB_PORT: "5432"
+      SA_DATABASE_URL: postgresql+psycopg://neuronection_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
+      SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
+    logging: *default-logging
+
   app:
     build:
       context: ..
@@ -48,9 +72,12 @@ services:
     image: ${STUDY_IMAGE:-study-assistant:local}
     restart: unless-stopped
     init: true
+    command: ["serve"]
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       SA_DEBUG: "0"
       SA_PORT: 8000
@@ -66,8 +93,8 @@ services:
       SA_DB_HOST: db
       SA_DB_PORT: "5432"
       SA_DATABASE_URL: postgresql+psycopg://neuronection_study_app:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
-      # Migrations run automatically on boot (entrypoint.sh) as the owner
-      # role — the app process itself never runs DDL.
+      # Migrations run in the one-shot `migrate` service below (owner
+      # role) — the app process itself never runs DDL (plan 20 Phase 4).
       SA_MIGRATIONS_DATABASE_URL: postgresql+psycopg://neuronection_study_owner:${SA_DB_PASSWORD}@db:5432/${SA_DB_NAME:-neuronection_study}
     ports:
       # Bound to localhost only — put a proxy in front for public traffic
