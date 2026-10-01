@@ -391,16 +391,16 @@ describe('NodeTreeSidebar', () => {
           payload[mime] = value
         },
         getData: (mime: string) => payload[mime] ?? '',
-        types: ['application/x-ca-node'],
+        types: ['application/x-sa-node'],
       },
     })
     fireEvent.dragOver(derivatives, {
-      dataTransfer: { types: ['application/x-ca-node'] },
+      dataTransfer: { types: ['application/x-sa-node'] },
     })
     fireEvent.drop(derivatives, {
       dataTransfer: {
         getData: (mime: string) => payload[mime] ?? '',
-        types: ['application/x-ca-node'],
+        types: ['application/x-sa-node'],
       },
       clientY: 0,
     })
@@ -417,13 +417,13 @@ describe('NodeTreeSidebar', () => {
       .closest('div[role="treeitem"]') as HTMLElement
 
     fireEvent.dragOver(derivatives, {
-      dataTransfer: { types: ['application/x-ca-material'] },
+      dataTransfer: { types: ['application/x-sa-material'] },
     })
     fireEvent.drop(derivatives, {
       dataTransfer: {
         getData: (mime: string) =>
-          mime === 'application/x-ca-material' ? '42' : '',
-        types: ['application/x-ca-material'],
+          mime === 'application/x-sa-material' ? '42' : '',
+        types: ['application/x-sa-material'],
       },
     })
 
@@ -440,12 +440,12 @@ describe('NodeTreeSidebar', () => {
     const payload = JSON.stringify({ folderIds: [], materialIds: [42, 43], noteIds: [] })
 
     fireEvent.dragOver(derivatives, {
-      dataTransfer: { types: ['application/x-ca-item'] },
+      dataTransfer: { types: ['application/x-sa-item'] },
     })
     fireEvent.drop(derivatives, {
       dataTransfer: {
-        getData: (mime: string) => (mime === 'application/x-ca-item' ? payload : ''),
-        types: ['application/x-ca-item'],
+        getData: (mime: string) => (mime === 'application/x-sa-item' ? payload : ''),
+        types: ['application/x-sa-item'],
       },
     })
 
@@ -464,12 +464,12 @@ describe('NodeTreeSidebar', () => {
     const payload = JSON.stringify({ folderIds: [], materialIds: [], noteIds: [21, 22] })
 
     fireEvent.dragOver(derivatives, {
-      dataTransfer: { types: ['application/x-ca-item'] },
+      dataTransfer: { types: ['application/x-sa-item'] },
     })
     fireEvent.drop(derivatives, {
       dataTransfer: {
-        getData: (mime: string) => (mime === 'application/x-ca-item' ? payload : ''),
-        types: ['application/x-ca-item'],
+        getData: (mime: string) => (mime === 'application/x-sa-item' ? payload : ''),
+        types: ['application/x-sa-item'],
       },
     })
 
@@ -478,12 +478,12 @@ describe('NodeTreeSidebar', () => {
   })
 
   test('auto-expands the current node’s ancestors even with a persisted expansion map', async () => {
-    window.localStorage.setItem('ca-tree-expanded-9', JSON.stringify({ 4: true }))
+    window.localStorage.setItem('sa-tree-expanded-9', JSON.stringify({ 4: true }))
     renderSidebar(3)
     expect(await screen.findByText('Continuity')).toBeInTheDocument()
     expect(screen.getByText('Limits')).toBeInTheDocument()
     expect(screen.getByRole('tree').getAttribute('aria-activedescendant')).toBe(
-      'ca-tree-row-3'
+      'sa-tree-row-3'
     )
   })
 
@@ -517,7 +517,7 @@ describe('NodeTreeSidebar', () => {
     fireEvent.change(input, { target: { value: 'contin' } })
     expect(await screen.findByText('Continuity')).toBeInTheDocument()
     expect(screen.getByRole('tree').getAttribute('aria-activedescendant')).toBe(
-      'ca-tree-row-3'
+      'sa-tree-row-3'
     )
 
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -540,12 +540,12 @@ describe('NodeTreeSidebar', () => {
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     const secondActive = treeEl.getAttribute('aria-activedescendant')
     expect(secondActive).not.toBe(firstActive)
-    expect(secondActive).toMatch(/^ca-tree-row-\d+$/)
+    expect(secondActive).toMatch(/^sa-tree-row-\d+$/)
 
     fireEvent.keyDown(input, { key: 'Enter' })
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
-        `/courses/9/n/${(secondActive ?? '').replace('ca-tree-row-', '')}`
+        `/courses/9/n/${(secondActive ?? '').replace('sa-tree-row-', '')}`
       )
     )
   })
@@ -582,19 +582,19 @@ describe('NodeTreeSidebar', () => {
     const treeEl = screen.getByRole('tree')
     fireEvent.focus(treeEl)
     fireEvent.keyDown(treeEl, { key: 'ArrowDown' })
-    expect(treeEl.getAttribute('aria-activedescendant')).toBe('ca-tree-row-2')
+    expect(treeEl.getAttribute('aria-activedescendant')).toBe('sa-tree-row-2')
 
     fireEvent.keyDown(treeEl, { key: 'ArrowRight' })
     await screen.findByText('Continuity')
 
     fireEvent.keyDown(treeEl, { key: 'ArrowDown' })
-    expect(treeEl.getAttribute('aria-activedescendant')).toBe('ca-tree-row-3')
+    expect(treeEl.getAttribute('aria-activedescendant')).toBe('sa-tree-row-3')
 
     fireEvent.keyDown(treeEl, { key: 'ArrowLeft' })
-    expect(treeEl.getAttribute('aria-activedescendant')).toBe('ca-tree-row-2')
+    expect(treeEl.getAttribute('aria-activedescendant')).toBe('sa-tree-row-2')
     fireEvent.keyDown(treeEl, { key: 'ArrowLeft' })
     await waitFor(() => expect(screen.queryByText('Continuity')).not.toBeInTheDocument())
-    expect(treeEl.getAttribute('aria-activedescendant')).toBe('ca-tree-row-2')
+    expect(treeEl.getAttribute('aria-activedescendant')).toBe('sa-tree-row-2')
   })
 
   test('delete shows an undo toast that restores the node from the trash', async () => {
@@ -620,7 +620,7 @@ describe('NodeTreeSidebar', () => {
     fireEvent.click(chevronFor('Limits'))
     await screen.findByText('Continuity')
     await waitFor(() =>
-      expect(window.localStorage.getItem('ca-tree-expanded-9')).toBe('["1","2"]')
+      expect(window.localStorage.getItem('sa-tree-expanded-9')).toBe('["1","2"]')
     )
   })
 
@@ -657,10 +657,10 @@ function dropEvent(mime: string, payloadValue: string, clientY?: number) {
       dataTransfer: {
         setData: () => undefined,
         getData: () => '2',
-        types: ['application/x-ca-node'],
+        types: ['application/x-sa-node'],
       },
     })
-    derivatives.dispatchEvent(dropEvent('application/x-ca-node', '2', 105))
+    derivatives.dispatchEvent(dropEvent('application/x-sa-node', '2', 105))
 
     await waitFor(() => expect(moveNode).toHaveBeenCalledWith(2, 1, 1))
   })

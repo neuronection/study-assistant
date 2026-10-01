@@ -73,8 +73,8 @@ describe('CoursesPage', () => {
     createCourse.mockReset()
     deleteCourse.mockReset()
     importCourseBundle.mockReset()
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -94,7 +94,7 @@ describe('CoursesPage', () => {
 
   test('course cards show the last visited node when the course has recents', async () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 2, at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([COURSE])
@@ -147,7 +147,7 @@ describe('CoursesPage', () => {
       },
     })
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 2, at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([COURSE])

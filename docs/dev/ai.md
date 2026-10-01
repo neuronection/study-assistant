@@ -538,7 +538,7 @@ while a job is live.
 
 **Material drawings (plan 29, ADR-064)**: text/markdown materials carry drawings
 (`material_drawings`) referenced from the extraction markdown with
-`![drawing](ca-drawing://{id})`. Their OCR text joins the material's FTS and is
+`![drawing](sa-drawing://{id})`. Their OCR text joins the material's FTS and is
 appended to the **chunk source** in `edit_extraction`/ingest, so hybrid retrieval
 (and therefore quiz/exercise/chat generation context) can quote handwriting in
 materials exactly as it does for notes. The same `notes_ocr` engine transcribes

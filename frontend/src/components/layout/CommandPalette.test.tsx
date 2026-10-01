@@ -63,9 +63,9 @@ describe('CommandPalette', () => {
     search.mockResolvedValue({ query: '', hits: [] })
     navigate.mockClear()
     useWorkspaceStore.getState().setCourse(null)
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -606,7 +606,7 @@ describe('CommandPalette', () => {
       },
     })
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 30000 }])
     )
     listCourses.mockResolvedValue([
@@ -650,7 +650,7 @@ describe('CommandPalette', () => {
     await screen.findByText('Quick capture')
     await waitFor(() => expect(courseTree).toHaveBeenCalled())
     expect(screen.queryByText('Derivatives')).not.toBeInTheDocument()
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
   })
 
   test('open node actions are capped at 40 entries', async () => {
@@ -688,9 +688,9 @@ describe('CommandPalette', () => {
   })
 
   test('recent nodes are pinned as the first actions at empty query', async () => {
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 30000 }])
     )
     listCourses.mockResolvedValue([
@@ -735,7 +735,7 @@ describe('CommandPalette', () => {
     const list = view.getByRole('listbox')
     expect(list.querySelectorAll('li')[0]).toHaveTextContent('Derivatives')
     expect(list.querySelectorAll('li')[0]).toHaveTextContent('Calculus I')
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
     view.unmount()
   })
 })
@@ -752,7 +752,7 @@ describe('CommandPalette content search', () => {
     search.mockReset()
     navigate.mockClear()
     useWorkspaceStore.getState().setCourse(null)
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
   })
 
   test('? prefix switches to content mode and lists hits with snippets', async () => {

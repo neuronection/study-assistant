@@ -67,7 +67,7 @@ def concepts_client() -> Iterator[tuple[TestClient, list[Message]]]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-concepts-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-concepts-"))
     app = create_app(Settings(data_dir=tmp, log_level="WARNING"), gateway=gateway)
     with TestClient(app) as client:
         yield client, gateway.calls

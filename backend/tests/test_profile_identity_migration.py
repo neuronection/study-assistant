@@ -22,14 +22,14 @@ def _cfg(db_path: Path) -> Config:
     return config
 
 
-def test_migration_head_is_profile_identity(tmp_path: Path) -> None:
+def test_migration_head_is_latest(tmp_path: Path) -> None:
     db_path = tmp_path / "head.db"
     command.upgrade(_cfg(db_path), "head")
 
     raw = sqlite3.connect(db_path)
     assert (
         raw.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0067_auth_session_created_at"
+        == "0068_rename_legacy_ca_schemes"
     )
     columns = {
         row[1]: (row[2], bool(row[3]))

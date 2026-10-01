@@ -41,7 +41,7 @@ def test_export_pack_shape(tmp_path: Any) -> None:
         response = client.post("/api/v1/skills/export", json={"keys": ["chat.answer"]})
         assert response.status_code == 200, response.text
         pack = response.json()
-        assert pack["format"] == "ca-skills/v1"
+        assert pack["format"] == "sa-skills/v1"
         assert len(pack["skills"]) == 1
         entry = pack["skills"][0]
         assert entry["key"] == "chat.answer"
@@ -71,7 +71,7 @@ def test_preview_reports_collision_and_validation_errors(tmp_path: Any) -> None:
         assert entry["active_version"] == 2
 
         bad = {
-            "format": "ca-skills/v1",
+            "format": "sa-skills/v1",
             "exported_at": "now",
             "skills": [
                 {
@@ -97,7 +97,7 @@ def test_preview_reports_collision_and_validation_errors(tmp_path: Any) -> None:
         rejected = client.post("/api/v1/skills/packs/import?dry_run=true", json=junk)
         assert rejected.status_code == 422
         no_task = {
-            "format": "ca-skills/v1",
+            "format": "sa-skills/v1",
             "skills": [
                 {
                     "task": "nonexistent_task",

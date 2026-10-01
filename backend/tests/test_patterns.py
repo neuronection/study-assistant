@@ -120,7 +120,7 @@ def make_client(responses: dict[str, list[str]]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-patterns-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-patterns-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=PatternGateway(responses),

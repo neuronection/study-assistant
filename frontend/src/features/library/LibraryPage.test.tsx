@@ -1264,9 +1264,9 @@ describe('LibraryPage', () => {
 
     const payload = JSON.stringify({ folderIds: [], materialIds: [7] })
     const dataTransfer = {
-      types: ['application/x-ca-item'],
+      types: ['application/x-sa-item'],
       getData: (mime: string) =>
-        mime === 'application/x-ca-item' ? payload : '',
+        mime === 'application/x-sa-item' ? payload : '',
       setData: vi.fn(),
       effectAllowed: '',
     }

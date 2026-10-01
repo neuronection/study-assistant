@@ -54,7 +54,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-skills-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-skills-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),

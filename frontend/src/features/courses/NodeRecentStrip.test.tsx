@@ -63,7 +63,7 @@ function renderStrip(tree: NodeInfo[] | undefined) {
 describe('NodeRecentStrip', () => {
   beforeEach(() => {
     navigate.mockClear()
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
     useInterfacePrefsStore.setState({ prefs: { ...ALL_ON } })
   })
 
@@ -72,7 +72,7 @@ describe('NodeRecentStrip', () => {
       prefs: { ...ALL_ON, courseJumpBackIn: false },
     })
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(TREE)
@@ -81,7 +81,7 @@ describe('NodeRecentStrip', () => {
 
   test('shows rows for this course’s recent nodes with breadcrumbs', () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([
         { courseId: 9, nodeId: 3, at: Date.now() - 60000 },
         { courseId: 9, nodeId: 2, at: Date.now() - 3600000 },
@@ -99,7 +99,7 @@ describe('NodeRecentStrip', () => {
 
   test('never offers the course root itself as a jump target', () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([
         { courseId: 9, nodeId: 1, at: Date.now() - 30000 },
         { courseId: 9, nodeId: 2, at: Date.now() - 3600000 },
@@ -112,7 +112,7 @@ describe('NodeRecentStrip', () => {
 
   test('clicking a pill navigates to the node workspace', () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
     )
     renderStrip(TREE)
@@ -125,7 +125,7 @@ describe('NodeRecentStrip', () => {
 
   test('ignores entries from other courses', () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 4, nodeId: 3, at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(TREE)
@@ -134,7 +134,7 @@ describe('NodeRecentStrip', () => {
 
   test('stays hidden while the tree is loading', () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(undefined)
@@ -143,7 +143,7 @@ describe('NodeRecentStrip', () => {
 
   test('drops entries whose node no longer exists', () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 9, nodeId: 999, at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(TREE)

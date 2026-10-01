@@ -8,7 +8,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 CAQ: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Scoped quiz",
     "questions": [
         {
@@ -32,7 +32,7 @@ def client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p9-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-p9-"))
     app = create_app(Settings(data_dir=tmp, log_level="WARNING"))
     with TestClient(app) as test_client:
         yield test_client

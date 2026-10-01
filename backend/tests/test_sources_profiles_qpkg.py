@@ -11,7 +11,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Pkg quiz",
     "questions": [
         {
@@ -76,7 +76,7 @@ class QuietGateway(LLMGateway):
 def make_client() -> TestClient:
     import tempfile
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p7s3-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-p7s3-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),

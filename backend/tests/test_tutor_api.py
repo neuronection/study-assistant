@@ -60,7 +60,7 @@ def make_client(responses: list[str]) -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-tutor-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-tutor-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=TutorGateway(responses),

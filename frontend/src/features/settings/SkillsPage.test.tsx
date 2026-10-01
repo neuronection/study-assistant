@@ -82,7 +82,7 @@ describe('Settings Skills tab', () => {
     exportSkillPack.mockReset()
     importSkillPackPreview.mockReset()
     importSkillPackCommit.mockReset()
-    exportSkillPack.mockResolvedValue({ format: 'ca-skills/v1', exported_at: 'now', skills: [] })
+    exportSkillPack.mockResolvedValue({ format: 'sa-skills/v1', exported_at: 'now', skills: [] })
     listSkills.mockResolvedValue([
       {
         key: 'tutor.hint',
@@ -178,7 +178,7 @@ describe('Settings Skills tab — packs', () => {
 
   test('import flow: preview, resolution, commit', async () => {
     const pack = {
-      format: 'ca-skills/v1',
+      format: 'sa-skills/v1',
       exported_at: 'now',
       skills: [
         {
@@ -201,7 +201,7 @@ describe('Settings Skills tab — packs', () => {
       ],
     }
     importSkillPackPreview.mockResolvedValue({
-      format: 'ca-skills/v1',
+      format: 'sa-skills/v1',
       skills: [
         {
           key: 'tutor.hint',

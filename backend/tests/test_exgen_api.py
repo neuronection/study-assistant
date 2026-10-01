@@ -81,7 +81,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-exgen-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-exgen-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ExgenGateway(responses),

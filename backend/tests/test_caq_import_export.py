@@ -23,7 +23,7 @@ class NoAI:
 
 
 CAQ_DOC: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Chain Rule — Practice Set",
     "questions": [
         {
@@ -75,7 +75,7 @@ def caq_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-caq-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-caq-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=UnassignedGateway(),
@@ -182,7 +182,7 @@ def test_export_roundtrips_caq(caq_client: TestClient) -> None:
     assert exported.status_code == 200
     assert "attachment" in exported.headers["content-disposition"]
     document = exported.json()
-    assert document["$schema"] == "caq/v1"
+    assert document["$schema"] == "saq/v1"
     assert len(document["questions"]) == 3
     first = document["questions"][0]
     assert first["type"] == "single"

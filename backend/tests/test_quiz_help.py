@@ -80,7 +80,7 @@ class NoAI:
 
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Help quiz",
     "questions": [
         {
@@ -117,7 +117,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quizhelp-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quizhelp-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuizHelpGateway(responses),

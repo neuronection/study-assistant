@@ -81,7 +81,7 @@ def numberline_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-numberline-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-numberline-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -239,7 +239,7 @@ class TestNumberlineQuiz:
         import tempfile
         from pathlib import Path
 
-        tmp = Path(tempfile.mkdtemp(prefix="ca-numberline-repair-"))
+        tmp = Path(tempfile.mkdtemp(prefix="sa-numberline-repair-"))
         app = create_app(
             Settings(data_dir=tmp, log_level="WARNING"),
             gateway=gateway,

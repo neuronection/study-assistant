@@ -184,8 +184,8 @@ describe('SplitStudyPane', () => {
     fireEvent.mouseUp(window)
 
     expect(container).toBeDefined()
-    expect(localStorage.getItem('ca-study-split:2')).not.toBeNull()
-    const stored = Number(localStorage.getItem('ca-study-split:2'))
+    expect(localStorage.getItem('sa-study-split:2')).not.toBeNull()
+    const stored = Number(localStorage.getItem('sa-study-split:2'))
     expect(stored).toBeGreaterThanOrEqual(30)
     expect(stored).toBeLessThanOrEqual(70)
   })
@@ -200,14 +200,14 @@ describe('SplitStudyPane', () => {
     expect(separator.getAttribute('aria-valuenow')).toBe('50')
 
     fireEvent.keyDown(separator, { key: 'ArrowLeft' })
-    await waitFor(() => expect(localStorage.getItem('ca-study-split:2')).toBe('45'))
+    await waitFor(() => expect(localStorage.getItem('sa-study-split:2')).toBe('45'))
     expect(separator.getAttribute('aria-valuenow')).toBe('45')
 
     fireEvent.keyDown(separator, { key: 'ArrowRight' })
-    await waitFor(() => expect(localStorage.getItem('ca-study-split:2')).toBe('50'))
+    await waitFor(() => expect(localStorage.getItem('sa-study-split:2')).toBe('50'))
 
     fireEvent.doubleClick(separator)
-    await waitFor(() => expect(localStorage.getItem('ca-study-split:2')).toBeNull())
+    await waitFor(() => expect(localStorage.getItem('sa-study-split:2')).toBeNull())
     expect(separator.getAttribute('aria-valuenow')).toBe('50')
   })
 

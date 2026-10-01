@@ -304,7 +304,7 @@
               "id": "import-export",
               "file": "dev/import-export.md",
               "title": "Import & export formats",
-              "description": "The caq/v1 quiz, ca-course/v2 bundle and ca-skills/v1 pack interchange formats."
+              "description": "The saq/v1 quiz, sa-course/v2 bundle and ca-skills/v1 pack interchange formats."
             },
             {
               "id": "jobs",

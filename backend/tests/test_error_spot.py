@@ -110,7 +110,7 @@ def drill_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-error-spot-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-error-spot-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -218,7 +218,7 @@ def test_unseeded_flaw_is_rejected_into_repair() -> None:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-error-spot-repair-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-error-spot-repair-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,

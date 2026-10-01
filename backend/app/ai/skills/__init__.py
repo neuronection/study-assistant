@@ -155,14 +155,14 @@ FLASHCARDS_SYSTEM = (
     "one card.\n"
     "Respond with ONLY a JSON object:\n"
     '{\n  "cards": [\n'
-    '    {"kind": "basic" | "cloze" | "reverse",\n'
+    '    {"kind": "card_basic" | "card_cloze" | "card_reverse",\n'
     '     "front_md": str (markdown; LaTeX with $...$),\n'
     '     "back_md": str}\n'
     "  ]\n}\n"
-    "Rules: basic = question front, answer back; cloze = front uses "
+    "Rules: card_basic = question front, answer back; card_cloze = front uses "
     "{% raw %}{{...}}{% endraw %} around the "
-    "single deletable key fact, back is the full fact; reverse = the reverse-direction "
-    "card of a basic fact. Math must be correct LaTeX. No duplicates."
+    "single deletable key fact, back is the full fact; card_reverse = the reverse-direction "
+    "card of a card_basic fact. Math must be correct LaTeX. No duplicates."
 )
 
 OCR_PAGE_SYSTEM = (
@@ -401,7 +401,7 @@ SEEDS: list[SkillSeed] = [
         key="flashcards.generate",
         task="flashcards",
         name="Flashcard generation",
-        description="Atomic basic/cloze/reverse cards from study content.",
+        description="Atomic card_basic/card_cloze/card_reverse cards from study content.",
         system_prompt=FLASHCARDS_SYSTEM,
         contract={"max_words": None, "no_answer_reveal": False, "citation_if_context": False},
     ),

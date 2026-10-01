@@ -234,7 +234,7 @@ def _seed_sample_study_content(session: Session, course: Course) -> tuple[int, i
             profile_id=course.profile_id,
             course_id=course.id,
             node_id=root.id,
-            kind="basic",
+            kind="card_basic",
             front=[{"type": "text", "md": front}],
             back=[{"type": "text", "md": back}],
             source="sample",

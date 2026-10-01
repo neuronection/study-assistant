@@ -121,7 +121,7 @@ def demo_id(kind: str, key: str) -> str:
 class CardSpec:
     front: str
     back: str
-    kind: str = "basic"
+    kind: str = "card_basic"
     due_in_days: int = 0
 
 
@@ -273,8 +273,8 @@ LINEAR_ALGEBRA = CourseSpec(
     cards=(
         CardSpec("What are the two closure axioms of a subspace?", "Closure under addition and closure under scalar multiplication", due_in_days=-1),
         CardSpec("State the transpose rule for a matrix product.", "$(AB)^{\\mathsf{T}} = B^{\\mathsf{T}} A^{\\mathsf{T}}$", due_in_days=0),
-        CardSpec("Does $AB = 0$ imply $A = 0$ or $B = 0$?", "No — non-zero matrices can multiply to zero.", kind="reverse", due_in_days=2),
-        CardSpec("A non-empty subset closed under addition and scalar multiplication is …", "a subspace", kind="cloze", due_in_days=5),
+        CardSpec("Does $AB = 0$ imply $A = 0$ or $B = 0$?", "No — non-zero matrices can multiply to zero.", kind="card_reverse", due_in_days=2),
+        CardSpec("A non-empty subset closed under addition and scalar multiplication is …", "a subspace", kind="card_cloze", due_in_days=5),
     ),
 )
 
@@ -325,7 +325,7 @@ DATABASES = CourseSpec(
     cards=(
         CardSpec("State the one-line rule for 3NF.", "Every non-key attribute depends on the key, the whole key, and nothing but the key.", due_in_days=1),
         CardSpec("What does 1NF forbid?", "Repeating groups and non-atomic values.", due_in_days=3),
-        CardSpec("A partial dependency violates …", "2NF", kind="cloze", due_in_days=6),
+        CardSpec("A partial dependency violates …", "2NF", kind="card_cloze", due_in_days=6),
     ),
 )
 
@@ -374,7 +374,7 @@ GREEK_A2 = CourseSpec(
         ),
     ),
     cards=(
-        CardSpec("Translate: «πήγα».", "I went", kind="reverse", due_in_days=0),
+        CardSpec("Translate: «πήγα».", "I went", kind="card_reverse", due_in_days=0),
         CardSpec("What is the aorist of «βλέπω»?", "είδα", due_in_days=2),
         CardSpec("Translate: «Τι έκανες χθες;»", "What did you do yesterday?", due_in_days=4),
     ),
@@ -428,7 +428,7 @@ CONSTITUTIONAL_LAW = CourseSpec(
     cards=(
         CardSpec("State the *Halloran* holding in one sentence.", "Delegated rule-making is valid only under intelligible principles set by the legislature.", due_in_days=1),
         CardSpec("Name the three branches.", "Legislature, executive, judiciary.", due_in_days=2),
-        CardSpec("Ultra vires means …", "beyond one's legal power", kind="cloze", due_in_days=7),
+        CardSpec("Ultra vires means …", "beyond one's legal power", kind="card_cloze", due_in_days=7),
     ),
 )
 
@@ -476,7 +476,7 @@ LEGAL_WRITING = CourseSpec(
     ),
     cards=(
         CardSpec("What are the four parts of a one-page brief?", "Question presented, short answer, reasoning, conclusion.", due_in_days=3),
-        CardSpec("IRAC expands to …", "Issue, Rule, Application, Conclusion", kind="cloze", due_in_days=5),
+        CardSpec("IRAC expands to …", "Issue, Rule, Application, Conclusion", kind="card_cloze", due_in_days=5),
     ),
 )
 
@@ -521,7 +521,7 @@ APPELLATE_ADVOCACY = CourseSpec(
     ),
     cards=(
         CardSpec("What do you do first when the bench asks a question?", "Answer the question, then explain.", due_in_days=0),
-        CardSpec("How long is the opening roadmap?", "About 30 seconds.", kind="reverse", due_in_days=2),
+        CardSpec("How long is the opening roadmap?", "About 30 seconds.", kind="card_reverse", due_in_days=2),
     ),
 )
 
@@ -590,9 +590,9 @@ STATISTICS = CourseSpec(
     ),
     cards=(
         CardSpec("Define a p-value.", "The probability, assuming H_0, of data at least as extreme as observed.", due_in_days=-2),
-        CardSpec("A Type I error is …", "rejecting a true null hypothesis", kind="cloze", due_in_days=0),
+        CardSpec("A Type I error is …", "rejecting a true null hypothesis", kind="card_cloze", due_in_days=0),
         CardSpec("What does the slope estimate in $y = \\beta_0 + \\beta_1 x$?", "The change in y per unit change in x.", due_in_days=1),
-        CardSpec("Why not say \"accept H_0\"?", "Failing to reject is not evidence that H_0 is true.", kind="reverse", due_in_days=4),
+        CardSpec("Why not say \"accept H_0\"?", "Failing to reject is not evidence that H_0 is true.", kind="card_reverse", due_in_days=4),
     ),
 )
 
@@ -640,7 +640,7 @@ MOLECULAR_BIOLOGY = CourseSpec(
     cards=(
         CardSpec("State the central dogma.", "DNA → RNA → protein.", due_in_days=2),
         CardSpec("Which enzyme copies DNA into mRNA?", "RNA polymerase.", due_in_days=3),
-        CardSpec("Reverse transcription copies …", "RNA into DNA", kind="cloze", due_in_days=6),
+        CardSpec("Reverse transcription copies …", "RNA into DNA", kind="card_cloze", due_in_days=6),
     ),
 )
 
@@ -689,8 +689,8 @@ SPANISH_B2 = CourseSpec(
         ),
     ),
     cards=(
-        CardSpec("Translate: «Ojalá llueva mañana.»", "I hope it rains tomorrow.", kind="reverse", due_in_days=1),
-        CardSpec("«para que» triggers which mood?", "the subjunctive", kind="cloze", due_in_days=3),
+        CardSpec("Translate: «Ojalá llueva mañana.»", "I hope it rains tomorrow.", kind="card_reverse", due_in_days=1),
+        CardSpec("«para que» triggers which mood?", "the subjunctive", kind="card_cloze", due_in_days=3),
         CardSpec("Complete: «Quiero que ___ (venir).»", "vengas", due_in_days=5),
     ),
 )

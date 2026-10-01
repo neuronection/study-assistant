@@ -55,7 +55,7 @@ function insertMathElement(node: Text, hit: MathHit): Text {
     return node
   }
   const span = document.createElement('span')
-  span.setAttribute('data-ca-math', '')
+  span.setAttribute('data-sa-math', '')
   span.setAttribute('data-display', hit.display ? 'true' : 'false')
   span.setAttribute(
     'data-latex',
@@ -94,7 +94,7 @@ function transformMathDom(root: HTMLElement): void {
   }
 }
 
-export const CaMath = Node.create({
+export const SaMath = Node.create({
   name: 'caMath',
   inline: true,
   atom: true,
@@ -127,7 +127,7 @@ export const CaMath = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'span[data-ca-math]',
+        tag: 'span[data-sa-math]',
         getAttrs: (element) => ({
           latex: element.getAttribute('data-latex') ?? '',
           display: element.getAttribute('data-display') === 'true',
@@ -140,7 +140,7 @@ export const CaMath = Node.create({
     return [
       'span',
       {
-        'data-ca-math': '',
+        'data-sa-math': '',
         'data-latex': node.attrs.latex,
         'data-display': node.attrs.display ? 'true' : 'false',
       },
@@ -219,11 +219,11 @@ function MathView({ node, updateAttributes, selected, editor }: ReactNodeViewPro
     <NodeViewWrapper as="span">
       <span
         ref={anchorRef}
-        data-ca-math-view
+        data-sa-math-view
         title={latex}
         onDoubleClick={editor.isEditable ? openEditor : undefined}
         className={cn(
-          'ca-math inline-block cursor-pointer rounded px-0.5 align-baseline',
+          'sa-math inline-block cursor-pointer rounded px-0.5 align-baseline',
           selected && 'ring-primary ring-2'
         )}
       >

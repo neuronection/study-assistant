@@ -21,7 +21,7 @@ def make_card(client: TestClient, course_id: int, front: str) -> int:
     response = client.post(
         "/api/v1/flashcards",
         json={
-            "kind": "basic",
+            "kind": "card_basic",
             "front_md": front,
             "back_md": f"back {front}",
             "course_id": course_id,

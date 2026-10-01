@@ -116,7 +116,7 @@ Quizzes are portable in two tiers:
 - **Export** — the *Export* link downloads `.caq.json` (single readable file);
   the *`.qpkg`* link downloads a **package**: a zip with a checksum manifest, the
   right shape for sharing between machines.
-- **Import — paste** — Practice tab → **Import** → paste a caq/v1 document. Press
+- **Import — paste** — Practice tab → **Import** → paste a saq/v1 document. Press
   **Validate** first: every question is checked with the same rules as generated
   ones (per-question report). Commit imports only what you've reviewed.
 - **Import — package** — the **Package** tab selects a `.qpkg` file; its integrity

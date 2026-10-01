@@ -94,7 +94,7 @@ export function SnapIntoNote() {
       if (drawingId === undefined) {
         throw new Error('insert failed')
       }
-      await updateNote(note.id, { body_md: `![screenshot](ca-drawing://${drawingId})` })
+      await updateNote(note.id, { body_md: `![screenshot](sa-drawing://${drawingId})` })
       await invalidate()
       return {
         noteId: note.id,

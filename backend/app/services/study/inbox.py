@@ -9,14 +9,14 @@ from ...pipelines.qpkg import read_qpkg
 from ...pipelines.quizgen import validate_question
 
 INBOX_SUFFIXES = (".caq.json", ".json", ".qpkg")
-SCHEMA_CARD = """# Study Assistant quiz authoring (caq/v1)
+SCHEMA_CARD = """# Study Assistant quiz authoring (saq/v1)
 
 Drop a `.caq.json` file in this directory and the app will pick it up on the next
 inbox scan. The minimal schema:
 
 ```json
 {
-  "$schema": "caq/v1",
+  "$schema": "saq/v1",
   "title": "Your quiz title",
   "questions": [
     {

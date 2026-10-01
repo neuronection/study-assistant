@@ -79,7 +79,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p7s2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-p7s2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ScriptedGateway(responses),
@@ -174,7 +174,7 @@ def test_backup_export_restore_round_trip() -> None:
     assert "database.dump" not in names
     assert "Survivor note" in db_titles(exported_db), "export snapshot lacks the note"
 
-    target_dir = Path(tempfile.mkdtemp(prefix="ca-p7s2-t-"))
+    target_dir = Path(tempfile.mkdtemp(prefix="sa-p7s2-t-"))
     target_app = create_app(
         Settings(data_dir=target_dir, log_level="WARNING"),
         gateway=ScriptedGateway([]),
@@ -224,7 +224,7 @@ def test_restore_rejects_garbage() -> None:
 
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as archive:
-            archive.writestr("manifest.json", json.dumps({"format": "ca-backup/v1"}))
+            archive.writestr("manifest.json", json.dumps({"format": "sa-backup/v1"}))
         incomplete = client.post(
             "/api/v1/backup/restore",
             files={"file": ("backup.zip", buffer.getvalue(), "application/zip")},

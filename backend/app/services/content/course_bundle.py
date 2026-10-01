@@ -53,8 +53,8 @@ from .external_sources import validate_source as validate_external_source
 from .folders import FoldersService
 from .materials import extraction_to_blocks
 
-BUNDLE_FORMAT = "ca-course/v1"
-BUNDLE_FORMAT_V2 = "ca-course/v2"
+BUNDLE_FORMAT = "sa-course/v1"
+BUNDLE_FORMAT_V2 = "sa-course/v2"
 SUPPORTED_FORMATS = (BUNDLE_FORMAT, BUNDLE_FORMAT_V2)
 MANIFEST_NAME = "manifest.json"
 COURSE_NAME = "course.json"

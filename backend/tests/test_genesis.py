@@ -57,7 +57,7 @@ BAD_JSON = "not json at all"
 def cards_payload(prefix: str = "vector", count: int = 10) -> str:
     cards = [
         {
-            "kind": "basic",
+            "kind": "card_basic",
             "front_md": f"What is a {prefix} concept #{i}?",
             "back_md": f"A {prefix} fact #{i}.",
         }

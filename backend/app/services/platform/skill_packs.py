@@ -7,7 +7,7 @@ from ...ai.tasks import TASKS_BY_NAME
 from ...domain.models import Skill, SkillVersion, utcnow
 from .skills import SkillsError, SkillService
 
-PACK_FORMAT = "ca-skills/v1"
+PACK_FORMAT = "sa-skills/v1"
 RESOLUTIONS = ("replace", "rename", "skip")
 PACK_SKILL_KEYS = ("task", "key", "name", "versions")
 

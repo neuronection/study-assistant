@@ -18,7 +18,7 @@ FLASHCARDS_SKILL = "flashcards.generate"
 MAX_REPAIR_ROUNDS = 2
 MAX_CARDS = 30
 
-KINDS = ("basic", "cloze", "reverse")
+KINDS = ("card_basic", "card_cloze", "card_reverse")
 CLOZE_RE = re.compile(r"\{\{c?\d*::?[^}]*\}\}|\{\{[^}]*\}\}")
 
 
@@ -38,8 +38,8 @@ def validate_card(draft: dict[str, Any], index: int) -> list[str]:
         problems.append(f"{label}: empty front")
     if not back:
         problems.append(f"{label}: empty back")
-    if draft.get("kind") == "cloze" and front and not CLOZE_RE.search(front):
-        problems.append(f"{label}: cloze front needs a {{{{...}}}} deletion")
+    if draft.get("kind") == "card_cloze" and front and not CLOZE_RE.search(front):
+        problems.append(f"{label}: card_cloze front needs a {{{{...}}}} deletion")
     return problems
 
 
@@ -63,7 +63,7 @@ class FlashcardsService:
         count = max(1, min(count, MAX_CARDS))
         prompt = (
             f"Write exactly {count} flashcards from the following source. Mix kinds "
-            "(mostly basic, some cloze, a reverse or two).\n\nSource:\n"
+            "(mostly card_basic, some card_cloze, a card_reverse or two).\n\nSource:\n"
             + content[:6000]
         )
         if context is not None:

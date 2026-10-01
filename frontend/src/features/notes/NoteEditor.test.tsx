@@ -72,7 +72,7 @@ vi.mock('@/components/editor/MarkdownEditor', async () => {
         if (apiRef) {
           apiRef.current = {
             insertDrawing: (id: number) =>
-              onChange(`${latest.current.value}\n\n![drawing](ca-drawing://${id})`),
+              onChange(`${latest.current.value}\n\n![drawing](sa-drawing://${id})`),
             removeDrawing: () => undefined,
           }
         }
@@ -446,7 +446,7 @@ describe('NoteEditor', () => {
     renderEditor()
     const body = await screen.findByRole('textbox', { name: /note body/i })
     expect(body).toHaveValue(
-      'before\n\n![drawing](ca-drawing://4)\n\nafter'
+      'before\n\n![drawing](sa-drawing://4)\n\nafter'
     )
     expect(screen.queryByRole('button', { name: 'Insert inline' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'editor-insert-drawing' })).toBeInTheDocument()
@@ -479,7 +479,7 @@ describe('NoteEditor', () => {
   test('the drawing adapter remove wires through to deleteDrawing', async () => {
     getNote.mockResolvedValue(
       NOTE({
-        body: [{ type: 'text', md: 'before\n\n![drawing](ca-drawing://7)\n\nafter' }],
+        body: [{ type: 'text', md: 'before\n\n![drawing](sa-drawing://7)\n\nafter' }],
         drawings: [
           {
             id: 7,

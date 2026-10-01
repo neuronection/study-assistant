@@ -99,7 +99,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   status (`suggested|saved|dismissed` StrEnum), material_id? (set when
   attached/imported — deleting the material reverts the row to `suggested`),
   timestamps. Course purge deletes the course's rows; scratchpad rows survive.
-  **Suggestions do not ride `ca-course/v2`** — they are profile-scoped tracking
+  **Suggestions do not ride `sa-course/v2`** — they are profile-scoped tracking
   history, not study content.
 - **external_sources** (0063, plan 73-E): id, profile_id, course_id (required —
   a source feeds one course's suggestion stream), kind
@@ -109,7 +109,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   15 min; NULL → 6 h default), last_scan_error?, last_scanned_at?,
   cursor JSON (per-kind resume marker: RSS etag/last-modified + seen-entry ids;
   YouTube seen-video ids — both capped at 1000), created_at. Course purge
-  cascades; **rides `ca-course/v2`** (kind/url/label/options/enabled/interval
+  cascades; **rides `sa-course/v2`** (kind/url/label/options/enabled/interval
   exported, import re-creates rows with fresh cursors).
 - **blobs**: sha256 PK, rel_path, size, mime — content-addressed originals
 - **materials**: id, profile_id, course_id (**required** — every material is owned
@@ -134,7 +134,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   (document order), blob_sha (FK→blobs, content-addressed), mime, ocr_version,
   ocr_markdown, ocr_job_id, created_at — embedded images extracted from
   converted office/web materials (plan 47); referenced from the extraction
-  markdown via `ca-image://{id}`, transcribed asynchronously by the
+  markdown via `sa-image://{id}`, transcribed asynchronously by the
   `image_ocr` job (plan-46 async pattern), OCR text joins FTS/AI context like
   drawing OCR
 - **material_drawings** (0032, ADR-064): id, material_id (FK, cascade), strokes
@@ -143,7 +143,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   mirrors `note_drawings.view`), ocr_version, ocr_blocks JSON, ocr_markdown,
   ocr_job_id (0047, ADR-102, mirrors `note_drawings.ocr_job_id`),
   created_at — mirrors `note_drawings`; drawings are referenced from the
-  extraction markdown via `![drawing](ca-drawing://{id})`, and their OCR joins the
+  extraction markdown via `![drawing](sa-drawing://{id})`, and their OCR joins the
   material FTS + AI chunk context
 - **material_index_cards**: material_id PK, summary, topics, key_terms,
   reading_minutes, difficulty
@@ -192,7 +192,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   blocks + full taxonomy: difficulty, bloom, skill (conceptual/procedural/applied/
   notation), concept_ids, expected_time_sec, curriculum_code, source_refs,
   distractor_misconceptions (option → error tag), sympy_check (expected expr),
-  input_modes, tags (concept names meanwhile), provenance (generator | caq/v1),
+  input_modes, tags (concept names meanwhile), provenance (generator | saq/v1),
   flag (ok/review), stats
 - **attempts**: id, activity_id, mode (practice/exam), started/finished, score
   (partial-credit weighted), meta
@@ -237,7 +237,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   ⇔ course level), owner_type (standalone/material/exercise_session/chat_message)
   + owner_id? (**attachment** to non-node things only), title, body JSON blocks
   (text blocks + `{"type":"drawing","drawing_id"}` inline blocks, plan 22 E —
-  serialized as `![drawing](ca-drawing://N)` markdown; unknown ids rejected 422),
+  serialized as `![drawing](sa-drawing://N)` markdown; unknown ids rejected 422),
   search_text (title + body + drawings' OCR markdown — powers note search incl.
   handwriting), tags JSON, pinned, timestamps
 - **note_drawings**: id, note_id, strokes JSON (replayable vector strokes — the
@@ -425,7 +425,7 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 - **0057 (plan 67-D, ADR-149)**: `materials.tags` JSON (list[str], notes-style
   normalized via the shared `normalize_tags`) + `materials.starred` boolean
   (server_default false) + partial index `ix_materials_starred` where
-  `starred = 1`; both round-trip in `ca-course/v2` bundles; list endpoint
+  `starred = 1`; both round-trip in `sa-course/v2` bundles; list endpoint
   filters `tag=` / `starred=`.
 - **0056 (plan 53 round 2, Quiz-me daily credit)**: new `quizme_answers` table
   (id, profile_id FK, session_id FK, correct bool, created_at) — one row per

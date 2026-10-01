@@ -71,7 +71,7 @@ def organizer_client() -> Iterator[tuple[TestClient, FakeGateway]]:
     from pathlib import Path
 
     gateway = FakeGateway()
-    tmp = Path(tempfile.mkdtemp(prefix="ca-org-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-org-"))
     app = create_app(Settings(data_dir=tmp, log_level="WARNING"), gateway=gateway)
     with TestClient(app) as client:
         yield client, gateway

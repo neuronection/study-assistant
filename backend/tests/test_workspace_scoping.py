@@ -3,7 +3,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Scoped quiz",
     "questions": [
         {
@@ -115,7 +115,7 @@ def test_exercises_and_flashcards_scope_by_course(client: TestClient) -> None:
         card = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "basic",
+                "kind": "card_basic",
                 "front_md": f"F {course_id}",
                 "back_md": "B",
                 "course_id": course_id,
@@ -181,7 +181,7 @@ def test_analytics_scope_by_course(client: TestClient) -> None:
 
     card = client.post(
         "/api/v1/flashcards",
-        json={"kind": "basic", "front_md": "F", "back_md": "B", "course_id": course_b},
+        json={"kind": "card_basic", "front_md": "F", "back_md": "B", "course_id": course_b},
     )
     assert card.status_code == 201
     recommendations_b = client.get(

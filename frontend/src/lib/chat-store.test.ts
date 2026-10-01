@@ -68,6 +68,6 @@ describe('chat-store', () => {
     useChatStore.getState().setChatWidth(468.4)
     expect(useChatStore.getState().width).toBe(468)
     useChatStore.getState().persistChatWidth()
-    expect(window.localStorage.getItem('ca-chat-width')).toBe('468')
+    expect(window.localStorage.getItem('sa-chat-width')).toBe('468')
   })
 })

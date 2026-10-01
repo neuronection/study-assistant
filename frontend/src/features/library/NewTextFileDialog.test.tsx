@@ -268,7 +268,7 @@ describe('NewTextFileDialog', () => {
   test('save remaps committed drawing refs onto the dialog', async () => {
     const onCreate = vi
       .fn()
-      .mockResolvedValue(editState({ content: '![d](ca-drawing://3)' }))
+      .mockResolvedValue(editState({ content: '![d](sa-drawing://3)' }))
     render(
       <NewTextFileDialog
         defaultKind="md"
@@ -284,7 +284,7 @@ describe('NewTextFileDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).not.toBeNull())
     expect(screen.getByLabelText('File content (markdown + LaTeX)')).toHaveValue(
-      '![d](ca-drawing://3)'
+      '![d](sa-drawing://3)'
     )
   })
 

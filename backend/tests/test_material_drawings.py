@@ -59,7 +59,7 @@ def make_client(responses: list[str] | None = None, tmp: Any = None) -> TestClie
     import tempfile
     from pathlib import Path
 
-    data_dir = Path(tmp) if tmp else Path(tempfile.mkdtemp(prefix="ca-matdraw-"))
+    data_dir = Path(tmp) if tmp else Path(tempfile.mkdtemp(prefix="sa-matdraw-"))
     app = create_app(
         Settings(data_dir=data_dir, log_level="WARNING"),
         gateway=MaterialDrawingGateway(responses or []),
@@ -240,7 +240,7 @@ def test_extraction_save_rejects_unknown_drawing_refs() -> None:
         material_id = create_text_material(client, course_id)
         rejected = client.patch(
             f"/api/v1/materials/{material_id}/extraction",
-            json={"markdown": "![drawing](ca-drawing://999)"},
+            json={"markdown": "![drawing](sa-drawing://999)"},
         )
         assert rejected.status_code == 422
         assert "999" in rejected.json()["detail"]
@@ -254,7 +254,7 @@ def test_delete_drawing_strips_inline_refs_and_search() -> None:
         drawing_id = make_drawing(client, material_id)
         patched = client.patch(
             f"/api/v1/materials/{material_id}/extraction",
-            json={"markdown": f"before\n\n![drawing](ca-drawing://{drawing_id})\n\nafter"},
+            json={"markdown": f"before\n\n![drawing](sa-drawing://{drawing_id})\n\nafter"},
         )
         assert patched.status_code == 200, patched.text
         assert any(
@@ -268,7 +268,7 @@ def test_delete_drawing_strips_inline_refs_and_search() -> None:
         assert not any(
             block.get("type") == "drawing" for block in body["extraction"]["blocks"]
         )
-        assert "ca-drawing://" not in body["extraction"]["markdown"]
+        assert "sa-drawing://" not in body["extraction"]["markdown"]
 
         hits = client.get("/api/v1/search", params={"q": "2x"}).json()["hits"]
         assert hits == []
@@ -298,7 +298,7 @@ def test_derive_copies_drawings_and_remaps_refs(tmp_path: Any) -> None:
         drawing_id = make_drawing(client, material_id)
         patched = client.patch(
             f"/api/v1/materials/{material_id}/extraction",
-            json={"markdown": f"intro\n\n![drawing](ca-drawing://{drawing_id})\n\noutro"},
+            json={"markdown": f"intro\n\n![drawing](sa-drawing://{drawing_id})\n\noutro"},
         )
         assert patched.status_code == 200
 
@@ -310,12 +310,12 @@ def test_derive_copies_drawings_and_remaps_refs(tmp_path: Any) -> None:
 
         source = client.get(f"/api/v1/materials/{material_id}").json()
         assert len(source["drawings"]) == 1
-        assert f"ca-drawing://{drawing_id}" in source["extraction"]["markdown"]
+        assert f"sa-drawing://{drawing_id}" in source["extraction"]["markdown"]
 
         target = client.get(f"/api/v1/materials/{derived_id}").json()
         assert len(target["drawings"]) == 1
         derived_drawing_id = target["drawings"][0]["id"]
-        assert f"ca-drawing://{derived_drawing_id}" in target["extraction"]["markdown"]
-        assert "ca-drawing://" not in target["extraction"]["markdown"].replace(
-            f"ca-drawing://{derived_drawing_id}", ""
+        assert f"sa-drawing://{derived_drawing_id}" in target["extraction"]["markdown"]
+        assert "sa-drawing://" not in target["extraction"]["markdown"].replace(
+            f"sa-drawing://{derived_drawing_id}", ""
         )

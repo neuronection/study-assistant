@@ -253,7 +253,7 @@ def test_outline_commit_allocates_via_links(client: TestClient) -> None:
 
 
 CAQ_SINGLE: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Purge probe",
     "questions": [
         {

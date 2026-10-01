@@ -93,7 +93,7 @@ def table_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-table-fill-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-table-fill-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,

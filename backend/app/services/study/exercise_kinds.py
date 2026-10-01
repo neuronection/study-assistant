@@ -51,7 +51,6 @@ RUBRIC_KINDS = (EXPLAIN, ERROR_SPOT, CORRECT_SOLUTION)
 GENERATABLE_KINDS = (MULTI_STEP, *STRUCTURAL_KINDS, *RUBRIC_KINDS)
 
 CARD_KINDS = tuple(kind for kind, definition in KINDS.items() if definition.card)
-LEGACY_CARD_KIND_MAP = {"basic": CARD_BASIC, "cloze": CARD_CLOZE, "reverse": CARD_REVERSE}
 DEFAULT_KIND = MULTI_STEP
 
 
@@ -59,14 +58,4 @@ def is_card_kind(kind: str) -> bool:
     return KINDS.get(kind, ExerciseKindDef("", "", "", card=False)).card
 
 
-def card_kind_from_legacy(kind: str) -> str:
-    mapped = LEGACY_CARD_KIND_MAP.get(kind)
-    if mapped is None:
-        raise ExerciseKindError(f"unknown card kind: {kind}")
-    return mapped
 
-
-def legacy_kind_from_card(kind: str) -> str:
-    if not is_card_kind(kind):
-        raise ExerciseKindError(f"not a card kind: {kind}")
-    return kind.removeprefix("card_")

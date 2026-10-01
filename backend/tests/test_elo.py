@@ -111,7 +111,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-elo-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-elo-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=EloGateway(),

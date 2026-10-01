@@ -4,7 +4,7 @@ export interface DraftMirror {
 }
 
 export function draftKey(noteId: number): string {
-  return `ca-note-draft:${noteId}`
+  return `sa-note-draft:${noteId}`
 }
 
 export function readMirror(noteId: number): DraftMirror | null {

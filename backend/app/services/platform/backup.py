@@ -25,7 +25,7 @@ MANIFEST_NAME = "manifest.json"
 DB_NAME = "database.sqlite"
 DB_NAME_PG = "database.dump"
 BLOBS_PREFIX = "blobs/"
-BACKUP_FORMAT = "ca-backup/v1"
+BACKUP_FORMAT = "sa-backup/v1"
 STAMP_PATTERN = re.compile(r"^(auto|manual)-(\d{8}-\d{6})\.zip$")
 
 DB_KIND_SQLITE = "sqlite"
@@ -186,7 +186,7 @@ def _snapshot_database(db_path: Path) -> bytes:
 
 
 def build_backup(db_path: Path, blobs_dir: Path, *, database_url: str | None = None) -> bytes:
-    """Build a `ca-backup/v1` archive.
+    """Build a `sa-backup/v1` archive.
 
     The database member depends on the dialect: SQLite deployments get the
     online-backup snapshot as `database.sqlite`, PostgreSQL deployments a

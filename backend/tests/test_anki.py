@@ -57,7 +57,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-anki-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-anki-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),
@@ -75,7 +75,7 @@ def add_card(client: TestClient, course_id: int, front: str, back: str) -> None:
     created = client.post(
         "/api/v1/flashcards",
         json={
-            "kind": "basic",
+            "kind": "card_basic",
             "front_md": front,
             "back_md": back,
             "course_id": course_id,
@@ -112,7 +112,7 @@ def test_anki_export_import_round_trip() -> None:
         listing = client.get("/api/v1/flashcards").json()
         anki_cards = [card for card in listing if card["source"] == "anki_import"]
         assert len(anki_cards) == 2
-        assert {card["kind"] for card in anki_cards} == {"basic"}
+        assert {card["kind"] for card in anki_cards} == {"card_basic"}
 
 
 def test_anki_import_rejects_non_apkg() -> None:
@@ -153,4 +153,4 @@ def test_cloze_detected_on_import() -> None:
         )
         assert imported.status_code == 201
         listing = client.get("/api/v1/flashcards").json()
-        assert listing[0]["kind"] == "cloze"
+        assert listing[0]["kind"] == "card_cloze"

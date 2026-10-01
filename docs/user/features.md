@@ -42,9 +42,9 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   / `skipped: no extraction`), sources without an extraction never block the
   batch; listings carry `has_extraction` so the menu item gates precisely.**
   **Drawings come along (plan 29, ADR-064): the derived material copies the
-  source's drawings and remaps `ca-drawing://` ids so it is self-contained.**
+  source's drawings and remaps `sa-drawing://` ids so it is self-contained.**
 - ✅ **Material drawings (plan 29, ADR-064)**: text/markdown materials own
-  drawings exactly like notes — `material_drawings` + `ca-drawing://` refs in
+  drawings exactly like notes — `material_drawings` + `sa-drawing://` refs in
   the extraction markdown. The extraction QA editor gets the **pen button**
   (shared `DrawingAdapter`), drawings render inline in the reading view, OCR
   joins search + AI context, and **Export .md** downloads the material with
@@ -122,7 +122,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   library; **single click selects, double-click (or Enter) opens** everywhere
   the grammar applies (library pane, workspace tabs);
   cut/copy/paste + Ctrl+X/C/V/Delete/Esc; drag-to-folder **move** with a
-  multi-id payload (`application/x-ca-item`); **duplicate material** (copy
+  multi-id payload (`application/x-sa-item`); **duplicate material** (copy
   shares the blob, deep-copies the latest extraction + chunks + FTS + index
   card, re-queues embeddings, fresh study state, no node links, "… (copy)"
   title); **assign-to-node** dialog for material selections; the workspace tabs
@@ -285,7 +285,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   storage. Settings → AI → Integrations (the former MCP tab) hosts the
   **Web sources** card with add/edit dialog (kind, URL, label, course,
   interval, per-kind options); sources are course-owned config that rides
-  `ca-course/v2` bundles with fresh cursors on import
+  `sa-course/v2` bundles with fresh cursors on import
 - ✅ **Suggestions: keep track + Discover UI (plan 73-D, 2026-09-16)**: found
   material no longer vanishes. Every discovery result row is annotated with its
   tracking state ("Saved" / "Dismissed"), and the new **Discover dialog** (in
@@ -500,14 +500,14 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   point tolerance, interval containment, boundary-kind strictness, Dice-style
   partial credit for partial shading (see math-verification.md). Generators may
   propose numberline questions (validators enforce the payload schema + domain
-  bounds; repair loop); `caq/v1` round-trips them
+  bounds; repair loop); `saq/v1` round-trips them
 - ✅ **Table / matrix completion (C19, plan 51-F)**: the `table_fill` question
   type answers a grid cell by cell — headers + row labels, pre-filled `"locked"`
   cells shown read-only, fillable cells typed per their declared kind
   (text = normalized match + accept list, numeric = tolerance, equation =
   SymPy equivalence). Grading is per-cell deterministic with partial credit =
   fraction of correct cells; generators propose tables (validators: alignment,
-  kinds, parseable values, ≥1 fillable cell; repair loop) and `caq/v1`
+  kinds, parseable values, ≥1 fillable cell; repair loop) and `saq/v1`
   round-trips them; the filled grid replays in the attempt report
 - ✅ **Composite questions with follow-through credit (C16, plan 51-E)**: the
   `composite` type is one multi-part problem (2–4 ordered parts, each
@@ -518,7 +518,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   earlier part was wrong. Validators prove at generation time that the relation
   is parseable, only references prior parts, reproduces the declared value from
   the declared answers, and still evaluates from a perturbed answer (repair
-  loop); `caq/v1` round-trips the parts; the per-part feedback
+  loop); `saq/v1` round-trips the parts; the per-part feedback
   ("(a): incorrect, (b): correct (follow-through)") renders in the runner and
   the response rides the attempt report
 - ✅ **Graph-reading answers (C5, plan 51-G)**: the `graph_read` type renders a
@@ -559,11 +559,11 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   refused help server-side; "ask about this question" opens a chat session bound to
   the attempt that runs under the no-answer-reveal wrapper until the question is
   answered; help events land on the answer transcript — C9b
-- ✅ `caq/v1` export/import with dry-run validation preview — C22/C23 (single-file
+- ✅ `saq/v1` export/import with dry-run validation preview — C22/C23 (single-file
   tier)
 - ✅ `qpkg` package export/import: zip with sha256 manifest, integrity-checked,
   same validators — C22/C23 tier 2 (assets/ split form pending)
-- ✅ **Course bundles (`ca-course/v1`, plan 22 F, ADR-050)**: `GET /courses/{id}/export`
+- ✅ **Course bundles (`sa-course/v1`, plan 22 F, ADR-050)**: `GET /courses/{id}/export`
   → zip (manifest + course.json + tree + concepts/links/coverage + materials w/
   latest extraction + index cards + node links + notes w/ drawings + quizzes +
   exercises incl. `card_*` kinds + course-scope skill overrides + content-addressed
@@ -577,7 +577,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   each course card also shows its **description** when one is set
 - ✅ Single-artifact export (plan 22 F2): note **Print** (standalone page w/
   `?print=1` auto-print; global print CSS hides chrome) and **Export .md**
-  (self-contained download — `ca-drawing://N` refs inlined as base64 data URIs)
+  (self-contained download — `sa-drawing://N` refs inlined as base64 data URIs)
 - ✅ **Split-view study mode (plan 22 G; per-pane close plan 62-A; shared
   header plan 62-B)**: `SplitStudyPane` overlay — material (MaterialDetailBody
   tabs) left, `NoteEditor` right (rides autosave), both panes headed by one
@@ -607,7 +607,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   `/library/<id>`, note → `/note/<id>`, carrying `from=` so back returns to
   the workspace);
   **selection → Quote-into-note bridge** (floating affordance on text
-  selection in the reader → blockquote + `ca-material://` source link inserted
+  selection in the reader → blockquote + `sa-material://` source link inserted
   at the tiptap cursor via `insertQuote` API)
 - ✅ **Docked right-rail panels (ADR-191, 2026-09-17)**: opening a material or
   note in the workspace (`?material=` / `?note=`) renders a **docked,
@@ -1162,7 +1162,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ Canvas v2 + **inline drawing blocks** (plan 22 E, ADR-049): DrawCanvas with
   pen/eraser (stroke-hit erase), 4 inks, 3 widths, undo/redo, guarded clear,
   pressure-sensitive widths, variable height (grows with content, DPR-aware);
-  drawings embed **inside the note body** as `![drawing](ca-drawing://N)` —
+  drawings embed **inside the note body** as `![drawing](sa-drawing://N)` —
   a tiptap image NodeView renders the PNG + collapsible OCR text with a
   per-drawing ⋯ menu (edit / run OCR again / copy OCR text); the canvas footer
   is [OCR toggle · default on] + Save-drawing, which inserts at the cursor;
@@ -1188,7 +1188,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   engine (extracted from the chat composer) — pick a window/screen, drag a
   rectangle, review the capture in a preview popover (Insert/Cancel), and
   Insert stores it as a strokeless snapshot drawing (OCR honestly skipped) and
-  drops the `ca-drawing://N` ref at the cursor with an Undo toast; with no
+  drops the `sa-drawing://N` ref at the cursor with an Undo toast; with no
   note editor open the shot lands in a new note in the current course, else
   the scratchpad
 - ✅ Flashcards: basic/cloze/reverse; AI generation from notes / material /

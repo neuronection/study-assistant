@@ -82,7 +82,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-notes2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-notes2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ScriptedGateway(responses),
@@ -143,7 +143,7 @@ def test_handwritten_answer_stores_strokes_and_input_mode() -> None:
     client = make_client([])
     with client:
         quiz = {
-            "$schema": "caq/v1",
+            "$schema": "saq/v1",
             "title": "Write quiz",
             "questions": [
                 {

@@ -14,7 +14,7 @@ def docx_to_markdown(data: bytes, store_image: StoreImage) -> str:
         with image.open() as payload:
             content = payload.read()
         image_id = store_image(content, image.content_type)
-        return {"src": f"ca-image://{image_id}"}
+        return {"src": f"sa-image://{image_id}"}
 
     result = mammoth.convert_to_html(
         BytesIO(data),

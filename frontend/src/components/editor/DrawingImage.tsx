@@ -19,7 +19,7 @@ export type DrawingAction = 'edit' | 'reocr' | 'copy' | 'delete'
 
 export type DrawingActionHandler = (id: number, action: DrawingAction) => void
 
-export const DRAWING_SRC_PREFIX = 'ca-drawing://'
+export const DRAWING_SRC_PREFIX = 'sa-drawing://'
 
 export function drawingSrc(id: number): string {
   return `${DRAWING_SRC_PREFIX}${id}`

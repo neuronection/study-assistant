@@ -15,7 +15,7 @@ export function noteBodyMd(note: NoteDetailInfo): string {
   for (const block of note.body) {
     let part: string
     if (block.type === 'drawing' && typeof block.drawing_id === 'number') {
-      part = `![drawing](ca-drawing://${block.drawing_id})`
+      part = `![drawing](sa-drawing://${block.drawing_id})`
     } else {
       part = block.md ?? ''
     }

@@ -31,13 +31,13 @@ describe('en catalog', () => {
   })
 
   test('saved locale is picked up and invalid values fall back to en', async () => {
-    localStorage.setItem('ca-locale', 'de')
+    localStorage.setItem('sa-locale', 'de')
     await initI18n()
     expect(i18next.resolvedLanguage).toBe('de')
-    localStorage.setItem('ca-locale', 'xx')
+    localStorage.setItem('sa-locale', 'xx')
     await initI18n()
     expect(i18next.resolvedLanguage).toBe('en')
-    localStorage.removeItem('ca-locale')
+    localStorage.removeItem('sa-locale')
     await initI18n()
     expect(i18next.resolvedLanguage).toBe('en')
     expect(document.documentElement.lang).toBe('en')
@@ -67,7 +67,7 @@ describe('en catalog', () => {
   test('setLocale persists, applies instantly and updates html lang', async () => {
     await initI18n()
     await setLocale('de')
-    expect(localStorage.getItem('ca-locale')).toBe('de')
+    expect(localStorage.getItem('sa-locale')).toBe('de')
     expect(i18next.resolvedLanguage).toBe('de')
     expect(i18next.t('settings.tabs.general')).toBe('Allgemein')
     expect(document.documentElement.lang).toBe('de')
@@ -76,6 +76,6 @@ describe('en catalog', () => {
     expect(i18next.t('settings.tabs.general')).toBe('Γενικά')
     await setLocale('en')
     expect(document.documentElement.lang).toBe('en')
-    localStorage.removeItem('ca-locale')
+    localStorage.removeItem('sa-locale')
   })
 })

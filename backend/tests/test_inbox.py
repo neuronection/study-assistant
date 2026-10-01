@@ -9,7 +9,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 GOOD_QUIZ = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Inbox quiz",
     "questions": [
         {
@@ -81,7 +81,7 @@ class QuietGateway(LLMGateway):
 def make_client() -> TestClient:
     import tempfile
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-inbox-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-inbox-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=QuietGateway(),

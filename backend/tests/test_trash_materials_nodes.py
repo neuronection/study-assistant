@@ -53,7 +53,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    data_dir = Path(tempfile.mkdtemp(prefix="ca-trash-materials-"))
+    data_dir = Path(tempfile.mkdtemp(prefix="sa-trash-materials-"))
     app = create_app(
         Settings(data_dir=data_dir, log_level="WARNING"),
         gateway=Scripted(),

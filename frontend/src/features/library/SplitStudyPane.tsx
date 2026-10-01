@@ -29,7 +29,7 @@ const MIN_PCT = 30
 const MAX_PCT = 70
 
 function splitKey(courseId: number): string {
-  return `ca-study-split:${courseId}`
+  return `sa-study-split:${courseId}`
 }
 
 function readSplit(courseId: number): number | null {

@@ -58,7 +58,7 @@ def make_client(responses: list[str] | None = None, tmp: Any = None) -> TestClie
     import tempfile
     from pathlib import Path
 
-    data_dir = Path(tmp) if tmp else Path(tempfile.mkdtemp(prefix="ca-drawblocks-"))
+    data_dir = Path(tmp) if tmp else Path(tempfile.mkdtemp(prefix="sa-drawblocks-"))
     app = create_app(
         Settings(data_dir=data_dir, log_level="WARNING"),
         gateway=Scripted(responses or []),
@@ -113,8 +113,8 @@ def test_body_md_round_trip_is_lossless(tmp_path: Any) -> None:
             "\n\nleading blank lines\n\nbody",
             "body with trailing\n\n\n",
             "only text\n\nsecond",
-            f"text\n\n![drawing](ca-drawing://{first})\n\n![drawing](ca-drawing://{second})",
-            f"start\n\n![drawing](ca-drawing://{first})\n\nmid\n\n\n![drawing](ca-drawing://{second})\ntail\n",
+            f"text\n\n![drawing](sa-drawing://{first})\n\n![drawing](sa-drawing://{second})",
+            f"start\n\n![drawing](sa-drawing://{first})\n\nmid\n\n\n![drawing](sa-drawing://{second})\ntail\n",
         ]
         for body_md in cases:
             patched = client.patch(
@@ -142,7 +142,7 @@ def test_legacy_stripped_blocks_rejoin_unchanged(tmp_path: Any) -> None:
         {"type": "drawing", "drawing_id": 1},
         {"type": "text", "md": "after"},
     ]
-    assert _blocks_md(legacy) == "before\n\n![drawing](ca-drawing://1)\n\nafter"
+    assert _blocks_md(legacy) == "before\n\n![drawing](sa-drawing://1)\n\nafter"
     assert _blocks_md([{"type": "text", "md": "only"}]) == "only"
     assert _blocks_md(None) == ""
 
@@ -161,7 +161,7 @@ def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
 
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"before\n\n![drawing](ca-drawing://{drawing_id})\n\nafter"},
+            json={"body_md": f"before\n\n![drawing](sa-drawing://{drawing_id})\n\nafter"},
         )
         assert patched.status_code == 200, patched.text
         body = patched.json()["body"]
@@ -185,7 +185,7 @@ def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
 
         unknown = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": "![drawing](ca-drawing://999)"},
+            json={"body_md": "![drawing](sa-drawing://999)"},
         )
         assert unknown.status_code == 422
         assert "999" in unknown.json()["detail"]
@@ -211,7 +211,7 @@ def test_context_resolver_renders_drawings_in_position(tmp_path: Any) -> None:
 
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"intro\n\n![drawing](ca-drawing://{inline_id})\n\noutro"},
+            json={"body_md": f"intro\n\n![drawing](sa-drawing://{inline_id})\n\noutro"},
         )
         assert patched.status_code == 200
 
@@ -242,7 +242,7 @@ def test_search_includes_inline_drawing_refs_harmlessly(tmp_path: Any) -> None:
         drawing_id = add_drawing(client, note_id)
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"text\n\n![drawing](ca-drawing://{drawing_id})"},
+            json={"body_md": f"text\n\n![drawing](sa-drawing://{drawing_id})"},
         )
         assert patched.status_code == 200
         hits = client.get("/api/v1/notes", params={"q": "text"})

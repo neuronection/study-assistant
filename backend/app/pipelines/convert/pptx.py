@@ -33,7 +33,7 @@ def pptx_to_markdown(data: bytes, store_image: StoreImage) -> str:
                     picture = None
                 if picture is not None:
                     image_id = store_image(picture.blob, picture.content_type)
-                    lines.append(f"![slide image](ca-image://{image_id})")
+                    lines.append(f"![slide image](sa-image://{image_id})")
         if slide.has_notes_slide:
             notes = slide.notes_slide.notes_text_frame.text.strip()
             if notes:

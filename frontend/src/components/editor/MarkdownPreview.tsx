@@ -4,7 +4,7 @@ import { TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { useEffect } from 'react'
 import { Markdown } from 'tiptap-markdown'
 
-import { CaMath } from './CaMath'
+import { SaMath } from './SaMath'
 import { CaMermaid } from './CaMermaid'
 import { MarkdownTable } from './MarkdownTable'
 import {
@@ -28,11 +28,11 @@ export function MarkdownPreview({ markdown }: { markdown: string }) {
       StarterKit.configure({
         paragraph: false,
         link: {
-          protocols: ['http', 'https', 'mailto', 'ca-material', 'ca-drawing', 'mention'],
+          protocols: ['http', 'https', 'mailto', 'sa-material', 'sa-drawing', 'mention'],
         },
       }),
       BlankLineParagraph,
-      CaMath,
+      SaMath,
       CaMermaid,
       MarkdownTable,
       TableRow,

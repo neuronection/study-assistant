@@ -19,7 +19,7 @@ from app.main import create_app
 from app.storage.db import make_engine, make_session_factory
 
 CAQ: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "MCP probe",
     "questions": [
         {

@@ -26,7 +26,7 @@ def client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-p9cd-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-p9cd-"))
     app = create_app(Settings(data_dir=tmp, log_level="WARNING"))
     with TestClient(app) as test_client:
         yield test_client
@@ -135,7 +135,7 @@ def test_chat_session_list_filters_by_node(client: TestClient) -> None:
 
 
 CAQ: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "probe",
     "questions": [
         {

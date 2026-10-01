@@ -61,7 +61,7 @@ class BlockedFakeGateway(LLMGateway):
 
 @contextmanager
 def make_client(gateway: BlockedFakeGateway) -> Iterator[TestClient]:
-    tmp = Path(tempfile.mkdtemp(prefix="ca-reextract-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-reextract-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(settings, gateway=gateway, ocr=GatewayOcr(gateway))
     with TestClient(app) as client:

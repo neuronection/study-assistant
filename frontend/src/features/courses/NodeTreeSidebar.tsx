@@ -65,9 +65,9 @@ function readStoredTreeWidth(): number {
   }
   return DEFAULT_TREE_WIDTH
 }
-const DRAG_MIME = 'application/x-ca-node'
-const MATERIAL_DRAG_MIME = 'application/x-ca-material'
-const expandedKey = (courseId: string) => `ca-tree-expanded-${courseId}`
+const DRAG_MIME = 'application/x-sa-node'
+const MATERIAL_DRAG_MIME = 'application/x-sa-material'
+const expandedKey = (courseId: string) => `sa-tree-expanded-${courseId}`
 
 type FlatRow = { node: NodeInfo; depth: number; hasChildren: boolean }
 type EditState = { kind: 'add' | 'rename'; nodeId: number } | null
@@ -319,7 +319,7 @@ function TreeRow({
   return (
     <>
       <div
-        id={`ca-tree-row-${node.id}`}
+        id={`sa-tree-row-${node.id}`}
         role="treeitem"
         aria-level={row.depth + 1}
         aria-expanded={row.hasChildren ? expanded : undefined}
@@ -794,7 +794,7 @@ export function NodeTreeSidebar({
     if (virtualize) {
       virtualizer.scrollToIndex(index, { align: 'center' })
     } else {
-      document.getElementById(`ca-tree-row-${currentId}`)?.scrollIntoView({
+      document.getElementById(`sa-tree-row-${currentId}`)?.scrollIntoView({
         block: 'nearest',
       })
     }
@@ -1021,7 +1021,7 @@ export function NodeTreeSidebar({
       const next = event.key === 'ArrowDown' ? current + 1 : current - 1
       if (next >= 0 && next < rows.length) {
         setFocusIndex(next)
-        document.getElementById(`ca-tree-row-${rows[next].node.id}`)?.scrollIntoView({
+        document.getElementById(`sa-tree-row-${rows[next].node.id}`)?.scrollIntoView({
           block: 'nearest',
         })
       }
@@ -1147,7 +1147,7 @@ export function NodeTreeSidebar({
                   : Math.max(current - 1, 0)
                 setFocusIndex(next)
                 document
-                  .getElementById(`ca-tree-row-${rows[next].node.id}`)
+                  .getElementById(`sa-tree-row-${rows[next].node.id}`)
                   ?.scrollIntoView({ block: 'nearest' })
                 return
               }
@@ -1204,7 +1204,7 @@ export function NodeTreeSidebar({
         aria-label={t('workspace.treeSidebar')}
         aria-activedescendant={
           focusIndex >= 0 && focusIndex < rows.length
-            ? `ca-tree-row-${rows[focusIndex].node.id}`
+            ? `sa-tree-row-${rows[focusIndex].node.id}`
             : undefined
         }
         tabIndex={0}

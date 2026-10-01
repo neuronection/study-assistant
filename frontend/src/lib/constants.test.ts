@@ -11,10 +11,10 @@ describe('WsTopic', () => {
     expect(WsTopic.material(4)).toBe('material:4')
   })
 
-  test('storage keys keep the ca- prefix and stay unique', () => {
+  test('storage keys use the sa- prefix and stay unique', () => {
     const values = Object.values(storageKeys)
     for (const value of values) {
-      expect(value.startsWith('ca-')).toBe(true)
+      expect(value.startsWith('sa-')).toBe(true)
     }
     expect(new Set(values).size).toBe(values.length)
   })

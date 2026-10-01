@@ -270,7 +270,7 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
             )
             db.add(drawing)
             db.flush()
-            markdown = f"before\n\n![drawing](ca-drawing://{drawing.id})\n\nafter"
+            markdown = f"before\n\n![drawing](sa-drawing://{drawing.id})\n\nafter"
             extraction = Extraction(
                 material_id=material.id,
                 version=1,
@@ -319,11 +319,11 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
         }
         assert imported_drawing_id != materials_json[0]["drawings"][0]["id"]
         assert (
-            f"![drawing](ca-drawing://{imported_drawing_id})"
+            f"![drawing](sa-drawing://{imported_drawing_id})"
             in detail["extraction"]["markdown"]
         )
         assert (
-            f"![drawing](ca-drawing://{materials_json[0]['drawings'][0]['id']})"
+            f"![drawing](sa-drawing://{materials_json[0]['drawings'][0]['id']})"
             not in detail["extraction"]["markdown"]
         )
         search = client.get("/api/v1/search", params={"q": "handwritten limits"})
@@ -341,14 +341,14 @@ def test_material_drawings_remap_helpers() -> None:
         strip_drawing_refs,
     )
 
-    md = "a\n\n![drawing](ca-drawing://3)\n\n![sketch](ca-drawing://7) b"
+    md = "a\n\n![drawing](sa-drawing://3)\n\n![sketch](sa-drawing://7) b"
     assert drawing_ref_ids(md) == {3, 7}
     blocks = md_to_blocks(md)
     assert [b["type"] for b in blocks] == ["text", "drawing", "text", "drawing", "text"]
-    assert strip_drawing_refs(md, 3) == "a\n\n\n\n![sketch](ca-drawing://7) b"
+    assert strip_drawing_refs(md, 3) == "a\n\n\n\n![sketch](sa-drawing://7) b"
     assert (
         remap_drawing_refs(md, {3: 9})
-        == "a\n\n![drawing](ca-drawing://9)\n\n![sketch](ca-drawing://7) b"
+        == "a\n\n![drawing](sa-drawing://9)\n\n![sketch](sa-drawing://7) b"
     )
 
 
@@ -374,7 +374,7 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
         assert "manifest.json" in names
         assert "course.json" in names
         manifest = json.loads(archive.read("manifest.json"))
-        assert manifest["format"] == "ca-course/v2"
+        assert manifest["format"] == "sa-course/v2"
         assert manifest["course_title"] == "Calculus I"
         assert manifest["counts"]["quizzes"] == 1
         assert manifest["counts"]["exercises"] == 1
@@ -621,7 +621,7 @@ def test_bundle_rejects_bad_archives(tmp_path: Any) -> None:
 
         empty_zip = BytesIO()
         with zipfile.ZipFile(empty_zip, "w") as archive:
-            archive.writestr("manifest.json", json.dumps({"format": "ca-course/v1"}))
+            archive.writestr("manifest.json", json.dumps({"format": "sa-course/v1"}))
         missing = client.post("/api/v1/courses/import", content=empty_zip.getvalue())
         assert missing.status_code == 422
         assert "missing" in missing.json()["detail"]
@@ -659,7 +659,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
             "/api/v1/flashcards",
             json={
                 "course_id": course_id,
-                "kind": "basic",
+                "kind": "card_basic",
                 "front_md": "d/dx of e^x?",
                 "back_md": "e^x",
             },
@@ -724,7 +724,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
         assert exported.status_code == 200, exported.text
         archive = zipfile.ZipFile(BytesIO(exported.content))
         manifest = json.loads(archive.read("manifest.json"))
-        assert manifest["format"] == "ca-course/v2"
+        assert manifest["format"] == "sa-course/v2"
         assert manifest["options"] == {
             "include_history": True,
             "include_note_versions": True,
@@ -827,7 +827,7 @@ def test_v1_bundle_still_imports(tmp_path: Any) -> None:
                 data = source.read(name)
                 if name == "manifest.json":
                     manifest = json.loads(data)
-                    manifest["format"] = "ca-course/v1"
+                    manifest["format"] = "sa-course/v1"
                     data = json.dumps(manifest).encode()
                 archive.writestr(name, data)
 

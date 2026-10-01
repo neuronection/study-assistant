@@ -102,7 +102,7 @@ describe('SnapIntoNote', () => {
     await waitFor(() => expect(addDrawing).toHaveBeenCalledWith(12, [], 'AQID', false, null))
     await waitFor(() =>
       expect(updateNote).toHaveBeenCalledWith(12, {
-        body_md: '![screenshot](ca-drawing://9)',
+        body_md: '![screenshot](sa-drawing://9)',
       })
     )
     await waitFor(() => expect(useCaptureStore.getState().snapOpen).toBe(false))

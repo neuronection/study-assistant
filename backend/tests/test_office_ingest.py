@@ -175,7 +175,7 @@ def test_html_data_uri_images_become_ocr_jobs(
     material_id = upload(client, course_id, "trig.html", html.encode("utf-8"))
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]
-    assert "ca-image://" in markdown
+    assert "sa-image://" in markdown
     assert len(detail["images"]) == 1
     image = detail["images"][0]
 

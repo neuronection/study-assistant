@@ -135,7 +135,7 @@ const EXTRACTION_FIXTURE = {
     material_id: 5,
     version: 2,
     extractor: 'ocr',
-    markdown: 'body ![drawing](ca-drawing://3)',
+    markdown: 'body ![drawing](sa-drawing://3)',
     blocks: [{ type: 'text', md: 'body' }],
   },
   drawings: [{ id: 3, png_sha: 'sha3', strokes: [], ocr_version: 1, ocr_markdown: null }],
@@ -393,7 +393,7 @@ describe('MaterialDetailBody take-notes', () => {
 
     await waitFor(() =>
       expect(exportMarkdownWithDrawings).toHaveBeenCalledWith(
-        'body ![drawing](ca-drawing://3)',
+        'body ![drawing](sa-drawing://3)',
         [{ id: 3, png_sha: 'sha3', strokes: [], ocr_version: 1, ocr_markdown: null }]
       )
     )

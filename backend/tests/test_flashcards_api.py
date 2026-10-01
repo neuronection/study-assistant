@@ -58,7 +58,7 @@ def make_client(responses: list[str]) -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-cards-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-cards-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=CardsGateway(responses),
@@ -83,7 +83,7 @@ def test_manual_card_validation() -> None:
         created = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "cloze",
+                "kind": "card_cloze",
                 "front_md": "The derivative of $x^2$ is {{2x}}",
                 "back_md": "$2x$",
                 "course_id": course_id,
@@ -94,7 +94,7 @@ def test_manual_card_validation() -> None:
         bad = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "cloze",
+                "kind": "card_cloze",
                 "front_md": "no deletion here",
                 "back_md": "x",
                 "course_id": course_id,
@@ -111,7 +111,7 @@ def test_due_queue_and_review_scheduling() -> None:
             client.post(
                 "/api/v1/flashcards",
                 json={
-                    "kind": "basic",
+                    "kind": "card_basic",
                     "front_md": "What is $\\frac{d}{dx} x^2$?",
                     "back_md": "$2x$",
                     "course_id": make_course(client),
@@ -145,7 +145,7 @@ def test_again_review_schedules_tomorrow_and_logs() -> None:
             client.post(
                 "/api/v1/flashcards",
                 json={
-                    "kind": "basic",
+                    "kind": "card_basic",
                     "front_md": "F",
                     "back_md": "B",
                     "course_id": make_course(client),
@@ -170,7 +170,7 @@ def test_again_review_schedules_tomorrow_and_logs() -> None:
 
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Cards quiz",
     "questions": [
         {
@@ -217,8 +217,8 @@ def seed_mistake(client: TestClient) -> int:
 def test_generation_repair_and_duplicate_rejection() -> None:
     good = cards_json(
         [
-            {"kind": "basic", "front_md": "Q1", "back_md": "A1"},
-            {"kind": "cloze", "front_md": "power rule: {{d/dx x^n}}", "back_md": "nx^{n-1}"},
+            {"kind": "card_basic", "front_md": "Q1", "back_md": "A1"},
+            {"kind": "card_cloze", "front_md": "power rule: {{d/dx x^n}}", "back_md": "nx^{n-1}"},
         ]
     )
     client = make_client(["not json at all"])
@@ -230,7 +230,7 @@ def test_generation_repair_and_duplicate_rejection() -> None:
         )
         assert generated.status_code == 422
 
-    duplicate_batch = cards_json([{"kind": "basic", "front_md": "Q1", "back_md": "A1"}])
+    duplicate_batch = cards_json([{"kind": "card_basic", "front_md": "Q1", "back_md": "A1"}])
     client2 = make_client([good, duplicate_batch, duplicate_batch, duplicate_batch])
     with client2:
         course_id = seed_mistake(client2)

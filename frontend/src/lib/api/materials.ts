@@ -268,11 +268,11 @@ export function remapDrawingRefsInMarkdown(
   markdown: string,
   mapping: Record<number, number>
 ): string {
-  return markdown.replace(/!\[[^\]]*\]\(ca-drawing:\/\/(-?\d+)\)/g, (full, idStr: string) => {
+  return markdown.replace(/!\[[^\]]*\]\(sa-drawing:\/\/(-?\d+)\)/g, (full, idStr: string) => {
     const old = Number(idStr)
     const next = mapping[old] ?? old
     const alt = full.split('](')[0].slice(2)
-    return `![${alt}](ca-drawing://${next})`
+    return `![${alt}](sa-drawing://${next})`
   })
 }
 

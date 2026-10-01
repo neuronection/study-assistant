@@ -8,7 +8,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 CAQ_DOC = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Analytics quiz",
     "questions": [
         {
@@ -87,7 +87,7 @@ def make_client() -> TestClient:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-analytics-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-analytics-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=StaticGateway(),
@@ -217,7 +217,7 @@ def test_recommendations_read_drill_review() -> None:
         due_cards = client.post(
             "/api/v1/flashcards",
             json={
-                "kind": "basic",
+                "kind": "card_basic",
                 "front_md": "F",
                 "back_md": "B",
                 "course_id": course_id,

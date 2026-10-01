@@ -82,7 +82,7 @@ def composite_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-composite-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-composite-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,

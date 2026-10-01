@@ -7,10 +7,10 @@ from ...domain.models import Job
 from ...jobs.payloads import DrawingOcrPayload
 from ...jobs.runner import JobRunner
 
-DRAWING_MD = re.compile(r"!\[[^\]]*\]\(ca-drawing://(\d+)\)")
-IMAGE_MD = re.compile(r"!\[[^\]]*\]\(ca-image://(\d+)\)")
+DRAWING_MD = re.compile(r"!\[[^\]]*\]\(sa-drawing://(\d+)\)")
+IMAGE_MD = re.compile(r"!\[[^\]]*\]\(sa-image://(\d+)\)")
 EMBEDDED_MD = re.compile(
-    r"!\[[^\]]*\]\((?:ca-drawing|ca-image)://(\d+)\)"
+    r"!\[[^\]]*\]\((?:sa-drawing|sa-image)://(\d+)\)"
 )
 
 
@@ -22,7 +22,7 @@ def md_to_blocks(md: str) -> list[dict[str, Any]]:
         if before:
             blocks.append({"type": "text", "md": before})
         ref = match.group(0)
-        if "ca-drawing://" in ref:
+        if "sa-drawing://" in ref:
             blocks.append({"type": "drawing", "drawing_id": int(match.group(1))})
         else:
             blocks.append({"type": "image_ref", "image_id": int(match.group(1))})
@@ -48,7 +48,7 @@ def remap_drawing_refs(md: str, mapping: dict[int, int]) -> str:
         old = int(match.group(1))
         new = mapping.get(old, old)
         alt = match.group(0).split("](", 1)[0][2:]
-        return f"![{alt}](ca-drawing://{new})"
+        return f"![{alt}](sa-drawing://{new})"
 
     return DRAWING_MD.sub(_replace, md)
 
@@ -58,7 +58,7 @@ def remap_image_refs(md: str, mapping: dict[int, int]) -> str:
         old = int(match.group(1))
         new = mapping.get(old, old)
         alt = match.group(0).split("](", 1)[0][2:]
-        return f"![{alt}](ca-image://{new})"
+        return f"![{alt}](sa-image://{new})"
 
     return IMAGE_MD.sub(_replace, md)
 
@@ -69,9 +69,9 @@ def blocks_md(blocks: list[dict[str, Any]] | None) -> str:
     result = ""
     for block in blocks:
         if block.get("type") == "drawing":
-            part = f"![drawing](ca-drawing://{block['drawing_id']})"
+            part = f"![drawing](sa-drawing://{block['drawing_id']})"
         elif block.get("type") == "image_ref":
-            part = f"![image](ca-image://{block['image_id']})"
+            part = f"![image](sa-image://{block['image_id']})"
         elif block.get("md"):
             part = str(block["md"])
         else:

@@ -239,7 +239,7 @@ def import_apkg(
         if not front or not back:
             skipped += 1
             continue
-        kind = "cloze" if CLOZE_RE.search(front) else "basic"
+        kind = "card_cloze" if CLOZE_RE.search(front) else "card_basic"
         create_card_exercise(
             session,
             profile_id=profile_id,

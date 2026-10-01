@@ -142,7 +142,7 @@ describe('AppShell rail', () => {
       auth_mode: 'open',
       registration_enabled: true,
     })
-    localStorage.removeItem('ca-profile-id')
+    localStorage.removeItem('sa-profile-id')
     clearDemoModeCache()
     navigate.mockReset()
     useWorkspaceStore.getState().setCourse(null)
@@ -270,16 +270,16 @@ describe('AppShell rail', () => {
     // server mode has no silent default (§15) — the null selection must
     // adopt the is_default row so boot queries carry X-Profile-Id
     await waitFor(() => expect(getActiveProfile()).toBe('p-default'))
-    expect(localStorage.getItem('ca-profile-id')).toBe('p-default')
+    expect(localStorage.getItem('sa-profile-id')).toBe('p-default')
   })
 
   test('a stale stored selection is repaired to the Default profile', async () => {
     // auth_mode open (desktop) — repair is mode-independent, adoption is not
     listProfiles.mockResolvedValue([{ id: 'p-default', name: 'Default', color: null, is_default: true }])
-    localStorage.setItem('ca-profile-id', 'p-deleted')
+    localStorage.setItem('sa-profile-id', 'p-deleted')
     renderShell()
     await waitFor(() => expect(getActiveProfile()).toBe('p-default'))
-    expect(localStorage.getItem('ca-profile-id')).toBe('p-default')
+    expect(localStorage.getItem('sa-profile-id')).toBe('p-default')
   })
 
   test('active course shows quick destinations for workspace, materials, notes and practice', async () => {

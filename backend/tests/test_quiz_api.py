@@ -113,7 +113,7 @@ def quiz_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -167,7 +167,7 @@ def test_quizgen_repair_round_fixes_invalid_metadata() -> None:
         }
     )
     gateway = QuizGateway([invalid, QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -277,7 +277,7 @@ def test_quiz_generation_requires_assigned_model() -> None:
         ) -> str:
             raise TaskUnassigned(task)
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz3-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz3-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=UnassignedGateway(),
@@ -365,7 +365,7 @@ def test_quizgen_question_types_allowlist() -> None:
         }
     )
     gateway = QuizGateway([payload])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-types-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-types-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -426,7 +426,7 @@ def test_quizgen_off_type_draft_repairs() -> None:
         }
     )
     gateway = QuizGateway([wrong, QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-types2-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-types2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -453,7 +453,7 @@ def test_quizgen_shuffle_remaps_options() -> None:
     from app.domain.models import Question
 
     gateway = QuizGateway([QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-quiz-shuffle-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-quiz-shuffle-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,

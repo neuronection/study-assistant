@@ -655,26 +655,26 @@ describe('NodeWorkspace', () => {
 
   test('visiting a node records it in the profile recents store', async () => {
     primeDefaults()
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
     renderWorkspace('/courses/3/n/5')
     expect(await screen.findByRole('heading', { name: 'Derivatives' })).toBeInTheDocument()
     await waitFor(() => {
-      const raw = window.localStorage.getItem('ca-recent-nodes.default')
+      const raw = window.localStorage.getItem('sa-recent-nodes.default')
       expect(raw).not.toBeNull()
       const entries = JSON.parse(raw!) as Array<{ courseId: number; nodeId: number }>
       expect(entries[0]).toMatchObject({ courseId: 3, nodeId: 5 })
     })
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
   })
 
   test('tree sidebar renders permanently and ignores the legacy closed flag', async () => {
-    window.localStorage.setItem('ca-tree-sidebar-open', '0')
+    window.localStorage.setItem('sa-tree-sidebar-open', '0')
     primeDefaults()
     renderWorkspace('/courses/3')
     expect(await screen.findByRole('heading', { name: 'Calculus I' })).toBeInTheDocument()
     expect(screen.getByRole('tree')).toBeInTheDocument()
     expect(screen.queryByTitle(/toggle structure sidebar/i)).not.toBeInTheDocument()
-    window.localStorage.removeItem('ca-tree-sidebar-open')
+    window.localStorage.removeItem('sa-tree-sidebar-open')
   })
 
   test('child cards show the subsection description when set', async () => {
@@ -2480,12 +2480,12 @@ describe('NodeWorkspace', () => {
           payload[mime] = value
         },
         getData: (mime: string) => payload[mime] ?? '',
-        types: ['application/x-ca-item'],
+        types: ['application/x-sa-item'],
         effectAllowed: '',
       },
     })
 
-    const item = JSON.parse(payload['application/x-ca-item']) as {
+    const item = JSON.parse(payload['application/x-sa-item']) as {
       folderIds: number[]
       materialIds: number[]
       noteIds: number[]
@@ -2524,12 +2524,12 @@ describe('NodeWorkspace', () => {
           payload[mime] = value
         },
         getData: (mime: string) => payload[mime] ?? '',
-        types: ['application/x-ca-item'],
+        types: ['application/x-sa-item'],
         effectAllowed: '',
       },
     })
 
-    const item = JSON.parse(payload['application/x-ca-item']) as {
+    const item = JSON.parse(payload['application/x-sa-item']) as {
       folderIds: number[]
       materialIds: number[]
       noteIds: number[]

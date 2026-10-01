@@ -29,7 +29,7 @@ export function ConceptsPanel({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [view, setView] = useState<'list' | 'graph'>(() => {
-    const stored = window.localStorage.getItem(`ca-concepts-view:${courseId}`)
+    const stored = window.localStorage.getItem(`sa-concepts-view:${courseId}`)
     return stored === 'graph' ? 'graph' : 'list'
   })
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -38,7 +38,7 @@ export function ConceptsPanel({
 
   const setPersistedView = (next: 'list' | 'graph') => {
     setView(next)
-    window.localStorage.setItem(`ca-concepts-view:${courseId}`, next)
+    window.localStorage.setItem(`sa-concepts-view:${courseId}`, next)
   }
 
   const teachBack = useMutation({

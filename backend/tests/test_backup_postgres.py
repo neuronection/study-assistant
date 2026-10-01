@@ -206,7 +206,7 @@ def test_garbage_pg_dump_is_not_healthy() -> None:
 
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
-        archive.writestr(MANIFEST_NAME, json.dumps({"format": "ca-backup/v1"}))
+        archive.writestr(MANIFEST_NAME, json.dumps({"format": "sa-backup/v1"}))
         archive.writestr(DB_NAME_PG, b"garbage")
     database, _blobs = read_archive(buffer.getvalue())
     assert database.kind == DB_KIND_POSTGRES

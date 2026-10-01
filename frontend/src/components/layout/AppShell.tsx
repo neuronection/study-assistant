@@ -316,7 +316,7 @@ function AppLogo() {
         aria-hidden
       >
         <defs>
-          <linearGradient id="ca-logo-grad" x1="0" y1="0" x2="32" y2="32">
+          <linearGradient id="sa-logo-grad" x1="0" y1="0" x2="32" y2="32">
             <stop offset="0%" stopColor="#6366f1" />
             <stop offset="100%" stopColor="#8b5cf6" />
           </linearGradient>

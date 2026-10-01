@@ -67,7 +67,7 @@ def make_client(
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-notes-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-notes-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway or NotesGateway(responses),
@@ -340,7 +340,7 @@ def test_drawing_save_is_immediate_and_pending_state_serialized() -> None:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-block-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-block-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -630,7 +630,7 @@ def test_strokeless_snapshot_drawing_skips_ocr() -> None:
 
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"![screenshot](ca-drawing://{drawing['id']})"},
+            json={"body_md": f"![screenshot](sa-drawing://{drawing['id']})"},
         )
         assert patched.status_code == 200
         assert patched.json()["body"] == [
@@ -677,7 +677,7 @@ def test_delete_drawing_removes_drawing_and_strips_inline_refs() -> None:
         ).json()["drawings"][0]["id"]
         patched = client.patch(
             f"/api/v1/notes/{note_id}",
-            json={"body_md": f"before\n\n![drawing](ca-drawing://{drawing_id})\n\nafter"},
+            json={"body_md": f"before\n\n![drawing](sa-drawing://{drawing_id})\n\nafter"},
         )
         assert patched.status_code == 200
 
@@ -734,7 +734,7 @@ def test_flashcards_from_note_share_search_text() -> None:
                 {
                     "cards": [
                         {
-                            "kind": "basic",
+                            "kind": "card_basic",
                             "front_md": "State the chain rule.",
                             "back_md": "$(fg)' = f'g + fg'$",
                         }
@@ -757,7 +757,7 @@ def test_flashcards_from_note_share_search_text() -> None:
         assert generated.status_code == 201, generated.text
         cards = generated.json()
         assert len(cards) == 1
-        assert cards[0]["kind"] == "basic"
+        assert cards[0]["kind"] == "card_basic"
         assert cards[0]["source"] == "note"
         assert cards[0]["source_ref"] == f"note:{note_id}"
 

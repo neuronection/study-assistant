@@ -47,7 +47,7 @@ class GenerateIn(ContextParams):
 
 
 class CardIn(BaseModel):
-    kind: str = "basic"
+    kind: str = "card_basic"
     front_md: str = Field(min_length=1, max_length=2000)
     back_md: str = Field(min_length=1, max_length=2000)
     course_id: int
@@ -87,7 +87,7 @@ def card_out(card: Exercise, state: FsrsState | None) -> CardOut:
     source, source_ref = card_source(card)
     return CardOut(
         id=card.id,
-        kind=parts["kind"] if parts else "basic",
+        kind=parts["kind"] if parts else "card_basic",
         front=parts["front"] if parts else [],
         back=parts["back"] if parts else [],
         source=source,

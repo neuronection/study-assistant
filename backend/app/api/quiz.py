@@ -414,7 +414,7 @@ def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
 
 def _caq_document(activity: Activity, questions: list[Question]) -> dict[str, Any]:
     return {
-        "$schema": "caq/v1",
+        "$schema": "saq/v1",
         "title": activity.title,
         "questions": [
             {
@@ -594,14 +594,14 @@ def import_caq(
         type="quiz",
         title=body.title.strip() or "Imported quiz",
         config={"imported": True},
-        generated_from={"format": "caq/v1"},
+        generated_from={"format": "saq/v1"},
     )
     session.add(activity)
     session.flush()
     for draft, problems in drafts:
         session.add(
             _question_from_draft(
-                activity.id, draft, {"imported_from": "caq/v1"}, not problems
+                activity.id, draft, {"imported_from": "saq/v1"}, not problems
             )
         )
     session.commit()

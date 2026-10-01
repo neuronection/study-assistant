@@ -69,7 +69,7 @@ class NoAI:
 @pytest.fixture
 def quiz_client() -> Iterator[TestClient]:
     gateway = QuizGateway([QUIZ_JSON])
-    tmp = Path(tempfile.mkdtemp(prefix="ca-concept-quiz-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-concept-quiz-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,
@@ -106,7 +106,7 @@ def test_materialize_writes_concept_id(client: TestClient) -> None:
         "/api/v1/quiz/import",
         params={"dry_run": "false", "course_id": course_id},
         json={
-            "$schema": "caq/v1",
+            "$schema": "saq/v1",
             "title": "Concept quiz",
             "questions": [
                 {

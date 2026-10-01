@@ -147,6 +147,6 @@ describe('useDockStore', () => {
     const { result } = renderHook(() => useDockStore())
     act(() => result.current.setFileWidth(560))
     act(() => result.current.persistFileWidth())
-    expect(window.localStorage.getItem('ca-file-width')).toBe('560')
+    expect(window.localStorage.getItem('sa-file-width')).toBe('560')
   })
 })

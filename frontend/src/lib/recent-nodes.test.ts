@@ -4,7 +4,7 @@ import { storageKeys } from './constants'
 import { getRecentNodes, recordRecentNode, resolveRecentNodes } from './recent-nodes'
 import type { NodeInfo } from '@/lib/api'
 
-const KEY = 'ca-recent-nodes.default'
+const KEY = 'sa-recent-nodes.default'
 
 function setProfile(id: string | null): void {
   if (id === null) {
@@ -55,7 +55,7 @@ describe('recent-nodes store', () => {
     setProfile('1')
     expect(getRecentNodes()).toEqual([])
     recordRecentNode(4, 9)
-    expect(window.localStorage.getItem('ca-recent-nodes.1')).not.toBeNull()
+    expect(window.localStorage.getItem('sa-recent-nodes.1')).not.toBeNull()
     setProfile('2')
     expect(getRecentNodes()[0]).toMatchObject({ courseId: 3, nodeId: 5 })
   })

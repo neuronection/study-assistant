@@ -82,7 +82,7 @@ def course_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-courses-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-courses-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(settings, gateway=gateway)
     with TestClient(app) as client:

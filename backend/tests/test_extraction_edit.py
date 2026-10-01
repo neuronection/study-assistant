@@ -68,7 +68,7 @@ def make_client(
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-edit-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-edit-"))
     settings = Settings(data_dir=tmp, log_level="WARNING")
     app = create_app(
         settings,

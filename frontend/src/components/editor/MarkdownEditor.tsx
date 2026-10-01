@@ -45,7 +45,7 @@ import {
 } from '@/components/editor/DrawingImage'
 
 export type { DrawingMeta }
-import { CaMath } from '@/components/editor/CaMath'
+import { SaMath } from '@/components/editor/SaMath'
 import { CaMermaid } from '@/components/editor/CaMermaid'
 import { MarkdownTable } from '@/components/editor/MarkdownTable'
 import { StudyToolbarButtons } from '@/components/editor/StudyToolbarButtons'
@@ -188,11 +188,11 @@ export function MarkdownEditor({
       StarterKit.configure({
         paragraph: false,
         link: {
-          protocols: ['http', 'https', 'mailto', 'ca-material', 'ca-drawing', 'mention'],
+          protocols: ['http', 'https', 'mailto', 'sa-material', 'sa-drawing', 'mention'],
         },
       }),
       BlankLineParagraph,
-      CaMath,
+      SaMath,
       CaMermaid,
       MarkdownTable,
       TableRow,
@@ -309,7 +309,7 @@ export function MarkdownEditor({
                 {
                   type: 'text',
                   marks: [
-                    { type: 'link', attrs: { href: `ca-material://${source.materialId}` } },
+                    { type: 'link', attrs: { href: `sa-material://${source.materialId}` } },
                   ],
                   text: source.title,
                 },
@@ -476,7 +476,7 @@ export function MarkdownEditor({
   }
 
   const referencedIds = new Set(
-    [...value.matchAll(/\(ca-drawing:\/\/(-?\d+)\)/g)].map((match) => Number(match[1]))
+    [...value.matchAll(/\(sa-drawing:\/\/(-?\d+)\)/g)].map((match) => Number(match[1]))
   )
   const unreferencedDrawings = (drawings ?? []).filter(
     (drawing) => !referencedIds.has(drawing.id)

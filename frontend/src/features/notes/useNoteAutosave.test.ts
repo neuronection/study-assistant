@@ -29,7 +29,7 @@ describe('noteBodyMd', () => {
         { type: 'text', md: 'after' },
       ])
     )
-    expect(md).toBe('before\n\n![drawing](ca-drawing://4)\n\nafter')
+    expect(md).toBe('before\n\n![drawing](sa-drawing://4)\n\nafter')
   })
 
   test('verbatim blocks rejoin byte-identically', () => {
@@ -52,7 +52,7 @@ describe('noteBodyMd', () => {
       ])
     )
     expect(md).toBe(
-      'start\n\n![drawing](ca-drawing://1)\n\nmid\n\n\n![drawing](ca-drawing://2)\ntail\n'
+      'start\n\n![drawing](sa-drawing://1)\n\nmid\n\n\n![drawing](sa-drawing://2)\ntail\n'
     )
   })
 

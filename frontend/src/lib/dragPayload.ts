@@ -1,7 +1,7 @@
 import type { DragEvent } from 'react'
 
-export const ITEM_MIME = 'application/x-ca-item'
-export const MATERIAL_MIME = 'application/x-ca-material'
+export const ITEM_MIME = 'application/x-sa-item'
+export const MATERIAL_MIME = 'application/x-sa-material'
 
 export type DragKind = 'folder' | 'material' | 'note'
 

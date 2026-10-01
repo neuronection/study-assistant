@@ -122,7 +122,7 @@ class NoAI:
 
 
 def make_client(responses: list[str]) -> TestClient:
-    tmp = Path(tempfile.mkdtemp(prefix="ca-structs-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-structs-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=StructsGateway(responses),

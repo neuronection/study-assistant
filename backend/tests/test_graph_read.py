@@ -79,7 +79,7 @@ def graph_client() -> Iterator[TestClient]:
     import tempfile
     from pathlib import Path
 
-    tmp = Path(tempfile.mkdtemp(prefix="ca-graph-read-"))
+    tmp = Path(tempfile.mkdtemp(prefix="sa-graph-read-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=gateway,

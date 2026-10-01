@@ -141,8 +141,8 @@ describe('HomePage (Today screen)', () => {
     setDailyGoal.mockReset()
     listCourses.mockResolvedValue([])
     getExamStatus.mockResolvedValue([])
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -421,8 +421,8 @@ describe('HomePage exam card', () => {
     getExamStatus.mockResolvedValue([])
     getOverview.mockResolvedValue(OVERVIEW)
     getRecommendations.mockResolvedValue([])
-    window.localStorage.removeItem('ca-recent-nodes.default')
-    window.localStorage.removeItem('ca-interface-prefs')
+    window.localStorage.removeItem('sa-recent-nodes.default')
+    window.localStorage.removeItem('sa-interface-prefs')
     useInterfacePrefsStore.setState({
       prefs: {
         homeContinue: true,
@@ -516,7 +516,7 @@ describe('HomePage exam card', () => {
       },
     })
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([
@@ -564,7 +564,7 @@ describe('HomePage exam card', () => {
 
   test('continue card resolves recent nodes to live titles and breadcrumbs', async () => {
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([
@@ -609,7 +609,7 @@ describe('HomePage exam card', () => {
     expect(screen.getByText('1 minute ago')).toBeInTheDocument()
     expect(screen.getAllByText('Calculus I').length).toBeGreaterThan(0)
     expect(screen.getByText('Continue where you left off')).toBeInTheDocument()
-    window.localStorage.removeItem('ca-recent-nodes.default')
+    window.localStorage.removeItem('sa-recent-nodes.default')
     view.unmount()
   })
 
@@ -633,7 +633,7 @@ describe('HomePage exam card', () => {
     emptyView.unmount()
 
     window.localStorage.setItem(
-      'ca-recent-nodes.default',
+      'sa-recent-nodes.default',
       JSON.stringify([{ courseId: 3, nodeId: 999, at: Date.now() - 60000 }])
     )
     listCourses.mockResolvedValue([

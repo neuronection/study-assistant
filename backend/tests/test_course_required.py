@@ -11,7 +11,7 @@ from app.core.config import Settings
 from app.main import create_app
 
 CAQ_DOC: dict[str, Any] = {
-    "$schema": "caq/v1",
+    "$schema": "saq/v1",
     "title": "Probe",
     "questions": [
         {
