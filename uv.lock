@@ -1731,8 +1731,8 @@ wheels = [
 
 [[package]]
 name = "neuronection-auth-kit"
-version = "0.2.0"
-source = { git = "https://github.com/neuronection/auth-kit?rev=a0aae9c3abb702987d6c30b4b91200f8e307c472#a0aae9c3abb702987d6c30b4b91200f8e307c472" }
+version = "0.3.0"
+source = { git = "https://github.com/neuronection/auth-kit?rev=9efd907145195b928ca906f58d266623725f50c0#9efd907145195b928ca906f58d266623725f50c0" }
 dependencies = [
     { name = "bcrypt" },
     { name = "cryptography" },
@@ -3003,7 +3003,7 @@ requires-dist = [
     { name = "mammoth", specifier = ">=1.12.1" },
     { name = "mcp", specifier = ">=1.7" },
     { name = "mutagen", specifier = ">=1.48.1" },
-    { name = "neuronection-auth-kit", git = "https://github.com/neuronection/auth-kit?rev=a0aae9c3abb702987d6c30b4b91200f8e307c472" },
+    { name = "neuronection-auth-kit", git = "https://github.com/neuronection/auth-kit?rev=9efd907145195b928ca906f58d266623725f50c0" },
     { name = "pillow", specifier = ">=11" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2.10" },

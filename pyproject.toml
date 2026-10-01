@@ -9,7 +9,7 @@ dev = [
 [tool.uv.sources]
 # Family auth kit — git-SHA pin (bridge while the PyPI org is pending):
 # github, not PyPI (the bare name is squat-able there and the package
-# does not exist yet). The `rev` is a release tag's commit (v0.2.0).
+# does not exist yet). The `rev` is a release tag's commit (v0.3.0).
 # Dev loop for kit work: `uv pip install -e ../auth-kit` after `uv sync`
 # (a sync reverts to the pinned copy). Phase 0.8 (PyPI): drop this entry.
-neuronection-auth-kit = { git = "https://github.com/neuronection/auth-kit", rev = "a0aae9c3abb702987d6c30b4b91200f8e307c472" }
+neuronection-auth-kit = { git = "https://github.com/neuronection/auth-kit", rev = "9efd907145195b928ca906f58d266623725f50c0" }
