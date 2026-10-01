@@ -20,8 +20,8 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       '@neuronection/assistant-ui':
-        specifier: ^0.49.0
-        version: 0.49.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(lucide-react@1.46.0(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)
+        specifier: ^0.50.0
+        version: 0.50.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(lucide-react@1.46.0(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)
       '@radix-ui/react-slot':
         specifier: ^1.3.3
         version: 1.3.3(@types/react@19.3.0)(react@19.3.0)
@@ -479,8 +479,8 @@ packages:
   '@mermaid-js/parser@1.2.1':
     resolution: {integrity: sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw==}
 
-  '@neuronection/assistant-ui@0.49.0':
-    resolution: {integrity: sha512-30jrtiRJ+Q0KBkd/HSWiCQvYpS8Qe+Yb7mIWnlbbYVqEGJPc6jKIGzY06UVOdoFEBd594DViwJgzXmONePdAVA==}
+  '@neuronection/assistant-ui@0.50.0':
+    resolution: {integrity: sha512-ArEHHBLg7gWmNDm29mIaaqI0gZ75c4qOHlH/NkBq4VUy8b4/ml1CP9YPd1db+/3Sxvog/c+BB9/UgBLPacKNDA==}
     engines: {node: '>=22'}
     peerDependencies:
       lucide-react: '>=0.460.0 <2.0.0'
@@ -3820,7 +3820,7 @@ snapshots:
     dependencies:
       '@chevrotain/types': 11.1.2
 
-  '@neuronection/assistant-ui@0.49.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(lucide-react@1.46.0(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)':
+  '@neuronection/assistant-ui@0.50.0(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(lucide-react@1.46.0(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2)':
     dependencies:
       '@radix-ui/react-dialog': 1.1.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@radix-ui/react-dropdown-menu': 2.1.24(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
