@@ -79,13 +79,19 @@ def make_client(
     return TestClient(app)
 
 
-def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
+def wait_until(
+    predicate: Callable[[], bool],
+    describe: Callable[[], Any],
+    timeout: float = 30.0,
+) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
             return
         time.sleep(0.05)
-    raise AssertionError("condition not met before timeout")
+    raise AssertionError(
+        f"condition never met within {timeout}s; last state: {describe()!r}"
+    )
 
 
 _COURSES: WeakKeyDictionary[TestClient, int] = WeakKeyDictionary()
@@ -109,7 +115,8 @@ def upload_txt(client: TestClient, content: bytes, filename: str) -> int:
     material_id: int = upload.json()["material"]["id"]
     wait_until(
         lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        == "ready",
+        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"],
     )
     return material_id
 
@@ -166,10 +173,19 @@ def test_hybrid_search_uses_vectors_when_fts_misses() -> None:
     embedder = FakeEmbedder()
     with make_client(embedder=embedder) as client:
         material_id = upload_txt(client, CONTENT.encode(), "integr.txt")
-        wait_until(lambda: len(embedder.calls) >= 1)
+        fts_miss: dict[str, Any] = {}
 
-        fts_miss = client.get("/api/v1/search", params={"q": "reverse chain technique"}).json()
-        assert fts_miss["hits"]
+        def vector_hit() -> bool:
+            fts_miss.clear()
+            fts_miss.update(
+                client.get("/api/v1/search", params={"q": "reverse chain technique"}).json()
+            )
+            return bool(fts_miss.get("hits"))
+
+        wait_until(
+            lambda: len(embedder.calls) >= 1 and vector_hit(),
+            lambda: {"embed_calls": len(embedder.calls), "search": fts_miss},
+        )
         assert fts_miss["hits"][0]["material_id"] == material_id
         assert fts_miss["hits"][0]["score"] is not None
 
@@ -183,7 +199,7 @@ def test_postprocess_fills_index_card_via_describer() -> None:
                 client.get(f"/api/v1/materials/{material_id}").json()["index_card"] or {}
             ).get("summary")
             is not None,
-            timeout=20.0,
+            lambda: client.get(f"/api/v1/materials/{material_id}").json()["index_card"],
         )
         card = client.get(f"/api/v1/materials/{material_id}").json()["index_card"]
         assert "substitution" in card["summary"]

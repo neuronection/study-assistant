@@ -1,6 +1,7 @@
 import json
 import time
 from collections.abc import Iterator
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,14 @@ from app.ai.proposals import (
     validate_proposal_text,
 )
 from app.core.config import Settings
-from app.domain.models import AiInteraction, MaterialLink, NodeConcept, Note, NoteVersion
+from app.domain.models import (
+    AiInteraction,
+    MaterialLink,
+    NodeConcept,
+    Note,
+    NoteVersion,
+    utcnow,
+)
 from app.main import create_app
 
 
@@ -1407,9 +1415,10 @@ def test_move_tag_exam_proposals_execute(
             )
             + "\n```"
         )
+        exam_date = (utcnow().date() + timedelta(days=30)).isoformat()
         exam = (
             "```proposal\n"
-            + json.dumps({"action": "set_exam_date", "exam_date": "2026-10-01"})
+            + json.dumps({"action": "set_exam_date", "exam_date": exam_date})
             + "\n```"
         )
         gateway.responses.append(f"Doing three things.\n\n{move}\n\n{tags}\n\n{exam}")
@@ -1434,7 +1443,7 @@ def test_move_tag_exam_proposals_execute(
         assert note["node_id"] == node_id
         assert note["tags"] == ["derivatives", "to-review"]
         course = test_client.get(f"/api/v1/courses/{course_id}").json()
-        assert course["exam_date"] == "2026-10-01"
+        assert course["exam_date"] == exam_date
 
 
 def test_generate_plan_and_add_plan_items_proposals(
@@ -1444,9 +1453,10 @@ def test_generate_plan_and_add_plan_items_proposals(
     with test_client:
         course_id = make_course(test_client)
         make_node(test_client, course_id, "Ch1")
+        exam_date = (utcnow().date() + timedelta(days=30)).isoformat()
         exam = (
             "```proposal\n"
-            + json.dumps({"action": "set_exam_date", "exam_date": "2026-10-01"})
+            + json.dumps({"action": "set_exam_date", "exam_date": exam_date})
             + "\n```"
         )
         gen = "```proposal\n" + json.dumps({"action": "generate_plan"}) + "\n```"

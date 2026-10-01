@@ -6,6 +6,20 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Test time bomb defused (2026-10-01):** `test_chat_proposals` pinned
+`exam_date: "2026-10-01"` — `generate_plan`'s `days_left <= 0` guard
+("the exam date has passed") marked the proposal `stale` exactly on the
+boundary day (UTC), turning the suite red with no code change. Both pins
+are now relative (`utcnow().date() + 30 days`, the planner's own clock
+source); swept the suite for sibling pins (migration fixtures and ICS
+export assertions carry fixed dates safely — no relative window reads
+them). Also hardened `test_extraction_edit`'s waits after its
+hybrid-search test flaked under parallel load: `wait_until` now defaults
+to 30s and dumps the last observed state on timeout (house rule), and
+the test waits for the embeddings to be *searchable* rather than for the
+embed call (call ≠ rows persisted). Family-dev's fixed-dates gotcha
+carries the second instance.
+
 **GHCR image build fixed (2026-10-01):** the v0.12.0 release's Docker job
 failed because `docker/Dockerfile` still supplied the family auth-kit as an
 editable `../auth-kit` named build context while `pyproject.toml`/`uv.lock`
