@@ -28,7 +28,7 @@
     "apiHeaders": { "X-Profile-Id": "{profileId}" },
     "apiEntries": [
       { "key": "ca-profile-id", "path": "/profiles", "match": { "name": "Computer Science BSc" }, "pick": "id" },
-      { "key": "ca-course-id", "path": "/courses", "pick": "[0].id" }
+      { "key": "sa-course-id", "path": "/courses", "pick": "[0].id" }
     ]
   },
   "pathTokens": {

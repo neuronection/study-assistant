@@ -51,7 +51,7 @@ run_migrations() {
             /app/.venv/bin/alembic upgrade head
         # langgraph's checkpoint schema is DDL too — provision it as the owner
         # role; the app's checkpointer tolerates its existence at boot.
-        CHECKPOINT_URI="${SA_MIGRATIONS_DATABASE_URL/+psycopg/}" PYTHONPATH=/app/backend \
+        CHECKPOINT_URI="$(printf %s "$SA_MIGRATIONS_DATABASE_URL" | sed "s/+psycopg//")" PYTHONPATH=/app/backend \
             /app/.venv/bin/python -c '
 import asyncio, os
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver

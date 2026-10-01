@@ -73,6 +73,10 @@ services:
         condition: service_healthy
     environment:
       SA_DATA_DIR: /data
+      # Per-instance key family (identity-auth §8) — pinned in docker/.env.
+      SA_SESSION_KEY: ${SA_SESSION_KEY:?Set SA_SESSION_KEY in docker/.env}
+      SA_REFRESH_KEY: ${SA_REFRESH_KEY:?Set SA_REFRESH_KEY in docker/.env}
+      SA_DATA_KEY: ${SA_DATA_KEY:?Set SA_DATA_KEY in docker/.env}
       SA_APP_ENV: demo
       SA_DEMO_MODE: "true"
       SA_DB_NAME: neuronection_study_demo

@@ -90,6 +90,10 @@ services:
       SA_HOST: 0.0.0.0
       SA_DATA_DIR: /data
       SA_SPA_DIST: /app/frontend/dist
+      # Per-instance key family (identity-auth §8) — pinned in docker/.env.
+      SA_SESSION_KEY: ${SA_SESSION_KEY:?Set SA_SESSION_KEY in docker/.env}
+      SA_REFRESH_KEY: ${SA_REFRESH_KEY:?Set SA_REFRESH_KEY in docker/.env}
+      SA_DATA_KEY: ${SA_DATA_KEY:?Set SA_DATA_KEY in docker/.env}
       # ADR-0022: web mode runs PostgreSQL 16. SA_DATABASE_URL wins over the
       # SA_DB_* credentials (keep the password URL-safe — it is embedded in
       # the URLs). Runtime connects as the least-privilege app role.
