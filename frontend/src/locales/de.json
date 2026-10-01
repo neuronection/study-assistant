@@ -1219,6 +1219,29 @@
       "errorForbidden": "Not allowed.",
       "errorSelf": "You cannot change your own role or status.",
       "errorLastAdmin": "The last admin cannot be demoted or deactivated."
+    },
+    "instance": {
+      "title": "Zugriffsmodus",
+      "modeOpen": "Offen — kein Login",
+      "modeAuthenticated": "Anmeldung erforderlich",
+      "modeOpenHint": "Dieses Gerät startet direkt; Konten bestehen, aber niemand meldet sich an.",
+      "modeAuthenticatedHint": "Alle melden sich mit ihrem eigenen Konto an.",
+      "enableLogin": "Anmeldung verlangen",
+      "enableLoginNote": "Setze das Besitzer-Passwort — mindestens {{minLength}} Zeichen. Die Besitzerin bleibt Admin.",
+      "disableLogin": "Anmeldung entfernen",
+      "disableLoginNote": "Alle Konten verlieren den Zugriff, bis die Anmeldung wieder aktiviert wird.",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+      "passwordTooShort": "Verwende mindestens {{minLength}} Zeichen.",
+      "submitEnable": "Anmeldung aktivieren",
+      "submitDisable": "Anmeldung deaktivieren",
+      "confirmAck": "Mir ist klar, dass diese Instanz für alle mit Zugriff offen ist.",
+      "blockedServer": "Server-Instanzen verlangen immer eine Anmeldung.",
+      "blockedUsers": "Andere Konten bestehen ({{count}}) — entferne sie, bevor die Anmeldung entfernt werden kann.",
+      "auditNote": "Diese Änderung wird im Audit-Log festgehalten.",
+      "errorGeneric": "Etwas ist schiefgelaufen — versuche es erneut.",
+      "errorForbidden": "Nicht erlaubt."
     }
   },
   "genesis": {

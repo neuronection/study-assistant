@@ -1257,6 +1257,29 @@
       "errorForbidden": "Not allowed.",
       "errorSelf": "You cannot change your own role or status.",
       "errorLastAdmin": "The last admin cannot be demoted or deactivated."
+    },
+    "instance": {
+      "title": "Λειτουργία πρόσβασης",
+      "modeOpen": "Ανοιχτή — χωρίς σύνδεση",
+      "modeAuthenticated": "Απαιτείται σύνδεση",
+      "modeOpenHint": "Αυτή η συσκευή μπαίνει απευθείας· υπάρχουν λογαριασμοί αλλά κανείς δεν συνδέεται.",
+      "modeAuthenticatedHint": "Όλοι συνδέονται με τον δικό τους λογαριασμό.",
+      "enableLogin": "Απαίτηση σύνδεσης",
+      "enableLoginNote": "Όρισε τον κωδικό του ιδιοκτήτη — τουλάχιστον {{minLength}} χαρακτήρες. Ο ιδιοκτήτης παραμένει διαχειριστής.",
+      "disableLogin": "Αφαίρεση σύνδεσης",
+      "disableLoginNote": "Όλοι οι λογαριασμοί χάνουν την πρόσβαση μέχρι ξαναενεργοποιηθεί η σύνδεση.",
+      "password": "Κωδικός",
+      "confirmPassword": "Επιβεβαίωση κωδικού",
+      "passwordMismatch": "Οι κωδικοί δεν ταιριάζουν.",
+      "passwordTooShort": "Χρησιμοποίησε τουλάχιστον {{minLength}} χαρακτήρες.",
+      "submitEnable": "Ενεργοποίηση σύνδεσης",
+      "submitDisable": "Απενεργοποίηση σύνδεσης",
+      "confirmAck": "Κατανοώ ότι αυτή η εγκατάσταση θα είναι ανοιχτή σε όποιον έχει πρόσβαση σε αυτήν.",
+      "blockedServer": "Οι εγκαταστάσεις διακομιστή απαιτούν πάντα σύνδεση.",
+      "blockedUsers": "Υπάρχουν άλλοι λογαριασμοί ({{count}}) — αφαίρεσέ τους πριν αφαιρεθεί η σύνδεση.",
+      "auditNote": "Αυτή η αλλαγή καταγράφεται στο αρχείο ελέγχου.",
+      "errorGeneric": "Κάτι πήγε στραβά — δοκίμασε ξανά.",
+      "errorForbidden": "Δεν επιτρέπεται."
     }
   },
   "spike": {

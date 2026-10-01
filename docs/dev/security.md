@@ -65,6 +65,25 @@ page's sections below in sync with it when security behavior changes.
   none, from env **or** the deployment `.env`, else the 0600
   `auth_keys.json`.
 
+
+### Turning on login (the "desktop app with users" story)
+
+- **At initialization:** set `SA_AUTH_MODE=authenticated` before the
+  first boot of an empty DB (or answer "Shared device" in the first-boot
+  wizard) — the desktop instance then shows the login screen instead of
+  booting straight into the last-used profile. DIM auto-login stops
+  applying (§11.5): no `local-boot` token is ever valid again.
+- **At runtime:** Settings → Users → *Access mode* (the shared
+  `InstanceModeControl`, §4.5): "Require login" sets the owner password
+  and flips `open → authenticated` in one audited admin action;
+  "Remove login" needs the current password plus an explicit
+  acknowledgement, and is refused while other accounts exist (and always
+  on server entrypoints).
+- Mode changes are **never** launch-time actions — env flips after init
+  are ignored with a loud warning (§4.1). Multi-user works once login is
+  on: users register (while enabled) or are created through the admin
+  surface, and every user gets an auto-provisioned Default profile (§6).
+
 ## Network exposure & access control
 
 - Desktop binds `127.0.0.1` on a random port and every request carries the

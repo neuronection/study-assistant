@@ -129,6 +129,7 @@ export {
 export type {
   AdminUser,
   AdminUserPatch,
+  InstanceAuthMode,
   PublicUser,
   UserSession,
 } from './admin'
@@ -142,6 +143,7 @@ export {
   patchAdminUser,
   resetAdminUserPassword,
   revokeMySession,
+  updateInstanceMode,
 } from './admin'
 
 export {

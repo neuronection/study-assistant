@@ -1257,6 +1257,29 @@
       "errorForbidden": "Not allowed.",
       "errorSelf": "You cannot change your own role or status.",
       "errorLastAdmin": "The last admin cannot be demoted or deactivated."
+    },
+    "instance": {
+      "title": "Access mode",
+      "modeOpen": "Open — no login",
+      "modeAuthenticated": "Login required",
+      "modeOpenHint": "This device boots straight in; accounts exist but no one signs in.",
+      "modeAuthenticatedHint": "Everyone signs in with their own account.",
+      "enableLogin": "Require login",
+      "enableLoginNote": "Set the owner password — at least {{minLength}} characters. The owner keeps admin.",
+      "disableLogin": "Remove login",
+      "disableLoginNote": "Everyone with an account loses access until login is enabled again.",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "passwordMismatch": "The passwords do not match.",
+      "passwordTooShort": "Use at least {{minLength}} characters.",
+      "submitEnable": "Enable login",
+      "submitDisable": "Disable login",
+      "confirmAck": "I understand this instance will be open to anyone with access to it.",
+      "blockedServer": "Server instances always require login.",
+      "blockedUsers": "Other accounts exist ({{count}}) — remove them before login can be removed.",
+      "auditNote": "This change is recorded in the audit log.",
+      "errorGeneric": "Something went wrong — try again.",
+      "errorForbidden": "Not allowed."
     }
   },
   "spike": {

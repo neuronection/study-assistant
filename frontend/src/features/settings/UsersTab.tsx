@@ -6,10 +6,16 @@ import {
   type AdminUserTableLabels,
 } from '@/components/ui/admin-user-table'
 import {
+  InstanceModeControl,
+  type InstanceModeControlLabels,
+} from '@/components/ui/instance-mode-control'
+import {
   forceLogoutUser,
+  getInstanceConfig,
   listAdminUsers,
   patchAdminUser,
   resetAdminUserPassword,
+  updateInstanceMode,
 } from '@/lib/api'
 import { getCurrentUser } from '@/lib/auth-session'
 
@@ -26,6 +32,37 @@ export function UsersTab() {
     queryKey: ['admin-users'],
     queryFn: listAdminUsers,
   })
+
+  const instance = useQuery({
+    queryKey: ['instance-config'],
+    queryFn: getInstanceConfig,
+  })
+
+  const instanceLabels: InstanceModeControlLabels = {
+    title: t('settings.instance.title'),
+    modeOpen: t('settings.instance.modeOpen'),
+    modeAuthenticated: t('settings.instance.modeAuthenticated'),
+    modeOpenHint: t('settings.instance.modeOpenHint'),
+    modeAuthenticatedHint: t('settings.instance.modeAuthenticatedHint'),
+    enableLogin: t('settings.instance.enableLogin'),
+    enableLoginNote: (minLength: number) =>
+      t('settings.instance.enableLoginNote', { minLength }),
+    disableLogin: t('settings.instance.disableLogin'),
+    disableLoginNote: t('settings.instance.disableLoginNote'),
+    password: t('settings.instance.password'),
+    confirmPassword: t('settings.instance.confirmPassword'),
+    passwordMismatch: t('settings.instance.passwordMismatch'),
+    passwordTooShort: (minLength: number) =>
+      t('settings.instance.passwordTooShort', { minLength }),
+    submitEnable: t('settings.instance.submitEnable'),
+    submitDisable: t('settings.instance.submitDisable'),
+    confirmAck: t('settings.instance.confirmAck'),
+    blockedServer: t('settings.instance.blockedServer'),
+    blockedUsers: (count: number) => t('settings.instance.blockedUsers', { count }),
+    auditNote: t('settings.instance.auditNote'),
+    errorGeneric: t('settings.instance.errorGeneric'),
+    errorForbidden: t('settings.instance.errorForbidden'),
+  }
 
   const labels: AdminUserTableLabels = {
     tableCaption: t('settings.users.tableCaption'),
@@ -60,7 +97,23 @@ export function UsersTab() {
   }
 
   return (
-    <AdminUserTable
+    <div className="space-y-6">
+      <InstanceModeControl
+        mode={instance.data?.auth_mode === 'open' ? 'open' : 'authenticated'}
+        otherUserCount={Math.max(0, (users.data?.length ?? 1) - 1)}
+        loading={instance.isLoading}
+        error={instance.error ? t('settings.instance.errorGeneric') : null}
+        onSetAuthenticated={async (password) => {
+          await updateInstanceMode('authenticated', password)
+          await Promise.all([users.refetch(), instance.refetch()])
+        }}
+        onSetOpen={async (password) => {
+          await updateInstanceMode('open', password)
+          await Promise.all([users.refetch(), instance.refetch()])
+        }}
+        labels={instanceLabels}
+      />
+      <AdminUserTable
       users={users.data ?? []}
       currentUserId={me?.id ?? ''}
       loading={users.isLoading}
@@ -77,7 +130,8 @@ export function UsersTab() {
         await forceLogoutUser(user.id)
         await users.refetch()
       }}
-      labels={labels}
-    />
+        labels={labels}
+      />
+    </div>
   )
 }

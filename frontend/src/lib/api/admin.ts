@@ -72,6 +72,24 @@ export async function forceLogoutUser(userId: string): Promise<void> {
   await expectOk(response)
 }
 
+export type InstanceAuthMode = 'open' | 'authenticated'
+
+/** `PATCH /api/v1/admin/instance` (identity-auth §4.5): the audited
+ * `auth_mode` transition — admin + password; `open → authenticated` sets
+ * the owner credentials in the same call, `authenticated → open` is
+ * refused while other accounts exist. */
+export async function updateInstanceMode(
+  authMode: InstanceAuthMode,
+  password: string,
+): Promise<void> {
+  const response = await apiFetch('/api/v1/admin/instance', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ auth_mode: authMode, password }),
+  })
+  await expectOk(response)
+}
+
 export async function listMySessions(): Promise<UserSession[]> {
   const response = await apiFetch('/api/v1/me/sessions')
   return json<UserSession[]>(response)
