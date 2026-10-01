@@ -11,6 +11,18 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed
+- **Dev-db interpolation could read the prod env file:** `docker compose -f
+  docker/docker-compose.dev-db.yml` interpolates `${POSTGRES_DB}` /
+  `${POSTGRES_TEST_DB}` / `${SA_DB_PORT}` from the compose file's *directory*
+  `.env` — i.e. `docker/.env`, the standalone/prod stack's env file — so a
+  prod value could silently reshape the dev DB that `run-dev.sh` then
+  connects to (the bootstrap password was already pinned in the compose
+  file against exactly this mismatch). `run-dev.sh` now pins the
+  interpolation to the dev root `.env` (empty env when absent); shell
+  exports (worktree-style `SA_DB_PORT`/`COMPOSE_PROJECT_NAME` overrides)
+  still win over it.
+
 ### Changed (plan 20 Phases 6–7)
 - **No-legacy sweep (D10):** the CourseAssistant-era surface is gone —
   `ca-drawing://` / `ca-image://` / `ca-material://` → `sa-*` schemes,

@@ -72,7 +72,7 @@ done
 
 if [[ "$RESET" -eq 1 ]]; then
   if [[ "$WEB" = true ]]; then
-    dc_die "--reset is desktop-mode only; reset web mode with: docker compose -f docker/docker-compose.dev-db.yml down -v && up -d"
+    dc_die "--reset is desktop-mode only; reset web mode with: docker compose --env-file .env -f docker/docker-compose.dev-db.yml down -v && up -d"
   fi
   dc_kill_port "$BACKEND_PORT"
   dc_kill_port "$VITE_PORT"
@@ -89,7 +89,16 @@ if [[ "$WEB" = true ]]; then
   if ! dc_port_in_use 5434; then
     if command -v docker >/dev/null 2>&1; then
       dc_info "dev-db not reachable on 5434 — starting docker/docker-compose.dev-db.yml"
-      docker compose -f docker/docker-compose.dev-db.yml up -d
+      # --env-file: compose interpolates ${POSTGRES_DB}/${POSTGRES_TEST_DB}/
+      # ${SA_DB_PORT} from the compose file's *directory* .env by default —
+      # i.e. docker/.env, the standalone/prod stack's env file — so a prod
+      # value could silently reshape the dev DB the run script then connects
+      # to. Pin the interpolation to the dev root .env (empty env when it is
+      # absent); shell exports (worktree-style SA_DB_PORT/
+      # COMPOSE_PROJECT_NAME overrides) still win over it. The bootstrap
+      # password is already pinned in the compose file for the same reason.
+      dev_db_env=.env; [[ -f "$dev_db_env" ]] || dev_db_env=/dev/null
+      docker compose --env-file "$dev_db_env" -f docker/docker-compose.dev-db.yml up -d
       dc_info "waiting for the dev-db to accept connections"
       ready=""
       for _ in $(seq 1 60); do
