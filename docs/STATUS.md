@@ -6,6 +6,19 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**GHCR image build fixed (2026-10-01):** the v0.12.0 release's Docker job
+failed because `docker/Dockerfile` still supplied the family auth-kit as an
+editable `../auth-kit` named build context while `pyproject.toml`/`uv.lock`
+had moved to a git-SHA pin (`ea35cb4`) — `uv sync` cloned from GitHub and
+died on "Git executable not found" (`python:3.12-slim` has no git). The
+Dockerfile installs `git` transiently for the sync (purged before the layer
+commits), the obsolete `auth-kit` build context plumbing is gone (release
+workflow step + `build-contexts`, `additional_contexts` in standalone/prod/
+demo compose, `docker/README.md`), and building now needs network access to
+GitHub instead of a sibling `../auth-kit` checkout. Verified with a full
+local `docker build -f docker/Dockerfile .`. No GHCR image exists for
+v0.12.0 — published images resume with the next release.
+
 **Chat stream tail-loss fixed (2026-09-30):** the
 `test_stream_deltas_are_coalesced` flake ("the answer's last chunk" lost)
 had two real loss paths in `chat_turn_adapter.py`. LangGraph's merged

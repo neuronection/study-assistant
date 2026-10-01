@@ -45,10 +45,6 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      # Family auth-kit is an editable path dep (../auth-kit) — see
-      # docker/Dockerfile. Resolved relative to this compose file.
-      additional_contexts:
-        auth-kit: ../../auth-kit
     image: ${STUDY_IMAGE:-study-assistant:local}
     restart: unless-stopped
     init: true

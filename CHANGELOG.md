@@ -194,6 +194,15 @@ the first registered user bootstraps as admin (§12).
   points at `docs/user/local-ai.md`.
 
 ### Fixed
+- **GHCR image build fixed (auth-kit git pin):** the Docker build still
+  wired the family auth-kit as an editable `../auth-kit` path dep (named
+  `auth-kit` build context, release workflow + compose flavors) while
+  `pyproject.toml`/`uv.lock` had moved to a git-SHA pin — `uv sync` then
+  cloned from GitHub and failed on the missing `git` binary, so no Docker
+  image was published for v0.12.0. The Dockerfile now installs `git`
+  transiently for the sync (purged before the layer commits), the obsolete
+  build context is gone everywhere, and building needs network access to
+  GitHub instead of a sibling `../auth-kit` checkout.
 - **Chat streaming no longer drops an answer's tail chunk** (the
   `test_stream_deltas_are_coalesced` CI flake): LangGraph's merged
   `updates`/`messages` queue can deliver a round's final token chunk

@@ -16,7 +16,7 @@ For development on the host see `docs/` and `scripts/run-dev.sh`.
 | `docker-compose.prod.yml` | Production services (db + app + backup). Proxy handled externally or via the standalone flavor. App bound to `127.0.0.1:${SA_PORT:-8200}`. Supports `STUDY_IMAGE` to deploy pre-built GHCR images. |
 | `docker-compose.standalone.yml` | Canonical self-hosted single-host stack: **db + app + nginx + backup** (TLS-ready). |
 | `docker-compose.demo.yml` | Demo flavor (S8): isolated compose project/network, `neuronection_study_demo`, synthetic-only data seeded by `scripts/seed-demo.py`, SPA badged "Demo — synthetic data". Never production. |
-| `Dockerfile` | Multi-stage: pnpm frontend bundle → single uvicorn image serving API + SPA. Builds with the named `auth-kit` build context (family auth-kit, an editable `../auth-kit` path dep in the root `pyproject.toml`/`uv.lock`). |
+| `Dockerfile` | Multi-stage: pnpm frontend bundle → single uvicorn image serving API + SPA. Fetches the family auth-kit (git-SHA pin in the root `pyproject.toml`/`uv.lock`) via git during `uv sync`. |
 | `entrypoint.sh` | Demo guard → waits for the DB → runs migrations (owner role) → starts uvicorn. |
 | `init-db.sh` | First-boot Postgres bootstrap: family roles + optional `neuronection_study_test` (mounted into `/docker-entrypoint-initdb.d`). |
 | `nginx.conf` | HTTP-only reverse proxy incl. the `/ws` WebSocket endpoint (loopback / VPN). |
@@ -140,10 +140,10 @@ docker compose -f docker/docker-compose.standalone.yml up -d --build
   (images are published by the release workflow on tags).
 - First deploy / refresh: `scripts/run-docker.sh` / `scripts/update-docker.sh`.
 - **Build requirement:** building the image (as opposed to deploying a
-  pre-built `STUDY_IMAGE`) needs the family **auth-kit** checkout as a sibling
-  (`../auth-kit`) — the root `pyproject.toml`/`uv.lock` pin it as an editable
-  path dep and the Dockerfile receives it as the named `auth-kit` build
-  context (compose wires `build.additional_contexts`).
+  pre-built `STUDY_IMAGE`) needs network access to GitHub — the root
+  `pyproject.toml`/`uv.lock` pin the family **auth-kit** as a git-SHA
+  dependency and `uv sync` clones it (the build installs `git` transiently
+  and drops it before the layer is committed).
 
 Persistent state: `db_data` volume (PostgreSQL) and `data` volume
 (`SA_DATA_DIR=/data`: blobs, cache, thumbnails, import-inbox, in-app
