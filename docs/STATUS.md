@@ -6,6 +6,16 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 20 Phases 6–7 (2026-10-02): no-legacy sweep + closeout.** The
+CourseAssistant surface is gone: `sa-*` schemes/format markers (one-shot
+migration `0068`, PostgreSQL-safe json handling), `card_*` kinds
+end-to-end incl. the LLM prompts, `LEGACY_CARD_KIND_MAP` deleted.
+Boot smoke fixed the deploy path (entrypoint dash-ism, compose key
+pass-through, `sqlalchemy[asyncio]`). `check-family-convergence.sh`
+vendored + CI-gated; contract count pinned at 48. Standalone stack
+verified (migrate → app healthy → nginx). Suites: 1391 backend +
+1427 frontend.
+
 **Plan 20 Phase 4 — uniform family skeleton (2026-10-01):** `main.py`
 split into `app/auth/install.py` + `app/middleware.py` + `app/seeds.py`
 + `app/jobs/registry.py` (wiring-only factory, ≤250 lines); desktop

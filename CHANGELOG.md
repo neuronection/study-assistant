@@ -11,6 +11,28 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (plan 20 Phases 6–7)
+- **No-legacy sweep (D10):** the CourseAssistant-era surface is gone —
+  `ca-drawing://` / `ca-image://` / `ca-material://` → `sa-*` schemes,
+  `ca-course/v*` / `caq/v1` / `ca-backup/v1` / `ca-skills/v1` → `sa-*`
+  format markers, legacy card kinds `basic`/`cloze`/`reverse` →
+  `card_basic`/`card_cloze`/`card_reverse` (one-shot migration `0068`
+  rewrites stored strings; the LLM card prompts speak `card_*` now).
+  `LEGACY_CARD_KIND_MAP` and its two bridge functions are deleted; the
+  `ca-*` storage-key namespace, drag MIME types and `CaMath` component
+  drop the prefix.
+- **Family convergence gate** (`check-family-convergence.sh`, vendored +
+  CI).
+
+### Fixed
+- Migration `0068` is PostgreSQL-safe (json columns cast to text and
+  back — `replace()` has no json form) and the deploy path works
+  end-to-end: `entrypoint.sh` drops a bash-only substitution, the
+  compose services pass the §8 key pins into the app container, and
+  `sqlalchemy[asyncio]` is a declared dependency. Found by the
+  standalone stack boot smoke (migrate → app healthy → nginx).
+
+
 ### Changed
 - **Plan 20 Phase 4 — uniform family skeleton:** `main.py` is wiring
   only (≤250 lines): identity install → `app/auth/install.py`, profile
