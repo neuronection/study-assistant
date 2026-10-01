@@ -115,12 +115,16 @@ def test_shell_less_desktop_dev_does_not_gate(
 
 @pytest.mark.contract  # §18.6 — env flip cannot change auth_mode after init
 def test_auth_mode_is_init_only(tmp_path: Path) -> None:
-    first = create_app(_settings(tmp_path, auth_mode="open"))
+    # desktop + open is the legal DIM row (§4); the server row is pinned
+    # by test_contract_identity_glue (S1: open coerces to authenticated).
+    first = create_app(_settings(tmp_path, identity_mode="desktop", auth_mode="open"))
     with TestClient(first):
         pass
     first_factory = first.state.session_factory
     assert StudyInstanceStore(first_factory).get("auth_mode") == "open"
-    second = create_app(_settings(tmp_path, auth_mode="authenticated"))
+    second = create_app(
+        _settings(tmp_path, identity_mode="desktop", auth_mode="authenticated")
+    )
     second_factory = second.state.session_factory
     assert StudyInstanceStore(second_factory).get("auth_mode") == "open"
 

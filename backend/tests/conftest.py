@@ -6,6 +6,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+# Test boot context (study's equivalent of career's `.env.test`
+# APP_ENV=test): the family boot guards (nx_auth.boot) otherwise assume
+# production and demand pinned keys. Forced — tests must be hermetic;
+# the boot-guard cases override per-Settings.
+os.environ["SA_APP_ENV"] = "test"
+
 import fastapi.testclient as fastapi_testclient
 import keyring
 import pytest
@@ -14,6 +20,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from filelock import FileLock
 from keyring.backend import KeyringBackend
+from nx_auth.instance import IdentityMode
 from nx_auth.passwords import hash_password
 from nx_auth.tokens import AuthMode, TokenKind, mint_token
 from sqlalchemy.engine import Engine
@@ -227,6 +234,7 @@ def _settings(tmp_path: Path) -> Settings:
         config_dir=tmp_path / "config",
         spa_dist=tmp_path / "no-spa",
         log_level="WARNING",
+        app_env="test",
     )
 
 
@@ -257,7 +265,8 @@ def desktop_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[
         config_dir=tmp_path / "config",
         spa_dist=tmp_path / "no-spa",
         log_level="WARNING",
-        identity_mode="desktop",
+        app_env="test",
+        identity_mode=IdentityMode.DESKTOP,
         shell_secret="test-shell-secret",
     )
     app = create_app(settings)

@@ -2,9 +2,9 @@ import sys
 from functools import lru_cache
 from os import environ
 from pathlib import Path
-from typing import Literal
 
-from pydantic import Field
+from nx_auth.instance import IdentityMode, parse_identity_mode
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .working_dir import read_override
@@ -66,8 +66,17 @@ class Settings(BaseSettings):
     port: int = 8200
     debug: bool = False
     log_level: str = "INFO"
-    identity_mode: Literal["server", "desktop"] = "server"
-    auth_mode: Literal["open", "authenticated"] | None = None
+    # Fail-safe default (family boot policy): without an explicit
+    # SA_APP_ENV the app assumes production and enforces the boot guards
+    # (nx_auth.boot). Dev scripts set SA_APP_ENV=development.
+    app_env: str = "production"
+    # Entrypoint half of the §4 matrix (ADR-0028); unknown values fail
+    # closed to `server` via the validator below.
+    identity_mode: IdentityMode = IdentityMode.SERVER
+    # Init-only (§4): consumed by nx_auth.instance.initialize_instance
+    # when seeding an empty DB (invalid values fail closed there; empty ⇒
+    # the §4 default). After init the DB row is authoritative.
+    auth_mode: str = ""
     demo_mode: bool = False
     shell_secret: str | None = None
     cors_origins: str = ""
@@ -91,6 +100,35 @@ class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5434
 
+    # --- §16 auth knobs (ADR-0028) -------------------------------------
+    # Routed into the auth-kit config via nx_auth.config.knob_overrides
+    # so `.env`-file values reach the kit exactly like OS-environment
+    # ones (OS env wins per key). Field names mirror the kit's `<SA_>…`
+    # env suffixes verbatim.
+    auth_access_ttl_minutes: int = 60
+    auth_refresh_ttl_days: int = 7
+    auth_refresh_absolute_days: int = 30
+    auth_lockout_threshold: int = 5
+    auth_lockout_minutes: int = 15
+    auth_password_min_length: int = 10
+    registration_enabled: bool = True
+    cookie_secure: bool = False
+    trusted_proxy_count: int = 0
+    ratelimit_auth: int = 10
+    ratelimit_auth_email: int = 30
+
+    # --- §8 key pins (optional — generated 0600 auth_keys.json when
+    # unset; all three or none, resolved through KeyRing.load_for).
+    session_key: str | None = None
+    refresh_key: str | None = None
+    data_key: str | None = None
+
+    @field_validator("identity_mode", mode="before")
+    @classmethod
+    def _fail_closed_identity_mode(cls, value: object) -> IdentityMode:
+        """Unknown entrypoint values fail closed to `server` (§4)."""
+        return parse_identity_mode(None if value is None else str(value))
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "study.sqlite3"
@@ -111,6 +149,16 @@ class Settings(BaseSettings):
                 f"@{self.db_host}:{self.db_port}/{self.db_name}"
             )
         return f"sqlite:///{self.db_path}"
+
+    @property
+    def is_production(self) -> bool:
+        """True when running with APP_ENV=production (boot guards apply)."""
+        return self.app_env == "production"
+
+    @property
+    def is_dev(self) -> bool:
+        """True in development/test environments."""
+        return self.app_env in ("development", "test", "testing")
 
     @property
     def inbox_dir(self) -> Path:

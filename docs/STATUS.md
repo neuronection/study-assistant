@@ -6,6 +6,18 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Identity glue on the auth-kit (2026-10-01, plan 20 Phase 2):** the §4
+instance-init logic is now `nx_auth.instance.initialize_instance` +
+`nx_auth.boot` production boot guards + Settings-routed §16 knobs
+(`knob_overrides`). Two contract bugs died with the old inline copy:
+`SA_AUTH_MODE=open` seeded an open **server** instance (§4.4 violation,
+B1) and `.env`-file auth knobs never reached the kit (B2). New
+`Settings` fields: `SA_APP_ENV` (fail-safe production default; run-dev
+sets development), the §16 knob set, and the §8 key pins
+(`SA_*_KEY`, all-three-or-none via `KeyRing.load_for`). Contract tests:
+`test_contract_identity_glue.py` (S1/S2/S13-S15), `test_sec16_env.py`
+(§18.14). Suite 1388 passed + 4 skipped; ruff + mypy strict green.
+
 **Test time bomb defused (2026-10-01):** `test_chat_proposals` pinned
 `exam_date: "2026-10-01"` — `generate_plan`'s `days_left <= 0` guard
 ("the exam date has passed") marked the proposal `stale` exactly on the

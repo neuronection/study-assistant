@@ -37,6 +37,34 @@ page's sections below in sync with it when security behavior changes.
   installs an in-memory backend for the whole suite; any new secret read/write
   goes through `secrets.py`, which that fixture isolates.
 
+## Identity glue & boot guards (ADR-0028, plan 20)
+
+- **One §4 implementation.** Instance init (`instance_settings.auth_mode`
+  / `demo_mode`) runs through `nx_auth.instance.initialize_instance` —
+  §4.4 coerces `SA_AUTH_MODE=open` on a server entrypoint to
+  `authenticated` with a loud warning, unknown values fail closed, and
+  post-init env flips are ignored loudly (mode changes are admin actions,
+  `PATCH /api/v1/admin/instance`). The pre-plan-20 inline copy seeded an
+  open server on `SA_AUTH_MODE=open` (bug B1) — fixed and pinned by
+  `tests/test_contract_identity_glue.py`.
+- **§16 knobs are Settings-routed (bug B2, fixed).** The kit config is
+  built through `nx_auth.config.knob_overrides` from `Settings`, so
+  deployment `.env` values (`SA_COOKIE_SECURE`, TTLs, lockout,
+  `SA_REGISTRATION_ENABLED`, `SA_TRUSTED_PROXY_COUNT`, `SA_RATELIMIT_*`)
+  reach the kit exactly like OS-environment ones (OS env wins per key).
+  Pinned by `tests/test_sec16_env.py` (§18.14).
+- **Production boot guards.** `nx_auth.boot.validate_boot_config` runs at
+  app construction and aborts production boots (`SA_APP_ENV=production`,
+  the fail-safe default) on partial/weak key pins, non-Fernet
+  `SA_DATA_KEY`, or `SA_DEBUG`/`SA_DEMO_MODE`; server boots require
+  pinned keys while desktop self-hosting keeps its generated
+  `auth_keys.json` (warning). `scripts/run-dev.sh` sets
+  `SA_APP_ENV=development`.
+- **Key pins** (`SA_SESSION_KEY`/`SA_REFRESH_KEY`/`SA_DATA_KEY`) resolve
+  through `KeyRing.load_for("SA", config_dir, pinned=…)` — all three or
+  none, from env **or** the deployment `.env`, else the 0600
+  `auth_keys.json`.
+
 ## Network exposure & access control
 
 - Desktop binds `127.0.0.1` on a random port and every request carries the

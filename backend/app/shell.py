@@ -215,6 +215,12 @@ def save_window_state(data_dir: Path, state: WindowState) -> None:
 
 
 def run_browser() -> None:
+    # Local entrypoint ⇒ desktop-class identity (all `python -m
+    # studyassistant` modes; docker/uvicorn stays server) — same shape as
+    # run() and career's local.py bootstrap. This also keeps the §8 boot
+    # guards from demanding pinned keys on a self-hosting laptop. Must
+    # precede get_settings() (the Settings singleton caches at first call).
+    os.environ.setdefault("SA_IDENTITY_MODE", "desktop")
     settings = get_settings()
     # Attach the shell gate (identity-auth §11) before the app is built —
     # create_app arms the X-Shell-Token gate only for shell-attached

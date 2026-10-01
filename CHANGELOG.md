@@ -11,6 +11,45 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed
+- **Identity glue unified on the auth-kit (plan 20 Phase 2, ADR-0028):**
+  the instance-init logic is now `nx_auth.instance.initialize_instance`
+  — fixing two contract bugs in the old inline copy:
+  - **§4.4 violation fixed (B1):** `SA_AUTH_MODE=open` with server
+    identity used to seed an **open server instance**; it now initializes
+    `authenticated` with a loud warning (desktop `open` is unaffected).
+  - **`.env` knobs reached dead code (B2):** the kit config was built
+    from `os.environ` only, so `SA_COOKIE_SECURE`, TTLs, lockout, etc.
+    set in `backend/.env` were silently ignored. All §16 knobs are now
+    routed from `Settings` through `nx_auth.config.knob_overrides` (OS
+    env still wins per key).
+- **New `Settings` fields (ADR-0028 §16):** `SA_APP_ENV` (fail-safe
+  `production` default; `scripts/run-dev.sh` sets `development`),
+  `SA_AUTH_ACCESS_TTL_MINUTES` / `SA_AUTH_REFRESH_TTL_DAYS` /
+  `SA_AUTH_REFRESH_ABSOLUTE_DAYS` / `SA_AUTH_LOCKOUT_THRESHOLD` /
+  `SA_AUTH_LOCKOUT_MINUTES` / `SA_AUTH_PASSWORD_MIN_LENGTH` /
+  `SA_REGISTRATION_ENABLED` / `SA_COOKIE_SECURE` /
+  `SA_TRUSTED_PROXY_COUNT` / `SA_RATELIMIT_AUTH` /
+  `SA_RATELIMIT_AUTH_EMAIL`, and the §8 key pins `SA_SESSION_KEY` /
+  `SA_REFRESH_KEY` / `SA_DATA_KEY` (all three or none). `SA_AUTH_MODE`
+  is now validated fail-closed by the kit instead of raising at settings
+  load.
+- **Production boot guards (nx_auth.boot):** production boots abort on
+  partial/weak key pins, non-Fernet `DATA_KEY`, `SA_DEBUG=1` or
+  `SA_DEMO_MODE=1`; server boots require pinned keys (desktop keeps its
+  generated 0600 `auth_keys.json`). Key resolution is
+  `KeyRing.load_for("SA", config_dir, pinned=…)` (Settings-backed, so
+  `.env` pins work like env pins).
+- **`studyassistant web`** now declares desktop-class identity like the
+  `app` mode (local entrypoint ⇒ `SA_IDENTITY_MODE=desktop`); docker/
+  uvicorn runs stay server-class. `identity_mode` parsing fails closed to
+  `server` on unknown values.
+
+### Added
+- `tests/test_contract_identity_glue.py` (§18 contract cases S1, S2,
+  S13-S15) and `tests/test_sec16_env.py` (§18.14 knob-routing matrix,
+  ported from career's `test_sec16_env.py`).
+
 ## [v0.12.1] - 2026-10-01
 
 **Operational notes for deploy:** the v0.12.0 release's GHCR job failed

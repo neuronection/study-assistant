@@ -37,6 +37,9 @@ source scripts/lib/dev-common.sh
 BACKEND_PORT="${SA_PORT:-8200}"
 VITE_PORT="${VITE_PORT:-3200}"
 export SA_PORT="$BACKEND_PORT" VITE_PORT="$VITE_PORT"
+# Dev boot: the family boot guards (nx_auth.boot) otherwise assume
+# production (fail-safe default) and demand pinned keys on server boots.
+export SA_APP_ENV="${SA_APP_ENV:-development}"
 
 RESET=0
 RESET_ARGS=()

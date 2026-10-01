@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from alembic.config import Config
 from fastapi import FastAPI
@@ -252,6 +252,23 @@ def create_app(
     settings.ensure_dirs()
     setup_logging(settings.log_level)
 
+    # Production boot guards (ADR-0028): fail fast on unsafe config —
+    # partial/weak key pins, DEBUG/DEMO_MODE in production. Dev/test
+    # boots are unaffected.
+    from nx_auth.boot import validate_boot_config
+
+    for warning in validate_boot_config(
+        production=settings.is_production,
+        identity_mode=settings.identity_mode,
+        session_key=settings.session_key,
+        refresh_key=settings.refresh_key,
+        data_key=settings.data_key,
+        key_env_prefix="SA",
+        debug=settings.debug,
+        demo_mode=settings.demo_mode,
+    ):
+        logging.getLogger(__name__).warning("boot guard: %s", warning)
+
     recovery = boot_integrity_check(
         settings.db_path,
         settings.backups_dir,
@@ -316,6 +333,8 @@ def create_app(
 
     from nx_auth import AuthConfig, KeyRing
     from nx_auth import install as install_auth_kit
+    from nx_auth.config import knob_overrides
+    from nx_auth.instance import IdentityMode, initialize_instance
     from nx_auth.shell import generate_shell_secret
 
     from .auth.stores import (
@@ -327,14 +346,16 @@ def create_app(
     )
 
     instance_store = StudyInstanceStore(app.state.session_factory)
-    if instance_store.get("auth_mode") is None:
-        initial_mode = settings.auth_mode or (
-            "open" if settings.identity_mode == "desktop" else "authenticated"
-        )
-        instance_store.set("auth_mode", initial_mode)
-        if settings.demo_mode:
-            instance_store.set("demo_mode", "true")
-    effective_auth_mode = instance_store.get("auth_mode")
+    # §4 init-only rules (ADR-0028): one family implementation — §4.4
+    # open-on-server coercion, unknown values fail closed, post-init env
+    # flips ignored loudly, demo_mode written explicitly.
+    effective_auth_mode = initialize_instance(
+        instance_store,
+        identity_mode=settings.identity_mode,
+        auth_mode_env=settings.auth_mode,
+        demo_mode_env=settings.demo_mode,
+        product="SA",
+    )
     # §11 gate arms only when a shell actually attaches: shell.py sets
     # SA_SHELL=1 before create_app. Shell-less desktop dev (run-dev.sh:
     # uvicorn + vite, ADR-0023) has no shell to hold the secret or carry
@@ -369,11 +390,22 @@ def create_app(
         session_factory=app.state.session_factory,
         identity_mode=settings.identity_mode,
     )
+    kit_identity: Literal["server", "desktop"] = (
+        "desktop" if settings.identity_mode is IdentityMode.DESKTOP else "server"
+    )
+
+    def _settings_knob(name: str) -> object | None:
+        # §16 knob map getter (ADR-0028): env name → Settings field, so
+        # deployment `.env`-file values reach the kit config exactly like
+        # process-environment ones (OS env wins per key).
+        return getattr(settings, name.removeprefix("SA_").lower(), None)
+
     auth_config = AuthConfig.from_env(
         "SA",
         iss="study",
-        identity_mode=settings.identity_mode,
+        identity_mode=kit_identity,
         require_shell_secret=shell_attached,
+        **knob_overrides("SA", _settings_knob),
     )
     auth_config = replace(
         auth_config,
@@ -383,7 +415,11 @@ def create_app(
     install_auth_kit(
         app,
         config=auth_config,
-        ring=KeyRing.load_or_generate(settings.config_dir / "auth_keys.json", "SA"),
+        ring=KeyRing.load_for(
+            "SA",
+            settings.config_dir,
+            pinned=(settings.session_key, settings.refresh_key, settings.data_key),
+        ),
         users=StudyUserStore(app.state.session_factory),
         sessions=StudySessionStore(app.state.session_factory),
         instance=instance_store,
