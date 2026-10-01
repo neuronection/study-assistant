@@ -227,7 +227,14 @@ def run_browser() -> None:
     # processes; shell-less desktop dev (run-dev.sh) stays ungated.
     os.environ["SA_SHELL"] = "1"
     app = create_app(settings)
+    # Per-boot shell secret (identity-auth §11): the SPA URL carries it as
+    # `?shell=` (also marks the desktop CSP variant) and echoes it as
+    # `X-Shell-Token` on every API request — same as the webview flow
+    # (run()) and career's run_browser.
+    shell_secret = getattr(getattr(app.state, "auth", None), "shell_secret", None)
     url = f"http://{settings.host}:{settings.port}"
+    if shell_secret:
+        url = f"{url}?shell={shell_secret}"
     threading.Timer(0.5, webbrowser.open, args=(url,)).start()
     uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level.lower())
 
