@@ -160,4 +160,3 @@ def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
         "pending_proposals": pending_proposals,
         "generated_at": generated_at,
     }
-

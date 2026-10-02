@@ -94,45 +94,33 @@ def test_scoped_lists_roll_up_children(client: TestClient) -> None:
     assert note.status_code == 201, note.text
 
     other_course = make_course(client, "Elsewhere")
-    other_note = client.post(
-        "/api/v1/notes", json={"title": "outside", "course_id": other_course}
-    )
+    other_note = client.post("/api/v1/notes", json={"title": "outside", "course_id": other_course})
     assert other_note.status_code == 201
 
     quizzes_at_root = client.get("/api/v1/quiz/activities", params={"node_id": root}).json()
     assert [entry["id"] for entry in quizzes_at_root] == [section_quiz_id]
     assert quizzes_at_root[0]["node_id"] == root
 
-    quizzes_at_chapter = client.get(
-        "/api/v1/quiz/activities", params={"node_id": chapter}
-    ).json()
+    quizzes_at_chapter = client.get("/api/v1/quiz/activities", params={"node_id": chapter}).json()
     assert quizzes_at_chapter == []
     quizzes_own_only = client.get(
         "/api/v1/quiz/activities", params={"node_id": root, "include_children": "false"}
     ).json()
     assert [entry["id"] for entry in quizzes_own_only] == [section_quiz_id]
 
-    exercises_at_root = client.get(
-        "/api/v1/exercises", params={"node_id": root}
-    ).json()
+    exercises_at_root = client.get("/api/v1/exercises", params={"node_id": root}).json()
     assert [entry["id"] for entry in exercises_at_root] == [exercise.json()["id"]]
-    exercises_at_chapter = client.get(
-        "/api/v1/exercises", params={"node_id": chapter}
-    ).json()
+    exercises_at_chapter = client.get("/api/v1/exercises", params={"node_id": chapter}).json()
     assert [entry["id"] for entry in exercises_at_chapter] == [exercise.json()["id"]]
     exercises_own_only = client.get(
         "/api/v1/exercises", params={"node_id": chapter, "include_children": "false"}
     ).json()
     assert exercises_own_only == []
 
-    cards_at_chapter = client.get(
-        "/api/v1/flashcards", params={"node_id": chapter}
-    ).json()
+    cards_at_chapter = client.get("/api/v1/flashcards", params={"node_id": chapter}).json()
     assert [entry["id"] for entry in cards_at_chapter] == [card.json()["id"]]
 
-    notes_at_chapter = client.get(
-        "/api/v1/notes", params={"node_id": chapter}
-    ).json()
+    notes_at_chapter = client.get("/api/v1/notes", params={"node_id": chapter}).json()
     assert [entry["id"] for entry in notes_at_chapter["items"]] == [note.json()["id"]]
 
     notes_root_only = client.get(
@@ -209,10 +197,12 @@ def test_delete_node_trashes_subtree_and_merges_content(client: TestClient) -> N
     new_chapter = restored.json()["node_id"]
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     by_id = {}
+
     def walk(entries: list[dict[str, Any]]) -> None:
         for entry in entries:
             by_id[entry["id"]] = entry
             walk(entry["children"])
+
     walk(tree)
     assert new_chapter in by_id
     assert [child["title"] for child in by_id[new_chapter]["children"]] == ["Sec"]
@@ -239,9 +229,7 @@ def test_root_is_undeletable_and_uneditable(client: TestClient) -> None:
     root = root_node(client, course_id)
     deleted = client.delete(f"/api/v1/nodes/{root}")
     assert deleted.status_code == 422
-    moved = client.patch(
-        f"/api/v1/nodes/{root}/move", json={"parent_id": root, "position": 0}
-    )
+    moved = client.patch(f"/api/v1/nodes/{root}/move", json={"parent_id": root, "position": 0})
     assert moved.status_code == 422
 
 
@@ -258,9 +246,7 @@ def test_tree_carries_direct_counts(client: TestClient) -> None:
     )
     assert upload.status_code == 200, upload.text
     material_id = int(upload.json()["material"]["id"])
-    linked = client.post(
-        f"/api/v1/nodes/{child}/materials", json={"material_id": material_id}
-    )
+    linked = client.post(f"/api/v1/nodes/{child}/materials", json={"material_id": material_id})
     assert linked.status_code == 201, linked.text
 
     quiz = client.post(

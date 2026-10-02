@@ -21,9 +21,7 @@ _COURSE_FILTER = "AND materials.course_id = :course_id"
 
 # snippet(material_fts, 1, '…', '…', '…', 12) twin for PostgreSQL: one
 # highlighted fragment of at most 12 words over the markdown column.
-_PG_HEADLINE_OPTIONS = (
-    "'MaxFragments=1, MaxWords=12, MinWords=1, StartSel=…, StopSel=…'"
-)
+_PG_HEADLINE_OPTIONS = "'MaxFragments=1, MaxWords=12, MinWords=1, StartSel=…, StopSel=…'"
 _PG_TRIGRAM_ORDER = "similarity(search_text, :match) DESC"
 _PG_TRIGRAM_SNIPPET = "left(material_fts_trigram.markdown, 72)"
 

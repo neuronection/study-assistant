@@ -117,16 +117,12 @@ def submit(client: TestClient, attempt_id: int, question_id: int, response: Any)
 
 
 def attempt_id_for(client: TestClient, activity_id: int) -> int:
-    return int(
-        client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"]
-    )
+    return int(client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"])
 
 
 def test_generate_materializes_chart_and_answer(graph_client: TestClient) -> None:
     activity = generate_graph_quiz(graph_client)
-    question = graph_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = graph_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     assert question["type"] == "graph_read"
     assert question["flag"] == "ok"
     assert question["input"] == {"widget": "graph_read", "mode": "value"}
@@ -140,9 +136,7 @@ def test_generate_materializes_chart_and_answer(graph_client: TestClient) -> Non
 
 def test_value_grading_flow(graph_client: TestClient) -> None:
     activity = generate_graph_quiz(graph_client)
-    question = graph_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = graph_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
 
     good = submit(
         graph_client, attempt_id_for(graph_client, activity["id"]), question["id"], {"value": 0.9}
@@ -164,9 +158,7 @@ def test_value_grading_flow(graph_client: TestClient) -> None:
 
 def test_model_authored_value_is_ignored(graph_client: TestClient) -> None:
     activity = generate_graph_quiz(graph_client)
-    exported = graph_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/export"
-    ).json()
+    exported = graph_client.get(f"/api/v1/quiz/activities/{activity['id']}/export").json()
     stored = exported["questions"][0]["answer"]
     import math
 

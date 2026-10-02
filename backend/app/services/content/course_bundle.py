@@ -130,20 +130,14 @@ def _export_course(session: Session, course: Course) -> dict[str, Any]:
     }
 
 
-def _export_cards(
-    session: Session, course_id: int, include_history: bool
-) -> list[dict[str, Any]]:
-    exercises = list(
-        session.scalars(select(Exercise).where(Exercise.course_id == course_id))
-    )
+def _export_cards(session: Session, course_id: int, include_history: bool) -> list[dict[str, Any]]:
+    exercises = list(session.scalars(select(Exercise).where(Exercise.course_id == course_id)))
     card_ids = [exercise.id for exercise in exercises if is_card_kind(exercise.kind)]
     if not card_ids:
         return []
     states = {
         state.card_id: state
-        for state in session.scalars(
-            select(FsrsState).where(FsrsState.card_id.in_(card_ids))
-        )
+        for state in session.scalars(select(FsrsState).where(FsrsState.card_id.in_(card_ids)))
     }
     reviews: dict[int, list[ReviewLog]] = {}
     if include_history:
@@ -211,9 +205,7 @@ def _export_patterns(session: Session, course: Course) -> list[dict[str, Any]]:
 
 
 def _export_note_versions(session: Session, course_id: int) -> list[dict[str, Any]]:
-    note_ids = list(
-        session.scalars(select(Note.id).where(Note.course_id == course_id))
-    )
+    note_ids = list(session.scalars(select(Note.id).where(Note.course_id == course_id)))
     if not note_ids:
         return []
     versions = list(
@@ -235,12 +227,8 @@ def _export_note_versions(session: Session, course_id: int) -> list[dict[str, An
 
 
 def _export_history(session: Session, course_id: int) -> dict[str, Any]:
-    activities = list(
-        session.scalars(select(Activity.id).where(Activity.course_id == course_id))
-    )
-    exercise_ids = list(
-        session.scalars(select(Exercise.id).where(Exercise.course_id == course_id))
-    )
+    activities = list(session.scalars(select(Activity.id).where(Activity.course_id == course_id)))
+    exercise_ids = list(session.scalars(select(Exercise.id).where(Exercise.course_id == course_id)))
     attempts = (
         list(
             session.scalars(
@@ -301,9 +289,7 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
                 "activity_id": attempt.activity_id,
                 "mode": attempt.mode,
                 "started_at": attempt.started_at.isoformat(),
-                "finished_at": (
-                    attempt.finished_at.isoformat() if attempt.finished_at else None
-                ),
+                "finished_at": (attempt.finished_at.isoformat() if attempt.finished_at else None),
                 "score": attempt.score,
                 "meta": attempt.meta,
             }
@@ -371,9 +357,7 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
 def _export_tree(session: Session, course_id: int) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
-            select(TreeNode)
-            .where(TreeNode.course_id == course_id)
-            .order_by(TreeNode.id)
+            select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.id)
         )
     )
     return [
@@ -392,23 +376,13 @@ def _export_tree(session: Session, course_id: int) -> list[dict[str, Any]]:
 
 
 def _export_concepts(session: Session, course_id: int) -> dict[str, Any]:
-    concepts = list(
-        session.scalars(select(Concept).where(Concept.course_id == course_id))
-    )
+    concepts = list(session.scalars(select(Concept).where(Concept.course_id == course_id)))
     by_id = {concept.id: concept for concept in concepts}
-    links = list(
-        session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id))
-    )
+    links = list(session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id)))
     coverage = list(
-        session.execute(
-            select(NodeConcept.node_id, NodeConcept.concept_id, NodeConcept.weight)
-        )
+        session.execute(select(NodeConcept.node_id, NodeConcept.concept_id, NodeConcept.weight))
     )
-    node_ids = set(
-        session.scalars(
-            select(TreeNode.id).where(TreeNode.course_id == course_id)
-        )
-    )
+    node_ids = set(session.scalars(select(TreeNode.id).where(TreeNode.course_id == course_id)))
     return {
         "concepts": [
             {
@@ -442,9 +416,7 @@ def _export_materials(session: Session, course_id: int) -> tuple[list[dict[str, 
             select(Material).where(Material.course_id == course_id).order_by(Material.id)
         )
     )
-    links = list(
-        session.scalars(select(MaterialLink).where(MaterialLink.course_id == course_id))
-    )
+    links = list(session.scalars(select(MaterialLink).where(MaterialLink.course_id == course_id)))
     links_by_material: dict[int, list[MaterialLink]] = {}
     for link in links:
         links_by_material.setdefault(link.material_id, []).append(link)
@@ -460,14 +432,12 @@ def _export_materials(session: Session, course_id: int) -> tuple[list[dict[str, 
     shas: set[str] = set()
     out: list[dict[str, Any]] = []
     for material in materials:
-        extraction = (
-            session.scalars(
-                select(Extraction)
-                .where(Extraction.material_id == material.id)
-                .order_by(Extraction.version.desc())
-                .limit(1)
-            ).first()
-        )
+        extraction = session.scalars(
+            select(Extraction)
+            .where(Extraction.material_id == material.id)
+            .order_by(Extraction.version.desc())
+            .limit(1)
+        ).first()
         card = session.get(MaterialIndexCard, material.id)
         if material.blob_sha is not None:
             shas.add(material.blob_sha)
@@ -524,8 +494,7 @@ def _export_materials(session: Session, course_id: int) -> tuple[list[dict[str, 
                 else None,
                 "folder_path": (
                     folder_paths[material.folder_id]
-                    if material.folder_id is not None
-                    and material.folder_id in folder_paths
+                    if material.folder_id is not None and material.folder_id in folder_paths
                     else None
                 ),
                 "links": [
@@ -542,9 +511,7 @@ def _export_materials(session: Session, course_id: int) -> tuple[list[dict[str, 
     return out, shas
 
 
-def _export_folders(
-    session: Session, course_id: int
-) -> tuple[dict[str, Any], list[str]]:
+def _export_folders(session: Session, course_id: int) -> tuple[dict[str, Any], list[str]]:
     folders = list(
         session.scalars(
             select(MaterialFolder).where(
@@ -555,11 +522,7 @@ def _export_folders(
     )
     paths = {folder.id: folder.path for folder in folders}
     links = list(
-        session.scalars(
-            select(MaterialFolderLink).where(
-                MaterialFolderLink.course_id == course_id
-            )
-        )
+        session.scalars(select(MaterialFolderLink).where(MaterialFolderLink.course_id == course_id))
     )
     warnings: list[str] = []
     out_links: list[dict[str, Any]] = []
@@ -593,11 +556,7 @@ def _export_folders(
 
 
 def _export_notes(session: Session, course_id: int) -> tuple[list[dict[str, Any]], set[str]]:
-    notes = list(
-        session.scalars(
-            select(Note).where(Note.course_id == course_id).order_by(Note.id)
-        )
-    )
+    notes = list(session.scalars(select(Note).where(Note.course_id == course_id).order_by(Note.id)))
     shas: set[str] = set()
     out: list[dict[str, Any]] = []
     for note in notes:
@@ -639,9 +598,7 @@ def _export_quizzes(session: Session, course_id: int) -> list[dict[str, Any]]:
     for activity in activities:
         questions = list(
             session.scalars(
-                select(Question)
-                .where(Question.activity_id == activity.id)
-                .order_by(Question.id)
+                select(Question).where(Question.activity_id == activity.id).order_by(Question.id)
             )
         )
         out.append(
@@ -749,9 +706,7 @@ def _export_external_sources(session: Session, course_id: int) -> list[dict[str,
     from ...core.vocab import ExternalSourceKind
 
     sources = list(
-        session.scalars(
-            select(ExternalSource).where(ExternalSource.course_id == course_id)
-        )
+        session.scalars(select(ExternalSource).where(ExternalSource.course_id == course_id))
     )
     out: list[dict[str, Any]] = []
     for source in sources:
@@ -831,22 +786,22 @@ def build_course_bundle(
             "include_history": include_history,
             "include_note_versions": include_note_versions,
         },
-            "counts": {
-                "nodes": len(tree),
-                "concepts": len(concepts["concepts"]),
-                "materials": len(materials),
-                "folders": len(folders["folders"]),
-                "notes": len(notes),
-                "note_versions": len(note_versions),
-                "quizzes": len(quizzes),
-                "exercises": len(exercises),
-                "card_schedules": len(cards),
-                "error_patterns": len(patterns),
-                "attempts": len(history.get("attempts", [])),
-                "skill_overrides": len(skills),
-                "external_sources": len(external_sources),
-                "blobs": len(exportable),
-            },
+        "counts": {
+            "nodes": len(tree),
+            "concepts": len(concepts["concepts"]),
+            "materials": len(materials),
+            "folders": len(folders["folders"]),
+            "notes": len(notes),
+            "note_versions": len(note_versions),
+            "quizzes": len(quizzes),
+            "exercises": len(exercises),
+            "card_schedules": len(cards),
+            "error_patterns": len(patterns),
+            "attempts": len(history.get("attempts", [])),
+            "skill_overrides": len(skills),
+            "external_sources": len(external_sources),
+            "blobs": len(exportable),
+        },
         "warnings": warnings,
     }
     buffer = BytesIO()
@@ -1146,9 +1101,7 @@ def import_course_bundle(
 
     folder_map: dict[str, int] = {}
     folders_service = FoldersService(session)
-    for entry in sorted(
-        bundle.folders.get("folders", []), key=lambda item: str(item.get("path"))
-    ):
+    for entry in sorted(bundle.folders.get("folders", []), key=lambda item: str(item.get("path"))):
         path = str(entry.get("path") or "")
         name = str(entry.get("name") or path.rsplit("/", 1)[-1])
         parent_path = path.rsplit("/", 1)[0] if "/" in path else None
@@ -1353,9 +1306,7 @@ def import_course_bundle(
         activity_map[entry["id"]] = activity.id
         for question in entry.get("questions", []):
             concept_ids = question.get("concept_ids") or []
-            remapped = [
-                concept_map[cid] for cid in concept_ids if cid in concept_map
-            ]
+            remapped = [concept_map[cid] for cid in concept_ids if cid in concept_map]
             question_row = Question(
                 activity_id=activity.id,
                 type=str(question.get("type") or "single"),
@@ -1434,9 +1385,7 @@ def import_course_bundle(
                 )
             )
 
-    existing_pattern_keys = set(
-        session.scalars(select(ErrorPattern.key))
-    )
+    existing_pattern_keys = set(session.scalars(select(ErrorPattern.key)))
     for pattern in bundle.patterns:
         key = str(pattern.get("key") or "").strip()
         if not key or key in existing_pattern_keys:

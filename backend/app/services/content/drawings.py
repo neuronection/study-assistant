@@ -9,9 +9,7 @@ from ...jobs.runner import JobRunner
 
 DRAWING_MD = re.compile(r"!\[[^\]]*\]\(sa-drawing://(\d+)\)")
 IMAGE_MD = re.compile(r"!\[[^\]]*\]\(sa-image://(\d+)\)")
-EMBEDDED_MD = re.compile(
-    r"!\[[^\]]*\]\((?:sa-drawing|sa-image)://(\d+)\)"
-)
+EMBEDDED_MD = re.compile(r"!\[[^\]]*\]\((?:sa-drawing|sa-image)://(\d+)\)")
 
 
 def md_to_blocks(md: str) -> list[dict[str, Any]]:
@@ -93,9 +91,7 @@ def note_search_text(note: Any) -> str:
     return "\n".join(parts)
 
 
-def enqueue_drawing_ocr(
-    session: Session, *, kind: str, owner_id: int, drawing_id: int
-) -> int:
+def enqueue_drawing_ocr(session: Session, *, kind: str, owner_id: int, drawing_id: int) -> int:
     payload: DrawingOcrPayload = {"kind": kind, "drawing_id": drawing_id}
     if kind == "note":
         payload["note_id"] = owner_id

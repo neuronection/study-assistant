@@ -41,9 +41,7 @@ def add_node(client: TestClient, course_id: int, title: str) -> int:
     return int(created.json()["id"])
 
 
-def upload_pdf(
-    client: TestClient, lines: list[str], filename: str, course_id: int
-) -> int:
+def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: int) -> int:
     content = [*lines, FILLER]
     response = client.post(
         "/api/v1/materials",
@@ -54,9 +52,7 @@ def upload_pdf(
     material_id = int(response.json()["material"]["id"])
     deadline_hits = 0
     while deadline_hits < 600:
-        status = client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
+        status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
         if status == "ready":
             return material_id
         deadline_hits += 1
@@ -64,9 +60,7 @@ def upload_pdf(
 
 
 def assign(client: TestClient, node_id: int, material_id: int) -> None:
-    response = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
-    )
+    response = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert response.status_code == 201, response.text
 
 
@@ -117,6 +111,4 @@ def test_search_hit_placements_are_ordered_and_capped_at_five(client: TestClient
     hit = first_hit(client, "Pythagorean", course_id)
     assert [row["node_id"] for row in hit["nodes"]] == node_ids[:5]
     assert all(row["course_id"] == course_id for row in hit["nodes"])
-    assert [row["node_title"] for row in hit["nodes"]] == [
-        f"Chapter {index}" for index in range(5)
-    ]
+    assert [row["node_title"] for row in hit["nodes"]] == [f"Chapter {index}" for index in range(5)]

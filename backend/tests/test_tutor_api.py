@@ -124,14 +124,10 @@ def test_exercise_full_flow_with_hints_and_independence() -> None:
         assert hint1["violations"] is None
         assert "?" in hint1["markdown"]
 
-        skip = client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 4}
-        )
+        skip = client.post(f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 4})
         assert skip.status_code == 422
 
-        hint2 = client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 2}
-        )
+        hint2 = client.post(f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 2})
         assert hint2.status_code == 200
 
         right = client.post(
@@ -189,9 +185,7 @@ def test_audit_logged_for_tutor_hints() -> None:
     with make_client(["What does the product rule say?"]) as client:
         exercise_id = create_exercise(client)
         session = client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()
-        client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 1}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 1})
         app = client.app
         assert isinstance(app, FastAPI)
         with app.state.session_factory() as db:
@@ -215,9 +209,7 @@ def test_socratic_mode_requires_question() -> None:
         ["The product rule applies here, consider its structure carefully."]
     ) as client:
         exercise_id = create_exercise(client)
-        session = client.post(
-            f"/api/v1/exercises/{exercise_id}/sessions?socratic=true"
-        ).json()
+        session = client.post(f"/api/v1/exercises/{exercise_id}/sessions?socratic=true").json()
         hint = client.post(
             f"/api/v1/exercises/sessions/{session['id']}/hint", json={"level": 1}
         ).json()

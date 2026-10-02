@@ -112,9 +112,7 @@ class StudyUserStore:
             session.refresh(row)
             return _record(row)
 
-    def set_login_failures(
-        self, user_id: str, failed: int, locked_until: datetime | None
-    ) -> None:
+    def set_login_failures(self, user_id: str, failed: int, locked_until: datetime | None) -> None:
         with self._factory() as session:
             row = session.get(UserRow, user_id)
             if row is not None:

@@ -97,8 +97,7 @@ def make_course(client: TestClient) -> int:
 
 def make_math_course(client: TestClient) -> int:
     types = {
-        entry["key"]: entry["id"]
-        for entry in client.get("/api/v1/skills/course-types").json()
+        entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
     return int(
         client.post(
@@ -149,9 +148,7 @@ def test_generate_rejects_unparseable_after_repairs() -> None:
     )
     client = make_client([bad, bad, bad])
     with client:
-        created = client.post(
-            "/api/v1/exercises/generate", json={"course_id": make_course(client)}
-        )
+        created = client.post("/api/v1/exercises/generate", json={"course_id": make_course(client)})
         assert created.status_code == 422
         assert "does not parse" in created.json()["detail"]
         app = client.app
@@ -165,9 +162,7 @@ def test_generate_repair_loop_recovers() -> None:
     bad = exercise_json(steps=[{"prompt_md": "", "expected_kind": "math", "expected_value": "x"}])
     client = make_client([bad, exercise_json()])
     with client:
-        created = client.post(
-            "/api/v1/exercises/generate", json={"course_id": make_course(client)}
-        )
+        created = client.post("/api/v1/exercises/generate", json={"course_id": make_course(client)})
         assert created.status_code == 201, created.text
         app = client.app
         assert isinstance(app, FastAPI)
@@ -286,9 +281,7 @@ def test_drill_patterns_and_start() -> None:
     )
     with client:
         course_id = make_math_course(client)
-        patterns = client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={course_id}"
-        )
+        patterns = client.get(f"/api/v1/exercises/drills/patterns?course_id={course_id}")
         assert patterns.status_code == 200
         entries = {entry["pattern"]: entry for entry in patterns.json()}
         assert "sign_slip" in entries
@@ -336,9 +329,7 @@ def test_transcript_lists_hints_and_answers() -> None:
     with client:
         exercise_id = _create_manual_exercise(client)
         session = client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()
-        client.post(
-            f"/api/v1/exercises/sessions/{session['id']}/answer", json={"response": "5x"}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session['id']}/answer", json={"response": "5x"})
         transcript = client.get(f"/api/v1/exercises/sessions/{session['id']}/transcript")
         assert transcript.status_code == 200
         entries = transcript.json()

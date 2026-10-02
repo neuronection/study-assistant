@@ -119,11 +119,7 @@ def _serialize(session: Session, entity_type: str, root_id: int) -> dict[str, An
         raise TrashError(f"unknown entity type {entity_type}")
     payload: dict[str, Any] = {"tables": {}, "blobs": {}}
     for table, column in spec["tables"]:
-        rows = list(
-            session.execute(
-                select(table).where(table.c[column] == root_id)
-            ).mappings()
-        )
+        rows = list(session.execute(select(table).where(table.c[column] == root_id)).mappings())
         payload["tables"][table.name] = [
             {key: _jsonify(value) for key, value in row.items()} for row in rows
         ]
@@ -313,14 +309,8 @@ def restore_material(session: Session, item: DeletedItem) -> tuple[str, int | No
         ).first()
         if latest is not None:
             ocr_parts = [
-                drawing.ocr_markdown
-                for drawing in restored.drawings
-                if drawing.ocr_markdown
-            ] + [
-                image.ocr_markdown
-                for image in restored.images
-                if image.ocr_markdown
-            ]
+                drawing.ocr_markdown for drawing in restored.drawings if drawing.ocr_markdown
+            ] + [image.ocr_markdown for image in restored.images if image.ocr_markdown]
             ocr = "\n".join(part for part in ocr_parts if part)
             chunk_source = f"{latest.markdown}\n\n{ocr}" if ocr else latest.markdown
             for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
@@ -377,9 +367,7 @@ def list_items(session: Session, profile_id: str) -> list[dict[str, Any]]:
 
 
 def purge_expired(session: Session) -> int:
-    result = session.execute(
-        delete(DeletedItem).where(DeletedItem.purge_after < utcnow())
-    )
+    result = session.execute(delete(DeletedItem).where(DeletedItem.purge_after < utcnow()))
     session.commit()
     return int(result.rowcount if hasattr(result, "rowcount") else 0)
 

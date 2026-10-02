@@ -252,9 +252,7 @@ class ConceptsCommit(BaseModel):
 def _course_out(session: Session, course: Course) -> CourseOut:
     count = len(
         session.scalars(
-            select(Material.id).where(
-                Material.course_id == course.id, Material.status == "ready"
-            )
+            select(Material.id).where(Material.course_id == course.id, Material.status == "ready")
         ).all()
     )
     return CourseOut(
@@ -327,10 +325,9 @@ def _item_out(item: PlanItem) -> PlanItemOut:
         sort_key=item.sort_key,
     )
 
+
 @router.get("/courses/{course_id}/plan.ics")
-def export_course_plan_ics(
-    course_id: int, session: Session = Depends(get_session)
-) -> Response:
+def export_course_plan_ics(course_id: int, session: Session = Depends(get_session)) -> Response:
     profile = ensure_default_profile(session)
     course = session.get(Course, course_id)
     if course is None or course.profile_id != profile.id:
@@ -339,16 +336,12 @@ def export_course_plan_ics(
     return Response(
         content=ics,
         media_type="text/calendar",
-        headers={
-            "Content-Disposition": f'attachment; filename="plan-{course_id}.ics"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="plan-{course_id}.ics"'},
     )
 
 
 @router.get("/courses/{course_id}/plan", response_model=list[PlanItemOut])
-def list_course_plan(
-    course_id: int, session: Session = Depends(get_session)
-) -> list[PlanItemOut]:
+def list_course_plan(course_id: int, session: Session = Depends(get_session)) -> list[PlanItemOut]:
     profile = ensure_default_profile(session)
     items = session.scalars(
         select(PlanItem)
@@ -395,11 +388,7 @@ def update_plan_item(
 ) -> PlanItemOut:
     profile = ensure_default_profile(session)
     item = session.get(PlanItem, item_id)
-    if (
-        item is None
-        or item.course_id != course_id
-        or item.profile_id != profile.id
-    ):
+    if item is None or item.course_id != course_id or item.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="plan item not found")
     if body.title is not None:
         title = body.title.strip()
@@ -417,24 +406,16 @@ def update_plan_item(
 
 
 @router.delete("/courses/{course_id}/plan/{item_id}", status_code=204)
-def delete_plan_item(
-    course_id: int, item_id: int, session: Session = Depends(get_session)
-) -> None:
+def delete_plan_item(course_id: int, item_id: int, session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
     item = session.get(PlanItem, item_id)
-    if (
-        item is None
-        or item.course_id != course_id
-        or item.profile_id != profile.id
-    ):
+    if item is None or item.course_id != course_id or item.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="plan item not found")
     session.delete(item)
     session.commit()
 
 
-@router.post(
-    "/courses/{course_id}/plan/generate", response_model=PlanGenerateOut
-)
+@router.post("/courses/{course_id}/plan/generate", response_model=PlanGenerateOut)
 def generate_course_plan(
     course_id: int, session: Session = Depends(get_session)
 ) -> PlanGenerateOut:
@@ -571,9 +552,7 @@ def promote_node(
         raise HTTPException(status_code=404, detail="node not found")
     source_course = _load_course(session, course_id)
     if source_course.origin != CourseOrigin.SCRATCH.value:
-        raise HTTPException(
-            status_code=409, detail="only scratchpad nodes can be promoted"
-        )
+        raise HTTPException(status_code=409, detail="only scratchpad nodes can be promoted")
     title = body.title.strip()
     if not title:
         raise HTTPException(status_code=422, detail="title cannot be empty")
@@ -746,9 +725,7 @@ def delete_course(
     from ..services.platform.backup import create_backup
 
     settings = request.app.state.settings
-    create_backup(
-        settings.db_path, settings.blobs_dir, settings.backups_dir, prefix="manual"
-    )
+    create_backup(settings.db_path, settings.blobs_dir, settings.backups_dir, prefix="manual")
     purge_course(session, course)
     session.commit()
     return {"status": "deleted", "course_id": course_id}
@@ -888,9 +865,7 @@ def remove_node_concept(
 
 
 @router.get("/nodes/{node_id}/workspace", response_model=NodeWorkspaceOut)
-def node_workspace(
-    node_id: int, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def node_workspace(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     _load_node(session, node_id)
     return _tree(session).workspace(node_id, profile.id)
@@ -940,9 +915,7 @@ def assign_folder_materials(
 ) -> dict[str, Any]:
     _load_node(session, node_id)
     try:
-        link = _structure(session).assign_folder(
-            node_id, body.folder_id, rationale=body.rationale
-        )
+        link = _structure(session).assign_folder(node_id, body.folder_id, rationale=body.rationale)
     except CourseError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -977,9 +950,7 @@ def mirror_folder(
     return result
 
 
-@router.get(
-    "/courses/{course_id}/materials", response_model=list[CourseMaterialsEntryOut]
-)
+@router.get("/courses/{course_id}/materials", response_model=list[CourseMaterialsEntryOut])
 def course_materials(
     course_id: int, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
@@ -1021,9 +992,7 @@ class PlacementSuggestionOut(BaseModel):
 PlacementSuggestionsOut.model_rebuild()
 
 
-@router.get(
-    "/courses/{course_id}/materials/unassigned", response_model=UnassignedOut
-)
+@router.get("/courses/{course_id}/materials/unassigned", response_model=UnassignedOut)
 def unassigned_course_materials(
     course_id: int, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -1039,9 +1008,7 @@ def placement_suggestions(
     course_id: int, body: PlacementSuggestionsIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
-    return {
-        "suggestions": suggest_placements(session, course_id, body.material_ids)
-    }
+    return {"suggestions": suggest_placements(session, course_id, body.material_ids)}
 
 
 @router.post(
@@ -1083,9 +1050,7 @@ def assign_course_folder_materials(
     _load_course(session, course_id)
     root = _tree(session).ensure_root(course_id)
     try:
-        link = _structure(session).assign_folder(
-            root.id, body.folder_id, rationale=body.rationale
-        )
+        link = _structure(session).assign_folder(root.id, body.folder_id, rationale=body.rationale)
     except CourseError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -1102,18 +1067,14 @@ def unassign_course_folder_materials(
     session.commit()
 
 
-@router.post(
-    "/courses/{course_id}/outline/draft", response_model=OutlineDraftOut
-)
+@router.post("/courses/{course_id}/outline/draft", response_model=OutlineDraftOut)
 def outline_draft(
     course_id: int, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     course = _load_course(session, course_id)
     materials = list(
         session.scalars(
-            select(Material).where(
-                Material.course_id == course_id, Material.status == "ready"
-            )
+            select(Material).where(Material.course_id == course_id, Material.status == "ready")
         )
     )
     cards = {
@@ -1132,9 +1093,7 @@ def outline_draft(
         raise HTTPException(status_code=502, detail=str(error)) from error
 
 
-@router.post(
-    "/courses/{course_id}/outline/commit", response_model=OutlineCommitOut
-)
+@router.post("/courses/{course_id}/outline/commit", response_model=OutlineCommitOut)
 def outline_commit(
     course_id: int, body: OutlineCommit, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
@@ -1147,9 +1106,7 @@ def outline_commit(
     return result
 
 
-@router.post(
-    "/courses/{course_id}/concepts/extract", response_model=ConceptDraftOut
-)
+@router.post("/courses/{course_id}/concepts/extract", response_model=ConceptDraftOut)
 def extract_course_concepts(
     course_id: int,
     request: Request,
@@ -1158,9 +1115,7 @@ def extract_course_concepts(
     course = _load_course(session, course_id)
     materials = list(
         session.scalars(
-            select(Material).where(
-                Material.course_id == course_id, Material.status == "ready"
-            )
+            select(Material).where(Material.course_id == course_id, Material.status == "ready")
         )
     )
     if not materials:
@@ -1210,16 +1165,12 @@ def extract_course_concepts(
     except ProviderError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
     draft["nodes"] = [
-        entry
-        for entry in draft["nodes"]
-        if not known_nodes or entry["node_title"] in known_nodes
+        entry for entry in draft["nodes"] if not known_nodes or entry["node_title"] in known_nodes
     ]
     return draft
 
 
-@router.post(
-    "/courses/{course_id}/concepts/commit", response_model=ConceptsCommitOut
-)
+@router.post("/courses/{course_id}/concepts/commit", response_model=ConceptsCommitOut)
 def commit_course_concepts(
     course_id: int,
     body: ConceptsCommit,
@@ -1240,9 +1191,7 @@ def commit_course_concepts(
 
 
 @router.get("/courses/{course_id}/concepts", response_model=ConceptGraphOut)
-def course_concept_graph(
-    course_id: int, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def course_concept_graph(course_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     _load_course(session, course_id)
     profile = ensure_default_profile(session)
     return concept_graph(session, course_id, profile.id)
@@ -1261,9 +1210,7 @@ def review_node_endpoint(
     except OrganizerError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     try:
-        findings = review_node(
-            request.app.state.gateway, node, children, unassigned, concepts
-        )
+        findings = review_node(request.app.state.gateway, node, children, unassigned, concepts)
     except OrganizerError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except ProviderError as error:
@@ -1277,18 +1224,14 @@ def review_node_endpoint(
     report = review_report_markdown(node.title, findings)
     dated = dt.now(UTC).date().isoformat()
     title = f"{node.title} — Review {dated}"
-    existing_same_day = find_live_artifact(
-        session, node.course_id, node.id, "node_review"
-    )
+    existing_same_day = find_live_artifact(session, node.course_id, node.id, "node_review")
     if existing_same_day is not None and existing_same_day.title == title:
         MaterialsService(session, request.app.state.blobs).edit_extraction(
             existing_same_day, report
         )
         material = existing_same_day
     else:
-        material = ComposeService(
-            session, request.app.state.gateway
-        ).compose_organizer_artifact(
+        material = ComposeService(session, request.app.state.gateway).compose_organizer_artifact(
             profile_id=profile.id,
             course_id=node.course_id,
             node_id=node.id,
@@ -1330,9 +1273,7 @@ def draft_node_note(
     ).first()
     if existing is not None:
         markdown = "\n\n".join(
-            str(block.get("md") or "")
-            for block in existing.body or []
-            if block.get("md")
+            str(block.get("md") or "") for block in existing.body or [] if block.get("md")
         )
         return {
             "note_id": existing.id,
@@ -1346,9 +1287,7 @@ def draft_node_note(
             .join(MaterialLink, MaterialLink.material_id == Material.id)
             .where(
                 MaterialLink.course_id == node.course_id,
-                MaterialLink.node_id.in_(
-                    _tree(session).subtree_ids(node)
-                ),
+                MaterialLink.node_id.in_(_tree(session).subtree_ids(node)),
             )
         )
     ]
@@ -1370,6 +1309,7 @@ def draft_node_note(
     session.add(note)
     session.commit()
     return {"note_id": note.id, "markdown": markdown, "existing": False}
+
 
 @router.get("/nodes/{node_id}/artifacts", response_model=NodeArtifactsOut)
 def node_artifacts(
@@ -1399,9 +1339,7 @@ def node_artifacts(
         if entry_kind == "cheat_sheet" and cheat_sheet is None:
             cheat_sheet = {"material_id": material.id, "title": material.title}
         elif entry_kind == "node_review":
-            reviews.append(
-                {"material_id": material.id, "title": material.title}
-            )
+            reviews.append({"material_id": material.id, "title": material.title})
         if kind is not None and entry_kind == kind and artifact is None:
             artifact = {"material_id": material.id, "title": material.title}
     result: dict[str, Any] = {"cheat_sheet": cheat_sheet, "reviews": reviews[:5]}
@@ -1409,9 +1347,8 @@ def node_artifacts(
         result["artifact"] = artifact
     return result
 
-@router.put(
-    "/materials/{material_id}/study-state", response_model=StudyStateOut
-)
+
+@router.put("/materials/{material_id}/study-state", response_model=StudyStateOut)
 def set_study_state(
     material_id: int,
     body: StudyStateIn,
@@ -1429,9 +1366,7 @@ def set_study_state(
     return {
         "status": state.status,
         "progress": state.progress,
-        "last_opened_at": (
-            state.last_opened_at.isoformat() if state.last_opened_at else None
-        ),
+        "last_opened_at": (state.last_opened_at.isoformat() if state.last_opened_at else None),
     }
 
 

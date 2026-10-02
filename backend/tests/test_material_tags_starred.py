@@ -35,8 +35,9 @@ def upload_txt(client: TestClient, filename: str, course_id: int) -> int:
     assert upload.status_code == 200, upload.text
     material_id = int(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
@@ -50,12 +51,8 @@ def test_migration_0057_adds_and_drops_tags_starred(tmp_path: Path) -> None:
     import sqlite3
 
     raw = sqlite3.connect(db_path)
-    columns = {
-        row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()
-    }
-    indexes = {
-        row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()
-    }
+    columns = {row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()}
+    indexes = {row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()}
     raw.close()
     assert "tags" in columns
     assert "starred" in columns
@@ -63,12 +60,8 @@ def test_migration_0057_adds_and_drops_tags_starred(tmp_path: Path) -> None:
 
     command.downgrade(alembic_cfg, "0056_quizme_answers")
     raw = sqlite3.connect(db_path)
-    columns = {
-        row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()
-    }
-    indexes = {
-        row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()
-    }
+    columns = {row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()}
+    indexes = {row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()}
     raw.close()
     assert "tags" not in columns
     assert "starred" not in columns
@@ -103,9 +96,7 @@ def test_patch_tags_and_starred_round_trip(client: TestClient) -> None:
     assert body["tags"] == ["exam-prep", "derivatives"]
     assert body["starred"] is True
 
-    unstarred = test_client.patch(
-        f"/api/v1/materials/{material_id}", json={"starred": False}
-    )
+    unstarred = test_client.patch(f"/api/v1/materials/{material_id}", json={"starred": False})
     assert unstarred.status_code < 400, unstarred.text
     body = test_client.get(f"/api/v1/materials/{material_id}").json()["material"]
     assert body["starred"] is False
@@ -117,15 +108,20 @@ def test_list_filters_by_tag_and_starred(client: TestClient) -> None:
     kept = upload_txt(test_client, "keep.txt", course_id)
     dropped = upload_txt(test_client, "drop.txt", course_id)
     starred_only = upload_txt(test_client, "star.txt", course_id)
-    assert test_client.patch(
-        f"/api/v1/materials/{kept}", json={"tags": ["exam-prep"], "starred": True}
-    ).status_code < 400
-    assert test_client.patch(
-        f"/api/v1/materials/{dropped}", json={"tags": ["background"]}
-    ).status_code < 400
-    assert test_client.patch(
-        f"/api/v1/materials/{starred_only}", json={"starred": True}
-    ).status_code < 400
+    assert (
+        test_client.patch(
+            f"/api/v1/materials/{kept}", json={"tags": ["exam-prep"], "starred": True}
+        ).status_code
+        < 400
+    )
+    assert (
+        test_client.patch(f"/api/v1/materials/{dropped}", json={"tags": ["background"]}).status_code
+        < 400
+    )
+    assert (
+        test_client.patch(f"/api/v1/materials/{starred_only}", json={"starred": True}).status_code
+        < 400
+    )
 
     by_tag = test_client.get(
         "/api/v1/materials", params={"course_id": course_id, "tag": "exam-prep"}
@@ -137,7 +133,5 @@ def test_list_filters_by_tag_and_starred(client: TestClient) -> None:
     ).json()
     assert {entry["id"] for entry in by_star} == {kept, starred_only}
 
-    unfiltered = test_client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    unfiltered = test_client.get("/api/v1/materials", params={"course_id": course_id}).json()
     assert {entry["id"] for entry in unfiltered} == {kept, dropped, starred_only}

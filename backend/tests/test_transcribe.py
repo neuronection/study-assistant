@@ -84,9 +84,7 @@ def test_google_inline_audio_request_shape_and_usage() -> None:
         return httpx.Response(
             200,
             json={
-                "candidates": [
-                    {"content": {"parts": [{"text": "transcribed words"}]}}
-                ],
+                "candidates": [{"content": {"parts": [{"text": "transcribed words"}]}}],
                 "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 5},
             },
         )
@@ -158,9 +156,7 @@ def test_server_error_falls_back_to_fallback_model(tmp_path: object) -> None:
         session.add_all([primary, fallback])
         session.flush()
         session.add(
-            TaskAssignment(
-                task="transcribe", model_id=primary.id, fallback_model_id=fallback.id
-            )
+            TaskAssignment(task="transcribe", model_id=primary.id, fallback_model_id=fallback.id)
         )
         session.commit()
 
@@ -179,9 +175,7 @@ def test_server_error_falls_back_to_fallback_model(tmp_path: object) -> None:
     assert calls == ["primary", "fallback"]
 
     with factory() as session:
-        row = session.scalars(
-            select(AiInteraction).where(AiInteraction.task == "transcribe")
-        ).one()
+        row = session.scalars(select(AiInteraction).where(AiInteraction.task == "transcribe")).one()
         assert row.context_type == "gateway"
         assert row.model == "fallback"
         assert row.input_tokens >= 1

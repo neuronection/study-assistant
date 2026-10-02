@@ -66,11 +66,10 @@ class Blob(Base):
     mime: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class Concept(Base):
     __tablename__ = "concepts"
-    __table_args__ = (
-        Index("uq_concepts_course_name", "course_id", "name", unique=True),
-    )
+    __table_args__ = (Index("uq_concepts_course_name", "course_id", "name", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
@@ -79,7 +78,9 @@ class Concept(Base):
     aliases: Mapped[list[str] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 CONCEPT_RELATIONS = ("prereq-of", "part-of", "related-to")
+
 
 class ConceptLink(Base):
     __tablename__ = "concept_links"
@@ -102,6 +103,7 @@ class ConceptLink(Base):
     from_concept: Mapped[Concept] = relationship(foreign_keys=[from_concept_id])
     to_concept: Mapped[Concept] = relationship(foreign_keys=[to_concept_id])
 
+
 class NodeConcept(Base):
     __tablename__ = "node_concepts"
     __table_args__ = (Index("uq_node_concepts", "node_id", "concept_id", unique=True),)
@@ -113,13 +115,15 @@ class NodeConcept(Base):
     concept_id: Mapped[int] = mapped_column(ForeignKey("concepts.id", ondelete="CASCADE"))
     weight: Mapped[float | None] = mapped_column(Float)
 
+
 class MaterialLink(Base):
     __tablename__ = "material_links"
     __table_args__ = (
         Index("uq_material_links_node", "node_id", "material_id", unique=True),
         Index("ix_material_links_node", "node_id"),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
@@ -140,15 +144,15 @@ class MaterialLink(Base):
 
     material: Mapped["Material"] = relationship()
 
+
 class MaterialFolderLink(Base):
     __tablename__ = "material_folder_links"
     __table_args__ = (
-        Index(
-            "uq_material_folder_links_node", "node_id", "folder_id", unique=True
-        ),
+        Index("uq_material_folder_links_node", "node_id", "folder_id", unique=True),
         Index("ix_material_folder_links_node", "node_id"),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
@@ -166,11 +170,10 @@ class MaterialFolderLink(Base):
 
     folder: Mapped["MaterialFolder"] = relationship()
 
+
 class MaterialStudyState(Base):
     __tablename__ = "material_study_state"
-    __table_args__ = (
-        Index("uq_material_study_state", "material_id", "profile_id", unique=True),
-    )
+    __table_args__ = (Index("uq_material_study_state", "material_id", "profile_id", unique=True),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     material_id: Mapped[int] = mapped_column(
@@ -182,6 +185,7 @@ class MaterialStudyState(Base):
     status: Mapped[str] = mapped_column(String(20), default="unread")
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class MaterialFolder(Base):
     __tablename__ = "material_folders"
@@ -211,6 +215,7 @@ class MaterialFolder(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class Material(Base):
     __tablename__ = "materials"
     __table_args__ = (
@@ -232,9 +237,7 @@ class Material(Base):
             "course_id",
             "source_url_norm",
             unique=True,
-            sqlite_where=text(
-                "kind = 'link' AND source_url_norm IS NOT NULL"
-            ),
+            sqlite_where=text("kind = 'link' AND source_url_norm IS NOT NULL"),
             postgresql_where=text("kind = 'link' AND source_url_norm IS NOT NULL"),
         ),
     )
@@ -331,6 +334,7 @@ class Extraction(Base):
         back_populates="extraction", order_by="Chunk.ordinal"
     )
 
+
 class Chunk(Base):
     __tablename__ = "chunks"
 
@@ -343,6 +347,7 @@ class Chunk(Base):
     token_count: Mapped[int | None] = mapped_column(Integer)
 
     extraction: Mapped[Extraction] = relationship(back_populates="chunks")
+
 
 class MaterialDrawing(Base):
     __tablename__ = "material_drawings"
@@ -362,6 +367,7 @@ class MaterialDrawing(Base):
 
     material: Mapped[Material] = relationship(back_populates="drawings")
 
+
 class MaterialIndexCard(Base):
     __tablename__ = "material_index_cards"
 
@@ -374,13 +380,15 @@ class MaterialIndexCard(Base):
     reading_minutes: Mapped[int | None] = mapped_column(Integer)
     difficulty: Mapped[int | None] = mapped_column(Integer)
 
+
 class Note(Base):
     __tablename__ = "notes"
     __table_args__ = (
         Index("ix_notes_owner", "owner_type", "owner_id"),
         Index("ix_notes_node_id", "node_id"),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
@@ -407,6 +415,7 @@ class Note(Base):
         back_populates="note", cascade="all, delete-orphan"
     )
 
+
 class NoteDrawing(Base):
     __tablename__ = "note_drawings"
 
@@ -423,14 +432,13 @@ class NoteDrawing(Base):
 
     note: Mapped[Note] = relationship(back_populates="drawings")
 
+
 class NoteVersion(Base):
     __tablename__ = "note_versions"
     __table_args__ = (Index("ix_note_versions_note", "note_id", "id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    note_id: Mapped[int] = mapped_column(
-        ForeignKey("notes.id", ondelete="CASCADE"), index=True
-    )
+    note_id: Mapped[int] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
@@ -439,6 +447,7 @@ class NoteVersion(Base):
     body: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     cause: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class MaterialSource(Base):
     __tablename__ = "material_sources"
@@ -458,6 +467,7 @@ class MaterialSource(Base):
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class ExternalSource(Base):
     __tablename__ = "external_sources"
@@ -489,7 +499,8 @@ class MaterialSuggestion(Base):
             unique=True,
         ),
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )

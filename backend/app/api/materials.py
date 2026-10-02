@@ -132,9 +132,7 @@ def _service(request: Request, session: Session) -> MaterialsService:
     return MaterialsService(session, request.app.state.blobs)
 
 
-def _to_out(
-    material: Material, has_extraction: bool = False, link_count: int = 0
-) -> MaterialOut:
+def _to_out(material: Material, has_extraction: bool = False, link_count: int = 0) -> MaterialOut:
     return MaterialOut(
         id=material.id,
         title=material.title,
@@ -343,14 +341,10 @@ def compose_material(
     from ..services.content.materials import MaterialsService
     from ..services.knowledge.tree import TreeService
 
-    placement_node_id = (
-        bundle.node.id if bundle.node is not None else body.node_id
-    )
+    placement_node_id = bundle.node.id if bundle.node is not None else body.node_id
     if placement_node_id is None:
         placement_node_id = TreeService(session).ensure_root(body.course_id).id
-    live = find_live_artifact(
-        session, body.course_id, placement_node_id, body.kind
-    )
+    live = find_live_artifact(session, body.course_id, placement_node_id, body.kind)
     existing_md: str | None = None
     if live is not None and not body.regenerate:
         raise HTTPException(
@@ -362,14 +356,12 @@ def compose_material(
             ),
         )
     if live is not None:
-        extraction = (
-            session.scalars(
-                select(Extraction)
-                .where(Extraction.material_id == live.id)
-                .order_by(Extraction.version.desc())
-                .limit(1)
-            ).first()
-        )
+        extraction = session.scalars(
+            select(Extraction)
+            .where(Extraction.material_id == live.id)
+            .order_by(Extraction.version.desc())
+            .limit(1)
+        ).first()
         existing_md = extraction.markdown if extraction is not None else None
     try:
         material = ComposeService(session, request.app.state.gateway).compose(
@@ -537,9 +529,7 @@ class ExtractionDiffOut(BaseModel):
     diff: str
 
 
-def _resolve_extraction_ref(
-    rows_by_version: dict[int, Extraction], ref: str
-) -> tuple[str, str]:
+def _resolve_extraction_ref(rows_by_version: dict[int, Extraction], ref: str) -> tuple[str, str]:
     if ref == "current":
         latest = max(rows_by_version)
         return rows_by_version[latest].markdown, f"v{latest}"
@@ -721,9 +711,7 @@ class MaterialLinkInfoOut(BaseModel):
     via_folder: ViaFolderOut | None
 
 
-@router.get(
-    "/{material_id}/links", response_model=list[MaterialLinkInfoOut]
-)
+@router.get("/{material_id}/links", response_model=list[MaterialLinkInfoOut])
 def material_links(
     request: Request,
     material_id: int,
@@ -787,9 +775,7 @@ def parse_link_material(
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
     if material.source_url is None:
-        raise HTTPException(
-            status_code=422, detail="only URL references can be parsed"
-        )
+        raise HTTPException(status_code=422, detail="only URL references can be parsed")
     registry = build_registry(
         getattr(request.app.state, "search_transport", None),
         language=material.language,
@@ -823,9 +809,7 @@ def transcribe_link_audio(
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
     if material.source_url is None or not is_youtube_url(material.source_url):
-        raise HTTPException(
-            status_code=422, detail="only YouTube references can be transcribed"
-        )
+        raise HTTPException(status_code=422, detail="only YouTube references can be transcribed")
     job = JobRunner.enqueue(
         session,
         "url_import",
@@ -849,9 +833,7 @@ def import_url_material(
     service = _service(request, session)
     profile = ensure_default_profile(session)
     if profile.id in _URL_IMPORTS_IN_FLIGHT:
-        raise HTTPException(
-            status_code=409, detail="a URL import is already running"
-        )
+        raise HTTPException(status_code=409, detail="a URL import is already running")
     parsed = urlparse(body.url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(status_code=422, detail="expecting an http(s) URL")
@@ -866,12 +848,7 @@ def import_url_material(
             raise HTTPException(status_code=422, detail=str(error)) from None
         today = utcnow().date().isoformat()
         markdown = (
-            "---\n"
-            "source: web\n"
-            f"url: {body.url.strip()}\n"
-            f"imported: {today}\n"
-            "---\n\n"
-            f"{content}\n"
+            f"---\nsource: web\nurl: {body.url.strip()}\nimported: {today}\n---\n\n{content}\n"
         )
         host = parsed.netloc.split(":")[0]
         path_name = parsed.path.rstrip("/").rsplit("/", 1)[-1] or host
@@ -888,9 +865,7 @@ def import_url_material(
         material.provenance = {"source": "web", "url": body.url.strip()}
         if body.node_id is not None:
             try:
-                node_id = TreeService(session).placement_node(
-                    body.course_id, body.node_id
-                )
+                node_id = TreeService(session).placement_node(body.course_id, body.node_id)
             except TreeError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
             session.add(
@@ -906,9 +881,7 @@ def import_url_material(
         if not deduped:
             job_id = service.queue_ingest(material, request.app.state.jobs)
         session.commit()
-        return MaterialUploadOut(
-            material=_to_out(material), job_id=job_id, deduped=deduped
-        )
+        return MaterialUploadOut(material=_to_out(material), job_id=job_id, deduped=deduped)
     finally:
         _URL_IMPORTS_IN_FLIGHT.discard(profile.id)
 
@@ -965,9 +938,7 @@ def update_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(
-        material, has_extraction=service.latest_extraction(material.id) is not None
-    )
+    return _to_out(material, has_extraction=service.latest_extraction(material.id) is not None)
 
 
 @router.post("/{material_id}/reingest", response_model=MaterialUploadOut)
@@ -1027,9 +998,7 @@ def move_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(
-        material, has_extraction=service.latest_extraction(material.id) is not None
-    )
+    return _to_out(material, has_extraction=service.latest_extraction(material.id) is not None)
 
 
 @router.post("/{material_id}/copy", response_model=MaterialOut, status_code=201)
@@ -1049,9 +1018,7 @@ def copy_material(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
-    return _to_out(
-        copy, has_extraction=service.latest_extraction(copy.id) is not None
-    )
+    return _to_out(copy, has_extraction=service.latest_extraction(copy.id) is not None)
 
 
 @router.post("/derive", response_model=MaterialBatchDeriveOut, status_code=201)
@@ -1116,9 +1083,7 @@ def delete_material(
         raise HTTPException(status_code=404, detail="material not found")
     from ..services.platform import trash
 
-    deleted_item_id = trash.snapshot(
-        session, "material", material.id, material.title, profile.id
-    )
+    deleted_item_id = trash.snapshot(session, "material", material.id, material.title, profile.id)
     purge_material(session, material)
     session.commit()
     return {"deleted_item_id": deleted_item_id}
@@ -1179,9 +1144,7 @@ def edit_extraction(
     return _extraction_to_out(extraction)
 
 
-def _refresh_material_fts(
-    session: Session, service: MaterialsService, material: Material
-) -> None:
+def _refresh_material_fts(session: Session, service: MaterialsService, material: Material) -> None:
     latest = service.latest_extraction(material.id)
     markdown = latest.markdown if latest is not None else ""
     from ..storage.fts import sync_material_fts
@@ -1385,9 +1348,7 @@ def get_blob(
     mime = blob_row.mime
     filename: str | None = None
     if not mime or mime == "application/octet-stream":
-        material = session.scalars(
-            select(Material).where(Material.blob_sha == sha256)
-        ).first()
+        material = session.scalars(select(Material).where(Material.blob_sha == sha256)).first()
         if material is not None:
             filename = material.filename
             guessed = mimetypes.guess_type(material.filename)[0]

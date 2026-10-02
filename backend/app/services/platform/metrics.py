@@ -62,9 +62,7 @@ class AnswerRow:
     created_at: datetime
 
 
-def answer_rows(
-    session: Session, profile_id: str, course_id: int | None = None
-) -> list[AnswerRow]:
+def answer_rows(session: Session, profile_id: str, course_id: int | None = None) -> list[AnswerRow]:
     statement = (
         select(Answer, Question, Activity)
         .join(Question, Answer.question_id == Question.id)
@@ -96,9 +94,7 @@ def answer_rows(
         tags = question.tags or []
         concept = str(tags[0] if tags else "untagged")
         concept_id = (
-            concept_id_for(activity.course_id, concept)
-            if activity.course_id is not None
-            else None
+            concept_id_for(activity.course_id, concept) if activity.course_id is not None else None
         )
         result.append(
             AnswerRow(
@@ -157,9 +153,7 @@ def _aware(value: datetime) -> datetime:
 
 def _weakness(accuracy: float, n: int, last_seen: datetime) -> float:
     volume = min(1.0, n / 10.0)
-    age_days = (
-        (utcnow() - _aware(last_seen)).total_seconds() / 86400.0 if last_seen else 0.0
-    )
+    age_days = (utcnow() - _aware(last_seen)).total_seconds() / 86400.0 if last_seen else 0.0
     recency = min(1.0, age_days / 14.0)
     return (
         WEAKNESS_WEIGHTS["accuracy"] * (1.0 - accuracy) * volume
@@ -439,9 +433,7 @@ def streak(history: list[dict[str, Any]]) -> int:
     return current
 
 
-def due_cards_count(
-    session: Session, profile_id: str, course_id: int | None = None
-) -> int:
+def due_cards_count(session: Session, profile_id: str, course_id: int | None = None) -> int:
     now = utcnow()
     due_statement = (
         select(FsrsState.card_id)
@@ -463,9 +455,7 @@ def due_cards_count(
     )
     if course_id is not None:
         due_statement = due_statement.where(Exercise.course_id == course_id)
-        unscheduled_statement = unscheduled_statement.where(
-            Exercise.course_id == course_id
-        )
+        unscheduled_statement = unscheduled_statement.where(Exercise.course_id == course_id)
     else:
         due_statement = due_statement.join(Course, Exercise.course_id == Course.id).where(
             Course.origin != CourseOrigin.SCRATCH.value
@@ -544,8 +534,7 @@ def course_readiness(
     coverage = 1.0 if total_nodes == 0 else engaged_nodes / max(1, total_nodes)
     cells = weakness_matrix(rows)
     weakest = [
-        str(cell["concept"])
-        for cell in sorted(cells, key=lambda c: float(c["accuracy"]))[:3]
+        str(cell["concept"]) for cell in sorted(cells, key=lambda c: float(c["accuracy"]))[:3]
     ]
     if n < MIN_ANSWERS_FOR_READINESS:
         return {
@@ -639,11 +628,7 @@ def exam_status(session: Session, profile_id: str) -> list[dict[str, Any]]:
         engaged_count = sum(1 for entry in inner if engaged(entry))
         remaining = total - engaged_count
         behind = next(
-            (
-                {"id": entry["id"], "title": entry["title"]}
-                for entry in inner
-                if not engaged(entry)
-            ),
+            ({"id": entry["id"], "title": entry["title"]} for entry in inner if not engaged(entry)),
             None,
         )
         pace = round(remaining / days_left, 1) if days_left > 0 else None
@@ -695,9 +680,7 @@ def overview(session: Session, profile_id: str) -> dict[str, Any]:
         "total_xp": total_xp,
         "level": level,
         "due_cards": due_cards_count(session, profile_id),
-        "study_seconds_week": sum(
-            entry["study_seconds"] for entry in history[-7:]
-        ),
+        "study_seconds_week": sum(entry["study_seconds"] for entry in history[-7:]),
         "history": history[-90:],
     }
 
@@ -794,9 +777,7 @@ def materialize(session: Session, profile_id: str) -> None:
     rows = answer_rows(session, profile_id)
     matrix = weakness_matrix(rows)
     matrix = matrix + teach_back_cells(session, profile_id)
-    session.query(ConceptSkillStat).filter(
-        ConceptSkillStat.profile_id == profile_id
-    ).delete()
+    session.query(ConceptSkillStat).filter(ConceptSkillStat.profile_id == profile_id).delete()
     for cell in matrix:
         session.add(
             ConceptSkillStat(
@@ -828,9 +809,7 @@ def materialize(session: Session, profile_id: str) -> None:
         )
     items = item_analysis(session, profile_id)
     for item in items:
-        existing = session.query(ItemStat).filter(
-            ItemStat.question_id == item["question_id"]
-        )
+        existing = session.query(ItemStat).filter(ItemStat.question_id == item["question_id"])
         stat = existing.first()
         if stat is None:
             stat = ItemStat(question_id=item["question_id"])

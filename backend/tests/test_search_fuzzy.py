@@ -45,9 +45,7 @@ FILLER = (
 )
 
 
-def upload_pdf(
-    client: TestClient, lines: list[str], filename: str, course_id: int
-) -> int:
+def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: int) -> int:
     content = [*lines, FILLER]
     response = client.post(
         "/api/v1/materials",
@@ -57,10 +55,9 @@ def upload_pdf(
     assert response.status_code == 200, response.text
     material_id = int(response.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
@@ -116,9 +113,7 @@ def test_search_respects_course_scope(client: TestClient) -> None:
     material_a = upload_pdf(
         client, ["Integration by Parts", "The formula for integration."], "f.pdf", course_a
     )
-    upload_pdf(
-        client, ["Integration by Parts", "The formula for integration."], "g.pdf", course_b
-    )
+    upload_pdf(client, ["Integration by Parts", "The formula for integration."], "g.pdf", course_b)
     assert hit_ids(client, "integraton by parts", course_id=course_a) == [material_a]
     assert hit_ids(client, "integraton by parts", course_id=course_b) != [material_a]
 
@@ -129,9 +124,7 @@ def test_unmatched_query_returns_no_hits(client: TestClient) -> None:
     assert hit_ids(client, "xylophone") == []
 
 
-def test_retrieve_chunks_fuzzy_fallback(
-    db_session: Session, owner: Any
-) -> None:
+def test_retrieve_chunks_fuzzy_fallback(db_session: Session, owner: Any) -> None:
     profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
@@ -214,9 +207,7 @@ def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
     try:
         tables = {
             row[0]
-            for row in check.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
+            for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
     finally:
         check.close()

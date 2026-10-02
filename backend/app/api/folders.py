@@ -33,9 +33,7 @@ def list_folders(
     course_id: int | None = None, session: Session = Depends(get_session)
 ) -> list[FolderOut]:
     profile = ensure_default_profile(session)
-    folders = FoldersService(session).list(
-        profile_id=profile.id, course_id=course_id
-    )
+    folders = FoldersService(session).list(profile_id=profile.id, course_id=course_id)
     link_counts: dict[int, int] = {}
     if folders:
         for folder_id, count in session.execute(
@@ -44,16 +42,11 @@ def list_folders(
             .group_by(MaterialFolderLink.folder_id)
         ).all():
             link_counts[folder_id] = count
-    return [
-        _to_out(folder, node_link_count=link_counts.get(folder.id, 0))
-        for folder in folders
-    ]
+    return [_to_out(folder, node_link_count=link_counts.get(folder.id, 0)) for folder in folders]
 
 
 @router.post("", response_model=FolderOut, status_code=201)
-def create_folder(
-    body: FolderCreate, session: Session = Depends(get_session)
-) -> FolderOut:
+def create_folder(body: FolderCreate, session: Session = Depends(get_session)) -> FolderOut:
     profile = ensure_default_profile(session)
     try:
         folder = FoldersService(session).create(
@@ -129,9 +122,7 @@ class FolderDeleteInfoOut(BaseModel):
 
 
 @router.get("/{folder_id}/links", response_model=list[FolderLinkInfoOut])
-def folder_links(
-    folder_id: int, session: Session = Depends(get_session)
-) -> list[dict[str, Any]]:
+def folder_links(folder_id: int, session: Session = Depends(get_session)) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
     folder = FoldersService(session).get(folder_id, profile_id=profile.id)
     if folder is None:
@@ -140,9 +131,7 @@ def folder_links(
 
 
 @router.get("/{folder_id}/delete-info", response_model=FolderDeleteInfoOut)
-def folder_delete_info(
-    folder_id: int, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def folder_delete_info(folder_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     folder = FoldersService(session).get(folder_id, profile_id=profile.id)
     if folder is None:
@@ -151,9 +140,7 @@ def folder_delete_info(
 
 
 @router.post("/{folder_id}/unlink", status_code=204)
-def unlink_folder(
-    folder_id: int, session: Session = Depends(get_session)
-) -> None:
+def unlink_folder(folder_id: int, session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
     try:
         FoldersService(session).unlink(folder_id, profile_id=profile.id)
@@ -170,9 +157,7 @@ def delete_folder(
 ) -> None:
     profile = ensure_default_profile(session)
     try:
-        FoldersService(session).delete(
-            folder_id, profile_id=profile.id, force=force
-        )
+        FoldersService(session).delete(folder_id, profile_id=profile.id, force=force)
     except FolderError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()

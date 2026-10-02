@@ -42,9 +42,7 @@ def client(
         yield test_client, gateway, app
 
 
-def insert_assistant_message(
-    app: FastAPI, session_id: int, state: dict[str, Any] | None
-) -> int:
+def insert_assistant_message(app: FastAPI, session_id: int, state: dict[str, Any] | None) -> int:
     db = app.state.session_factory()
     try:
         message = ChatMessage(

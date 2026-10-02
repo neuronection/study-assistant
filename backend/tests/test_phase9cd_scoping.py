@@ -41,8 +41,9 @@ def upload_txt(client: TestClient, filename: str, course_id: int, content: bytes
     assert upload.status_code == 200, upload.text
     material_id = int(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
@@ -103,9 +104,7 @@ def test_node_concept_coverage_management(client: TestClient) -> None:
     foreign_concept = int(
         client.get(f"/api/v1/courses/{foreign}/concepts").json()["concepts"][0]["id"]
     )
-    cross = client.post(
-        f"/api/v1/nodes/{chapter}/concepts", json={"concept_id": foreign_concept}
-    )
+    cross = client.post(f"/api/v1/nodes/{chapter}/concepts", json={"concept_id": foreign_concept})
     assert cross.status_code == 422
 
     removed = client.delete(f"/api/v1/nodes/{chapter}/concepts/{concept_id}")
@@ -199,9 +198,7 @@ def test_scoped_chat_retrieval_narrows_to_subtree(tmp_path: Path) -> None:
         assert sent.status_code in (200, 202), sent.text
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
-            messages = client.get(
-                f"/api/v1/chat/sessions/{session['id']}/messages"
-            ).json()
+            messages = client.get(f"/api/v1/chat/sessions/{session['id']}/messages").json()
             if messages and messages[-1]["role"] == "assistant":
                 break
             time.sleep(0.05)

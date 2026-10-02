@@ -382,9 +382,7 @@ def test_quizgen_question_types_allowlist() -> None:
             },
         )
         assert created.status_code == 201, created.text
-        questions = client.get(
-            f"/api/v1/quiz/activities/{created.json()['id']}/questions"
-        ).json()
+        questions = client.get(f"/api/v1/quiz/activities/{created.json()['id']}/questions").json()
         assert {q["type"] for q in questions} == {"numeric", "equation"}
 
 
@@ -490,9 +488,7 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
     inbox = quiz_client.get("/api/v1/quiz/inbox/path").json()
     assert set(inbox) == {"path"}
 
-    attempt = quiz_client.post(
-        f"/api/v1/quiz/activities/{activity['id']}/attempts"
-    ).json()
+    attempt = quiz_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()
     attempts = quiz_client.get("/api/v1/quiz/attempts").json()
     assert len(attempts) == 1
     assert set(attempts[0]) == {
@@ -507,9 +503,7 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
     assert attempts[0]["mode"] == "practice"
     assert attempts[0]["score"] is None
 
-    questions = quiz_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()
+    questions = quiz_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
     quiz_client.post(
         f"/api/v1/quiz/attempts/{attempt['id']}/answers",
         json={"question_id": questions[0]["id"], "response": {"index": 1}},
@@ -526,9 +520,7 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
         "created_at",
     }
 
-    report = quiz_client.get(
-        f"/api/v1/quiz/attempts/{attempt['id']}/report"
-    ).json()
+    report = quiz_client.get(f"/api/v1/quiz/attempts/{attempt['id']}/report").json()
     assert set(report) == {"attempt", "answers"}
     assert set(report["attempt"]) == {
         "id",

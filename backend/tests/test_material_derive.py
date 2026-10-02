@@ -35,9 +35,7 @@ def make_course(client: TestClient, title: str = "Derived") -> int:
     return int(created.json()["id"])
 
 
-def upload_text(
-    client: TestClient, content: str, filename: str, course_id: int
-) -> dict[str, Any]:
+def upload_text(client: TestClient, content: str, filename: str, course_id: int) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials/text",
         json={
@@ -49,17 +47,15 @@ def upload_text(
     assert response.status_code == 200, response.text
     body: dict[str, Any] = response.json()
     wait_until(
-        lambda: client.get(
-            f"/api/v1/materials/{body['material']['id']}"
-        ).json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{body['material']['id']}").json()["material"]["status"]
+            == "ready"
+        )
     )
     return body
 
 
-def create_folder(
-    client: TestClient, name: str, course_id: int
-) -> int:
+def create_folder(client: TestClient, name: str, course_id: int) -> int:
     response = client.post(
         "/api/v1/folders",
         json={"name": name, "course_id": course_id},
@@ -76,9 +72,7 @@ def test_derive_creates_markdown_material_from_extraction(
     client: TestClient,
 ) -> None:
     course_id = make_course(client)
-    source = upload_text(
-        client, "chain rule notes $\\frac{dy}{dx}$", "scan.pdf.txt", course_id
-    )
+    source = upload_text(client, "chain rule notes $\\frac{dy}{dx}$", "scan.pdf.txt", course_id)
     source_id = source["material"]["id"]
     edited = client.patch(
         f"/api/v1/materials/{source_id}/extraction",
@@ -103,10 +97,9 @@ def test_derive_creates_markdown_material_from_extraction(
     assert body["job_id"] is not None
 
     wait_until(
-        lambda: client.get(
-            f"/api/v1/materials/{derived_id}"
-        ).json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{derived_id}").json()["material"]["status"] == "ready"
+        )
     )
     detail = client.get(f"/api/v1/materials/{derived_id}").json()
     assert detail["extraction"]["version"] == 1
@@ -201,9 +194,7 @@ def test_derive_inherits_virtual_folder_and_validates_explicit_target(
     folder_id = create_folder(client, "Notes", course_id)
     source = upload_text(client, "filed content", "filed.txt", course_id)
     source_id = source["material"]["id"]
-    moved = client.patch(
-        f"/api/v1/materials/{source_id}/move", json={"folder_id": folder_id}
-    )
+    moved = client.patch(f"/api/v1/materials/{source_id}/move", json={"folder_id": folder_id})
     assert moved.status_code == 200
 
     inherited = client.post(f"/api/v1/materials/{source_id}/derive", json={})
@@ -241,13 +232,9 @@ def test_derive_copies_the_originals_node_links(client: TestClient) -> None:
         links = session.scalars(
             select(MaterialLink).where(MaterialLink.material_id == derived_id)
         ).all()
-        assert sorted(link.node_id for link in links) == sorted(
-            [first_node, second_node]
-        )
+        assert sorted(link.node_id for link in links) == sorted([first_node, second_node])
         assert all(link.course_id == course_id for link in links)
-        assert {link.rationale for link in links} == {
-            "Derived from assigned"
-        }
+        assert {link.rationale for link in links} == {"Derived from assigned"}
 
 
 def test_derive_links_the_requested_node_without_duplicating_copied_links(
@@ -338,15 +325,11 @@ def test_derive_dedup_leaves_the_existing_materials_links_untouched(
     source_id = source["material"]["id"]
     node_id = make_node(client, course_id, "Node")
 
-    first = client.post(
-        f"/api/v1/materials/{source_id}/derive", json={"node_id": node_id}
-    )
+    first = client.post(f"/api/v1/materials/{source_id}/derive", json={"node_id": node_id})
     assert first.status_code == 201
     existing_id = first.json()["material"]["id"]
 
-    second = client.post(
-        f"/api/v1/materials/{source_id}/derive", json={"node_id": node_id}
-    )
+    second = client.post(f"/api/v1/materials/{source_id}/derive", json={"node_id": node_id})
     assert second.status_code == 201
     assert second.json()["deduped"] is True
 
@@ -382,18 +365,15 @@ def test_derive_from_linked_folder_source_lands_at_course_root(
             )
         ).first()
         assert folder is not None
-        material = session.scalars(
-            select(Material).where(Material.course_id == course_id)
-        ).first()
+        material = session.scalars(select(Material).where(Material.course_id == course_id)).first()
         assert material is not None
         material_id = material.id
         assert material.folder_id is None
 
     wait_until(
-        lambda: client.get(
-            f"/api/v1/materials/{material_id}"
-        ).json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
 
     derived = client.post(f"/api/v1/materials/{material_id}/derive", json={})
@@ -405,9 +385,7 @@ def test_derive_sanitizes_path_separators_in_title(client: TestClient) -> None:
     course_id = make_course(client)
     source = upload_text(client, "content", "weird.txt", course_id)
     source_id = source["material"]["id"]
-    renamed = client.patch(
-        f"/api/v1/materials/{source_id}", json={"title": "a/b\\c"}
-    )
+    renamed = client.patch(f"/api/v1/materials/{source_id}", json={"title": "a/b\\c"})
     assert renamed.status_code == 200
 
     derived = client.post(f"/api/v1/materials/{source_id}/derive", json={})
@@ -493,9 +471,7 @@ def test_batch_derive_resolves_in_batch_name_collisions(client: TestClient) -> N
     second_id = second["material"]["id"]
     renamed = client.patch(f"/api/v1/materials/{second_id}", json={"title": "notes"})
     assert renamed.status_code == 200
-    renamed_first = client.patch(
-        f"/api/v1/materials/{first_id}", json={"title": "notes"}
-    )
+    renamed_first = client.patch(f"/api/v1/materials/{first_id}", json={"title": "notes"})
     assert renamed_first.status_code == 200
 
     response = client.post(
@@ -536,9 +512,7 @@ def test_material_list_reports_has_extraction(client: TestClient) -> None:
         session.commit()
         pending_id = pending.id
 
-    listing = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    listing = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     flags = {entry["id"]: entry["has_extraction"] for entry in listing}
     assert flags[source_id] is True
     assert flags[pending_id] is False
@@ -550,9 +524,7 @@ def test_workspace_materials_report_has_extraction(client: TestClient) -> None:
     source_id = source["material"]["id"]
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     root_id = int(tree[0]["id"])
-    assigned = client.post(
-        f"/api/v1/nodes/{root_id}/materials", json={"material_id": source_id}
-    )
+    assigned = client.post(f"/api/v1/nodes/{root_id}/materials", json={"material_id": source_id})
     assert assigned.status_code == 201
 
     workspace = client.get(f"/api/v1/nodes/{root_id}/workspace").json()
@@ -572,10 +544,9 @@ def test_derived_extraction_is_version_one_with_edited_by_user_unset(
     assert derived.status_code == 201
     derived_id = derived.json()["material"]["id"]
     wait_until(
-        lambda: client.get(
-            f"/api/v1/materials/{derived_id}"
-        ).json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{derived_id}").json()["material"]["status"] == "ready"
+        )
     )
 
     factory = session_factory(client)

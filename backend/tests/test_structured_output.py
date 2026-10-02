@@ -181,9 +181,7 @@ def test_gateway_structured_cap_gate_makes_no_request() -> None:
         caps=["text"],
         api_key="k",
     )
-    result = gateway.generate_structured(
-        "chat", [Message(role="user", content="hi")], QuizgenOut
-    )
+    result = gateway.generate_structured("chat", [Message(role="user", content="hi")], QuizgenOut)
     assert result is None
 
 

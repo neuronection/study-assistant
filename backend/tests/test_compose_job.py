@@ -19,9 +19,7 @@ from app.pipelines.compose import make_compose_handler
 from app.storage.blobs import BlobStore
 
 
-def wait_job(
-    client: TestClient, job_id: int, timeout: float = 60.0
-) -> dict[str, Any]:
+def wait_job(client: TestClient, job_id: int, timeout: float = 60.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     last: dict[str, Any] = {}
     while time.monotonic() < deadline:
@@ -212,15 +210,11 @@ def test_handler_runs_through_progress_checkpoints(
     )
     handler(db_session, job, lambda progress, stage: reports.append((progress, stage)))
     assert [progress for progress, _stage in reports] == [10, 30, 90, 100]
-    material = db_session.scalars(
-        select(Material).where(Material.provenance.is_not(None))
-    ).first()
+    material = db_session.scalars(select(Material).where(Material.provenance.is_not(None))).first()
     assert material is not None
     assert job.payload is not None
     assert job.payload["material_id"] == material.id
-    ingest_jobs = list(
-        db_session.scalars(select(Job).where(Job.type == "ingest"))
-    )
+    ingest_jobs = list(db_session.scalars(select(Job).where(Job.type == "ingest")))
     assert len(ingest_jobs) == 1
 
 

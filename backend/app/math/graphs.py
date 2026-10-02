@@ -165,9 +165,7 @@ def validate_graph_answer(answer: dict[str, Any]) -> list[str]:
             tolerance = _as_float(answer.get("tolerance"))
             limit = tolerance if tolerance is not None and tolerance > 0 else 0.0
             if abs(value - exact) > max(limit, 1e-6):
-                problems.append(
-                    "declared value does not match the computed f(point_x)"
-                )
+                problems.append("declared value does not match the computed f(point_x)")
         tolerance = answer.get("tolerance")
         if tolerance is not None:
             parsed = _as_float(tolerance)
@@ -182,9 +180,7 @@ def validate_graph_answer(answer: dict[str, Any]) -> list[str]:
                 xs, _ = build_graph_data(expression, x_min, x_max, samples)
                 expected = nearest_index(xs, point_x)
                 if index != expected:
-                    problems.append(
-                        "declared point_index does not match the nearest sample"
-                    )
+                    problems.append("declared point_index does not match the nearest sample")
     return problems
 
 

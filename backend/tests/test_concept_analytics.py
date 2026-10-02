@@ -139,12 +139,8 @@ def test_materialize_writes_concept_id(client: TestClient) -> None:
     assert imported.status_code == 200, imported.text
     activity_id = imported.json()["activity"]["id"]
 
-    attempt = client.post(
-        f"/api/v1/quiz/activities/{activity_id}/attempts?mode=practice"
-    ).json()
-    for question in client.get(
-        f"/api/v1/quiz/activities/{activity_id}/questions"
-    ).json():
+    attempt = client.post(f"/api/v1/quiz/activities/{activity_id}/attempts?mode=practice").json()
+    for question in client.get(f"/api/v1/quiz/activities/{activity_id}/questions").json():
         client.post(
             f"/api/v1/quiz/attempts/{attempt['id']}/answers",
             json={"question_id": question["id"], "response": True},

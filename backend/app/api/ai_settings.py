@@ -108,9 +108,7 @@ def update_search_provider(
     profile = _ensure_profile(session)
     base_url = body.base_url.strip().rstrip("/")
     if not base_url.startswith(("http://", "https://")):
-        raise HTTPException(
-            status_code=422, detail="base_url must be an http(s) URL"
-        )
+        raise HTTPException(status_code=422, detail="base_url must be an http(s) URL")
     if body.flavor not in SEARCH_FLAVORS:
         raise HTTPException(
             status_code=422,
@@ -325,9 +323,7 @@ def list_providers(session: Session = Depends(get_session)) -> list[ProviderOut]
 
 
 @router.post("/providers", response_model=ProviderOut, status_code=201)
-def create_provider(
-    body: ProviderCreate, session: Session = Depends(get_session)
-) -> ProviderOut:
+def create_provider(body: ProviderCreate, session: Session = Depends(get_session)) -> ProviderOut:
     service = ProvidersService(session)
     provider: Provider | None = None
     try:
@@ -401,9 +397,7 @@ def test_provider(provider_id: int, session: Session = Depends(get_session)) -> 
     return _provider_out(service, provider)
 
 
-def _remote_error_detail(
-    service: ProvidersService, provider: Provider, error: Exception
-) -> str:
+def _remote_error_detail(service: ProvidersService, provider: Provider, error: Exception) -> str:
     if isinstance(error, httpx.HTTPStatusError) and error.response.status_code in (401, 403):
         if service.api_key(provider) is None:
             state = "no API key is stored for this provider"
@@ -442,17 +436,12 @@ def remote_models(
     if provider is None:
         raise HTTPException(status_code=404, detail="provider not found")
     try:
-        remote = fetch_remote_models(
-            provider.type, provider.base_url, service.api_key(provider)
-        )
+        remote = fetch_remote_models(provider.type, provider.base_url, service.api_key(provider))
     except Exception as error:
         raise HTTPException(
             status_code=502, detail=_remote_error_detail(service, provider, error)
         ) from error
-    return [
-        RemoteModelOut(external_id=item.external_id, caps=list(item.caps))
-        for item in remote
-    ]
+    return [RemoteModelOut(external_id=item.external_id, caps=list(item.caps)) for item in remote]
 
 
 def _model_out(model: AiModel) -> ModelOut:
@@ -596,9 +585,7 @@ def _task_out(
         model_id=model_id,
         fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(
-            labels.get(fallback_id) if fallback_id is not None else None
-        ),
+        fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
         inherits_default=model_id is None and default is not None,
         default_model_label=(
             labels.get(default.model_id)
@@ -650,9 +637,7 @@ def list_task_defaults(session: Session = Depends(get_session)) -> list[DefaultT
                 model_id=model_id,
                 fallback_model_id=fallback_id,
                 model_label=labels.get(model_id) if model_id is not None else None,
-                fallback_model_label=(
-                    labels.get(fallback_id) if fallback_id is not None else None
-                ),
+                fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
             )
         )
     return result
@@ -663,9 +648,7 @@ def put_task_default(
     requires: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
 ) -> DefaultTaskOut:
     try:
-        assignment = assign_default_task(
-            session, requires, body.model_id, body.fallback_model_id
-        )
+        assignment = assign_default_task(session, requires, body.model_id, body.fallback_model_id)
     except ProviderError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -674,13 +657,9 @@ def put_task_default(
         requires=requires,
         model_id=assignment.model_id,
         fallback_model_id=assignment.fallback_model_id,
-        model_label=(
-            labels.get(assignment.model_id) if assignment.model_id else None
-        ),
+        model_label=(labels.get(assignment.model_id) if assignment.model_id else None),
         fallback_model_label=(
-            labels.get(assignment.fallback_model_id)
-            if assignment.fallback_model_id
-            else None
+            labels.get(assignment.fallback_model_id) if assignment.fallback_model_id else None
         ),
     )
 
@@ -690,9 +669,7 @@ class BudgetIn(BaseModel):
 
 
 @router.put("/tasks/{task}/budget", response_model=TaskOut)
-def put_task_budget(
-    task: str, body: BudgetIn, session: Session = Depends(get_session)
-) -> TaskOut:
+def put_task_budget(task: str, body: BudgetIn, session: Session = Depends(get_session)) -> TaskOut:
     from ..domain.models import TaskAssignment
 
     assignment = session.get(TaskAssignment, task)
@@ -720,9 +697,7 @@ def put_task_budget(
 
 
 @router.put("/tasks/{task}", response_model=TaskOut)
-def put_task(
-    task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
-) -> TaskOut:
+def put_task(task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)) -> TaskOut:
     try:
         assignment = assign_task(session, task, body.model_id, body.fallback_model_id)
     except ProviderError as error:
@@ -743,9 +718,7 @@ def _course_inherited_labels(
     per-course capability default.
     """
     assignment = session.get(TaskAssignment, task_def.task)
-    default: DefaultTaskAssignment | None = session.get(
-        DefaultTaskAssignment, task_def.requires
-    )
+    default: DefaultTaskAssignment | None = session.get(DefaultTaskAssignment, task_def.requires)
     course_default: CourseDefaultTaskAssignment | None = session.get(
         CourseDefaultTaskAssignment, (course_id, task_def.requires)
     )
@@ -779,18 +752,22 @@ def _course_inherited_labels(
     )
 
 
-def _global_task_labels(
-    session: Session, task_def: TaskDef
-) -> tuple[str | None, str | None]:
+def _global_task_labels(session: Session, task_def: TaskDef) -> tuple[str | None, str | None]:
     assignment = session.get(TaskAssignment, task_def.task)
     default = session.get(DefaultTaskAssignment, task_def.requires)
     global_model_id = (
-        assignment.model_id if assignment and assignment.model_id is not None
-        else default.model_id if default else None
+        assignment.model_id
+        if assignment and assignment.model_id is not None
+        else default.model_id
+        if default
+        else None
     )
     global_fallback_id = (
-        assignment.fallback_model_id if assignment and assignment.fallback_model_id is not None
-        else default.fallback_model_id if default else None
+        assignment.fallback_model_id
+        if assignment and assignment.fallback_model_id is not None
+        else default.fallback_model_id
+        if default
+        else None
     )
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     return (
@@ -818,9 +795,7 @@ def _course_task_out(
         model_id=model_id,
         fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(
-            labels.get(fallback_id) if fallback_id is not None else None
-        ),
+        fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
         global_model_label=inherited_model_label,
         global_fallback_model_label=inherited_fallback_label,
     )
@@ -834,9 +809,7 @@ def _course_default_out(
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     default = session.get(DefaultTaskAssignment, requires)
     global_model_id = default.model_id if default is not None else None
-    global_fallback_id = (
-        default.fallback_model_id if default is not None else None
-    )
+    global_fallback_id = default.fallback_model_id if default is not None else None
     model_id = row.model_id if row else None
     fallback_id = row.fallback_model_id if row else None
     return CourseDefaultTaskOut(
@@ -844,12 +817,8 @@ def _course_default_out(
         model_id=model_id,
         fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(
-            labels.get(fallback_id) if fallback_id is not None else None
-        ),
-        global_model_label=(
-            labels.get(global_model_id) if global_model_id is not None else None
-        ),
+        fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
+        global_model_label=(labels.get(global_model_id) if global_model_id is not None else None),
         global_fallback_model_label=(
             labels.get(global_fallback_id) if global_fallback_id is not None else None
         ),
@@ -863,9 +832,7 @@ def _get_course_or_404(course_id: int, session: Session) -> Course:
     return course
 
 
-@router.get(
-    "/courses/{course_id}/tasks", response_model=list[CourseTaskOut]
-)
+@router.get("/courses/{course_id}/tasks", response_model=list[CourseTaskOut])
 def list_course_tasks(
     course_id: int, session: Session = Depends(get_session)
 ) -> list[CourseTaskOut]:
@@ -887,8 +854,7 @@ def list_course_task_defaults(
     _get_course_or_404(course_id, session)
     rows = list_course_default_assignments(session, course_id)
     return [
-        _course_default_out(session, requires, rows.get(requires))
-        for requires in DEFAULT_REQUIRES
+        _course_default_out(session, requires, rows.get(requires)) for requires in DEFAULT_REQUIRES
     ]
 
 
@@ -913,9 +879,7 @@ def put_course_task_default(
     return _course_default_out(session, requires, row)
 
 
-@router.put(
-    "/courses/{course_id}/tasks/{task}", response_model=CourseTaskOut
-)
+@router.put("/courses/{course_id}/tasks/{task}", response_model=CourseTaskOut)
 def put_course_task(
     course_id: int, task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
 ) -> CourseTaskOut:

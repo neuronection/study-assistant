@@ -30,9 +30,7 @@ GOOD_QUIZ = {
 
 BAD_QUIZ = {
     "title": "Broken",
-    "questions": [
-        {"id": "q1", "type": "single", "stem_md": "", "answer": {"index": 0}}
-    ],
+    "questions": [{"id": "q1", "type": "single", "stem_md": "", "answer": {"index": 0}}],
 }
 
 

@@ -74,9 +74,7 @@ def _speak_google(
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
                 "speechConfig": {
-                    "voiceConfig": {
-                        "prebuiltVoiceConfig": {"voiceName": voice or DEFAULT_VOICE}
-                    }
+                    "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice or DEFAULT_VOICE}}
                 },
             },
         },
@@ -84,9 +82,7 @@ def _speak_google(
     response.raise_for_status()
     body = response.json()
     parts = body.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-    inline = next(
-        (part.get("inlineData") for part in parts if part.get("inlineData")), None
-    )
+    inline = next((part.get("inlineData") for part in parts if part.get("inlineData")), None)
     if inline is None:
         raise RuntimeError("google TTS response carried no audio part")
     audio = base64.b64decode(str(inline.get("data", "")))

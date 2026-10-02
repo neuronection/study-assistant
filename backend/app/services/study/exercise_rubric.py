@@ -41,9 +41,7 @@ def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
             return problems
     if not isinstance(answers_flawed, list) or not isinstance(answers_correct, list):
         return problems
-    for index, (flawed, correct) in enumerate(
-        zip(answers_flawed, answers_correct, strict=False)
-    ):
+    for index, (flawed, correct) in enumerate(zip(answers_flawed, answers_correct, strict=False)):
         if not isinstance(flawed, str) or not isinstance(correct, str):
             problems.append(f"error_spot: line {index} answers must be strings")
             return problems
@@ -53,9 +51,7 @@ def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
         except Exception:
             problems.append(f"error_spot: line {index} answers must parse as math")
             return problems
-    for index, (flawed, correct) in enumerate(
-        zip(answers_flawed, answers_correct, strict=False)
-    ):
+    for index, (flawed, correct) in enumerate(zip(answers_flawed, answers_correct, strict=False)):
         same = equivalent(flawed, correct).equivalent
         if index == flaw_index and same:
             problems.append(
@@ -150,9 +146,7 @@ class RubricGrader:
             "Question:\n"
             f"{json.dumps(payload.get('prompt_md', ''), ensure_ascii=False)}\n\n"
             "Rubric rows:\n"
-            + "\n".join(
-                f"- {row.get('id', '')}: {row.get('text', '')}" for row in rubric_rows
-            )
+            + "\n".join(f"- {row.get('id', '')}: {row.get('text', '')}" for row in rubric_rows)
             + "\n\nStudent's answer:\n"
             + response[:4000]
         )
@@ -170,9 +164,7 @@ class RubricGrader:
             schema=RubricOut,
         )
         if result.problems:
-            raise RubricError(
-                "grading failed validation: " + "; ".join(result.problems[:6])
-            )
+            raise RubricError("grading failed validation: " + "; ".join(result.problems[:6]))
         draft = result.draft
         raw_score = draft.get("score", 0)
         score = min(max(float(raw_score if raw_score is not None else 0.0), 0.0), 1.0)

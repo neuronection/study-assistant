@@ -232,15 +232,12 @@ def call_tool_sync(
     semaphore = _semaphore_for(config.id, config.max_concurrent)
     if not semaphore.acquire(timeout=CONCURRENCY_ACQUIRE_TIMEOUT_SEC):
         raise McpToolError(
-            f"MCP server '{config.name}' is busy — max {config.max_concurrent} "
-            "concurrent call(s)"
+            f"MCP server '{config.name}' is busy — max {config.max_concurrent} concurrent call(s)"
         )
     try:
         return asyncio.run(_run_tool_call(config, tool_name, arguments, effective))
     except TimeoutError as error:
-        raise McpToolError(
-            f"MCP tool '{tool_name}' timed out after {effective:.0f}s"
-        ) from error
+        raise McpToolError(f"MCP tool '{tool_name}' timed out after {effective:.0f}s") from error
     finally:
         semaphore.release()
 

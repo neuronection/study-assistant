@@ -121,8 +121,7 @@ def test_weak_area_quiz_generation_focuses_topic() -> None:
         task, messages = gateway.calls[0]
         assert task == "quizgen"
         prompt = " ".join(
-            message.content if isinstance(message.content, str) else ""
-            for message in messages
+            message.content if isinstance(message.content, str) else "" for message in messages
         )
         assert "FOCUS TOPIC" in prompt
         assert "chain rule" in prompt
@@ -158,10 +157,7 @@ def test_backup_export_restore_round_trip() -> None:
             snapshot_path = Path(handle.name)
         connection = sqlite3.connect(snapshot_path)
         try:
-            return [
-                row[0]
-                for row in connection.execute("SELECT title FROM notes").fetchall()
-            ]
+            return [row[0] for row in connection.execute("SELECT title FROM notes").fetchall()]
         finally:
             connection.close()
             snapshot_path.unlink(missing_ok=True)
@@ -196,9 +192,7 @@ def test_backup_export_restore_round_trip() -> None:
         from conftest import mint_session
 
         cookie, _csrf, pid = mint_session(target_app)
-        listing = target.get(
-            "/api/v1/notes", headers={"Cookie": cookie, "X-Profile-Id": pid}
-        )
+        listing = target.get("/api/v1/notes", headers={"Cookie": cookie, "X-Profile-Id": pid})
         titles = [entry["title"] for entry in listing.json()["items"]]
         if "Survivor note" not in titles:
             raise AssertionError(
@@ -268,9 +262,7 @@ def test_restore_migrates_the_restored_db(tmp_path: Path) -> None:
     restored_engine = create_engine(f"sqlite:///{target_app.state.settings.db_path}")
     try:
         with restored_engine.connect() as connection:
-            version = connection.execute(
-                text("SELECT version_num FROM alembic_version")
-            ).fetchone()
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).fetchone()
             tables = {
                 row[0]
                 for row in connection.execute(

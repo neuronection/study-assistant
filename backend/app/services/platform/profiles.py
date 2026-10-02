@@ -4,6 +4,7 @@ Auto-provisioning rule (§6): a user is never without a profile — user
 creation provisions Default in the same transaction, and deleting the
 last profile re-provisions it. Exactly one `is_default` per user.
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -64,9 +65,7 @@ def list_profiles(session: Session, user_id: str) -> list[Profile]:
 
 def get_or_create_default(session: Session, user_id: str) -> Profile:
     profile = session.scalars(
-        select(Profile)
-        .where(Profile.user_id == user_id, Profile.is_default.is_(True))
-        .limit(1)
+        select(Profile).where(Profile.user_id == user_id, Profile.is_default.is_(True)).limit(1)
     ).first()
     if profile is not None:
         return profile

@@ -25,22 +25,18 @@ def _latest_extraction(session: Session, extraction_id: int | None, material_id:
         extraction = session.get(Extraction, extraction_id)
         if extraction is not None:
             return extraction
-    extraction = (
-        session.scalars(
-            select(Extraction)
-            .where(Extraction.material_id == material_id)
-            .order_by(Extraction.version.desc())
-            .limit(1)
-        ).first()
-    )
+    extraction = session.scalars(
+        select(Extraction)
+        .where(Extraction.material_id == material_id)
+        .order_by(Extraction.version.desc())
+        .limit(1)
+    ).first()
     if extraction is None:
         raise JobError(f"no extraction for material {material_id}")
     return extraction
 
 
-def embed_extraction(
-    session: Session, extraction: Extraction, embedder: Embedder
-) -> int:
+def embed_extraction(session: Session, extraction: Extraction, embedder: Embedder) -> int:
     chunks = list(
         session.scalars(
             select(Chunk).where(Chunk.extraction_id == extraction.id).order_by(Chunk.ordinal)
@@ -57,9 +53,7 @@ def embed_extraction(
         model, vectors_batch = result
         if not vectors_batch or len(vectors_batch[0]) == 0:
             return embedded
-        vectors.store(
-            session, [chunk.id for chunk in batch], vectors_batch, model
-        )
+        vectors.store(session, [chunk.id for chunk in batch], vectors_batch, model)
         session.commit()
         embedded += len(batch)
     return embedded
@@ -100,9 +94,7 @@ def make_postprocess_handler(embedder: Embedder, describer: Describer) -> JobHan
         old_chunk_ids = payload.get("old_chunk_ids") or []
         if old_chunk_ids:
             vectors.delete_for_extraction(session, [int(chunk_id) for chunk_id in old_chunk_ids])
-        extraction = _latest_extraction(
-            session, payload.get("extraction_id"), material.id
-        )
+        extraction = _latest_extraction(session, payload.get("extraction_id"), material.id)
         report(20, "embedding")
         try:
             embedded = embed_extraction(session, extraction, embedder)

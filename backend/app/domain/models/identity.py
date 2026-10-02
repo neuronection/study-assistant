@@ -61,9 +61,7 @@ class AuthSession(Base):
     # Product-added column (identity-auth §5 allows additions): the
     # device list (§12 `GET /api/v1/me/sessions`) shows when each family
     # was created. Nullable — rows predating migration 0067 have none.
-    created_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True, default=utcnow
-    )
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=utcnow)
 
 
 class InstanceSetting(Base):

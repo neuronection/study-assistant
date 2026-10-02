@@ -76,9 +76,7 @@ def test_review_due_excludes_scratch_and_reviewed_cards(client: TestClient) -> N
         empty = client.get("/api/v1/review/due").json()
         assert empty["total_due"] == 1
 
-        reviewed = client.post(
-            f"/api/v1/flashcards/{card_id}/review", json={"rating": 3}
-        )
+        reviewed = client.post(f"/api/v1/flashcards/{card_id}/review", json={"rating": 3})
         assert reviewed.status_code == 200
         assert reviewed.json()["interval_days"] > 0
 

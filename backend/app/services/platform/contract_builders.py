@@ -6,9 +6,7 @@ from ...domain.models import SkillVersion
 LADDER_WORDS = {1: 50, 2: 70, 3: 100, 4: 140, 5: 400}
 
 
-def _hint_constraints(
-    contract: dict[str, Any], runtime: dict[str, Any]
-) -> list[Constraint]:
+def _hint_constraints(contract: dict[str, Any], runtime: dict[str, Any]) -> list[Constraint]:
     level = int(runtime.get("hint_level", 3))
     result: list[Constraint] = []
     if contract.get("no_answer_reveal", True):
@@ -20,9 +18,7 @@ def _hint_constraints(
     return result
 
 
-def _chat_constraints(
-    contract: dict[str, Any], runtime: dict[str, Any]
-) -> list[Constraint]:
+def _chat_constraints(contract: dict[str, Any], runtime: dict[str, Any]) -> list[Constraint]:
     result: list[Constraint] = []
     if contract.get("citation_if_context", True):
         result.append(Constraint("citation_if_context"))
@@ -38,9 +34,7 @@ def _chat_constraints(
     return result
 
 
-def _plain_constraints(
-    contract: dict[str, Any], runtime: dict[str, Any]
-) -> list[Constraint]:
+def _plain_constraints(contract: dict[str, Any], runtime: dict[str, Any]) -> list[Constraint]:
     result: list[Constraint] = []
     words = contract.get("max_words")
     if words:
@@ -48,9 +42,7 @@ def _plain_constraints(
     return result
 
 
-def build_constraints(
-    version: SkillVersion, runtime: dict[str, Any]
-) -> list[Constraint]:
+def build_constraints(version: SkillVersion, runtime: dict[str, Any]) -> list[Constraint]:
     skill_key = version.skill.key if version.skill else ""
     contract = version.contract or {}
     if skill_key in ("tutor.hint", "quiz.help_hint"):

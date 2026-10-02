@@ -123,8 +123,7 @@ def drill_client() -> Iterator[TestClient]:
 
 def make_math_course(client: TestClient) -> int:
     types = {
-        entry["key"]: entry["id"]
-        for entry in client.get("/api/v1/skills/course-types").json()
+        entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
     created = client.post(
         "/api/v1/courses",
@@ -206,9 +205,7 @@ def test_spotted_counts_track_correct_picks(drill_client: TestClient) -> None:
     session = drill_client.post(f"/api/v1/exercises/{exercise['id']}/sessions").json()
     answer(drill_client, session["id"], {"picked": [0], "fix": "-6*x"})
 
-    patterns = drill_client.get(
-        f"/api/v1/exercises/drills/patterns?course_id={course_id}"
-    ).json()
+    patterns = drill_client.get(f"/api/v1/exercises/drills/patterns?course_id={course_id}").json()
     sign_slip = next(entry for entry in patterns if entry["pattern"] == "sign_slip")
     assert sign_slip["spotted"] == 1
 

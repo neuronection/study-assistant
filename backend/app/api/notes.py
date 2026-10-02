@@ -182,9 +182,7 @@ def _load_note(db: Session, note_id: int, profile_id: str) -> Note:
 
 
 @router.post("", response_model=NoteDetail, status_code=201)
-def create_note(
-    body: NoteCreate, session: Session = Depends(get_session)
-) -> NoteDetail:
+def create_note(body: NoteCreate, session: Session = Depends(get_session)) -> NoteDetail:
     profile = ensure_default_profile(session)
     if body.owner_type not in OWNER_TYPES:
         raise HTTPException(status_code=422, detail="unknown owner_type")
@@ -316,9 +314,7 @@ def compose_note(
     return _note_detail(session, note)
 
 
-def _apply_cursor(
-    statement: Any, cursor: str | None
-) -> tuple[Any, datetime | None]:
+def _apply_cursor(statement: Any, cursor: str | None) -> tuple[Any, datetime | None]:
     if not cursor:
         return statement, None
     try:
@@ -328,18 +324,12 @@ def _apply_cursor(
     return statement.where(Note.updated_at < moment), moment
 
 
-def _search_filter(
-    session: Session, statement: Any, q: str, cursor: str | None
-) -> Any:
+def _search_filter(session: Session, statement: Any, q: str, cursor: str | None) -> Any:
     like = statement.where(Note.search_text.like(f"%{q}%"))
     like, _ = _apply_cursor(like, cursor)
     if session.scalar(select(func.count()).select_from(like.subquery())):
         return statement.where(Note.search_text.like(f"%{q}%"))
-    ids = [
-        note.id
-        for note in session.scalars(statement)
-        if fuzzy_text_match(q, note.search_text)
-    ]
+    ids = [note.id for note in session.scalars(statement) if fuzzy_text_match(q, note.search_text)]
     if not ids:
         return like
     return statement.where(Note.id.in_(ids))
@@ -369,15 +359,11 @@ def list_notes(
     if tag:
         statement = statement.where(Note.tags.like(f'%"{tag.strip().lower()}"%'))
     statement, _moment = _apply_cursor(statement, cursor)
-    statement = statement.order_by(Note.pinned.desc(), Note.updated_at.desc()).limit(
-        limit + 1
-    )
+    statement = statement.order_by(Note.pinned.desc(), Note.updated_at.desc()).limit(limit + 1)
     rows = list(session.scalars(statement))
     has_more = len(rows) > limit
     rows = rows[:limit]
-    next_cursor = (
-        rows[-1].updated_at.isoformat() if has_more and rows else None
-    )
+    next_cursor = rows[-1].updated_at.isoformat() if has_more and rows else None
     return NotesPage(items=[_note_out(note) for note in rows], next_cursor=next_cursor)
 
 
@@ -451,15 +437,11 @@ class NoteMove(BaseModel):
 
 
 @router.patch("/{note_id}/move", response_model=NoteDetail)
-def move_note(
-    note_id: int, body: NoteMove, session: Session = Depends(get_session)
-) -> NoteDetail:
+def move_note(note_id: int, body: NoteMove, session: Session = Depends(get_session)) -> NoteDetail:
     profile = ensure_default_profile(session)
     note = _load_note(session, note_id, profile.id)
     try:
-        note.node_id = TreeService(session).placement_node(
-            note.course_id, body.node_id
-        )
+        note.node_id = TreeService(session).placement_node(note.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -733,10 +715,7 @@ def delete_drawing(
     note.body = [
         block
         for block in (note.body or [])
-        if not (
-            block.get("type") == "drawing"
-            and int(block.get("drawing_id", 0)) == drawing.id
-        )
+        if not (block.get("type") == "drawing" and int(block.get("drawing_id", 0)) == drawing.id)
     ]
     session.delete(drawing)
     session.flush()
@@ -792,9 +771,7 @@ def run_note_action(
             )
         messages.append(Message(role="user", content=prompt))
         try:
-            output = gateway.generate(
-                "description", messages, course_id=note.course_id
-            )
+            output = gateway.generate("description", messages, course_id=note.course_id)
         except (TaskUnassigned, ProviderError) as error:
             raise HTTPException(status_code=502, detail=str(error)) from error
         validation = validate(output, constraints, {})

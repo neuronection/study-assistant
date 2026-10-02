@@ -59,8 +59,9 @@ def add_material(
     assert upload.status_code == 200, upload.text
     material_id: int = upload.json()["material"]["id"]
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
@@ -113,9 +114,7 @@ def test_folder_assignment_direct_link_wins(client: TestClient) -> None:
     material_id = add_material(client, "a.md", course_id, folder_id=folder_id)
     node_id = make_node(client, course_id, "Node")
 
-    direct = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
-    )
+    direct = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert direct.status_code == 201
     assigned = client.post(
         f"/api/v1/nodes/{node_id}/folder-materials", json={"folder_id": folder_id}
@@ -199,9 +198,7 @@ def test_course_level_folder_assignment(client: TestClient) -> None:
         }
     ]
 
-    removed = client.delete(
-        f"/api/v1/courses/{course_id}/folder-materials/{folder_id}"
-    )
+    removed = client.delete(f"/api/v1/courses/{course_id}/folder-materials/{folder_id}")
     assert removed.status_code == 204
     assert client.get(f"/api/v1/courses/{course_id}/materials").json() == []
 
@@ -220,9 +217,7 @@ def test_unassign_via_folder_material_refused(client: TestClient) -> None:
     assert refused.status_code == 422
     assert "via folder" in refused.json()["detail"]
 
-    unassigned = client.delete(
-        f"/api/v1/nodes/{node_id}/folder-materials/{folder_id}"
-    )
+    unassigned = client.delete(f"/api/v1/nodes/{node_id}/folder-materials/{folder_id}")
     assert unassigned.status_code == 204
     assert workspace_of(client, node_id)["materials"] == []
     after = client.delete(f"/api/v1/nodes/{node_id}/materials/{material_id}")
@@ -242,9 +237,7 @@ def test_folder_delete_refused_while_assigned(client: TestClient) -> None:
     assert refused.status_code == 422
     assert "assigned to nodes" in refused.json()["detail"]
 
-    unassigned = client.delete(
-        f"/api/v1/nodes/{node_id}/folder-materials/{folder_id}"
-    )
+    unassigned = client.delete(f"/api/v1/nodes/{node_id}/folder-materials/{folder_id}")
     assert unassigned.status_code == 204
     deleted = client.delete(f"/api/v1/folders/{folder_id}")
     assert deleted.status_code == 204
@@ -262,9 +255,7 @@ def test_folder_delete_info_reports_subtree_and_links(client: TestClient) -> Non
     )
     assert assigned.status_code == 201
     second_node = make_node(client, course_id, "Second")
-    client.post(
-        f"/api/v1/nodes/{second_node}/materials", json={"material_id": material_id}
-    )
+    client.post(f"/api/v1/nodes/{second_node}/materials", json={"material_id": material_id})
 
     info = client.get(f"/api/v1/folders/{folder_id}/delete-info")
     assert info.status_code == 200
@@ -289,9 +280,7 @@ def test_folder_force_delete_cascades_subtree(client: TestClient) -> None:
     sub_id = make_folder(client, course_id, "Sub", folder_id)
     material_id = add_material(client, "a.md", course_id, folder_id=sub_id)
     node_id = make_node(client, course_id, "Node")
-    assigned = client.post(
-        f"/api/v1/nodes/{node_id}/folder-materials", json={"folder_id": sub_id}
-    )
+    assigned = client.post(f"/api/v1/nodes/{node_id}/folder-materials", json={"folder_id": sub_id})
     assert assigned.status_code == 201
 
     refused = client.delete(f"/api/v1/folders/{folder_id}")
@@ -339,9 +328,7 @@ def test_folder_rename_and_move_keep_resolution(client: TestClient) -> None:
     assert workspace["folders"][0]["member_count"] == 1
 
     parent_id = make_folder(client, course_id, "Parent")
-    moved = client.patch(
-        f"/api/v1/folders/{folder_id}/move", json={"parent_id": parent_id}
-    )
+    moved = client.patch(f"/api/v1/folders/{folder_id}/move", json={"parent_id": parent_id})
     assert moved.status_code == 200
     workspace = workspace_of(client, node_id)
     assert workspace["materials"] == []
@@ -367,9 +354,7 @@ def test_linked_source_folder_assignment(client: TestClient, tmp_path: Path) -> 
     link_folder = folders[0]
     assert link_folder["source_id"] == source_id
 
-    materials = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     assert len(materials) == 2
 
     node_id = make_node(client, course_id, "Rules")
@@ -494,9 +479,7 @@ def test_course_export_import_round_trips_folders(client: TestClient) -> None:
 
     exported = client.get(f"/api/v1/courses/{course_id}/export")
     assert exported.status_code == 200
-    imported = client.post(
-        "/api/v1/courses/import?dry_run=false", content=exported.content
-    )
+    imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
     assert imported.status_code == 200, imported.text
     new_course_id = int(imported.json()["imported"]["course_id"])
 
@@ -505,9 +488,7 @@ def test_course_export_import_round_trips_folders(client: TestClient) -> None:
     assert {"Lectures", "Week 1"} <= set(by_name)
     assert by_name["Week 1"]["parent_id"] == by_name["Lectures"]["id"]
 
-    materials = client.get(
-        "/api/v1/materials", params={"course_id": new_course_id}
-    ).json()
+    materials = client.get("/api/v1/materials", params={"course_id": new_course_id}).json()
     by_title = {material["title"]: material for material in materials}
     assert by_title["a"]["folder_id"] == by_name["Lectures"]["id"]
     assert by_title["b"]["folder_id"] == by_name["Week 1"]["id"]
@@ -530,9 +511,7 @@ def test_course_purge_removes_folder_links(client: TestClient) -> None:
     )
     assert assigned.status_code == 201
 
-    deleted = client.delete(
-        f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-    )
+    deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
     assert deleted.status_code == 200
 
 
@@ -591,9 +570,7 @@ def test_organizer_counts_folder_members_as_assigned(
         status="ready",
     )
     db_session.add(material)
-    db_session.add(
-        MaterialFolderLink(course_id=course.id, node_id=node.id, folder_id=folder.id)
-    )
+    db_session.add(MaterialFolderLink(course_id=course.id, node_id=node.id, folder_id=folder.id))
     other = Material(
         profile_id=profile.id,
         course_id=course.id,
@@ -606,9 +583,7 @@ def test_organizer_counts_folder_members_as_assigned(
     db_session.flush()
     db_session.commit()
 
-    _node, _children, unassigned, _concepts = organizer.node_context(
-        db_session, node.id
-    )
+    _node, _children, unassigned, _concepts = organizer.node_context(db_session, node.id)
     assert [entry["title"] for entry in unassigned] == ["unassigned"]
 
 
@@ -620,9 +595,7 @@ def test_direct_material_link_still_works_alongside_folder(
     inside = add_material(client, "inside.md", course_id, folder_id=folder_id)
     outside = add_material(client, "outside.md", course_id)
     node_id = make_node(client, course_id, "Node")
-    direct = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": outside}
-    )
+    direct = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": outside})
     assert direct.status_code == 201
     assigned = client.post(
         f"/api/v1/nodes/{node_id}/folder-materials", json={"folder_id": folder_id}
@@ -649,9 +622,7 @@ def test_material_list_reports_direct_link_counts(client: TestClient) -> None:
     unlinked = add_material(client, "loose.md", course_id)
     node_id = make_node(client, course_id, "Node")
     second_node = make_node(client, course_id, "Second")
-    direct_link = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": direct}
-    )
+    direct_link = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": direct})
     assert direct_link.status_code == 201
     second_link = client.post(
         f"/api/v1/nodes/{second_node}/materials", json={"material_id": direct}
@@ -662,9 +633,7 @@ def test_material_list_reports_direct_link_counts(client: TestClient) -> None:
     )
     assert folder_link.status_code == 201
 
-    materials = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     counts = {entry["id"]: entry["link_count"] for entry in materials}
     assert counts[direct] == 2
     assert counts[unlinked] == 0

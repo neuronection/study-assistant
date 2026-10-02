@@ -173,9 +173,7 @@ def _total_length(intervals: list[IntervalSpan]) -> float:
     return sum(hi - lo for lo, hi in intervals)
 
 
-def _intersection_length(
-    left: list[IntervalSpan], right: list[IntervalSpan]
-) -> float:
+def _intersection_length(left: list[IntervalSpan], right: list[IntervalSpan]) -> float:
     total = 0.0
     for lo_l, hi_l in left:
         for lo_r, hi_r in right:
@@ -260,13 +258,9 @@ def grade_regions(expected: dict[str, Any], response: Any) -> RegionGrade:
             boundary_mismatch += 1
             sides: list[str] = []
             if match[2] != lo_closed:
-                sides.append(
-                    f"{_clean_number(lo)} should be {'closed' if lo_closed else 'open'}"
-                )
+                sides.append(f"{_clean_number(lo)} should be {'closed' if lo_closed else 'open'}")
             if match[3] != hi_closed:
-                sides.append(
-                    f"{_clean_number(hi)} should be {'closed' if hi_closed else 'open'}"
-                )
+                sides.append(f"{_clean_number(hi)} should be {'closed' if hi_closed else 'open'}")
             feedback.append(
                 f"region {_format_interval(lo, hi, lo_closed, hi_closed)}: "
                 f"wrong boundary type ({'; '.join(sides)})"
@@ -285,13 +279,11 @@ def grade_regions(expected: dict[str, Any], response: Any) -> RegionGrade:
     extra_regions = len(remaining_actual)
     missed_regions = len(leftover_expected)
 
-    expected_mass = (
-        _total_length([(lo, hi) for lo, hi, _, _ in expected_intervals])
-        + len(expected_points)
+    expected_mass = _total_length([(lo, hi) for lo, hi, _, _ in expected_intervals]) + len(
+        expected_points
     )
-    actual_mass = (
-        _total_length([(lo, hi) for lo, hi, _, _ in actual_intervals])
-        + len(actual_points)
+    actual_mass = _total_length([(lo, hi) for lo, hi, _, _ in actual_intervals]) + len(
+        actual_points
     )
     intersection = overlap + sum(exact_lengths) + matched_points
     denominator = expected_mass + actual_mass

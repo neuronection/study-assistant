@@ -59,11 +59,7 @@ def extract_pdf_text(data: bytes) -> tuple[str, int]:
 
 
 def _embedded_ocr_text(material: Material) -> str:
-    parts = [
-        drawing.ocr_markdown
-        for drawing in material.drawings
-        if drawing.ocr_markdown
-    ]
+    parts = [drawing.ocr_markdown for drawing in material.drawings if drawing.ocr_markdown]
     parts += [image.ocr_markdown for image in material.images if image.ocr_markdown]
     return "\n".join(parts)
 
@@ -238,9 +234,7 @@ def make_ingest_handler(
                     doc = _open_pdf(data)
                     planned = plan_pages(doc)
                     pages = len(planned)
-                    text_parts = [
-                        text.strip() for decision, text in planned if decision.use_text
-                    ]
+                    text_parts = [text.strip() for decision, text in planned if decision.use_text]
                     weak_ordinals = [
                         ordinal
                         for ordinal, (decision, _text) in enumerate(planned)

@@ -149,9 +149,7 @@ def create_app(
         lifespan=lifespan,
         docs_url="/api/docs" if settings.debug else None,
     )
-    cors = [
-        raw.strip().rstrip("/") for raw in settings.cors_origins.split(",") if raw.strip()
-    ]
+    cors = [raw.strip().rstrip("/") for raw in settings.cors_origins.split(",") if raw.strip()]
     if cors:
         app.add_middleware(
             CORSMiddleware,
@@ -165,9 +163,7 @@ def create_app(
     app.state.engine = make_engine(settings.db_url)
     app.state.session_factory = make_session_factory(app.state.engine)
 
-    run_startup_seeds(
-        app.state.session_factory, jobs_done_ttl_days=settings.jobs_done_ttl_days
-    )
+    run_startup_seeds(app.state.session_factory, jobs_done_ttl_days=settings.jobs_done_ttl_days)
 
     # Order matters: profile binding registers first so the kit's session
     # enforcement stays the outermost middleware (§15 runs inside it).
@@ -219,9 +215,7 @@ def create_app(
                 interval_hours=settings.backup_interval_hours,
                 keep_daily=settings.backup_keep_daily,
                 keep_weekly=settings.backup_keep_weekly,
-                sync_dir=str(settings.backup_sync_dir)
-                if settings.backup_sync_dir
-                else None,
+                sync_dir=str(settings.backup_sync_dir) if settings.backup_sync_dir else None,
             ),
             settings.data_dir,
         )

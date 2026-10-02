@@ -20,9 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     with op.batch_alter_table("ai_interactions") as batch_op:
-        batch_op.add_column(
-            sa.Column("cached_input_tokens", sa.Integer(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("cached_input_tokens", sa.Integer(), nullable=True))
 
 
 def downgrade() -> None:

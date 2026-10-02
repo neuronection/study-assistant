@@ -43,10 +43,7 @@ def test_server_open_env_coerces_to_authenticated(
     with caplog.at_level("WARNING"):
         app = create_app(_settings(tmp_path, auth_mode="open"))
     assert _auth_mode(app) == "authenticated"
-    assert any(
-        "SA_AUTH_MODE=open is not legal" in record.getMessage()
-        for record in caplog.records
-    )
+    assert any("SA_AUTH_MODE=open is not legal" in record.getMessage() for record in caplog.records)
 
 
 @pytest.mark.parametrize("identity", ["server", "desktop"])
@@ -62,9 +59,7 @@ def test_unknown_auth_mode_fails_closed(tmp_path: Path, identity: str) -> None:
 )
 def test_desktop_init_modes(tmp_path: Path, auth_mode: str, expected: str) -> None:
     """S13 — desktop initializes open by default; authenticated is honored."""
-    app = create_app(
-        _settings(tmp_path, identity_mode="desktop", auth_mode=auth_mode)
-    )
+    app = create_app(_settings(tmp_path, identity_mode="desktop", auth_mode=auth_mode))
     assert _auth_mode(app) == expected
     # demo_mode is written explicitly at init either way (§13)
     assert StudyInstanceStore(app.state.session_factory).get("demo_mode") == "false"
@@ -117,7 +112,4 @@ def test_registration_disabled_refuses(tmp_path: Path) -> None:
             json={"email": "nope@study.local", "password": "a-long-enough-password"},
         )
         assert refused.status_code == 403
-        assert (
-            StudyUserStore(app.state.session_factory).get_by_email("nope@study.local")
-            is None
-        )
+        assert StudyUserStore(app.state.session_factory).get_by_email("nope@study.local") is None

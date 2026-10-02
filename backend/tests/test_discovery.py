@@ -35,9 +35,7 @@ def test_web_provider_normalizes_tavily_results() -> None:
         )
 
     provider = WebSearchProvider("https://tavily.example", "tavily", api_key="k")
-    results = provider.search(
-        "chain rule", cap=5, transport=httpx.MockTransport(handler)
-    )
+    results = provider.search("chain rule", cap=5, transport=httpx.MockTransport(handler))
     assert len(results) == 1
     assert results[0].provider == "web"
     assert results[0].kind == "article"
@@ -60,9 +58,7 @@ def test_site_provider_appends_site_filter() -> None:
         "searxng",
         label="Khan Academy",
     )
-    results = provider.search(
-        "limits", cap=5, transport=httpx.MockTransport(handler)
-    )
+    results = provider.search("limits", cap=5, transport=httpx.MockTransport(handler))
     assert results == []
     assert seen == ["limits site:khanacademy.org"]
 
@@ -127,9 +123,7 @@ def test_search_videos_builds_ytsearch_query(
     assert len(rows) == 1
 
 
-def test_resolve_providers_defaults_and_filtering(
-    db_session: Session, owner: Any
-) -> None:
+def test_resolve_providers_defaults_and_filtering(db_session: Session, owner: Any) -> None:
     from app.domain.models import Profile
 
     profile = Profile(user_id=owner.id, name="p")
@@ -163,9 +157,7 @@ def test_resolve_providers_defaults_and_filtering(
         f"site:{KHAN_ACADEMY_SITE}",
     ]
 
-    filtered = resolve_providers(
-        db_session, str(profile.id), requested=["youtube"]
-    )
+    filtered = resolve_providers(db_session, str(profile.id), requested=["youtube"])
     assert [provider.id for provider in filtered] == ["youtube"]
 
 

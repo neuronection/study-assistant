@@ -31,9 +31,7 @@ def test_tags_normalized_and_roundtrip(client: TestClient) -> None:
     )
     assert created["tags"] == ["calculus", "exam"]
 
-    updated = client.patch(
-        f"/api/v1/notes/{created['id']}", json={"tags": ["Limits"]}
-    ).json()
+    updated = client.patch(f"/api/v1/notes/{created['id']}", json={"tags": ["Limits"]}).json()
     assert updated["tags"] == ["limits"]
 
     cleared = client.patch(f"/api/v1/notes/{created['id']}", json={"tags": []}).json()
@@ -53,9 +51,7 @@ def test_tag_filter_and_summary(client: TestClient) -> None:
     ).json()
     assert sorted(note["title"] for note in filtered["items"]) == ["One", "Two"]
 
-    exact = client.get(
-        "/api/v1/notes", params={"tag": "calc", "course_id": course_id}
-    ).json()
+    exact = client.get("/api/v1/notes", params={"tag": "calc", "course_id": course_id}).json()
     assert exact["items"] == []
 
     summary = client.get("/api/v1/notes/tags/list", params={"course_id": course_id}).json()
@@ -73,9 +69,7 @@ def test_pagination_cursor(client: TestClient) -> None:
         create_note(client, f"Note {index:02d}", course_id=course_id)
         time.sleep(0.01)
 
-    first = client.get(
-        "/api/v1/notes", params={"course_id": course_id, "limit": 3}
-    ).json()
+    first = client.get("/api/v1/notes", params={"course_id": course_id, "limit": 3}).json()
     assert len(first["items"]) == 3
     assert first["next_cursor"] is not None
 
@@ -94,7 +88,5 @@ def test_pagination_cursor(client: TestClient) -> None:
     assert len(third["items"]) == 1
     assert third["next_cursor"] is None
 
-    bad = client.get(
-        "/api/v1/notes", params={"course_id": course_id, "cursor": "not-a-date"}
-    )
+    bad = client.get("/api/v1/notes", params={"course_id": course_id, "cursor": "not-a-date"})
     assert bad.status_code == 422

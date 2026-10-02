@@ -126,9 +126,7 @@ def answer_question(client: TestClient, mode: str) -> None:
     activity = client.post(
         "/api/v1/quiz/generate", json={"count": 1, "course_id": course_id}
     ).json()
-    question = client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     attempt = client.post(
         f"/api/v1/quiz/activities/{activity['id']}/attempts", params={"mode": mode}
     ).json()

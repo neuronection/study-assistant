@@ -84,9 +84,7 @@ def _values_match(expected: Any, actual: Any) -> bool:
             return True
         return bool(expected == actual)
     if isinstance(expected, list) and isinstance(actual, list):
-        same = all(
-            _values_match(a, b) for a, b in zip(expected, actual, strict=False)
-        )
+        same = all(_values_match(a, b) for a, b in zip(expected, actual, strict=False))
         return bool(same and len(expected) == len(actual))
     return bool(expected == actual)
 
@@ -119,9 +117,7 @@ def grade_code(answer: dict[str, Any], response: Any) -> dict[str, Any]:
         if not isinstance(result, dict):
             continue
         expected = test.get("expected") if isinstance(test, dict) else None
-        expected_stdout = (
-            test.get("expected_stdout") if isinstance(test, dict) else None
-        )
+        expected_stdout = test.get("expected_stdout") if isinstance(test, dict) else None
         claimed = bool(result.get("passed"))
         output_ok = _values_match(expected, _parse_output(result.get("output")))
         stdout_ok = True

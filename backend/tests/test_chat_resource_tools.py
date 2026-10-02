@@ -57,18 +57,14 @@ def test_courses_tool_lists_courses(client: tuple[TestClient, ScriptedGateway, F
         course_id = make_course(test_client, "Calculus")
         gateway.responses.append("COURSES")
         gateway.responses.append("Here are your courses.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "list my courses"},
         )
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
-        courses_call = next(
-            tc for tc in assistant["tool_calls"] if tc["name"] == "COURSES"
-        )
+        courses_call = next(tc for tc in assistant["tool_calls"] if tc["name"] == "COURSES")
         assert "Calculus" in courses_call["result"]
         assert courses_call["status"] == "done"
         assert "COURSES" not in assistant["markdown"]
@@ -117,17 +113,13 @@ def test_unknown_node_handle_reports_error(
         course_id = make_course(test_client, "Biology")
         gateway.responses.append("NODE_OVERVIEW T999")
         gateway.responses.append("I could not look that up.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "overview of node T999"},
         )
         wait_for_assistant(test_client, session["id"])
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "error: need a node handle" in second_prompt
 
 
@@ -139,9 +131,7 @@ def test_resource_tool_budget_is_capped(
         course_id = make_course(test_client, "Chemistry")
         gateway.responses.append("\n".join(["COURSES"] * 7))
         gateway.responses.append("Done.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "list courses many times"},
@@ -150,9 +140,7 @@ def test_resource_tool_budget_is_capped(
         assistant = messages[-1]
         courses_calls = [tc for tc in assistant["tool_calls"] if tc["name"] == "COURSES"]
         assert len(courses_calls) == 5
-        last_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        last_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "resource tool budget for this turn is spent" in last_prompt
 
 
@@ -175,18 +163,13 @@ def test_course_level_tools_dispatch_and_scope(
         gateway.responses.append("PLAN")
         gateway.responses.append("DUE")
         gateway.responses.append("You are on track.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "how am I doing?"},
         )
         messages = wait_for_assistant(test_client, session["id"])
-        by_name = {
-            tc["name"]: str(tc.get("result", ""))
-            for tc in messages[-1]["tool_calls"]
-        }
+        by_name = {tc["name"]: str(tc.get("result", "")) for tc in messages[-1]["tool_calls"]}
         assert {"MISTAKES", "PLAN", "DUE"} <= set(by_name)
         assert "not_enough_data" in by_name["PLAN"]
         assert '"due"' in by_name["DUE"]
@@ -222,11 +205,7 @@ def test_node_flashcards_resource_via_chat(
             json={"content": "what cards live here?"},
         )
         messages = wait_for_assistant(test_client, session["id"])
-        flash = next(
-            tc
-            for tc in messages[-1]["tool_calls"]
-            if tc["name"] == "NODE_FLASHCARDS"
-        )
+        flash = next(tc for tc in messages[-1]["tool_calls"] if tc["name"] == "NODE_FLASHCARDS")
         result = str(flash.get("result", ""))
         assert '"total": 1' in result or '"total":1' in result
         assert '"due": 0' in result or '"due":0' in result
@@ -260,9 +239,7 @@ def test_node_materials_tool_registers_read_handles(
             json={"content": "what materials are here?"},
         )
         messages = wait_for_assistant(test_client, session["id"])
-        tool_call = next(
-            tc for tc in messages[-1]["tool_calls"] if tc["name"] == "NODE_MATERIALS"
-        )
+        tool_call = next(tc for tc in messages[-1]["tool_calls"] if tc["name"] == "NODE_MATERIALS")
         assert "limits" in tool_call["result"]
 
         gateway.responses.append(f"READ M{material_id}")
@@ -289,12 +266,8 @@ def test_read_node_enriches_children_and_materials(
         root_id = int(tree[0]["id"])
         chapter_id = make_node(test_client, course_id, "Chapter 1")
         child_id = make_node(test_client, course_id, "Section 1.1")
-        material_id = add_material(
-            test_client, "intro.md", "Chapter introduction text.", course_id
-        )
-        test_client.post(
-            f"/api/v1/nodes/{chapter_id}/materials", json={"material_id": material_id}
-        )
+        material_id = add_material(test_client, "intro.md", "Chapter introduction text.", course_id)
+        test_client.post(f"/api/v1/nodes/{chapter_id}/materials", json={"material_id": material_id})
         assert child_id
         assert root_id
         session = test_client.post(
@@ -310,9 +283,7 @@ def test_read_node_enriches_children_and_materials(
             json={"content": "what is in this chapter?"},
         )
         messages = wait_for_assistant(test_client, session["id"])
-        read_call = next(
-            tc for tc in messages[-1]["tool_calls"] if tc["name"] == "READ"
-        )
+        read_call = next(tc for tc in messages[-1]["tool_calls"] if tc["name"] == "READ")
         assert read_call["result"].startswith("read ")
         assert read_call["result"].endswith(" chars")
         assert messages[-1]["reads"], "node read was not recorded"

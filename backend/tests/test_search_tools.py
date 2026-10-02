@@ -83,9 +83,7 @@ def test_perform_search_searxng_flavor() -> None:
 
 
 def test_perform_search_errors_surface_as_search_error() -> None:
-    error_transport = httpx.MockTransport(
-        lambda request: httpx.Response(503, text="down")
-    )
+    error_transport = httpx.MockTransport(lambda request: httpx.Response(503, text="down"))
     with pytest.raises(SearchError):
         perform_search(
             "https://api.tavily.com",
@@ -210,9 +208,7 @@ def test_chat_search_tool_unconfigured_is_honest(
         course_id = make_course(test_client)
         gateway.responses.append("SEARCH p vs np curriculum")
         gateway.responses.append("I could not search the web right now.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "search for p vs np"},
@@ -241,9 +237,7 @@ def test_chat_search_tool_returns_cited_results(
         gateway.responses.append(
             "See https://en.wikipedia.org/wiki/P_versus_NP for the canonical statement."
         )
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "search p vs np"},
@@ -305,9 +299,7 @@ def test_genesis_grounding_uses_search_provider(
                         {
                             "title": "Foundations",
                             "summary": "s",
-                            "sections": [
-                                {"title": "Basics", "objectives": ["Define P and NP"]}
-                            ],
+                            "sections": [{"title": "Basics", "objectives": ["Define P and NP"]}],
                         }
                     ],
                 }

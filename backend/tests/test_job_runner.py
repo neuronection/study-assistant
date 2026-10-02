@@ -196,10 +196,7 @@ def test_runner_grouped_jobs_run_in_enqueue_order(tmp_path: Path) -> None:
     runner.start()
     try:
         wait_until(
-            lambda: all(
-                job_status(runner, job_id) == "done"
-                for job_id in (first, second, other)
-            )
+            lambda: all(job_status(runner, job_id) == "done" for job_id in (first, second, other))
         )
     finally:
         runner.stop()

@@ -72,15 +72,10 @@ def test_data_dir_windows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
 def test_data_dir_macos(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("sys.platform", "darwin")
     monkeypatch.setenv("HOME", str(tmp_path))
-    assert (
-        default_data_dir()
-        == tmp_path / "Library" / "Application Support" / "StudyAssistant"
-    )
+    assert default_data_dir() == tmp_path / "Library" / "Application Support" / "StudyAssistant"
 
 
-def test_data_dir_migrates_legacy_dir(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_data_dir_migrates_legacy_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("sys.platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
     legacy = tmp_path / "CourseAssistant"
@@ -111,9 +106,7 @@ def test_data_dir_keeps_new_dir_when_legacy_also_exists(
     assert (current / "app.db").read_bytes() == b"new"
 
 
-def test_data_dir_untouched_without_legacy(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_data_dir_untouched_without_legacy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("sys.platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
 

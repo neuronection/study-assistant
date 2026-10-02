@@ -75,9 +75,7 @@ def speak_client(tmp_path: Any) -> Iterator[tuple[TestClient, SpeechGateway]]:
 
 def test_speak_returns_audio(speak_client: tuple[TestClient, SpeechGateway]) -> None:
     test_client, gateway = speak_client
-    response = test_client.post(
-        "/api/v1/ai/speak", json={"text": "Read this aloud please."}
-    )
+    response = test_client.post("/api/v1/ai/speak", json={"text": "Read this aloud please."})
     assert response.status_code == 200, response.text
     assert response.content == AUDIO_BYTES
     assert response.headers["content-type"].startswith("audio/mpeg")
@@ -89,9 +87,7 @@ def test_speak_rejects_oversized_text(
     speak_client: tuple[TestClient, SpeechGateway],
 ) -> None:
     test_client, _gateway = speak_client
-    response = test_client.post(
-        "/api/v1/ai/speak", json={"text": "x" * (MAX_TTS_CHARS + 1)}
-    )
+    response = test_client.post("/api/v1/ai/speak", json={"text": "x" * (MAX_TTS_CHARS + 1)})
     assert response.status_code == 422
 
 
@@ -204,9 +200,7 @@ def test_speak_with_anthropic_unsupported() -> None:
         caps=["text"],
         api_key=None,
     )
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(500, text="nope")
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(500, text="nope"))
     with httpx.Client(transport=transport) as client, pytest.raises(SpeechUnsupported):
         speak_with(client, resolved, "hello", None)
 

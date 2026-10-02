@@ -130,9 +130,7 @@ def _source_content(session: Session, profile_id: str, body: GenerateIn) -> str:
         return "\n\n".join(parts)
     if body.source == "material":
         if body.material_id is None:
-            raise HTTPException(
-                status_code=422, detail="material_id required for source=material"
-            )
+            raise HTTPException(status_code=422, detail="material_id required for source=material")
         extraction = session.scalars(
             select(Extraction)
             .where(Extraction.material_id == body.material_id)
@@ -152,12 +150,9 @@ def _source_content(session: Session, profile_id: str, body: GenerateIn) -> str:
     lines = []
     for stem, explanation, tags in rows:
         stem_text = stem[0].get("md", "") if stem else ""
-        explanation_text = (
-            explanation[0].get("md", "") if explanation else ""
-        )
+        explanation_text = explanation[0].get("md", "") if explanation else ""
         lines.append(
-            f"Question: {stem_text}\nCorrect: {explanation_text}\nErrors: "
-            f"{', '.join(tags or [])}"
+            f"Question: {stem_text}\nCorrect: {explanation_text}\nErrors: {', '.join(tags or [])}"
         )
     if not lines:
         raise HTTPException(status_code=422, detail="no mistakes to build cards from")
@@ -219,9 +214,7 @@ def generate_cards(
 
 
 @router.post("", response_model=CardOut, status_code=201)
-def create_card(
-    body: CardIn, session: Session = Depends(get_session)
-) -> CardOut:
+def create_card(body: CardIn, session: Session = Depends(get_session)) -> CardOut:
     profile = ensure_default_profile(session)
     draft = {"kind": body.kind, "front_md": body.front_md, "back_md": body.back_md}
     problems = validate_card(draft, 0)
@@ -255,22 +248,16 @@ def list_cards(
     profile = ensure_default_profile(session)
     statement = select(Exercise, FsrsState)
     statement = statement.outerjoin(FsrsState, FsrsState.card_id == Exercise.id)
-    statement = statement.where(
-        Exercise.profile_id == profile.id, Exercise.kind.in_(CARD_KINDS)
-    )
+    statement = statement.where(Exercise.profile_id == profile.id, Exercise.kind.in_(CARD_KINDS))
     if node_id is not None:
         scope_ids = TreeService(session).scoped_node_ids(node_id, include_children)
         statement = statement.where(Exercise.node_id.in_(scope_ids))
     elif course_id is not None:
         statement = statement.where(Exercise.course_id == course_id)
     statement = (
-        statement.options(selectinload(Exercise.steps))
-        .order_by(Exercise.id.desc())
-        .limit(200)
+        statement.options(selectinload(Exercise.steps)).order_by(Exercise.id.desc()).limit(200)
     )
-    return [
-        card_out(card, state) for card, state in session.execute(statement).all()
-    ]
+    return [card_out(card, state) for card, state in session.execute(statement).all()]
 
 
 @router.get("/due", response_model=list[CardOut])
@@ -298,9 +285,7 @@ def due_cards(
     statement = statement.order_by(FsrsState.due_at.nulls_first(), Exercise.id).limit(
         max(1, min(limit, 100))
     )
-    return [
-        card_out(card, state) for card, state in session.execute(statement).all()
-    ]
+    return [card_out(card, state) for card, state in session.execute(statement).all()]
 
 
 @router.post("/{card_id}/review", response_model=ReviewOut)
@@ -312,11 +297,7 @@ def review_card(
     profile = ensure_default_profile(session)
     card = _load_card(session, card_id, profile.id)
     now = utcnow()
-    state = (
-        session.scalars(
-            select(FsrsState).where(FsrsState.card_id == card.id)
-        ).first()
-    )
+    state = session.scalars(select(FsrsState).where(FsrsState.card_id == card.id)).first()
     fsrs_card = fsrs.FsrsCard(
         stability=state.stability if state else None,
         difficulty=state.difficulty if state else None,
@@ -407,9 +388,7 @@ def export_anki(
         statement = statement.where(Exercise.course_id == course_id)
     statement = statement.options(selectinload(Exercise.steps))
     rows = session.execute(statement.order_by(Exercise.id)).all()
-    package = export_apkg(
-        [(card, state) for card, state in rows], "Study Assistant"
-    )
+    package = export_apkg([(card, state) for card, state in rows], "Study Assistant")
     return Response(
         content=package,
         media_type="application/octet-stream",

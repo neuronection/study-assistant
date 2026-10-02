@@ -19,9 +19,7 @@ def test_quizgen_validation_golden_set() -> None:
     for case in golden["cases"]:
         problems = validate_question(case["draft"], 0)
         if problems != case["expect_problems"]:
-            failures.append(
-                f"{case['name']}: expected {case['expect_problems']}, got {problems}"
-            )
+            failures.append(f"{case['name']}: expected {case['expect_problems']}, got {problems}")
     assert not failures, "golden drift:\n" + "\n".join(failures)
 
 

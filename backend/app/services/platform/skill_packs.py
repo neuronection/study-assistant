@@ -145,11 +145,7 @@ def _unique_key(session: Session, key: str) -> str:
 def _write_versions(session: Session, skill: Skill, entry: dict[str, Any]) -> None:
     incoming = [version for version in entry["versions"] if isinstance(version, dict)]
     active_version = next(
-        (
-            version.get("version")
-            for version in incoming
-            if version.get("is_active")
-        ),
+        (version.get("version") for version in incoming if version.get("is_active")),
         None,
     )
     latest = session.scalars(

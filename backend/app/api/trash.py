@@ -31,7 +31,6 @@ class RestoreDeletedOut(BaseModel):
     detail: dict[str, Any] | None = None
 
 
-
 def _load_item(session: Session, item_id: int, profile_id: str) -> DeletedItem:
     item = session.get(DeletedItem, item_id)
     if item is None or item.profile_id != profile_id:
@@ -95,9 +94,7 @@ def restore_deleted_item(
 
 
 @router.delete("/{item_id}", status_code=204)
-def purge_deleted_item(
-    item_id: int, session: Session = Depends(get_session)
-) -> None:
+def purge_deleted_item(item_id: int, session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
     item = _load_item(session, item_id, profile.id)
     trash.purge_one(session, item)

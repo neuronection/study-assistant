@@ -22,15 +22,11 @@ def test_start_heartbeat_end_and_summary(client: TestClient) -> None:
         assert row["source"] == "timer"
         assert row["duration_sec"] == 0
 
-        beat = client.patch(
-            f"/api/v1/study-sessions/{row['id']}", json={"action": "heartbeat"}
-        )
+        beat = client.patch(f"/api/v1/study-sessions/{row['id']}", json={"action": "heartbeat"})
         assert beat.status_code == 200
         assert beat.json()["duration_sec"] >= 0
 
-        ended = client.patch(
-            f"/api/v1/study-sessions/{row['id']}", json={"action": "end"}
-        )
+        ended = client.patch(f"/api/v1/study-sessions/{row['id']}", json={"action": "end"})
         assert ended.status_code == 200
         assert ended.json()["ended_at"] is not None
 
@@ -95,17 +91,13 @@ def test_unknown_kind_rejected(client: TestClient) -> None:
 
 def test_beat_missing_session_404(client: TestClient) -> None:
     with client:
-        response = client.patch(
-            "/api/v1/study-sessions/9999", json={"action": "end"}
-        )
+        response = client.patch("/api/v1/study-sessions/9999", json={"action": "end"})
         assert response.status_code == 404
 
 
 def test_course_purge_removes_sessions(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Purge me"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Purge me"}).json()["id"])
         started = client.post(
             "/api/v1/study-sessions",
             json={"kind": "quiz", "source": "auto", "course_id": course_id},
@@ -113,14 +105,10 @@ def test_course_purge_removes_sessions(client: TestClient) -> None:
         assert started.status_code == 201
         session_id = started.json()["id"]
 
-        deleted = client.delete(
-            f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-        )
+        deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
         assert deleted.status_code in (200, 204), deleted.text
 
-        beat = client.patch(
-            f"/api/v1/study-sessions/{session_id}", json={"action": "end"}
-        )
+        beat = client.patch(f"/api/v1/study-sessions/{session_id}", json={"action": "end"})
         assert beat.status_code == 404
 
 
@@ -206,9 +194,7 @@ def test_daily_history_and_materialize_fold_session_seconds(
     db_session.flush()
 
     history = metrics.daily_history(db_session, profile.id)
-    today_entry = next(
-        entry for entry in history if entry["day"] == today.date().isoformat()
-    )
+    today_entry = next(entry for entry in history if entry["day"] == today.date().isoformat())
     assert today_entry["study_seconds"] == 600
     assert metrics.streak(history) >= 1
 

@@ -53,7 +53,8 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
@@ -74,11 +75,10 @@ class ChatSession(Base):
     context: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     mention_registry: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     active_root_id: Mapped[int | None] = mapped_column(Integer)
-    quizme: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("0")
-    )
+    quizme: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     quiz_pending: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
@@ -101,6 +101,7 @@ class ChatMessage(Base):
     trace: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class ChatProposal(Base):
     __tablename__ = "chat_proposals"
 
@@ -110,9 +111,7 @@ class ChatProposal(Base):
     )
     action: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
-    status: Mapped[str] = mapped_column(
-        String(20), default=ChatProposalStatus.PROPOSED.value
-    )
+    status: Mapped[str] = mapped_column(String(20), default=ChatProposalStatus.PROPOSED.value)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -129,6 +128,4 @@ class QuizmeAnswer(Base):
         ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
     )
     correct: Mapped[bool] = mapped_column(Boolean)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

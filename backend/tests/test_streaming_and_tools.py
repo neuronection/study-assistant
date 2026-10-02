@@ -10,9 +10,6 @@ def make_stream_gateway(transport: httpx.BaseTransport) -> LLMGateway:
     return LLMGateway(session_factory=None, transport=transport)
 
 
-
-
-
 def test_openai_streaming_yields_deltas() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = b"".join(
@@ -42,13 +39,13 @@ def test_openai_streaming_yields_deltas() -> None:
 def test_anthropic_streaming_yields_deltas() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = (
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"sin"}}\n\n'
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"(x)"}}\n\n'
-            b'event: message_stop\n'
+            b"event: message_stop\n"
             b'data: {"type":"message_stop"}\n\n'
         )
         return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
@@ -112,9 +109,7 @@ def test_stream_events_yields_reasoning_and_stream_drops_it() -> None:
         caps=["text"],
         api_key=None,
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     assert [(event.kind, event.text) for event in events] == [
         ("reasoning", "hmm"),
         ("text", "answer"),
@@ -126,13 +121,13 @@ def test_stream_events_yields_reasoning_and_stream_drops_it() -> None:
 def test_anthropic_stream_events_yield_reasoning() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         body = (
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"thinking_delta","thinking":"pondering"}}\n\n'
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"answer"}}\n\n'
-            b'event: message_stop\n'
+            b"event: message_stop\n"
             b'data: {"type":"message_stop"}\n\n'
         )
         return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
@@ -147,9 +142,7 @@ def test_anthropic_stream_events_yield_reasoning() -> None:
         caps=["text"],
         api_key="k",
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     assert [(event.kind, event.text) for event in events] == [
         ("reasoning", "pondering"),
         ("text", "answer"),
@@ -174,9 +167,7 @@ def test_google_stream_events_yield_reasoning() -> None:
         caps=["text"],
         api_key="k",
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     assert [(event.kind, event.text) for event in events] == [
         ("reasoning", "musing"),
         ("text", "answer"),
@@ -197,8 +188,8 @@ def test_sympy_actions() -> None:
     assert run_tool_line("SYMPY", "solve x**2 - 4") == "[-2, 2]"
     assert run_tool_line("SYMPY", "simplify sin(x)**2 + cos(x)**2") == "1"
     assert run_tool_line("SYMPY", "factor x**2 - 1") == "(x - 1)*(x + 1)"
-    assert run_tool_line("SYMPY", "bogus x") .startswith("error")
-    assert run_tool_line("SYMPY", "diff not an expression!") .startswith("error")
+    assert run_tool_line("SYMPY", "bogus x").startswith("error")
+    assert run_tool_line("SYMPY", "diff not an expression!").startswith("error")
 
 
 def test_extract_and_strip_tool_lines() -> None:

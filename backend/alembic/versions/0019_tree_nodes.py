@@ -25,9 +25,7 @@ def _seg(order_idx: int) -> str:
 
 def _recompute_paths(bind: sa.Connection) -> None:
     rows = bind.execute(
-        sa.text(
-            "SELECT id, parent_id, order_idx, is_root FROM tree_nodes ORDER BY depth, id"
-        )
+        sa.text("SELECT id, parent_id, order_idx, is_root FROM tree_nodes ORDER BY depth, id")
     ).all()
     paths: dict[int, tuple[str, str]] = {}
     for node_id, parent_id, order_idx, is_root in rows:
@@ -40,10 +38,7 @@ def _recompute_paths(bind: sa.Connection) -> None:
         return
     bind.execute(
         sa.text("UPDATE tree_nodes SET path = :path, sort_path = :sort WHERE id = :id"),
-        [
-            {"path": value[0], "sort": value[1], "id": node_id}
-            for node_id, value in paths.items()
-        ],
+        [{"path": value[0], "sort": value[1], "id": node_id} for node_id, value in paths.items()],
     )
 
 
@@ -174,21 +169,20 @@ def upgrade() -> None:
         )
 
     bind.execute(
-        sa.text(
-            "CREATE TEMP TABLE _chapter_map (old_id INTEGER PRIMARY KEY, new_node_id INTEGER)"
-        )
+        sa.text("CREATE TEMP TABLE _chapter_map (old_id INTEGER PRIMARY KEY, new_node_id INTEGER)")
     )
     bind.execute(
-        sa.text(
-            "CREATE TEMP TABLE _section_map (old_id INTEGER PRIMARY KEY, new_node_id INTEGER)"
-        )
+        sa.text("CREATE TEMP TABLE _section_map (old_id INTEGER PRIMARY KEY, new_node_id INTEGER)")
     )
-    chapters: list[tuple[Any, ...]] = [tuple(row) for row in bind.execute(
-        sa.text(
-            "SELECT id, course_id, parent_id, title, summary, order_idx, created_at "
-            "FROM chapters ORDER BY id"
-        )
-    ).all()]
+    chapters: list[tuple[Any, ...]] = [
+        tuple(row)
+        for row in bind.execute(
+            sa.text(
+                "SELECT id, course_id, parent_id, title, summary, order_idx, created_at "
+                "FROM chapters ORDER BY id"
+            )
+        ).all()
+    ]
     chapter_map: dict[int, int] = {}
     pending = list(chapters)
     while pending:
@@ -198,9 +192,7 @@ def upgrade() -> None:
             chapter_id, course_id, parent_id, title, summary, order_idx, _created = row
             if parent_id is None:
                 root_id = bind.execute(
-                    sa.text(
-                        "SELECT id FROM tree_nodes WHERE course_id = :cid AND is_root"
-                    ),
+                    sa.text("SELECT id FROM tree_nodes WHERE course_id = :cid AND is_root"),
                     {"cid": course_id},
                 ).scalar_one()
                 node_id = _insert_node(
@@ -217,9 +209,7 @@ def upgrade() -> None:
                 progressed = True
             elif parent_id in chapter_map:
                 parent_node = bind.execute(
-                    sa.text(
-                        "SELECT course_id, depth FROM tree_nodes WHERE id = :nid"
-                    ),
+                    sa.text("SELECT course_id, depth FROM tree_nodes WHERE id = :nid"),
                     {"nid": chapter_map[parent_id]},
                 ).one()
                 node_id = _insert_node(

@@ -81,9 +81,7 @@ def _reset_native_tools_degradation() -> Iterator[None]:
 
 def _block_network() -> None:
     def _deny(*args: object, **kwargs: object) -> None:
-        raise AssertionError(
-            "network access during tests is forbidden — inject an httpx transport"
-        )
+        raise AssertionError("network access during tests is forbidden — inject an httpx transport")
 
     socket.socket.connect = _deny  # type: ignore[method-assign]
     socket.socket.connect_ex = _deny  # type: ignore[method-assign, assignment]

@@ -63,9 +63,7 @@ def _recall(stability: float, elapsed_days: float) -> float:
     return math.pow(1.0 + FACTOR * elapsed_days / stability, DECAY)
 
 
-def _next_difficulty(
-    difficulty: float, rating: int, w: tuple[float, ...]
-) -> float:
+def _next_difficulty(difficulty: float, rating: int, w: tuple[float, ...]) -> float:
     delta = w[6] * (rating - RATING_GOOD)
     reverted = difficulty - delta
     initial = _initial_difficulty(RATING_GOOD, w)
@@ -125,9 +123,7 @@ def review(
     recall = _recall(card.stability, elapsed_days)
     difficulty = _next_difficulty(card.difficulty, rating, weights)
     if rating == RATING_AGAIN:
-        stability = _stability_after_failure(
-            card.difficulty, card.stability, recall, weights
-        )
+        stability = _stability_after_failure(card.difficulty, card.stability, recall, weights)
         state = "relearning"
         interval = 1
     else:

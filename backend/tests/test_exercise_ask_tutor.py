@@ -68,9 +68,7 @@ def make_exercise(app: FastAPI, course_id: int) -> int:
 
 
 def start_session(client: TestClient, exercise_id: int) -> int:
-    return int(
-        client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()["id"]
-    )
+    return int(client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()["id"])
 
 
 def test_ask_creates_bound_chat_with_pending_answer_and_guard() -> None:
@@ -88,9 +86,7 @@ def test_ask_creates_bound_chat_with_pending_answer_and_guard() -> None:
         assert messages[0]["role"] == "user"
         assert "Differentiate $x^2$." in messages[0]["markdown"]
         assert "$$2*x^2$$" in messages[0]["markdown"]
-        client.post(
-            f"/api/v1/chat/sessions/{chat_id}/messages", json={"content": "am I close?"}
-        )
+        client.post(f"/api/v1/chat/sessions/{chat_id}/messages", json={"content": "am I close?"})
         wait_for_assistant(client, chat_id)
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
         assert "step 1 of 1" in prompt
@@ -134,9 +130,7 @@ def test_guard_lifted_after_correct_submission() -> None:
             json={"pending_answer": None},
         ).json()
         chat_id = asked["chat_session_id"]
-        client.post(
-            f"/api/v1/chat/sessions/{chat_id}/messages", json={"content": "help"}
-        )
+        client.post(f"/api/v1/chat/sessions/{chat_id}/messages", json={"content": "help"})
         wait_for_assistant(client, chat_id)
         first_prompt = "\n".join(str(message.content) for message in gateway.calls[0])
         assert "Do NOT reveal" in first_prompt
@@ -159,17 +153,13 @@ def test_answer_attempts_visible_in_context() -> None:
         course_id = make_course(client)
         exercise_id = make_exercise(app, course_id)
         session_id = start_session(client, exercise_id)
-        client.post(
-            f"/api/v1/exercises/sessions/{session_id}/answer", json={"response": "x^3"}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session_id}/answer", json={"response": "x^3"})
         asked = client.post(
             f"/api/v1/exercises/sessions/{session_id}/ask",
             json={"pending_answer": ""},
         ).json()
         chat_id = asked["chat_session_id"]
-        client.post(
-            f"/api/v1/chat/sessions/{chat_id}/messages", json={"content": "help me"}
-        )
+        client.post(f"/api/v1/chat/sessions/{chat_id}/messages", json={"content": "help me"})
         wait_for_assistant(client, chat_id)
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
         assert "Submitted attempts on this step: 1" in prompt

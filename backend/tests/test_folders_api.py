@@ -8,9 +8,7 @@ from fastapi.testclient import TestClient
 def wait_for_ingest(client: TestClient, material_id: int, timeout: float = 10.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        status = client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
+        status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
         if status == "ready":
             return
         time.sleep(0.05)
@@ -80,9 +78,7 @@ def test_same_path_allowed_across_courses(client: TestClient) -> None:
 def test_duplicate_name_rejected_within_course(client: TestClient) -> None:
     course_id = make_course(client, "Calculus")
     create_folder(client, "Calculus", course_id)
-    response = client.post(
-        "/api/v1/folders", json={"name": "Calculus", "course_id": course_id}
-    )
+    response = client.post("/api/v1/folders", json={"name": "Calculus", "course_id": course_id})
     assert response.status_code == 422
 
 
@@ -107,16 +103,12 @@ def test_move_rejects_own_subtree_and_cross_course(client: TestClient) -> None:
     course_id = make_course(client, "Main")
     root = create_folder(client, "Root", course_id)
     child = create_folder(client, "Child", course_id, root["id"])
-    response = client.patch(
-        f"/api/v1/folders/{root['id']}/move", json={"parent_id": child["id"]}
-    )
+    response = client.patch(f"/api/v1/folders/{root['id']}/move", json={"parent_id": child["id"]})
     assert response.status_code == 422
 
     other_course = make_course(client, "Other")
     foreign = create_folder(client, "Foreign", other_course)
-    cross = client.patch(
-        f"/api/v1/folders/{child['id']}/move", json={"parent_id": foreign["id"]}
-    )
+    cross = client.patch(f"/api/v1/folders/{child['id']}/move", json={"parent_id": foreign["id"]})
     assert cross.status_code == 422
     assert "another course" in cross.json()["detail"]
 
@@ -154,9 +146,7 @@ def test_materials_filter_by_folder(client: TestClient, text_pdf: bytes) -> None
     )
     assert upload_response.status_code == 200
     inside = client.get("/api/v1/materials", params={"folder_id": folder["id"]}).json()
-    all_materials = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    all_materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     assert len(all_materials) == 1
     assert [m["id"] for m in inside] == [all_materials[0]["id"]]
 

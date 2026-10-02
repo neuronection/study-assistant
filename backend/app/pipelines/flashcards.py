@@ -100,16 +100,12 @@ class FlashcardsService:
             render_vars={"count": str(count)},
             max_rounds=MAX_REPAIR_ROUNDS,
             error_type=FlashcardsError,
-            audit=AuditRef(
-                "flashcards", None, f"generate {count} cards from {source}"
-            ),
+            audit=AuditRef("flashcards", None, f"generate {count} cards from {source}"),
             schema=FlashcardsOut,
         )
         problems = result.problems
         if problems:
-            raise FlashcardsError(
-                "cards did not pass validation: " + "; ".join(problems[:10])
-            )
+            raise FlashcardsError("cards did not pass validation: " + "; ".join(problems[:10]))
         drafts = result.draft.get("cards", [])[:count]
 
         cards: list[Exercise] = []
@@ -133,9 +129,7 @@ class FlashcardsService:
         rows = self._session.execute(
             select(ExerciseStep.prompt)
             .join(Exercise, Exercise.id == ExerciseStep.exercise_id)
-            .where(
-                Exercise.profile_id == profile_id, Exercise.kind.like("card_%")
-            )
+            .where(Exercise.profile_id == profile_id, Exercise.kind.like("card_%"))
         )
         fronts: set[str] = set()
         for (front,) in rows:

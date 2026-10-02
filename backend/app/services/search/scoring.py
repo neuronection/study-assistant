@@ -17,6 +17,4 @@ def fuzzy_text_match(query: str, text: str) -> bool:
     if not needles:
         return False
     haystack = tokenize(text, drop_stopwords=False)
-    return all(
-        any(_token_matches(needle, token) for token in haystack) for needle in needles
-    )
+    return all(any(_token_matches(needle, token) for token in haystack) for needle in needles)

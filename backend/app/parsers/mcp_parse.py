@@ -58,25 +58,16 @@ class McpParseParser:
                 started=started,
                 error=f"non-JSON output from '{self._tool_name}'",
             )
-            raise ParserError(
-                f"MCP tool '{self._tool_name}' returned non-JSON output"
-            ) from error
+            raise ParserError(f"MCP tool '{self._tool_name}' returned non-JSON output") from error
         if not isinstance(data, dict):
-            self._audit(
-                ok=False, started=started, error="parse contract violation"
-            )
+            self._audit(ok=False, started=started, error="parse contract violation")
             raise ParserError(
-                f"MCP tool '{self._tool_name}' must return an object with "
-                "title and markdown"
+                f"MCP tool '{self._tool_name}' must return an object with title and markdown"
             )
         markdown = data.get("markdown")
         if not isinstance(markdown, str) or not markdown.strip():
-            self._audit(
-                ok=False, started=started, error="parse returned no markdown"
-            )
-            raise ParserError(
-                f"MCP tool '{self._tool_name}' returned no markdown"
-            )
+            self._audit(ok=False, started=started, error="parse returned no markdown")
+            raise ParserError(f"MCP tool '{self._tool_name}' returned no markdown")
         self._audit(ok=True, started=started)
         title = str(data.get("title") or "").strip()
         metadata_raw = data.get("metadata")
@@ -89,9 +80,7 @@ class McpParseParser:
             metadata=metadata,
         )
 
-    def _audit(
-        self, *, ok: bool, started: float, error: str | None = None
-    ) -> None:
+    def _audit(self, *, ok: bool, started: float, error: str | None = None) -> None:
         if self._audit_session is None:
             return
         audit_mcp_invocation(

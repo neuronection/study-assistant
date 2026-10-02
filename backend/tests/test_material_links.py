@@ -44,9 +44,7 @@ def test_normalize_url_equivalence_classes(raw: str, expected: str) -> None:
 
 
 def test_normalize_url_keeps_distinct_urls_distinct() -> None:
-    assert normalize_url("https://example.com/a") != normalize_url(
-        "https://example.com/b"
-    )
+    assert normalize_url("https://example.com/a") != normalize_url("https://example.com/b")
 
 
 def test_normalize_url_keeps_non_youtube_short_path() -> None:
@@ -57,9 +55,7 @@ def test_normalize_url_keeps_non_youtube_short_path() -> None:
 
 def test_create_link_dedupes_and_places(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
         root_id = int(tree[0]["id"])
 
@@ -93,9 +89,7 @@ def test_create_link_dedupes_and_places(client: TestClient) -> None:
         assert duplicate.json()["deduped"] is True
         assert duplicate.json()["material"]["id"] == material["id"]
 
-        other_course = int(
-            client.post("/api/v1/courses", json={"title": "Algebra"}).json()["id"]
-        )
+        other_course = int(client.post("/api/v1/courses", json={"title": "Algebra"}).json()["id"])
         elsewhere = client.post(
             "/api/v1/materials/link",
             json={"course_id": other_course, "url": "https://youtu.be/abc123"},
@@ -109,9 +103,7 @@ def test_create_link_dedupes_and_places(client: TestClient) -> None:
 
 def test_create_link_rejects_non_http(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         for bad in ("ftp://example.com/file", "notaurl", "javascript:alert(1)"):
             response = client.post(
                 "/api/v1/materials/link",
@@ -120,9 +112,7 @@ def test_create_link_rejects_non_http(client: TestClient) -> None:
             assert response.status_code == 422, f"{bad}: {response.text}"
 
 
-def test_partial_unique_index_enforces_dedupe(
-    db_session: Session, owner: Any
-) -> None:
+def test_partial_unique_index_enforces_dedupe(db_session: Session, owner: Any) -> None:
     profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
@@ -158,9 +148,7 @@ def test_partial_unique_index_enforces_dedupe(
         db_session.flush()
 
 
-def test_non_link_rows_are_not_deduped_by_index(
-    db_session: Session, owner: Any
-) -> None:
+def test_non_link_rows_are_not_deduped_by_index(db_session: Session, owner: Any) -> None:
     profile = Profile(user_id=owner.id, name="p")
     db_session.add(profile)
     db_session.flush()
@@ -187,9 +175,7 @@ def test_non_link_rows_are_not_deduped_by_index(
 
 def test_bundle_round_trips_link_material(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         linked = client.post(
             "/api/v1/materials/link",
             json={"course_id": course_id, "url": "https://example.com/lecture-1"},
@@ -200,14 +186,10 @@ def test_bundle_round_trips_link_material(client: TestClient) -> None:
         assert exported.status_code == 200, exported.text
         package = exported.content
 
-        imported = client.post(
-            "/api/v1/courses/import?dry_run=false", content=package
-        )
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=package)
         assert imported.status_code == 200, imported.text
         new_course_id = int(imported.json()["imported"]["course_id"])
-        materials = client.get(
-            "/api/v1/materials", params={"course_id": new_course_id}
-        ).json()
+        materials = client.get("/api/v1/materials", params={"course_id": new_course_id}).json()
         links = [m for m in materials if m["kind"] == "link"]
         assert len(links) == 1
         assert links[0]["source_url"] == "https://example.com/lecture-1"

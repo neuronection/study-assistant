@@ -110,9 +110,7 @@ def test_native_calc_round_trip(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         assert "0.5" in assistant["markdown"]
@@ -145,9 +143,7 @@ def test_native_sympy_round_trip(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         call = assistant["tool_calls"][0]
@@ -167,9 +163,7 @@ def test_native_resource_tool_round_trip(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         course = _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         assert len(assistant["tool_calls"]) == 1
@@ -191,9 +185,7 @@ def test_native_cap_gate_uses_prompt_path_without_tools_cap(tmp_path: Path) -> N
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         assert len(assistant["tool_calls"]) == 1
@@ -218,9 +210,7 @@ def test_native_math_budget_bounds_rounds(tmp_path: Path) -> None:
     with make_native_app(tmp_path, gateway) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         messages = wait_for_assistant(client, session)
         assistant = messages[-1]
         executed = [c for c in assistant["tool_calls"] if c["status"] == "done"]
@@ -262,9 +252,7 @@ def test_native_tool_call_ws_event_emitted(tmp_path: Path) -> None:
     with TestClient(app) as client:
         _course(client)
         session = _session(client)
-        client.post(
-            f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"}
-        )
+        client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         wait_for_assistant(client, session)
     tool_calls = [e for e in events if e["type"] == "tool_call"]
     assert len(tool_calls) == 1
@@ -284,9 +272,7 @@ def test_gateway_streams_native_tool_call_chunk() -> None:
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200, content=sse, headers={"content-type": "text/event-stream"}
-        )
+        return httpx.Response(200, content=sse, headers={"content-type": "text/event-stream"})
 
     gateway = LLMGateway(None, transport=httpx.MockTransport(handler))
     model = ResolvedModel(
@@ -298,13 +284,9 @@ def test_gateway_streams_native_tool_call_chunk() -> None:
         caps=["text", "tools"],
         api_key="k",
     )
-    events = list(
-        gateway.stream_events("chat", [Message(role="user", content="hi")], model=model)
-    )
+    events = list(gateway.stream_events("chat", [Message(role="user", content="hi")], model=model))
     calls = [json.loads(e.text) for e in events if e.kind == "tool_call"]
-    assert calls == [
-        {"id": "call_9", "name": "CALC", "arguments": {"expression": "2+2"}}
-    ]
+    assert calls == [{"id": "call_9", "name": "CALC", "arguments": {"expression": "2+2"}}]
 
 
 def test_tool_call_events_reassemble_unindexed_stream_fragments() -> None:
@@ -321,23 +303,17 @@ def test_tool_call_events_reassemble_unindexed_stream_fragments() -> None:
         "id": None,
         "index": None,
     }
-    first = ToolCallChunk(
-        **{**fragment, "name": "QUIZ", "id": "call_1"}
-    )
-    second = ToolCallChunk(
-        **{**fragment, "args": '{"question": "q?", "choices": ["a", "b"]}'}
-    )
+    first = ToolCallChunk(**{**fragment, "name": "QUIZ", "id": "call_1"})
+    second = ToolCallChunk(**{**fragment, "args": '{"question": "q?", "choices": ["a", "b"]}'})
     c1 = AIMessageChunk(content="", tool_call_chunks=[first])
     c2 = AIMessageChunk(content="", tool_call_chunks=[second])
     merged = c1 + c2
     parsed = merged.tool_calls
-    assert any(
-        not call.get("args") or not call.get("name") for call in parsed
-    ), "the broken-merge precondition should hold"
+    assert any(not call.get("args") or not call.get("name") for call in parsed), (
+        "the broken-merge precondition should hold"
+    )
 
-    events = [
-        json.loads(chunk.text) for chunk in _tool_call_events(merged)
-    ]
+    events = [json.loads(chunk.text) for chunk in _tool_call_events(merged)]
     assert events == [
         {
             "id": "call_1",
@@ -353,9 +329,11 @@ def test_chat_native_schemas_cover_all_tools() -> None:
 
     schemas = chat_native_schemas()
     names = {s["function"]["name"] for s in schemas}
-    expected = {t["name"] for t in CHAT_TOOL_CATALOG} | {QUIZ_TOOL["name"]} | {
-        t["keyword"] for t in RESOURCE_TOOLS
-    }
+    expected = (
+        {t["name"] for t in CHAT_TOOL_CATALOG}
+        | {QUIZ_TOOL["name"]}
+        | {t["keyword"] for t in RESOURCE_TOOLS}
+    )
     assert names == expected
     for schema in schemas:
         parameters = schema["function"]["parameters"]

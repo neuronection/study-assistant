@@ -22,9 +22,7 @@ UNSORTED_TITLE = "Unsorted"
 
 def _unsorted_course_id(bind: sa.Connection, profile_id: int) -> int:
     existing = bind.execute(
-        sa.text(
-            "SELECT id FROM courses WHERE profile_id = :profile_id AND title = :title"
-        ),
+        sa.text("SELECT id FROM courses WHERE profile_id = :profile_id AND title = :title"),
         {"profile_id": profile_id, "title": UNSORTED_TITLE},
     ).scalar()
     if existing is not None:
@@ -38,6 +36,7 @@ def _unsorted_course_id(bind: sa.Connection, profile_id: int) -> int:
         {"profile_id": profile_id, "title": UNSORTED_TITLE},
     ).scalar_one()
     return int(new_id)
+
 
 def upgrade() -> None:
     op.create_table(
@@ -161,9 +160,7 @@ def upgrade() -> None:
             courses = subtree_courses(folder_id, direct=folder_courses, tree=children)
             course_id = next(iter(courses)) if len(courses) == 1 else unsorted_id
             bind.execute(
-                sa.text(
-                    "UPDATE material_folders SET course_id = :course_id WHERE id = :id"
-                ),
+                sa.text("UPDATE material_folders SET course_id = :course_id WHERE id = :id"),
                 {"course_id": course_id, "id": folder_id},
             )
         for row in bind.execute(

@@ -128,24 +128,16 @@ def node_context(
     }
     materials = {
         material.id: material
-        for material in session.scalars(
-            select(Material).where(Material.id.in_(all_material_ids))
-        )
+        for material in session.scalars(select(Material).where(Material.id.in_(all_material_ids)))
     }
     children = tree.node_with_children(node)
     assigned_ids: set[int] = set()
     children_payload: list[dict[str, Any]] = []
     for child in children:
-        child_direct = {
-            link.material_id
-            for link in links
-            if link.node_id == child["id"]
-        }
+        child_direct = {link.material_id for link in links if link.node_id == child["id"]}
         child_ids = child_direct | folder_member_map.get(child["id"], set())
         child_materials = [
-            materials[material_id]
-            for material_id in sorted(child_ids)
-            if material_id in materials
+            materials[material_id] for material_id in sorted(child_ids) if material_id in materials
         ]
         assigned_ids.update(material.id for material in child_materials)
         children_payload.append(
@@ -158,14 +150,10 @@ def node_context(
                 ],
             }
         )
-    own_direct = {
-        link.material_id for link in links if link.node_id == node.id
-    }
+    own_direct = {link.material_id for link in links if link.node_id == node.id}
     own_ids = own_direct | folder_member_map.get(node.id, set())
     own_materials = [
-        materials[material_id]
-        for material_id in sorted(own_ids)
-        if material_id in materials
+        materials[material_id] for material_id in sorted(own_ids) if material_id in materials
     ]
     assigned_ids.update(material.id for material in own_materials)
     course_materials = list(
@@ -216,8 +204,10 @@ def missing_note_markdown(
     gateway: LLMGateway, node: TreeNode, materials: list[dict[str, Any]]
 ) -> str:
     prompt = json.dumps(
-        {"node": {"title": node.title, "objectives": node.objectives or []},
-         "materials": materials},
+        {
+            "node": {"title": node.title, "objectives": node.objectives or []},
+            "materials": materials,
+        },
         ensure_ascii=False,
     )
     system = (

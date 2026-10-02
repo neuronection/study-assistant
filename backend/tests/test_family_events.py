@@ -59,9 +59,9 @@ def test_stream_delta_maps_to_delta_with_reasoning_kind() -> None:
     assert to_family_events({"type": "stream_delta", "delta": "hello"}) == [
         {"type": "delta", "flow": "chat", "text": "hello"}
     ]
-    assert to_family_events(
-        {"type": "stream_delta", "delta": "hm", "kind": "reasoning"}
-    ) == [{"type": "delta", "flow": "chat", "text": "hm", "kind": "reasoning"}]
+    assert to_family_events({"type": "stream_delta", "delta": "hm", "kind": "reasoning"}) == [
+        {"type": "delta", "flow": "chat", "text": "hm", "kind": "reasoning"}
+    ]
 
 
 def test_assistant_message_and_turn_error_map_to_flow_endpoints() -> None:

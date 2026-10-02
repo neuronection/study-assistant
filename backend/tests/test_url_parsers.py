@@ -31,9 +31,7 @@ def client(
         yield test_client, app
 
 
-def wait_job(
-    client: TestClient, job_id: int, timeout: float = 30.0
-) -> dict[str, Any]:
+def wait_job(client: TestClient, job_id: int, timeout: float = 30.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     last: dict[str, Any] = {}
     while time.monotonic() < deadline:
@@ -106,9 +104,7 @@ def test_youtube_parser_metadata_and_captions(monkeypatch: pytest.MonkeyPatch) -
 
     captured: dict[str, object] = {}
 
-    def fake_extract(
-        url: str, options: dict[str, object]
-    ) -> dict[str, object]:
+    def fake_extract(url: str, options: dict[str, object]) -> dict[str, object]:
         captured["url"] = url
         captured["options"] = options
         return dict(YOUTUBE_INFO)
@@ -215,9 +211,7 @@ def test_parse_endpoint_full_lifecycle(client: tuple[TestClient, FastAPI]) -> No
         assert detail["material"]["provenance"]["channel"] == "Math Academy"
         assert detail["extraction"] is None or True
 
-        extraction = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions/1"
-        ).json()
+        extraction = test_client.get(f"/api/v1/materials/{material_id}/extractions/1").json()
         assert "[00:01] Hello world" in extraction["markdown"]
 
 
@@ -280,9 +274,7 @@ def test_parse_endpoint_rejects_non_link(
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             if (
-                test_client.get(f"/api/v1/materials/{material_id}").json()["material"][
-                    "status"
-                ]
+                test_client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
                 == "ready"
             ):
                 break
@@ -318,9 +310,7 @@ def test_reparse_creates_second_version(client: tuple[TestClient, FastAPI]) -> N
         finally:
             youtube_module.extract_info = original
 
-        extractions = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions"
-        ).json()
+        extractions = test_client.get(f"/api/v1/materials/{material_id}/extractions").json()
         assert [entry["version"] for entry in extractions] == [2, 1]
 
 
@@ -350,9 +340,7 @@ def test_transcribe_audio_endpoint_queues_job(
                 return str(target), "Lecture"
 
             monkeypatch.setattr(youtube_module, "download_audio", fake_download)
-            response = test_client.post(
-                f"/api/v1/materials/{material_id}/transcribe-audio"
-            )
+            response = test_client.post(f"/api/v1/materials/{material_id}/transcribe-audio")
             assert response.status_code == 200, response.text
             job = wait_job(test_client, response.json()["job_id"])
             assert job["status"] == "done", job
@@ -375,8 +363,6 @@ def test_transcribe_audio_rejects_non_youtube(
             json={"course_id": course_id, "url": "https://example.com/article"},
         )
         material_id = linked.json()["material"]["id"]
-        response = test_client.post(
-            f"/api/v1/materials/{material_id}/transcribe-audio"
-        )
+        response = test_client.post(f"/api/v1/materials/{material_id}/transcribe-audio")
         assert response.status_code == 422
         assert "YouTube" in response.json()["detail"]

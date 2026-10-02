@@ -54,9 +54,7 @@ def root_node(client: TestClient, course_id: int) -> int:
     return int(tree[0]["id"])
 
 
-def upload_text(
-    client: TestClient, course_id: int, filename: str, content: str
-) -> dict[str, Any]:
+def upload_text(client: TestClient, course_id: int, filename: str, content: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials/text",
         json={"course_id": course_id, "filename": filename, "content": content},
@@ -65,10 +63,9 @@ def upload_text(
     body: dict[str, Any] = response.json()
     material_id = int(body["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return body
 
@@ -107,9 +104,7 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
 
     material = upload_text(client, scratch_id, "groups.md", "# groups")
     material_id = int(material["material"]["id"])
-    assigned = client.post(
-        f"/api/v1/nodes/{topic}/materials", json={"material_id": material_id}
-    )
+    assigned = client.post(f"/api/v1/nodes/{topic}/materials", json={"material_id": material_id})
     assert assigned.status_code in (200, 201), assigned.text
 
     chat = client.post(
@@ -147,17 +142,11 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
     new_root = root_node(client, new_id)
     tree = client.get(f"/api/v1/courses/{new_id}/tree").json()
     root_entry = next(entry for entry in tree if int(entry["id"]) == new_root)
-    moved_titles = {
-        node["title"]: node for entry in tree for node in _flatten(entry)
-    }
+    moved_titles = {node["title"]: node for entry in tree for node in _flatten(entry)}
     assert set(moved_titles) >= {"Group theory", "Cyclic groups"}
     moved_topic = moved_titles["Group theory"]
-    assert any(
-        int(child["id"]) == int(moved_topic["id"]) for child in root_entry["children"]
-    )
-    child_titles = {
-        child["title"] for child in moved_titles["Group theory"]["children"]
-    }
+    assert any(int(child["id"]) == int(moved_topic["id"]) for child in root_entry["children"])
+    child_titles = {child["title"] for child in moved_titles["Group theory"]["children"]}
     assert "Cyclic groups" in child_titles
 
     detail = client.get(f"/api/v1/materials/{material_id}").json()
@@ -171,12 +160,10 @@ def test_promote_moves_subtree_placements_and_content(client: TestClient) -> Non
         chat_row = db.get(ChatSession, chat_id)
         assert chat_row is not None
         assert chat_row.course_id == new_id
-        assert db.scalars(
-            select(NodeConcept.id).where(NodeConcept.node_id == topic)
-        ).first() is None
-        scratch_notes = db.scalars(
-            select(Note.id).where(Note.course_id == scratch_id)
-        ).all()
+        assert (
+            db.scalars(select(NodeConcept.id).where(NodeConcept.node_id == topic)).first() is None
+        )
+        scratch_notes = db.scalars(select(Note.id).where(Note.course_id == scratch_id)).all()
         assert scratch_notes == []
     finally:
         db.close()
@@ -230,9 +217,7 @@ def test_shared_material_stays_owned_by_the_scratchpad(client: TestClient) -> No
     assert link_courses == {scratch_id, int(promoted.json()["id"])}
 
 
-def test_analytics_exclude_scratch_courses(
-    client: TestClient, profile_id: str
-) -> None:
+def test_analytics_exclude_scratch_courses(client: TestClient, profile_id: str) -> None:
     scratch = get_scratch(client)["course"]
     scratch_id = int(scratch["id"])
     normal_id = make_course(client, "Normal course")

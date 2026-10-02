@@ -21,9 +21,7 @@ class PatternError(ValueError):
     pass
 
 
-def _detection_matches(
-    detection: dict[str, Any] | None, response: str, expected: str
-) -> bool:
+def _detection_matches(detection: dict[str, Any] | None, response: str, expected: str) -> bool:
     if not detection or not response or not expected:
         return False
     kind = detection.get("type")
@@ -58,14 +56,10 @@ class ErrorPatternService:
                 (ErrorPattern.course_type_id == course_type_id)
                 | (ErrorPattern.course_type_id.is_(None))
             )
-        return list(
-            self._session.scalars(stmt.order_by(ErrorPattern.order_idx, ErrorPattern.id))
-        )
+        return list(self._session.scalars(stmt.order_by(ErrorPattern.order_idx, ErrorPattern.id)))
 
     def get(self, key: str) -> ErrorPattern | None:
-        return self._session.scalars(
-            select(ErrorPattern).where(ErrorPattern.key == key)
-        ).first()
+        return self._session.scalars(select(ErrorPattern).where(ErrorPattern.key == key)).first()
 
     def counts(self, course_id: int) -> dict[str, int]:
         rows = self._session.execute(

@@ -197,9 +197,7 @@ def items(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
 
 
 @router.put("/goal", response_model=GoalOut)
-def set_goal(
-    body: GoalIn, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def set_goal(body: GoalIn, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     if body.unit is None and body.answers_per_day is None and body.minutes_per_day is None:
         raise HTTPException(
@@ -237,9 +235,7 @@ def costs(session: Session = Depends(get_session)) -> dict[str, Any]:
     from ..ai.tasks import TASK_DEFS
     from ..domain.models import AiInteraction, TaskAssignment
 
-    month_start = datetime.now(UTC).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     rows = session.execute(
         select(
             AiInteraction.task,

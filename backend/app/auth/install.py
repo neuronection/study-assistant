@@ -49,9 +49,7 @@ def _settings_knob(settings: Settings, name: str) -> object | None:
     return getattr(settings, name.removeprefix("SA_").lower(), None)
 
 
-def install_identity(
-    application: FastAPI, settings: Settings, session_factory: Any
-) -> None:
+def install_identity(application: FastAPI, settings: Settings, session_factory: Any) -> None:
     """Mount the family auth-kit (identity-auth §4/§5/§8/§10/§11)."""
     from .stores import (
         StudyAuditSink,
@@ -79,8 +77,7 @@ def install_identity(
     # it as `?shell=` — arming the gate there would 403 every auth
     # request from the dev SPA ("invalid shell token").
     shell_attached = (
-        settings.identity_mode is IdentityMode.DESKTOP
-        and os.environ.get("SA_SHELL") == "1"
+        settings.identity_mode is IdentityMode.DESKTOP and os.environ.get("SA_SHELL") == "1"
     )
     if settings.identity_mode is IdentityMode.DESKTOP and not shell_attached:
         # Fail loud, not silent: this is the shell-less dev shape (ADR-0023)

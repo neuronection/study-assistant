@@ -63,12 +63,6 @@ class UpcomingItemOut(BaseModel):
 
 
 @router.get("/upcoming", response_model=list[UpcomingItemOut])
-def plan_upcoming(
-    days: int = 7, session: Session = Depends(get_session)
-) -> list[UpcomingItemOut]:
+def plan_upcoming(days: int = 7, session: Session = Depends(get_session)) -> list[UpcomingItemOut]:
     profile = ensure_default_profile(session)
-    return [
-        UpcomingItemOut(**entry) for entry in upcoming_items(session, profile.id, days)
-    ]
-
-
+    return [UpcomingItemOut(**entry) for entry in upcoming_items(session, profile.id, days)]

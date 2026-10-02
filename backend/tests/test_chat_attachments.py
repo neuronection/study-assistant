@@ -151,12 +151,9 @@ def test_attachments_register_mentions_and_reach_the_prompt(
         assert f"M{material_id} = " in prompt
         assert (
             "The student attached these items to the message "
-            f"(handles from the referenceable-items manifest): [M{material_id}]"
-            in prompt
+            f"(handles from the referenceable-items manifest): [M{material_id}]" in prompt
         )
-        context = test_client.get(
-            f"/api/v1/chat/sessions/{session['id']}/context"
-        ).json()
+        context = test_client.get(f"/api/v1/chat/sessions/{session['id']}/context").json()
         refs = {entry["ref"] for entry in context["registry"]}
         assert f"M{material_id}" in refs
 
@@ -241,9 +238,7 @@ def test_read_quiz_and_exercise_attachments(
             f"Q{quiz_id}",
             f"E{exercise_id}",
         ]
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "Derivatives check — quiz with 1 questions" in second_prompt
         assert "Q1 (choice): What is $d/dx\\ x^2$?" in second_prompt
         assert "A) $2x$" in second_prompt
@@ -270,9 +265,7 @@ def test_read_pending_material_reports_processing(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert assistant["reads"] == []
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "still being processed" in second_prompt
 
 

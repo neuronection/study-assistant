@@ -46,23 +46,18 @@ def _inner_nodes(tree: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return inner
 
 
-def _weak_concepts(
-    session: Session, profile_id: str, course_id: int
-) -> list[str]:
+def _weak_concepts(session: Session, profile_id: str, course_id: int) -> list[str]:
     rows = answer_rows(session, profile_id, course_id=course_id)
     cells = [
         cell
         for cell in weakness_matrix(rows)
-        if cell.get("n", 0) >= 3
-        and float(cell.get("accuracy", 1.0)) < WEAK_CELL_ACCURACY
+        if cell.get("n", 0) >= 3 and float(cell.get("accuracy", 1.0)) < WEAK_CELL_ACCURACY
     ]
     cells.sort(key=lambda cell: float(cell.get("accuracy", 1.0)))
     return [str(cell["concept"]) for cell in cells[:MAX_WEAK_PRACTICE_ITEMS]]
 
 
-def _distribute(
-    remaining: list[PlannedNode], n_days: int
-) -> list[list[PlannedNode]]:
+def _distribute(remaining: list[PlannedNode], n_days: int) -> list[list[PlannedNode]]:
     if not remaining:
         return []
     groups: list[list[PlannedNode]] = []
@@ -82,9 +77,7 @@ def _distribute(
     return groups
 
 
-def generate_plan(
-    session: Session, course: Course, profile_id: str
-) -> list[PlanItem]:
+def generate_plan(session: Session, course: Course, profile_id: str) -> list[PlanItem]:
     today = utcnow().date()
     exam = course.exam_date
     if exam is None:
@@ -115,9 +108,7 @@ def generate_plan(
 
     items: list[tuple[date, int, PlanItem]] = []
 
-    def add(
-        due: date, sort_key: int, title: str, kind: PlanItemKind, detail: str | None
-    ) -> None:
+    def add(due: date, sort_key: int, title: str, kind: PlanItemKind, detail: str | None) -> None:
         items.append(
             (
                 due,
@@ -165,9 +156,7 @@ def generate_plan(
             engaged_nodes=total_inner - len(remaining),
         )
         if forecast["readiness_state"] == "ok":
-            practice_slots = sorted(
-                {0, *practice_slots[: MAX_WEAK_PRACTICE_ITEMS - 1]}
-            )
+            practice_slots = sorted({0, *practice_slots[: MAX_WEAK_PRACTICE_ITEMS - 1]})
     for slot_index, concept in enumerate(weak):
         day_index = practice_slots[slot_index % len(practice_slots)] if practice_slots else 0
         due = today + timedelta(days=day_shift + day_index)

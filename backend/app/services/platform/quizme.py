@@ -31,9 +31,7 @@ def validate_quiz_args(args: dict[str, Any]) -> dict[str, Any]:
     expected_latex = str(args.get("expected_latex", "") or "").strip()
     expected_text = str(args.get("expected_text", "") or "").strip()
     accept = [
-        str(variant).strip()
-        for variant in (args.get("accept") or [])[:10]
-        if str(variant).strip()
+        str(variant).strip() for variant in (args.get("accept") or [])[:10] if str(variant).strip()
     ]
     if choices is not None:
         if not isinstance(choices, list) or not (2 <= len(choices) <= MAX_CHOICES):
@@ -49,9 +47,7 @@ def validate_quiz_args(args: dict[str, Any]) -> dict[str, Any]:
                 _QUIZ_PENDING_VALIDATE_ERROR + ": expected_index must be an integer"
             ) from error
         if not (0 <= index < len(choices)):
-            raise ValueError(
-                _QUIZ_PENDING_VALIDATE_ERROR + ": expected_index out of range"
-            )
+            raise ValueError(_QUIZ_PENDING_VALIDATE_ERROR + ": expected_index out of range")
         pending["choices"] = [str(choice)[:300] for choice in choices]
         pending["expected_index"] = index
         return pending
@@ -127,9 +123,7 @@ def quiz_public_state(pending: dict[str, Any] | None) -> dict[str, Any] | None:
         public["verdict"] = pending["verdict"]
         public["verdict_detail"] = pending.get("verdict_detail")
         public["student_answer"] = pending.get("student_answer")
-        expected_display = pending.get("expected_latex") or pending.get(
-            "expected_text"
-        )
+        expected_display = pending.get("expected_latex") or pending.get("expected_text")
         if pending.get("choices") is not None:
             idx = pending.get("expected_index")
             expected_display = (

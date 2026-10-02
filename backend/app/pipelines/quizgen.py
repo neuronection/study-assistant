@@ -63,29 +63,17 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     options = draft.get("options_md")
     if qtype in PRACTICE_ANSWER_KINDS:
         problems.extend(validate_answer_shape(qtype, answer, options, f"q{index}"))
-        problems.extend(
-            validate_distractor_equivalence(qtype, answer, options, f"q{index}")
-        )
+        problems.extend(validate_distractor_equivalence(qtype, answer, options, f"q{index}"))
     elif qtype == "numberline":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_region_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_region_answer(answer))
     elif qtype == "table_fill":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_table_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_table_answer(answer))
     elif qtype == "composite":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_composite_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_composite_answer(answer))
     elif qtype == "graph_read":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_graph_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_graph_answer(answer))
     elif qtype == "code":
-        problems.extend(
-            f"q{index}: {problem}" for problem in validate_code_answer(answer)
-        )
+        problems.extend(f"q{index}: {problem}" for problem in validate_code_answer(answer))
 
     if not str(draft.get("explanation_md", "")).strip():
         problems.append(f"q{index}: missing explanation")
@@ -129,9 +117,7 @@ def _build_prompt(
         type_counts[entry["type"]] = type_counts.get(entry["type"], 0) + 1
     focus_lines = []
     if topic:
-        focus_lines.append(
-            f"FOCUS TOPIC: every question must target the concept '{topic}'."
-        )
+        focus_lines.append(f"FOCUS TOPIC: every question must target the concept '{topic}'.")
     if skill:
         focus_lines.append(
             f"SKILL FOCUS: questions must exercise {skill} ability "
@@ -188,9 +174,7 @@ class QuizgenService:
             problems: list[str] = []
             for index, entry in enumerate(drafts[:count]):
                 if question_types and entry.get("type") not in question_types:
-                    problems.append(
-                        f"q{index}: type '{entry.get('type')}' not in allowed set"
-                    )
+                    problems.append(f"q{index}: type '{entry.get('type')}' not in allowed set")
                 problems.extend(validate_question(entry, index))
             if len(drafts) < count:
                 problems.append(f"only {len(drafts)}/{count} questions returned")
@@ -224,9 +208,7 @@ class QuizgenService:
                 if used:
                     explanation_block["mentions"] = [entry.as_dict() for entry in used]
             answer = draft.get("answer", {})
-            stem_blocks: list[dict[str, Any]] = [
-                {"type": "text", "md": draft.get("stem_md", "")}
-            ]
+            stem_blocks: list[dict[str, Any]] = [{"type": "text", "md": draft.get("stem_md", "")}]
             if draft["type"] == "graph_read":
                 answer, _problems = materialize_graph_answer(answer)
                 try:

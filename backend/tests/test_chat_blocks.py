@@ -54,7 +54,7 @@ def test_parse_answer_blocks_no_fence() -> None:
 
 
 def test_parse_answer_blocks_malformed_fence_stays_text() -> None:
-    markdown = 'before\n```chart\nnot json\n```\nafter'
+    markdown = "before\n```chart\nnot json\n```\nafter"
     blocks = parse_answer_blocks(markdown)
     assert all(block["type"] == "text" for block in blocks)
     assert "".join(str(block["md"]) for block in blocks) == markdown

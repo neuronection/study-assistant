@@ -139,9 +139,7 @@ def test_job_types_lists_handlers(client: TestClient) -> None:
     assert "chat_turn" not in types
 
 
-def test_reingest_material_requeues(
-    client: TestClient, tmp_path: Path, profile_id: str
-) -> None:
+def test_reingest_material_requeues(client: TestClient, tmp_path: Path, profile_id: str) -> None:
     from app.storage.blobs import BlobStore
 
     client.app.state.jobs.stop()  # type: ignore[attr-defined]
@@ -204,9 +202,7 @@ def _insert_material(
     if session.get(Course, 1) is None:
         session.add(Course(id=1, profile_id=profile_id, title="Calculus I"))
     if session.get(Blob, stored.sha256) is None:
-        session.add(
-            Blob(sha256=stored.sha256, rel_path=str(stored.rel_path), size=stored.size)
-        )
+        session.add(Blob(sha256=stored.sha256, rel_path=str(stored.rel_path), size=stored.size))
     material = Material(
         profile_id=profile_id,
         course_id=1,
@@ -226,15 +222,9 @@ def test_delete_single_job_and_guards(client: TestClient, tmp_path: Path) -> Non
     session, engine = _make_session(client, tmp_path)
     try:
         failed = _insert_job(session)
-        done = _insert_job(
-            session, status="done", progress=100, stage=None, error=None
-        )
-        queued = _insert_job(
-            session, status="queued", progress=0, stage=None, error=None
-        )
-        running = _insert_job(
-            session, status="running", progress=10, stage="ocr", error=None
-        )
+        done = _insert_job(session, status="done", progress=100, stage=None, error=None)
+        queued = _insert_job(session, status="queued", progress=0, stage=None, error=None)
+        running = _insert_job(session, status="running", progress=10, stage="ocr", error=None)
         failed_id, done_id, queued_id = failed.id, done.id, queued.id
 
         missing = client.delete("/api/v1/jobs/424242")
@@ -284,16 +274,11 @@ def test_delete_failed_bulk_includes_chat_turn_and_type_filter(
         assert chat_id not in remaining_ids
         assert postprocess_id not in remaining_ids
 
-
-        filtered_missing = client.request(
-            "DELETE", "/api/v1/jobs/failed", json={"types": ["nope"]}
-        )
+        filtered_missing = client.request("DELETE", "/api/v1/jobs/failed", json={"types": ["nope"]})
         assert filtered_missing.json() == {"deleted": 0}
 
         _insert_job(session, type="postprocess", error="again")
-        only_post = client.request(
-            "DELETE", "/api/v1/jobs/failed", json={"types": ["postprocess"]}
-        )
+        only_post = client.request("DELETE", "/api/v1/jobs/failed", json={"types": ["postprocess"]})
         assert only_post.json() == {"deleted": 1}
     finally:
         engine.dispose()
@@ -335,9 +320,7 @@ def test_stale_flag_marks_missing_material_and_session(
         summary = client.get("/api/v1/jobs/summary").json()
         assert summary["failed_stale"] == 3
 
-        stale_only = client.request(
-            "DELETE", "/api/v1/jobs/failed", json={"stale_only": True}
-        )
+        stale_only = client.request("DELETE", "/api/v1/jobs/failed", json={"stale_only": True})
         assert stale_only.json() == {"deleted": 3}
         remaining_ids = {job.id for job in session.query(Job).all()}
         assert remaining_ids == set()

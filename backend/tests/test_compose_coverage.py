@@ -44,9 +44,7 @@ LONG_DOC = (
 SPEC = ContextSpec(course_id=1, node_id=2, scope=ContextScope.node)
 
 
-def bundle_with(
-    materials: list[dict[str, Any]], chunks: list[dict[str, Any]]
-) -> ContextBundle:
+def bundle_with(materials: list[dict[str, Any]], chunks: list[dict[str, Any]]) -> ContextBundle:
     return ContextBundle(
         SPEC,
         node=None,
@@ -79,9 +77,7 @@ def test_coverage_report_empty_scope() -> None:
 
 
 def test_bundle_coverage_property_and_stats() -> None:
-    bundle = bundle_with(
-        [{"id": 5, "title": "a"}, {"id": 6, "title": "b"}], [chunk(5, 1)]
-    )
+    bundle = bundle_with([{"id": 5, "title": "a"}, {"id": 6, "title": "b"}], [chunk(5, 1)])
     assert bundle.coverage == {"total": 2, "covered": 1, "missing_ids": [6]}
     assert bundle.stats()["coverage"] == bundle.coverage
 
@@ -104,9 +100,7 @@ def test_resolver_second_round_fires_below_gate(
             chunk(material_ids[3], 4),
         ]
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -135,14 +129,9 @@ def test_resolver_second_round_skipped_at_exact_gate(
         session: Session, query: str, embed_query: Any, **kwargs: Any
     ) -> list[dict[str, Any]]:
         calls.append(query)
-        return [
-            chunk(material_id, index)
-            for index, material_id in enumerate(material_ids[:4])
-        ]
+        return [chunk(material_id, index) for index, material_id in enumerate(material_ids[:4])]
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -170,9 +159,7 @@ def test_resolver_second_round_skipped_below_material_floor(
         calls.append(query)
         return [chunk(material_ids[0], 1)]
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -191,8 +178,7 @@ def test_compose_records_coverage_and_flags_needs_review(
 ) -> None:
     profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
-        {"id": material_id, "title": f"M{index}"}
-        for index, material_id in enumerate(material_ids)
+        {"id": material_id, "title": f"M{index}"} for index, material_id in enumerate(material_ids)
     ]
     bundle = bundle_with(
         materials,
@@ -224,8 +210,7 @@ def test_compose_at_gate_records_coverage_without_flag(
 ) -> None:
     profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
-        {"id": material_id, "title": f"M{index}"}
-        for index, material_id in enumerate(material_ids)
+        {"id": material_id, "title": f"M{index}"} for index, material_id in enumerate(material_ids)
     ]
     bundle = bundle_with(
         materials,
@@ -253,8 +238,7 @@ def test_compose_regenerate_replaces_stale_flag(
 ) -> None:
     profile_id, course_id, _node_id, material_ids = _scoped_course(db_session, 8, owner.id)
     materials = [
-        {"id": material_id, "title": f"M{index}"}
-        for index, material_id in enumerate(material_ids)
+        {"id": material_id, "title": f"M{index}"} for index, material_id in enumerate(material_ids)
     ]
     low = bundle_with(
         materials,
@@ -345,9 +329,7 @@ def test_include_unassigned_merges_ready_orphans(
         captured["material_ids"] = kwargs.get("material_ids")
         return []
 
-    monkeypatch.setattr(
-        "app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.knowledge.context.retrieve_chunks_hybrid", fake_retrieve)
     resolver = ContextResolver(db_session, lambda query: None)
     bundle = resolver.resolve(
         ContextSpec(
@@ -379,9 +361,7 @@ def gateway() -> ScriptedGateway:
     return ScriptedGateway([LONG_DOC])
 
 
-def _scoped_course(
-    session: Session, count: int, user_id: str
-) -> tuple[str, int, int, list[int]]:
+def _scoped_course(session: Session, count: int, user_id: str) -> tuple[str, int, int, list[int]]:
     profile = Profile(user_id=user_id, name="p")
     session.add(profile)
     session.flush()
@@ -481,9 +461,7 @@ def test_validate_practice_draft_rejects_bad_items() -> None:
 
 def test_validate_practice_draft_requires_items_and_caps_count() -> None:
     assert _validate_practice_draft({}, []) == ["response missing items list"]
-    assert _validate_practice_draft({"items": []}, []) == [
-        "response missing items list"
-    ]
+    assert _validate_practice_draft({"items": []}, []) == ["response missing items list"]
     oversized = {
         "items": [
             {

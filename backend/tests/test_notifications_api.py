@@ -8,9 +8,7 @@ from app.domain.models import utcnow
 def make_course(client: TestClient, title: str, exam_date: str | None = None) -> int:
     course_id = int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
     if exam_date is not None:
-        patched = client.patch(
-            f"/api/v1/courses/{course_id}", json={"exam_date": exam_date}
-        )
+        patched = client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": exam_date})
         assert patched.status_code == 200, patched.text
     return course_id
 
@@ -29,9 +27,7 @@ def make_card(client: TestClient, course_id: int, front: str) -> int:
     return int(response.json()["id"])
 
 
-def make_plan_item(
-    client: TestClient, course_id: int, title: str, due_date: str
-) -> int:
+def make_plan_item(client: TestClient, course_id: int, title: str, due_date: str) -> int:
     created = client.post(
         f"/api/v1/courses/{course_id}/plan",
         json={"title": title, "due_date": due_date},
@@ -101,9 +97,7 @@ def test_notifications_done_plan_items_invisible(client: TestClient) -> None:
         before = client.get("/api/v1/notifications").json()
         assert before["plan_overdue_count"] == 1
 
-        done = client.patch(
-            f"/api/v1/courses/{course}/plan/{item_id}", json={"done": True}
-        )
+        done = client.patch(f"/api/v1/courses/{course}/plan/{item_id}", json={"done": True})
         assert done.status_code == 200, done.text
 
         after = client.get("/api/v1/notifications").json()

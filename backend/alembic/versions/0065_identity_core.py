@@ -70,4 +70,3 @@ def downgrade() -> None:
     op.drop_table("instance_settings")
     op.drop_table("auth_sessions")
     op.drop_table("users")
-

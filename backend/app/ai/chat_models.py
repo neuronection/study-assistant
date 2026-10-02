@@ -97,9 +97,7 @@ def _content_blocks(content: list[TextPart | ImagePart]) -> list[str | dict[Any,
     return blocks
 
 
-def to_langchain_messages(
-    messages: list[Message], cache_prefix: bool = False
-) -> list[BaseMessage]:
+def to_langchain_messages(messages: list[Message], cache_prefix: bool = False) -> list[BaseMessage]:
     mapped: list[BaseMessage] = []
     for index, message in enumerate(messages):
         content: str | list[str | dict[Any, Any]] = (

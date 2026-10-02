@@ -62,9 +62,7 @@ class ScanScheduler:
         now = datetime.now(UTC)
         with self._session_factory() as session:
             sources = list(
-                session.scalars(
-                    select(MaterialSource).where(MaterialSource.enabled.is_(True))
-                )
+                session.scalars(select(MaterialSource).where(MaterialSource.enabled.is_(True)))
             )
             due: list[tuple[str, int]] = []
             for source in sources:

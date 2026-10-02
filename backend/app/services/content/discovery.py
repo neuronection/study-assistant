@@ -75,9 +75,7 @@ def save_suggestion(
 ) -> tuple[MaterialSuggestion, bool]:
     raw_url, url_norm = _validated_url(url)
     kind_value = _validated_kind(kind)
-    course_id, node_id = _validated_placement(
-        session, profile_id, course_id, node_id
-    )
+    course_id, node_id = _validated_placement(session, profile_id, course_id, node_id)
     display_title = (title or "").strip()
     if not display_title:
         raise SuggestionError("title cannot be empty")
@@ -127,9 +125,7 @@ def list_suggestions(
     limit: int = 50,
     cursor: int | None = None,
 ) -> tuple[list[MaterialSuggestion], int | None]:
-    stmt = select(MaterialSuggestion).where(
-        MaterialSuggestion.profile_id == profile_id
-    )
+    stmt = select(MaterialSuggestion).where(MaterialSuggestion.profile_id == profile_id)
     if course_id is not None:
         stmt = stmt.where(MaterialSuggestion.course_id == course_id)
     if node_id is not None:
@@ -158,9 +154,7 @@ def get_suggestion(
     return row
 
 
-def forget_suggestion(
-    session: Session, profile_id: str, suggestion_id: int
-) -> None:
+def forget_suggestion(session: Session, profile_id: str, suggestion_id: int) -> None:
     row = get_suggestion(session, profile_id, suggestion_id)
     if row is None:
         raise SuggestionError("suggestion not found")
@@ -194,9 +188,7 @@ def update_suggestion(
         row.material_id = material.id
         row.status = SuggestionStatus.SAVED.value
     if node_id is not None:
-        _, resolved_node = _validated_placement(
-            session, profile_id, row.course_id, node_id
-        )
+        _, resolved_node = _validated_placement(session, profile_id, row.course_id, node_id)
         row.node_id = resolved_node
     session.flush()
     return row
@@ -206,9 +198,7 @@ def revert_suggestions_for_material(session: Session, material_id: int) -> None:
     session.execute(
         update(MaterialSuggestion)
         .where(MaterialSuggestion.material_id == material_id)
-        .values(
-            material_id=None, status=SuggestionStatus.SUGGESTED.value
-        )
+        .values(material_id=None, status=SuggestionStatus.SUGGESTED.value)
     )
 
 

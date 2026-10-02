@@ -19,12 +19,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "note_drawings", sa.Column("view", sa.JSON(), nullable=True)
-    )
-    op.add_column(
-        "material_drawings", sa.Column("view", sa.JSON(), nullable=True)
-    )
+    op.add_column("note_drawings", sa.Column("view", sa.JSON(), nullable=True))
+    op.add_column("material_drawings", sa.Column("view", sa.JSON(), nullable=True))
 
 
 def downgrade() -> None:

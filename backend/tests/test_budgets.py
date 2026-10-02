@@ -132,9 +132,7 @@ def test_generate_ledger_records_real_provider_usage(session_factory: Any) -> No
     assert row[1] == 2
     assert row[2] == 3
     expected_cost = round(
-        (5 - 3) / 1_000_000 * 3.0
-        + 3 / 1_000_000 * 3.0 * 0.1
-        + 2 / 1_000_000 * 15.0,
+        (5 - 3) / 1_000_000 * 3.0 + 3 / 1_000_000 * 3.0 * 0.1 + 2 / 1_000_000 * 15.0,
         6,
     )
     assert row[3] == expected_cost
@@ -197,9 +195,7 @@ def test_costs_endpoint_and_budget_api(tmp_path: Path, session_factory: Any) -> 
         describer=None,
     )
     with TestClient(app) as client:
-        put = client.put(
-            "/api/v1/tasks/chat/budget", json={"monthly_cap_usd": 2.5}
-        )
+        put = client.put("/api/v1/tasks/chat/budget", json={"monthly_cap_usd": 2.5})
         assert put.status_code == 200, put.text
         assert put.json()["monthly_cap_usd"] == 2.5
 
@@ -208,9 +204,7 @@ def test_costs_endpoint_and_budget_api(tmp_path: Path, session_factory: Any) -> 
         assert chat_task["monthly_cap_usd"] == 2.5
 
         client.put("/api/v1/tasks/chat/budget", json={"monthly_cap_usd": 0.5})
-        gateway.generate(
-            "chat", [Message(role="user", content="hello")], model=MODEL
-        )
+        gateway.generate("chat", [Message(role="user", content="hello")], model=MODEL)
 
         costs = client.get("/api/v1/analytics/costs")
         assert costs.status_code == 200

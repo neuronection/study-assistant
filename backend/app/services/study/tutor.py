@@ -139,13 +139,9 @@ class TutorService:
                     .order_by(StepAttempt.id.desc())
                 )
             )
-            highest_used = max(
-                (attempt.hint_level_used or 0 for attempt in previous), default=0
-            )
+            highest_used = max((attempt.hint_level_used or 0 for attempt in previous), default=0)
             if level > highest_used + 1:
-                raise TutorError(
-                    "the ladder does not skip levels — request the next level first"
-                )
+                raise TutorError("the ladder does not skip levels — request the next level first")
 
         expected_spec = step.expected or {}
         expected = expected_spec.get("value")
@@ -173,18 +169,18 @@ class TutorService:
 
             system_prompt = TUTOR_SYSTEM
             constraints = [
-                        Constraint("no_answer_reveal"),
-                        Constraint("max_words", {"n": LADDER_WORDS[level]}),
-                    ]
+                Constraint("no_answer_reveal"),
+                Constraint("max_words", {"n": LADDER_WORDS[level]}),
+            ]
             skill_version_id = None
         else:
             system_prompt, _user = skills.render(
                 version,
-                    {
-                        "hint_level": str(level),
-                        "step_prompt": _blocks_md(step.prompt),
-                        "last_response": last_response or "",
-                    }
+                {
+                    "hint_level": str(level),
+                    "step_prompt": _blocks_md(step.prompt),
+                    "last_response": last_response or "",
+                },
             )
             constraints = skills.constraints(version, {"hint_level": level})
             skill_version_id = version.id
@@ -268,9 +264,9 @@ class TutorService:
 
             system_prompt = QUIZ_HELP_SYSTEM
             constraints = [
-                        Constraint("no_answer_reveal"),
-                        Constraint("max_words", {"n": LADDER_WORDS[level]}),
-                    ]
+                Constraint("no_answer_reveal"),
+                Constraint("max_words", {"n": LADDER_WORDS[level]}),
+            ]
             skill_version_id = None
         else:
             system_prompt, _user = skills.render(

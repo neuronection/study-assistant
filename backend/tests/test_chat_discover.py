@@ -167,9 +167,7 @@ def test_discover_here_falls_back_to_course_context(
 
         gateway.responses.append("DISCOVER here")
         gateway.responses.append("Answer.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "discover"},
@@ -212,9 +210,7 @@ def test_discover_unconfigured_is_honest(
         course_id = make_course(test_client)
         gateway.responses.append("DISCOVER chain rule videos")
         gateway.responses.append("Answer.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "discover chain rule"},
@@ -236,13 +232,9 @@ def test_discover_budget_is_two_per_turn(
         )
         enable_web_only(test_client)
         course_id = make_course(test_client)
-        gateway.responses.append(
-            "DISCOVER limits\nDISCOVER derivatives\nDISCOVER integrals"
-        )
+        gateway.responses.append("DISCOVER limits\nDISCOVER derivatives\nDISCOVER integrals")
         gateway.responses.append("Answer.")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "discover a lot"},
@@ -252,9 +244,7 @@ def test_discover_budget_is_two_per_turn(
         assert len(calls) == 2
         assert MAX_DISCOVER_ROUNDS == 2
         feedback = "\n".join(
-            str(message.content)
-            for call_round in gateway.calls
-            for message in call_round
+            str(message.content) for call_round in gateway.calls for message in call_round
         )
         assert "DISCOVER budget for this turn is spent" in feedback
 
@@ -289,9 +279,7 @@ def test_attach_link_executes_creates_link_material(
             + "\n```"
         )
         gateway.responses.append(f"Found this.\n\n{proposal_text}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "attach that video"},
@@ -341,9 +329,7 @@ def test_attach_link_stale_node_fails_honestly(
             + "\n```"
         )
         gateway.responses.append(f"Proposal.\n\n{proposal_text}")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "attach"},
@@ -366,9 +352,7 @@ def test_attach_link_second_attach_dedupes(
 
         def propose_and_approve() -> dict[str, Any]:
             proposal_text = (
-                "```proposal\n"
-                + json.dumps({"action": "attach_link", "url": url})
-                + "\n```"
+                "```proposal\n" + json.dumps({"action": "attach_link", "url": url}) + "\n```"
             )
             gateway.responses.append(f"Found this.\n\n{proposal_text}")
             session = test_client.post(
@@ -379,9 +363,7 @@ def test_attach_link_second_attach_dedupes(
                 json={"content": "attach it"},
             )
             proposal = get_proposal(test_client, session["id"])
-            approved = test_client.post(
-                f"/api/v1/chat/proposals/{proposal['id']}/approve"
-            )
+            approved = test_client.post(f"/api/v1/chat/proposals/{proposal['id']}/approve")
             assert approved.status_code == 200, approved.text
             data: dict[str, Any] = approved.json()
             return data

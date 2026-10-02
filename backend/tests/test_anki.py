@@ -137,7 +137,7 @@ def test_cloze_detected_on_import() -> None:
         memory.executescript(
             "CREATE TABLE notes (id integer primary key, flds text, tags text);"
             "CREATE TABLE col (decks text);"
-            "INSERT INTO col VALUES ('{\"1\": {\"id\": 1, \"name\": \"Default\"}}');"
+            'INSERT INTO col VALUES (\'{"1": {"id": 1, "name": "Default"}}\');'
             f"INSERT INTO notes VALUES (1, '{cloze_fields}', '');"
         )
         buffer = io.BytesIO()

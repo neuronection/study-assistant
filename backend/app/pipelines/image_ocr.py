@@ -34,9 +34,7 @@ def make_image_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandler:
         report(40, "transcribing")
         engine = NotesOcrEngine(gateway)
         try:
-            markdown = engine.transcribe(
-                data, image.mime or "image/png", session=session
-            )
+            markdown = engine.transcribe(data, image.mime or "image/png", session=session)
         except (TaskUnassigned, ProviderError) as error:
             raise JobError(str(error)) from error
 

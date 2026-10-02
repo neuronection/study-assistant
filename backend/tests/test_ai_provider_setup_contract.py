@@ -134,14 +134,24 @@ def add_model(session: Session, provider_id: int, external_id: str, caps: list[s
 def test_preset_metadata_uniformity() -> None:
     assert list(SETUP_PRESETS) == list(PRESET_ORDER)
     assert sorted(PRESET_ORDER) == [
-        "anthropic", "deepseek", "gemini", "groq", "mistral",
-        "ollama", "openai", "openrouter",
+        "anthropic",
+        "deepseek",
+        "gemini",
+        "groq",
+        "mistral",
+        "ollama",
+        "openai",
+        "openrouter",
     ]
     assert SETUP_PRESETS["ollama"]["local"] is True
     assert SETUP_PRESETS["gemini"]["type"] == "google"
     assert SETUP_PRESETS["gemini"]["base_url"] == "https://generativelanguage.googleapis.com"
     assert [hint["prefix"] for hint in KEY_PREFIX_HINTS] == [
-        "sk-ant-", "sk-or-v1-", "gsk_", "AIza", "sk-",
+        "sk-ant-",
+        "sk-or-v1-",
+        "gsk_",
+        "AIza",
+        "sk-",
     ]
     assert _guess_preset_for_key("sk-ant-api03-xyz") == "anthropic"
     assert _guess_preset_for_key("gsk_abc") == "groq"
@@ -155,9 +165,7 @@ def test_case_1_happy_path_openai_binds_chat_vision_and_stt(
     calls = install_catalog(
         monkeypatch, wire_catalog(["gpt-5.6-terra", "gpt-5.6-luna", "whisper-1"])
     )
-    outcome = byok_setup.setup_provider_from_preset(
-        db_session, "openai", "  sk-live-key  "
-    )
+    outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "  sk-live-key  ")
 
     assert outcome.catalog_count == 3
     assert outcome.assigned_chat_model == "gpt-5.6-terra"
@@ -221,7 +229,9 @@ def test_case_2_re_setup_appends_the_fetched_catalog_and_dedupes(
     assert keyring.get_password(SERVICE, provider.keyring_ref) == "sk-second"
     models = models_of(db_session, provider.id)
     assert sorted(m.external_id for m in models) == [
-        "gpt-5.6-luna", "gpt-5.6-terra", "old-favorite",
+        "gpt-5.6-luna",
+        "gpt-5.6-terra",
+        "old-favorite",
     ]
     assert db_session.get(AiModel, manual_model.id) is not None
     terra_rows = [m for m in models if m.external_id == "gpt-5.6-terra"]
@@ -370,9 +380,7 @@ def test_case_9_classifier_table_and_suspectedVendor_hints() -> None:
     assert code(status_error(403, "forbidden")) == "unknown"
     assert code(httpx.ReadTimeout("aborted")) == "timeout"
     assert (
-        classify_provider_error(
-            httpx.ConnectError("ECONNREFUSED"), local_provider=True
-        ).code.value
+        classify_provider_error(httpx.ConnectError("ECONNREFUSED"), local_provider=True).code.value
         == "local_not_running"
     )
     assert code(httpx.ConnectError("fetch failed")) == "unknown"

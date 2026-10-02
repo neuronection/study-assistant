@@ -72,8 +72,7 @@ class ProviderError(RuntimeError):
             else ""
         )
         super().__init__(
-            f"provider request for model '{resolved.label}' failed: {reason}"
-            f"{auth_hint}"
+            f"provider request for model '{resolved.label}' failed: {reason}{auth_hint}"
         )
         self.model_label = resolved.label
 
@@ -217,8 +216,7 @@ class LLMGateway:
             billed_in = max(0, tokens_in - cached_in) * resolved.cost_in
             billed_cache = cached_in * resolved.cost_in * CACHE_READ_RATE
             cost = round(
-                (billed_in + billed_cache) / 1_000_000
-                + tokens_out / 1_000_000 * rate_out,
+                (billed_in + billed_cache) / 1_000_000 + tokens_out / 1_000_000 * rate_out,
                 6,
             )
         try:
@@ -266,9 +264,7 @@ class LLMGateway:
                 default = session.get(DefaultTaskAssignment, task_def.requires)
 
             global_model_id = default.model_id if default is not None else None
-            global_fallback_id = (
-                default.fallback_model_id if default is not None else None
-            )
+            global_fallback_id = default.fallback_model_id if default is not None else None
             if assignment is not None:
                 if assignment.model_id is not None:
                     global_model_id = assignment.model_id
@@ -414,10 +410,7 @@ class LLMGateway:
                         result = structured.invoke(langchain_messages)
                         break
                     except Exception as error:
-                        if (
-                            attempt + 1 >= self._retry_attempts
-                            or not is_transient_error(error)
-                        ):
+                        if attempt + 1 >= self._retry_attempts or not is_transient_error(error):
                             raise _provider_failure(resolved, error) from error
                         self._sleep_backoff(attempt)
                 if not isinstance(result, dict) or result.get("parsed") is None:
@@ -489,9 +482,7 @@ class LLMGateway:
         for attempt in range(self._retry_attempts):
             try:
                 with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
-                    return transcribe_with(
-                        client, resolved, data, mime, language, instruction
-                    )
+                    return transcribe_with(client, resolved, data, mime, language, instruction)
             except TranscriptionUnsupported as error:
                 raise ProviderError(resolved, str(error)) from error
             except Exception as error:

@@ -28,9 +28,7 @@ def test_ics_round_trip_crlf_uids_and_exam(client: TestClient) -> None:
     with client:
         course_id = make_course(client, "Calculus I")
         item_id = make_item(client, course_id, "Practice: chain rule", "2026-09-16")
-        client.patch(
-            f"/api/v1/courses/{course_id}", json={"exam_date": "2026-09-30"}
-        )
+        client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": "2026-09-30"})
 
         response = client.get(f"/api/v1/courses/{course_id}/plan.ics")
         assert response.status_code == 200
@@ -81,9 +79,7 @@ def test_ics_done_items_only_within_week(client: TestClient) -> None:
         done_id = make_item(client, course_id, "already done", "2026-09-10")
         open_id = make_item(client, course_id, "still open", "2026-09-20")
 
-        done = client.patch(
-            f"/api/v1/courses/{course_id}/plan/{done_id}", json={"done": True}
-        )
+        done = client.patch(f"/api/v1/courses/{course_id}/plan/{done_id}", json={"done": True})
         assert done.status_code == 200
 
         body = client.get(f"/api/v1/courses/{course_id}/plan.ics").text

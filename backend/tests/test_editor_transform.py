@@ -100,9 +100,7 @@ def test_transform_runs_and_audits(
     test_client, gateway, app = client
     with test_client:
         gateway.responses.append("A very compact version of the sentence.")
-        response = test_client.post(
-            "/api/v1/ai/editor/transform", json=transform_payload()
-        )
+        response = test_client.post("/api/v1/ai/editor/transform", json=transform_payload())
         assert response.status_code == 200, response.text
         job_id = int(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
@@ -114,9 +112,7 @@ def test_transform_runs_and_audits(
         factory = app.state.session_factory
         with factory() as session:
             audit = session.scalars(
-                select(AiInteraction).where(
-                    AiInteraction.context_type == "editor_transform"
-                )
+                select(AiInteraction).where(AiInteraction.context_type == "editor_transform")
             ).first()
             assert audit is not None
             assert audit.task == "editor_transform"
@@ -207,9 +203,7 @@ def test_unassigned_task_fails_the_job(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as test_client:
-        response = test_client.post(
-            "/api/v1/ai/editor/transform", json=transform_payload()
-        )
+        response = test_client.post("/api/v1/ai/editor/transform", json=transform_payload())
         assert response.status_code == 200, response.text
         job_id = int(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
@@ -226,9 +220,7 @@ def test_contract_failure_after_repair_fails_the_job(
         gateway.responses.append("Sure, here is the compact version.")
         gateway.responses.append("Sure, here is the compact version again.")
         gateway.responses.append("Sure, still a preamble.")
-        response = test_client.post(
-            "/api/v1/ai/editor/transform", json=transform_payload()
-        )
+        response = test_client.post("/api/v1/ai/editor/transform", json=transform_payload())
         assert response.status_code == 200, response.text
         job_id = int(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
@@ -290,9 +282,7 @@ def test_fix_mermaid_preset_runs_and_reports_diagnostic(
 ) -> None:
     test_client, gateway, _app = client
     with test_client:
-        gateway.responses.append(
-            'flowchart LR\n    O((O)) -->|v| P(("v: (a,b)"))'
-        )
+        gateway.responses.append('flowchart LR\n    O((O)) -->|v| P(("v: (a,b)"))')
         response = test_client.post(
             "/api/v1/ai/editor/transform",
             json=transform_payload(
@@ -327,9 +317,7 @@ def test_fix_mermaid_output_with_fences_is_repaired(
             ),
         )
         assert response.status_code == 200, response.text
-        body = wait_for_job(
-            test_client, int(response.json()["job_id"]), timeout=10.0
-        )
+        body = wait_for_job(test_client, int(response.json()["job_id"]), timeout=10.0)
         assert body["status"] == "done", body
         assert body["result_md"] == "flowchart LR\n    A --> B"
         assert body["rounds"] >= 1

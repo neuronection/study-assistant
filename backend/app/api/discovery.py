@@ -128,9 +128,7 @@ def discovery_search(
 ) -> DiscoverySearchOut:
     profile = ensure_default_profile(session)
     if profile.id in _DISCOVERY_IN_FLIGHT:
-        raise HTTPException(
-            status_code=409, detail="a discovery search is already running"
-        )
+        raise HTTPException(status_code=409, detail="a discovery search is already running")
     try:
         providers = resolve_providers(
             session,
@@ -143,8 +141,7 @@ def discovery_search(
     if not providers:
         raise HTTPException(
             status_code=503,
-            detail="no discovery providers configured — connect a search "
-            "provider in Settings",
+            detail="no discovery providers configured — connect a search provider in Settings",
         )
     _DISCOVERY_IN_FLIGHT.add(profile.id)
     results: list[DiscoveryResultOut] = []
@@ -152,14 +149,10 @@ def discovery_search(
     try:
         for provider in providers:
             try:
-                found: list[DiscoveryResult] = provider.search(
-                    body.query.strip(), cap=body.cap
-                )
+                found: list[DiscoveryResult] = provider.search(body.query.strip(), cap=body.cap)
             except Exception as error:
                 errors.append(
-                    DiscoveryProviderErrorOut(
-                        provider=provider.id, error=str(error)[:300]
-                    )
+                    DiscoveryProviderErrorOut(provider=provider.id, error=str(error)[:300])
                 )
                 continue
             for row in found:
@@ -178,9 +171,7 @@ def discovery_search(
     if not results and errors:
         raise HTTPException(
             status_code=502,
-            detail="; ".join(
-                f"{entry.provider}: {entry.error}" for entry in errors
-            ),
+            detail="; ".join(f"{entry.provider}: {entry.error}" for entry in errors),
         )
     results = results[: body.cap * len(providers)]
     known = suggestions.suggestion_states_for_urls(
@@ -224,9 +215,7 @@ def list_suggestions(
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    return SuggestionListOut(
-        items=[_suggestion_out(row) for row in rows], next_cursor=next_cursor
-    )
+    return SuggestionListOut(items=[_suggestion_out(row) for row in rows], next_cursor=next_cursor)
 
 
 @router.post("/suggestions", response_model=SuggestionSaveOut, status_code=200)

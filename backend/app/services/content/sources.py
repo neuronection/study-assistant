@@ -68,8 +68,10 @@ def _iter_files(root: Path, recursive: bool, globs: list[str]) -> list[Path]:
     for path in sorted(root.glob(pattern)):
         if not path.is_file():
             continue
-        if allowed and path.name.lower() not in allowed and not any(
-            path.match(glob) for glob in globs
+        if (
+            allowed
+            and path.name.lower() not in allowed
+            and not any(path.match(glob) for glob in globs)
         ):
             continue
         files.append(path)
@@ -221,7 +223,9 @@ class SourcesService:
         opener = (
             "open"
             if sys.platform == "darwin"
-            else "explorer" if sys.platform == "win32" else "xdg-open"
+            else "explorer"
+            if sys.platform == "win32"
+            else "xdg-open"
         )
         try:
             subprocess.Popen([opener, source.path])
@@ -247,9 +251,7 @@ class SourcesService:
             raise SourcesError("directory not found in linked folder")
         return target
 
-    def browse(
-        self, profile_id: str, source_id: int, subdir: str = ""
-    ) -> dict[str, Any]:
+    def browse(self, profile_id: str, source_id: int, subdir: str = "") -> dict[str, Any]:
         source = self._get(profile_id, source_id)
         root = Path(source.path)
         target = self._resolve_subdir(source, subdir)
@@ -264,9 +266,7 @@ class SourcesService:
             "scan_interval_sec": source.scan_interval_sec,
             "last_scan_error": source.last_scan_error,
             "last_scanned_at": (
-                source.last_scanned_at.isoformat()
-                if source.last_scanned_at
-                else None
+                source.last_scanned_at.isoformat() if source.last_scanned_at else None
             ),
             "subdirs": [],
             "materials": [],
@@ -334,9 +334,7 @@ class SourcesService:
                 continue
         return result
 
-    def ingest_file(
-        self, profile_id: str, source_id: int, relpath: str
-    ) -> tuple[Material, bool]:
+    def ingest_file(self, profile_id: str, source_id: int, relpath: str) -> tuple[Material, bool]:
         source = self._get(profile_id, source_id)
         root = Path(source.path)
         cleaned = (relpath or "").strip().strip("/")
@@ -365,9 +363,7 @@ class SourcesService:
         if duplicate is not None:
             return duplicate, True
         stat = target.stat()
-        material = self._create_material(
-            profile_id, source, target, stat, content_hash, kind=kind
-        )
+        material = self._create_material(profile_id, source, target, stat, content_hash, kind=kind)
         return material, False
 
     def scan(self, profile_id: str, source_id: int) -> ScanReport:
@@ -415,10 +411,7 @@ class SourcesService:
                 stats["updated"] += 1
                 continue
             if material is not None:
-                if (
-                    material.file_mtime == stat.st_mtime
-                    and material.file_size == stat.st_size
-                ):
+                if material.file_mtime == stat.st_mtime and material.file_size == stat.st_size:
                     stats["unchanged"] += 1
                     continue
                 content_hash = _content_hash(path)
@@ -453,7 +446,11 @@ class SourcesService:
                     stats["unchanged"] += 1
                 continue
             self._create_material(
-                profile_id, source, path, stat, content_hash,
+                profile_id,
+                source,
+                path,
+                stat,
+                content_hash,
                 folder_id=mirror_map.get(str(path.parent)),
             )
             stats["new"] += 1
@@ -597,9 +594,7 @@ class SourcesService:
         self._session.flush()
         return material
 
-    def _new_version(
-        self, material: Material, path: Path, stat: Any, content_hash: str
-    ) -> None:
+    def _new_version(self, material: Material, path: Path, stat: Any, content_hash: str) -> None:
         sha = self._store_blob(path)
         material.blob_sha = sha
         material.content_hash = content_hash

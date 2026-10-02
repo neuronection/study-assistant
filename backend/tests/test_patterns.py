@@ -50,9 +50,7 @@ ERROR_SPOT_DRILL_JSON = json.dumps(
             "answers_correct": ["x**2", "2*x", "2*x*sin(x) + x**2*cos(x)"],
             "correct_line": "$f'g + fg' = 2x\\sin x + x^2\\cos x$",
             "requires_fix": True,
-            "rubric": [
-                {"id": "second_term", "text": "the missing $x^2\\cos x$ term"}
-            ],
+            "rubric": [{"id": "second_term", "text": "the missing $x^2\\cos x$ term"}],
         },
     }
 )
@@ -132,8 +130,7 @@ def make_client(responses: dict[str, list[str]]) -> TestClient:
 
 def make_course(client: TestClient, course_type: str | None = None) -> int:
     types = {
-        entry["key"]: entry["id"]
-        for entry in client.get("/api/v1/skills/course-types").json()
+        entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
     payload: dict[str, Any] = {"title": f"{course_type or 'generic'} course"}
     if course_type is not None:
@@ -145,12 +142,8 @@ def _wrong_equation(client: TestClient, course_id: int, response: str) -> dict[s
     activity = client.post(
         "/api/v1/quiz/generate", json={"count": 1, "course_id": course_id}
     ).json()
-    questions = client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()
-    attempt = client.post(
-        f"/api/v1/quiz/activities/{activity['id']}/attempts"
-    ).json()
+    questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
+    attempt = client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()
     body = client.post(
         f"/api/v1/quiz/attempts/{attempt['id']}/answers",
         json={"question_id": questions[0]["id"], "response": response},
@@ -165,9 +158,7 @@ def test_drill_patterns_scoped_by_course_type() -> None:
     client = make_client({})
     with client:
         math = make_course(client, "math")
-        entries = client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={math}"
-        ).json()
+        entries = client.get(f"/api/v1/exercises/drills/patterns?course_id={math}").json()
         keys = {entry["pattern"] for entry in entries}
         assert "sign_slip" in keys
         assert "missing_chain_rule_factor" in keys
@@ -176,12 +167,8 @@ def test_drill_patterns_scoped_by_course_type() -> None:
 
         generic = make_course(client, "generic")
         bare = make_course(client, None)
-        assert client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={generic}"
-        ).json() == []
-        assert client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={bare}"
-        ).json() == []
+        assert client.get(f"/api/v1/exercises/drills/patterns?course_id={generic}").json() == []
+        assert client.get(f"/api/v1/exercises/drills/patterns?course_id={bare}").json() == []
 
         missing = client.get("/api/v1/exercises/drills/patterns")
         assert missing.status_code == 422
@@ -191,15 +178,11 @@ def test_deterministic_sign_slip_tags_wrong_equation() -> None:
     client = make_client({"quizgen": [EQUATION_QUIZ]})
     with client:
         math = make_course(client, "math")
-        body = _wrong_equation(
-            client, math, "-(2*x*sin(x) + x^2*cos(x))"
-        )
+        body = _wrong_equation(client, math, "-(2*x*sin(x) + x^2*cos(x))")
         assert body["correct"] is False
         assert "sign_slip" in body["error_tags"]
 
-        patterns = client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={math}"
-        ).json()
+        patterns = client.get(f"/api/v1/exercises/drills/patterns?course_id={math}").json()
         counts = {entry["pattern"]: entry["occurrences"] for entry in patterns}
         assert counts["sign_slip"] == 1
         assert counts["dropped_factor"] == 0
@@ -228,9 +211,7 @@ def test_propose_empty_without_mistakes() -> None:
     client = make_client({})
     with client:
         math = make_course(client, "math")
-        proposals = client.post(
-            "/api/v1/exercises/drills/propose", json={"course_id": math}
-        )
+        proposals = client.post("/api/v1/exercises/drills/propose", json={"course_id": math})
         assert proposals.status_code == 200
         assert proposals.json() == []
 
@@ -247,9 +228,7 @@ def test_propose_and_approve_discovered_pattern() -> None:
         math = make_course(client, "math")
         _wrong_equation(client, math, "2*x*sin(x)")
 
-        proposals = client.post(
-            "/api/v1/exercises/drills/propose", json={"course_id": math}
-        )
+        proposals = client.post("/api/v1/exercises/drills/propose", json={"course_id": math})
         assert proposals.status_code == 200, proposals.text
         proposed = proposals.json()
         assert len(proposed) == 1
@@ -268,12 +247,8 @@ def test_propose_and_approve_discovered_pattern() -> None:
         assert created.status_code == 201, created.text
         assert created.json()["source"] == "discovered"
 
-        entries = client.get(
-            f"/api/v1/exercises/drills/patterns?course_id={math}"
-        ).json()
-        discovered = {
-            entry["pattern"]: entry for entry in entries
-        }["forgot_product_second_term"]
+        entries = client.get(f"/api/v1/exercises/drills/patterns?course_id={math}").json()
+        discovered = {entry["pattern"]: entry for entry in entries}["forgot_product_second_term"]
         assert discovered["source"] == "discovered"
         assert discovered["occurrences"] == 0
 
@@ -312,13 +287,9 @@ def test_propose_validates_slugs_and_collisions() -> None:
             ]
         }
     )
-    client = make_client(
-        {"quizgen": [EQUATION_QUIZ], "description": [invalid, invalid, invalid]}
-    )
+    client = make_client({"quizgen": [EQUATION_QUIZ], "description": [invalid, invalid, invalid]})
     with client:
         math = make_course(client, "math")
         _wrong_equation(client, math, "2*x*sin(x)")
-        proposals = client.post(
-            "/api/v1/exercises/drills/propose", json={"course_id": math}
-        )
+        proposals = client.post("/api/v1/exercises/drills/propose", json={"course_id": math})
         assert proposals.status_code == 422

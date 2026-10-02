@@ -59,9 +59,7 @@ def test_byok_migration_renames_capabilities_and_backfills_preset_key(
     command.upgrade(alembic_cfg, "0065_identity_core")
 
     raw = sqlite3.connect(db_path)
-    caps = dict(
-        raw.execute("SELECT id, caps FROM models WHERE id IN (100, 101, 102)").fetchall()
-    )
+    caps = dict(raw.execute("SELECT id, caps FROM models WHERE id IN (100, 101, 102)").fetchall())
     assert caps[100] == '["text", "vision", "stt", "tts", "tools"]'
     assert caps[101] == '["stt", "tts"]'
     assert caps[102] == '["tts"]'
@@ -84,23 +82,16 @@ def test_byok_migration_renames_capabilities_and_backfills_preset_key(
         ).fetchone()[0]
         == "stt"
     )
-    columns = {
-        row[1]
-        for row in raw.execute("PRAGMA table_info(providers)").fetchall()
-    }
+    columns = {row[1] for row in raw.execute("PRAGMA table_info(providers)").fetchall()}
     assert "preset_key" in columns
-    preset_key = raw.execute(
-        "SELECT preset_key FROM providers WHERE id = 1"
-    ).fetchone()[0]
+    preset_key = raw.execute("SELECT preset_key FROM providers WHERE id = 1").fetchone()[0]
     assert preset_key is None
     raw.close()
 
     command.downgrade(alembic_cfg, "0063_external_sources")
 
     raw = sqlite3.connect(db_path)
-    caps = dict(
-        raw.execute("SELECT id, caps FROM models WHERE id IN (100, 101, 102)").fetchall()
-    )
+    caps = dict(raw.execute("SELECT id, caps FROM models WHERE id IN (100, 101, 102)").fetchall())
     assert caps[100] == '["text", "vision", "audio", "speech", "tools"]'
     assert caps[101] == '["audio", "speech"]'
     assert caps[102] == '["speech"]'
@@ -111,10 +102,7 @@ def test_byok_migration_renames_capabilities_and_backfills_preset_key(
         ).fetchall()
     ]
     assert sorted(requires) == ["audio", "speech", "text"]
-    columns = {
-        row[1]
-        for row in raw.execute("PRAGMA table_info(providers)").fetchall()
-    }
+    columns = {row[1] for row in raw.execute("PRAGMA table_info(providers)").fetchall()}
     assert "preset_key" not in columns
     raw.close()
 

@@ -84,9 +84,7 @@ def _upsert_persisted_models(
 ) -> None:
     existing = {
         model.external_id: model
-        for model in session.scalars(
-            select(AiModel).where(AiModel.provider_id == provider.id)
-        )
+        for model in session.scalars(select(AiModel).where(AiModel.provider_id == provider.id))
     }
     for item in persist_catalog:
         model = existing.get(item.external_id)
@@ -186,8 +184,7 @@ def setup_provider_from_preset(
     curated = preset["curated_models"] if use_preset_curated else options.curated_ids
     curated = curated or []
     persist_catalog = [
-        _PersistedModel(external_id=item.external_id, caps=list(item.caps))
-        for item in catalog
+        _PersistedModel(external_id=item.external_id, caps=list(item.caps)) for item in catalog
     ]
     for item in persist_catalog:
         if not item.caps:
@@ -240,9 +237,7 @@ def setup_provider_from_preset(
     )
     assignment_candidate_id = preferred_resolved_id or fallback_candidate_id
     if preferred_resolved_id:
-        assignment_vision_capable = bool(
-            preferred and "vision" in (preferred.get("caps") or [])
-        )
+        assignment_vision_capable = bool(preferred and "vision" in (preferred.get("caps") or []))
     elif assignment_candidate_id:
         assignment_vision_capable = "vision" in by_wire_id[assignment_candidate_id].caps
     else:
@@ -252,11 +247,7 @@ def setup_provider_from_preset(
     vision_candidate_id: str | None = None
     vision_capable_flag = False
     chat_wire_id = chat_model.external_id if chat_model is not None else None
-    if (
-        chat_wire_id
-        and chat_wire_id in by_wire_id
-        and "vision" in by_wire_id[chat_wire_id].caps
-    ):
+    if chat_wire_id and chat_wire_id in by_wire_id and "vision" in by_wire_id[chat_wire_id].caps:
         vision_candidate_id = chat_wire_id
         vision_capable_flag = True
     if vision_candidate_id is None and assignment_candidate_id:
@@ -320,18 +311,14 @@ def set_default_model(
         raise ProviderError("model_name is required")
 
     model = session.scalars(
-        select(AiModel).where(
-            AiModel.provider_id == provider_id, AiModel.external_id == model_name
-        )
+        select(AiModel).where(AiModel.provider_id == provider_id, AiModel.external_id == model_name)
     ).first()
     if model is None:
         elsewhere = session.scalars(
             select(AiModel).where(AiModel.external_id == model_name)
         ).first()
         if elsewhere is not None:
-            raise CrossProviderModelError(
-                f"model '{model_name}' belongs to another provider"
-            )
+            raise CrossProviderModelError(f"model '{model_name}' belongs to another provider")
         model = AiModel(
             provider_id=provider_id,
             external_id=model_name,

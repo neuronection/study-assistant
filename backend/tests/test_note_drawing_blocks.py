@@ -98,9 +98,7 @@ def set_drawing_ocr(client: TestClient, note_id: int, drawing_id: int, markdown:
 def test_body_md_round_trip_is_lossless(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Lossless", "body_md": "seed", "course_id": course_id},
@@ -117,9 +115,7 @@ def test_body_md_round_trip_is_lossless(tmp_path: Any) -> None:
             f"start\n\n![drawing](sa-drawing://{first})\n\nmid\n\n\n![drawing](sa-drawing://{second})\ntail\n",
         ]
         for body_md in cases:
-            patched = client.patch(
-                f"/api/v1/notes/{note_id}", json={"body_md": body_md}
-            )
+            patched = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": body_md})
             assert patched.status_code == 200, patched.text
             blocks = patched.json()["body"]
             assert _blocks_md(blocks) == body_md
@@ -150,9 +146,7 @@ def test_legacy_stripped_blocks_rejoin_unchanged(tmp_path: Any) -> None:
 def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Derivations", "body_md": "start", "course_id": course_id},
@@ -197,9 +191,7 @@ def test_body_md_parses_into_interleaved_blocks(tmp_path: Any) -> None:
 def test_context_resolver_renders_drawings_in_position(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Sketches", "body_md": "intro", "course_id": course_id},
@@ -232,9 +224,7 @@ def test_context_resolver_renders_drawings_in_position(tmp_path: Any) -> None:
 def test_search_includes_inline_drawing_refs_harmlessly(tmp_path: Any) -> None:
     client = make_client(tmp=tmp_path)
     with client:
-        course_id = client.post(
-            "/api/v1/courses", json={"title": "Course"}
-        ).json()["id"]
+        course_id = client.post("/api/v1/courses", json={"title": "Course"}).json()["id"]
         note_id = client.post(
             "/api/v1/notes",
             json={"title": "Notes", "body_md": "plain", "course_id": course_id},

@@ -51,10 +51,7 @@ def score_page(text: str, image_coverage: float, ordinal: int = 0) -> PageDecisi
         return PageDecision(ordinal, False, RID_GARBAGE_GLYPHS)
     if len(stripped) < MIN_TEXT_CHARS_PER_PAGE:
         return PageDecision(ordinal, False, RID_THIN_TEXT)
-    if (
-        image_coverage >= FIGURE_COVERAGE_THRESHOLD
-        and len(stripped) < FIGURE_TEXT_CEILING
-    ):
+    if image_coverage >= FIGURE_COVERAGE_THRESHOLD and len(stripped) < FIGURE_TEXT_CEILING:
         return PageDecision(ordinal, False, RID_FIGURE_DOMINANT)
     return PageDecision(ordinal, True, RID_TEXT_OK)
 

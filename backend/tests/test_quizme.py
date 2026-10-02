@@ -15,9 +15,7 @@ from app.main import create_app
 from app.services.platform.quizme import grade_answer, validate_quiz_args
 
 
-def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
-) -> dict[str, Any]:
+def wait_for_assistant(client: TestClient, session_id: int, timeout: float = 5.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         messages: list[dict[str, Any]] = client.get(
@@ -62,9 +60,7 @@ def test_grading_matrix_choices() -> None:
 
 
 def test_grading_matrix_latex_equivalence_chain() -> None:
-    pending = validate_quiz_args(
-        {"question": "simplify x^2/x", "expected_latex": "x"}
-    )
+    pending = validate_quiz_args({"question": "simplify x^2/x", "expected_latex": "x"})
     correct, detail = grade_answer(pending, "x")
     assert correct is True
     assert "equivalence chain" in detail
@@ -95,22 +91,16 @@ def test_validate_quiz_args_rejects_incomplete() -> None:
     with pytest.raises(ValueError):
         validate_quiz_args({"question": "q", "choices": ["a"], "expected_index": 0})
     with pytest.raises(ValueError):
-        validate_quiz_args(
-            {"question": "q", "choices": ["a", "b"], "expected_index": 5}
-        )
+        validate_quiz_args({"question": "q", "choices": ["a", "b"], "expected_index": 5})
 
 
 def test_quizme_flag_on_session(client: tuple[TestClient, ScriptedGateway, FastAPI]) -> None:
     test_client, _gateway, _app = client
     with test_client:
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         assert session["quizme"] is False
-        patched = test_client.patch(
-            f"/api/v1/chat/sessions/{session['id']}", json={"quizme": True}
-        )
+        patched = test_client.patch(f"/api/v1/chat/sessions/{session['id']}", json={"quizme": True})
         assert patched.json()["quizme"] is True
 
 
@@ -132,9 +122,7 @@ def test_quiz_tool_flow_non_leak_and_verdict(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         test_client, gateway = test_client, gateway
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         session_id = int(session["id"])
         test_client.patch(f"/api/v1/chat/sessions/{session_id}", json={"quizme": True})
 
@@ -142,9 +130,7 @@ def test_quiz_tool_flow_non_leak_and_verdict(tmp_path: Path) -> None:
             [
                 {
                     "name": "QUIZ",
-                    "arguments": dict(
-                        QUIZ_ARGS, choices=["0", "1"], expected_index=0
-                    ),
+                    "arguments": dict(QUIZ_ARGS, choices=["0", "1"], expected_index=0),
                 }
             ]
         )
@@ -165,13 +151,10 @@ def test_quiz_tool_flow_non_leak_and_verdict(tmp_path: Path) -> None:
         assert quiz_payload.get("answered") is None or quiz_payload.get("answered") is False
 
         for messages in gateway.calls:
-            flat = json.dumps(
-                [str(message.content) for message in messages], ensure_ascii=False
-            )
+            flat = json.dumps([str(message.content) for message in messages], ensure_ascii=False)
             assert '"expected_' not in flat
             assert 'expected_index": 0' not in flat
-            assert 'expected_index=0' not in flat
-
+            assert "expected_index=0" not in flat
 
         answered = test_client.post(
             f"/api/v1/chat/sessions/{session_id}/quiz-answer",
@@ -202,9 +185,7 @@ def test_quiz_answer_without_pending_question_is_conflict(
     test_client, _gateway, _app = client
     with test_client:
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         response = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/quiz-answer",
             json={"answer": "x"},
@@ -218,9 +199,7 @@ def test_quiz_prompt_block_present_when_quizme_on(
     test_client, gateway, _app = client
     with test_client:
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         session_id = int(session["id"])
         test_client.patch(f"/api/v1/chat/sessions/{session_id}", json={"quizme": True})
         gateway.responses.append("plain answer")
@@ -229,9 +208,7 @@ def test_quiz_prompt_block_present_when_quizme_on(
             json={"content": "hello"},
         )
         wait_for_assistant(test_client, session_id)
-        flat = "\n".join(
-            str(message.content) for message in gateway.calls[0]
-        )
+        flat = "\n".join(str(message.content) for message in gateway.calls[0])
         assert "QUIZ-ME MODE" in flat
         assert "QUIZ" in flat
 
@@ -246,9 +223,7 @@ def test_quizme_answer_credits_daily_history(tmp_path: Path) -> None:
     )
     with TestClient(app) as test_client:
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         session_id = int(session["id"])
         test_client.patch(f"/api/v1/chat/sessions/{session_id}", json={"quizme": True})
 
@@ -256,9 +231,7 @@ def test_quizme_answer_credits_daily_history(tmp_path: Path) -> None:
             [
                 {
                     "name": "QUIZ",
-                    "arguments": dict(
-                        QUIZ_ARGS, choices=["0", "1"], expected_index=0
-                    ),
+                    "arguments": dict(QUIZ_ARGS, choices=["0", "1"], expected_index=0),
                 }
             ]
         )

@@ -101,9 +101,7 @@ class SkillService:
             raise SkillsError(f"unknown skill '{key}'")
         return skill
 
-    def resolve(
-        self, key: str, course_id: int | None = None
-    ) -> SkillVersion | None:
+    def resolve(self, key: str, course_id: int | None = None) -> SkillVersion | None:
         skill = self._session.scalars(select(Skill).where(Skill.key == key)).first()
         if skill is None:
             return None
@@ -142,9 +140,7 @@ class SkillService:
                 return version
         return None
 
-    def resolution_chain(
-        self, key: str, course_id: int | None = None
-    ) -> dict[str, str]:
+    def resolution_chain(self, key: str, course_id: int | None = None) -> dict[str, str]:
         skill = self._session.scalars(select(Skill).where(Skill.key == key)).first()
         chain: dict[str, str] = {}
         if skill is None:
@@ -164,9 +160,7 @@ class SkillService:
         chain["system"] = f"v{active.version}" if active else "—"
         return chain
 
-    def _active(
-        self, skill_id: int, scope_type: str, scope_ref: int | None
-    ) -> SkillVersion | None:
+    def _active(self, skill_id: int, scope_type: str, scope_ref: int | None) -> SkillVersion | None:
         return self._session.scalars(
             select(SkillVersion)
             .where(
@@ -202,12 +196,8 @@ class SkillService:
     def validate_templates(self, system_template: str, user_template: str) -> None:
         environment = jinja2.Environment(undefined=jinja2.Undefined)
         try:
-            environment.from_string(system_template).render(
-                **dict.fromkeys(CONTEXT_VARS, "")
-            )
-            environment.from_string(user_template).render(
-                **dict.fromkeys(CONTEXT_VARS, "")
-            )
+            environment.from_string(system_template).render(**dict.fromkeys(CONTEXT_VARS, ""))
+            environment.from_string(user_template).render(**dict.fromkeys(CONTEXT_VARS, ""))
         except jinja2.TemplateError as error:
             raise SkillsError(f"template error: {error}") from error
 
@@ -300,9 +290,7 @@ class SkillService:
         system = self._refresh_system_template(skill.key, system)
         return self.activate(system.id)
 
-    def _refresh_system_template(
-        self, key: str, system: SkillVersion
-    ) -> SkillVersion:
+    def _refresh_system_template(self, key: str, system: SkillVersion) -> SkillVersion:
         seed = next((seed for seed in SEEDS if seed.key == key), None)
         if (
             seed is not None

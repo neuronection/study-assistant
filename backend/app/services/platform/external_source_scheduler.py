@@ -73,19 +73,13 @@ class ExternalSourceScheduler:
         current = now or _utc_naive()
         with self._session_factory() as session:
             sources = list(
-                session.scalars(
-                    select(ExternalSource).where(
-                        ExternalSource.enabled.is_(True)
-                    )
-                )
+                session.scalars(select(ExternalSource).where(ExternalSource.enabled.is_(True)))
             )
             due = [
                 source.id
                 for source in sources
                 if source.last_scanned_at is None
-                or source.last_scanned_at
-                + timedelta(seconds=effective_interval(source))
-                <= current
+                or source.last_scanned_at + timedelta(seconds=effective_interval(source)) <= current
             ]
         results: dict[int, dict[str, int]] = {}
         for source_id in due:

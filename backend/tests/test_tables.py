@@ -76,9 +76,7 @@ class TestValidation:
         problems = validate_table_answer(
             {
                 "headers": ["a"],
-                "rows": [
-                    {"label": "r", "cells": [{"kind": "numeric", "value": "1/2"}]}
-                ],
+                "rows": [{"label": "r", "cells": [{"kind": "numeric", "value": "1/2"}]}],
             }
         )
         assert any("numeric" in problem for problem in problems)
@@ -87,9 +85,7 @@ class TestValidation:
         problems = validate_table_answer(
             {
                 "headers": ["a"],
-                "rows": [
-                    {"label": "r", "cells": [{"kind": "equation", "value": "x^^2"}]}
-                ],
+                "rows": [{"label": "r", "cells": [{"kind": "equation", "value": "x^^2"}]}],
             }
         )
         assert any("equation" in problem for problem in problems)
@@ -101,9 +97,7 @@ class TestValidation:
                 "rows": [
                     {
                         "label": "r",
-                        "cells": [
-                            {"kind": "numeric", "value": "1", "tolerance": -1}
-                        ],
+                        "cells": [{"kind": "numeric", "value": "1", "tolerance": -1}],
                     }
                 ],
             }
@@ -136,21 +130,15 @@ class TestGrading:
         assert result["error_tags"] == []
 
     def test_text_accept_alternatives(self) -> None:
-        result = grade_table_fill(
-            TRUTH_TABLE, [["", "", "true"], ["", "", "no"], ["", "", ""]]
-        )
+        result = grade_table_fill(TRUTH_TABLE, [["", "", "true"], ["", "", "no"], ["", "", ""]])
         assert result["partial_credit"] == round(2 / 5, 4)
 
     def test_numeric_tolerance_window(self) -> None:
-        result = grade_table_fill(
-            TRUTH_TABLE, [["", "", ""], ["", "", ""], ["", "3.6", ""]]
-        )
+        result = grade_table_fill(TRUTH_TABLE, [["", "", ""], ["", "", ""], ["", "3.6", ""]])
         assert result["partial_credit"] == round(1 / 5, 4)
 
     def test_equation_graded_by_chain(self) -> None:
-        result = grade_table_fill(
-            TRUTH_TABLE, [["", "", ""], ["", "", ""], ["2x+x**2", "", ""]]
-        )
+        result = grade_table_fill(TRUTH_TABLE, [["", "", ""], ["", "", ""], ["2x+x**2", "", ""]])
         assert result["partial_credit"] == round(1 / 5, 4)
 
     def test_empty_response_scores_zero(self) -> None:

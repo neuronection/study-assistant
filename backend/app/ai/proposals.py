@@ -80,9 +80,7 @@ class EditNotePayload(_TextEditsPayloadMixin):
     @model_validator(mode="after")
     def _one_way_to_edit(self) -> "EditNotePayload":
         if self.new_body_md is None and not self.text_edits:
-            raise ValueError(
-                "conflicting_edit: set either new_body_md or text_edits"
-            )
+            raise ValueError("conflicting_edit: set either new_body_md or text_edits")
         if self.new_body_md is not None and self.text_edits:
             raise ValueError(
                 "conflicting_edit: new_body_md and text_edits are mutually "
@@ -105,9 +103,7 @@ class EditMaterialPayload(_TextEditsPayloadMixin):
     @model_validator(mode="after")
     def _one_way_to_edit(self) -> "EditMaterialPayload":
         if self.new_markdown is None and not self.text_edits:
-            raise ValueError(
-                "conflicting_edit: set either new_markdown or text_edits"
-            )
+            raise ValueError("conflicting_edit: set either new_markdown or text_edits")
         if self.new_markdown is not None and self.text_edits:
             raise ValueError(
                 "conflicting_edit: new_markdown and text_edits are mutually "
@@ -265,8 +261,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "create_note": ProposalActionSpec(
         payload_model=CreateNotePayload,
         doc_line=(
-            '{"action": "create_note", "title": str, "body_md": markdown, '
-            '"node_id": int|null}'
+            '{"action": "create_note", "title": str, "body_md": markdown, "node_id": int|null}'
         ),
         api_executed=True,
     ),
@@ -286,8 +281,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "append_note": ProposalActionSpec(
         payload_model=AppendNotePayload,
         doc_line=(
-            '{"action": "append_note", "note_id": int, "markdown": markdown, '
-            '"heading": str|null}'
+            '{"action": "append_note", "note_id": int, "markdown": markdown, "heading": str|null}'
         ),
         snapshot="note_body",
         context_ids=(("note_id", "note"),),
@@ -368,8 +362,7 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     "create_material": ProposalActionSpec(
         payload_model=CreateMaterialPayload,
         doc_line=(
-            '{"action": "create_material", "title": str, "body_md": markdown, '
-            '"node_id": int|null}'
+            '{"action": "create_material", "title": str, "body_md": markdown, "node_id": int|null}'
         ),
     ),
     "create_concept": ProposalActionSpec(
@@ -395,22 +388,16 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
     ),
     "tag_note": ProposalActionSpec(
         payload_model=TagNotePayload,
-        doc_line=(
-            '{"action": "tag_note", "note_id": int, "add": [str]}'
-        ),
+        doc_line=('{"action": "tag_note", "note_id": int, "add": [str]}'),
         context_ids=(("note_id", "note"),),
     ),
     "set_exam_date": ProposalActionSpec(
         payload_model=SetExamDatePayload,
-        doc_line=(
-            '{"action": "set_exam_date", "exam_date": "YYYY-MM-DD"}'
-        ),
+        doc_line=('{"action": "set_exam_date", "exam_date": "YYYY-MM-DD"}'),
     ),
     "generate_plan": ProposalActionSpec(
         payload_model=GeneratePlanPayload,
-        doc_line=(
-            '{"action": "generate_plan"}'
-        ),
+        doc_line=('{"action": "generate_plan"}'),
     ),
     "add_plan_items": ProposalActionSpec(
         payload_model=AddPlanItemsPayload,
@@ -431,9 +418,7 @@ MAX_PROPOSALS_PER_TURN = 3
 PROPOSAL_DOC = (
     "You may end your reply with up to THREE action proposals for the student "
     "to approve (never execute anything yourself — the student clicks):\n"
-    "```proposal\n"
-    + "\n".join(spec.doc_line for spec in PROPOSAL_ACTIONS.values())
-    + "\n```\n"
+    "```proposal\n" + "\n".join(spec.doc_line for spec in PROPOSAL_ACTIONS.values()) + "\n```\n"
     "Use ids only from the offered manifest. When a payload has node_id, it "
     "must be the integer id of a [T#] node from the course structure "
     "(or null to leave placement unchanged). edit_note, append_note, "
@@ -460,8 +445,7 @@ def validate_proposal_text(text: str) -> list[str]:
         return problems
     if len(fences) > MAX_PROPOSALS_PER_TURN:
         problems.append(
-            f"{len(fences)} proposal blocks found — at most "
-            f"{MAX_PROPOSALS_PER_TURN} per reply"
+            f"{len(fences)} proposal blocks found — at most {MAX_PROPOSALS_PER_TURN} per reply"
         )
     for fence in fences:
         try:
@@ -475,9 +459,7 @@ def validate_proposal_text(text: str) -> list[str]:
         action = str(raw["action"])
         spec = PROPOSAL_ACTIONS.get(action)
         if spec is None:
-            problems.append(
-                f"unknown proposal action '{action}' — allowed: {proposal_actions()}"
-            )
+            problems.append(f"unknown proposal action '{action}' — allowed: {proposal_actions()}")
             continue
         try:
             spec.payload_model.model_validate(raw.get("payload") or _payload_from(raw))
@@ -532,9 +514,7 @@ def validate_proposal_context(
     for ref in offered_refs:
         match = _OFFERED_REF_RE.fullmatch(ref)
         if match:
-            offered.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
-                int(match.group(2))
-            )
+            offered.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(int(match.group(2)))
     problems: list[str] = []
     for fence in fences:
         try:
@@ -548,9 +528,7 @@ def validate_proposal_context(
         if spec is None:
             continue
         try:
-            payload = spec.payload_model.model_validate(
-                raw.get("payload") or _payload_from(raw)
-            )
+            payload = spec.payload_model.model_validate(raw.get("payload") or _payload_from(raw))
         except ValidationError:
             continue
         for field_name, kind in CONTEXT_ID_FIELDS.items():
@@ -579,11 +557,7 @@ def validate_proposal_context(
                 "offered ids"
             )
         node_id = getattr(payload, "node_id", None)
-        if (
-            node_id is not None
-            and course_node_ids is not None
-            and node_id not in course_node_ids
-        ):
+        if node_id is not None and course_node_ids is not None and node_id not in course_node_ids:
             problems.append(
                 f"proposal {action} targets node {node_id} which does not exist "
                 "in this course — use the integer id of a [T#] node from the "
@@ -592,9 +566,7 @@ def validate_proposal_context(
     return problems
 
 
-def _grounding_target(
-    payload: BaseModel, spec: ProposalActionSpec
-) -> tuple[str, int, str] | None:
+def _grounding_target(payload: BaseModel, spec: ProposalActionSpec) -> tuple[str, int, str] | None:
     """The (field, id, kind) an edit-in-place op must have had read."""
     for field_name, kind in spec.context_ids:
         value = getattr(payload, field_name, None)
@@ -617,9 +589,7 @@ def validate_proposal_grounding(
     for ref in read_refs or []:
         match = _OFFERED_REF_RE.fullmatch(ref)
         if match:
-            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
-                int(match.group(2))
-            )
+            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(int(match.group(2)))
     problems: list[str] = []
     for fence in fences:
         try:
@@ -633,9 +603,7 @@ def validate_proposal_grounding(
         if spec is None or spec.snapshot is None:
             continue
         try:
-            payload = spec.payload_model.model_validate(
-                raw.get("payload") or _payload_from(raw)
-            )
+            payload = spec.payload_model.model_validate(raw.get("payload") or _payload_from(raw))
         except ValidationError:
             continue
         target = _grounding_target(payload, spec)
@@ -664,9 +632,7 @@ def filter_ungrounded(
     for ref in read_refs or []:
         match = _OFFERED_REF_RE.fullmatch(ref)
         if match:
-            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(
-                int(match.group(2))
-            )
+            read_ids.setdefault(KIND_BY_LETTER[match.group(1)], set()).add(int(match.group(2)))
     kept: list[tuple[str, dict[str, Any]]] = []
     drops: list[str] = []
     for action, payload in proposals:
@@ -674,9 +640,7 @@ def filter_ungrounded(
         target: tuple[str, int, str] | None = None
         if spec is not None and spec.snapshot is not None:
             try:
-                target = _grounding_target(
-                    spec.payload_model.model_validate(payload), spec
-                )
+                target = _grounding_target(spec.payload_model.model_validate(payload), spec)
             except ValidationError:
                 target = None
         if target is not None and target[1] not in read_ids.get(target[2], set()):

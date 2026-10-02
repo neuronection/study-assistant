@@ -97,9 +97,7 @@ def _source_out(session: Session, source: MaterialSource, material_count: int = 
         scan_interval_sec=source.scan_interval_sec,
         last_scan_error=source.last_scan_error,
         material_count=material_count,
-        last_scanned_at=(
-            source.last_scanned_at.isoformat() if source.last_scanned_at else None
-        ),
+        last_scanned_at=(source.last_scanned_at.isoformat() if source.last_scanned_at else None),
     )
 
 
@@ -111,17 +109,13 @@ class ScanResult(BaseModel):
 
 
 @router.get("", response_model=list[SourceOut])
-def list_sources(
-    request: Request, session: Session = Depends(get_session)
-) -> list[SourceOut]:
+def list_sources(request: Request, session: Session = Depends(get_session)) -> list[SourceOut]:
     profile = ensure_default_profile(session)
     service = SourcesService(session, request.app.state.settings.blobs_dir)
     result: list[SourceOut] = []
     for source in service.list_sources(profile.id):
         count = len(
-            session.scalars(
-                select(Material.id).where(Material.source_id == source.id)
-            ).all()
+            session.scalars(select(Material.id).where(Material.source_id == source.id)).all()
         )
         result.append(_source_out(session, source, count))
     return result
@@ -296,9 +290,7 @@ def reveal_source(
 
 def _enqueue_ingests(session: Session, source_id: int) -> int:
     pending = session.scalars(
-        select(Material).where(
-            Material.source_id == source_id, Material.status == "pending"
-        )
+        select(Material).where(Material.source_id == source_id, Material.status == "pending")
     ).all()
     for material in pending:
         JobRunner.enqueue(session, "ingest", {"material_id": material.id})

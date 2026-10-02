@@ -203,9 +203,7 @@ def _deck_name(connection: sqlite3.Connection) -> str:
     return "Imported deck"
 
 
-def import_apkg(
-    data: bytes, session: Session, profile_id: str, course_id: int
-) -> AnkiImportResult:
+def import_apkg(data: bytes, session: Session, profile_id: str, course_id: int) -> AnkiImportResult:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             names = archive.namelist()

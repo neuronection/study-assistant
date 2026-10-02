@@ -28,9 +28,7 @@ class GatewayEmbedder:
         return resolved.external_id, vectors
 
 
-def _embed_with(
-    client: httpx.Client, model: ResolvedModel, texts: list[str]
-) -> list[list[float]]:
+def _embed_with(client: httpx.Client, model: ResolvedModel, texts: list[str]) -> list[list[float]]:
     if model.provider_type == "google":
         return _embed_google(client, model, texts)
     if model.provider_type == "openai_compatible":

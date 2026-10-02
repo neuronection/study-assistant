@@ -31,9 +31,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table("chat_sessions", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_chat_sessions_course_id"), ["course_id"], unique=False
-        )
+        batch_op.create_index(batch_op.f("ix_chat_sessions_course_id"), ["course_id"], unique=False)
         batch_op.create_index(
             batch_op.f("ix_chat_sessions_profile_id"), ["profile_id"], unique=False
         )

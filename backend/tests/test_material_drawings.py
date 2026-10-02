@@ -225,9 +225,7 @@ def test_material_drawing_reocr_bumps_version() -> None:
         material_id = create_text_material(client, course_id)
         drawing_id = make_drawing(client, material_id)
         wait_drawing_ocr(client, material_id, drawing_id, min_version=1)
-        reocr = client.post(
-            f"/api/v1/materials/{material_id}/drawings/{drawing_id}/reocr"
-        )
+        reocr = client.post(f"/api/v1/materials/{material_id}/drawings/{drawing_id}/reocr")
         assert reocr.status_code == 200, reocr.text
         drawing = wait_drawing_ocr(client, material_id, drawing_id, min_version=2)
         assert "3x" in drawing["ocr_markdown"]
@@ -257,17 +255,13 @@ def test_delete_drawing_strips_inline_refs_and_search() -> None:
             json={"markdown": f"before\n\n![drawing](sa-drawing://{drawing_id})\n\nafter"},
         )
         assert patched.status_code == 200, patched.text
-        assert any(
-            block.get("type") == "drawing" for block in patched.json()["blocks"]
-        )
+        assert any(block.get("type") == "drawing" for block in patched.json()["blocks"])
 
         deleted = client.delete(f"/api/v1/materials/{material_id}/drawings/{drawing_id}")
         assert deleted.status_code == 200, deleted.text
         body = deleted.json()
         assert body["drawings"] == []
-        assert not any(
-            block.get("type") == "drawing" for block in body["extraction"]["blocks"]
-        )
+        assert not any(block.get("type") == "drawing" for block in body["extraction"]["blocks"])
         assert "sa-drawing://" not in body["extraction"]["markdown"]
 
         hits = client.get("/api/v1/search", params={"q": "2x"}).json()["hits"]

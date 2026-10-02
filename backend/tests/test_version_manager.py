@@ -31,9 +31,7 @@ def _make_repo(tmp_path: Path, init_git: bool = False) -> Path:
     repo = tmp_path / "repo"
     version_dir = repo / "backend" / "app"
     version_dir.mkdir(parents=True)
-    (version_dir / "__init__.py").write_text(
-        '__version__ = "0.1.1"\n', encoding="utf-8"
-    )
+    (version_dir / "__init__.py").write_text('__version__ = "0.1.1"\n', encoding="utf-8")
     (repo / "version_manager.toml").write_text(TEST_CONFIG, encoding="utf-8")
     if init_git:
         _git(repo, "init", "-q")

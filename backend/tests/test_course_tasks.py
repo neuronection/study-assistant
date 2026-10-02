@@ -99,9 +99,7 @@ def test_course_tasks_list_and_override(client: TestClient) -> None:
         quizgen["global_model_label"], str | None
     )
 
-    reset = client.put(
-        f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": None}
-    )
+    reset = client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": None})
     assert reset.status_code == 200
     assert reset.json()["model_id"] is None
 
@@ -122,14 +120,10 @@ def test_course_task_validation_errors(client: TestClient) -> None:
     missing_course = client.get("/api/v1/courses/999/tasks")
     assert missing_course.status_code == 404
 
-    unknown_task = client.put(
-        f"/api/v1/courses/{course_id}/tasks/nosuch", json={"model_id": None}
-    )
+    unknown_task = client.put(f"/api/v1/courses/{course_id}/tasks/nosuch", json={"model_id": None})
     assert unknown_task.status_code == 422
 
-    missing_course_put = client.put(
-        "/api/v1/courses/999/tasks/chat", json={"model_id": None}
-    )
+    missing_course_put = client.put("/api/v1/courses/999/tasks/chat", json={"model_id": None})
     assert missing_course_put.status_code == 404
 
     mismatch = client.put(
@@ -162,9 +156,7 @@ def test_gateway_resolves_per_course_override(client: TestClient) -> None:
     )
     course_id = create_course(client)
     other_course_id = create_course(client)
-    client.put(
-        f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": override_model}
-    )
+    client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": override_model})
     client.put(
         f"/api/v1/courses/{other_course_id}/tasks/chat",
         json={"fallback_model_id": other_override},
@@ -201,9 +193,7 @@ def test_gateway_four_level_precedence_chain(client: TestClient) -> None:
     course_default = add_model(client, provider["id"], "course-default")
     course_task = add_model(client, provider["id"], "course-task")
     fb_course_default = add_model(client, provider["id"], "fb-course-default")
-    client.put(
-        "/api/v1/tasks/defaults/text", json={"model_id": cap_default}
-    )
+    client.put("/api/v1/tasks/defaults/text", json={"model_id": cap_default})
     client.put("/api/v1/tasks/chat", json={"model_id": task_model})
     course_id = create_course(client)
 
@@ -227,9 +217,7 @@ def test_gateway_four_level_precedence_chain(client: TestClient) -> None:
         "fb-course-default",
     ]
 
-    client.put(
-        f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": course_task}
-    )
+    client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": course_task})
     chain = gateway._resolve_chain("chat", None, course_id)
     assert [entry.external_id for entry in chain] == [
         "course-task",
@@ -271,9 +259,7 @@ def test_purge_course_removes_overrides(client: TestClient) -> None:
     provider = create_provider(client)
     model = add_model(client, provider["id"], "course-model")
     course_id = create_course(client)
-    assigned = client.put(
-        f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": model}
-    )
+    assigned = client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": model})
     assert assigned.status_code == 200
     defaulted = client.put(
         f"/api/v1/courses/{course_id}/tasks/defaults/text",
@@ -287,9 +273,7 @@ def test_purge_course_removes_overrides(client: TestClient) -> None:
         assert len(overrides) == 1
         assert len(defaults) == 1
 
-    deleted = client.delete(
-        f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-    )
+    deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
     assert deleted.status_code in (200, 204), deleted.text
 
     with factory() as session:
@@ -303,9 +287,7 @@ def test_delete_model_unassigns_course_tasks_and_defaults(client: TestClient) ->
     other = add_model(client, provider["id"], "keep-model")
     course_id = create_course(client)
     assert (
-        client.put(
-            f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": model}
-        )
+        client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": model})
     ).status_code == 200
     assert (
         client.put(

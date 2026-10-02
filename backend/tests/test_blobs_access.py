@@ -61,9 +61,7 @@ def test_foreign_blob_is_indistinguishable_from_missing(client: TestClient) -> N
 def test_unreferenced_blob_is_not_served(client: TestClient) -> None:
     app = cast(Any, client.app)
     with app.state.session_factory() as db:
-        stored = app.state.blobs.put(
-            b"orphan bytes", mime="application/octet-stream", session=db
-        )
+        stored = app.state.blobs.put(b"orphan bytes", mime="application/octet-stream", session=db)
         sha = str(stored.sha256)
     nav = _navigator(app, cast(Any, client).session_cookie)
     assert nav.get(f"/api/v1/blobs/{sha}").status_code == 404

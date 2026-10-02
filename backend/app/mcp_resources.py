@@ -54,12 +54,10 @@ GET_NODE_EXERCISES_DESC = (
     "descendants) with difficulty and step counts."
 )
 GET_NODE_QUIZZES_DESC = (
-    "Quizzes placed at a node (optionally incl. descendants) with "
-    "question counts."
+    "Quizzes placed at a node (optionally incl. descendants) with question counts."
 )
 GET_NODE_NOTES_DESC = (
-    "Study notes placed at a node (optionally incl. descendants) with "
-    "tags and update times."
+    "Study notes placed at a node (optionally incl. descendants) with tags and update times."
 )
 GET_NODE_FLASHCARDS_DESC = (
     "Flashcards placed at a node (optionally incl. descendants): total, "
@@ -140,9 +138,7 @@ def _list_courses(session: Session, profile_id: str | None = None) -> dict[str, 
     }
 
 
-def _course_for_profile(
-    session: Session, course_id: int, profile: Profile
-) -> Course:
+def _course_for_profile(session: Session, course_id: int, profile: Profile) -> Course:
     course = session.get(Course, course_id)
     if course is None or course.profile_id != profile.id:
         raise ResourceError("course not found")
@@ -211,9 +207,7 @@ def _get_node_flashcards(
     }
 
 
-def _course_cards(
-    session: Session, course_id: int, profile: Profile
-) -> list[Exercise]:
+def _course_cards(session: Session, course_id: int, profile: Profile) -> list[Exercise]:
     return list(
         session.scalars(
             select(Exercise)
@@ -296,9 +290,7 @@ def _get_course_mistakes(
     )
     return {
         "recent_wrong_answer_count": len(rows),
-        "top_error_tags": sorted(
-            tag_counts.items(), key=lambda item: -item[1]
-        )[:8],
+        "top_error_tags": sorted(tag_counts.items(), key=lambda item: -item[1])[:8],
         "recent_wrong": recent,
         "discovered_patterns": [
             {
@@ -430,9 +422,7 @@ def _get_node_exercises(
     counted: dict[int, int] = {exercise.id: 0 for exercise in exercises}
     if exercises:
         for (exercise_id,) in session.execute(
-            select(ExerciseStep.exercise_id).where(
-                ExerciseStep.exercise_id.in_(counted)
-            )
+            select(ExerciseStep.exercise_id).where(ExerciseStep.exercise_id.in_(counted))
         ):
             counted[int(exercise_id)] += 1
     return {
@@ -473,9 +463,7 @@ def _get_node_quizzes(
     counted: dict[int, int] = {activity.id: 0 for activity in activities}
     if activities:
         for (activity_id,) in session.execute(
-            select(Question.activity_id).where(
-                Question.activity_id.in_(counted)
-            )
+            select(Question.activity_id).where(Question.activity_id.in_(counted))
         ):
             counted[int(activity_id)] += 1
     return {
@@ -519,9 +507,7 @@ def _get_node_notes(
                 "tags": note.tags or [],
                 "pinned": note.pinned,
                 "node_id": note.node_id,
-                "updated_at": (
-                    note.updated_at.isoformat() if note.updated_at else None
-                ),
+                "updated_at": (note.updated_at.isoformat() if note.updated_at else None),
             }
             for note in notes
         ]
@@ -735,9 +721,7 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
-            lambda session: _get_node_materials(
-                session, node_id, include_children, profile_id
-            )
+            lambda session: _get_node_materials(session, node_id, include_children, profile_id)
         )
 
     @server.tool(name="get_node_concepts", description=GET_NODE_CONCEPTS_DESC)
@@ -749,9 +733,7 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
-            lambda session: _get_node_exercises(
-                session, node_id, include_children, profile_id
-            )
+            lambda session: _get_node_exercises(session, node_id, include_children, profile_id)
         )
 
     @server.tool(name="get_node_quizzes", description=GET_NODE_QUIZZES_DESC)
@@ -759,39 +741,25 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
         node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
-            lambda session: _get_node_quizzes(
-                session, node_id, include_children, profile_id
-            )
+            lambda session: _get_node_quizzes(session, node_id, include_children, profile_id)
         )
 
     @server.tool(name="get_node_notes", description=GET_NODE_NOTES_DESC)
     def get_node_notes(
         node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
-        return run(
-            lambda session: _get_node_notes(
-                session, node_id, include_children, profile_id
-            )
-        )
+        return run(lambda session: _get_node_notes(session, node_id, include_children, profile_id))
 
-    @server.tool(
-        name="get_node_flashcards", description=GET_NODE_FLASHCARDS_DESC
-    )
+    @server.tool(name="get_node_flashcards", description=GET_NODE_FLASHCARDS_DESC)
     def get_node_flashcards(
         node_id: int, include_children: bool = True, profile_id: str | None = None
     ) -> Any:
         return run(
-            lambda session: _get_node_flashcards(
-                session, node_id, include_children, profile_id
-            )
+            lambda session: _get_node_flashcards(session, node_id, include_children, profile_id)
         )
 
-    @server.tool(
-        name="get_course_mistakes", description=GET_COURSE_MISTAKES_DESC
-    )
-    def get_course_mistakes(
-        course_id: int, profile_id: str | None = None
-    ) -> Any:
+    @server.tool(name="get_course_mistakes", description=GET_COURSE_MISTAKES_DESC)
+    def get_course_mistakes(course_id: int, profile_id: str | None = None) -> Any:
         return run(lambda session: _get_course_mistakes(session, course_id, profile_id))
 
     @server.tool(name="get_course_plan", description=GET_COURSE_PLAN_DESC)
@@ -826,9 +794,7 @@ def run_mcp_stdio() -> None:
 
     settings = get_settings()
     if not settings.db_path.exists():
-        raise SystemExit(
-            f"no database at {settings.db_path} — start the app once before using MCP"
-        )
+        raise SystemExit(f"no database at {settings.db_path} — start the app once before using MCP")
     engine = make_engine(settings.db_path)
     server = create_resource_server(make_session_factory(engine))
     server.run(transport="stdio")

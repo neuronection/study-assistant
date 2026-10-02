@@ -124,9 +124,7 @@ def test_commit_replace_skip_and_rename(tmp_path: Any) -> None:
         fork_skill(client, "chat.answer", "First fork")
         pack = client.post("/api/v1/skills/export", json={"keys": ["chat.answer"]}).json()
 
-        skipped = client.post(
-            "/api/v1/skills/packs/import", params={"dry_run": "false"}, json=pack
-        )
+        skipped = client.post("/api/v1/skills/packs/import", params={"dry_run": "false"}, json=pack)
         assert skipped.status_code == 200, skipped.text
         assert skipped.json()["skipped"][0]["key"] == "chat.answer"
         assert skipped.json()["replaced"] == []

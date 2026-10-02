@@ -27,9 +27,7 @@ def upgrade() -> None:
         "chat_messages",
         sa.Column("parent_id", sa.Integer(), nullable=True),
     )
-    op.create_index(
-        "ix_chat_messages_parent_id", "chat_messages", ["parent_id"]
-    )
+    op.create_index("ix_chat_messages_parent_id", "chat_messages", ["parent_id"])
     op.add_column(
         "chat_messages",
         sa.Column("active_child_id", sa.Integer(), nullable=True),
@@ -45,16 +43,12 @@ def upgrade() -> None:
         if previous is not None and previous[0] == chat_session_id:
             parent = previous[1]
             bind.execute(
-                sa.text(
-                    "UPDATE chat_messages SET active_child_id = :child WHERE id = :prev"
-                ),
+                sa.text("UPDATE chat_messages SET active_child_id = :child WHERE id = :prev"),
                 {"child": message_id, "prev": parent},
             )
         else:
             bind.execute(
-                sa.text(
-                    "UPDATE chat_sessions SET active_root_id = :root WHERE id = :sid"
-                ),
+                sa.text("UPDATE chat_sessions SET active_root_id = :root WHERE id = :sid"),
                 {"root": message_id, "sid": chat_session_id},
             )
         bind.execute(

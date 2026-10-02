@@ -259,9 +259,7 @@ class PlanItemKind(StrVocab):
     MILESTONE = "milestone"
 
 
-PLAN_ITEM_KINDS: tuple[str, ...] = tuple(
-    kind.value for kind in PlanItemKind
-)
+PLAN_ITEM_KINDS: tuple[str, ...] = tuple(kind.value for kind in PlanItemKind)
 
 
 class PlanItemOrigin(StrVocab):

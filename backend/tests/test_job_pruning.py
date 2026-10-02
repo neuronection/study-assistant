@@ -21,9 +21,7 @@ def make_factory(tmp_path: Path) -> sessionmaker[Session]:
     return make_session_factory(engine)
 
 
-def insert(
-    factory: sessionmaker[Session], *, status: str, age_days: float, finished: bool
-) -> int:
+def insert(factory: sessionmaker[Session], *, status: str, age_days: float, finished: bool) -> int:
     now = utcnow()
     with factory() as session:
         job = Job(type="postprocess", status=status, payload=None)

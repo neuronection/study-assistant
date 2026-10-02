@@ -111,8 +111,6 @@ def beat_study_session(
 
 
 @router.get("/summary", response_model=StudySessionSummaryOut)
-def study_session_summary(
-    days: int = 7, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def study_session_summary(days: int = 7, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     return sessions_service.session_summary(session, profile.id, days)

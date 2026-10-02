@@ -119,11 +119,7 @@ def perform_fetch(
     if response.status_code != 200:
         raise SearchError(f"fetch returned {response.status_code}")
     content_type = response.headers.get("content-type", "")
-    text = (
-        html_to_markdown(response.text)
-        if "html" in content_type
-        else response.text
-    )
+    text = html_to_markdown(response.text) if "html" in content_type else response.text
     text = text.strip()
     if len(text) > max_chars:
         text = text[:max_chars] + "…"

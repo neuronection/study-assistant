@@ -7,10 +7,7 @@ def _parse_pointer(pointer: str) -> list[str]:
         return []
     if not pointer.startswith("/"):
         raise ValueError(f"invalid JSON pointer: {pointer!r}")
-    return [
-        token.replace("~1", "/").replace("~0", "~")
-        for token in pointer[1:].split("/")
-    ]
+    return [token.replace("~1", "/").replace("~0", "~") for token in pointer[1:].split("/")]
 
 
 def _existing_index(node: list[Any], token: str) -> int:

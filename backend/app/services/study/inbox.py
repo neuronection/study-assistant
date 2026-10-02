@@ -124,13 +124,20 @@ class InboxService:
                 raise ValueError("top level must be an object")
         except ValueError as error:
             return InboxEntry(
-                filename=path.name, kind="caq", title="", ok=False,
+                filename=path.name,
+                kind="caq",
+                title="",
+                ok=False,
                 problems=[f"invalid JSON: {error}"],
             )
         problems, count, title = _validate_document(document)
         return InboxEntry(
-            filename=path.name, kind="caq", title=title, ok=not problems,
-            problems=problems, question_count=count,
+            filename=path.name,
+            kind="caq",
+            title=title,
+            ok=not problems,
+            problems=problems,
+            question_count=count,
         )
 
     def _validate_qpkg(self, path: Path) -> InboxEntry:
@@ -139,13 +146,20 @@ class InboxService:
         except Exception as error:
             detail = getattr(error, "detail", str(error))
             return InboxEntry(
-                filename=path.name, kind="qpkg", title="", ok=False,
+                filename=path.name,
+                kind="qpkg",
+                title="",
+                ok=False,
                 problems=[f"package error: {detail}"],
             )
         problems, count, title = _validate_document(content.document)
         return InboxEntry(
-            filename=path.name, kind="qpkg", title=title, ok=not problems,
-            problems=problems, question_count=count,
+            filename=path.name,
+            kind="qpkg",
+            title=title,
+            ok=not problems,
+            problems=problems,
+            question_count=count,
         )
 
     def load_document(self, filename: str) -> dict[str, Any]:

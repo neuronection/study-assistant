@@ -78,9 +78,7 @@ def make_course(client: TestClient, title: str) -> int:
 def wait_ready(client: TestClient, material_id: int) -> None:
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
-        status = client.get(f"/api/v1/materials/{material_id}").json()["material"][
-            "status"
-        ]
+        status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
         if status == "ready":
             return
         time.sleep(0.05)
@@ -157,11 +155,7 @@ def test_material_restore_dedupes_when_reuploaded(client: TestClient) -> None:
         material_id = upload(client, course, "dup.txt", b"identical body")
         client.delete(f"/api/v1/materials/{material_id}")
         trash_list = client.get("/api/v1/deleted-items").json()
-        item_id = next(
-            item["id"]
-            for item in trash_list
-            if item["entity_type"] == "material"
-        )
+        item_id = next(item["id"] for item in trash_list if item["entity_type"] == "material")
 
         reuploaded = upload(client, course, "dup.txt", b"identical body")
 
@@ -171,12 +165,8 @@ def test_material_restore_dedupes_when_reuploaded(client: TestClient) -> None:
         assert body["status"] in ("merged", "deduped")
         assert body["material_id"] == reuploaded
 
-        listing = client.get(
-            "/api/v1/materials", params={"course_id": course}
-        ).json()
-        materials = [
-            entry for entry in listing if entry["title"].startswith("dup")
-        ]
+        listing = client.get("/api/v1/materials", params={"course_id": course}).json()
+        materials = [entry for entry in listing if entry["title"].startswith("dup")]
         assert len(materials) == 1
 
 
@@ -305,9 +295,7 @@ def test_node_restore_respects_depth_cap(client: TestClient) -> None:
             result = tree.restore_subtree_from_trash(payload)
             session.commit()
         assert result["skipped_deep"] >= 1
-        tree_after = flatten_tree(
-            client.get(f"/api/v1/courses/{course}/tree").json()
-        )
+        tree_after = flatten_tree(client.get(f"/api/v1/courses/{course}/tree").json())
         titles = [entry["title"] for entry in tree_after]
         assert "A" in titles
         assert titles.count("B") == 0

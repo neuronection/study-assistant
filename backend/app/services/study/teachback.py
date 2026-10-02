@@ -51,9 +51,7 @@ def create_teach_back(
     concept: str | None = None,
     concept_id: int | None = None,
 ) -> Exercise:
-    subject = teach_back_subject(
-        session, node_id=node_id, concept=concept, concept_id=concept_id
-    )
+    subject = teach_back_subject(session, node_id=node_id, concept=concept, concept_id=concept_id)
     if subject is None:
         raise ValueError("teach-back needs a concept or node to explain")
     placement = TreeService(session).placement_node(course_id, node_id)
@@ -150,9 +148,7 @@ def teach_back_cells(session: Session, profile_id: str) -> list[dict[str, Any]]:
                 "accuracy": round(accuracy, 4),
                 "avg_time_ratio": None,
                 "last_seen_at": cell["last_seen_at"],
-                "weakness_score": round(
-                    _weakness(accuracy, n, last_seen), 4
-                ),
+                "weakness_score": round(_weakness(accuracy, n, last_seen), 4),
                 "enough_data": n >= MIN_CELL_N,
             }
         )

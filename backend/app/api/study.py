@@ -95,18 +95,12 @@ def _weak_cells(
             ordered.append(course_id)
 
     titles: dict[int, str] = {}
-    for course_id, title in session.execute(
-        select(Course.id, Course.title)
-    ).all():
+    for course_id, title in session.execute(select(Course.id, Course.title)).all():
         titles[course_id] = title
     cells: list[StudyWeakCellOut] = []
     for course_id in ordered:
         rows = metrics.answer_rows(session, profile_id, course_id)
-        matrix = [
-            cell
-            for cell in metrics.weakness_matrix(rows)
-            if cell["enough_data"]
-        ]
+        matrix = [cell for cell in metrics.weakness_matrix(rows) if cell["enough_data"]]
         matrix.sort(key=lambda cell: -cell["weakness_score"])
         for cell in matrix:
             cells.append(

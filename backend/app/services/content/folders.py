@@ -18,9 +18,7 @@ class FolderError(ValueError):
 def folder_has_links(session: Session, folder_id: int) -> bool:
     return (
         session.scalars(
-            select(MaterialFolderLink.id)
-            .where(MaterialFolderLink.folder_id == folder_id)
-            .limit(1)
+            select(MaterialFolderLink.id).where(MaterialFolderLink.folder_id == folder_id).limit(1)
         ).first()
         is not None
     )
@@ -45,16 +43,10 @@ def subtree_folder_ids(session: Session, folder: MaterialFolder) -> list[int]:
 def folder_member_ids(session: Session, folder: MaterialFolder) -> set[int]:
     if folder.source_id is not None:
         return set(
-            session.scalars(
-                select(Material.id).where(Material.source_id == folder.source_id)
-            )
+            session.scalars(select(Material.id).where(Material.source_id == folder.source_id))
         )
     folder_ids = subtree_folder_ids(session, folder)
-    return set(
-        session.scalars(
-            select(Material.id).where(Material.folder_id.in_(folder_ids))
-        )
-    )
+    return set(session.scalars(select(Material.id).where(Material.folder_id.in_(folder_ids))))
 
 
 def folder_links_by_node(
@@ -64,9 +56,7 @@ def folder_links_by_node(
     if not node_ids:
         return result
     for link in session.scalars(
-        select(MaterialFolderLink).where(
-            MaterialFolderLink.node_id.in_(node_ids)
-        )
+        select(MaterialFolderLink).where(MaterialFolderLink.node_id.in_(node_ids))
     ):
         result.setdefault(link.node_id, []).append(link)
     return result
@@ -77,9 +67,7 @@ def unlink_source_folder(session: Session, folder: MaterialFolder) -> None:
         return
     source = session.get(MaterialSource, folder.source_id)
     if source is not None:
-        for material in session.scalars(
-            select(Material).where(Material.source_id == source.id)
-        ):
+        for material in session.scalars(select(Material).where(Material.source_id == source.id)):
             material.source_id = None
             material.external_path = None
             material.folder_id = None
@@ -152,15 +140,11 @@ class FoldersService:
         self._session.flush()
         return folder
 
-    def list(
-        self, *, profile_id: str, course_id: int | None = None
-    ) -> list[MaterialFolder]:
+    def list(self, *, profile_id: str, course_id: int | None = None) -> list[MaterialFolder]:
         query = select(MaterialFolder).where(MaterialFolder.profile_id == profile_id)
         if course_id is not None:
             query = query.where(MaterialFolder.course_id == course_id)
-        return list(
-            self._session.scalars(query.order_by(MaterialFolder.path))
-        )
+        return list(self._session.scalars(query.order_by(MaterialFolder.path)))
 
     def rename(self, folder_id: int, *, profile_id: str, name: str) -> MaterialFolder:
         folder = self._get(folder_id, profile_id)
@@ -178,7 +162,7 @@ class FoldersService:
         folder.path = new_path
         for other in self.list(profile_id=profile_id, course_id=folder.course_id):
             if other.id != folder.id and other.path.startswith(f"{old_path}/"):
-                other.path = f"{new_path}{other.path[len(old_path):]}"
+                other.path = f"{new_path}{other.path[len(old_path) :]}"
         self._session.flush()
         return folder
 
@@ -208,7 +192,7 @@ class FoldersService:
         folder.path = new_path
         for other in self.list(profile_id=profile_id, course_id=folder.course_id):
             if other.id != folder.id and other.path.startswith(f"{old_path}/"):
-                other.path = f"{new_path}{other.path[len(old_path):]}"
+                other.path = f"{new_path}{other.path[len(old_path) :]}"
         self._session.flush()
         return folder
 
@@ -219,16 +203,12 @@ class FoldersService:
         if folder.source_id is None:
             raise FolderError("only linked-source folders can be unlinked")
         if folder_has_links(self._session, folder.id):
-            raise FolderError(
-                "folder is assigned to nodes — unassign it there first"
-            )
+            raise FolderError("folder is assigned to nodes — unassign it there first")
         unlink_source_folder(self._session, folder)
         self._session.delete(folder)
         self._session.flush()
 
-    def delete(
-        self, folder_id: int, *, profile_id: str, force: bool = False
-    ) -> None:
+    def delete(self, folder_id: int, *, profile_id: str, force: bool = False) -> None:
         folder = self._get(folder_id, profile_id)
         if folder is None:
             raise FolderError("folder not found")
@@ -244,9 +224,7 @@ class FoldersService:
         if subtree_source_ids:
             member_ids.update(
                 self._session.scalars(
-                    select(Material.id).where(
-                        Material.source_id.in_(subtree_source_ids)
-                    )
+                    select(Material.id).where(Material.source_id.in_(subtree_source_ids))
                 )
             )
         links_exist = (
@@ -258,18 +236,12 @@ class FoldersService:
             is not None
         )
         if links_exist and not force:
-            raise FolderError(
-                "folder is assigned to nodes — unassign it there first"
-            )
+            raise FolderError("folder is assigned to nodes — unassign it there first")
         if links_exist:
             self._session.execute(
-                delete(MaterialFolderLink).where(
-                    MaterialFolderLink.folder_id.in_(folder_ids)
-                )
+                delete(MaterialFolderLink).where(MaterialFolderLink.folder_id.in_(folder_ids))
             )
-        for material in self._session.scalars(
-            select(Material).where(Material.id.in_(member_ids))
-        ):
+        for material in self._session.scalars(select(Material).where(Material.id.in_(member_ids))):
             purge_material(self._session, material)
         descendants = sorted(
             self._session.scalars(
@@ -279,12 +251,8 @@ class FoldersService:
             reverse=True,
         )
         for other in descendants:
-            self._session.execute(
-                delete(MaterialFolder).where(MaterialFolder.id == other.id)
-            )
-        self._session.execute(
-            delete(MaterialFolder).where(MaterialFolder.id == folder.id)
-        )
+            self._session.execute(delete(MaterialFolder).where(MaterialFolder.id == other.id))
+        self._session.execute(delete(MaterialFolder).where(MaterialFolder.id == folder.id))
         for source_id in subtree_source_ids:
             source = self._session.get(MaterialSource, source_id)
             if source is not None:

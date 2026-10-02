@@ -64,18 +64,12 @@ def validate_relation(relation: str, part_index: int, parts: list[dict[str, Any]
     first_symbol = _part_symbol(0) if declared else None
     if first_symbol is not None:
         base = declared[first_symbol]
-        shifted = (
-            sympy.sympify(base) + 1
-            if base.is_number
-            else sympy.simplify(base + 1)
-        )
+        shifted = sympy.sympify(base) + 1 if base.is_number else sympy.simplify(base + 1)
         perturbed[first_symbol] = shifted
         try:
             sympy.simplify(expr.subs(perturbed))
         except Exception:
-            problems.append(
-                f"part {part_index}: follow_through fails on a perturbed prior answer"
-            )
+            problems.append(f"part {part_index}: follow_through fails on a perturbed prior answer")
     return problems
 
 
@@ -103,9 +97,7 @@ def validate_composite_answer(answer: dict[str, Any]) -> list[str]:
             except ValueError:
                 problems.append(f"part {index}: numeric value must parse as a number")
             tolerance = part.get("tolerance")
-            if tolerance is not None and (
-                not _is_number(tolerance) or float(tolerance) < 0
-            ):
+            if tolerance is not None and (not _is_number(tolerance) or float(tolerance) < 0):
                 problems.append(f"part {index}: tolerance must be a non-negative number")
         elif ptype == "equation":
             try:
@@ -115,9 +107,7 @@ def validate_composite_answer(answer: dict[str, Any]) -> list[str]:
         relation = part.get("follow_through")
         if isinstance(relation, str) and relation.strip():
             if ptype == "text":
-                problems.append(
-                    f"part {index}: follow_through is not supported for text parts"
-                )
+                problems.append(f"part {index}: follow_through is not supported for text parts")
             else:
                 problems.extend(validate_relation(relation, index, parts))
     return problems
@@ -220,9 +210,7 @@ def grade_composite(answer: dict[str, Any], response: Any) -> dict[str, Any]:
                 ptype, recomputed, given, part.get("tolerance")
             ):
                 used_follow_through = True
-        ok = used_follow_through or _grade_value(
-            ptype, expected, given, part.get("tolerance")
-        )
+        ok = used_follow_through or _grade_value(ptype, expected, given, part.get("tolerance"))
         label = f"({chr(ord('a') + index)})"
         if ok and used_follow_through:
             feedback.append(f"part {label}: correct (follow-through)")

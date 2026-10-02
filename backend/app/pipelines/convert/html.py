@@ -47,9 +47,7 @@ def html_to_markdown(html: str) -> str:
     return _normalize_whitespace(markdown)
 
 
-def convert_html_document(
-    data: bytes, store_image: Callable[[bytes, str | None], int]
-) -> str:
+def convert_html_document(data: bytes, store_image: Callable[[bytes, str | None], int]) -> str:
     """Convert an uploaded HTML material. Data-URI images are stored via
     ``store_image`` and replaced with ``sa-image://`` refs; external image
     URLs pass through untouched."""

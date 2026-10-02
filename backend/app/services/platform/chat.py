@@ -165,9 +165,7 @@ def _estimate_tokens(text: str) -> int:
 
 
 def flatten_prompt(messages: list[Message]) -> str:
-    return "\n".join(
-        f"{message.role}: {message.content}" for message in messages
-    )
+    return "\n".join(f"{message.role}: {message.content}" for message in messages)
 
 
 def _native_call_args(name: str, arguments: dict[str, Any]) -> str:
@@ -197,9 +195,7 @@ def _quiz_answer_text(question: Question) -> str:
             pass
     if "indices" in answer and question.options:
         try:
-            return ", ".join(
-                chr(ord("A") + int(item)) for item in answer["indices"]
-            )
+            return ", ".join(chr(ord("A") + int(item)) for item in answer["indices"])
         except (TypeError, ValueError):
             pass
     value = answer.get("value")
@@ -258,15 +254,11 @@ class ChatService:
         self._session.flush()
         return chat_session
 
-    def list_sessions(
-        self, profile_id: str, node_id: int | None = None
-    ) -> list[ChatSession]:
+    def list_sessions(self, profile_id: str, node_id: int | None = None) -> list[ChatSession]:
         statement = select(ChatSession).where(ChatSession.profile_id == profile_id)
         if node_id is not None:
             statement = statement.where(ChatSession.node_id == node_id)
-        return list(
-            self._session.scalars(statement.order_by(ChatSession.id.desc()))
-        )
+        return list(self._session.scalars(statement.order_by(ChatSession.id.desc())))
 
     def get_session(self, session_id: int, profile_id: str) -> ChatSession | None:
         chat_session = self._session.get(ChatSession, session_id)
@@ -306,10 +298,7 @@ class ChatService:
         while current is not None:
             path.append(current)
             nxt: ChatMessage | None = None
-            if (
-                current.active_child_id is not None
-                and current.active_child_id in by_id
-            ):
+            if current.active_child_id is not None and current.active_child_id in by_id:
                 nxt = by_id[current.active_child_id]
             else:
                 siblings = [row for row in rows if row.parent_id == current.id]
@@ -362,9 +351,7 @@ class ChatService:
         self._session.flush()
         return message
 
-    def branch_message(
-        self, source: ChatMessage, markdown: str
-    ) -> ChatMessage:
+    def branch_message(self, source: ChatMessage, markdown: str) -> ChatMessage:
         branched = ChatMessage(
             session_id=source.session_id,
             role=source.role,
@@ -401,11 +388,7 @@ class ChatService:
         if parent is None or parent.active_child_id is None:
             return
         active = self._session.get(ChatMessage, parent.active_child_id)
-        if (
-            active is not None
-            and active.role == "assistant"
-            and active.id > pending.id
-        ):
+        if active is not None and active.role == "assistant" and active.id > pending.id:
             pending.parent_id = active.id
 
     def _log_interaction(
@@ -468,8 +451,7 @@ class ChatService:
         if exercise_session is None or exercise_session.status != "active":
             return None
         step = self._session.scalars(
-            select(ExerciseStep)
-            .where(
+            select(ExerciseStep).where(
                 ExerciseStep.exercise_id == exercise_session.exercise_id,
                 ExerciseStep.order_idx == exercise_session.current_step_idx,
             )
@@ -510,17 +492,15 @@ class ChatService:
             lines.append(f"The student's current (not yet submitted) answer:\n{shown}")
         if attempts:
             last = attempts[-1]
-            outcome = "correct" if last.correct else (
-                f"not yet correct ({last.error_class or 'no diagnosis'})"
+            outcome = (
+                "correct"
+                if last.correct
+                else (f"not yet correct ({last.error_class or 'no diagnosis'})")
             )
-            lines.append(
-                f"Submitted attempts on this step: {len(attempts)} (latest: {outcome})"
-            )
+            lines.append(f"Submitted attempts on this step: {len(attempts)} (latest: {outcome})")
         else:
             lines.append("Submitted attempts on this step: none yet")
-        return "The student is working on this exercise step (extra context):\n" + "\n".join(
-            lines
-        )
+        return "The student is working on this exercise step (extra context):\n" + "\n".join(lines)
 
     def _exercise_guard(
         self, exercise_session: ExerciseSession, step: ExerciseStep
@@ -576,11 +556,7 @@ class ChatService:
             return ""
         lines = []
         for note in notes:
-            body = "\n".join(
-                str(block.get("md", ""))
-                for block in note.body
-                if block.get("md")
-            )
+            body = "\n".join(str(block.get("md", "")) for block in note.body if block.get("md"))
             drawings = "\n".join(
                 drawing.ocr_markdown for drawing in note.drawings if drawing.ocr_markdown
             )
@@ -599,8 +575,7 @@ class ChatService:
 
         def on_embedding_warning(reason: str) -> None:
             warnings.append(
-                f"Semantic search is on, but {reason} — using keyword search for "
-                "this answer."
+                f"Semantic search is on, but {reason} — using keyword search for this answer."
             )
 
         if chat_session.course_id is not None:
@@ -611,9 +586,7 @@ class ChatService:
                 query=query,
                 max_chunks=RETRIEVE_LIMIT,
             )
-            bundle = ContextResolver(
-                self._session, self._embedder.embed
-            ).resolve(
+            bundle = ContextResolver(self._session, self._embedder.embed).resolve(
                 spec,
                 use_embeddings=use_embeddings,
                 embedding_warning=on_embedding_warning,
@@ -669,17 +642,13 @@ class ChatService:
 
     def _root_node(self, course_id: int) -> TreeNode | None:
         return self._session.scalars(
-            select(TreeNode).where(
-                TreeNode.course_id == course_id, TreeNode.is_root.is_(True)
-            )
+            select(TreeNode).where(TreeNode.course_id == course_id, TreeNode.is_root.is_(True))
         ).first()
 
     def _child_nodes(self, parent_id: int) -> list[TreeNode]:
         return list(
             self._session.scalars(
-                select(TreeNode)
-                .where(TreeNode.parent_id == parent_id)
-                .order_by(TreeNode.order_idx)
+                select(TreeNode).where(TreeNode.parent_id == parent_id).order_by(TreeNode.order_idx)
             )
         )
 
@@ -688,9 +657,7 @@ class ChatService:
         base = f"[T{node.id}] {node.title}"
         return f"{base} — {summary}" if summary else base
 
-    def _structure_block(
-        self, chat_session: ChatSession, registry: MentionRegistry
-    ) -> str:
+    def _structure_block(self, chat_session: ChatSession, registry: MentionRegistry) -> str:
         if chat_session.course_id is None:
             return ""
         node = (
@@ -745,11 +712,7 @@ class ChatService:
             chain.append(ancestor.title)
             cursor_id = ancestor.parent_id
         chain.reverse()
-        parent = (
-            self._session.get(TreeNode, node.parent_id)
-            if node.parent_id is not None
-            else None
-        )
+        parent = self._session.get(TreeNode, node.parent_id) if node.parent_id is not None else None
         parts = list(chain)
         course_title = course.title if course is not None else None
         if course_title and (not parts or parts[0] != course_title):
@@ -766,11 +729,7 @@ class ChatService:
                 parent_summary or None,
             )
             lines.append(f"Parent: {self._structure_entry(parent)}")
-            siblings = [
-                entry
-                for entry in self._child_nodes(parent.id)
-                if entry.id != node.id
-            ]
+            siblings = [entry for entry in self._child_nodes(parent.id) if entry.id != node.id]
             if siblings:
                 lines.append(f"Siblings: {' | '.join(register(siblings))}")
         children = self._child_nodes(node.id)
@@ -838,9 +797,7 @@ class ChatService:
                 node = self._session.get(TreeNode, item_id)
                 if node is None:
                     raise ChatError(f"node {item_id} not found")
-                entry = registry.add(
-                    "node", node.id, node.title, node.course_id, node.summary
-                )
+                entry = registry.add("node", node.id, node.title, node.course_id, node.summary)
             elif kind == "course":
                 course = self._session.get(Course, item_id)
                 if course is None:
@@ -848,9 +805,7 @@ class ChatService:
                 root = self._root_node(course.id)
                 if root is None:
                     raise ChatError(f"course {item_id} not found")
-                entry = registry.add(
-                    "node", root.id, course.title, course.id, course.description
-                )
+                entry = registry.add("node", root.id, course.title, course.id, course.description)
             else:
                 raise ChatError(f"unknown attachment kind: {kind}")
             stored.append(entry.as_dict())
@@ -863,9 +818,7 @@ class ChatService:
         dismissed = self._session.query(ChatProposal).filter(
             ChatProposal.status == ChatProposalStatus.DISMISSED.value,
             ChatProposal.message_id.in_(
-                select(ChatMessage.id).where(
-                    ChatMessage.session_id == chat_session.id
-                )
+                select(ChatMessage.id).where(ChatMessage.session_id == chat_session.id)
             ),
         )
         return dismissed.count()
@@ -874,9 +827,7 @@ class ChatService:
     PROPOSAL_FEEDBACK_CAP = 10
     PROPOSAL_FEEDBACK_TRACK_CAP = 100
 
-    def _proposal_feedback(
-        self, chat_session: ChatSession
-    ) -> str | None:
+    def _proposal_feedback(self, chat_session: ChatSession) -> str | None:
         """Structured outcome block for cards resolved since the model's
         last turn (plan 78-D): the model must learn what happened to its
         proposals and not re-propose the same change unprompted."""
@@ -886,19 +837,21 @@ class ChatService:
             for value in (context.get("proposal_feedback_ids") or [])
             if isinstance(value, (int, str)) and str(value).isdigit()
         ]
-        rows = self._session.execute(
-            select(ChatProposal)
-            .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
-            .where(
-                ChatMessage.session_id == chat_session.id,
-                ChatProposal.status != ChatProposalStatus.PROPOSED.value,
+        rows = (
+            self._session.execute(
+                select(ChatProposal)
+                .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
+                .where(
+                    ChatMessage.session_id == chat_session.id,
+                    ChatProposal.status != ChatProposalStatus.PROPOSED.value,
+                )
+                .order_by(ChatProposal.id.desc())
+                .limit(self.PROPOSAL_FEEDBACK_TRACK_CAP)
             )
-            .order_by(ChatProposal.id.desc())
-            .limit(self.PROPOSAL_FEEDBACK_TRACK_CAP)
-        ).scalars().all()
-        fresh = [row for row in rows if row.id not in reported][
-            : self.PROPOSAL_FEEDBACK_CAP
-        ]
+            .scalars()
+            .all()
+        )
+        fresh = [row for row in rows if row.id not in reported][: self.PROPOSAL_FEEDBACK_CAP]
         if not fresh:
             return None
         lines = []
@@ -910,9 +863,7 @@ class ChatService:
                 label = f"{label} ({target})"
             lines.append(label)
             reported.append(row.id)
-        context["proposal_feedback_ids"] = reported[
-            -self.PROPOSAL_FEEDBACK_TRACK_CAP :
-        ]
+        context["proposal_feedback_ids"] = reported[-self.PROPOSAL_FEEDBACK_TRACK_CAP :]
         chat_session.context = context
         self._session.flush()
         return (
@@ -921,9 +872,7 @@ class ChatService:
             + "\nDo not re-propose the same change unprompted."
         )
 
-    def _find_local(
-        self, query: str, chat_session: ChatSession, registry: MentionRegistry
-    ) -> str:
+    def _find_local(self, query: str, chat_session: ChatSession, registry: MentionRegistry) -> str:
         query = query.strip()
         if not query:
             return "error: expected 'FIND <query>'"
@@ -945,9 +894,7 @@ class ChatService:
             material = self._session.get(Material, int(hit["material_id"]))
             if material is None or material.course_id != course_id:
                 continue
-            entry = registry.add(
-                "material", material.id, material.title, material.course_id
-            )
+            entry = registry.add("material", material.id, material.title, material.course_id)
             lines.append(f"{entry.ref} — {material.title} (material)")
         words = [w for w in query.split() if len(w) >= 3] or [query]
         notes = self._session.scalars(
@@ -993,11 +940,9 @@ class ChatService:
             note = self._session.get(Note, entry.id)
             if note is None:
                 return f"error: note {entry.ref} no longer exists"
-            parts = [
-                str(block.get("md", ""))
-                for block in note.body
-                if block.get("md")
-            ] + [d.ocr_markdown for d in note.drawings if d.ocr_markdown]
+            parts = [str(block.get("md", "")) for block in note.body if block.get("md")] + [
+                d.ocr_markdown for d in note.drawings if d.ocr_markdown
+            ]
             return "\n".join(parts)[:READ_CHARS]
         if entry.kind == "concept":
             concept = self._session.get(Concept, entry.id)
@@ -1041,9 +986,7 @@ class ChatService:
             if links:
                 rendered = []
                 for _link, material in links[:NODE_MATERIALS_REG_CAP]:
-                    registry.add(
-                        "material", material.id, material.title, material.course_id
-                    )
+                    registry.add("material", material.id, material.title, material.course_id)
                     rendered.append(f"[M{material.id}] {material.title}")
                 if len(links) > NODE_MATERIALS_REG_CAP:
                     rendered.append(f"… +{len(links) - NODE_MATERIALS_REG_CAP} more")
@@ -1068,8 +1011,7 @@ class ChatService:
             if exercise is None:
                 return f"error: exercise {entry.ref} no longer exists"
             lines = [
-                f"{exercise.title} — {exercise.kind} exercise with "
-                f"{len(exercise.steps)} steps"
+                f"{exercise.title} — {exercise.kind} exercise with {len(exercise.steps)} steps"
             ]
             for index, step in enumerate(exercise.steps, start=1):
                 lines.append(f"Step {index}: {_blocks_to_md(step.prompt)}")
@@ -1108,9 +1050,7 @@ class ChatService:
                 return " ".join(part for part in parts if part)[:300]
         return None
 
-    def _discover(
-        self, argument: str, chat_session: ChatSession
-    ) -> tuple[str, list[str]]:
+    def _discover(self, argument: str, chat_session: ChatSession) -> tuple[str, list[str]]:
         from ...search.discovery import DiscoveryError, resolve_providers
 
         query = argument.strip()
@@ -1148,10 +1088,7 @@ class ChatService:
             for row in found:
                 if row.url in urls:
                     continue
-                lines.append(
-                    f"[{len(lines) + 1}] {row.title} — {row.url} "
-                    f"({provider.label})"
-                )
+                lines.append(f"[{len(lines) + 1}] {row.title} — {row.url} ({provider.label})")
                 urls.append(row.url)
         if not lines:
             if errors:
@@ -1224,9 +1161,7 @@ class ChatService:
             return result, entry
         try:
             args = (
-                json.loads(argument)
-                if argument.strip().startswith("{")
-                else {"question": argument}
+                json.loads(argument) if argument.strip().startswith("{") else {"question": argument}
             )
         except ValueError:
             args = {"question": argument}
@@ -1335,9 +1270,7 @@ class ChatService:
                 system = f"{system}\n\n{QUIZ_TOOL_DOC}"
         else:
             resource_doc = build_resource_tool_doc()
-            system = (
-                f"{system_base}\n\n{CHAT_TOOL_DOC}\n\n{CHAT_WIDGET_DOC}\n\n{resource_doc}"
-            )
+            system = f"{system_base}\n\n{CHAT_TOOL_DOC}\n\n{CHAT_WIDGET_DOC}\n\n{resource_doc}"
         if chat_session is not None and chat_session.quizme:
             system = f"{system}\n\n{QUIZME_SYSTEM}"
             pending = chat_session.quiz_pending
@@ -1373,9 +1306,7 @@ class ChatService:
                 )
             )
         if tool_log:
-            messages.append(
-                Message(role="system", content=f"Verified tool results:\n{tool_log}")
-            )
+            messages.append(Message(role="system", content=f"Verified tool results:\n{tool_log}"))
         for entry in history:
             if entry.state and entry.state.get("turn_failed"):
                 # Failed-turn markers are display-only — never feed the
@@ -1388,10 +1319,7 @@ class ChatService:
                 )
             )
         current = f"Question: {user_message.blocks[0]['md']}"
-        attached = [
-            f"[{entry['ref']}] {entry['title']}"
-            for entry in (user_message.mentions or [])
-        ]
+        attached = [f"[{entry['ref']}] {entry['title']}" for entry in (user_message.mentions or [])]
         if attached:
             current += (
                 "\n\nThe student attached these items to the message "
@@ -1418,9 +1346,7 @@ class ChatService:
             None,
         )
         if target_index is None:
-            raise ValueError(
-                "target message is not on the session's active path"
-            )
+            raise ValueError("target message is not on the session's active path")
         history = list(path[:target_index])[-HISTORY_TURNS:]
         chunks, manifest_materials, turn_warning = self._turn_context(
             chat_session, user_message.blocks[0]["md"]
@@ -1447,9 +1373,7 @@ class ChatService:
         if exercise_binding is not None:
             exercise_session, exercise_step = exercise_binding
             pending = (chat_session.context or {}).get("pending_answer")
-            exercise_block = self._exercise_context_block(
-                exercise_session, exercise_step, pending
-            )
+            exercise_block = self._exercise_context_block(exercise_session, exercise_step, pending)
             sources_block = f"{sources_block}\n\n{exercise_block}".strip()
 
         guard = self._quiz_guard(chat_session)
@@ -1463,9 +1387,7 @@ class ChatService:
             guard_rule_text = QUIZ_GUARD_RULE if guard is not None else EXERCISE_GUARD_RULE
         proposals_enabled = chat_session.course_id is not None
         dismissal_note = proposals_enabled and self._dismissal_count(chat_session) >= 2
-        proposal_feedback = (
-            self._proposal_feedback(chat_session) if proposals_enabled else None
-        )
+        proposal_feedback = self._proposal_feedback(chat_session) if proposals_enabled else None
         context: dict[str, Any] = {
             "chunks": chunks,
             "mention_refs": registry.refs(),
@@ -1474,9 +1396,7 @@ class ChatService:
         if chat_session.course_id is not None:
             context["course_node_ids"] = set(
                 self._session.scalars(
-                    select(TreeNode.id).where(
-                        TreeNode.course_id == chat_session.course_id
-                    )
+                    select(TreeNode.id).where(TreeNode.course_id == chat_session.course_id)
                 )
             )
         if guard is not None:
@@ -1497,16 +1417,12 @@ class ChatService:
             turn_warning=turn_warning,
         )
 
-    def prepare_turn_contract(
-        self, chat_session: ChatSession, prep: TurnPrep
-    ) -> None:
+    def prepare_turn_contract(self, chat_session: ChatSession, prep: TurnPrep) -> None:
         skill_version_id: int | None = None
         skills = SkillService(self._session)
         version = skills.resolve(CHAT_SKILL, course_id=chat_session.course_id)
         if version is not None:
-            system_base, _user = skills.render(
-                version, {"user_question": prep.question}
-            )
+            system_base, _user = skills.render(version, {"user_question": prep.question})
             contract = skills.constraints(version, {})
             skill_version_id = version.id
         else:
@@ -1518,8 +1434,6 @@ class ChatService:
         prep.contract = contract
         prep.skill_version_id = skill_version_id
         self._session.commit()
-
-
 
     def finalize_turn(
         self,
@@ -1587,14 +1501,10 @@ class ChatService:
         citations = _extract_citations(final_output, chunks)
         grounded = bool(citations) if chunks else None
         proposals, proposal_drops = (
-            extract_proposals_with_drops(final_output)
-            if proposals_enabled
-            else ([], [])
+            extract_proposals_with_drops(final_output) if proposals_enabled else ([], [])
         )
         if proposals_enabled and proposals:
-            proposals, ungrounded = filter_ungrounded(
-                proposals, grounded_refs or []
-            )
+            proposals, ungrounded = filter_ungrounded(proposals, grounded_refs or [])
             proposal_drops.extend(ungrounded)
         if proposals or "```proposal" in final_output:
             final_output = strip_proposal_fences(final_output)
@@ -1619,32 +1529,21 @@ class ChatService:
                     try:
                         resolved = resolve_text_edits(
                             str(base),
-                            [
-                                TextEditOp.model_validate(op)
-                                for op in stored_payload["text_edits"]
-                            ],
+                            [TextEditOp.model_validate(op) for op in stored_payload["text_edits"]],
                         )
                     except ProposalError as error:
                         drop = drop_code(str(error))
                     else:
-                        body_field = (
-                            "new_body_md"
-                            if action == "edit_note"
-                            else "new_markdown"
-                        )
+                        body_field = "new_body_md" if action == "edit_note" else "new_markdown"
                         stored_payload[body_field] = resolved
                 if drop is not None:
                     proposal_drops.append(drop)
                     continue
             prepared_proposals.append((action, stored_payload))
-        turn_warnings = (
-            [prep.turn_warning] if prep.turn_warning is not None else []
-        )
+        turn_warnings = [prep.turn_warning] if prep.turn_warning is not None else []
         if proposal_drops:
             counts = Counter(proposal_drops)
-            summary = ", ".join(
-                f"{code}: {count}" for code, count in sorted(counts.items())
-            )
+            summary = ", ".join(f"{code}: {count}" for code, count in sorted(counts.items()))
             turn_warnings.append(
                 f"{sum(counts.values())} suggested action(s) dropped "
                 f"({summary}) — ask again to retry them."
@@ -1725,9 +1624,7 @@ def proposal_out(proposal: ChatProposal | None) -> dict[str, Any]:
     }
 
 
-def _extract_citations(
-    output: str, chunks: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def _extract_citations(output: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     cited: list[dict[str, Any]] = []
     seen: set[int] = set()
     for match in CITATION_RE.finditer(output):

@@ -122,9 +122,7 @@ def test_due_queue_and_review_scheduling() -> None:
         assert [card["id"] for card in due] == [card_id]
         assert due[0]["state"] is None
 
-        reviewed = client.post(
-            f"/api/v1/flashcards/{card_id}/review", json={"rating": 3}
-        )
+        reviewed = client.post(f"/api/v1/flashcards/{card_id}/review", json={"rating": 3})
         assert reviewed.status_code == 200
         body = reviewed.json()
         assert body["interval_days"] >= 1
@@ -203,9 +201,7 @@ def seed_mistake(client: TestClient) -> int:
     question_id = int(
         client.get(f"/api/v1/quiz/activities/{activity_id}/questions").json()[0]["id"]
     )
-    attempt_id = int(
-        client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"]
-    )
+    attempt_id = int(client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"])
     answered = client.post(
         f"/api/v1/quiz/attempts/{attempt_id}/answers",
         json={"question_id": question_id, "response": 1},

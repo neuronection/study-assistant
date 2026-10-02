@@ -86,9 +86,9 @@ def setup_course(client: TestClient) -> tuple[int, int, int, int]:
     ).json()
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        status = client.get(f"/api/v1/materials/{upload['material']['id']}").json()[
-            "material"
-        ]["status"]
+        status = client.get(f"/api/v1/materials/{upload['material']['id']}").json()["material"][
+            "status"
+        ]
         if status == "ready":
             break
         time.sleep(0.05)
@@ -118,9 +118,7 @@ def test_chapter_review_validates_findings(
     assert kinds == ["coverage", "gap"]
     assert body["findings"][0]["suggestion"] == "Assign the chain-rule notes"
     prompt = " ".join(
-        message.content
-        for message in gateway.calls[0]
-        if isinstance(message.content, str)
+        message.content for message in gateway.calls[0] if isinstance(message.content, str)
     )
     assert "Chain rule" in prompt
 
@@ -141,9 +139,7 @@ def test_draft_note_creates_placed_tagged_note(
     assert "Chain rule" in draft.json()["markdown"]
 
     notes = client.get("/api/v1/notes", params={"course_id": course_id}).json()
-    created = next(
-        (entry for entry in notes["items"] if entry["id"] == note_id), None
-    )
+    created = next((entry for entry in notes["items"] if entry["id"] == note_id), None)
     assert created is not None
     assert created["node_id"] == section_id
     assert created["tags"] == ["ai-draft"]

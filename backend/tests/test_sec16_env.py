@@ -68,9 +68,7 @@ def _settings_with_env_file(env_file: Path, **overrides: object) -> Settings:
     return Settings(_env_file=str(env_file), **kwargs)  # type: ignore[arg-type, call-arg]
 
 
-def test_dotenv_knobs_reach_kit_config(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_dotenv_knobs_reach_kit_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """S5 / §18.14 — `.env` values reach the kit exactly like OS env."""
     fresh = _settings_from_env_text(
         monkeypatch,
@@ -108,12 +106,8 @@ def test_dotenv_knobs_reach_kit_config(
     assert config.registration_enabled is False
 
 
-def test_os_env_beats_dotenv_file(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    fresh = _settings_from_env_text(
-        monkeypatch, tmp_path, "SA_AUTH_LOCKOUT_THRESHOLD=3\n"
-    )
+def test_os_env_beats_dotenv_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    fresh = _settings_from_env_text(monkeypatch, tmp_path, "SA_AUTH_LOCKOUT_THRESHOLD=3\n")
     assert fresh.auth_lockout_threshold == 3, "file value resolves"
 
     monkeypatch.setenv("SA_AUTH_LOCKOUT_THRESHOLD", "9")
@@ -140,9 +134,7 @@ def test_key_pins_from_dotenv_reach_the_keyring(
     assert (ring.session_key, ring.refresh_key, ring.data_key) == pins
 
 
-def test_partial_key_pin_fails_closed(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_partial_key_pin_fails_closed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fresh = _settings_from_env_text(
         monkeypatch, tmp_path, "SA_SESSION_KEY=only-one-pin-0123456789abcdefghijklmno\n"
     )
@@ -165,13 +157,9 @@ def test_boot_guards_wired_on_production_boot(
         create_app(fresh)
 
 
-def test_registration_gate_reads_dotenv(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_registration_gate_reads_dotenv(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """S15 gate — REGISTRATION_ENABLED=false in `.env` refuses signup."""
-    fresh = _settings_from_env_text(
-        monkeypatch, tmp_path, "SA_REGISTRATION_ENABLED=false\n"
-    )
+    fresh = _settings_from_env_text(monkeypatch, tmp_path, "SA_REGISTRATION_ENABLED=false\n")
     app = create_app(fresh)
     with TestClient(app) as client:
         refused = client.post(

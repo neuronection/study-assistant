@@ -24,9 +24,7 @@ TABLES = ("notes", "activities", "exercises", "flashcards")
 
 def _unsorted_course_id(bind: sa.Connection, profile_id: int) -> int:
     existing = bind.execute(
-        sa.text(
-            "SELECT id FROM courses WHERE profile_id = :profile_id AND title = :title"
-        ),
+        sa.text("SELECT id FROM courses WHERE profile_id = :profile_id AND title = :title"),
         {"profile_id": profile_id, "title": UNSORTED_TITLE},
     ).scalar()
     if existing is not None:
@@ -75,8 +73,7 @@ def upgrade() -> None:
         for table in TABLES:
             count = bind.execute(
                 sa.text(
-                    f"SELECT COUNT(*) FROM {table} "
-                    "WHERE profile_id = :pid AND course_id IS NULL"
+                    f"SELECT COUNT(*) FROM {table} WHERE profile_id = :pid AND course_id IS NULL"
                 ),
                 {"pid": profile_id},
             ).scalar()
@@ -96,9 +93,7 @@ def upgrade() -> None:
             )
     for table in TABLES:
         with op.batch_alter_table(table) as batch_op:
-            batch_op.alter_column(
-                "course_id", existing_type=sa.Integer(), nullable=False
-            )
+            batch_op.alter_column("course_id", existing_type=sa.Integer(), nullable=False)
 
 
 def downgrade() -> None:

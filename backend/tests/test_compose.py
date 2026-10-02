@@ -129,9 +129,7 @@ def test_compose_excludes_prior_compositions_from_context(
             json={"course_id": course_id, "kind": "study_guide", "title": "Second"},
         )
         assert second.status_code == 200, second.text
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert f"[M{first_id}]" not in second_prompt
         assert "First" not in second_prompt.split("Compose")[1].split("Title")[0]
 
@@ -153,11 +151,7 @@ def test_compose_validator_rejects_short_document(
         assert composed.status_code == 422, composed.text
         assert "too short" in composed.json()["detail"]
         stored = _app.state.session_factory()
-        count = len(
-            stored.scalars(
-                select(Material).where(Material.provenance.is_not(None))
-            ).all()
-        )
+        count = len(stored.scalars(select(Material).where(Material.provenance.is_not(None))).all())
         stored.close()
         assert count == 0
 
@@ -245,9 +239,7 @@ def test_mindmap_edit_rejects_missing_material(
 ) -> None:
     test_client, _gateway, _app = client
     with test_client:
-        edited = test_client.post(
-            "/api/v1/materials/9999/mindmap-edit", json={"mode": "expand"}
-        )
+        edited = test_client.post("/api/v1/materials/9999/mindmap-edit", json={"mode": "expand"})
         assert edited.status_code == 404
 
 
@@ -273,15 +265,11 @@ def test_extraction_version_history_roundtrip(
         assert after[0]["version"] == edited_version
         assert after[0]["version"] > latest_version
 
-        fetched = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions/{latest_version}"
-        )
+        fetched = test_client.get(f"/api/v1/materials/{material_id}/extractions/{latest_version}")
         assert fetched.status_code == 200, fetched.text
         assert fetched.json()["markdown"] != "# edited outline\n\n- changed\n"
 
-        missing = test_client.get(
-            f"/api/v1/materials/{material_id}/extractions/99999"
-        )
+        missing = test_client.get(f"/api/v1/materials/{material_id}/extractions/99999")
         assert missing.status_code == 404
 
 
@@ -297,12 +285,8 @@ def test_compose_include_unassigned_flag_reaches_prompt(
             f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
         )
         assert linked.status_code < 400, linked.text
-        orphan_id = add_material(
-            test_client, "orphan.txt", "orphaned integration notes", course_id
-        )
-        unassigned = test_client.get(
-            f"/api/v1/courses/{course_id}/materials/unassigned"
-        ).json()
+        orphan_id = add_material(test_client, "orphan.txt", "orphaned integration notes", course_id)
+        unassigned = test_client.get(f"/api/v1/courses/{course_id}/materials/unassigned").json()
         assert unassigned["count"] == 1
         assert unassigned["materials"][0]["id"] == orphan_id
 
@@ -317,9 +301,7 @@ def test_compose_include_unassigned_flag_reaches_prompt(
             },
         )
         assert without.status_code == 200, without.text
-        prompt_without = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        prompt_without = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert f"[M{orphan_id}]" not in prompt_without
 
         gateway.responses.append(LONG_DOC)
@@ -328,16 +310,14 @@ def test_compose_include_unassigned_flag_reaches_prompt(
             json={
                 "course_id": course_id,
                 "node_id": node_id,
-                    "kind": "study_guide",
-                    "title": "Guide",
-                    "regenerate": True,
-                    "include_unassigned": True,
+                "kind": "study_guide",
+                "title": "Guide",
+                "regenerate": True,
+                "include_unassigned": True,
             },
         )
         assert with_flag.status_code == 200, with_flag.text
-        prompt_with = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        prompt_with = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert f"[M{orphan_id}]" in prompt_with
 
 
@@ -364,9 +344,7 @@ def test_compose_via_chat_proposal(
         add_material(test_client, "src.txt", "limits content", course_id)
         gateway.responses.append(f"Here is an overview [1].\n\n{COMPOSE_PROPOSAL}")
         gateway.responses.append(LONG_DOC)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "give me a cheat sheet"},
@@ -374,9 +352,7 @@ def test_compose_via_chat_proposal(
         deadline = time.monotonic() + 5
         proposal: dict[str, Any] | None = None
         while time.monotonic() < deadline:
-            messages = test_client.get(
-                f"/api/v1/chat/sessions/{session['id']}/messages"
-            ).json()
+            messages = test_client.get(f"/api/v1/chat/sessions/{session['id']}/messages").json()
             if messages and messages[-1]["role"] == "assistant":
                 proposals = messages[-1]["proposals"]
                 if proposals:

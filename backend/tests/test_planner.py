@@ -15,9 +15,7 @@ def make_course(client: TestClient, title: str = "Planner course") -> int:
 
 def set_exam(client: TestClient, course_id: int, days_out: int) -> None:
     exam = (date.today() + timedelta(days=days_out)).isoformat()
-    patched = client.patch(
-        f"/api/v1/courses/{course_id}", json={"exam_date": exam}
-    )
+    patched = client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": exam})
     assert patched.status_code == 200, patched.text
 
 
@@ -57,15 +55,11 @@ def test_plan_item_crud_and_checkoff(client: TestClient) -> None:
     assert item["kind"] == "study"
     assert item["done_at"] is None
 
-    done = client.patch(
-        f"/api/v1/courses/{course_id}/plan/{item['id']}", json={"done": True}
-    )
+    done = client.patch(f"/api/v1/courses/{course_id}/plan/{item['id']}", json={"done": True})
     assert done.status_code == 200
     assert done.json()["done_at"] is not None
 
-    undone = client.patch(
-        f"/api/v1/courses/{course_id}/plan/{item['id']}", json={"done": False}
-    )
+    undone = client.patch(f"/api/v1/courses/{course_id}/plan/{item['id']}", json={"done": False})
     assert undone.json()["done_at"] is None
 
     deleted = client.delete(f"/api/v1/courses/{course_id}/plan/{item['id']}")
@@ -94,9 +88,7 @@ def test_generate_paces_untouched_nodes_and_respects_done_manual(
     course_id = make_course(client)
     set_exam(client, course_id, days_out=21)
     root = root_node(client, course_id)
-    node_ids = make_nodes(
-        client, course_id, root, ["Limits", "Derivatives", "Integrals"]
-    )
+    node_ids = make_nodes(client, course_id, root, ["Limits", "Derivatives", "Integrals"])
     engaged = node_ids[2]
 
     note = client.post(
@@ -160,16 +152,12 @@ def test_generate_groups_when_more_nodes_than_days(client: TestClient) -> None:
     )
     response = client.post(f"/api/v1/courses/{course_id}/plan/generate")
     assert response.status_code == 200
-    study_items = [
-        item for item in response.json()["items"] if item["kind"] == "study"
-    ]
+    study_items = [item for item in response.json()["items"] if item["kind"] == "study"]
     assert len(study_items) <= 3
     assert any("more" in item["title"] for item in study_items)
 
 
-def test_generate_biases_weak_concepts(
-    client: TestClient, profile_id: str
-) -> None:
+def test_generate_biases_weak_concepts(client: TestClient, profile_id: str) -> None:
     course_id = make_course(client)
     set_exam(client, course_id, days_out=14)
     root = root_node(client, course_id)
@@ -180,17 +168,12 @@ def test_generate_biases_weak_concepts(
     db_factory = client.app.state.session_factory  # type: ignore[attr-defined]
     db = db_factory()
     try:
-        db.add(
-            Activity(
-                profile_id=profile_id, course_id=course_id, type="quiz", title="weak quiz"
-            )
-        )
+        db.add(Activity(profile_id=profile_id, course_id=course_id, type="quiz", title="weak quiz"))
         db.commit()
-        row = db.scalars(
-            select(Activity).where(Activity.course_id == course_id)
-        ).first()
+        row = db.scalars(select(Activity).where(Activity.course_id == course_id)).first()
         assert row is not None
-        question = Question(            activity_id=row.id,
+        question = Question(
+            activity_id=row.id,
             type="choice",
             stem=[{"type": "text", "md": "2+2?"}],
             options=[{"type": "text", "md": "4"}],
@@ -269,21 +252,15 @@ def test_course_purge_removes_plan_items(client: TestClient) -> None:
         db.close()
 
 
-def _seed_answers(
-    client: TestClient, course_id: int, profile_id: str, results: list[bool]
-) -> None:
+def _seed_answers(client: TestClient, course_id: int, profile_id: str, results: list[bool]) -> None:
     from app.domain.models import Activity, Answer, Attempt, Question
 
     db_factory = client.app.state.session_factory  # type: ignore[attr-defined]
     db = db_factory()
     try:
-        db.add(
-            Activity(profile_id=profile_id, course_id=course_id, type="quiz", title="quiz")
-        )
+        db.add(Activity(profile_id=profile_id, course_id=course_id, type="quiz", title="quiz"))
         db.commit()
-        row = db.scalars(
-            select(Activity).where(Activity.course_id == course_id)
-        ).first()
+        row = db.scalars(select(Activity).where(Activity.course_id == course_id)).first()
         assert row is not None
         question = Question(
             activity_id=row.id,
@@ -299,9 +276,7 @@ def _seed_answers(
             attempt = Attempt(activity_id=row.id, mode="practice")
             db.add(attempt)
             db.flush()
-            db.add(
-                Answer(attempt_id=attempt.id, question_id=question.id, correct=correct)
-            )
+            db.add(Answer(attempt_id=attempt.id, question_id=question.id, correct=correct))
         db.commit()
     finally:
         db.close()
@@ -320,9 +295,7 @@ def test_readiness_not_enough_data_gate(client: TestClient) -> None:
     assert entry["trend"] is None
 
 
-def test_readiness_formula_trend_and_weakest(
-    client: TestClient, profile_id: str
-) -> None:
+def test_readiness_formula_trend_and_weakest(client: TestClient, profile_id: str) -> None:
     course_id = make_course(client)
     set_exam(client, course_id, days_out=10)
     root = root_node(client, course_id)
@@ -352,9 +325,7 @@ def test_readiness_formula_trend_and_weakest(
     assert entry["readiness"] == expected
 
 
-def test_generate_biases_first_practice_item_first_day(
-    client: TestClient, profile_id: str
-) -> None:
+def test_generate_biases_first_practice_item_first_day(client: TestClient, profile_id: str) -> None:
     course_id = make_course(client)
     set_exam(client, course_id, days_out=14)
     root = root_node(client, course_id)
@@ -363,9 +334,7 @@ def test_generate_biases_first_practice_item_first_day(
 
     response = client.post(f"/api/v1/courses/{course_id}/plan/generate")
     assert response.status_code == 200
-    practice = [
-        item for item in response.json()["items"] if item["kind"] == "practice"
-    ]
+    practice = [item for item in response.json()["items"] if item["kind"] == "practice"]
     assert practice, "expected a practice item"
     first_study = min(
         item["due_date"] for item in response.json()["items"] if item["kind"] == "study"

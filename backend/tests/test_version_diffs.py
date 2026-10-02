@@ -14,9 +14,7 @@ def test_note_version_diff_lines_and_stats() -> None:
                 "force_version": True,
             },
         )
-        client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "final\n", "force_version": True}
-        )
+        client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "final\n", "force_version": True})
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) >= 2
         oldest, newest = versions[-1]["version_id"], versions[0]["version_id"]

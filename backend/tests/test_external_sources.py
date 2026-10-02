@@ -51,9 +51,7 @@ class FakeResponse:
 @pytest.fixture()
 def course_id(client: TestClient) -> int:
     with client:
-        return int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        return int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
 
 
 def _create_source(client: TestClient, **overrides: object) -> dict[str, Any]:
@@ -70,9 +68,7 @@ def _create_source(client: TestClient, **overrides: object) -> dict[str, Any]:
     return data
 
 
-def test_external_source_crud_and_validation(
-    client: TestClient, course_id: int
-) -> None:
+def test_external_source_crud_and_validation(client: TestClient, course_id: int) -> None:
     with client:
         created = _create_source(client, course_id=course_id)
         assert created["kind"] == "rss"
@@ -128,14 +124,8 @@ def test_external_source_crud_and_validation(
         assert patched.json()["enabled"] is False
         assert patched.json()["scan_interval_sec"] == 3600
 
-        assert (
-            client.delete(f"/api/v1/external-sources/{created['id']}").status_code
-            == 204
-        )
-        assert (
-            client.delete(f"/api/v1/external-sources/{created['id']}").status_code
-            == 404
-        )
+        assert client.delete(f"/api/v1/external-sources/{created['id']}").status_code == 204
+        assert client.delete(f"/api/v1/external-sources/{created['id']}").status_code == 404
 
 
 def test_rss_scan_lands_sanitized_suggestions(
@@ -301,9 +291,7 @@ def test_site_search_scan_uses_provider_and_site_filter(
 ) -> None:
     seen_queries: list[str] = []
 
-    def fake_search(
-        base_url: str, flavor: str, query: str, api_key: str
-    ) -> list[dict[str, str]]:
+    def fake_search(base_url: str, flavor: str, query: str, api_key: str) -> list[dict[str, str]]:
         seen_queries.append(query)
         return [
             {
@@ -380,22 +368,16 @@ def test_scan_failure_is_isolated_and_recorded(
 
 def test_course_purge_cascades_external_sources(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(client, course_id=course_id)
-        deleted = client.delete(
-            f"/api/v1/courses/{course_id}", params={"confirmed_backup": "true"}
-        )
+        deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": "true"})
         assert deleted.status_code == 200
         assert client.get("/api/v1/external-sources").json() == []
 
 
 def test_external_sources_ride_course_bundles(client: TestClient) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(
             client,
             course_id=course_id,
@@ -430,9 +412,7 @@ def test_bundle_import_recreates_sources_with_fresh_cursors(
     client: TestClient,
 ) -> None:
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(client, course_id=course_id)
         export_response = client.get(f"/api/v1/courses/{course_id}/export")
         assert export_response.status_code == 200
@@ -537,8 +517,9 @@ def test_scheduler_due_logic_overlap_guard_and_error_isolation(
 
     scheduler._in_flight.add(source_id)
     try:
-        assert scheduler.scan_all(
-            now=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=30)
-        ) == {}
+        assert (
+            scheduler.scan_all(now=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=30))
+            == {}
+        )
     finally:
         scheduler._in_flight.discard(source_id)

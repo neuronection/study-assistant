@@ -168,9 +168,7 @@ def test_chat_mention_resolved_stored_and_taught(
         assert assistant["mentions"][0]["ref"] == f"M{material_id}"
         assert assistant["mentions"][0]["kind"] == "material"
         assert assistant["mentions"][0]["title"]
-        prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert f"M{material_id} = " in prompt
         assert "Referenceable items" in prompt
 

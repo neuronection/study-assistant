@@ -8,9 +8,32 @@ import sympy
 _ALLOWED_NAMES: dict[str, Any] = {
     name: getattr(math, name)
     for name in (
-        "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh",
-        "tanh", "exp", "log", "log10", "log2", "sqrt", "pow", "floor", "ceil",
-        "fabs", "factorial", "gcd", "degrees", "radians", "pi", "e", "tau",
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+        "sinh",
+        "cosh",
+        "tanh",
+        "exp",
+        "log",
+        "log10",
+        "log2",
+        "sqrt",
+        "pow",
+        "floor",
+        "ceil",
+        "fabs",
+        "factorial",
+        "gcd",
+        "degrees",
+        "radians",
+        "pi",
+        "e",
+        "tau",
     )
 }
 
@@ -26,9 +49,7 @@ def calculate(expression: str) -> str:
     if re.search(r"__[a-z]+__", expression):
         return "error: invalid expression"
     try:
-        value = eval(
-            expression.replace("^", "**"), {"__builtins__": {}}, _ALLOWED_NAMES
-        )
+        value = eval(expression.replace("^", "**"), {"__builtins__": {}}, _ALLOWED_NAMES)
     except Exception as error:
         return f"error: {type(error).__name__}"
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
@@ -75,9 +96,7 @@ def plot_function(expression: str) -> str:
     )
 
 
-_JSON_SCHEMA_TYPES = frozenset(
-    {"string", "number", "integer", "boolean", "array", "object"}
-)
+_JSON_SCHEMA_TYPES = frozenset({"string", "number", "integer", "boolean", "array", "object"})
 
 
 def native_tool_schemas(catalog: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -100,9 +119,7 @@ def native_tool_schemas(catalog: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
             if json_type == "array":
                 items = argument.get("items")
-                property_schema["items"] = (
-                    items if isinstance(items, dict) else {"type": "string"}
-                )
+                property_schema["items"] = items if isinstance(items, dict) else {"type": "string"}
             properties[name] = property_schema
             if argument.get("required"):
                 required.append(name)
@@ -127,9 +144,7 @@ def native_tool_schemas(catalog: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def build_tool_doc(catalog: list[dict[str, Any]]) -> str:
-    sections = [
-        "Use these tools when they help. Emit EXACTLY one tool line, nothing else:"
-    ]
+    sections = ["Use these tools when they help. Emit EXACTLY one tool line, nothing else:"]
     for tool in catalog:
         if tool.get("kind") == "capability":
             continue
@@ -223,8 +238,7 @@ def run_tool_line(kind: str, argument: str) -> str:
 
 def extract_tool_calls(text: str) -> list[tuple[str, str]]:
     return [
-        (match.group(1), (match.group(2) or "").strip())
-        for match in TOOL_LINE_RE.finditer(text)
+        (match.group(1), (match.group(2) or "").strip()) for match in TOOL_LINE_RE.finditer(text)
     ]
 
 
@@ -349,8 +363,7 @@ CHAT_TOOL_CATALOG: list[dict[str, Any]] = [
                 "name": "query",
                 "type": "string",
                 "required": True,
-                "description": "Keywords to look for in material and note "
-                "titles and content",
+                "description": "Keywords to look for in material and note titles and content",
             }
         ],
         "response": "Up to 10 lines of '<handle> — <title> (kind)' that become "
@@ -458,9 +471,7 @@ CHAT_CAPABILITY_CATALOG: list[dict[str, Any]] = [
     },
 ]
 
-CAPABILITY_TOOL_NAMES = frozenset(
-    str(entry["name"]) for entry in CHAT_CAPABILITY_CATALOG
-)
+CAPABILITY_TOOL_NAMES = frozenset(str(entry["name"]) for entry in CHAT_CAPABILITY_CATALOG)
 
 QUIZ_TOOL: dict[str, Any] = {
     "name": "QUIZ",

@@ -21,9 +21,7 @@ def test_migration_links_legacy_messages_into_a_branch_chain(
 
     raw = sqlite3.connect(db_path)
     now = "2026-08-27 09:00:00+00:00"
-    raw.execute(
-        "INSERT INTO profiles (id, name, created_at) VALUES (1, 'p', ?)", (now,)
-    )
+    raw.execute("INSERT INTO profiles (id, name, created_at) VALUES (1, 'p', ?)", (now,))
     raw.execute(
         "INSERT INTO chat_sessions (id, profile_id, public_id, title, created_at) "
         "VALUES (5, 1, 'legacy-5', 'legacy', ?)",
@@ -32,7 +30,7 @@ def test_migration_links_legacy_messages_into_a_branch_chain(
     for index, role in enumerate(["user", "assistant", "user", "assistant"]):
         raw.execute(
             "INSERT INTO chat_messages (id, session_id, role, blocks, created_at) "
-            f"VALUES ({10 + index}, 5, '{role}', '[{{\"type\":\"text\",\"md\":\"m{index}\"}}]', ?)",
+            f'VALUES ({10 + index}, 5, \'{role}\', \'[{{"type":"text","md":"m{index}"}}]\', ?)',
             (now,),
         )
     raw.commit()
@@ -44,19 +42,13 @@ def test_migration_links_legacy_messages_into_a_branch_chain(
     try:
         parents = {
             row[0]: row[1]
-            for row in check.execute(
-                "SELECT id, parent_id FROM chat_messages"
-            ).fetchall()
+            for row in check.execute("SELECT id, parent_id FROM chat_messages").fetchall()
         }
         children = {
             row[0]: row[1]
-            for row in check.execute(
-                "SELECT id, active_child_id FROM chat_messages"
-            ).fetchall()
+            for row in check.execute("SELECT id, active_child_id FROM chat_messages").fetchall()
         }
-        root = check.execute(
-            "SELECT active_root_id FROM chat_sessions WHERE id = 5"
-        ).fetchone()[0]
+        root = check.execute("SELECT active_root_id FROM chat_sessions WHERE id = 5").fetchone()[0]
     finally:
         check.close()
 
@@ -73,13 +65,9 @@ def test_branch_columns_exist(tmp_path: Path) -> None:
 
     raw = sqlite3.connect(db_path)
     try:
-        columns = {
-            row[1]
-            for row in raw.execute("PRAGMA table_info(chat_messages)").fetchall()
-        }
+        columns = {row[1] for row in raw.execute("PRAGMA table_info(chat_messages)").fetchall()}
         session_columns = {
-            row[1]
-            for row in raw.execute("PRAGMA table_info(chat_sessions)").fetchall()
+            row[1] for row in raw.execute("PRAGMA table_info(chat_sessions)").fetchall()
         }
     finally:
         raw.close()

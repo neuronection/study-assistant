@@ -65,6 +65,7 @@ class Job(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+
 class Provider(Base):
     __tablename__ = "providers"
 
@@ -79,6 +80,7 @@ class Provider(Base):
     country: Mapped[str | None] = mapped_column(String(80))
     status: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class AiModel(Base):
     __tablename__ = "models"
@@ -102,6 +104,7 @@ class AiModel(Base):
     discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class TaskAssignment(Base):
     __tablename__ = "task_assignments"
 
@@ -110,12 +113,14 @@ class TaskAssignment(Base):
     fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
     params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
+
 class DefaultTaskAssignment(Base):
     __tablename__ = "default_task_assignments"
 
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
     fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+
 
 class CourseTaskAssignment(Base):
     __tablename__ = "course_task_assignments"
@@ -127,6 +132,7 @@ class CourseTaskAssignment(Base):
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
     fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
 
+
 class CourseDefaultTaskAssignment(Base):
     __tablename__ = "course_default_task_assignments"
 
@@ -136,6 +142,7 @@ class CourseDefaultTaskAssignment(Base):
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
     fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+
 
 class DeletedItem(Base):
     __tablename__ = "deleted_items"
@@ -149,6 +156,7 @@ class DeletedItem(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     purge_after: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
 
 class ConceptSkillStat(Base):
     __tablename__ = "concept_skill_stats"
@@ -167,6 +175,7 @@ class ConceptSkillStat(Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     weakness_score: Mapped[float] = mapped_column(Float)
 
+
 class DailyRollup(Base):
     __tablename__ = "daily_rollups"
     __table_args__ = (Index("uq_daily_rollups", "profile_id", "day", unique=True),)
@@ -180,6 +189,7 @@ class DailyRollup(Base):
     minutes: Mapped[float] = mapped_column(Float)
     study_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     xp: Mapped[int] = mapped_column(Integer)
+
 
 class ItemStat(Base):
     __tablename__ = "item_stats"
@@ -196,6 +206,7 @@ class ItemStat(Base):
     rating: Mapped[float | None] = mapped_column(Float)
     rating_count: Mapped[int | None] = mapped_column(Integer)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class ConceptSkillRating(Base):
     __tablename__ = "concept_skill_ratings"
@@ -216,6 +227,7 @@ class ConceptSkillRating(Base):
     rating: Mapped[float | None] = mapped_column(Float)
     rating_count: Mapped[int | None] = mapped_column(Integer)
 
+
 class StudyGoal(Base):
     __tablename__ = "study_goals"
 
@@ -223,12 +235,9 @@ class StudyGoal(Base):
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
     )
     answers_per_day: Mapped[int] = mapped_column(Integer, default=20)
-    unit: Mapped[str] = mapped_column(
-        String(10), default="answers", server_default="answers"
-    )
-    minutes_per_day: Mapped[int] = mapped_column(
-        Integer, default=30, server_default="30"
-    )
+    unit: Mapped[str] = mapped_column(String(10), default="answers", server_default="answers")
+    minutes_per_day: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
+
 
 class Skill(Base):
     __tablename__ = "skills"
@@ -244,6 +253,7 @@ class Skill(Base):
     versions: Mapped[list["SkillVersion"]] = relationship(
         back_populates="skill", cascade="all, delete-orphan"
     )
+
 
 class SkillVersion(Base):
     __tablename__ = "skill_versions"
@@ -271,6 +281,7 @@ class SkillVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     skill: Mapped[Skill] = relationship(back_populates="versions")
+
 
 class AiInteraction(Base):
     __tablename__ = "ai_interactions"

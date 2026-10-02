@@ -143,9 +143,7 @@ def import_quiz(client: TestClient) -> dict[str, Any]:
 
 
 def open_attempt(client: TestClient, activity_id: int, mode: str = "practice") -> int:
-    started = client.post(
-        f"/api/v1/quiz/activities/{activity_id}/attempts?mode={mode}"
-    )
+    started = client.post(f"/api/v1/quiz/activities/{activity_id}/attempts?mode={mode}")
     assert started.status_code == 201, started.text
     return int(started.json()["id"])
 
@@ -239,9 +237,7 @@ def test_level5_unlocks_after_submit_and_help_events_land_on_answer() -> None:
         activity = import_quiz(client)
         attempt_id = open_attempt(client, activity["id"])
         q1, _q2 = question_ids(client, activity["id"])
-        client.post(
-            f"/api/v1/quiz/attempts/{attempt_id}/questions/{q1}/hint", json={"level": 1}
-        )
+        client.post(f"/api/v1/quiz/attempts/{attempt_id}/questions/{q1}/hint", json={"level": 1})
         answered = client.post(
             f"/api/v1/quiz/attempts/{attempt_id}/answers",
             json={"question_id": q1, "response": "3x"},
@@ -309,9 +305,7 @@ def test_ask_about_question_opens_guarded_chat() -> None:
         deadline = time.monotonic() + 5.0
         messages: list[dict[str, Any]] = []
         while time.monotonic() < deadline:
-            messages = client.get(
-                f"/api/v1/chat/sessions/{chat_session_id}/messages"
-            ).json()
+            messages = client.get(f"/api/v1/chat/sessions/{chat_session_id}/messages").json()
             if messages and messages[-1]["role"] == "assistant":
                 break
             time.sleep(0.05)

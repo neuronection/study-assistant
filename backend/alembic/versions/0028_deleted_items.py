@@ -22,18 +22,12 @@ def upgrade() -> None:
     op.create_table(
         "deleted_items",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "profile_id", sa.Integer(), sa.ForeignKey("profiles.id"), nullable=False
-        ),
+        sa.Column("profile_id", sa.Integer(), sa.ForeignKey("profiles.id"), nullable=False),
         sa.Column("entity_type", sa.String(length=20), nullable=False),
         sa.Column("title", sa.String(length=300), nullable=False),
         sa.Column("payload", sa.JSON(), nullable=False),
-        sa.Column(
-            "deleted_at", sa.DateTime(timezone=True), nullable=False
-        ),
-        sa.Column(
-            "purge_after", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("purge_after", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_deleted_items_profile_id", "deleted_items", ["profile_id"])
 

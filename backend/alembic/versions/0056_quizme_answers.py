@@ -35,16 +35,10 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("correct", sa.Boolean(), nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_index(
-        "ix_quizme_answers_profile_id", "quizme_answers", ["profile_id"]
-    )
-    op.create_index(
-        "ix_quizme_answers_session_id", "quizme_answers", ["session_id"]
-    )
+    op.create_index("ix_quizme_answers_profile_id", "quizme_answers", ["profile_id"])
+    op.create_index("ix_quizme_answers_session_id", "quizme_answers", ["session_id"])
 
 
 def downgrade() -> None:

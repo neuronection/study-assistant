@@ -216,9 +216,7 @@ def list_proposals(
         try:
             before_id = int(cursor)
         except ValueError as error:
-            raise HTTPException(
-                status_code=422, detail="invalid cursor"
-            ) from error
+            raise HTTPException(status_code=422, detail="invalid cursor") from error
         filters.append(ChatProposal.id < before_id)
     rows = session.execute(
         select(ChatProposal, ChatMessage.session_id)
@@ -248,9 +246,7 @@ def _load_proposals(session: Session, message_ids: list[int]) -> dict[int, list[
 
     if not message_ids:
         return {}
-    rows = session.scalars(
-        select(ChatProposal).where(ChatProposal.message_id.in_(message_ids))
-    )
+    rows = session.scalars(select(ChatProposal).where(ChatProposal.message_id.in_(message_ids)))
     grouped: dict[int, list[Any]] = {}
     for row in rows:
         grouped.setdefault(row.message_id, []).append(row)
@@ -410,14 +406,10 @@ def delete_session(
         session, "chat", chat_session.id, chat_session.title, profile.id
     )
     message_ids = list(
-        session.scalars(
-            select(ChatMessage.id).where(ChatMessage.session_id == chat_session.id)
-        )
+        session.scalars(select(ChatMessage.id).where(ChatMessage.session_id == chat_session.id))
     )
     if message_ids:
-        session.execute(
-            delete(ChatProposal).where(ChatProposal.message_id.in_(message_ids))
-        )
+        session.execute(delete(ChatProposal).where(ChatProposal.message_id.in_(message_ids)))
         session.execute(delete(ChatMessage).where(ChatMessage.id.in_(message_ids)))
     session.delete(chat_session)
     session.commit()
@@ -439,9 +431,7 @@ def list_messages(
     outputs: list[MessageOut] = []
     for message in messages:
         group = siblings.get(message.parent_id, [message.id])
-        index = next(
-            (i for i, mid in enumerate(group) if mid == message.id), 0
-        )
+        index = next((i for i, mid in enumerate(group) if mid == message.id), 0)
         outputs.append(
             _message_out(
                 message,
@@ -510,9 +500,7 @@ def _load_proposal_for_profile(
     if proposal is None:
         raise HTTPException(status_code=404, detail="proposal not found")
     message = session.get(ChatMessage, proposal.message_id)
-    chat_session = (
-        session.get(ChatSession, message.session_id) if message is not None else None
-    )
+    chat_session = session.get(ChatSession, message.session_id) if message is not None else None
     if chat_session is None or chat_session.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="proposal not found")
     return proposal, chat_session
@@ -580,18 +568,14 @@ def approve_proposal(
     profile = ensure_default_profile(session)
     proposal, chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
     if proposal.status not in ChatProposalStatus.resolvable():
-        raise HTTPException(
-            status_code=409, detail=f"proposal already {proposal.status}"
-        )
+        raise HTTPException(status_code=409, detail=f"proposal already {proposal.status}")
     if proposal.action in GENERATE_ACTIONS:
         proposal.status = ChatProposalStatus.APPROVED.value
         proposal.result = {"open_dialog": proposal.payload}
         session.commit()
         return _proposal_row_out(proposal)
     if chat_session.course_id is None:
-        raise HTTPException(
-            status_code=422, detail="chat session has no course to act on"
-        )
+        raise HTTPException(status_code=422, detail="chat session has no course to act on")
     try:
         if _conflict_refresh(session, proposal, chat_session):
             session.commit()
@@ -619,19 +603,17 @@ def approve_proposal(
                 payload=proposal.payload or {},
                 course_id=chat_session.course_id,
                 context=ProposalContext(
-                blobs=request.app.state.blobs,
-                jobs=request.app.state.jobs,
-                profile_id=profile.id,
-            ),
+                    blobs=request.app.state.blobs,
+                    jobs=request.app.state.jobs,
+                    profile_id=profile.id,
+                ),
             )
         except ProposalActionError as error:
             mark_stale(proposal, str(error))
             session.commit()
             return _proposal_row_out(proposal)
         if status != "executed":
-            raise HTTPException(
-                status_code=422, detail=f"unexpected execution status {status}"
-            )
+            raise HTTPException(status_code=422, detail=f"unexpected execution status {status}")
         if proposal.action in POSTPROCESS_ACTIONS:
             request.app.state.jobs.wake()
     proposal.status = ChatProposalStatus.EXECUTED.value
@@ -731,15 +713,11 @@ def _execute_create_note(
 
 
 @router.post("/proposals/{proposal_id}/dismiss", response_model=ProposalOut)
-def dismiss_proposal(
-    proposal_id: int, session: Session = Depends(get_session)
-) -> ProposalOut:
+def dismiss_proposal(proposal_id: int, session: Session = Depends(get_session)) -> ProposalOut:
     profile = ensure_default_profile(session)
     proposal, _chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
     if proposal.status != "proposed":
-        raise HTTPException(
-            status_code=409, detail=f"proposal already {proposal.status}"
-        )
+        raise HTTPException(status_code=409, detail=f"proposal already {proposal.status}")
     proposal.status = ChatProposalStatus.DISMISSED.value
     session.commit()
     return _proposal_row_out(proposal)
@@ -791,9 +769,7 @@ def session_context(
         "session_id": chat_session.id,
         "course_id": chat_session.course_id,
         "node": node,
-        "registry": [
-            entry.as_dict() for entry in registry.entries()
-        ],
+        "registry": [entry.as_dict() for entry in registry.entries()],
         "latest_notes": [
             {"id": note.id, "title": note.title}
             for note in service.latest_notes_preview(chat_session)
@@ -941,19 +917,13 @@ def answer_quiz_question(
     pending["verdict_detail"] = detail
     pending["student_answer"] = str(body.answer)
     pending["awaiting_answer"] = False
-    session.add(
-        QuizmeAnswer(
-            profile_id=profile.id, session_id=session_id, correct=correct
-        )
-    )
+    session.add(QuizmeAnswer(profile_id=profile.id, session_id=session_id, correct=correct))
     from sqlalchemy.orm.attributes import flag_modified
 
     flag_modified(chat_session, "quiz_pending")
 
     expected_display: str | None = None
-    if pending.get("choices") is not None and isinstance(
-        pending.get("expected_index"), int
-    ):
+    if pending.get("choices") is not None and isinstance(pending.get("expected_index"), int):
         choices = pending["choices"]
         expected_display = str(choices[pending["expected_index"]])
     else:
@@ -1032,9 +1002,7 @@ def edit_message(
     service = _chat_service(request, session)
     message, chat_session = _load_message_for_profile(session, message_id, profile.id)
     if message.role != "user":
-        raise HTTPException(
-            status_code=422, detail="only user messages can be edited"
-        )
+        raise HTTPException(status_code=422, detail="only user messages can be edited")
     with request.app.state.turn_locks.get(chat_session.id):
         branched = service.branch_message(message, body.content.strip())
         job = JobRunner.enqueue(
@@ -1057,9 +1025,7 @@ def regenerate_message(
     service = _chat_service(request, session)
     message, chat_session = _load_message_for_profile(session, message_id, profile.id)
     if message.role != "user":
-        raise HTTPException(
-            status_code=422, detail="only assistant answers can be regenerated"
-        )
+        raise HTTPException(status_code=422, detail="only assistant answers can be regenerated")
     with request.app.state.turn_locks.get(chat_session.id):
         service.select_message(message)
         job = JobRunner.enqueue(
@@ -1191,27 +1157,17 @@ def make_chat_turn_handler(
             def emit(event: dict[str, Any]) -> None:
                 bus.publish_threadsafe(WsTopic.chat(chat_session.id), event)
                 for family_event in to_family_events(event):
-                    bus.publish_threadsafe(
-                        WsTopic.chat(chat_session.id), family_event
-                    )
+                    bus.publish_threadsafe(WsTopic.chat(chat_session.id), family_event)
 
             stop_event = _register_stop_event(chat_session.id)
             try:
-                turn_engine = (
-                    turn_engine_provider() if turn_engine_provider is not None else None
-                )
+                turn_engine = turn_engine_provider() if turn_engine_provider is not None else None
                 if turn_engine is None:
                     raise JobError("chat turn engine is not available")
-                turn_engine.run(
-                    session, service, gateway, chat_session, pending, emit, stop_event
-                )
+                turn_engine.run(session, service, gateway, chat_session, pending, emit, stop_event)
             except Exception as error:
                 detail = sanitize_error_detail(str(error)) or error.__class__.__name__
-                code = (
-                    "ai_not_configured"
-                    if isinstance(error, TaskUnassigned)
-                    else "turn_error"
-                )
+                code = "ai_not_configured" if isinstance(error, TaskUnassigned) else "turn_error"
                 emit({"type": "turn_error", "code": code, "detail": detail})
                 # Persist the failure on the turn (uniform chat error
                 # display): the transcript keeps rendering it after a

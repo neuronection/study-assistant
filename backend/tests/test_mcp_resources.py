@@ -66,9 +66,10 @@ def seeded(tmp_path: Path) -> dict[str, Any]:
         )
         material_id = int(upload.json()["material"]["id"])
         wait_until(
-            lambda: client.get(f"/api/v1/materials/{material_id}")
-            .json()["material"]["status"]
-            == "ready"
+            lambda: (
+                client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
+                == "ready"
+            )
         )
         client.post(f"/api/v1/nodes/{chapter}/materials", json={"material_id": material_id})
         client.post(
@@ -141,16 +142,12 @@ def test_mcp_server_lists_courses_and_scoped_resources(seeded: dict[str, Any]) -
                 "get_node_context",
             }
 
-            courses = _structured(await session.call_tool("list_courses", {}))[
-                "courses"
-            ]
+            courses = _structured(await session.call_tool("list_courses", {}))["courses"]
             assert [entry["title"] for entry in courses] == ["Calc"]
             assert courses[0]["root_node_id"] == seeded["root"]
 
             overview = _structured(
-                await session.call_tool(
-                    "get_node_overview", {"node_id": seeded["chapter"]}
-                )
+                await session.call_tool("get_node_overview", {"node_id": seeded["chapter"]})
             )
             assert overview["node"]["title"] == "Limits"
             assert [entry["title"] for entry in overview["node"]["breadcrumb"]] == [
@@ -160,13 +157,9 @@ def test_mcp_server_lists_courses_and_scoped_resources(seeded: dict[str, Any]) -
             assert overview["counts"]["notes"] == {"direct": 1, "with_children": 1}
 
             materials = _structured(
-                await session.call_tool(
-                    "get_node_materials", {"node_id": seeded["chapter"]}
-                )
+                await session.call_tool("get_node_materials", {"node_id": seeded["chapter"]})
             )
-            assert [m["material_id"] for m in materials["direct"]] == [
-                seeded["material_id"]
-            ]
+            assert [m["material_id"] for m in materials["direct"]] == [seeded["material_id"]]
             root_materials = _structured(
                 await session.call_tool(
                     "get_node_materials",
@@ -190,22 +183,16 @@ def test_mcp_server_lists_courses_and_scoped_resources(seeded: dict[str, Any]) -
             assert quizzes[0]["node_id"] == seeded["root"]
 
             notes = _structured(
-                await session.call_tool(
-                    "get_node_notes", {"node_id": seeded["chapter"]}
-                )
+                await session.call_tool("get_node_notes", {"node_id": seeded["chapter"]})
             )["notes"]
             assert [entry["title"] for entry in notes] == ["Limits note"]
 
             exercises = _structured(
-                await session.call_tool(
-                    "get_node_exercises", {"node_id": seeded["root"]}
-                )
+                await session.call_tool("get_node_exercises", {"node_id": seeded["root"]})
             )["exercises"]
             assert exercises == []
 
-            missing = _structured(
-                await session.call_tool("get_node_overview", {"node_id": 99999})
-            )
+            missing = _structured(await session.call_tool("get_node_overview", {"node_id": 99999}))
             assert missing == {"error": "node not found"}
 
             context = _structured(

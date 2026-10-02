@@ -31,9 +31,7 @@ def _origin_allowed(websocket: WebSocket) -> bool:
     if host is not None and urlparse(origin).netloc == host:
         return True
     settings = websocket.app.state.settings
-    allowed = {
-        raw.strip().rstrip("/") for raw in settings.cors_origins.split(",") if raw.strip()
-    }
+    allowed = {raw.strip().rstrip("/") for raw in settings.cors_origins.split(",") if raw.strip()}
     return origin.rstrip("/") in allowed
 
 

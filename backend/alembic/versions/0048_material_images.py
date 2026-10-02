@@ -35,9 +35,7 @@ def upgrade() -> None:
         sa.Column("ocr_version", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("ocr_markdown", sa.Text(), nullable=True),
         sa.Column("ocr_job_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
 

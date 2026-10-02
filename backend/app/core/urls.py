@@ -24,9 +24,7 @@ TRACKING_PARAMS = frozenset(
     }
 )
 
-YOUTUBE_HOSTS = frozenset(
-    {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"}
-)
+YOUTUBE_HOSTS = frozenset({"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"})
 YOUTUBE_SHORT_HOST = "youtu.be"
 YOUTUBE_PATH_RE = re.compile(r"^/(?:watch/)?(?P<id>[\w-]{6,20})/?$")
 

@@ -211,9 +211,7 @@ def _contract_guard(deps: ChatTurnDeps, _state: ChatTurnState) -> dict[str, Any]
     return {}
 
 
-def _round_messages(
-    deps: ChatTurnDeps, prep: TurnPrep, state: ChatTurnState
-) -> list[Message]:
+def _round_messages(deps: ChatTurnDeps, prep: TurnPrep, state: ChatTurnState) -> list[Message]:
     attempt = state["attempt"]
     feedback = state["feedback_text"] if attempt > 0 else None
     if state["native_tools"]:
@@ -278,16 +276,12 @@ def _consume_stream(
         if buffer:
             return buffer, native_raw, reasoning, str(error)[:200]
         if state["native_tools"] and is_tool_unsupported_error(error):
-            degrade_native_tools(
-                deps.gateway.resolve(CHAT_TASK, deps.chat_session.course_id)
-            )
+            degrade_native_tools(deps.gateway.resolve(CHAT_TASK, deps.chat_session.course_id))
             return buffer, native_raw, reasoning, DEGRADED
         raise
     if deps.on_round_stream_end is not None:
         had_tools = (
-            bool(native_raw)
-            if state["native_tools"]
-            else bool(extract_tool_calls("".join(buffer)))
+            bool(native_raw) if state["native_tools"] else bool(extract_tool_calls("".join(buffer)))
         )
         deps.on_round_stream_end(had_tools)
     return buffer, native_raw, reasoning, None
@@ -338,11 +332,7 @@ def _execute_tools(
     for kind, argument in tool_calls:
         tool_start_ms = deps.elapsed_ms()
         tool_phase = (
-            "reading"
-            if kind in READISH_TOOLS
-            else "plotting"
-            if kind == "PLOT"
-            else "computing"
+            "reading" if kind in READISH_TOOLS else "plotting" if kind == "PLOT" else "computing"
         )
         deps.emit({"type": "phase", "phase": tool_phase, "elapsed_ms": tool_start_ms})
         if kind == "READ":
@@ -414,9 +404,7 @@ def _execute_tools(
                 )
                 continue
             resource_used += 1
-            content = deps.service._run_resource_tool(
-                kind, argument, deps.chat_session, registry
-            )
+            content = deps.service._run_resource_tool(kind, argument, deps.chat_session, registry)
             results.append(f"{kind} {argument} -> {content}")
             tool_calls_seen.append(
                 _tool_entry(
@@ -548,8 +536,7 @@ def _execute_tools(
         else:
             if state["math_rounds"] >= MAX_TOOL_ROUNDS:
                 results.append(
-                    f"{kind} {argument} -> error: math tool budget "
-                    "for this turn is spent"
+                    f"{kind} {argument} -> error: math tool budget for this turn is spent"
                 )
                 continue
             executed_math = True
@@ -609,9 +596,7 @@ def _execute_tools(
     else:
         results_text = "\n".join(results)
         updates["tool_log"] = (
-            f"{state['tool_log']}\n{results_text}"
-            if state["tool_log"]
-            else results_text
+            f"{state['tool_log']}\n{results_text}" if state["tool_log"] else results_text
         )
     return updates
 
@@ -641,9 +626,7 @@ def _agent_round(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]:
     round_phase = "repairing" if attempt > 0 else "thinking"
     deps.emit({"type": "phase", "phase": round_phase, "elapsed_ms": round_start_ms})
     messages = _round_messages(deps, prep, state)
-    buffer, native_raw, reasoning, interruption = _consume_stream(
-        deps, state, messages
-    )
+    buffer, native_raw, reasoning, interruption = _consume_stream(deps, state, messages)
     trace_rounds = list(state["trace_rounds"])
     reasoning_parts = list(state["reasoning_parts"])
     reasoning_parts.extend(reasoning)
@@ -671,9 +654,7 @@ def _agent_round(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]:
         }
     )
     try:
-        model_name: str | None = deps.gateway.resolve(
-            CHAT_TASK, deps.chat_session.course_id
-        ).label
+        model_name: str | None = deps.gateway.resolve(CHAT_TASK, deps.chat_session.course_id).label
     except Exception:
         model_name = None
     base_updates: dict[str, Any] = {

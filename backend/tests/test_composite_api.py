@@ -120,16 +120,12 @@ def submit(client: TestClient, attempt_id: int, question_id: int, response: Any)
 
 
 def attempt_id_for(client: TestClient, activity_id: int) -> int:
-    return int(
-        client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"]
-    )
+    return int(client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"])
 
 
 def test_generate_and_public_input(composite_client: TestClient) -> None:
     activity = generate_composite_quiz(composite_client)
-    question = composite_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = composite_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     assert question["type"] == "composite"
     assert question["flag"] == "ok"
     assert question["input"] == {
@@ -140,9 +136,7 @@ def test_generate_and_public_input(composite_client: TestClient) -> None:
 
 def test_exact_and_follow_through_flows(composite_client: TestClient) -> None:
     activity = generate_composite_quiz(composite_client)
-    question = composite_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = composite_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
 
     exact = submit(
         composite_client,
@@ -167,9 +161,7 @@ def test_exact_and_follow_through_flows(composite_client: TestClient) -> None:
 
 def test_report_carries_composite_response(composite_client: TestClient) -> None:
     activity = generate_composite_quiz(composite_client)
-    question = composite_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = composite_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     attempt_id = attempt_id_for(composite_client, activity["id"])
     submit(composite_client, attempt_id, question["id"], ["3", "9"])
     composite_client.post(f"/api/v1/quiz/attempts/{attempt_id}/finish")

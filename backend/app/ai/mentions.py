@@ -131,9 +131,7 @@ class MentionRegistry:
                 lines.append(f"{entry.ref} = {entry.title}")
         return (
             "Referenceable items (mention them by handle; READ a handle to see its "
-            "full content):\n"
-            + "\n".join(lines)
-            + f"\n\n{MENTION_TEACH}"
+            "full content):\n" + "\n".join(lines) + f"\n\n{MENTION_TEACH}"
         )
 
     def to_json(self) -> list[dict[str, Any]]:

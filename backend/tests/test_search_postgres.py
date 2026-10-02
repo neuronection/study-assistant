@@ -33,8 +33,7 @@ DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
     pytest.skip(
-        "SA_TEST_DATABASE_URL is not set — the PostgreSQL search twin "
-        "needs a disposable server",
+        "SA_TEST_DATABASE_URL is not set — the PostgreSQL search twin needs a disposable server",
         allow_module_level=True,
     )
 
@@ -44,9 +43,7 @@ EMBED_DIM = 8
 # xdist workers each build their own scratch database; the full Alembic
 # chain must not run concurrently on the server or it exhausts PostgreSQL's
 # lock table (max_locks_per_transaction).
-_MIGRATION_LOCK = FileLock(
-    os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock")
-)
+_MIGRATION_LOCK = FileLock(os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock"))
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -145,9 +142,7 @@ def _material(
     )
     session.add(material)
     session.flush()
-    extraction = Extraction(
-        material_id=material.id, extractor="test", markdown=markdown, blocks=[]
-    )
+    extraction = Extraction(material_id=material.id, extractor="test", markdown=markdown, blocks=[])
     session.add(extraction)
     session.flush()
     chunk_rows = [

@@ -43,13 +43,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["from_concept_id"], ["concepts.id"]),
         sa.ForeignKeyConstraint(["to_concept_id"], ["concepts.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "from_concept_id", "to_concept_id", "relation"
-        ),
+        sa.UniqueConstraint("from_concept_id", "to_concept_id", "relation"),
     )
-    op.create_index(
-        "ix_concept_links_course_id", "concept_links", ["course_id"]
-    )
+    op.create_index("ix_concept_links_course_id", "concept_links", ["course_id"])
     op.create_table(
         "section_concepts",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -61,9 +57,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("section_id", "concept_id"),
     )
-    op.create_index(
-        "ix_section_concepts_section_id", "section_concepts", ["section_id"]
-    )
+    op.create_index("ix_section_concepts_section_id", "section_concepts", ["section_id"])
     with op.batch_alter_table("concept_skill_stats") as batch_op:
         batch_op.add_column(sa.Column("concept_id", sa.Integer(), nullable=True))
 
@@ -71,9 +65,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     with op.batch_alter_table("concept_skill_stats") as batch_op:
         batch_op.drop_column("concept_id")
-    op.drop_index(
-        "ix_section_concepts_section_id", table_name="section_concepts"
-    )
+    op.drop_index("ix_section_concepts_section_id", table_name="section_concepts")
     op.drop_table("section_concepts")
     op.drop_index("ix_concept_links_course_id", table_name="concept_links")
     op.drop_table("concept_links")

@@ -72,9 +72,7 @@ def test_desktop_instance_boots_open_and_exchange_provisions_owner(
 
 
 @pytest.mark.contract  # §18.6 — the exchange/Dim surface is shell-secret gated
-def test_desktop_api_requires_shell_secret(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_desktop_api_requires_shell_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # SA_SHELL=1 = the shell.py attachment flag (§11 gate arms only for
     # shell-attached processes; ADR-0023).
     monkeypatch.setenv("SA_SHELL", "1")
@@ -87,18 +85,14 @@ def test_desktop_api_requires_shell_secret(
     )
     kit = app.state.auth
     assert kit.config.identity_mode == "desktop", "SA_IDENTITY_MODE rides the §16 map"
-    assert (
-        kit.config.require_shell_secret is True
-    ), "the computed §11 value must reach the kit config (S11)"
+    assert kit.config.require_shell_secret is True, (
+        "the computed §11 value must reach the kit config (S11)"
+    )
     with TestClient(app) as unauthenticated:
         assert unauthenticated.get("/api/v1/health").status_code == 403
-        wrong = unauthenticated.get(
-            "/api/v1/health", headers={"X-Shell-Token": "nope"}
-        )
+        wrong = unauthenticated.get("/api/v1/health", headers={"X-Shell-Token": "nope"})
         assert wrong.status_code == 403
-        ok = unauthenticated.get(
-            "/api/v1/health", headers={"X-Shell-Token": "test-shell-secret"}
-        )
+        ok = unauthenticated.get("/api/v1/health", headers={"X-Shell-Token": "test-shell-secret"})
         assert ok.status_code == 200
 
 
@@ -116,14 +110,13 @@ def test_shell_less_desktop_dev_does_not_gate(
         app = create_app(_settings(tmp_path, identity_mode="desktop"))
     assert app.state.auth.config.require_shell_secret is False
     assert any(
-        "X-Shell-Token gate is DISARMED" in record.getMessage()
-        for record in caplog.records
+        "X-Shell-Token gate is DISARMED" in record.getMessage() for record in caplog.records
     ), "a disarmed gate warns loudly (S11)"
     with TestClient(app) as unauthenticated:
         assert unauthenticated.get("/api/v1/health").status_code == 200
-        assert (
-            unauthenticated.get("/api/v1/auth/me").status_code != 403
-        ), "shell-less desktop dev must not gate the API"
+        assert unauthenticated.get("/api/v1/auth/me").status_code != 403, (
+            "shell-less desktop dev must not gate the API"
+        )
 
 
 @pytest.mark.contract  # §18.6 — the gate arms on shell attachment only (S11)
@@ -159,9 +152,7 @@ def test_auth_mode_is_init_only(tmp_path: Path) -> None:
         pass
     first_factory = first.state.session_factory
     assert StudyInstanceStore(first_factory).get("auth_mode") == "open"
-    second = create_app(
-        _settings(tmp_path, identity_mode="desktop", auth_mode="authenticated")
-    )
+    second = create_app(_settings(tmp_path, identity_mode="desktop", auth_mode="authenticated"))
     second_factory = second.state.session_factory
     assert StudyInstanceStore(second_factory).get("auth_mode") == "open"
 

@@ -106,6 +106,7 @@ def find_live_artifact(
             return material
     return None
 
+
 TRIVIAL_ARITHMETIC_RE = re.compile(r"^[\d\s+\-*/=.,()]+$")
 
 
@@ -116,16 +117,12 @@ def _normalize_formula(latex: str) -> str:
 def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
-            select(TreeNode)
-            .where(TreeNode.course_id == course_id)
-            .order_by(TreeNode.sort_path)
+            select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
         )
     )
     title_by_node = {node.id: node.title for node in nodes}
 
-    def collect_from_texts(
-        node_id: int | None, texts: list[str]
-    ) -> list[tuple[str, int | None]]:
+    def collect_from_texts(node_id: int | None, texts: list[str]) -> list[tuple[str, int | None]]:
         found: list[tuple[str, int | None]] = []
         for text in texts:
             for match in LATEX_SPAN_RE.finditer(text):
@@ -141,11 +138,7 @@ def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
     notes = list(session.scalars(select(Note).where(Note.course_id == course_id)))
     for note in notes:
         texts = [str(block.get("md") or "") for block in note.body or []]
-        texts += [
-            drawing.ocr_markdown
-            for drawing in note.drawings
-            if drawing.ocr_markdown
-        ]
+        texts += [drawing.ocr_markdown for drawing in note.drawings if drawing.ocr_markdown]
         pairs.extend(collect_from_texts(note.node_id, texts))
     link_node: dict[int, int] = {}
     for material_id, node_id in session.execute(
@@ -240,9 +233,7 @@ def _check_mentions(markdown: str, registry_refs: list[str]) -> list[str]:
     used = {f"{m.group(1)}{m.group(2)}" for m in MENTION_RE.finditer(markdown)}
     invalid = sorted(used - set(registry_refs))
     if invalid:
-        return [
-            f"handles {invalid} were not offered in the context — remove or fix them"
-        ]
+        return [f"handles {invalid} were not offered in the context — remove or fix them"]
     return []
 
 
@@ -257,9 +248,7 @@ def _validate_markdown(markdown: str, registry_refs: list[str]) -> list[str]:
     return problems
 
 
-def _validate_practice_draft(
-    draft: dict[str, Any], registry_refs: list[str]
-) -> list[str]:
+def _validate_practice_draft(draft: dict[str, Any], registry_refs: list[str]) -> list[str]:
     items = draft.get("items")
     if not isinstance(items, list) or not items:
         return ["response missing items list"]
@@ -292,9 +281,7 @@ def _validate_practice_draft(
             try:
                 parse_math(value)
             except Exception:
-                problems.append(
-                    f"{label}: equation answer '{value[:40]}' is not parseable"
-                )
+                problems.append(f"{label}: equation answer '{value[:40]}' is not parseable")
     rendered = _render_practice_set("Practice set", items[:MAX_PRACTICE_ITEMS])
     problems.extend(_check_mentions(rendered, registry_refs))
     return problems
@@ -320,9 +307,7 @@ def _render_practice_set(doc_title: str, items: list[dict[str, Any]]) -> str:
         raw_answer = entry.get("answer")
         answer: dict[str, Any] = raw_answer if isinstance(raw_answer, dict) else {}
         raw_choices = entry.get("choices")
-        answer_choices: list[Any] = (
-            list(raw_choices) if isinstance(raw_choices, list) else []
-        )
+        answer_choices: list[Any] = list(raw_choices) if isinstance(raw_choices, list) else []
         rendered = "—"
         if kind == "single":
             try:
@@ -344,9 +329,7 @@ def _render_practice_set(doc_title: str, items: list[dict[str, Any]]) -> str:
                     except (TypeError, ValueError):
                         continue
                     if 0 <= chosen < len(answer_choices):
-                        picked.append(
-                            f"{PRACTICE_LETTERS[chosen]}) {answer_choices[chosen]}"
-                        )
+                        picked.append(f"{PRACTICE_LETTERS[chosen]}) {answer_choices[chosen]}")
             rendered = ", ".join(picked) if picked else "—"
         elif kind == "truefalse":
             rendered = "True" if answer.get("value") is True else "False"
@@ -432,9 +415,7 @@ class ComposeService:
                 for formula in group["formulas"]:
                     known_keys.add(str(formula["key"]))
             if not known_keys:
-                raise ComposeError(
-                    "no formulas found in this course's notes or material yet"
-                )
+                raise ComposeError("no formulas found in this course's notes or material yet")
             lines = [
                 "Compose a formula sheet from EXACTLY the formulas collected below.",
                 "Title: " + doc_title,
@@ -448,9 +429,7 @@ class ComposeService:
                 lines.append(f"Instructions: {instructions.strip()}")
             for group in groups:
                 heading = str(group.get("node_title") or "Course")
-                entries = "\n".join(
-                    f"- ${formula['latex']}$" for formula in group["formulas"]
-                )
+                entries = "\n".join(f"- ${formula['latex']}$" for formula in group["formulas"])
                 lines.append(f"## {heading}\n{entries}")
             prompt = "\n\n".join(lines)
         else:
@@ -482,9 +461,7 @@ class ComposeService:
                 result = runner.run_json(
                     task=COMPOSE_TASK,
                     prompt=prompt + "\n\n" + PRACTICE_JSON_CONTRACT,
-                    validate=lambda draft: _validate_practice_draft(
-                        draft, registry_refs
-                    ),
+                    validate=lambda draft: _validate_practice_draft(draft, registry_refs),
                     fallback_system=PRACTICE_SET_SYSTEM,
                     skill_key=COMPOSE_PRACTICE_SKILL,
                     course_id=course_id,
@@ -649,9 +626,7 @@ class ComposeService:
         return material
 
 
-def make_compose_handler(
-    gateway: LLMGateway, blobs: BlobStore, embed: Any
-) -> JobHandler:
+def make_compose_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         payload = cast(ComposePayload, job.payload or {})
         raw_course_id = payload.get("course_id")
@@ -674,29 +649,19 @@ def make_compose_handler(
                     node_id=int(node_id) if node_id is not None else None,
                     scope=ContextScope(str(payload.get("scope") or "subtree")),
                     include_material_ids=[
-                        int(value)
-                        for value in (payload.get("include_material_ids") or [])
+                        int(value) for value in (payload.get("include_material_ids") or [])
                     ],
                     exclude_material_ids=[
-                        int(value)
-                        for value in (payload.get("exclude_material_ids") or [])
+                        int(value) for value in (payload.get("exclude_material_ids") or [])
                     ],
-                    note_ids=[
-                        int(value) for value in (payload.get("note_ids") or [])
-                    ],
-                    concept_ids=[
-                        int(value) for value in (payload.get("concept_ids") or [])
-                    ],
+                    note_ids=[int(value) for value in (payload.get("note_ids") or [])],
+                    concept_ids=[int(value) for value in (payload.get("concept_ids") or [])],
                     hint=payload.get("context_hint"),
                     query=str(
-                        payload.get("title")
-                        or payload.get("instructions")
-                        or "study material"
+                        payload.get("title") or payload.get("instructions") or "study material"
                     ),
                     exclude_ai_composed=True,
-                    include_unassigned=bool(
-                        payload.get("include_unassigned", False)
-                    ),
+                    include_unassigned=bool(payload.get("include_unassigned", False)),
                 )
             )
         except ContextError as error:
@@ -708,8 +673,7 @@ def make_compose_handler(
         live = find_live_artifact(session, course_id, int(placement_node_id), kind)
         if live is not None and not regenerate:
             raise JobError(
-                f"a {kind.replace('_', ' ')} already exists at this node "
-                f"(material {live.id})"
+                f"a {kind.replace('_', ' ')} already exists at this node (material {live.id})"
             )
         existing_md: str | None = None
         if live is not None:

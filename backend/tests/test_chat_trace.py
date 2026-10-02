@@ -32,14 +32,15 @@ class ReasoningGateway(ScriptedGateway):
             yield StreamChunk("text", text[i : i + 8])
 
 
-def test_trace_is_persisted_and_returned(
-    tmp_path: Any, migrated_db_template: Any
-) -> None:
-    with sse_harness(
-        tmp_path,
-        [["CALC 2", "**10\n"], ["The answer ", "is 1024."]],
-        migrated_db_template,
-    ) as h, subscribe(h.client, h.session_id) as ws:
+def test_trace_is_persisted_and_returned(tmp_path: Any, migrated_db_template: Any) -> None:
+    with (
+        sse_harness(
+            tmp_path,
+            [["CALC 2", "**10\n"], ["The answer ", "is 1024."]],
+            migrated_db_template,
+        ) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "what is 2^10")
         messages = wait_for_assistant(h.client, h.session_id)
         events = drain_until(ws, {"assistant_message"})
@@ -85,9 +86,7 @@ def test_reasoning_is_captured_but_kept_out_of_the_answer(tmp_path: Path) -> Non
     with TestClient(app) as client:
         course_id = make_course(client)
         add_material(client, "deriv.txt", "Power rule for derivatives.", course_id)
-        session = client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "derivative of x^2"},
@@ -99,9 +98,7 @@ def test_reasoning_is_captured_but_kept_out_of_the_answer(tmp_path: Path) -> Non
 
 
 def test_repair_round_is_recorded(tmp_path: Path) -> None:
-    gateway = ScriptedGateway(
-        ["no citation here", "Here is a cited answer [1]."]
-    )
+    gateway = ScriptedGateway(["no citation here", "Here is a cited answer [1]."])
     app = create_app(
         Settings(data_dir=tmp_path, log_level="WARNING"),
         gateway=gateway,
@@ -113,9 +110,7 @@ def test_repair_round_is_recorded(tmp_path: Path) -> None:
         add_material(
             client, "m.txt", "The chain rule differentiates composite functions.", course_id
         )
-        session = client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "what is the chain rule"},
@@ -126,14 +121,13 @@ def test_repair_round_is_recorded(tmp_path: Path) -> None:
         assert any(round_["phase"] == "repairing" for round_ in trace["rounds"])
 
 
-def test_stream_deltas_are_coalesced(
-    tmp_path: Any, migrated_db_template: Any
-) -> None:
+def test_stream_deltas_are_coalesced(tmp_path: Any, migrated_db_template: Any) -> None:
     long_text = "The answer is " + "word " * 120
     chunks = [long_text[i : i + 40] for i in range(0, len(long_text), 40)]
-    with sse_harness(tmp_path, [chunks], migrated_db_template) as h, subscribe(
-        h.client, h.session_id
-    ) as ws:
+    with (
+        sse_harness(tmp_path, [chunks], migrated_db_template) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "give me a long answer")
         wait_for_assistant(h.client, h.session_id)
         events = drain_until(ws, {"assistant_message"})
@@ -147,11 +141,14 @@ def test_stream_deltas_are_coalesced(
 def test_tool_lines_are_not_streamed_as_text_and_final_answer_streams(
     tmp_path: Any, migrated_db_template: Any
 ) -> None:
-    with sse_harness(
-        tmp_path,
-        [["Let me verify.\nCALC 2", "**10\n"], ["The answer is 1024."]],
-        migrated_db_template,
-    ) as h, subscribe(h.client, h.session_id) as ws:
+    with (
+        sse_harness(
+            tmp_path,
+            [["Let me verify.\nCALC 2", "**10\n"], ["The answer is 1024."]],
+            migrated_db_template,
+        ) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "what is 2^10")
         wait_for_assistant(h.client, h.session_id)
         events = drain_until(ws, {"assistant_message"})

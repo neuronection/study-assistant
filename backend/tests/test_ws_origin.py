@@ -35,9 +35,7 @@ def test_ws_allows_configured_origin_and_rejects_others(tmp_path: Path) -> None:
     )
     app = create_app(settings)
     with TestClient(app) as configured:
-        with configured.websocket_connect(
-            "/ws", headers={"origin": "http://localhost:3200"}
-        ) as ws:
+        with configured.websocket_connect("/ws", headers={"origin": "http://localhost:3200"}) as ws:
             ws.send_json({"type": "ping"})
             assert ws.receive_json() == {"type": "pong"}
         with (

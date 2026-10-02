@@ -128,9 +128,7 @@ def submit(client: TestClient, attempt_id: int, question_id: int, response: Any)
 
 def test_generate_and_public_input(table_client: TestClient) -> None:
     activity = generate_table_quiz(table_client)
-    question = table_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = table_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     assert question["type"] == "table_fill"
     assert question["flag"] == "ok"
     grid = question["input"]
@@ -143,36 +141,24 @@ def test_generate_and_public_input(table_client: TestClient) -> None:
 
 def test_per_cell_grading_flow(table_client: TestClient) -> None:
     activity = generate_table_quiz(table_client)
-    question = table_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = table_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     attempt_id = int(
-        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()[
-            "id"
-        ]
+        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
-    exact = submit(
-        table_client, attempt_id, question["id"], [["", "", "true"], ["", "", "false"]]
-    )
+    exact = submit(table_client, attempt_id, question["id"], [["", "", "true"], ["", "", "false"]])
     assert exact["correct"] is True
     assert exact["partial_credit"] == 1.0
 
     attempt2 = int(
-        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()[
-            "id"
-        ]
+        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
-    partial = submit(
-        table_client, attempt2, question["id"], [["", "", "true"], ["", "", ""]]
-    )
+    partial = submit(table_client, attempt2, question["id"], [["", "", "true"], ["", "", ""]])
     assert partial["correct"] is False
     assert partial["partial_credit"] == 0.5
     assert "wrong_cell" in partial["error_tags"]
 
     attempt3 = int(
-        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()[
-            "id"
-        ]
+        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
     garbage = submit(table_client, attempt3, question["id"], "nope")
     assert garbage["correct"] is False
@@ -181,13 +167,9 @@ def test_per_cell_grading_flow(table_client: TestClient) -> None:
 
 def test_report_carries_table_response(table_client: TestClient) -> None:
     activity = generate_table_quiz(table_client)
-    question = table_client.get(
-        f"/api/v1/quiz/activities/{activity['id']}/questions"
-    ).json()[0]
+    question = table_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
     attempt_id = int(
-        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()[
-            "id"
-        ]
+        table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
     payload = [["", "", "true"], ["", "", "false"]]
     submit(table_client, attempt_id, question["id"], payload)
@@ -224,7 +206,5 @@ def test_caq_round_trip(table_client: TestClient) -> None:
     assert imported.status_code == 200, imported.text
     body = imported.json()
     assert body["valid"] == 1
-    exported = table_client.get(
-        f"/api/v1/quiz/activities/{body['activity']['id']}/export"
-    ).json()
+    exported = table_client.get(f"/api/v1/quiz/activities/{body['activity']['id']}/export").json()
     assert exported["questions"][0]["answer"]["rows"][0]["cells"][2]["value"] == "true"

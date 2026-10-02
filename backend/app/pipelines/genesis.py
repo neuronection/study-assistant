@@ -30,9 +30,7 @@ def _lesson_markdown(session: Session, material_id: int) -> str | None:
     return extraction.markdown if extraction is not None else None
 
 
-def make_genesis_handler(
-    gateway: LLMGateway, blobs: BlobStore, embed: Any
-) -> JobHandler:
+def make_genesis_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> JobHandler:
     def handler(session: Session, job: Any, report: ProgressReporter) -> None:
         payload = cast(GenesisPayload, job.payload or {})
         raw_course_id = payload.get("course_id")

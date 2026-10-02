@@ -20,9 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column("item_stats", sa.Column("rating", sa.Float(), nullable=True))
-    op.add_column(
-        "item_stats", sa.Column("rating_count", sa.Integer(), nullable=True)
-    )
+    op.add_column("item_stats", sa.Column("rating_count", sa.Integer(), nullable=True))
     op.create_table(
         "concept_skill_ratings",
         sa.Column("id", sa.Integer(), primary_key=True),

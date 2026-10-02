@@ -138,32 +138,25 @@ def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[i
             note_ids.add(note_id)
     stale: set[int] = set()
     if material_ids:
-        found = set(
-            session.scalars(select(Material.id).where(Material.id.in_(material_ids)))
-        )
+        found = set(session.scalars(select(Material.id).where(Material.id.in_(material_ids))))
         stale.update(
             job.id
             for job in jobs
-            if (material_id := _material_id(job.payload)) is not None
-            and material_id not in found
+            if (material_id := _material_id(job.payload)) is not None and material_id not in found
         )
     if chat_ids:
-        found = set(
-            session.scalars(select(ChatSession.id).where(ChatSession.id.in_(chat_ids)))
-        )
+        found = set(session.scalars(select(ChatSession.id).where(ChatSession.id.in_(chat_ids))))
         stale.update(
             job.id
             for job in jobs
-            if (chat_id := _chat_session_id(job.payload)) is not None
-            and chat_id not in found
+            if (chat_id := _chat_session_id(job.payload)) is not None and chat_id not in found
         )
     if note_ids:
         found = set(session.scalars(select(Note.id).where(Note.id.in_(note_ids))))
         stale.update(
             job.id
             for job in jobs
-            if (note_id := _note_id(job.payload)) is not None
-            and note_id not in found
+            if (note_id := _note_id(job.payload)) is not None and note_id not in found
         )
     return stale
 
@@ -229,12 +222,8 @@ def list_jobs(
 
 
 @router.get("/summary")
-def jobs_summary(
-    request: Request, session: Session = Depends(get_session)
-) -> JobsSummary:
-    rows = session.execute(
-        select(Job.status, func.count(Job.id)).group_by(Job.status)
-    ).all()
+def jobs_summary(request: Request, session: Session = Depends(get_session)) -> JobsSummary:
+    rows = session.execute(select(Job.status, func.count(Job.id)).group_by(Job.status)).all()
     counts: dict[str, int] = {str(status): int(count) for status, count in rows}
     retriable_types = request.app.state.jobs.retriable_handlers()
     failed_jobs = list(session.scalars(select(Job).where(Job.status == JobStatus.FAILED)))
@@ -259,8 +248,7 @@ def jobs_summary(
 def job_types(request: Request) -> list[JobTypeOut]:
     retriable_types = request.app.state.jobs.retriable_handlers()
     return [
-        JobTypeOut(type=entry, label=entry.replace("_", " "))
-        for entry in sorted(retriable_types)
+        JobTypeOut(type=entry, label=entry.replace("_", " ")) for entry in sorted(retriable_types)
     ]
 
 
@@ -301,9 +289,7 @@ def cancel_job(
         session.commit()
         if not int(cast(Any, claimed).rowcount or 0):
             raise HTTPException(status_code=409, detail="job already started")
-        request.app.state.jobs.publish_progress(
-            job_id, 0, "cancelled", "cancelled"
-        )
+        request.app.state.jobs.publish_progress(job_id, 0, "cancelled", "cancelled")
     else:
         request_cancel(job_id)
     retriable_types = request.app.state.jobs.retriable_handlers()
@@ -322,13 +308,9 @@ def retry_job(
         raise HTTPException(status_code=404, detail="job not found")
     retriable_types = request.app.state.jobs.retriable_handlers()
     if job.status != JobStatus.FAILED:
-        raise HTTPException(
-            status_code=422, detail="only failed jobs can be retried"
-        )
+        raise HTTPException(status_code=422, detail="only failed jobs can be retried")
     if job.type in NON_RETRYABLE_TYPES or job.type not in retriable_types:
-        raise HTTPException(
-            status_code=422, detail=f"job type '{job.type}' cannot be retried"
-        )
+        raise HTTPException(status_code=422, detail=f"job type '{job.type}' cannot be retried")
     _reset(job)
     session.commit()
     request.app.state.jobs.publish_progress(job_id, 0, "queued", "queued")

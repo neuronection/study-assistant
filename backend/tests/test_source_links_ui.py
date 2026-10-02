@@ -96,37 +96,28 @@ def test_browse_lists_pending_files_and_ingest(client: TestClient, tmp_path: Pat
     ).json()
     assert [f["name"] for f in inner_view["uningested"]] == ["b.txt"]
 
-    ingest = client.post(
-        f"/api/v1/sources/{source_id}/ingest", json={"relpath": "a.txt"}
-    )
+    ingest = client.post(f"/api/v1/sources/{source_id}/ingest", json={"relpath": "a.txt"})
     assert ingest.status_code == 201, ingest.text
     material_id = ingest.json()["material_id"]
     assert ingest.json()["deduped"] is False
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
 
     root_view = client.get(f"/api/v1/sources/{source_id}/browse").json()
     assert root_view["uningested"] == []
     assert [m["relpath"] for m in root_view["materials"]] == ["a.txt"]
 
-    duplicate = client.post(
-        f"/api/v1/sources/{source_id}/ingest", json={"relpath": "a.txt"}
-    ).json()
+    duplicate = client.post(f"/api/v1/sources/{source_id}/ingest", json={"relpath": "a.txt"}).json()
     assert duplicate["material_id"] == material_id
 
-    escape = client.post(
-        f"/api/v1/sources/{source_id}/ingest", json={"relpath": "../outside.txt"}
-    )
+    escape = client.post(f"/api/v1/sources/{source_id}/ingest", json={"relpath": "../outside.txt"})
     assert escape.status_code == 422
-    traversal = client.get(
-        f"/api/v1/sources/{source_id}/browse", params={"subdir": "../../etc"}
-    )
+    traversal = client.get(f"/api/v1/sources/{source_id}/browse", params={"subdir": "../../etc"})
     assert traversal.status_code == 422
-    missing = client.get(
-        f"/api/v1/sources/{source_id}/browse", params={"subdir": "nope"}
-    )
+    missing = client.get(f"/api/v1/sources/{source_id}/browse", params={"subdir": "nope"})
     assert missing.status_code == 422
 
     upload_into_link = client.post(
@@ -151,15 +142,11 @@ def test_browse_missing_target_and_relink(client: TestClient, tmp_path: Path) ->
     assert dangling["missing_target"] is True
     assert dangling["materials"] or dangling["materials"] == []
 
-    relink = client.patch(
-        f"/api/v1/sources/{source_id}", json={"path": str(tmp_path / "moved")}
-    )
+    relink = client.patch(f"/api/v1/sources/{source_id}", json={"path": str(tmp_path / "moved")})
     assert relink.status_code == 200, relink.text
     again = client.get(f"/api/v1/sources/{source_id}/browse").json()
     assert again["missing_target"] is False
-    bad_relink = client.patch(
-        f"/api/v1/sources/{source_id}", json={"path": "/nonexistent-dir-xyz"}
-    )
+    bad_relink = client.patch(f"/api/v1/sources/{source_id}", json={"path": "/nonexistent-dir-xyz"})
     assert bad_relink.status_code == 422
 
 
@@ -179,8 +166,9 @@ def test_text_file_create_rename_delete(client: TestClient) -> None:
     assert body["material"]["course_id"] == course_id
     material_id = body["material"]["id"]
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     detail = client.get(f"/api/v1/materials/{material_id}").json()
     assert "Quick" in detail["extraction"]["markdown"]
@@ -191,9 +179,7 @@ def test_text_file_create_rename_delete(client: TestClient) -> None:
     )
     assert as_md.json()["material"]["kind"] == "md"
 
-    renamed = client.patch(
-        f"/api/v1/materials/{material_id}", json={"title": "Renamed note"}
-    )
+    renamed = client.patch(f"/api/v1/materials/{material_id}", json={"title": "Renamed note"})
     assert renamed.status_code == 200
     assert renamed.json()["title"] == "Renamed note"
     empty = client.patch(f"/api/v1/materials/{material_id}", json={"title": "  "})
@@ -214,9 +200,7 @@ def test_blob_served_with_guessed_mime_inline(client: TestClient, tmp_path: Path
     target.mkdir()
     (target / "lecture.txt").write_text("plain lecture text")
     source_id = add_source(client, course_id, target, "Files")
-    ingest = client.post(
-        f"/api/v1/sources/{source_id}/ingest", json={"relpath": "lecture.txt"}
-    )
+    ingest = client.post(f"/api/v1/sources/{source_id}/ingest", json={"relpath": "lecture.txt"})
     material_id = ingest.json()["material_id"]
     detail = client.get(f"/api/v1/materials/{material_id}").json()["material"]
     sha = detail["blob_sha"]
@@ -250,9 +234,7 @@ def test_blob_served_with_non_ascii_filename(client: TestClient, tmp_path: Path)
     target.mkdir()
     (target / "Σημειώσεις.txt").write_text("διαλέξεις")
     source_id = add_source(client, course_id, target, "Greek files")
-    ingest = client.post(
-        f"/api/v1/sources/{source_id}/ingest", json={"relpath": "Σημειώσεις.txt"}
-    )
+    ingest = client.post(f"/api/v1/sources/{source_id}/ingest", json={"relpath": "Σημειώσεις.txt"})
     material_id = ingest.json()["material_id"]
     sha = client.get(f"/api/v1/materials/{material_id}").json()["material"]["blob_sha"]
 
@@ -274,9 +256,7 @@ def test_blob_served_with_non_ascii_filename(client: TestClient, tmp_path: Path)
     assert "Σημειώσεις" not in disposition.split("filename*=")[0]
 
 
-def test_scan_remaps_moved_files_by_content_hash(
-    client: TestClient, tmp_path: Path
-) -> None:
+def test_scan_remaps_moved_files_by_content_hash(client: TestClient, tmp_path: Path) -> None:
     course_id = make_course(client, "Moves")
     target = tmp_path / "src"
     (target / "old").mkdir(parents=True)
@@ -463,9 +443,7 @@ def test_scan_mirrors_subdirs_and_scopes_folder_membership(
     week_child = next(entry for entry in folders if entry["name"] == "Week 1")
     assert week_child["parent_id"] == week["id"]
 
-    materials = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     lecture = next(entry for entry in materials if entry["filename"] == "lecture.md")
     plain = next(entry for entry in materials if entry["filename"] == "root-file.md")
     assert lecture["folder_id"] == week_child["id"]
@@ -474,9 +452,7 @@ def test_scan_mirrors_subdirs_and_scopes_folder_membership(
     rescan = client.post(f"/api/v1/sources/{source_id}/scan").json()
     assert rescan["stats"]["new"] == 0
     assert rescan["stats"]["unchanged"] == 2
-    mirrored = client.get(
-        "/api/v1/folders", params={"course_id": course_id}
-    ).json()
+    mirrored = client.get("/api/v1/folders", params={"course_id": course_id}).json()
     assert [entry["name"] for entry in mirrored].count("Week 1") == 1
 
 
@@ -488,9 +464,7 @@ def test_scan_without_mirroring_stays_flat(client: TestClient, tmp_path: Path) -
     source_id = add_source(client, course_id, target, "Flat")
     scan = client.post(f"/api/v1/sources/{source_id}/scan").json()
     assert scan["stats"]["new"] == 1
-    listing = client.get(
-        "/api/v1/folders", params={"course_id": course_id}
-    ).json()
+    listing = client.get("/api/v1/folders", params={"course_id": course_id}).json()
     assert [entry["name"] for entry in listing] == ["Flat"]
 
 
@@ -502,17 +476,13 @@ def test_mirror_backfill_assigns_existing_files(client: TestClient, tmp_path: Pa
     source_id = add_source(client, course_id, target, "Backfill")
     first = client.post(f"/api/v1/sources/{source_id}/scan").json()
     assert first["stats"]["new"] == 1
-    materials = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     assert materials[0]["folder_id"] is None
 
     backfill = client.post(f"/api/v1/sources/{source_id}/mirror-backfill").json()
     assert backfill["stats"]["backfilled"] == 1
     assert backfill["stats"]["mirrored_dirs"] >= 1
-    after = client.get(
-        "/api/v1/materials", params={"course_id": course_id}
-    ).json()
+    after = client.get("/api/v1/materials", params={"course_id": course_id}).json()
     assert after[0]["folder_id"] is not None
 
 

@@ -15,10 +15,7 @@ def _is_postgres(session: Session) -> bool:
 
 def _load_meta(session: Session) -> dict[str, str]:
     session.execute(
-        text(
-            f"CREATE TABLE IF NOT EXISTS {VEC_META} "
-            "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-        )
+        text(f"CREATE TABLE IF NOT EXISTS {VEC_META} (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     )
     rows = session.execute(text(f"SELECT key, value FROM {VEC_META}")).mappings()
     return {row["key"]: row["value"] for row in rows}
@@ -71,9 +68,7 @@ def ensure_table(session: Session, dim: int, model: str) -> bool:
     return True
 
 
-def store(
-    session: Session, chunk_ids: list[int], vectors: list[list[float]], model: str
-) -> None:
+def store(session: Session, chunk_ids: list[int], vectors: list[list[float]], model: str) -> None:
     dim = len(vectors[0])
     ensure_table(session, dim, model)
     for chunk_id, vector in zip(chunk_ids, vectors, strict=True):
@@ -102,27 +97,19 @@ def delete_for_extraction(session: Session, chunk_ids: list[int]) -> None:
     if not chunk_ids:
         return
     if _is_postgres(session):
-        exists = session.execute(
-            text("SELECT to_regclass(:name)"), {"name": VEC_TABLE}
-        ).scalar()
+        exists = session.execute(text("SELECT to_regclass(:name)"), {"name": VEC_TABLE}).scalar()
     else:
         exists = session.execute(
-            text(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name = :name"
-            ),
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name = :name"),
             {"name": VEC_TABLE},
         ).first()
     if exists is None:
         return
     placeholders = ",".join(str(int(chunk_id)) for chunk_id in chunk_ids)
-    session.execute(
-        text(f"DELETE FROM {VEC_TABLE} WHERE rowid IN ({placeholders})")
-    )
+    session.execute(text(f"DELETE FROM {VEC_TABLE} WHERE rowid IN ({placeholders})"))
 
 
-def search(
-    session: Session, query_vector: list[float], limit: int = 24
-) -> list[tuple[int, float]]:
+def search(session: Session, query_vector: list[float], limit: int = 24) -> list[tuple[int, float]]:
     meta = _load_meta(session)
     if meta.get("dim") != str(len(query_vector)):
         return []

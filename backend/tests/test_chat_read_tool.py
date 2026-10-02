@@ -57,9 +57,7 @@ def make_node(client: TestClient, course_id: int, title: str) -> int:
 
 
 def link_material(client: TestClient, node_id: int, material_id: int) -> None:
-    response = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
-    )
+    response = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert response.status_code < 400, response.text
 
 
@@ -120,9 +118,7 @@ def test_read_fetches_material_content_model_only(
         )
         gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append(f"Done — the recipe is in [M{material_id}] [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "explain u-substitution"},
@@ -130,9 +126,7 @@ def test_read_fetches_material_content_model_only(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert len(gateway.calls) == 2
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "u-substitution recipe" in second_prompt
         assert "READ" in second_prompt
         assert assistant["reads"]
@@ -158,9 +152,7 @@ def test_read_tool_call_persisted_without_content(
         )
         gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append("Done — the recipe is in [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "explain u-substitution"},
@@ -186,18 +178,14 @@ def test_read_unknown_handle_returns_error_not_content(
         add_material(test_client, "x.txt", "short body", course_id)
         gateway.responses.append("READ M999")
         gateway.responses.append("I only have what is offered [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "hello"},
         )
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
-        second_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "error: M999 is not offered" in second_prompt
         assert assistant["reads"] == []
         assert "error:" not in assistant["markdown"]
@@ -210,15 +198,12 @@ def test_read_budget_capped_at_three(
     with test_client:
         course_id = make_course(test_client)
         ids = [
-            add_material(test_client, f"m{i}.txt", f"body number {i}", course_id)
-            for i in range(4)
+            add_material(test_client, f"m{i}.txt", f"body number {i}", course_id) for i in range(4)
         ]
         for i in range(4):
             gateway.responses.append(f"READ M{ids[i]}")
         gateway.responses.append("Enough — see [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "go"},
@@ -226,9 +211,7 @@ def test_read_budget_capped_at_three(
         messages = wait_for_assistant(test_client, session["id"])
         assistant = messages[-1]
         assert len(assistant["reads"]) == 3
-        last_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        last_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "budget for this turn is spent" in last_prompt
 
 
@@ -255,9 +238,7 @@ def test_manifest_respects_node_scope_and_context_endpoint(
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
         assert f"M{inside} = " in prompt
         assert f"M{outside}" not in prompt
-        context = test_client.get(
-            f"/api/v1/chat/sessions/{session['id']}/context"
-        ).json()
+        context = test_client.get(f"/api/v1/chat/sessions/{session['id']}/context").json()
         assert context["node"] == {"id": node_id, "title": "Techniques"}
         refs = {entry["ref"] for entry in context["registry"]}
         assert f"M{inside}" in refs
@@ -276,9 +257,7 @@ def test_math_tools_share_turn_with_read(
         gateway.responses.append(f"READ M{material_id}")
         gateway.responses.append("SYMPY diff x**2")
         gateway.responses.append("All verified [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "compute things"},
@@ -287,9 +266,7 @@ def test_math_tools_share_turn_with_read(
         assistant = messages[-1]
         assert len(gateway.calls) == 4
         assert assistant["reads"]
-        final_prompt = "\n".join(
-            str(message.content) for message in gateway.calls[-1]
-        )
+        final_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "CALC 2**10 -> 1024" in final_prompt
         assert "basic calculus body" in final_prompt
         assert "SYMPY diff x**2 -> 2*x" in final_prompt
@@ -318,9 +295,7 @@ def test_manifest_includes_summary_when_available(
         stored.commit()
         stored.close()
         gateway.responses.append("See [1].")
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "hello"},

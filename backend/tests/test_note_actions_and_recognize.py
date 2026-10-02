@@ -165,9 +165,9 @@ def test_handwritten_answer_stores_strokes_and_input_mode() -> None:
             params={"dry_run": "false", "course_id": make_course(client)},
             json=quiz,
         ).json()["activity"]
-        question_id = client.get(
-            f"/api/v1/quiz/activities/{activity['id']}/questions"
-        ).json()[0]["id"]
+        question_id = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0][
+            "id"
+        ]
         attempt_id = int(
             client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
         )

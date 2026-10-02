@@ -64,7 +64,8 @@ class Activity(Base):
     __tablename__ = "activities"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
@@ -88,6 +89,7 @@ class Activity(Base):
     attempts: Mapped[list["Attempt"]] = relationship(
         back_populates="activity", cascade="all, delete-orphan"
     )
+
 
 class Question(Base):
     __tablename__ = "questions"
@@ -120,6 +122,7 @@ class Question(Base):
 
     activity: Mapped[Activity] = relationship(back_populates="questions")
 
+
 class Attempt(Base):
     __tablename__ = "attempts"
 
@@ -138,6 +141,7 @@ class Attempt(Base):
     answers: Mapped[list["Answer"]] = relationship(
         back_populates="attempt", cascade="all, delete-orphan"
     )
+
 
 class Answer(Base):
     __tablename__ = "answers"
@@ -163,6 +167,7 @@ class Answer(Base):
 
     attempt: Mapped[Attempt] = relationship(back_populates="answers")
 
+
 class Mistake(Base):
     __tablename__ = "mistakes"
 
@@ -178,11 +183,13 @@ class Mistake(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+
 class Exercise(Base):
     __tablename__ = "exercises"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
     )
@@ -214,6 +221,7 @@ class Exercise(Base):
         uselist=False,
     )
 
+
 class ExerciseStep(Base):
     __tablename__ = "exercise_steps"
 
@@ -228,6 +236,7 @@ class ExerciseStep(Base):
     rubric: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
     exercise: Mapped[Exercise] = relationship(back_populates="steps")
+
 
 class ExerciseSession(Base):
     __tablename__ = "exercise_sessions"
@@ -248,6 +257,7 @@ class ExerciseSession(Base):
         back_populates="session", cascade="all, delete-orphan"
     )
 
+
 class StepAttempt(Base):
     __tablename__ = "step_attempts"
 
@@ -266,11 +276,10 @@ class StepAttempt(Base):
 
     session: Mapped[ExerciseSession] = relationship(back_populates="attempts")
 
+
 class QuizHelpEvent(Base):
     __tablename__ = "quiz_help_events"
-    __table_args__ = (
-        Index("ix_quiz_help_events_attempt_question", "attempt_id", "question_id"),
-    )
+    __table_args__ = (Index("ix_quiz_help_events_attempt_question", "attempt_id", "question_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     attempt_id: Mapped[int] = mapped_column(ForeignKey("attempts.id", ondelete="CASCADE"))
@@ -279,6 +288,7 @@ class QuizHelpEvent(Base):
     markdown: Mapped[str] = mapped_column(Text)
     violations: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class FsrsState(Base):
     __tablename__ = "fsrs_states"
@@ -295,9 +305,8 @@ class FsrsState(Base):
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_review_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    card: Mapped["Exercise"] = relationship(
-        foreign_keys=[card_id], back_populates="fsrs_state"
-    )
+    card: Mapped["Exercise"] = relationship(foreign_keys=[card_id], back_populates="fsrs_state")
+
 
 class ReviewLog(Base):
     __tablename__ = "review_log"
@@ -308,6 +317,7 @@ class ReviewLog(Base):
     interval_days: Mapped[float] = mapped_column(Float)
     elapsed_days: Mapped[float] = mapped_column(Float)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class ErrorPattern(Base):
     __tablename__ = "error_patterns"
@@ -328,11 +338,10 @@ class ErrorPattern(Base):
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class StudySession(Base):
     __tablename__ = "study_sessions"
-    __table_args__ = (
-        Index("ix_study_sessions_profile_started", "profile_id", "started_at"),
-    )
+    __table_args__ = (Index("ix_study_sessions_profile_started", "profile_id", "started_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profile_id: Mapped[str] = mapped_column(
@@ -355,7 +364,8 @@ class PlanItem(Base):
     __tablename__ = "plan_items"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["node_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["node_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
         Index("ix_plan_items_course_due", "course_id", "due_date"),
@@ -370,13 +380,9 @@ class PlanItem(Base):
     node_id: Mapped[int | None] = mapped_column(Integer)
     title: Mapped[str] = mapped_column(String(300))
     detail: Mapped[str | None] = mapped_column(String(500))
-    kind: Mapped[str] = mapped_column(
-        String(20), default="study", server_default="study"
-    )
+    kind: Mapped[str] = mapped_column(String(20), default="study", server_default="study")
     due_date: Mapped[date] = mapped_column(Date)
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    origin: Mapped[str] = mapped_column(
-        String(20), default="manual", server_default="manual"
-    )
+    origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
     sort_key: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

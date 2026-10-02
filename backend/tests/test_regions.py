@@ -125,9 +125,7 @@ class TestGrading:
 
     def test_mixed_points_and_intervals(self) -> None:
         expected = answer(intervals=[interval(4, 6)], points=[{"value": 1}])
-        result = grade_regions(
-            expected, {"points": [{"value": 9}], "intervals": [interval(4, 6)]}
-        )
+        result = grade_regions(expected, {"points": [{"value": 9}], "intervals": [interval(4, 6)]})
         assert not result.correct
         assert result.partial_credit == round(2 * 2 / (3 + 3), 4)
         assert "missed_point" in result.error_tags

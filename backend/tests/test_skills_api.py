@@ -103,17 +103,18 @@ def test_seed_refresh_updates_seed_name_and_description() -> None:
     app = client.app
     assert isinstance(app, FastAPI)
     with client:
-        renamed = dataclasses.replace(
-            seed, name="Renamed OCR", description="Renamed description."
-        )
-        with unittest.mock.patch.object(
-            services_skills,
-            "SEEDS",
-            [
-                renamed,
-                *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
-            ],
-        ), app.state.session_factory() as session:
+        renamed = dataclasses.replace(seed, name="Renamed OCR", description="Renamed description.")
+        with (
+            unittest.mock.patch.object(
+                services_skills,
+                "SEEDS",
+                [
+                    renamed,
+                    *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
+                ],
+            ),
+            app.state.session_factory() as session,
+        ):
             seed_skills(session)
             session.commit()
 
@@ -126,7 +127,8 @@ def test_resolution_chain_and_course_scoping() -> None:
     client = make_client()
     with client:
         math_type = next(
-            entry for entry in client.get("/api/v1/skills/course-types").json()
+            entry
+            for entry in client.get("/api/v1/skills/course-types").json()
             if entry["key"] == "math"
         )
         course = client.post(
@@ -254,15 +256,11 @@ def test_skill_version_logged_on_pipeline_calls() -> None:
             json={
                 "title": "Squares",
                 "course_id": make_course(client),
-                "steps": [
-                    {"prompt_md": "Compute $x \\cdot x$.", "expected": {"value": "x^2"}}
-                ],
+                "steps": [{"prompt_md": "Compute $x \\cdot x$.", "expected": {"value": "x^2"}}],
             },
         ).json()
         session_id = client.post(f"/api/v1/exercises/{exercise['id']}/sessions").json()["id"]
-        client.post(
-            f"/api/v1/exercises/sessions/{session_id}/hint", json={"level": 1}
-        )
+        client.post(f"/api/v1/exercises/sessions/{session_id}/hint", json={"level": 1})
 
         app = client.app
         assert isinstance(app, FastAPI)
@@ -309,14 +307,17 @@ def test_seed_refresh_updates_unmodified_system_v1_only() -> None:
 
         mutated = original.replace("ladder", "escalator")
         assert mutated != original
-        with unittest.mock.patch.object(
-            services_skills,
-            "SEEDS",
-            [
-                dataclasses.replace(seed, system_prompt=mutated),
-                *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
-            ],
-        ), app.state.session_factory() as session:
+        with (
+            unittest.mock.patch.object(
+                services_skills,
+                "SEEDS",
+                [
+                    dataclasses.replace(seed, system_prompt=mutated),
+                    *(entry for entry in skills_module.SEEDS if entry.key != seed.key),
+                ],
+            ),
+            app.state.session_factory() as session,
+        ):
             seed_skills(session)
             session.commit()
 

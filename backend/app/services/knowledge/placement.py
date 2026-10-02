@@ -71,24 +71,17 @@ def _tokens(text: str) -> set[str]:
         tokens.add("".join(current))
     return tokens - STOPWORDS
 
+
 CAP = 40
 
 
-def assigned_material_ids(
-    session: Session, course_id: int
-) -> set[int]:
+def assigned_material_ids(session: Session, course_id: int) -> set[int]:
     assigned: set[int] = set(
-        session.scalars(
-            select(MaterialLink.material_id).where(
-                MaterialLink.course_id == course_id
-            )
-        )
+        session.scalars(select(MaterialLink.material_id).where(MaterialLink.course_id == course_id))
     )
     folder_ids = list(
         session.scalars(
-            select(MaterialFolderLink.folder_id).where(
-                MaterialFolderLink.course_id == course_id
-            )
+            select(MaterialFolderLink.folder_id).where(MaterialFolderLink.course_id == course_id)
         )
     )
     for folder_id in folder_ids:
@@ -99,15 +92,11 @@ def assigned_material_ids(
     return assigned
 
 
-def unassigned_materials(
-    session: Session, course_id: int
-) -> list[Material]:
+def unassigned_materials(session: Session, course_id: int) -> list[Material]:
     assigned = assigned_material_ids(session, course_id)
     materials = list(
         session.scalars(
-            select(Material)
-            .where(Material.course_id == course_id)
-            .order_by(Material.id)
+            select(Material).where(Material.course_id == course_id).order_by(Material.id)
         )
     )
     ready = [material for material in materials if material.status == MaterialStatus.READY]
@@ -115,16 +104,11 @@ def unassigned_materials(
     return unassigned[:CAP]
 
 
-def unassigned_payload(
-    session: Session, course_id: int
-) -> dict[str, Any]:
+def unassigned_payload(session: Session, course_id: int) -> dict[str, Any]:
     materials = unassigned_materials(session, course_id)
     return {
         "count": len(materials),
-        "materials": [
-            {"id": material.id, "title": material.title}
-            for material in materials
-        ],
+        "materials": [{"id": material.id, "title": material.title} for material in materials],
     }
 
 
@@ -148,9 +132,7 @@ def _material_tokens(session: Session, material: Material) -> tuple[set[str], se
 def _node_infos(session: Session, course_id: int) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
-            select(TreeNode)
-            .where(TreeNode.course_id == course_id)
-            .order_by(TreeNode.sort_path)
+            select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
         )
     )
     live = [node for node in nodes if not node.is_root]
@@ -176,10 +158,7 @@ def _node_infos(session: Session, course_id: int) -> list[dict[str, Any]]:
                 "rank": len(infos),
                 "core": title_tokens,
                 "extras": summary_tokens | objective_tokens | concept_tokens,
-                "all": title_tokens
-                | summary_tokens
-                | objective_tokens
-                | concept_tokens,
+                "all": title_tokens | summary_tokens | objective_tokens | concept_tokens,
             }
         )
     return infos
@@ -195,8 +174,7 @@ def _node_breadcrumbs(
     for info in infos:
         node = info["node"]
         breadcrumbs[node.id] = [
-            {"id": entry["id"], "title": entry["title"]}
-            for entry in tree.breadcrumb(node)
+            {"id": entry["id"], "title": entry["title"]} for entry in tree.breadcrumb(node)
         ]
     return breadcrumbs
 

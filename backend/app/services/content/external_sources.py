@@ -86,9 +86,7 @@ def _validated_source_url(kind: str, url: str) -> str:
     return text[:2048]
 
 
-def _validated_options(
-    kind: str, options: dict[str, Any] | None
-) -> dict[str, Any]:
+def _validated_options(kind: str, options: dict[str, Any] | None) -> dict[str, Any]:
     if options is None:
         options = {}
     if not isinstance(options, dict):
@@ -122,12 +120,8 @@ def validate_source(
     return kind_value.value, clean_url, clean_options
 
 
-def fetch_url(
-    url: str, headers: dict[str, str] | None = None
-) -> httpx.Response:
-    return httpx.get(
-        url, timeout=RSS_TIMEOUT_SEC, follow_redirects=True, headers=headers
-    )
+def fetch_url(url: str, headers: dict[str, str] | None = None) -> httpx.Response:
+    return httpx.get(url, timeout=RSS_TIMEOUT_SEC, follow_redirects=True, headers=headers)
 
 
 def parse_feed(data: bytes) -> Any:
@@ -212,12 +206,11 @@ def _scan_rss(session: Session, source: ExternalSource) -> dict[str, int]:
     if response.status_code == 304:
         return {"new": 0, "updated": 0}
     if response.status_code != 200:
-        raise ExternalSourcesError(
-            f"feed returned {response.status_code}"
-        )
+        raise ExternalSourcesError(f"feed returned {response.status_code}")
     feed = parse_feed(response.content)
     entries = [
-        entry for entry in getattr(feed, "entries", []) or []
+        entry
+        for entry in getattr(feed, "entries", []) or []
         if isinstance(entry, dict) or hasattr(entry, "get")
     ]
     seen = [str(item) for item in cursor.get("seen", []) if item]
@@ -324,9 +317,7 @@ def _scan_site_search(session: Session, source: ExternalSource) -> dict[str, int
     options = source.options if isinstance(source.options, dict) else {}
     config = search_provider_config(session, source.profile_id)
     if config is None:
-        raise ExternalSourcesError(
-            "no search provider configured — connect one in Settings"
-        )
+        raise ExternalSourcesError("no search provider configured — connect one in Settings")
     api_key = get_secret(SEARCH_KEYRING_REF) or ""
     site = str(options.get("site") or "").strip()
     query = f"{options.get('query', '')}".strip()

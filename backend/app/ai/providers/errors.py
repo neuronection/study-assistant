@@ -43,8 +43,7 @@ def classify_provider_error(
     if isinstance(error, httpx.TimeoutException):
         return ClassifiedProviderError(code=ProviderErrorCode.TIMEOUT)
     if (
-        isinstance(error, httpx.TransportError)
-        or CONNECTION_FAILURE_PATTERN.search(message)
+        isinstance(error, httpx.TransportError) or CONNECTION_FAILURE_PATTERN.search(message)
     ) and local_provider:
         return ClassifiedProviderError(code=ProviderErrorCode.LOCAL_NOT_RUNNING)
 

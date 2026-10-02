@@ -56,15 +56,11 @@ def _out(source: ExternalSource) -> ExternalSourceOut:
         enabled=source.enabled,
         scan_interval_sec=source.scan_interval_sec,
         last_scan_error=source.last_scan_error,
-        last_scanned_at=(
-            source.last_scanned_at.isoformat() if source.last_scanned_at else None
-        ),
+        last_scanned_at=(source.last_scanned_at.isoformat() if source.last_scanned_at else None),
     )
 
 
-def _owned_source(
-    session: Session, profile_id: str, source_id: int
-) -> ExternalSource:
+def _owned_source(session: Session, profile_id: str, source_id: int) -> ExternalSource:
     source = session.get(ExternalSource, source_id)
     if source is None or source.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="source not found")
@@ -77,9 +73,7 @@ def list_sources(
     session: Session = Depends(get_session),
 ) -> list[ExternalSourceOut]:
     profile = ensure_default_profile(session)
-    stmt = select(ExternalSource).where(
-        ExternalSource.profile_id == profile.id
-    )
+    stmt = select(ExternalSource).where(ExternalSource.profile_id == profile.id)
     if course_id is not None:
         stmt = stmt.where(ExternalSource.course_id == course_id)
     sources = list(session.scalars(stmt.order_by(ExternalSource.id)))
@@ -96,9 +90,7 @@ def create_source(
     if course is None or course.profile_id != profile.id:
         raise HTTPException(status_code=422, detail="course not found")
     try:
-        kind, url, options = external.validate_source(
-            body.kind, body.url, body.options
-        )
+        kind, url, options = external.validate_source(body.kind, body.url, body.options)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     source = ExternalSource(
@@ -132,9 +124,7 @@ def patch_source(
         source.scan_interval_sec = body.scan_interval_sec
     if body.options is not None:
         try:
-            _, _, options = external.validate_source(
-                source.kind, source.url, body.options
-            )
+            _, _, options = external.validate_source(source.kind, source.url, body.options)
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         source.options = options
@@ -172,8 +162,6 @@ def scan_source(
         if dead is not None:
             dead.last_scan_error = str(error)[:500]
             session.commit()
-        raise HTTPException(
-            status_code=502, detail=f"scan failed: {str(error)[:300]}"
-        ) from error
+        raise HTTPException(status_code=502, detail=f"scan failed: {str(error)[:300]}") from error
     return stats
     return stats

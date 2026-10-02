@@ -112,9 +112,7 @@ def seed_answers(
     assert imported.status_code == 200, imported.text
     activity = imported.json()["activity"]
     questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
-    attempt_id = int(
-        client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
-    )
+    attempt_id = int(client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"])
     for question_index, response, time_ms in plan:
         answered = client.post(
             f"/api/v1/quiz/attempts/{attempt_id}/answers",
@@ -225,9 +223,7 @@ def test_recommendations_read_drill_review() -> None:
         )
         assert due_cards.status_code == 201
         recs_with_cards = client.get("/api/v1/analytics/recommendations").json()
-        review = next(
-            (entry for entry in recs_with_cards if entry["kind"] == "review"), None
-        )
+        review = next((entry for entry in recs_with_cards if entry["kind"] == "review"), None)
         assert review is not None
         assert review["evidence"]["due_cards"] >= 1
 
@@ -254,9 +250,7 @@ def test_item_analysis_and_flags() -> None:
         with app.state.session_factory() as db:
             from sqlalchemy import text
 
-            rows = db.execute(
-                text("SELECT COUNT(*) FROM concept_skill_stats")
-            ).one()
+            rows = db.execute(text("SELECT COUNT(*) FROM concept_skill_stats")).one()
             rollups = db.execute(text("SELECT COUNT(*) FROM daily_rollups")).one()
             item_rows = db.execute(text("SELECT COUNT(*) FROM item_stats")).one()
         assert rows[0] >= 1
@@ -274,9 +268,7 @@ def test_exam_answers_excluded_from_mastery() -> None:
             json=CAQ_DOC,
         )
         activity = imported.json()["activity"]
-        questions = client.get(
-            f"/api/v1/quiz/activities/{activity['id']}/questions"
-        ).json()
+        questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
         practice = int(
             client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
         )
@@ -285,19 +277,13 @@ def test_exam_answers_excluded_from_mastery() -> None:
             json={"question_id": questions[0]["id"], "response": 0, "time_ms": 9000},
         )
         exam = int(
-            client.post(
-                f"/api/v1/quiz/activities/{activity['id']}/attempts?mode=exam"
-            ).json()["id"]
+            client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts?mode=exam").json()["id"]
         )
         client.post(
             f"/api/v1/quiz/attempts/{exam}/answers",
             json={"question_id": questions[0]["id"], "response": 1, "time_ms": 9000},
         )
         diagnostics = client.get("/api/v1/analytics/diagnostics").json()
-        proc = next(
-            c
-            for c in diagnostics["weakness_matrix"]
-            if c["concept"] == "derivatives"
-        )
+        proc = next(c for c in diagnostics["weakness_matrix"] if c["concept"] == "derivatives")
         assert proc["n"] == 1
         assert proc["accuracy"] == 1.0

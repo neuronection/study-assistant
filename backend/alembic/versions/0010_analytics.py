@@ -51,9 +51,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["profile_id"], ["profiles.id"]),
     )
     with op.batch_alter_table("daily_rollups", schema=None) as batch_op:
-        batch_op.create_index(
-            "uq_daily_rollups", ["profile_id", "day"], unique=True
-        )
+        batch_op.create_index("uq_daily_rollups", ["profile_id", "day"], unique=True)
     op.create_table(
         "item_stats",
         sa.Column("id", sa.Integer(), nullable=False),

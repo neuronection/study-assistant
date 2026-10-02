@@ -123,9 +123,7 @@ def test_docx_ingests_via_converter(convert_client: tuple[TestClient, list[str]]
 def test_pptx_slides_notes_and_order(convert_client: tuple[TestClient, list[str]]) -> None:
     client, _responses = convert_client
     course_id = make_course(client)
-    material_id = upload(
-        client, course_id, "deck.pptx", (FIXTURES / "deck.pptx").read_bytes()
-    )
+    material_id = upload(client, course_id, "deck.pptx", (FIXTURES / "deck.pptx").read_bytes())
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]
     assert "## Slide 1 — The Chain Rule" in markdown
@@ -139,9 +137,7 @@ def test_epub_spine_order_and_chapters(
 ) -> None:
     client, _responses = convert_client
     course_id = make_course(client)
-    material_id = upload(
-        client, course_id, "book.epub", (FIXTURES / "book.epub").read_bytes()
-    )
+    material_id = upload(client, course_id, "book.epub", (FIXTURES / "book.epub").read_bytes())
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]
     assert "# Limits" in markdown
@@ -171,7 +167,7 @@ def test_html_data_uri_images_become_ocr_jobs(
     client, responses = convert_client
     responses.append(IMAGE_OCR_TEXT)
     course_id = make_course(client)
-    html = f"<html><body><h1>Trig</h1><img src=\"{PENGUIN_PNG}\" alt=\"unit circle\"></body></html>"
+    html = f'<html><body><h1>Trig</h1><img src="{PENGUIN_PNG}" alt="unit circle"></body></html>'
     material_id = upload(client, course_id, "trig.html", html.encode("utf-8"))
     detail = wait_ready(client, material_id)
     markdown = detail["extraction"]["markdown"]

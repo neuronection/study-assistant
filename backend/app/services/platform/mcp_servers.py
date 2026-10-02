@@ -89,9 +89,7 @@ def get_server(session: Session, profile_id: str, server_id: str) -> dict[str, A
     return None
 
 
-def _replace_server(
-    session: Session, profile_id: str, updated: dict[str, Any]
-) -> None:
+def _replace_server(session: Session, profile_id: str, updated: dict[str, Any]) -> None:
     servers = load_servers(session, profile_id)
     save_servers(
         session,
@@ -125,9 +123,7 @@ def create_server(
     if not 5 <= int(timeout_sec) <= 120:
         raise McpServersError("timeout_sec must be 5-120")
     if not 1 <= int(max_concurrent) <= MAX_CONCURRENT_CAP:
-        raise McpServersError(
-            f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}"
-        )
+        raise McpServersError(f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}")
     servers = load_servers(session, profile_id)
     if len(servers) >= MAX_SERVERS:
         raise McpServersError(f"at most {MAX_SERVERS} servers can be registered")
@@ -196,9 +192,7 @@ def patch_server(
         server["url"] = clean_url
     if max_concurrent is not UNSET and max_concurrent is not None:
         if not 1 <= int(max_concurrent) <= MAX_CONCURRENT_CAP:
-            raise McpServersError(
-                f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}"
-            )
+            raise McpServersError(f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}")
         server["max_concurrent"] = int(max_concurrent)
     if token is not UNSET:
         if token:
@@ -242,27 +236,17 @@ def delete_server(session: Session, profile_id: str, server_id: str) -> bool:
     return True
 
 
-def merge_refreshed_tools(
-    server: dict[str, Any], discovered: list[dict[str, Any]]
-) -> None:
+def merge_refreshed_tools(server: dict[str, Any], discovered: list[dict[str, Any]]) -> None:
     previous = {
-        str(tool.get("name")): tool
-        for tool in server.get("tools", [])
-        if isinstance(tool, dict)
+        str(tool.get("name")): tool for tool in server.get("tools", []) if isinstance(tool, dict)
     }
     server["tools"] = [
         {
             "name": str(tool.get("name") or "")[:120],
             "description": str(tool.get("description") or "")[:300],
-            "enabled": previous.get(str(tool.get("name")), {}).get(
-                "enabled", False
-            ),
-            "contract": previous.get(str(tool.get("name")), {}).get(
-                "contract", "none"
-            ),
-            "url_pattern": previous.get(str(tool.get("name")), {}).get(
-                "url_pattern"
-            ),
+            "enabled": previous.get(str(tool.get("name")), {}).get("enabled", False),
+            "contract": previous.get(str(tool.get("name")), {}).get("contract", "none"),
+            "url_pattern": previous.get(str(tool.get("name")), {}).get("url_pattern"),
         }
         for tool in discovered
         if tool.get("name")
@@ -299,13 +283,9 @@ def build_mcp_config(server: dict[str, Any]) -> McpServerConfig:
         tools=list(server.get("tools", [])),
         last_error=server.get("last_error"),
         refreshed_at=server.get("refreshed_at"),
-        transport=str(
-            server.get("transport") or McpTransport.STDIO
-        ),
+        transport=str(server.get("transport") or McpTransport.STDIO),
         url=str(server.get("url") or ""),
-        max_concurrent=int(
-            server.get("max_concurrent") or DEFAULT_MAX_CONCURRENT
-        ),
+        max_concurrent=int(server.get("max_concurrent") or DEFAULT_MAX_CONCURRENT),
         token=token or None,
         env=env,
     )

@@ -163,9 +163,7 @@ def test_seeder_seeds_demo_workspace_idempotently_only_in_the_demo_instance(
 
     connection = sqlite3.connect(demo_dir / "study.sqlite3")
     try:
-        emails = {
-            row[0] for row in connection.execute("SELECT email FROM users")
-        }
+        emails = {row[0] for row in connection.execute("SELECT email FROM users")}
         assert emails == {
             f"ava.lindqvist{SEED_DOMAIN}",
             f"marco.ferreira{SEED_DOMAIN}",
@@ -261,7 +259,5 @@ def test_demo_token_rejected_on_non_demo_instance(tmp_path: Path) -> None:
     )
     access_name = cookie_names(kit.config).access
     with AnonymousTestClient(app) as anonymous:
-        response = anonymous.get(
-            "/api/v1/auth/me", headers={"Cookie": f"{access_name}={token}"}
-        )
+        response = anonymous.get("/api/v1/auth/me", headers={"Cookie": f"{access_name}={token}"})
     assert response.status_code == 401

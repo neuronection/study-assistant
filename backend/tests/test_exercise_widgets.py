@@ -75,9 +75,7 @@ def test_submit_answer_records_widget_state() -> None:
     client = make_client([])
     with client:
         exercise_id = _create_manual_exercise(client)
-        session = client.post(
-            f"/api/v1/exercises/{exercise_id}/sessions", json={}
-        ).json()
+        session = client.post(f"/api/v1/exercises/{exercise_id}/sessions", json={}).json()
         response = client.post(
             f"/api/v1/exercises/sessions/{session['id']}/answer",
             json={"response": "2x", "state": {"w1": {"checked": ["factor"]}}},

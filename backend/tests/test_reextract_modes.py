@@ -74,9 +74,7 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 30.0) -> None:
         if predicate():
             return
         time.sleep(0.05)
-    raise AssertionError(
-        f"condition not met within {timeout}s; last state: {predicate()!r}"
-    )
+    raise AssertionError(f"condition not met within {timeout}s; last state: {predicate()!r}")
 
 
 def text_pdf(text: str = "Differentiation rules and the chain rule explained.") -> bytes:
@@ -156,9 +154,7 @@ def test_reingest_forced_ocr_on_text_pdf() -> None:
         assert material["reextract_modes"] == ["auto", "text", "ocr"]
         calls_before = len(gateway.calls)
 
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert reingest.status_code == 200, reingest.text
 
         def settled_ocr() -> bool:
@@ -188,9 +184,7 @@ def test_reingest_forced_text_on_text_pdf_is_free() -> None:
         assert len(gateway.calls) == 0
 
         version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"]["version"]
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "text"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "text"})
         assert reingest.status_code == 200, reingest.text
 
         def settled_text() -> Callable[[], bool]:
@@ -235,9 +229,7 @@ def test_reingest_mode_not_applicable_is_422(
         material_id = upload.json()["material"]["id"]
         wait_status(client, material_id)
 
-        response = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        response = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert response.status_code == 422
         assert "allowed" in response.json()["detail"]
 
@@ -248,9 +240,7 @@ def test_reingest_unknown_mode_is_422() -> None:
         course_id = make_course(client)
         upload = upload_pdf(client, course_id, text_pdf())
         material_id = upload["material"]["id"]
-        response = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "smash"}
-        )
+        response = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "smash"})
         assert response.status_code == 422
 
 
@@ -292,9 +282,7 @@ def test_forced_ocr_cancels_between_pages() -> None:
         assert wait_status(client, material_id) == "ready"
 
         gateway.arm()
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert reingest.status_code == 200
         job_id = reingest.json()["job_id"]
         assert gateway.entered.wait(30), "gateway never reached the OCR call"
@@ -341,9 +329,7 @@ def test_auto_hybrid_routes_only_weak_pages_to_ocr() -> None:
         assert wait_status(client, material_id) == "ready"
         calls_after_upload = len(gateway.calls) >= 1
         assert calls_after_upload, "upload auto-ingest should OCR the garbage page"
-        version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"][
-            "version"
-        ]
+        version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"]["version"]
         assert version == 1
 
         reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={})
@@ -365,9 +351,7 @@ def test_auto_hybrid_routes_only_weak_pages_to_ocr() -> None:
         assert extractor == "hybrid"
         assert len(gateway.calls) == calls_after_upload + 1
 
-        markdown = client.get(f"/api/v1/materials/{material_id}").json()["extraction"][
-            "markdown"
-        ]
+        markdown = client.get(f"/api/v1/materials/{material_id}").json()["extraction"]["markdown"]
         assert "derivative of sin(x)" in markdown
         assert "$e^{i\\pi} = -1$" in markdown
         assert markdown.index("derivative of sin(x)") < markdown.index("# OCR page")
@@ -382,9 +366,7 @@ def test_auto_degrades_to_text_when_ocr_unassigned() -> None:
         assert wait_status(client, material_id) == "ready"
         assert len(gateway.calls) == 1
 
-        version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"][
-            "version"
-        ]
+        version = client.get(f"/api/v1/materials/{material_id}").json()["extraction"]["version"]
         reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={})
         assert reingest.status_code == 200
 
@@ -415,9 +397,7 @@ def test_forced_ocr_without_ocr_provider_fails_honestly() -> None:
         material_id = upload["material"]["id"]
         assert wait_status(client, material_id) == "ready"
 
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert reingest.status_code == 200
 
         def settled_failed() -> bool:
@@ -446,9 +426,7 @@ def test_ocr_page_skill_edit_reaches_the_vision_model() -> None:
         activate = client.post(f"/api/v1/skills/ocr.page/versions/{version_id}/activate")
         assert activate.status_code == 200, activate.text
 
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert reingest.status_code == 200
 
         def marker_sent() -> bool:
@@ -473,9 +451,7 @@ def test_ocr_prompt_defaults_to_skill_seed_template() -> None:
         material_id = upload["material"]["id"]
         assert wait_status(client, material_id) == "ready"
 
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert reingest.status_code == 200
 
         def seed_sent() -> bool:
@@ -500,9 +476,7 @@ def test_ocr_document_context_threaded_to_gateway() -> None:
         title = client.get(f"/api/v1/materials/{material_id}").json()["material"]["title"]
         assert title
 
-        reingest = client.post(
-            f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"}
-        )
+        reingest = client.post(f"/api/v1/materials/{material_id}/reingest", json={"mode": "ocr"})
         assert reingest.status_code == 200
 
         def context_sent() -> bool:
@@ -519,4 +493,3 @@ def test_ocr_document_context_threaded_to_gateway() -> None:
 
         wait_until(context_sent, timeout=30.0)
         assert context_sent()
-

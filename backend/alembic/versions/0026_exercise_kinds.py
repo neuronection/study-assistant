@@ -128,12 +128,8 @@ def upgrade() -> None:
     )
     bind.execute(sa.text("DROP TABLE fsrs_states"))
     bind.execute(sa.text("ALTER TABLE fsrs_states_new RENAME TO fsrs_states"))
-    bind.execute(
-        sa.text("CREATE UNIQUE INDEX ix_fsrs_states_card_id ON fsrs_states (card_id)")
-    )
-    bind.execute(
-        sa.text("CREATE INDEX ix_fsrs_states_due_at ON fsrs_states (due_at)")
-    )
+    bind.execute(sa.text("CREATE UNIQUE INDEX ix_fsrs_states_card_id ON fsrs_states (card_id)"))
+    bind.execute(sa.text("CREATE INDEX ix_fsrs_states_due_at ON fsrs_states (due_at)"))
 
     bind.execute(sa.text("DROP TABLE IF EXISTS review_log_new"))
     bind.execute(sa.text(review_ddl))
@@ -147,9 +143,7 @@ def upgrade() -> None:
     )
     bind.execute(sa.text("DROP TABLE review_log"))
     bind.execute(sa.text("ALTER TABLE review_log_new RENAME TO review_log"))
-    bind.execute(
-        sa.text("CREATE INDEX ix_review_log_card_id ON review_log (card_id)")
-    )
+    bind.execute(sa.text("CREATE INDEX ix_review_log_card_id ON review_log (card_id)"))
 
     op.drop_table("flashcards")
 
@@ -215,12 +209,8 @@ def downgrade() -> None:
     )
     bind.execute(sa.text("DROP TABLE fsrs_states"))
     bind.execute(sa.text("ALTER TABLE fsrs_states_new RENAME TO fsrs_states"))
-    bind.execute(
-        sa.text("CREATE UNIQUE INDEX ix_fsrs_states_card_id ON fsrs_states (card_id)")
-    )
-    bind.execute(
-        sa.text("CREATE INDEX ix_fsrs_states_due_at ON fsrs_states (due_at)")
-    )
+    bind.execute(sa.text("CREATE UNIQUE INDEX ix_fsrs_states_card_id ON fsrs_states (card_id)"))
+    bind.execute(sa.text("CREATE INDEX ix_fsrs_states_due_at ON fsrs_states (due_at)"))
 
     bind.execute(sa.text("DROP TABLE IF EXISTS review_log_new"))
     bind.execute(sa.text(review_ddl))
@@ -233,9 +223,7 @@ def downgrade() -> None:
     )
     bind.execute(sa.text("DROP TABLE review_log"))
     bind.execute(sa.text("ALTER TABLE review_log_new RENAME TO review_log"))
-    bind.execute(
-        sa.text("CREATE INDEX ix_review_log_card_id ON review_log (card_id)")
-    )
+    bind.execute(sa.text("CREATE INDEX ix_review_log_card_id ON review_log (card_id)"))
     with op.batch_alter_table("exercises") as batch_op:
         batch_op.drop_column("deck_ref")
         batch_op.drop_column("kind")

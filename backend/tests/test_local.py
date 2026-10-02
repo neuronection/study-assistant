@@ -63,9 +63,7 @@ def test_run_migrations_migrates_the_settings_database(
     with sqlite3.connect(db_file) as connection:
         tables = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
     assert "users" in tables
     assert "alembic_version" in tables

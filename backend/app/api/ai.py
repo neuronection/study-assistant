@@ -33,9 +33,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
 _LANGUAGE_RE = re.compile(r"^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})?$")
 
-MCP_TOOL_RESPONSE = (
-    "JSON object with the requested rows; failures return {\"error\": …}."
-)
+MCP_TOOL_RESPONSE = 'JSON object with the requested rows; failures return {"error": …}.'
 CHAT_RESOURCE_SCOPE = (
     "Read-only — lists the learner's courses and node resources; also served "
     "to external agents via the MCP resource server."

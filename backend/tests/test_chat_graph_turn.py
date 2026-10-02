@@ -47,9 +47,7 @@ class Harness:
 
 
 @contextmanager
-def turn_harness(
-    tmp_path: Path, responses: list[str]
-) -> Iterator[Harness]:
+def turn_harness(tmp_path: Path, responses: list[str]) -> Iterator[Harness]:
     gateway = ScriptedGateway(list(responses))
     app = create_app(
         make_settings(tmp_path),
@@ -123,9 +121,7 @@ def sse_harness(
     )
     try:
         with TestClient(app) as client:
-            session_id = int(
-                client.post("/api/v1/chat/sessions", json={}).json()["id"]
-            )
+            session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
             yield Harness(client, gateway, session_id)
     finally:
         sql_engine.dispose()
@@ -150,26 +146,18 @@ def send(harness: Harness, content: str) -> None:
     assert response.status_code == 200
 
 
-def wait_for_assistant(
-    harness: Harness, timeout: float = 30.0
-) -> list[dict[str, Any]]:
+def wait_for_assistant(harness: Harness, timeout: float = 30.0) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     messages: list[dict[str, Any]] = []
     while time.monotonic() < deadline:
-        messages = harness.client.get(
-            f"/api/v1/chat/sessions/{harness.session_id}/messages"
-        ).json()
+        messages = harness.client.get(f"/api/v1/chat/sessions/{harness.session_id}/messages").json()
         if messages and messages[-1]["role"] == "assistant":
             return messages
         time.sleep(0.05)
-    raise AssertionError(
-        f"assistant never replied within {timeout}s; last messages: {messages!r}"
-    )
+    raise AssertionError(f"assistant never replied within {timeout}s; last messages: {messages!r}")
 
 
-def drain_until(
-    ws: Any, terminal: set[str], timeout: float = 30.0
-) -> list[dict[str, Any]]:
+def drain_until(ws: Any, terminal: set[str], timeout: float = 30.0) -> list[dict[str, Any]]:
     """Collect chat-topic events until one of `terminal` arrived (the pong
     only flushes what the bus already delivered — the turn's final event can
     land on the bus just after its DB row is visible, so keep pinging)."""
@@ -184,8 +172,7 @@ def drain_until(
         if any(event.get("type") in terminal for event in events):
             return events
     raise AssertionError(
-        f"terminal event {terminal} never arrived within {timeout}s; "
-        f"events so far: {events!r}"
+        f"terminal event {terminal} never arrived within {timeout}s; events so far: {events!r}"
     )
 
 
@@ -214,8 +201,7 @@ def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             event.get("type") == "stream_delta"
             and previous is not None
             and previous.get("type") == "stream_delta"
-            and (previous.get("kind") == "reasoning")
-            == (event.get("kind") == "reasoning")
+            and (previous.get("kind") == "reasoning") == (event.get("kind") == "reasoning")
         ):
             previous["delta"] += event.get("delta", "")
             continue
@@ -229,9 +215,7 @@ def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 if key not in ("run_id", "latency_ms", "rounds", "thinking")
             }
             message = event.get("message") or {}
-            event["message"] = {
-                key: value for key, value in message.items() if key != "id"
-            }
+            event["message"] = {key: value for key, value in message.items() if key != "id"}
             event["message"]["tool_calls"] = [
                 {
                     key: value
@@ -246,9 +230,7 @@ def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def thread_ids(checkpoints_path: Path) -> list[str]:
     connection = sqlite3.connect(checkpoints_path)
     try:
-        rows = connection.execute(
-            "SELECT DISTINCT thread_id FROM checkpoints"
-        ).fetchall()
+        rows = connection.execute("SELECT DISTINCT thread_id FROM checkpoints").fetchall()
     finally:
         connection.close()
     return sorted(str(row[0]) for row in rows)
@@ -276,16 +258,15 @@ def test_app_boots_the_graph_turn_engine(tmp_path: Path) -> None:
 
 
 def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
-    with turn_harness(
-        tmp_path, ["Follow the derivation **step by step**."]
-    ) as h, subscribe(h.client, h.session_id) as ws:
+    with (
+        turn_harness(tmp_path, ["Follow the derivation **step by step**."]) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "Explain the chain rule")
         messages = wait_for_assistant(h)
         events = drain_until(ws, {"assistant_message"})
 
-    assert messages[-1]["blocks"][0]["md"] == (
-        "Follow the derivation **step by step**."
-    )
+    assert messages[-1]["blocks"][0]["md"] == ("Follow the derivation **step by step**.")
     assert [event["type"] for event in events] == [
         "stream_start",
         "flow_started",
@@ -304,9 +285,10 @@ def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
 def test_graph_streams_the_production_delta_path(
     tmp_path: Path, migrated_db_template: Path
 ) -> None:
-    with sse_harness(
-        tmp_path, [["Hello ", "from the ", "model."]], migrated_db_template
-    ) as h, subscribe(h.client, h.session_id) as ws:
+    with (
+        sse_harness(tmp_path, [["Hello ", "from the ", "model."]], migrated_db_template) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "question one")
         wait_for_assistant(h)
         events = normalize(drain_until(ws, {"assistant_message"}))
@@ -316,10 +298,7 @@ def test_graph_streams_the_production_delta_path(
     assert types[0] == "stream_start"
     assert "flow_started" in types
     assert types[-1] == "flow_finished"
-    assert any(
-        event.get("type") == "assistant_message" and event.get("trace")
-        for event in events
-    )
+    assert any(event.get("type") == "assistant_message" and event.get("trace") for event in events)
 
 
 def test_graph_tool_round_runs_the_degraded_grammar(
@@ -327,14 +306,13 @@ def test_graph_tool_round_runs_the_degraded_grammar(
 ) -> None:
     bodies = [["CALC 2", "*21\n"], ["The answer ", "is $42$."]]
 
-    with sse_harness(tmp_path, bodies, migrated_db_template) as h, subscribe(
-        h.client, h.session_id
-    ) as ws:
+    with (
+        sse_harness(tmp_path, bodies, migrated_db_template) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "compute 2*21 with the tool")
         wait_for_assistant(h)
-        messages = h.client.get(
-            f"/api/v1/chat/sessions/{h.session_id}/messages"
-        ).json()
+        messages = h.client.get(f"/api/v1/chat/sessions/{h.session_id}/messages").json()
         events = normalize(drain_until(ws, {"assistant_message"}))
 
     assert messages[-1]["blocks"][0]["md"] == "The answer is $42$."
@@ -367,9 +345,7 @@ def test_round_close_drops_straggler_delta(tmp_path: Path) -> None:
     assert not pump.closed
     feed("is $42$.\n", 6)
     pump.flush()
-    deltas = "".join(
-        event["delta"] for event in emitted if event["type"] == "stream_delta"
-    )
+    deltas = "".join(event["delta"] for event in emitted if event["type"] == "stream_delta")
     assert deltas == "The answer is $42$.\n"
 
 
@@ -390,21 +366,18 @@ def test_tool_free_round_close_keeps_straggler_delta(tmp_path: Path) -> None:
     assert not pump.closed
     feed("word " * 120, 2)
     pump.flush_round_end()
-    deltas = "".join(
-        event["delta"] for event in emitted if event["type"] == "stream_delta"
-    )
+    deltas = "".join(event["delta"] for event in emitted if event["type"] == "stream_delta")
     assert deltas == "The answer is " + "word " * 120
 
 
-def test_graph_repair_round_records_phases(
-    tmp_path: Path, migrated_db_template: Path
-) -> None:
+def test_graph_repair_round_records_phases(tmp_path: Path, migrated_db_template: Path) -> None:
     filler = " ".join(["filler"] * 450)
     bodies = [[filler[i : i + 40] for i in range(0, len(filler), 40)], ["short ", "answer"]]
 
-    with sse_harness(tmp_path, bodies, migrated_db_template) as h, subscribe(
-        h.client, h.session_id
-    ) as ws:
+    with (
+        sse_harness(tmp_path, bodies, migrated_db_template) as h,
+        subscribe(h.client, h.session_id) as ws,
+    ):
         send(h, "say something short")
         wait_for_assistant(h)
         events = normalize(drain_until(ws, {"assistant_message"}))
@@ -455,9 +428,7 @@ def test_graph_stop_mid_stream_persists_prefix(tmp_path: Path) -> None:
             deadline = time.monotonic() + 30
             stopped = False
             while time.monotonic() < deadline:
-                if client.post(
-                    f"/api/v1/chat/sessions/{session_id}/stop"
-                ).json()["stopped"]:
+                if client.post(f"/api/v1/chat/sessions/{session_id}/stop").json()["stopped"]:
                     stopped = True
                     break
                 time.sleep(0.05)
@@ -487,9 +458,7 @@ def test_open_checkpointer_creates_schema(tmp_path: Path) -> None:
     try:
         tables = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
     finally:
         connection.close()

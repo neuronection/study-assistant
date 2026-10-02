@@ -85,9 +85,7 @@ def upgrade() -> None:
         batch_op.create_index(
             batch_op.f("ix_material_study_state_profile_id"), ["profile_id"], unique=False
         )
-        batch_op.create_index(
-            "uq_material_study_state", ["material_id", "profile_id"], unique=True
-        )
+        batch_op.create_index("uq_material_study_state", ["material_id", "profile_id"], unique=True)
 
 
 def downgrade() -> None:

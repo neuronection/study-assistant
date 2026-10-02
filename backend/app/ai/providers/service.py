@@ -122,15 +122,35 @@ def infer_caps(external_id: str, methods: list[str] | None = None) -> list[str]:
         return []
     caps = ["text"]
     vision_hints = (
-        "gemini", "gpt-4o", "gpt-4.1", "gpt-4-turbo", "gpt-5", "claude-3",
-        "claude-4", "claude-sonnet", "claude-opus", "claude-haiku", "vision",
-        "-vl", "llava", "pixtral", "gemma3",
+        "gemini",
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4-turbo",
+        "gpt-5",
+        "claude-3",
+        "claude-4",
+        "claude-sonnet",
+        "claude-opus",
+        "claude-haiku",
+        "vision",
+        "-vl",
+        "llava",
+        "pixtral",
+        "gemma3",
     )
     if any(hint in name for hint in vision_hints):
         caps.append("vision")
     tool_hints = (
-        "gpt-4", "gpt-5", "o3", "o4", "claude", "gemini", "deepseek", "qwen",
-        "llama-3", "mistral",
+        "gpt-4",
+        "gpt-5",
+        "o3",
+        "o4",
+        "claude",
+        "gemini",
+        "deepseek",
+        "qwen",
+        "llama-3",
+        "mistral",
     )
     if any(hint in name for hint in tool_hints):
         caps.append("tools")
@@ -474,9 +494,7 @@ def assign_course_default_task(
     return assignment
 
 
-def list_course_assignments(
-    session: Session, course_id: int
-) -> dict[str, CourseTaskAssignment]:
+def list_course_assignments(session: Session, course_id: int) -> dict[str, CourseTaskAssignment]:
     return {
         assignment.task: assignment
         for assignment in session.scalars(
@@ -502,9 +520,7 @@ def seed_default_task_assignments(session: Session) -> None:
     for requires in DEFAULT_REQUIRES:
         if session.get(DefaultTaskAssignment, requires) is None:
             session.add(
-                DefaultTaskAssignment(
-                    requires=requires, model_id=None, fallback_model_id=None
-                )
+                DefaultTaskAssignment(requires=requires, model_id=None, fallback_model_id=None)
             )
     session.flush()
 

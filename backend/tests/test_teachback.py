@@ -130,9 +130,7 @@ def test_teach_back_result_lands_in_diagnostics(
                 {
                     "verdict": "correct",
                     "score": 1.0,
-                    "rationale": [
-                        {"rubric_id": "definition", "reason": "stated correctly"}
-                    ],
+                    "rationale": [{"rubric_id": "definition", "reason": "stated correctly"}],
                 }
             )
         )
@@ -153,8 +151,7 @@ def test_teach_back_result_lands_in_diagnostics(
         diagnostics = test_client.get("/api/v1/analytics/diagnostics").json()
         cells = diagnostics.get("weakness_matrix") or []
         assert any(
-            cell["concept"] == "Eigenvalues" and cell["skill"] == "explanation"
-            for cell in cells
+            cell["concept"] == "Eigenvalues" and cell["skill"] == "explanation" for cell in cells
         )
 
 
@@ -197,9 +194,7 @@ def test_teachback_recommendation_after_repeated_drilling(
             db.add(question)
             db.flush()
             now = datetime.now(UTC)
-            for index, correct in enumerate(
-                [False, False, True, False, False, True, False]
-            ):
+            for index, correct in enumerate([False, False, True, False, False, True, False]):
                 attempt = Attempt(activity_id=activity.id, mode="practice")
                 db.add(attempt)
                 db.flush()

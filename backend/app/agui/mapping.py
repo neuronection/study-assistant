@@ -92,9 +92,7 @@ class ChatStreamAdapter:
         ]
         result = event.get("result")
         if result is not None:
-            events.append(
-                ToolCallResult(tool_call_id=tool_call_id, content=str(result))
-            )
+            events.append(ToolCallResult(tool_call_id=tool_call_id, content=str(result)))
         events.append(StepFinished(step_name=f"tool:{phase or name}"))
         return events
 

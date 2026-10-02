@@ -38,9 +38,7 @@ def coverage_report(
     materials: list[dict[str, Any]], chunks: list[dict[str, Any]]
 ) -> dict[str, Any]:
     covered = {
-        int(chunk["material_id"])
-        for chunk in chunks
-        if chunk.get("material_id") is not None
+        int(chunk["material_id"]) for chunk in chunks if chunk.get("material_id") is not None
     }
     ids = [int(entry["id"]) for entry in materials]
     missing = [material_id for material_id in ids if material_id not in covered]
@@ -149,9 +147,7 @@ class ContextBundle:
 
     @property
     def empty(self) -> bool:
-        return not (
-            self.chunks or self.notes or self.concepts or self.hints or self.node
-        )
+        return not (self.chunks or self.notes or self.concepts or self.hints or self.node)
 
     @property
     def coverage(self) -> dict[str, Any]:
@@ -261,20 +257,14 @@ class ContextBundle:
 
     def stats(self) -> dict[str, Any]:
         return {
-            "materials": [
-                {"id": entry["id"], "title": entry["title"]} for entry in self.materials
-            ],
+            "materials": [{"id": entry["id"], "title": entry["title"]} for entry in self.materials],
             "chunks": [
                 {"material_id": chunk["material_id"], "title": chunk["title"]}
                 for chunk in self.chunks
             ],
             "notes": [{"id": entry["id"], "title": entry["title"]} for entry in self.notes],
-            "concepts": [
-                {"id": entry["id"], "name": entry["name"]} for entry in self.concepts
-            ],
-            "nodes": [
-                {"id": entry["id"], "title": entry["title"]} for entry in self.nodes
-            ],
+            "concepts": [{"id": entry["id"], "name": entry["name"]} for entry in self.concepts],
+            "nodes": [{"id": entry["id"], "title": entry["title"]} for entry in self.nodes],
             "hints": len(self.hints),
             "approx_chars": len(self.render_prompt()),
             "retrieval_query": self.spec.query,
@@ -294,9 +284,7 @@ class ContextResolver:
                 raise ContextError("node belongs to a different course")
             return node
         root = self._session.scalars(
-            select(TreeNode).where(
-                TreeNode.course_id == spec.course_id, TreeNode.is_root.is_(True)
-            )
+            select(TreeNode).where(TreeNode.course_id == spec.course_id, TreeNode.is_root.is_(True))
         ).first()
         if root is None:
             raise ContextError("course has no root node")
@@ -363,9 +351,7 @@ class ContextResolver:
             return
         rows = {
             material.id: material
-            for material in self._session.scalars(
-                select(Material).where(Material.id.in_(ids))
-            )
+            for material in self._session.scalars(select(Material).where(Material.id.in_(ids)))
         }
         for material_id in ids:
             material = rows.get(material_id)
@@ -397,15 +383,11 @@ class ContextResolver:
             if filtered is None and excluded:
                 filtered = course_material_ids
         else:
-            merged = (set(base) | set(spec.include_material_ids)) - set(
-                spec.exclude_material_ids
-            )
+            merged = (set(base) | set(spec.include_material_ids)) - set(spec.exclude_material_ids)
             if spec.include_unassigned:
                 merged |= {
                     int(material.id)
-                    for material in unassigned_materials(
-                        self._session, spec.course_id
-                    )
+                    for material in unassigned_materials(self._session, spec.course_id)
                 }
             merged -= excluded
             if spec.exclude_ai_composed:
@@ -425,9 +407,7 @@ class ContextResolver:
             cards = {
                 card.material_id: card
                 for card in self._session.scalars(
-                    select(MaterialIndexCard).where(
-                        MaterialIndexCard.material_id.in_(candidates)
-                    )
+                    select(MaterialIndexCard).where(MaterialIndexCard.material_id.in_(candidates))
                 )
             }
             rows = {
@@ -461,8 +441,7 @@ class ContextResolver:
         return {
             material_id
             for material_id, provenance in rows
-            if isinstance(provenance, dict)
-            and provenance.get("kind") in RETRIEVAL_EXCLUDED_KINDS
+            if isinstance(provenance, dict) and provenance.get("kind") in RETRIEVAL_EXCLUDED_KINDS
         }
 
     def _resolve_notes(self, spec: ContextSpec) -> list[dict[str, Any]]:
@@ -470,9 +449,7 @@ class ContextResolver:
             return []
         notes = {
             note.id: note
-            for note in self._session.scalars(
-                select(Note).where(Note.id.in_(spec.note_ids))
-            )
+            for note in self._session.scalars(select(Note).where(Note.id.in_(spec.note_ids)))
         }
         for note_id in spec.note_ids:
             note = notes.get(note_id)
@@ -519,18 +496,12 @@ class ContextResolver:
                 "name": concept.name,
                 "description": concept.description,
             }
-            for concept in (
-                concepts[concept_id] for concept_id in spec.concept_ids
-            )
+            for concept in (concepts[concept_id] for concept_id in spec.concept_ids)
         ]
 
     def _scope_nodes(self, node: TreeNode) -> list[dict[str, Any]]:
         nodes: list[dict[str, Any]] = []
-        parent = (
-            self._session.get(TreeNode, node.parent_id)
-            if node.parent_id is not None
-            else None
-        )
+        parent = self._session.get(TreeNode, node.parent_id) if node.parent_id is not None else None
         if parent is not None:
             nodes.append(
                 {
@@ -628,10 +599,7 @@ class ContextResolver:
             )
             if len(materials) >= COVERAGE_MIN_MATERIALS:
                 report = coverage_report(materials, chunks)
-                if (
-                    report["total"] > 0
-                    and report["covered"] / report["total"] < COVERAGE_GATE
-                ):
+                if report["total"] > 0 and report["covered"] / report["total"] < COVERAGE_GATE:
                     chunks = self._diversified_second_round(
                         spec,
                         node,

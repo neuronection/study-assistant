@@ -33,8 +33,9 @@ def upload_txt(client: TestClient, filename: str, course_id: int) -> int:
     assert upload.status_code == 200, upload.text
     material_id = int(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
@@ -49,9 +50,7 @@ def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
 
     raw = sqlite3.connect(db_path)
     now = "2026-08-19 10:00:00+00:00"
-    raw.execute(
-        "INSERT INTO profiles (id, name, created_at) VALUES (1, 'legacy', ?)", (now,)
-    )
+    raw.execute("INSERT INTO profiles (id, name, created_at) VALUES (1, 'legacy', ?)", (now,))
     raw.execute(
         "INSERT INTO courses (id, profile_id, title, created_at, updated_at) "
         "VALUES (10, 1, 'Real course', ?, ?)",
@@ -104,8 +103,7 @@ def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
     raw = sqlite3.connect(db_path)
     cur = raw.cursor()
     assert (
-        cur.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0065_identity_core"
+        cur.execute("SELECT version_num FROM alembic_version").fetchone()[0] == "0065_identity_core"
     )
     unsorted_id = cur.execute(
         "SELECT id FROM courses WHERE title = 'Unsorted' AND profile_id = 1"
@@ -113,8 +111,7 @@ def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
     assert unsorted_id is not None
     unsorted_id = unsorted_id[0]
     assert (
-        cur.execute("SELECT course_id FROM materials WHERE id = 101").fetchone()[0]
-        == unsorted_id
+        cur.execute("SELECT course_id FROM materials WHERE id = 101").fetchone()[0] == unsorted_id
     )
     assert cur.execute("SELECT course_id FROM materials WHERE id = 100").fetchone()[0] == 10
     assert cur.execute("SELECT course_id FROM material_folders WHERE id = 40").fetchone()[0] == 10
@@ -184,9 +181,7 @@ def test_assign_material_at_all_scopes(client: TestClient) -> None:
     )
     assert section_link.status_code == 201
 
-    cross = client.post(
-        f"/api/v1/nodes/{section_id}/materials", json={"material_id": foreign_id}
-    )
+    cross = client.post(f"/api/v1/nodes/{section_id}/materials", json={"material_id": foreign_id})
     assert cross.status_code == 422
     assert "material not in this course" in cross.json()["detail"]
 
@@ -275,9 +270,7 @@ CAQ_SINGLE: dict[str, Any] = {
 def test_delete_course_purges_content(client: TestClient) -> None:
     course_id = make_course(client, "Doomed")
     material_id = upload_txt(client, "doomed.txt", course_id)
-    folder = client.post(
-        "/api/v1/folders", json={"name": "Doomed folder", "course_id": course_id}
-    )
+    folder = client.post("/api/v1/folders", json={"name": "Doomed folder", "course_id": course_id})
     assert folder.status_code == 201
     root = root_node(client, course_id)
     chapter_id = make_node(client, course_id, root, "Ch")
@@ -293,9 +286,7 @@ def test_delete_course_purges_content(client: TestClient) -> None:
     session = client.post("/api/v1/chat/sessions", json={"course_id": course_id})
     assert session.status_code == 201
 
-    deleted = client.delete(
-        f"/api/v1/courses/{course_id}", params={"confirmed_backup": True}
-    )
+    deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
     assert deleted.status_code == 200
 
     assert client.get(f"/api/v1/materials/{material_id}").status_code == 404
@@ -381,9 +372,7 @@ def test_unfiled_listing_and_material_links_endpoint(client: TestClient) -> None
     assert loose_id in unfiled_ids
     assert filed_id in unfiled_ids
 
-    folder = client.post(
-        "/api/v1/folders", json={"name": "Box", "course_id": course_id}
-    ).json()
+    folder = client.post("/api/v1/folders", json={"name": "Box", "course_id": course_id}).json()
     filed = client.post(
         "/api/v1/materials",
         params={"course_id": course_id, "folder_id": folder["id"]},

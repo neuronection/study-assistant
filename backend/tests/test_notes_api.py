@@ -61,9 +61,7 @@ class NoAI:
         return None
 
 
-def make_client(
-    responses: list[str], gateway: LLMGateway | None = None
-) -> TestClient:
+def make_client(responses: list[str], gateway: LLMGateway | None = None) -> TestClient:
     import tempfile
     from pathlib import Path
 
@@ -94,9 +92,7 @@ def create_note(client: TestClient, title: str = "Derivatives", body: str = "") 
     return int(created.json()["id"])
 
 
-def wait_drawing_ocr(
-    client: TestClient, note_id: int, min_version: int = 1
-) -> dict[str, Any]:
+def wait_drawing_ocr(client: TestClient, note_id: int, min_version: int = 1) -> dict[str, Any]:
     deadline = time.monotonic() + 8.0
     while time.monotonic() < deadline:
         detail: dict[str, Any] = client.get(f"/api/v1/notes/{note_id}").json()
@@ -186,13 +182,9 @@ def test_update_note_base_updated_at_guard() -> None:
         )
         assert replay.status_code == 200
 
-        unguarded = client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "force body"}
-        )
+        unguarded = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "force body"})
         assert unguarded.status_code == 200
-        assert client.get(f"/api/v1/notes/{note_id}").json()["body"][0]["md"] == (
-            "force body"
-        )
+        assert client.get(f"/api/v1/notes/{note_id}").json()["body"][0]["md"] == ("force body")
 
         bad = client.patch(
             f"/api/v1/notes/{note_id}",
@@ -224,9 +216,7 @@ def test_note_versions_coalesce_and_force() -> None:
     with client:
         note_id = create_note(client, "Limits", "v0 body")
 
-        first_patch = client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "v1 body"}
-        )
+        first_patch = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "v1 body"})
         assert first_patch.status_code == 200
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) == 1
@@ -241,9 +231,7 @@ def test_note_versions_coalesce_and_force() -> None:
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) == 2
 
-        client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "v4 body", "force_version": True}
-        )
+        client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "v4 body", "force_version": True})
         versions = client.get(f"/api/v1/notes/{note_id}/versions").json()
         assert len(versions) == 3
         assert versions[0]["cause"] == "manual"
@@ -282,9 +270,7 @@ def test_note_version_restore_round_trip() -> None:
         assert len(versions) == 2
         assert versions[0]["cause"] == "restore"
 
-        bad_restore = client.post(
-            f"/api/v1/notes/{note_id}/restore", json={"version_id": 99999}
-        )
+        bad_restore = client.post(f"/api/v1/notes/{note_id}/restore", json={"version_id": 99999})
         assert bad_restore.status_code == 404
 
 
@@ -310,9 +296,7 @@ def test_note_versions_capped_at_50_and_cascade_on_delete() -> None:
             from app.domain.models import NoteVersion
 
             remaining = list(
-                session.scalars(
-                    select(NoteVersion).where(NoteVersion.note_id == note_id)
-                )
+                session.scalars(select(NoteVersion).where(NoteVersion.note_id == note_id))
             )
         assert remaining == []
 
@@ -573,9 +557,7 @@ def test_update_drawing_unknown_ids_rejected() -> None:
             "png_base64": base64.b64encode(PNG_BYTES).decode(),
             "ocr": False,
         }
-        missing_drawing = client.put(
-            f"/api/v1/notes/{note_id}/drawings/99", json=payload
-        )
+        missing_drawing = client.put(f"/api/v1/notes/{note_id}/drawings/99", json=payload)
         assert missing_drawing.status_code == 404
         missing_note = client.put("/api/v1/notes/99/drawings/1", json=payload)
         assert missing_note.status_code == 404
@@ -633,9 +615,7 @@ def test_strokeless_snapshot_drawing_skips_ocr() -> None:
             json={"body_md": f"![screenshot](sa-drawing://{drawing['id']})"},
         )
         assert patched.status_code == 200
-        assert patched.json()["body"] == [
-            {"type": "drawing", "drawing_id": drawing["id"]}
-        ]
+        assert patched.json()["body"] == [{"type": "drawing", "drawing_id": drawing["id"]}]
 
         updated = client.put(
             f"/api/v1/notes/{note_id}/drawings/{drawing['id']}",
@@ -693,9 +673,7 @@ def test_delete_drawing_removes_drawing_and_strips_inline_refs() -> None:
         hits = client.get("/api/v1/notes", params={"q": "2x"})
         assert hits.json()["items"] == []
 
-        re_save = client.patch(
-            f"/api/v1/notes/{note_id}", json={"body_md": "before\n\nafter"}
-        )
+        re_save = client.patch(f"/api/v1/notes/{note_id}", json={"body_md": "before\n\nafter"})
         assert re_save.status_code == 200
 
 
@@ -807,7 +785,5 @@ def test_compose_note_creates_placed_note() -> None:
 def test_compose_note_rejects_missing_course() -> None:
     client = make_client([])
     with client:
-        composed = client.post(
-            "/api/v1/notes/compose", json={"course_id": 9999, "title": "X"}
-        )
+        composed = client.post("/api/v1/notes/compose", json={"course_id": 9999, "title": "X"})
         assert composed.status_code == 422

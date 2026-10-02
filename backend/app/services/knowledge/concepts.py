@@ -89,9 +89,7 @@ def _clean_name(raw: Any) -> str | None:
     return name or None
 
 
-def _validate(
-    draft: Any, materials: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _validate(draft: Any, materials: list[dict[str, Any]]) -> dict[str, Any]:
     if not isinstance(draft, dict):
         raise ConceptsError("concept draft is not an object")
     concepts_out: list[dict[str, Any]] = []
@@ -111,9 +109,7 @@ def _validate(
         concepts_out.append(
             {
                 "name": name,
-                "description": (
-                    str(entry.get("description", "")).strip()[:500] or None
-                ),
+                "description": (str(entry.get("description", "")).strip()[:500] or None),
                 "aliases": aliases,
             }
         )
@@ -150,9 +146,7 @@ def _validate(
         if not title or (node_titles and title not in node_titles):
             continue
         names = [
-            name
-            for raw in (entry.get("concepts") or [])[:8]
-            if (name := _clean_name(raw)) in seen
+            name for raw in (entry.get("concepts") or [])[:8] if (name := _clean_name(raw)) in seen
         ]
         if names:
             nodes_out.append({"node_title": title, "concepts": names})
@@ -163,14 +157,10 @@ def _validate(
     }
 
 
-def commit_concepts(
-    session: Session, course_id: int, draft: dict[str, Any]
-) -> dict[str, int]:
+def commit_concepts(session: Session, course_id: int, draft: dict[str, Any]) -> dict[str, int]:
     nodes = list(
         session.scalars(
-            select(TreeNode).where(
-                TreeNode.course_id == course_id, TreeNode.is_root.is_(False)
-            )
+            select(TreeNode).where(TreeNode.course_id == course_id, TreeNode.is_root.is_(False))
         )
     )
     node_by_title: dict[str, TreeNode] = {}
@@ -180,9 +170,7 @@ def commit_concepts(
             node_by_title[node.title.strip()] = node
     existing_concepts = {
         concept.name: concept
-        for concept in session.scalars(
-            select(Concept).where(Concept.course_id == course_id)
-        )
+        for concept in session.scalars(select(Concept).where(Concept.course_id == course_id))
     }
     created = 0
     for entry in draft.get("concepts", []):
@@ -282,9 +270,10 @@ def concept_mastery(
             return "shaky"
         return "weak"
 
-    return {concept.name: bucket(concept) for concept in session.scalars(
-        select(Concept).where(Concept.course_id == course_id)
-    )}
+    return {
+        concept.name: bucket(concept)
+        for concept in session.scalars(select(Concept).where(Concept.course_id == course_id))
+    }
 
 
 def concept_graph(
@@ -292,9 +281,7 @@ def concept_graph(
 ) -> dict[str, Any]:
     concepts = list(
         session.scalars(
-            select(Concept)
-            .where(Concept.course_id == course_id)
-            .order_by(Concept.name)
+            select(Concept).where(Concept.course_id == course_id).order_by(Concept.name)
         )
     )
     by_id = {concept.id: concept for concept in concepts}
@@ -303,9 +290,7 @@ def concept_graph(
         if profile_id is not None
         else {concept.name: None for concept in concepts}
     )
-    links = list(
-        session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id))
-    )
+    links = list(session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id)))
     node_rows = session.execute(
         select(NodeConcept, TreeNode)
         .join(TreeNode, TreeNode.id == NodeConcept.node_id)
@@ -331,12 +316,8 @@ def concept_graph(
         ],
         "links": [
             {
-                "from": by_id[link.from_concept_id].name
-                if link.from_concept_id in by_id
-                else None,
-                "to": by_id[link.to_concept_id].name
-                if link.to_concept_id in by_id
-                else None,
+                "from": by_id[link.from_concept_id].name if link.from_concept_id in by_id else None,
+                "to": by_id[link.to_concept_id].name if link.to_concept_id in by_id else None,
                 "relation": link.relation,
             }
             for link in links

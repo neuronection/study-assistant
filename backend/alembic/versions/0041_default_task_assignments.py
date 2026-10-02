@@ -23,9 +23,7 @@ def upgrade() -> None:
         "default_task_assignments",
         sa.Column("requires", sa.String(40), primary_key=True),
         sa.Column("model_id", sa.Integer(), sa.ForeignKey("models.id"), nullable=True),
-        sa.Column(
-            "fallback_model_id", sa.Integer(), sa.ForeignKey("models.id"), nullable=True
-        ),
+        sa.Column("fallback_model_id", sa.Integer(), sa.ForeignKey("models.id"), nullable=True),
     )
 
 

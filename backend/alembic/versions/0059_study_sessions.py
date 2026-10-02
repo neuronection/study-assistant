@@ -12,9 +12,7 @@ def upgrade() -> None:
     op.create_table(
         "study_sessions",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column(
-            "profile_id", sa.Integer(), sa.ForeignKey("profiles.id"), nullable=False
-        ),
+        sa.Column("profile_id", sa.Integer(), sa.ForeignKey("profiles.id"), nullable=False),
         sa.Column("course_id", sa.Integer(), sa.ForeignKey("courses.id"), nullable=True),
         sa.Column("node_id", sa.Integer(), nullable=True),
         sa.Column("kind", sa.String(length=20), nullable=False),
@@ -26,12 +24,8 @@ def upgrade() -> None:
         sa.Column("duration_sec", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_study_sessions_profile_id", "study_sessions", ["profile_id"]
-    )
-    op.create_index(
-        "ix_study_sessions_course_id", "study_sessions", ["course_id"]
-    )
+    op.create_index("ix_study_sessions_profile_id", "study_sessions", ["profile_id"])
+    op.create_index("ix_study_sessions_course_id", "study_sessions", ["course_id"])
     op.create_index(
         "ix_study_sessions_profile_started",
         "study_sessions",
@@ -70,9 +64,7 @@ def downgrade() -> None:
     op.drop_column("study_goals", "minutes_per_day")
     op.drop_column("study_goals", "unit")
     op.drop_column("daily_rollups", "study_seconds")
-    op.drop_index(
-        "ix_study_sessions_profile_started", table_name="study_sessions"
-    )
+    op.drop_index("ix_study_sessions_profile_started", table_name="study_sessions")
     op.drop_index("ix_study_sessions_course_id", table_name="study_sessions")
     op.drop_index("ix_study_sessions_profile_id", table_name="study_sessions")
     op.drop_table("study_sessions")

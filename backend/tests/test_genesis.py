@@ -32,9 +32,7 @@ GENESIS_DRAFT: dict[str, Any] = {
         {
             "title": "Matrices",
             "summary": "Matrix algebra.",
-            "sections": [
-                {"title": "Multiplication", "objectives": ["Multiply matrices"]}
-            ],
+            "sections": [{"title": "Multiplication", "objectives": ["Multiply matrices"]}],
         },
     ],
 }
@@ -152,9 +150,7 @@ def test_genesis_draft_returns_validated_outline(
         draft = response.json()
         assert draft["title"] == "Linear Algebra for Economists"
         assert len(draft["chapters"]) == 2
-        assert draft["chapters"][0]["sections"][0]["objectives"] == [
-            "Define a vector space"
-        ]
+        assert draft["chapters"][0]["sections"][0]["objectives"] == ["Define a vector space"]
 
 
 def test_genesis_draft_rejects_malformed_output(
@@ -268,9 +264,7 @@ def test_genesis_job_generates_lessons_and_isolates_failures(
 
         stored = app.state.session_factory()
         try:
-            lessons = stored.scalars(
-                select(Material).where(Material.course_id == course_id)
-            ).all()
+            lessons = stored.scalars(select(Material).where(Material.course_id == course_id)).all()
             lesson_rows = [
                 material
                 for material in lessons
@@ -279,15 +273,11 @@ def test_genesis_job_generates_lessons_and_isolates_failures(
             assert len(lesson_rows) == 2
             for material in lesson_rows:
                 link = stored.scalars(
-                    select(MaterialLink).where(
-                        MaterialLink.material_id == material.id
-                    )
+                    select(MaterialLink).where(MaterialLink.material_id == material.id)
                 ).first()
                 assert link is not None
             quizzes = stored.scalars(
-                select(Activity).where(
-                    Activity.course_id == course_id, Activity.type == "quiz"
-                )
+                select(Activity).where(Activity.course_id == course_id, Activity.type == "quiz")
             ).all()
             assert quizzes == []
             cards = stored.scalars(

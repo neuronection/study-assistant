@@ -56,17 +56,19 @@ SERVER: dict[str, Any] = {
 }
 
 DISCOVERY_ROWS = [
-    {"title": "Intro course", "url": "https://coursehub.example/learn/1",
-     "kind": "course", "description": "Learn things"},
+    {
+        "title": "Intro course",
+        "url": "https://coursehub.example/learn/1",
+        "kind": "course",
+        "description": "Learn things",
+    },
     {"title": ""},
     {"url": "https://coursehub.example/2"},
     "not-a-dict",
 ]
 
 
-def seed_servers(
-    db_session: Session, *servers: dict[str, Any], user_id: str | None = None
-) -> str:
+def seed_servers(db_session: Session, *servers: dict[str, Any], user_id: str | None = None) -> str:
     from app.services.platform.profiles import ensure_default_profile
 
     profile = ensure_default_profile(db_session, user_id)
@@ -97,9 +99,7 @@ def test_mcp_server_crud_and_validation(client: TestClient) -> None:
         )
         assert bad_timeout.status_code == 422
 
-        empty_command = client.post(
-            "/api/v1/mcp/servers", json={"name": "x", "command": "  "}
-        )
+        empty_command = client.post("/api/v1/mcp/servers", json={"name": "x", "command": "  "})
         assert empty_command.status_code == 422
 
         unknown_tool = client.patch(
@@ -110,19 +110,13 @@ def test_mcp_server_crud_and_validation(client: TestClient) -> None:
 
         bad_contract = client.patch(
             f"/api/v1/mcp/servers/{body['id']}",
-            json={
-                "tools": [{"name": "t", "enabled": True, "contract": "magic"}]
-            },
+            json={"tools": [{"name": "t", "enabled": True, "contract": "magic"}]},
         )
         assert bad_contract.status_code == 422
 
-        assert (
-            client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 204
-        )
+        assert client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 204
         assert client.get("/api/v1/mcp/servers").json() == []
-        assert (
-            client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 404
-        )
+        assert client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 404
 
 
 def test_refresh_lists_tools_and_preserves_tool_settings(
@@ -170,9 +164,7 @@ def test_refresh_lists_tools_and_preserves_tool_settings(
         )
         assert enabled.status_code == 200
 
-        refreshed_again = client.post(
-            f"/api/v1/mcp/servers/{created['id']}/refresh"
-        ).json()
+        refreshed_again = client.post(f"/api/v1/mcp/servers/{created['id']}/refresh").json()
         by_name = {tool["name"]: tool for tool in refreshed_again["tools"]}
         assert by_name["search_courses"]["enabled"] is True
         assert by_name["search_courses"]["contract"] == "discovery"
@@ -240,9 +232,7 @@ def test_discovery_search_with_mcp_provider_audits(
         arguments: dict[str, object],
         timeout_sec: int | None = None,
     ) -> str:
-        return json.dumps(
-            {"results": [DISCOVERY_ROWS[0]]}
-        )
+        return json.dumps({"results": [DISCOVERY_ROWS[0]]})
 
     monkeypatch.setattr("app.search.discovery.call_tool_sync", fake_call)
     with client:
@@ -257,9 +247,7 @@ def test_discovery_search_with_mcp_provider_audits(
         assert rows[0]["kind"] == "course"
 
     audit_rows = list(
-        db_session.scalars(
-            select(AiInteraction).where(AiInteraction.task == "mcp_tool_call")
-        )
+        db_session.scalars(select(AiInteraction).where(AiInteraction.task == "mcp_tool_call"))
     )
     assert len(audit_rows) == 1
     assert audit_rows[0].model == "mcp.coursehub.search_courses"
@@ -274,9 +262,7 @@ def test_mcp_parse_parser_matches_and_validates_contract(
     assert parser.matches("https://other.example/learn/42") is False
     assert parser.matches("ftp://coursehub.example/learn/42") is False
 
-    parser._config = make_config(
-        str(SERVER["command"]), [str(arg) for arg in SERVER["args"]]
-    )
+    parser._config = make_config(str(SERVER["command"]), [str(arg) for arg in SERVER["args"]])
 
     def fake_call(
         config: object,
@@ -308,9 +294,7 @@ def test_mcp_parse_parser_rejects_contract_violations(
 
     parser._config = make_config("python", [])
 
-    monkeypatch.setattr(
-        "app.parsers.mcp_parse.call_tool_sync", lambda *a, **k: "not json at all"
-    )
+    monkeypatch.setattr("app.parsers.mcp_parse.call_tool_sync", lambda *a, **k: "not json at all")
     with pytest.raises(ParserError, match="non-JSON"):
         parser.fetch("https://coursehub.example/learn/1")
 
@@ -345,9 +329,7 @@ def test_parse_contract_lands_in_url_import(
 
     seed_servers(db_session, SERVER)
     with client:
-        course_id = int(
-            client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"]
-        )
+        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         linked = client.post(
             "/api/v1/materials/link",
             json={
@@ -390,9 +372,7 @@ def test_parse_contract_lands_in_url_import(
         assert "Imported course" in detail["extraction"]["markdown"]
 
     audit_rows = list(
-        db_session.scalars(
-            select(AiInteraction).where(AiInteraction.task == "mcp_tool_call")
-        )
+        db_session.scalars(select(AiInteraction).where(AiInteraction.task == "mcp_tool_call"))
     )
     assert audit_rows
     suggestions = list(db_session.scalars(select(MaterialSuggestion)))
@@ -439,9 +419,7 @@ def test_create_remote_server_stores_secrets_in_keyring(
         assert get_secret(token_secret_ref(body["id"])) == "tok_123"
         assert get_secret(env_secret_ref(body["id"])) == '{"MCP_DEBUG": "1"}'
 
-        cleared = client.patch(
-            f"/api/v1/mcp/servers/{body['id']}", json={"token": None}
-        )
+        cleared = client.patch(f"/api/v1/mcp/servers/{body['id']}", json={"token": None})
         assert cleared.status_code == 200
         assert cleared.json()["has_token"] is False
         assert get_secret(token_secret_ref(body["id"])) is None
@@ -450,9 +428,7 @@ def test_create_remote_server_stores_secrets_in_keyring(
         assert kept.status_code == 200
         assert kept.json()["has_env"] is True
 
-        assert (
-            client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 204
-        )
+        assert client.delete(f"/api/v1/mcp/servers/{body['id']}").status_code == 204
         assert get_secret(env_secret_ref(body["id"])) is None
 
 
@@ -476,9 +452,7 @@ def test_create_server_validation_for_transports(client: TestClient) -> None:
         )
         assert unknown_transport.status_code == 422
 
-        stdio_without_command = client.post(
-            "/api/v1/mcp/servers", json={"name": "x"}
-        )
+        stdio_without_command = client.post("/api/v1/mcp/servers", json={"name": "x"})
         assert stdio_without_command.status_code == 422
 
         bad_concurrency = client.post(
@@ -488,9 +462,7 @@ def test_create_server_validation_for_transports(client: TestClient) -> None:
         assert bad_concurrency.status_code == 422
 
 
-def test_build_mcp_config_loads_secrets(
-    client: TestClient, db_session: Session
-) -> None:
+def test_build_mcp_config_loads_secrets(client: TestClient, db_session: Session) -> None:
     from app.services.platform.mcp_servers import build_mcp_config
 
     with client:

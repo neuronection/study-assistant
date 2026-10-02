@@ -20,9 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     with op.batch_alter_table("material_sources") as batch_op:
-        batch_op.add_column(
-            sa.Column("scan_interval_sec", sa.Integer(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("scan_interval_sec", sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column("last_scan_error", sa.Text(), nullable=True))
 
 

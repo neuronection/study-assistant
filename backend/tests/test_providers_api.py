@@ -36,11 +36,12 @@ FAKE_REMOTE_MODELS = [
     RemoteModel(external_id="text-embedding-004", caps=("embeddings",)),
 ]
 
+
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_fetch(
-    provider_type: str, base_url: str, api_key: str | None, transport: object = None
-) -> list[RemoteModel]:
+        provider_type: str, base_url: str, api_key: str | None, transport: object = None
+    ) -> list[RemoteModel]:
         return FAKE_REMOTE_MODELS
 
     monkeypatch.setattr(providers_service_module, "fetch_remote_models", fake_fetch)
@@ -66,6 +67,7 @@ def create_provider(client: TestClient, **overrides: Any) -> dict[str, Any]:
     assert response.status_code == 201, response.text
     result: dict[str, Any] = response.json()
     return result
+
 
 def test_create_provider_stores_masked_key_not_plaintext(
     client: TestClient, fake_keyring: FakeKeyring
@@ -107,18 +109,13 @@ def test_update_provider_replaces_key_only_when_given(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
     provider = create_provider(client)
-    response = client.patch(
-        f"/api/v1/providers/{provider['id']}", json={"name": "Renamed"}
-    )
+    response = client.patch(f"/api/v1/providers/{provider['id']}", json={"name": "Renamed"})
     assert response.status_code == 200
     assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == (
         "AIza-supersecret-1234"
     )
     client.patch(f"/api/v1/providers/{provider['id']}", json={"api_key": "sk-new-9999"})
-    assert (
-        fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
-        == "sk-new-9999"
-    )
+    assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == "sk-new-9999"
 
 
 def test_delete_provider_removes_key_and_models(
@@ -253,9 +250,7 @@ def test_manual_model_add_infers_caps_and_is_idempotent(
     assert missing.status_code == 404
 
 
-def test_model_reasoning_effort_round_trip(
-    client: TestClient, fake_keyring: FakeKeyring
-) -> None:
+def test_model_reasoning_effort_round_trip(client: TestClient, fake_keyring: FakeKeyring) -> None:
     provider = create_provider(client)
     created = client.post(
         "/api/v1/models",
@@ -269,15 +264,11 @@ def test_model_reasoning_effort_round_trip(
     assert created.json()["reasoning_effort"] == "none"
 
     model = created.json()
-    patched = client.patch(
-        f"/api/v1/models/{model['id']}", json={"reasoning_effort": "high"}
-    )
+    patched = client.patch(f"/api/v1/models/{model['id']}", json={"reasoning_effort": "high"})
     assert patched.status_code == 200
     assert patched.json()["reasoning_effort"] == "high"
 
-    cleared = client.patch(
-        f"/api/v1/models/{model['id']}", json={"reasoning_effort": "  "}
-    )
+    cleared = client.patch(f"/api/v1/models/{model['id']}", json={"reasoning_effort": "  "})
     assert cleared.status_code == 200
     assert cleared.json()["reasoning_effort"] is None
 
@@ -300,9 +291,7 @@ def test_manual_model_add_rejects_unknown_caps(
     assert patched.status_code == 422
 
 
-def test_manual_model_add_accepts_stt_caps(
-    client: TestClient, fake_keyring: FakeKeyring
-) -> None:
+def test_manual_model_add_accepts_stt_caps(client: TestClient, fake_keyring: FakeKeyring) -> None:
     provider = create_provider(client)
     created = client.post(
         "/api/v1/models",
@@ -323,9 +312,7 @@ def test_manual_model_add_accepts_stt_caps(
     assert patched.json()["caps"] == ["text", "stt"]
 
 
-def test_manual_add_revives_missing_model(
-    client: TestClient, fake_keyring: FakeKeyring
-) -> None:
+def test_manual_add_revives_missing_model(client: TestClient, fake_keyring: FakeKeyring) -> None:
     provider = create_provider(client)
     model = client.post(
         "/api/v1/models", json={"provider_id": provider["id"], "external_id": "llama-x"}
@@ -403,9 +390,7 @@ def test_readd_model_enables_it(client: TestClient, fake_keyring: FakeKeyring) -
     disabled = client.patch(f"/api/v1/models/{model['id']}", json={"enabled": False})
     assert disabled.json()["enabled"] is False
 
-    again = client.post(
-        "/api/v1/models", json={"provider_id": provider["id"], "external_id": "m1"}
-    )
+    again = client.post("/api/v1/models", json={"provider_id": provider["id"], "external_id": "m1"})
     assert again.status_code == 200
     assert again.json()["enabled"] is True
 
@@ -434,7 +419,11 @@ def test_task_defaults_endpoints_and_inheritance(
 ) -> None:
     defaults = client.get("/api/v1/tasks/defaults").json()
     assert [entry["requires"] for entry in defaults] == [
-        "text", "vision", "embeddings", "stt", "tts",
+        "text",
+        "vision",
+        "embeddings",
+        "stt",
+        "tts",
     ]
     assert all(entry["model_id"] is None for entry in defaults)
 
@@ -443,9 +432,7 @@ def test_task_defaults_endpoints_and_inheritance(
         "/api/v1/models",
         json={"provider_id": provider["id"], "external_id": "gemini-flash", "caps": ["text"]},
     ).json()
-    set_default = client.put(
-        "/api/v1/tasks/defaults/text", json={"model_id": default_model["id"]}
-    )
+    set_default = client.put("/api/v1/tasks/defaults/text", json={"model_id": default_model["id"]})
     assert set_default.status_code == 200, set_default.text
     assert set_default.json()["model_label"] == "gemini-flash"
 
@@ -475,15 +462,11 @@ def test_task_defaults_endpoints_and_inheritance(
         "/api/v1/models",
         json={"provider_id": provider["id"], "external_id": "text-model", "caps": ["text"]},
     ).json()
-    mismatch = client.put(
-        "/api/v1/tasks/defaults/vision", json={"model_id": text_only["id"]}
-    )
+    mismatch = client.put("/api/v1/tasks/defaults/vision", json={"model_id": text_only["id"]})
     assert mismatch.status_code == 422
     assert "vision" in mismatch.json()["detail"]
 
-    unknown = client.put(
-        "/api/v1/tasks/defaults/telepathy", json={"model_id": default_model["id"]}
-    )
+    unknown = client.put("/api/v1/tasks/defaults/telepathy", json={"model_id": default_model["id"]})
     assert unknown.status_code == 422
 
 
@@ -527,17 +510,13 @@ def _assign_text_default(client: TestClient, fake_keyring: FakeKeyring) -> int:
         "/api/v1/models",
         json={"provider_id": provider["id"], "external_id": "default-text", "caps": ["text"]},
     ).json()
-    response = client.put(
-        "/api/v1/tasks/defaults/text", json={"model_id": model["id"]}
-    )
+    response = client.put("/api/v1/tasks/defaults/text", json={"model_id": model["id"]})
     assert response.status_code == 200, response.text
     model_id: int = model["id"]
     return model_id
 
 
-def test_task_defaults_survive_restart(
-    tmp_path: Path, fake_keyring: FakeKeyring
-) -> None:
+def test_task_defaults_survive_restart(tmp_path: Path, fake_keyring: FakeKeyring) -> None:
     settings = Settings(data_dir=tmp_path, log_level="WARNING")
     with TestClient(create_app(settings)) as first:
         model_id = _assign_text_default(first, fake_keyring)
@@ -548,9 +527,7 @@ def test_task_defaults_survive_restart(
         assert text_default["model_id"] == model_id
 
 
-def test_task_defaults_survive_restore(
-    tmp_path: Path, fake_keyring: FakeKeyring
-) -> None:
+def test_task_defaults_survive_restore(tmp_path: Path, fake_keyring: FakeKeyring) -> None:
     settings = Settings(data_dir=tmp_path, log_level="WARNING")
     with TestClient(create_app(settings)) as client:
         model_id = _assign_text_default(client, fake_keyring)

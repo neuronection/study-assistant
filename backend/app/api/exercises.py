@@ -234,11 +234,7 @@ def _recent_wrong_answers(
             value = question.answer.get("value")
             if value is not None:
                 expected = str(value)
-        response = (
-            answer.response.get("value")
-            if isinstance(answer.response, dict)
-            else None
-        )
+        response = answer.response.get("value") if isinstance(answer.response, dict) else None
         entries.append(
             {
                 "stem": _blocks_to_md(question.stem or [])[:240],
@@ -316,8 +312,7 @@ def _run_pattern_discover(
     )
     if result.problems:
         raise ValueError(
-            "pattern discovery did not pass validation: "
-            + "; ".join(result.problems[:6])
+            "pattern discovery did not pass validation: " + "; ".join(result.problems[:6])
         )
     return [
         PatternProposalOut(
@@ -338,23 +333,17 @@ def generate_exercise(
 ) -> ExerciseOut:
     profile = ensure_default_profile(session)
     try:
-        placement_node_id = TreeService(session).placement_node(
-            body.course_id, body.node_id
-        )
+        placement_node_id = TreeService(session).placement_node(body.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     try:
         context = ContextResolver(session, request.app.state.embedder.embed).resolve(
-            body.to_spec(
-                course_id=body.course_id, node_id=placement_node_id, query=body.topic
-            )
+            body.to_spec(course_id=body.course_id, node_id=placement_node_id, query=body.topic)
         )
     except ContextError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if body.kind not in GENERATABLE_KINDS:
-        raise HTTPException(
-            status_code=422, detail=f"kind must be one of {GENERATABLE_KINDS}"
-        )
+        raise HTTPException(status_code=422, detail=f"kind must be one of {GENERATABLE_KINDS}")
     exercise = _run_exgen(
         request,
         session,
@@ -395,9 +384,7 @@ def similar_exercise(
 
 
 @router.get("/drills/patterns", response_model=list[PatternOut])
-def drill_patterns(
-    course_id: int, session: Session = Depends(get_session)
-) -> list[PatternOut]:
+def drill_patterns(course_id: int, session: Session = Depends(get_session)) -> list[PatternOut]:
     ensure_default_profile(session)
     service = ErrorPatternService(session)
     patterns = service.resolve(course_id)
@@ -418,9 +405,7 @@ def drill_patterns(
 
 
 @router.post("/drills/patterns", response_model=PatternOut, status_code=201)
-def create_pattern(
-    body: PatternCreateIn, session: Session = Depends(get_session)
-) -> PatternOut:
+def create_pattern(body: PatternCreateIn, session: Session = Depends(get_session)) -> PatternOut:
     ensure_default_profile(session)
     service = ErrorPatternService(session)
     try:
@@ -458,9 +443,7 @@ def propose_patterns(
         return []
     existing = service.resolve(body.course_id)
     try:
-        proposals = _run_pattern_discover(
-            request, session, body.course_id, mistakes, existing
-        )
+        proposals = _run_pattern_discover(request, session, body.course_id, mistakes, existing)
     except (TaskUnassigned, ProviderError) as error:
         session.rollback()
         raise HTTPException(status_code=502, detail=str(error)) from error
@@ -560,9 +543,7 @@ def create_teach_back_exercise(
 
 
 @router.post("", response_model=ExerciseOut, status_code=201)
-def create_exercise(
-    body: ExerciseCreate, session: Session = Depends(get_session)
-) -> ExerciseOut:
+def create_exercise(body: ExerciseCreate, session: Session = Depends(get_session)) -> ExerciseOut:
     profile = ensure_default_profile(session)
     try:
         node_id = TreeService(session).placement_node(body.course_id, body.node_id)
@@ -625,9 +606,7 @@ def move_exercise(
     if exercise is None:
         raise HTTPException(status_code=404, detail="exercise not found")
     try:
-        exercise.node_id = TreeService(session).placement_node(
-            exercise.course_id, body.node_id
-        )
+        exercise.node_id = TreeService(session).placement_node(exercise.course_id, body.node_id)
     except TreeError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
@@ -649,9 +628,7 @@ class ExerciseDeletedOut(BaseModel):
 
 
 @router.delete("/{exercise_id}", response_model=ExerciseDeletedOut)
-def delete_exercise(
-    exercise_id: int, session: Session = Depends(get_session)
-) -> dict[str, Any]:
+def delete_exercise(exercise_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
     exercise = session.get(Exercise, exercise_id)
     if exercise is None:
         raise HTTPException(status_code=404, detail="exercise not found")
@@ -720,9 +697,7 @@ def _numberline_input(spec: dict[str, Any]) -> dict[str, Any] | None:
 
 
 @router.get("/{exercise_id}/steps", response_model=list[StepOut])
-def exercise_steps(
-    exercise_id: int, session: Session = Depends(get_session)
-) -> list[StepOut]:
+def exercise_steps(exercise_id: int, session: Session = Depends(get_session)) -> list[StepOut]:
     steps = session.scalars(
         select(ExerciseStep)
         .where(ExerciseStep.exercise_id == exercise_id)
@@ -798,8 +773,7 @@ def submit_step_answer(
     if exercise_session.status != "active":
         raise HTTPException(status_code=422, detail="session is not active")
     step = session.scalars(
-        select(ExerciseStep)
-        .where(
+        select(ExerciseStep).where(
             ExerciseStep.exercise_id == exercise_session.exercise_id,
             ExerciseStep.order_idx == exercise_session.current_step_idx,
         )
@@ -821,11 +795,7 @@ def submit_step_answer(
             expected["tolerance"] = spec["tolerance"]
         result = grade_regions(expected, body.response)
         correct = result.correct
-        stage = (
-            "numberline: correct"
-            if correct
-            else "numberline: " + "; ".join(result.feedback)
-        )
+        stage = "numberline: correct" if correct else "numberline: " + "; ".join(result.feedback)
         error_class = None
     elif isinstance(spec.get("kind"), str) and spec["kind"] in RUBRIC_KINDS:
         if not isinstance(body.response, str) or not body.response.strip():
@@ -843,9 +813,7 @@ def submit_step_answer(
             except (RubricError, TaskUnassigned, ProviderError) as error:
                 session.rollback()
                 raise HTTPException(
-                    status_code=502
-                    if isinstance(error, (TaskUnassigned, ProviderError))
-                    else 422,
+                    status_code=502 if isinstance(error, (TaskUnassigned, ProviderError)) else 422,
                     detail=str(error),
                 ) from error
             correct = rubric_assessment["verdict"] == "correct"
@@ -906,9 +874,7 @@ def submit_step_answer(
 
             exercise_session.finished_at = utcnow()
             attempts = list(
-                session.scalars(
-                    select(StepAttempt).where(StepAttempt.session_id == session_id)
-                )
+                session.scalars(select(StepAttempt).where(StepAttempt.session_id == session_id))
             )
             exercise_session.independence_score = TutorService.independence_score(attempts)
         else:
@@ -935,8 +901,7 @@ def request_hint(
     if exercise_session.status != "active":
         raise HTTPException(status_code=422, detail="session is not active")
     step = session.scalars(
-        select(ExerciseStep)
-        .where(
+        select(ExerciseStep).where(
             ExerciseStep.exercise_id == exercise_session.exercise_id,
             ExerciseStep.order_idx == exercise_session.current_step_idx,
         )
@@ -974,8 +939,7 @@ def ask_about_session(
     if exercise_session.status != "active":
         raise HTTPException(status_code=422, detail="session is not active")
     step = session.scalars(
-        select(ExerciseStep)
-        .where(
+        select(ExerciseStep).where(
             ExerciseStep.exercise_id == exercise_session.exercise_id,
             ExerciseStep.order_idx == exercise_session.current_step_idx,
         )
@@ -1063,9 +1027,7 @@ def session_summary_note(
     )
     if mistakes:
         lines += ["", "## What went wrong", *mistakes]
-    correct_steps = sorted(
-        {entry.step_idx + 1 for entry in entries if entry.correct is True}
-    )
+    correct_steps = sorted({entry.step_idx + 1 for entry in entries if entry.correct is True})
     if correct_steps:
         lines += ["", "## Completed correctly", f"Steps {correct_steps}"]
     node = session.get(TreeNode, exercise.node_id) if exercise.node_id else None
@@ -1100,9 +1062,7 @@ def _transcript_entries(session: Session, exercise_session: Any) -> list[Transcr
             TranscriptEntry(
                 step_idx=attempt.step_idx,
                 kind="hint" if attempt.response is None else "answer",
-                response=(
-                    str(attempt.response.get("value")) if attempt.response else None
-                ),
+                response=(str(attempt.response.get("value")) if attempt.response else None),
                 correct=attempt.correct,
                 hint_level_used=attempt.hint_level_used,
                 error_class=attempt.error_class,

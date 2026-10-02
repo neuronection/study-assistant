@@ -54,9 +54,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table("note_drawings", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_note_drawings_note_id"), ["note_id"], unique=False
-        )
+        batch_op.create_index(batch_op.f("ix_note_drawings_note_id"), ["note_id"], unique=False)
     op.create_table(
         "flashcards",
         sa.Column("id", sa.Integer(), nullable=False),

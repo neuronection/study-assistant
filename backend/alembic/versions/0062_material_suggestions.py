@@ -53,13 +53,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "uq_material_suggestions_profile_url", table_name="material_suggestions"
-    )
-    op.drop_index(
-        "ix_material_suggestions_course_id", table_name="material_suggestions"
-    )
-    op.drop_index(
-        "ix_material_suggestions_profile_id", table_name="material_suggestions"
-    )
+    op.drop_index("uq_material_suggestions_profile_url", table_name="material_suggestions")
+    op.drop_index("ix_material_suggestions_course_id", table_name="material_suggestions")
+    op.drop_index("ix_material_suggestions_profile_id", table_name="material_suggestions")
     op.drop_table("material_suggestions")

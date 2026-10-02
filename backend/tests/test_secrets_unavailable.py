@@ -33,9 +33,7 @@ def test_delete_secret_is_best_effort_without_backend(no_keyring: Any) -> None:
     secrets.delete_secret("provider:1")
 
 
-def test_providers_api_works_without_keyring_backend(
-    no_keyring: Any, tmp_path: Path
-) -> None:
+def test_providers_api_works_without_keyring_backend(no_keyring: Any, tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path, log_level="WARNING"))
     with TestClient(app) as client:
         created = client.post(

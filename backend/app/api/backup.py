@@ -86,17 +86,13 @@ def _defaults_from_settings(request: Request) -> EffectiveBackupSettings:
         interval_hours=settings.backup_interval_hours,
         keep_daily=settings.backup_keep_daily,
         keep_weekly=settings.backup_keep_weekly,
-        sync_dir=str(settings.backup_sync_dir)
-        if settings.backup_sync_dir
-        else None,
+        sync_dir=str(settings.backup_sync_dir) if settings.backup_sync_dir else None,
     )
 
 
 def _status(request: Request) -> dict[str, Any]:
     settings = request.app.state.settings
-    effective = load_effective_settings(
-        _defaults_from_settings(request), _settings_dir(request)
-    )
+    effective = load_effective_settings(_defaults_from_settings(request), _settings_dir(request))
     recovery_path = settings.data_dir / "last-recovery.json"
     recovery: dict[str, Any] | None = None
     if recovery_path.is_file():
@@ -177,16 +173,12 @@ def delete_backup(name: str, request: Request) -> dict[str, Any]:
 @router.get("/export")
 def export_backup(request: Request) -> Response:
     settings = request.app.state.settings
-    package = build_backup(
-        settings.db_path, settings.blobs_dir, database_url=settings.db_url
-    )
+    package = build_backup(settings.db_path, settings.blobs_dir, database_url=settings.db_url)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     return Response(
         content=package,
         media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="studyassistant-{stamp}.zip"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="studyassistant-{stamp}.zip"'},
     )
 
 
@@ -198,9 +190,7 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
     except BackupError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if not database_is_healthy(database):
-        raise HTTPException(
-            status_code=422, detail="backup database failed integrity check"
-        )
+        raise HTTPException(status_code=422, detail="backup database failed integrity check")
 
     settings = request.app.state.settings
     target_pg = postgres_url(settings.db_url)
@@ -255,11 +245,7 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
             get_or_create_default(db, user_id)
         for task_def in TASK_DEFS:
             if db.get(TaskAssignment, task_def.task) is None:
-                db.add(
-                    TaskAssignment(
-                        task=task_def.task, model_id=None, fallback_model_id=None
-                    )
-                )
+                db.add(TaskAssignment(task=task_def.task, model_id=None, fallback_model_id=None))
         seed_default_task_assignments(db)
         db.commit()
         count = db.execute(text("SELECT COUNT(*) FROM materials")).one()

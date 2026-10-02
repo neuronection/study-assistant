@@ -49,8 +49,7 @@ def list_dirs(
     dirs = [
         FsDir(name=entry.name, path=str(entry))
         for entry in entries
-        if entry.is_dir() and not entry.name.startswith(".")
-        and not entry.is_symlink()
+        if entry.is_dir() and not entry.name.startswith(".") and not entry.is_symlink()
     ]
     parent: str | None = None
     if resolved.parent != resolved and _within(resolved.parent, roots):

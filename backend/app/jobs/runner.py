@@ -34,9 +34,7 @@ ProgressReporter = Callable[[int, str], None]
 JobHandler = Callable[[Session, Job, ProgressReporter], None]
 GroupKey = Callable[[Job], str | None]
 
-INTERRUPTED_ERROR = (
-    "interrupted: the backend restarted before this job finished — please retry"
-)
+INTERRUPTED_ERROR = "interrupted: the backend restarted before this job finished — please retry"
 
 
 class JobError(Exception):
@@ -75,9 +73,7 @@ class JobRunner:
                 count=reclaimed,
             )
         for index in range(self._workers):
-            thread = threading.Thread(
-                target=self._run, name=f"job-worker-{index}", daemon=True
-            )
+            thread = threading.Thread(target=self._run, name=f"job-worker-{index}", daemon=True)
             thread.start()
             self._threads.append(thread)
 
@@ -139,10 +135,7 @@ class JobRunner:
     def _claim_next(self) -> Job | None:
         with self._session_factory() as session:
             candidates = session.scalars(
-                select(Job)
-                .where(Job.status == JobStatus.QUEUED)
-                .order_by(Job.id)
-                .limit(25)
+                select(Job).where(Job.status == JobStatus.QUEUED).order_by(Job.id).limit(25)
             ).all()
             for job in candidates:
                 if self._blocked_by_group(session, job):
@@ -196,9 +189,7 @@ class JobRunner:
                 job_type=job.type,
                 timeout_sec=self._job_timeout_sec,
             )
-            self._mark_failed(
-                job.id, f"timed out after {int(self._job_timeout_sec)}s"
-            )
+            self._mark_failed(job.id, f"timed out after {int(self._job_timeout_sec)}s")
 
     def _run_handler(self, job_id: int, job_type: str) -> None:
         handler = self._handlers.get(job_type)
@@ -243,9 +234,7 @@ class JobRunner:
                     )
                     self._mark_failed(job_id, str(error))
         except Exception as error:
-            logger.exception(
-                "job_handler_setup_failed", job_id=job_id, error=str(error)
-            )
+            logger.exception("job_handler_setup_failed", job_id=job_id, error=str(error))
             self._mark_failed(job_id, str(error))
         finally:
             clear_cancel(job_id)

@@ -10,9 +10,7 @@ from app.domain.models import utcnow
 def make_course(client: TestClient, title: str, exam_date: str | None = None) -> int:
     course_id = int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
     if exam_date is not None:
-        patched = client.patch(
-            f"/api/v1/courses/{course_id}", json={"exam_date": exam_date}
-        )
+        patched = client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": exam_date})
         assert patched.status_code == 200, patched.text
     return course_id
 
@@ -31,9 +29,7 @@ def make_card(client: TestClient, course_id: int, front: str) -> int:
     return int(response.json()["id"])
 
 
-def make_plan_item(
-    client: TestClient, course_id: int, title: str, due_date: str
-) -> int:
+def make_plan_item(client: TestClient, course_id: int, title: str, due_date: str) -> int:
     created = client.post(
         f"/api/v1/courses/{course_id}/plan",
         json={"title": title, "due_date": due_date},
@@ -169,9 +165,7 @@ def test_study_next_excludes_scratch_courses(client: TestClient) -> None:
         regular = make_course(client, "Regular")
         make_card(client, regular, "visible card")
 
-        scratch_id = int(
-            client.get("/api/v1/courses/scratchpad").json()["course"]["id"]
-        )
+        scratch_id = int(client.get("/api/v1/courses/scratchpad").json()["course"]["id"])
         make_card(client, scratch_id, "scratch card")
 
         response = client.get("/api/v1/study/next")

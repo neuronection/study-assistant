@@ -122,7 +122,5 @@ def _part_key(part: dict[str, Any]) -> str:
             return _format_number(float(value))
         return str(value)
     if "indices" in part and isinstance(part["indices"], list):
-        return ", ".join(
-            LETTERS[int(index)] for index in part["indices"] if isinstance(index, int)
-        )
+        return ", ".join(LETTERS[int(index)] for index in part["indices"] if isinstance(index, int))
     return "?"

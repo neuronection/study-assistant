@@ -66,9 +66,7 @@ LIMIT = 5
 # xdist workers each build their own scratch database; the full Alembic
 # chain must not run concurrently on the server or it exhausts PostgreSQL's
 # lock table (max_locks_per_transaction).
-_MIGRATION_LOCK = FileLock(
-    os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock")
-)
+_MIGRATION_LOCK = FileLock(os.path.join(tempfile.gettempdir(), "sa-search-pg-migrations.lock"))
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -184,9 +182,7 @@ def test_search_parity_benchmark(db_session: Session, pg_session: Session) -> No
     print("\nsearch parity benchmark (hybrid_search, limit=5)")
     print(f"{'kind':<11} {'query':<24} {'sqlite hits':<14} {'pg hits':<14} overlap")
     for kind, query, sqlite_hits, pg_hits, overlap in rows:
-        print(
-            f"{kind:<11} {query:<24} {sqlite_hits!s:<14} {pg_hits!s:<14} {overlap}"
-        )
+        print(f"{kind:<11} {query:<24} {sqlite_hits!s:<14} {pg_hits!s:<14} {overlap}")
 
     for kind, query, sqlite_hits, pg_hits, _overlap in rows:
         if kind == "empty":

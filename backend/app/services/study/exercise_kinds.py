@@ -56,6 +56,3 @@ DEFAULT_KIND = MULTI_STEP
 
 def is_card_kind(kind: str) -> bool:
     return KINDS.get(kind, ExerciseKindDef("", "", "", card=False)).card
-
-
-

@@ -28,22 +28,16 @@ def upgrade() -> None:
             sa.ForeignKey("notes.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column(
-            "profile_id", sa.Integer(), sa.ForeignKey("profiles.id"), nullable=False
-        ),
+        sa.Column("profile_id", sa.Integer(), sa.ForeignKey("profiles.id"), nullable=False),
         sa.Column("title", sa.String(length=300), nullable=False),
         sa.Column("tags", sa.JSON(), nullable=True),
         sa.Column("body", sa.JSON(), nullable=False),
         sa.Column("cause", sa.String(length=30), nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_note_versions_note_id", "note_versions", ["note_id"])
     op.create_index("ix_note_versions_profile_id", "note_versions", ["profile_id"])
-    op.create_index(
-        "ix_note_versions_note", "note_versions", ["note_id", "id"]
-    )
+    op.create_index("ix_note_versions_note", "note_versions", ["note_id", "id"])
 
 
 def downgrade() -> None:

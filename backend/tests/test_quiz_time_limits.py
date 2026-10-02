@@ -12,9 +12,7 @@ def make_course(client: TestClient) -> int:
     return int(client.post("/api/v1/courses", json={"title": "Calculus"}).json()["id"])
 
 
-def make_quiz(
-    client: TestClient, course_id: int, title: str, limit_sec: int | None
-) -> int:
+def make_quiz(client: TestClient, course_id: int, title: str, limit_sec: int | None) -> int:
     imported = client.post(
         "/api/v1/quiz/import",
         params={"course_id": course_id, "dry_run": False},
@@ -52,9 +50,7 @@ def first_question_id(client: TestClient, activity_id: int) -> int:
     return int(questions[0]["id"])
 
 
-def shift_deadline(
-    client: TestClient, attempt_id: int, *, past_seconds: int
-) -> None:
+def shift_deadline(client: TestClient, attempt_id: int, *, past_seconds: int) -> None:
     settings = client.app.state.settings  # type: ignore[attr-defined]
     db_path = settings.db_path
     engine = create_engine(f"sqlite:///{db_path}")

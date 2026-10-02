@@ -22,9 +22,7 @@ class SelfStoppingGateway(LLMGateway):
         super().__init__(session_factory=None)
         self.stop = threading.Event()
 
-    def resolve(
-        self, task: str, course_id: int | None = None
-    ) -> ResolvedModel:
+    def resolve(self, task: str, course_id: int | None = None) -> ResolvedModel:
         return ResolvedModel(
             provider_id=1,
             provider_type="openai_compatible",
@@ -47,9 +45,7 @@ class SelfStoppingGateway(LLMGateway):
         yield StreamChunk("text", "tail [1]")
 
 
-def test_stop_mid_stream_persists_prefix_and_marks_trace(
-    db_session: Session, owner: Any
-) -> None:
+def test_stop_mid_stream_persists_prefix_and_marks_trace(db_session: Session, owner: Any) -> None:
     profile = ensure_default_profile(db_session, owner.id)
     session_row = ChatSession(profile_id=profile.id, title="t")
     db_session.add(session_row)

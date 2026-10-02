@@ -52,9 +52,7 @@ def test_study_content_creation_requires_course(client: TestClient) -> None:
             response = client.post(url, params={"dry_run": "false"}, json={"title": "x"})
             assert response.status_code == 422, f"{url} accepted without course_id"
 
-        inbox = client.post(
-            "/api/v1/quiz/inbox/probe.caq.json/import", params={"dry_run": "false"}
-        )
+        inbox = client.post("/api/v1/quiz/inbox/probe.caq.json/import", params={"dry_run": "false"})
         assert inbox.status_code == 422
 
 
@@ -66,9 +64,7 @@ def test_migration_0020_moves_orphans_to_unsorted(tmp_path: Path) -> None:
 
     raw = sqlite3.connect(db_path)
     now = "2026-08-19 10:00:00+00:00"
-    raw.execute(
-        "INSERT INTO profiles (id, name, created_at) VALUES (1, 'legacy', ?)", (now,)
-    )
+    raw.execute("INSERT INTO profiles (id, name, created_at) VALUES (1, 'legacy', ?)", (now,))
     raw.execute(
         "INSERT INTO notes (id, profile_id, course_id, owner_type, title, body, "
         "search_text, pinned, created_at, updated_at) "
@@ -97,9 +93,9 @@ def test_migration_0020_moves_orphans_to_unsorted(tmp_path: Path) -> None:
 
     raw = sqlite3.connect(db_path)
     cur = raw.cursor()
-    assert cur.execute("SELECT version_num FROM alembic_version").fetchone()[
-        0
-    ] == "0065_identity_core"
+    assert (
+        cur.execute("SELECT version_num FROM alembic_version").fetchone()[0] == "0065_identity_core"
+    )
     unsorted_id, root_id = cur.execute(
         "SELECT c.id, r.id FROM courses c JOIN tree_nodes r "
         "ON r.course_id = c.id AND r.is_root = 1 "
@@ -115,8 +111,6 @@ def test_migration_0020_moves_orphans_to_unsorted(tmp_path: Path) -> None:
         ).fetchone()
         assert course_id == unsorted_id, table
         assert node_id == root_id, table
-        notnull = {
-            row[1]: row[3] for row in cur.execute(f"PRAGMA table_info({table})")
-        }
+        notnull = {row[1]: row[3] for row in cur.execute(f"PRAGMA table_info({table})")}
         assert notnull["course_id"] == 1, table
     raw.close()

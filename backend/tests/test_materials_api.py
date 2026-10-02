@@ -44,9 +44,7 @@ def make_course(client: TestClient, title: str = "Materials") -> int:
     return int(created.json()["id"])
 
 
-def upload(
-    client: TestClient, data: bytes, filename: str, course_id: int
-) -> dict[str, Any]:
+def upload(client: TestClient, data: bytes, filename: str, course_id: int) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
@@ -65,8 +63,9 @@ def test_upload_pdf_ingests_to_ready_and_searchable(client: TestClient, text_pdf
     assert body["job_id"] is not None
 
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
 
     detail = client.get(f"/api/v1/materials/{material_id}").json()
@@ -171,17 +170,18 @@ def test_upload_with_node_id_assigns(client: TestClient, text_pdf: bytes) -> Non
     assert material_id in members
 
 
-def test_upload_dedupe_still_assigns_node(
-    client: TestClient, text_pdf: bytes
-) -> None:
+def test_upload_dedupe_still_assigns_node(client: TestClient, text_pdf: bytes) -> None:
     course_id = make_course(client)
     first = upload(client, text_pdf, "chain.pdf", course_id)
     first_node = _add_child_node(client, course_id, "Windows")
     second_node = _add_child_node(client, course_id, "Integration")
-    assert client.post(
-        f"/api/v1/nodes/{first_node}/materials",
-        json={"material_id": first["material"]["id"]},
-    ).status_code == 201
+    assert (
+        client.post(
+            f"/api/v1/nodes/{first_node}/materials",
+            json={"material_id": first["material"]["id"]},
+        ).status_code
+        == 201
+    )
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id, "node_id": second_node},
@@ -194,16 +194,12 @@ def test_upload_dedupe_still_assigns_node(
     assert body["node_id"] == second_node
     listing = client.get("/api/v1/materials").json()
     assert len(listing) == 1
-    detail = client.get(
-        f"/api/v1/materials/{first['material']['id']}/links"
-    ).json()
+    detail = client.get(f"/api/v1/materials/{first['material']['id']}/links").json()
     node_ids = {link["node_id"] for link in detail}
     assert {first_node, second_node} <= node_ids
 
 
-def test_upload_node_from_other_course_rejected(
-    client: TestClient, text_pdf: bytes
-) -> None:
+def test_upload_node_from_other_course_rejected(client: TestClient, text_pdf: bytes) -> None:
     course_id = make_course(client)
     other_course = make_course(client, "Other")
     foreign_node = _add_child_node(client, other_course)
@@ -231,8 +227,9 @@ def test_scanned_pdf_fails_with_clear_ocr_message(client: TestClient) -> None:
     body = upload(client, blank_pdf, "scan.pdf", course_id)
     material_id = body["material"]["id"]
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "failed"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "failed"
+        )
     )
     detail = client.get(f"/api/v1/materials/{material_id}").json()
     assert detail["extraction"] is None
@@ -243,8 +240,9 @@ def test_txt_material_ingests_native(client: TestClient) -> None:
     body = upload(client, b"integration by parts\n\nuse u substitution", "notes.txt", course_id)
     material_id = body["material"]["id"]
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     detail = client.get(f"/api/v1/materials/{material_id}").json()
     assert detail["extraction"]["extractor"] == "native"
@@ -269,10 +267,7 @@ def test_extraction_to_blocks_keeps_fences_whole() -> None:
         {"type": "text", "md": "# Partial fractions"},
         {
             "type": "text",
-            "md": (
-                "```mermaid\nflowchart TD\n\n"
-                "    A[x^3 + 1] --> B[(x + 1)(x^2 - x + 1)]\n```"
-            ),
+            "md": ("```mermaid\nflowchart TD\n\n    A[x^3 + 1] --> B[(x + 1)(x^2 - x + 1)]\n```"),
         },
         {"type": "text", "md": "after the diagram"},
         {"type": "text", "md": "```python\nx = 1\n```"},

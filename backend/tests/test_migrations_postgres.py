@@ -27,8 +27,7 @@ DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
     pytest.skip(
-        "SA_TEST_DATABASE_URL is not set — the PostgreSQL migration twin "
-        "needs a disposable server",
+        "SA_TEST_DATABASE_URL is not set — the PostgreSQL migration twin needs a disposable server",
         allow_module_level=True,
     )
 
@@ -36,9 +35,7 @@ if not DATABASE_URL:
 # xdist workers each build their own scratch database; the full Alembic
 # chain must not run concurrently on the server or it exhausts PostgreSQL's
 # lock table (max_locks_per_transaction).
-_MIGRATION_LOCK = FileLock(
-    os.path.join(tempfile.gettempdir(), "sa-mig-pg-migrations.lock")
-)
+_MIGRATION_LOCK = FileLock(os.path.join(tempfile.gettempdir(), "sa-mig-pg-migrations.lock"))
 
 
 @pytest.fixture(scope="module", autouse=True)

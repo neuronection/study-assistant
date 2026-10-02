@@ -7,6 +7,7 @@ and downgrade is irreversible. Legacy-chain data tests stop at
 0065_identity_core; this module pins the head (moved to
 0067_auth_session_created_at when `auth_sessions.created_at` landed).
 """
+
 import sqlite3
 from pathlib import Path
 
@@ -52,9 +53,7 @@ def test_migration_head_is_latest(tmp_path: Path) -> None:
 
     for table, column in (("courses", "profile_id"), ("study_goals", "profile_id")):
         col = next(
-            row
-            for row in raw.execute(f"PRAGMA table_info({table})").fetchall()
-            if row[1] == column
+            row for row in raw.execute(f"PRAGMA table_info({table})").fetchall() if row[1] == column
         )
         assert col[2].startswith("CHAR") or col[2] == "UUID", (table, col)
     raw.close()

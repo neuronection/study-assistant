@@ -44,7 +44,8 @@ _SNAPSHOTS: dict[str, dict[str, Any]] = {}
 def _prune_snapshots() -> None:
     now = time_monotonic()
     expired = [
-        token for token, entry in _SNAPSHOTS.items()
+        token
+        for token, entry in _SNAPSHOTS.items()
         if now - entry["created_at"] > _SNAPSHOT_TTL_SEC
     ]
     for token in expired:
@@ -74,9 +75,7 @@ def subtree_material_ids(session: Session, node: TreeNode) -> list[int]:
         )
     )
     folder_links = [
-        link
-        for links in folder_links_by_node(session, subtree).values()
-        for link in links
+        link for links in folder_links_by_node(session, subtree).values() for link in links
     ]
     for folder_link in folder_links:
         folder = session.get(MaterialFolder, folder_link.folder_id)
@@ -107,9 +106,7 @@ class TreeService:
 
     def ensure_root(self, course_id: int) -> TreeNode:
         root = self._session.scalars(
-            select(TreeNode).where(
-                TreeNode.course_id == course_id, TreeNode.is_root.is_(True)
-            )
+            select(TreeNode).where(TreeNode.course_id == course_id, TreeNode.is_root.is_(True))
         ).first()
         if root is not None:
             return root
@@ -152,9 +149,7 @@ class TreeService:
     def _node_sort(self, order_idx: int) -> str:
         return f"{order_idx:06d}/"
 
-    def _refresh_subtree_paths(
-        self, node: TreeNode, parent_path: str, parent_sort: str
-    ) -> None:
+    def _refresh_subtree_paths(self, node: TreeNode, parent_path: str, parent_sort: str) -> None:
         node.path = f"{parent_path}{node.id}/"
         node.sort_path = f"{parent_sort}{self._node_sort(node.order_idx)}"
         self._session.flush()
@@ -220,9 +215,7 @@ class TreeService:
         ai_hint: str | None = None,
     ) -> TreeNode:
         node = self.get(node_id)
-        if node.is_root and (
-            title is not None or summary is not None or objectives is not None
-        ):
+        if node.is_root and (title is not None or summary is not None or objectives is not None):
             raise TreeError("the course root cannot be edited here")
         if title is not None:
             title = title.strip()
@@ -321,9 +314,7 @@ class TreeService:
         self._refresh_subtree_paths(node, target_root.path, target_root.sort_path)
         self._apply_depths(node, node.depth)
         self._session.execute(
-            sa_update(TreeNode)
-            .where(TreeNode.id.in_(moved_ids))
-            .values(course_id=target_course.id)
+            sa_update(TreeNode).where(TreeNode.id.in_(moved_ids)).values(course_id=target_course.id)
         )
         for table in PLACEMENT_TABLES.values():
             self._session.execute(
@@ -331,9 +322,7 @@ class TreeService:
                 .where(table.node_id.in_(moved_ids))
                 .values(course_id=target_course.id)
             )
-        self._session.execute(
-            sa_delete(NodeConcept).where(NodeConcept.node_id.in_(moved_ids))
-        )
+        self._session.execute(sa_delete(NodeConcept).where(NodeConcept.node_id.in_(moved_ids)))
         self._move_exclusive_content(source_course_id, moved_ids, target_course.id)
         self._session.flush()
         return node
@@ -343,16 +332,12 @@ class TreeService:
     ) -> None:
         moved_material_ids = set(
             self._session.scalars(
-                select(MaterialLink.material_id).where(
-                    MaterialLink.node_id.in_(moved_node_ids)
-                )
+                select(MaterialLink.material_id).where(MaterialLink.node_id.in_(moved_node_ids))
             )
         )
         remaining_material_ids = set(
             self._session.scalars(
-                select(MaterialLink.material_id).where(
-                    MaterialLink.course_id == source_course_id
-                )
+                select(MaterialLink.material_id).where(MaterialLink.course_id == source_course_id)
             )
         )
         moved_folder_ids = set(
@@ -391,9 +376,7 @@ class TreeService:
             orphan.course_id = target_course_id
 
     def _apply_depths(self, node: TreeNode, depth: int) -> None:
-        for child in self._session.scalars(
-            select(TreeNode).where(TreeNode.parent_id == node.id)
-        ):
+        for child in self._session.scalars(select(TreeNode).where(TreeNode.parent_id == node.id)):
             child.depth = depth + 1
             self._apply_depths(child, child.depth)
         self._session.flush()
@@ -422,9 +405,7 @@ class TreeService:
             select(MaterialLink.id).where(
                 MaterialLink.node_id == node_id,
                 MaterialLink.material_id.in_(
-                    select(MaterialLink.material_id).where(
-                        MaterialLink.node_id == parent.id
-                    )
+                    select(MaterialLink.material_id).where(MaterialLink.node_id == parent.id)
                 ),
             )
         )
@@ -445,9 +426,7 @@ class TreeService:
         self._session.flush()
         for table in PLACEMENT_TABLES.values():
             self._session.execute(
-                sa_update(table)
-                .where(table.node_id == node_id)
-                .values(node_id=parent.id)
+                sa_update(table).where(table.node_id == node_id).values(node_id=parent.id)
             )
         self._session.delete(node)
         self._session.flush()
@@ -624,9 +603,7 @@ class TreeService:
                 continue
             concept = self._session.get(Concept, concept_id)
             if concept is not None and concept.course_id == entry["course_id"]:
-                self._session.add(
-                    NodeConcept(node_id=node.id, concept_id=concept_id)
-                )
+                self._session.add(NodeConcept(node_id=node.id, concept_id=concept_id))
         self._session.flush()
         return node.id
 
@@ -642,9 +619,7 @@ class TreeService:
         )
         return list(rows)
 
-    def scoped_node_ids(
-        self, node_id: int, include_children: bool = True
-    ) -> list[int]:
+    def scoped_node_ids(self, node_id: int, include_children: bool = True) -> list[int]:
         node = self.get(node_id)
         return self.subtree_ids(node, include_children)
 
@@ -694,9 +669,7 @@ class TreeService:
                 model = Activity
             else:
                 model = Exercise
-            statement = select(model.node_id, func.count()).where(
-                model.node_id.in_(node_ids)
-            )
+            statement = select(model.node_id, func.count()).where(model.node_id.in_(node_ids))
             if kind_filter is not None:
                 statement = statement.where(kind_filter)
             rows = self._session.execute(statement.group_by(model.node_id)).all()
@@ -773,9 +746,7 @@ class TreeService:
         root = self.ensure_root(course_id)
         nodes = list(
             self._session.scalars(
-                select(TreeNode)
-                .where(TreeNode.course_id == course_id)
-                .order_by(TreeNode.sort_path)
+                select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
             )
         )
         links = list(
@@ -789,9 +760,7 @@ class TreeService:
         materials = {
             material.id: material
             for material in self._session.scalars(
-                select(Material).where(
-                    Material.id.in_([link.material_id for link in links])
-                )
+                select(Material).where(Material.id.in_([link.material_id for link in links]))
             )
         }
         by_parent: dict[int, list[TreeNode]] = {}
@@ -804,19 +773,21 @@ class TreeService:
             link_by_node.setdefault(link.node_id, []).append(link)
         folder_links = list(
             self._session.scalars(
-                select(MaterialFolderLink).where(
-                    MaterialFolderLink.course_id == course_id
-                )
+                select(MaterialFolderLink).where(MaterialFolderLink.course_id == course_id)
             )
         )
-        folders = {
-            folder.id: folder
-            for folder in self._session.scalars(
-                select(MaterialFolder).where(
-                    MaterialFolder.id.in_([link.folder_id for link in folder_links])
+        folders = (
+            {
+                folder.id: folder
+                for folder in self._session.scalars(
+                    select(MaterialFolder).where(
+                        MaterialFolder.id.in_([link.folder_id for link in folder_links])
+                    )
                 )
-            )
-        } if folder_links else {}
+            }
+            if folder_links
+            else {}
+        )
         folder_link_by_node: dict[int, list[dict[str, Any]]] = {}
         for folder_link in folder_links:
             folder = folders.get(folder_link.folder_id)
@@ -900,17 +871,13 @@ class TreeService:
         )
         folder_links_map = folder_links_by_node(self._session, scope_ids)
         all_folder_ids = [
-            link.folder_id
-            for folder_links in folder_links_map.values()
-            for link in folder_links
+            link.folder_id for folder_links in folder_links_map.values() for link in folder_links
         ]
         folders = (
             {
                 folder.id: folder
                 for folder in self._session.scalars(
-                    select(MaterialFolder).where(
-                        MaterialFolder.id.in_(all_folder_ids)
-                    )
+                    select(MaterialFolder).where(MaterialFolder.id.in_(all_folder_ids))
                 )
             }
             if all_folder_ids
@@ -990,9 +957,7 @@ class TreeService:
         def node_material_entries(node_id: int) -> list[dict[str, Any]]:
             direct = [link for link in links if link.node_id == node_id]
             direct_ids = {link.material_id for link in direct}
-            entries = [
-                material_entry(link.material_id, link=link) for link in direct
-            ]
+            entries = [material_entry(link.material_id, link=link) for link in direct]
             via = via_by_node.get(node_id, {})
             for material_id in sorted(via):
                 if material_id in direct_ids:
@@ -1003,11 +968,7 @@ class TreeService:
         def folder_entry(folder_id: int) -> dict[str, Any]:
             folder = folders.get(folder_id)
             link = next(
-                (
-                    candidate
-                    for candidate in node_folder_links
-                    if candidate.folder_id == folder_id
-                ),
+                (candidate for candidate in node_folder_links if candidate.folder_id == folder_id),
                 None,
             )
             if folder is None:
@@ -1103,8 +1064,7 @@ class TreeService:
             ],
             "folder_material_ids": sorted(via_by_node.get(node.id, {})),
             "child_materials": {
-                str(child_id): node_material_entries(child_id)
-                for child_id in child_ids
+                str(child_id): node_material_entries(child_id) for child_id in child_ids
             },
             "notes": [
                 {
@@ -1160,27 +1120,17 @@ class TreeService:
             if table in link_tables:
                 continue
             self._session.execute(
-                sa_update(table)
-                .where(table.node_id.in_(subtree))
-                .values(node_id=parent.id)
+                sa_update(table).where(table.node_id.in_(subtree)).values(node_id=parent.id)
             )
         self._session.flush()
 
+        self._session.execute(sa_delete(MaterialLink).where(MaterialLink.node_id.in_(subtree)))
         self._session.execute(
-            sa_delete(MaterialLink).where(MaterialLink.node_id.in_(subtree))
+            sa_delete(MaterialFolderLink).where(MaterialFolderLink.node_id.in_(subtree))
         )
-        self._session.execute(
-            sa_delete(MaterialFolderLink).where(
-                MaterialFolderLink.node_id.in_(subtree)
-            )
-        )
-        self._session.execute(
-            sa_delete(NodeConcept).where(NodeConcept.node_id.in_(subtree))
-        )
+        self._session.execute(sa_delete(NodeConcept).where(NodeConcept.node_id.in_(subtree)))
         for doomed_id in reversed(subtree):
-            self._session.execute(
-                sa_delete(TreeNode).where(TreeNode.id == doomed_id)
-            )
+            self._session.execute(sa_delete(TreeNode).where(TreeNode.id == doomed_id))
         self._session.flush()
         self._rewrite_child_sorts(parent)
         return item_id
@@ -1224,9 +1174,7 @@ class TreeService:
                     }
                 )
             for folder_link in self._session.scalars(
-                select(MaterialFolderLink).where(
-                    MaterialFolderLink.node_id == current.id
-                )
+                select(MaterialFolderLink).where(MaterialFolderLink.node_id == current.id)
             ):
                 folder_links.append(
                     {
@@ -1238,20 +1186,14 @@ class TreeService:
                     }
                 )
             for concept_id in self._session.scalars(
-                select(NodeConcept.concept_id).where(
-                    NodeConcept.node_id == current.id
-                )
+                select(NodeConcept.concept_id).where(NodeConcept.node_id == current.id)
             ):
-                concepts.append(
-                    {"node_key": key, "concept_id": concept_id}
-                )
+                concepts.append({"node_key": key, "concept_id": concept_id})
             for table_key, model in PLACEMENT_TABLES.items():
                 for row_id in self._session.scalars(
                     select(model.id).where(model.node_id == current.id)
                 ):
-                    placements.append(
-                        {"node_key": key, "table": table_key, "row_id": row_id}
-                    )
+                    placements.append({"node_key": key, "table": table_key, "row_id": row_id})
             children = self._session.scalars(
                 select(TreeNode)
                 .where(TreeNode.parent_id == current.id)
@@ -1303,11 +1245,7 @@ class TreeService:
                 target = parent
             else:
                 mapped = id_map.get(int(parent_key))
-                target = (
-                    self._session.get(TreeNode, mapped)
-                    if mapped is not None
-                    else None
-                )
+                target = self._session.get(TreeNode, mapped) if mapped is not None else None
                 if target is None:
                     skipped_deep += 1
                     continue
@@ -1450,4 +1388,3 @@ class TreeService:
             "restored_concepts": restored_concepts,
             "restored_placements": restored_placements,
         }
-

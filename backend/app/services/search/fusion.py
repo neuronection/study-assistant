@@ -23,6 +23,5 @@ def fuse_rrf(
             entries.setdefault(item_id, hit)
     ranked = sorted(scores, key=lambda item_id: scores[item_id], reverse=True)
     return [
-        {**entries[item_id], key: item_id, "score": scores[item_id]}
-        for item_id in ranked[:limit]
+        {**entries[item_id], key: item_id, "score": scores[item_id]} for item_id in ranked[:limit]
     ]

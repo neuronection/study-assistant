@@ -121,9 +121,7 @@ def test_course_crud(course_client: TestClient) -> None:
     assert [course["title"] for course in listed] == ["Calculus I"]
     assert listed[0]["material_count"] == 0
 
-    renamed = course_client.patch(
-        f"/api/v1/courses/{course_id}", json={"title": "Calculus II"}
-    )
+    renamed = course_client.patch(f"/api/v1/courses/{course_id}", json={"title": "Calculus II"})
     assert renamed.json()["title"] == "Calculus II"
 
     empty_title = course_client.patch(f"/api/v1/courses/{course_id}", json={"title": "  "})
@@ -220,9 +218,7 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     ).json()
 
     def children() -> list[dict[str, Any]]:
-        tree: list[dict[str, Any]] = course_client.get(
-            f"/api/v1/courses/{course_id}/tree"
-        ).json()
+        tree: list[dict[str, Any]] = course_client.get(f"/api/v1/courses/{course_id}/tree").json()
         return list(tree[0]["children"])
 
     parent = root["id"]
@@ -266,9 +262,7 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     assert materials[0]["material_id"] == material_id
     assert materials[0]["auto_assigned"] is False
 
-    removed = course_client.delete(
-        f"/api/v1/nodes/{section['id']}/materials/{material_id}"
-    )
+    removed = course_client.delete(f"/api/v1/nodes/{section['id']}/materials/{material_id}")
     assert removed.status_code == 204
 
     course_client.patch(f"/api/v1/nodes/{section['id']}", json={"title": "Basics (renamed)"})
@@ -276,7 +270,7 @@ def test_manual_structure_edits(course_client: TestClient) -> None:
     chapter_one = next(c for c in tree[0]["children"] if c["id"] == chapter["id"])
     assert chapter_one["children"][0]["title"] == "Basics (renamed)"
 
-    deleted = course_client.delete(f"/api/v1/nodes/{chapter["id"]}")
+    deleted = course_client.delete(f"/api/v1/nodes/{chapter['id']}")
     trash_item = deleted.json()["deleted_item_id"]
     assert [entry["title"] for entry in children()] == ["Chapter 2", "L1"]
 
@@ -433,9 +427,12 @@ def test_mirror_folder_writes_tree_and_folder_links(course_client: TestClient) -
     _folder(course_client, "Week 2", course_id, pack)
     _folder(course_client, "inner", course_id, week1)
     material_id = add_material(course_client, "m.txt", course_id)
-    assert course_client.patch(
-        f"/api/v1/materials/{material_id}/move", json={"folder_id": week1}
-    ).status_code == 200
+    assert (
+        course_client.patch(
+            f"/api/v1/materials/{material_id}/move", json={"folder_id": week1}
+        ).status_code
+        == 200
+    )
 
     result = _mirror(course_client, root["id"], pack)
     assert result["created_nodes"] == 3
@@ -451,9 +448,7 @@ def test_mirror_folder_writes_tree_and_folder_links(course_client: TestClient) -
     workspace = course_client.get(f"/api/v1/nodes/{weeks[0]['id']}/workspace").json()
     assert material_id in workspace["folder_material_ids"]
     links = course_client.get(f"/api/v1/materials/{material_id}/links").json()
-    via_nodes = {
-        entry["node_id"] for entry in links if entry["via_folder"] is not None
-    }
+    via_nodes = {entry["node_id"] for entry in links if entry["via_folder"] is not None}
     assert weeks[0]["id"] in via_nodes
 
 
@@ -542,9 +537,12 @@ def test_unassigned_endpoint_semantics(course_client: TestClient) -> None:
     loose = add_material(course_client, "loose.txt", course_id)
     placed = add_material(course_client, "placed.txt", course_id)
     other = add_material(course_client, "other.txt", other_id)
-    assert course_client.post(
-        f"/api/v1/nodes/{root['id']}/materials", json={"material_id": placed}
-    ).status_code == 201
+    assert (
+        course_client.post(
+            f"/api/v1/nodes/{root['id']}/materials", json={"material_id": placed}
+        ).status_code
+        == 201
+    )
     folder = _folder(course_client, "Pack", course_id)
     in_folder = add_material(course_client, "infolder.txt", course_id)
     client_move = course_client.patch(
@@ -582,9 +580,9 @@ def test_unassigned_endpoint_excludes_not_ready(course_client: TestClient) -> No
     material_id = int(upload.json()["material"]["id"])
 
     def is_ready() -> bool:
-        status: str = course_client.get(f"/api/v1/materials/{material_id}").json()[
-            "material"
-        ]["status"]
+        status: str = course_client.get(f"/api/v1/materials/{material_id}").json()["material"][
+            "status"
+        ]
         return status == "ready"
 
     deadline = __import__("time").monotonic() + 20
@@ -649,10 +647,13 @@ def test_placement_suggestions_empty_and_foreign(course_client: TestClient) -> N
 
 def test_placement_suggestions_caps_inputs(course_client: TestClient) -> None:
     course_id = course_client.post("/api/v1/courses", json={"title": "S-C"}).json()["id"]
-    assert course_client.post(
-        f"/api/v1/courses/{course_id}/placement-suggestions",
-        json={"material_ids": list(range(1, 41))},
-    ).status_code == 200
+    assert (
+        course_client.post(
+            f"/api/v1/courses/{course_id}/placement-suggestions",
+            json={"material_ids": list(range(1, 41))},
+        ).status_code
+        == 200
+    )
     assert (
         course_client.post(
             f"/api/v1/courses/{course_id}/placement-suggestions",

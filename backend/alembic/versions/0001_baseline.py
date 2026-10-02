@@ -24,9 +24,7 @@ def upgrade() -> None:
         # does not enforce VARCHAR lengths; PostgreSQL does). The version
         # table exists by the time the first migration runs, so widen it
         # before any long name can be stamped.
-        op.execute(
-            "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)"
-        )
+        op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
 
 
 def downgrade() -> None:

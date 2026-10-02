@@ -23,9 +23,7 @@ class NotesOcrEngine:
         self._gateway = gateway
 
     def transcribe(self, data: bytes, mime: str, session: Session | None = None) -> str:
-        payload, payload_mime = prepare_ocr_image(
-            data, mime, ocr_image_max_edge(session)
-        )
+        payload, payload_mime = prepare_ocr_image(data, mime, ocr_image_max_edge(session))
         system = NOTES_OCR_SYSTEM
         if session is not None:
             skills = SkillService(session)

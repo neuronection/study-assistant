@@ -7,6 +7,7 @@
   without the header;
 - profile REST resources hide foreign ids behind 404 (§7).
 """
+
 from typing import Any
 
 import pytest
@@ -79,9 +80,7 @@ def test_profile_resources_hide_foreign_ids(
     foreign = Profile(user_id=owner.id, name="Foreign", is_default=True)
     db_session.add(foreign)
     db_session.commit()
-    patched = client.patch(
-        f"/api/v1/profiles/{foreign.id}", json={"name": "Hijacked"}
-    )
+    patched = client.patch(f"/api/v1/profiles/{foreign.id}", json={"name": "Hijacked"})
     assert patched.status_code == 404, patched.text
     deleted = client.delete(f"/api/v1/profiles/{foreign.id}")
     assert deleted.status_code == 404, deleted.text

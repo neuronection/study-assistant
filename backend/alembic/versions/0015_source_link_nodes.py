@@ -74,9 +74,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    bind.execute(
-        sa.text("DELETE FROM material_folders WHERE source_id IS NOT NULL")
-    )
+    bind.execute(sa.text("DELETE FROM material_folders WHERE source_id IS NOT NULL"))
     with op.batch_alter_table("material_folders") as batch_op:
         batch_op.drop_constraint("uq_material_folders_source_id", type_="unique")
         batch_op.drop_constraint("fk_material_folders_source_id", type_="foreignkey")

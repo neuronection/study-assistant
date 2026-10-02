@@ -158,18 +158,12 @@ def ensure_scratch_course(session: Session, profile_id: str) -> Course:
 
 
 def scratch_content_count(session: Session, course: Course) -> int:
-    notes = len(
-        session.scalars(select(Note.id).where(Note.course_id == course.id)).all()
-    )
+    notes = len(session.scalars(select(Note.id).where(Note.course_id == course.id)).all())
     materials = len(
-        session.scalars(
-            select(Material.id).where(Material.course_id == course.id)
-        ).all()
+        session.scalars(select(Material.id).where(Material.course_id == course.id)).all()
     )
     sessions = len(
-        session.scalars(
-            select(ChatSession.id).where(ChatSession.course_id == course.id)
-        ).all()
+        session.scalars(select(ChatSession.id).where(ChatSession.course_id == course.id)).all()
     )
     return notes + materials + sessions
 
@@ -281,9 +275,7 @@ def _validate_genesis_draft(draft: Any) -> dict[str, Any]:
                 for objective in (section.get("objectives") or [])[:3]
                 if str(objective).strip()
             ]
-            sections_out.append(
-                {"title": section_title[:300], "objectives": objectives}
-            )
+            sections_out.append({"title": section_title[:300], "objectives": objectives})
         chapters_out.append(
             {
                 "title": chapter_title[:300],
@@ -293,9 +285,7 @@ def _validate_genesis_draft(draft: Any) -> dict[str, Any]:
         )
     if not chapters_out:
         raise CourseError("genesis draft has no usable chapters")
-    goals = [
-        str(goal).strip() for goal in (draft.get("goals") or [])[:8] if str(goal).strip()
-    ]
+    goals = [str(goal).strip() for goal in (draft.get("goals") or [])[:8] if str(goal).strip()]
     level = draft.get("level")
     return {
         "title": title[:300],
@@ -309,9 +299,7 @@ def _validate_genesis_draft(draft: Any) -> dict[str, Any]:
 
 def genesis_depth1_nodes(session: Session, course: Course) -> list[TreeNode]:
     root = session.scalars(
-        select(TreeNode).where(
-            TreeNode.course_id == course.id, TreeNode.is_root.is_(True)
-        )
+        select(TreeNode).where(TreeNode.course_id == course.id, TreeNode.is_root.is_(True))
     ).first()
     if root is None:
         return []
@@ -355,9 +343,7 @@ def commit_genesis(
 ) -> tuple[Course, int]:
     draft = _validate_genesis_draft(draft)
     description = draft["description"]
-    clean_sources = [
-        url.strip() for url in (sources or []) if url.strip()
-    ][:8]
+    clean_sources = [url.strip() for url in (sources or []) if url.strip()][:8]
     if clean_sources:
         footer = "Drafted with sources: " + " ".join(clean_sources)
         description = f"{description}\n\n{footer}" if description else footer
@@ -407,9 +393,7 @@ def commit_genesis(
     return course, estimate
 
 
-def _validate_draft(
-    draft: Any, materials: list[Material]
-) -> dict[str, Any]:
+def _validate_draft(draft: Any, materials: list[Material]) -> dict[str, Any]:
     if not isinstance(draft, dict) or not isinstance(draft.get("chapters"), list):
         raise CourseError("outline draft missing 'chapters' list")
     known_ids = {material.id for material in materials}
@@ -735,9 +719,7 @@ class StructureService:
                 index += 1
         ordered = [
             entry
-            for _, entry in sorted(
-                zip(sort_keys, entries, strict=True), key=lambda pair: pair[0]
-            )
+            for _, entry in sorted(zip(sort_keys, entries, strict=True), key=lambda pair: pair[0])
         ]
         return ordered
 
@@ -834,9 +816,7 @@ class StructureService:
             if sub_folder.source_id is not None:
                 member_ids.update(
                     self._session.scalars(
-                        select(Material.id).where(
-                            Material.source_id == sub_folder.source_id
-                        )
+                        select(Material.id).where(Material.source_id == sub_folder.source_id)
                     )
                 )
         node_map: dict[int, dict[str, Any]] = {}
@@ -846,9 +826,7 @@ class StructureService:
             .join(Course, MaterialFolderLink.course_id == Course.id)
             .where(MaterialFolderLink.folder_id.in_(folder_ids))
         ).all():
-            node_entry = node_map.setdefault(
-                node.id, self._folder_delete_node_entry(node, course)
-            )
+            node_entry = node_map.setdefault(node.id, self._folder_delete_node_entry(node, course))
             node_entry["folder_count"] += 1
         for _link, node, course in self._session.execute(
             select(MaterialLink, TreeNode, Course)
@@ -856,9 +834,7 @@ class StructureService:
             .join(Course, MaterialLink.course_id == Course.id)
             .where(MaterialLink.material_id.in_(member_ids))
         ).all():
-            node_entry = node_map.setdefault(
-                node.id, self._folder_delete_node_entry(node, course)
-            )
+            node_entry = node_map.setdefault(node.id, self._folder_delete_node_entry(node, course))
             node_entry["material_count"] += 1
         node_links = sorted(
             node_map.values(),
@@ -873,9 +849,7 @@ class StructureService:
             "node_links": node_links,
         }
 
-    def _folder_delete_node_entry(
-        self, node: TreeNode, course: Course
-    ) -> dict[str, Any]:
+    def _folder_delete_node_entry(self, node: TreeNode, course: Course) -> dict[str, Any]:
         return {
             "node_id": node.id,
             "owner_title": node.title,
@@ -986,51 +960,31 @@ class StructureService:
 
 
 def purge_course(session: Session, course: Course) -> None:
-    session.execute(
-        delete(StudySession).where(StudySession.course_id == course.id)
-    )
+    session.execute(delete(StudySession).where(StudySession.course_id == course.id))
     session_ids = list(
-        session.scalars(
-            select(ChatSession.id).where(ChatSession.course_id == course.id)
-        )
+        session.scalars(select(ChatSession.id).where(ChatSession.course_id == course.id))
     )
     if session_ids:
         cancel_jobs_for(session, chat_session_ids=session_ids)
         message_ids = list(
-            session.scalars(
-                select(ChatMessage.id).where(ChatMessage.session_id.in_(session_ids))
-            )
+            session.scalars(select(ChatMessage.id).where(ChatMessage.session_id.in_(session_ids)))
         )
         if message_ids:
-            session.execute(
-                delete(ChatProposal).where(ChatProposal.message_id.in_(message_ids))
-            )
-        session.execute(
-            delete(ChatMessage).where(ChatMessage.session_id.in_(session_ids))
-        )
+            session.execute(delete(ChatProposal).where(ChatProposal.message_id.in_(message_ids)))
+        session.execute(delete(ChatMessage).where(ChatMessage.session_id.in_(session_ids)))
         session.execute(delete(ChatSession).where(ChatSession.id.in_(session_ids)))
-    activities = list(
-        session.scalars(select(Activity).where(Activity.course_id == course.id))
-    )
+    activities = list(session.scalars(select(Activity).where(Activity.course_id == course.id)))
     if activities:
         activity_ids = [activity.id for activity in activities]
         attempt_ids = list(
-            session.scalars(
-                select(Attempt.id).where(Attempt.activity_id.in_(activity_ids))
-            )
+            session.scalars(select(Attempt.id).where(Attempt.activity_id.in_(activity_ids)))
         )
         question_ids = list(
-            session.scalars(
-                select(Question.id).where(Question.activity_id.in_(activity_ids))
-            )
+            session.scalars(select(Question.id).where(Question.activity_id.in_(activity_ids)))
         )
         if attempt_ids:
-            session.execute(
-                delete(QuizHelpEvent).where(QuizHelpEvent.attempt_id.in_(attempt_ids))
-            )
-            session.execute(
-                delete(Answer).where(Answer.attempt_id.in_(attempt_ids))
-            )
+            session.execute(delete(QuizHelpEvent).where(QuizHelpEvent.attempt_id.in_(attempt_ids)))
+            session.execute(delete(Answer).where(Answer.attempt_id.in_(attempt_ids)))
             session.execute(delete(Attempt).where(Attempt.id.in_(attempt_ids)))
         if question_ids:
             session.execute(delete(Mistake).where(Mistake.question_id.in_(question_ids)))
@@ -1038,44 +992,26 @@ def purge_course(session: Session, course: Course) -> None:
             session.execute(delete(Question).where(Question.id.in_(question_ids)))
         for activity in activities:
             session.delete(activity)
-    for exercise in list(
-        session.scalars(select(Exercise).where(Exercise.course_id == course.id))
-    ):
+    for exercise in list(session.scalars(select(Exercise).where(Exercise.course_id == course.id))):
         session.execute(delete(ReviewLog).where(ReviewLog.card_id == exercise.id))
         session.delete(exercise)
     for note in list(session.scalars(select(Note).where(Note.course_id == course.id))):
         cancel_jobs_for(session, note_ids=[note.id])
         session.delete(note)
-    for material in list(
-        session.scalars(select(Material).where(Material.course_id == course.id))
-    ):
+    for material in list(session.scalars(select(Material).where(Material.course_id == course.id))):
         purge_material(session, material)
-    session.execute(
-        delete(MaterialFolderLink).where(MaterialFolderLink.course_id == course.id)
-    )
-    session.execute(
-        delete(MaterialFolder).where(MaterialFolder.course_id == course.id)
-    )
-    session.execute(
-        delete(MaterialSource).where(MaterialSource.course_id == course.id)
-    )
-    session.execute(
-        delete(ExternalSource).where(ExternalSource.course_id == course.id)
-    )
-    session.execute(
-        delete(MaterialSuggestion).where(MaterialSuggestion.course_id == course.id)
-    )
+    session.execute(delete(MaterialFolderLink).where(MaterialFolderLink.course_id == course.id))
+    session.execute(delete(MaterialFolder).where(MaterialFolder.course_id == course.id))
+    session.execute(delete(MaterialSource).where(MaterialSource.course_id == course.id))
+    session.execute(delete(ExternalSource).where(ExternalSource.course_id == course.id))
+    session.execute(delete(MaterialSuggestion).where(MaterialSuggestion.course_id == course.id))
     session.execute(delete(PlanItem).where(PlanItem.course_id == course.id))
     session.execute(
         delete(NodeConcept).where(
-            NodeConcept.node_id.in_(
-                select(TreeNode.id).where(TreeNode.course_id == course.id)
-            )
+            NodeConcept.node_id.in_(select(TreeNode.id).where(TreeNode.course_id == course.id))
         )
     )
-    session.execute(
-        delete(ConceptLink).where(ConceptLink.course_id == course.id)
-    )
+    session.execute(delete(ConceptLink).where(ConceptLink.course_id == course.id))
     session.execute(delete(Concept).where(Concept.course_id == course.id))
     max_depth = session.scalars(
         select(TreeNode.depth)
@@ -1085,16 +1021,10 @@ def purge_course(session: Session, course: Course) -> None:
     ).first()
     for depth in range(int(max_depth or 0), -1, -1):
         session.execute(
-            delete(TreeNode).where(
-                TreeNode.course_id == course.id, TreeNode.depth == depth
-            )
+            delete(TreeNode).where(TreeNode.course_id == course.id, TreeNode.depth == depth)
         )
     session.execute(delete(MaterialGroup).where(MaterialGroup.course_id == course.id))
-    session.execute(
-        delete(CourseTaskAssignment).where(
-            CourseTaskAssignment.course_id == course.id
-        )
-    )
+    session.execute(delete(CourseTaskAssignment).where(CourseTaskAssignment.course_id == course.id))
     session.execute(
         delete(CourseDefaultTaskAssignment).where(
             CourseDefaultTaskAssignment.course_id == course.id

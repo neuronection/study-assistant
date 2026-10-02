@@ -47,38 +47,33 @@ class DirectFileParser:
         parsed = urlparse(url)
         path = parsed.path.lower()
         kind_hint = next(
-            (
-                kind
-                for suffix, kind in DOWNLOADABLE_SUFFIXES.items()
-                if path.endswith(suffix)
-            ),
+            (kind for suffix, kind in DOWNLOADABLE_SUFFIXES.items() if path.endswith(suffix)),
             None,
         )
         try:
-            with httpx.Client(
-                transport=self._transport,
-                follow_redirects=True,
-                timeout=120.0,
-            ) as client, client.stream("GET", url) as response:
-                    if response.status_code != 200:
-                        raise ParserError(
-                            f"download returned {response.status_code} for {url}"
-                        )
-                    content_type = response.headers.get("content-type", "")
-                    if "text/html" in content_type.lower():
-                        raise ParserError(
-                            f"URL returned an HTML page instead of a file: {url}"
-                        )
-                    declared = response.headers.get("content-length")
-                    if declared and int(declared) > self._max_bytes:
+            with (
+                httpx.Client(
+                    transport=self._transport,
+                    follow_redirects=True,
+                    timeout=120.0,
+                ) as client,
+                client.stream("GET", url) as response,
+            ):
+                if response.status_code != 200:
+                    raise ParserError(f"download returned {response.status_code} for {url}")
+                content_type = response.headers.get("content-type", "")
+                if "text/html" in content_type.lower():
+                    raise ParserError(f"URL returned an HTML page instead of a file: {url}")
+                declared = response.headers.get("content-length")
+                if declared and int(declared) > self._max_bytes:
+                    raise ParserError("file exceeds upload size limit")
+                chunks: list[bytes] = []
+                total = 0
+                for chunk in response.iter_bytes():
+                    total += len(chunk)
+                    if total > self._max_bytes:
                         raise ParserError("file exceeds upload size limit")
-                    chunks: list[bytes] = []
-                    total = 0
-                    for chunk in response.iter_bytes():
-                        total += len(chunk)
-                        if total > self._max_bytes:
-                            raise ParserError("file exceeds upload size limit")
-                        chunks.append(chunk)
+                    chunks.append(chunk)
         except httpx.HTTPError as error:
             raise ParserError(f"download failed: {error}") from error
         blob = b"".join(chunks)

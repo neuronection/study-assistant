@@ -145,9 +145,7 @@ def update_server(
             tool_updates=[tool.model_dump(exclude_none=True) for tool in body.tools],
             transport=body.transport if "transport" in provided else UNSET,
             url=body.url if "url" in provided else UNSET,
-            max_concurrent=(
-                body.max_concurrent if "max_concurrent" in provided else UNSET
-            ),
+            max_concurrent=(body.max_concurrent if "max_concurrent" in provided else UNSET),
             token=body.token if "token" in provided else UNSET,
             env=body.env if "env" in provided else UNSET,
         )
@@ -176,9 +174,7 @@ def refresh_server(
 ) -> McpServerOut:
     profile = ensure_default_profile(session)
     servers = load_servers(session, profile.id)
-    entry = next(
-        (item for item in servers if item.get("id") == server_id), None
-    )
+    entry = next((item for item in servers if item.get("id") == server_id), None)
     if entry is None:
         raise HTTPException(status_code=404, detail="server not found")
     try:

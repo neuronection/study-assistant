@@ -59,6 +59,7 @@ from ...storage.db import Base as Base
 def utcnow() -> datetime:
     return datetime.now(UTC)
 
+
 _UUID = Uuid(as_uuid=False)
 
 
@@ -80,6 +81,7 @@ class Profile(Base):
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class Course(Base):
     __tablename__ = "courses"
@@ -105,20 +107,15 @@ class Course(Base):
     tags: Mapped[list[str] | None] = mapped_column(JSON)
     color: Mapped[str | None] = mapped_column(String(16))
     exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    course_type_id: Mapped[int | None] = mapped_column(
-        ForeignKey("course_types.id")
-    )
-    origin: Mapped[str] = mapped_column(
-        String(20), default="manual", server_default="manual"
-    )
-    hidden: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("0")
-    )
+    course_type_id: Mapped[int | None] = mapped_column(ForeignKey("course_types.id"))
+    origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class MaterialGroup(Base):
     __tablename__ = "material_groups"
@@ -135,6 +132,7 @@ class MaterialGroup(Base):
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+
 class TreeNode(Base):
     __tablename__ = "tree_nodes"
     __table_args__ = (
@@ -149,7 +147,8 @@ class TreeNode(Base):
             postgresql_where=text("is_root"),
         ),
         ForeignKeyConstraint(
-            ["parent_id", "course_id"], ["tree_nodes.id", "tree_nodes.course_id"],
+            ["parent_id", "course_id"],
+            ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
         CheckConstraint("depth >= 0 AND depth <= 4", name="ck_tree_nodes_depth"),
@@ -168,6 +167,7 @@ class TreeNode(Base):
     sort_path: Mapped[str] = mapped_column(String(1000), default="/")
     is_root: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
 
 class CourseType(Base):
     __tablename__ = "course_types"

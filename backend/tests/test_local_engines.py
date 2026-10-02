@@ -135,7 +135,11 @@ def test_api_detect_local_returns_hits_and_skips_configured(
 ) -> None:
     create_response = client.post(
         "/api/v1/providers",
-        json={"name": "Ollama (local)", "type": "openai_compatible", "base_url": "http://localhost:11434/v1"},
+        json={
+            "name": "Ollama (local)",
+            "type": "openai_compatible",
+            "base_url": "http://localhost:11434/v1",
+        },
     )
     assert create_response.status_code == 201, create_response.text
     seen_kwargs: dict[str, Any] = {}

@@ -157,9 +157,7 @@ def seed_course(client: TestClient) -> int:
         from app.pipelines.chunking import chunk_markdown
         from app.storage.fts import sync_material_fts
 
-        stored = app.state.blobs.put(
-            b"chain rule original bytes", mime="text/markdown", session=db
-        )
+        stored = app.state.blobs.put(b"chain rule original bytes", mime="text/markdown", session=db)
         material = Material(
             profile_id=profile_id,
             course_id=course_id,
@@ -296,15 +294,11 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
         }
         assert f"blobs/{png.sha256}" in archive.namelist()
 
-        imported = client.post(
-            "/api/v1/courses/import?dry_run=false", content=exported.content
-        )
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
         assert imported.status_code == 200, imported.text
         new_course_id = imported.json()["imported"]["course_id"]
 
-        materials = client.get(
-            "/api/v1/materials", params={"course_id": new_course_id}
-        ).json()
+        materials = client.get("/api/v1/materials", params={"course_id": new_course_id}).json()
         new_material_id = next(
             entry["id"] for entry in materials if entry["title"] == "With drawing"
         )
@@ -318,19 +312,14 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
             "height": 200.0,
         }
         assert imported_drawing_id != materials_json[0]["drawings"][0]["id"]
-        assert (
-            f"![drawing](sa-drawing://{imported_drawing_id})"
-            in detail["extraction"]["markdown"]
-        )
+        assert f"![drawing](sa-drawing://{imported_drawing_id})" in detail["extraction"]["markdown"]
         assert (
             f"![drawing](sa-drawing://{materials_json[0]['drawings'][0]['id']})"
             not in detail["extraction"]["markdown"]
         )
         search = client.get("/api/v1/search", params={"q": "handwritten limits"})
         assert search.status_code == 200
-        assert any(
-            hit["material_id"] == new_material_id for hit in search.json()["hits"]
-        )
+        assert any(hit["material_id"] == new_material_id for hit in search.json()["hits"])
 
 
 def test_material_drawings_remap_helpers() -> None:
@@ -357,9 +346,7 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
     with client:
         course_id = seed_course(client)
 
-        seeded_materials = client.get(
-            "/api/v1/materials", params={"course_id": course_id}
-        ).json()
+        seeded_materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
         assert seeded_materials
         patched = client.patch(
             f"/api/v1/materials/{seeded_materials[0]['id']}",
@@ -387,17 +374,13 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
         material_sha = json.loads(archive.read("materials.json"))[0]["blob_sha"]
         assert f"blobs/{material_sha}" in blob_names
 
-        preview = client.post(
-            "/api/v1/courses/import?dry_run=true", content=exported.content
-        )
+        preview = client.post("/api/v1/courses/import?dry_run=true", content=exported.content)
         assert preview.status_code == 200, preview.text
         assert preview.json()["dry_run"] is True
         assert preview.json()["preview"]["title"] == "Calculus I"
         assert preview.json()["preview"]["counts"]["materials"] == 1
 
-        imported = client.post(
-            "/api/v1/courses/import?dry_run=false", content=exported.content
-        )
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
         assert imported.status_code == 200, imported.text
         new_course_id = imported.json()["imported"]["course_id"]
         assert new_course_id != course_id
@@ -408,23 +391,17 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
         assert tree[0]["children"][0]["title"] == "Derivatives"
         new_node_id = tree[0]["children"][0]["id"]
 
-        materials = client.get(
-            "/api/v1/materials", params={"course_id": new_course_id}
-        ).json()
+        materials = client.get("/api/v1/materials", params={"course_id": new_course_id}).json()
         titles = [entry["title"] for entry in materials]
         assert "Chain rule notes" in titles
         new_material_id = next(
             entry["id"] for entry in materials if entry["title"] == "Chain rule notes"
         )
-        round_tripped = next(
-            entry for entry in materials if entry["title"] == "Chain rule notes"
-        )
+        round_tripped = next(entry for entry in materials if entry["title"] == "Chain rule notes")
         assert round_tripped["tags"] == ["exam-prep"]
         assert round_tripped["starred"] is True
 
-        course_materials = client.get(
-            f"/api/v1/courses/{new_course_id}/materials"
-        ).json()
+        course_materials = client.get(f"/api/v1/courses/{new_course_id}/materials").json()
         assert [
             (entry["material_id"], entry["node_id"], entry["rationale"])
             for entry in course_materials
@@ -435,23 +412,17 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
         hits = search.json()["hits"]
         assert any(hit["title"] == "Chain rule notes" for hit in hits)
 
-        notes = client.get(
-            "/api/v1/notes", params={"course_id": new_course_id}
-        ).json()
+        notes = client.get("/api/v1/notes", params={"course_id": new_course_id}).json()
         assert [entry["title"] for entry in notes["items"]] == ["Whiteboard"]
         new_note = client.get(f"/api/v1/notes/{notes['items'][0]['id']}").json()
         assert new_note["body"][0]["md"] == "see"
         assert new_note["body"][1]["type"] == "drawing"
         assert len(new_note["drawings"]) == 1
 
-        quizzes = client.get(
-            "/api/v1/quiz/activities", params={"course_id": new_course_id}
-        ).json()
+        quizzes = client.get("/api/v1/quiz/activities", params={"course_id": new_course_id}).json()
         assert [entry["title"] for entry in quizzes] == ["Derivatives quiz"]
 
-        exercises = client.get(
-            "/api/v1/exercises", params={"course_id": new_course_id}
-        ).json()
+        exercises = client.get("/api/v1/exercises", params={"course_id": new_course_id}).json()
         assert [entry["title"] for entry in exercises] == ["Differentiate"]
 
         app = client.app
@@ -461,55 +432,35 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
 
             from app.domain.models import Activity
 
-            concepts = list(
-                db.scalars(select(Concept).where(Concept.course_id == new_course_id))
-            )
+            concepts = list(db.scalars(select(Concept).where(Concept.course_id == new_course_id)))
             assert {concept.name for concept in concepts} == {"chain rule", "power rule"}
             links = list(
-                db.scalars(
-                    select(ConceptLink).where(ConceptLink.course_id == new_course_id)
-                )
+                db.scalars(select(ConceptLink).where(ConceptLink.course_id == new_course_id))
             )
             assert len(links) == 1
-            coverage = list(
-                db.query(NodeConcept).filter(NodeConcept.node_id == new_node_id)
-            )
+            coverage = list(db.query(NodeConcept).filter(NodeConcept.node_id == new_node_id))
             assert len(coverage) == 1
 
             activity_ids = list(
-                db.scalars(
-                    select(Activity.id).where(Activity.course_id == new_course_id)
-                )
+                db.scalars(select(Activity.id).where(Activity.course_id == new_course_id))
             )
-            questions = list(
-                db.query(Question).filter(Question.activity_id.in_(activity_ids))
-            )
+            questions = list(db.query(Question).filter(Question.activity_id.in_(activity_ids)))
             assert len(questions) == 1
             assert questions[0].stem[0]["md"] == "d/dx x^2?"
 
             exercise_ids = list(
-                db.scalars(
-                    select(Exercise.id).where(Exercise.course_id == new_course_id)
-                )
+                db.scalars(select(Exercise.id).where(Exercise.course_id == new_course_id))
             )
-            steps = list(
-                db.query(ExerciseStep).filter(
-                    ExerciseStep.exercise_id.in_(exercise_ids)
-                )
-            )
+            steps = list(db.query(ExerciseStep).filter(ExerciseStep.exercise_id.in_(exercise_ids)))
             assert len(steps) == 1
 
-            original_notes = list(
-                db.scalars(select(Note.id).where(Note.course_id == course_id))
-            )
+            original_notes = list(db.scalars(select(Note.id).where(Note.course_id == course_id)))
             original_drawings = list(
                 db.query(NoteDrawing).filter(NoteDrawing.note_id.in_(original_notes))
             )
             assert len(original_drawings) == 1
             new_material_rows = list(
-                db.scalars(
-                    select(Material).where(Material.course_id == new_course_id)
-                )
+                db.scalars(select(Material).where(Material.course_id == new_course_id))
             )
             assert all(row.status == "ready" for row in new_material_rows)
             assert all(row.blob_sha == material_sha for row in new_material_rows)
@@ -517,25 +468,17 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
             extractions = list(
                 db.scalars(
                     select(Extraction).where(
-                        Extraction.material_id.in_(
-                            [row.id for row in new_material_rows]
-                        )
+                        Extraction.material_id.in_([row.id for row in new_material_rows])
                     )
                 )
             )
             assert len(extractions) == 1
             original_links = list(
-                db.scalars(
-                    select(MaterialLink).where(MaterialLink.course_id == course_id)
-                )
+                db.scalars(select(MaterialLink).where(MaterialLink.course_id == course_id))
             )
             assert len(original_links) == 1
             imported_tree_count = len(
-                list(
-                    db.scalars(
-                        select(TreeNode).where(TreeNode.course_id == new_course_id)
-                    )
-                )
+                list(db.scalars(select(TreeNode).where(TreeNode.course_id == new_course_id)))
             )
             assert imported_tree_count == 2
 
@@ -543,9 +486,7 @@ def test_course_bundle_export_import_round_trip(tmp_path: Any) -> None:
 def test_export_handles_non_ascii_course_title(tmp_path: Any) -> None:
     client = make_client(tmp_path)
     with client:
-        created = client.post(
-            "/api/v1/courses", json={"title": "Άπειρος Λογισμός"}
-        )
+        created = client.post("/api/v1/courses", json={"title": "Άπειρος Λογισμός"})
         assert created.status_code == 201, created.text
         course_id = created.json()["id"]
 
@@ -560,9 +501,7 @@ def test_export_handles_non_ascii_course_title(tmp_path: Any) -> None:
         manifest = json.loads(archive.read("manifest.json"))
         assert manifest["course_title"] == "Άπειρος Λογισμός"
 
-        preview = client.post(
-            "/api/v1/courses/import?dry_run=true", content=exported.content
-        )
+        preview = client.post("/api/v1/courses/import?dry_run=true", content=exported.content)
         assert preview.status_code == 200, preview.text
         assert preview.json()["preview"]["title"] == "Άπειρος Λογισμός"
 
@@ -589,23 +528,14 @@ def test_export_degrades_when_blob_files_missing(tmp_path: Any) -> None:
         notes = json.loads(archive.read("notes.json"))
         assert notes[0]["drawings"][0]["png_sha"] is None
 
-        preview = client.post(
-            "/api/v1/courses/import?dry_run=true", content=exported.content
-        )
+        preview = client.post("/api/v1/courses/import?dry_run=true", content=exported.content)
         assert preview.status_code == 200, preview.text
-        assert any(
-            "Chain rule notes" in entry
-            for entry in preview.json()["preview"]["warnings"]
-        )
+        assert any("Chain rule notes" in entry for entry in preview.json()["preview"]["warnings"])
 
-        imported = client.post(
-            "/api/v1/courses/import?dry_run=false", content=exported.content
-        )
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
         assert imported.status_code == 200, imported.text
         new_course_id = imported.json()["imported"]["course_id"]
-        materials = client.get(
-            "/api/v1/materials", params={"course_id": new_course_id}
-        ).json()
+        materials = client.get("/api/v1/materials", params={"course_id": new_course_id}).json()
         assert [entry["title"] for entry in materials] == ["Chain rule notes"]
         detail = client.get(f"/api/v1/materials/{materials[0]['id']}").json()
         assert detail["material"]["status"] == "ready"
@@ -675,13 +605,9 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
 
         _, _, profile_id = mint_session(app)
         with app.state.session_factory() as db:
-            quiz_activity = (
-                db.query(Activity).filter(Activity.course_id == course_id).first()
-            )
+            quiz_activity = db.query(Activity).filter(Activity.course_id == course_id).first()
             assert quiz_activity is not None
-            question = (
-                db.query(Question).filter(Question.activity_id == quiz_activity.id).first()
-            )
+            question = db.query(Question).filter(Question.activity_id == quiz_activity.id).first()
             assert question is not None
             attempt = Attempt(activity_id=quiz_activity.id, mode="practice", score=1.0)
             db.add(attempt)
@@ -739,9 +665,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
         assert json.loads(archive.read("course.json"))["exam_date"] is not None
         assert len(json.loads(archive.read("note-versions.json"))) == 1
 
-        imported = client.post(
-            "/api/v1/courses/import?dry_run=false", content=exported.content
-        )
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
         assert imported.status_code == 200, imported.text
         job_ids = imported.json()["imported"]["postprocess_job_ids"]
         assert len(job_ids) == 1
@@ -754,9 +678,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
                 db.scalars(select(Exercise).where(Exercise.course_id == new_course_id))
             )
             new_card = next(row for row in new_cards if row.kind.startswith("card_"))
-            state = db.scalars(
-                select(FsrsState).where(FsrsState.card_id == new_card.id)
-            ).one()
+            state = db.scalars(select(FsrsState).where(FsrsState.card_id == new_card.id)).one()
             assert state.state == cards_json[0]["state"]
             assert state.reps == 1
             assert (
@@ -775,9 +697,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
             assert patterns[0].is_system is False
 
             new_notes = list(db.scalars(select(Note).where(Note.course_id == new_course_id)))
-            versions = (
-                db.query(NoteVersion).filter(NoteVersion.note_id == new_notes[0].id).all()
-            )
+            versions = db.query(NoteVersion).filter(NoteVersion.note_id == new_notes[0].id).all()
             assert len(versions) == 1
             assert versions[0].title == "Whiteboard (old)"
 
@@ -789,9 +709,7 @@ def test_v2_full_fidelity_round_trip(tmp_path: Any) -> None:
             )
             assert len(new_attempts) == 1
             assert new_attempts[0].score == 1.0
-            answers = (
-                db.query(Answer).filter(Answer.attempt_id == new_attempts[0].id).all()
-            )
+            answers = db.query(Answer).filter(Answer.attempt_id == new_attempts[0].id).all()
             assert len(answers) == 1
             assert answers[0].correct is True
             assert answers[0].time_ms == 4200
@@ -836,9 +754,7 @@ def test_v1_bundle_still_imports(tmp_path: Any) -> None:
         )
         assert imported.status_code == 200, imported.text
         new_course_id = imported.json()["imported"]["course_id"]
-        exercises = client.get(
-            "/api/v1/exercises", params={"course_id": new_course_id}
-        ).json()
+        exercises = client.get("/api/v1/exercises", params={"course_id": new_course_id}).json()
         assert [entry["title"] for entry in exercises] == ["Differentiate"]
 
 

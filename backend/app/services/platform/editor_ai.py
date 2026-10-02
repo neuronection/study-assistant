@@ -38,12 +38,10 @@ EDITOR_PRESETS: dict[str, str] = {
         "keeping its intent."
     ),
     "rewrite": (
-        "Rewrite the selected text to be clearer and more polished, preserving its "
-        "meaning exactly."
+        "Rewrite the selected text to be clearer and more polished, preserving its meaning exactly."
     ),
     "simplify": (
-        "Rewrite the selected text in simpler, plainer language while preserving its "
-        "meaning."
+        "Rewrite the selected text in simpler, plainer language while preserving its meaning."
     ),
     "grammar": (
         "Fix grammar, spelling, punctuation, and phrasing errors in the selected text. "
@@ -54,8 +52,7 @@ EDITOR_PRESETS: dict[str, str] = {
         "Keep all the content."
     ),
     "bullets": (
-        "Convert the selected text into a clean bulleted or numbered list. Keep the "
-        "content."
+        "Convert the selected text into a clean bulleted or numbered list. Keep the content."
     ),
     "markdown": (
         "Format the selected text as well-structured GitHub-flavored markdown: headings, "
@@ -116,9 +113,7 @@ def validate_output(text: str, input_text: str, preset: str | None) -> list[str]
     if not stripped:
         return ["empty output"]
     if len(stripped) > MAX_OUTPUT_CHARS:
-        problems.append(
-            f"output too long ({len(stripped)} chars, limit {MAX_OUTPUT_CHARS})"
-        )
+        problems.append(f"output too long ({len(stripped)} chars, limit {MAX_OUTPUT_CHARS})")
     if _has_preamble(stripped):
         problems.append(
             "output starts with a chatty preamble (e.g. 'Sure', 'Here is') — "
@@ -154,9 +149,7 @@ def build_prompt(
     if instruction and instruction.strip():
         lines.append(f"Instruction: {instruction.strip()}")
     if diagnostic and diagnostic.strip():
-        lines.append(
-            "Renderer diagnostic (the error to fix):\n" + diagnostic.strip()
-        )
+        lines.append("Renderer diagnostic (the error to fix):\n" + diagnostic.strip())
     if context_document and context_document.strip():
         lines.append(
             "Surrounding document context (reference only — use it to inform the "

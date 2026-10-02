@@ -45,17 +45,13 @@ class ProposalContext:
     profile_id: str | None = None
 
 
-Executor = Callable[
-    [Session, dict[str, Any], int, ProposalContext], tuple[str, dict[str, Any]]
-]
+Executor = Callable[[Session, dict[str, Any], int, ProposalContext], tuple[str, dict[str, Any]]]
 
 
 def _node_in_course(session: Session, node_id: int, course_id: int) -> TreeNode:
     node = session.get(TreeNode, node_id)
     if node is None or node.course_id != course_id:
-        raise ProposalActionError(
-            f"target node {node_id} no longer exists in this course"
-        )
+        raise ProposalActionError(f"target node {node_id} no longer exists in this course")
     return node
 
 
@@ -104,17 +100,13 @@ _TARGET_KINDS = {
 }
 
 
-def _node_title_path(
-    session: Session, node: TreeNode, course_id: int
-) -> list[str]:
+def _node_title_path(session: Session, node: TreeNode, course_id: int) -> list[str]:
     path: list[str] = []
     current: TreeNode | None = node
     while current is not None:
         path.append(current.title)
         current = (
-            session.get(TreeNode, current.parent_id)
-            if current.parent_id is not None
-            else None
+            session.get(TreeNode, current.parent_id) if current.parent_id is not None else None
         )
     path.reverse()
     course = session.get(Course, course_id)
@@ -284,9 +276,7 @@ def _execute_edit_note(
     note = _load_note(session, int(payload["note_id"]), course_id)
     _ensure_unmodified(note, payload)
     try:
-        save_note_body(
-            session, note, str(payload["new_body_md"]), cause="ai-edit", force=True
-        )
+        save_note_body(session, note, str(payload["new_body_md"]), cause="ai-edit", force=True)
     except NoteBodyError as error:
         raise ProposalActionError(str(error)) from None
     return "executed", {"note_id": note.id}
@@ -323,15 +313,11 @@ def _load_material_with_extraction(
         raise ProposalActionError("proposal execution context is missing blobs")
     material = session.get(Material, material_id)
     if material is None or material.course_id != course_id:
-        raise ProposalActionError(
-            f"material {material_id} no longer exists in this course"
-        )
+        raise ProposalActionError(f"material {material_id} no longer exists in this course")
     service = MaterialsService(session, context.blobs)
     latest = service.latest_extraction(material.id)
     if latest is None:
-        raise ProposalActionError(
-            f"material {material_id} has no extraction to edit"
-        )
+        raise ProposalActionError(f"material {material_id} has no extraction to edit")
     return material, service, latest
 
 
@@ -352,9 +338,7 @@ def _execute_edit_material(
     )
     _ensure_extraction_unmodified(latest, payload)
     try:
-        extraction, old_chunk_ids = service.edit_extraction(
-            material, str(payload["new_markdown"])
-        )
+        extraction, old_chunk_ids = service.edit_extraction(material, str(payload["new_markdown"]))
     except ValueError as error:
         raise ProposalActionError(str(error)) from None
     return "executed", {
@@ -483,9 +467,7 @@ def _execute_create_concept(
         concept = Concept(
             course_id=course_id,
             name=name[:200],
-            description=str(description).strip()[:2000]
-            if description
-            else None,
+            description=str(description).strip()[:2000] if description else None,
         )
         session.add(concept)
         session.flush()
@@ -540,9 +522,7 @@ def _execute_move_to_node(
     else:
         scoped = session.get(Exercise, target_id)
     if scoped is None or scoped.course_id != course_id:
-        raise ProposalActionError(
-            f"{kind} {target_id} no longer exists in this course"
-        )
+        raise ProposalActionError(f"{kind} {target_id} no longer exists in this course")
     scoped.node_id = placement
     session.flush()
     return "executed", {"kind": kind, "id": target_id, "node_id": placement}

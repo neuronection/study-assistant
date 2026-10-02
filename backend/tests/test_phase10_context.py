@@ -113,8 +113,9 @@ def upload_txt(client: TestClient, filename: str, course_id: int, content: bytes
     assert upload.status_code == 200, upload.text
     material_id = int(upload.json()["material"]["id"])
     wait_until(
-        lambda: client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
-        == "ready"
+        lambda: (
+            client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
+        )
     )
     return material_id
 
@@ -133,15 +134,11 @@ def make_node(client: TestClient, course_id: int, parent_id: int, title: str) ->
 
 
 def link_material(client: TestClient, node_id: int, material_id: int) -> None:
-    linked = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
-    )
+    linked = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert linked.status_code == 201, linked.text
 
 
-def make_note(
-    client: TestClient, course_id: int, node_id: int, title: str, body_md: str
-) -> int:
+def make_note(client: TestClient, course_id: int, node_id: int, title: str, body_md: str) -> int:
     created = client.post(
         "/api/v1/notes",
         json={
@@ -422,12 +419,8 @@ def test_quiz_generate_receives_context(tmp_path: Path) -> None:
         course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         root = root_node(client, course_id)
         chapter = make_node(client, course_id, root, "Ch")
-        kept = upload_txt(
-            client, "kept.txt", course_id, b"antiderivative of x squared material"
-        )
-        dropped = upload_txt(
-            client, "dropped.txt", course_id, b"antiderivative dice game material"
-        )
+        kept = upload_txt(client, "kept.txt", course_id, b"antiderivative of x squared material")
+        dropped = upload_txt(client, "dropped.txt", course_id, b"antiderivative dice game material")
         link_material(client, chapter, kept)
         link_material(client, chapter, dropped)
         note_id = make_note(client, course_id, chapter, "Note", "remember plus C")

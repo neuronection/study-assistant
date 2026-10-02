@@ -39,8 +39,11 @@ def openai_completion(content: str, usage: dict[str, Any] | None = None) -> dict
         "object": "chat.completion",
         "model": "m",
         "choices": [
-            {"index": 0, "message": {"role": "assistant", "content": content},
-             "finish_reason": "stop"}
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
         ],
     }
     if usage is not None:
@@ -57,11 +60,7 @@ def test_google_adapter_request_shape_and_parse() -> None:
         captured["headers"] = dict(request.headers)
         return httpx.Response(
             200,
-            json={
-                "candidates": [
-                    {"content": {"parts": [{"text": "  hello **math** $x^2$ "}]}}
-                ]
-            },
+            json={"candidates": [{"content": {"parts": [{"text": "  hello **math** $x^2$ "}]}}]},
         )
 
     gateway = make_gateway(httpx.MockTransport(handler))
@@ -107,11 +106,7 @@ def test_openai_adapter_request_shape_and_parse() -> None:
         captured["auth"] = request.headers.get("Authorization")
         return httpx.Response(
             200,
-            json={
-                "choices": [
-                    {"message": {"role": "assistant", "content": "answer text"}}
-                ]
-            },
+            json={"choices": [{"message": {"role": "assistant", "content": "answer text"}}]},
         )
 
     gateway = make_gateway(httpx.MockTransport(handler))
@@ -124,9 +119,7 @@ def test_openai_adapter_request_shape_and_parse() -> None:
         caps=["text", "vision"],
         api_key=None,
     )
-    text = gateway.generate(
-        "chat", [Message(role="user", content="hi")], model=model
-    )
+    text = gateway.generate("chat", [Message(role="user", content="hi")], model=model)
     assert text == "answer text"
     assert captured["url"] == "http://localhost:11434/v1/chat/completions"
     assert captured["body"]["model"] == "qwen2.5vl"
@@ -152,9 +145,7 @@ def test_anthropic_adapter_request_shape_and_parse() -> None:
         caps=["text", "vision", "tools"],
         api_key="sk-ant",
     )
-    text = gateway.generate(
-        "chat", [Message(role="user", content="hi")], model=model
-    )
+    text = gateway.generate("chat", [Message(role="user", content="hi")], model=model)
     assert text == "claude says"
     assert captured["url"] == "https://api.anthropic.com/v1/messages"
     assert captured["key"] == "sk-ant"
@@ -396,20 +387,24 @@ def test_fallback_model_answers_and_is_billed(tmp_path: object) -> None:
         session.add(provider)
         session.flush()
         primary = AiModel(
-            provider_id=provider.id, external_id="primary", label="primary",
-            caps=["text"], enabled=True,
+            provider_id=provider.id,
+            external_id="primary",
+            label="primary",
+            caps=["text"],
+            enabled=True,
         )
         fallback = AiModel(
-            provider_id=provider.id, external_id="fallback", label="fallback",
-            caps=["text"], enabled=True, cost_in=1.0, cost_out=2.0,
+            provider_id=provider.id,
+            external_id="fallback",
+            label="fallback",
+            caps=["text"],
+            enabled=True,
+            cost_in=1.0,
+            cost_out=2.0,
         )
         session.add_all([primary, fallback])
         session.flush()
-        session.add(
-            TaskAssignment(
-                task="chat", model_id=primary.id, fallback_model_id=fallback.id
-            )
-        )
+        session.add(TaskAssignment(task="chat", model_id=primary.id, fallback_model_id=fallback.id))
         session.commit()
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -441,9 +436,7 @@ def test_mid_stream_failure_keeps_prefix_without_replay() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
-        return httpx.Response(
-            200, content=content(), headers={"content-type": "text/event-stream"}
-        )
+        return httpx.Response(200, content=content(), headers={"content-type": "text/event-stream"})
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
@@ -469,10 +462,10 @@ def test_anthropic_chat_stream_sends_cache_control() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         captured["body"] = json.loads(request.content)
         body = (
-            b'event: content_block_delta\n'
+            b"event: content_block_delta\n"
             b'data: {"type":"content_block_delta","index":0,'
             b'"delta":{"type":"text_delta","text":"ok"}}\n\n'
-            b'event: message_stop\n'
+            b"event: message_stop\n"
             b'data: {"type":"message_stop"}\n\n'
         )
         return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
@@ -527,10 +520,7 @@ def test_openai_reasoning_effort_sent_when_set() -> None:
 
 def test_history_assistant_message_without_tool_calls_streams() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        body = (
-            b'data: {"choices":[{"delta":{"content":"follow-up answer"}}]}\n\n'
-            b"data: [DONE]\n\n"
-        )
+        body = b'data: {"choices":[{"delta":{"content":"follow-up answer"}}]}\n\ndata: [DONE]\n\n'
         return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
 
     gateway = make_gateway(httpx.MockTransport(handler))
@@ -597,80 +587,92 @@ def test_source_never_sets_telemetry_env() -> None:
 def test_google_reasoning_effort_forwarded_when_in_google_set() -> None:
     from app.ai.chat_models import build_chat_model
 
-    model = cast(Any, build_chat_model(
-        ResolvedModel(
-            provider_id=1,
-            provider_type="google",
-            base_url="https://generativelanguage.googleapis.com",
-            external_id="gemini-2.5-pro",
-            label="gemini",
-            caps=["text"],
-            api_key="k",
-            reasoning_effort="high",
+    model = cast(
+        Any,
+        build_chat_model(
+            ResolvedModel(
+                provider_id=1,
+                provider_type="google",
+                base_url="https://generativelanguage.googleapis.com",
+                external_id="gemini-2.5-pro",
+                label="gemini",
+                caps=["text"],
+                api_key="k",
+                reasoning_effort="high",
+            ),
+            transport=None,
+            timeout=30.0,
         ),
-        transport=None,
-        timeout=30.0,
-    ))
+    )
     assert model.reasoning_effort == "high"
 
 
 def test_google_reasoning_effort_out_of_set_is_dropped() -> None:
     from app.ai.chat_models import build_chat_model
 
-    model = cast(Any, build_chat_model(
-        ResolvedModel(
-            provider_id=1,
-            provider_type="google",
-            base_url="https://generativelanguage.googleapis.com",
-            external_id="gemini-2.5-pro",
-            label="gemini",
-            caps=["text"],
-            api_key="k",
-            reasoning_effort="max",
+    model = cast(
+        Any,
+        build_chat_model(
+            ResolvedModel(
+                provider_id=1,
+                provider_type="google",
+                base_url="https://generativelanguage.googleapis.com",
+                external_id="gemini-2.5-pro",
+                label="gemini",
+                caps=["text"],
+                api_key="k",
+                reasoning_effort="max",
+            ),
+            transport=None,
+            timeout=30.0,
         ),
-        transport=None,
-        timeout=30.0,
-    ))
+    )
     assert model.reasoning_effort is None
 
 
 def test_anthropic_reasoning_effort_forwarded_when_in_anthropic_set() -> None:
     from app.ai.chat_models import build_chat_model
 
-    model = cast(Any, build_chat_model(
-        ResolvedModel(
-            provider_id=1,
-            provider_type="anthropic",
-            base_url="https://api.anthropic.com",
-            external_id="claude-sonnet-4-6",
-            label="claude",
-            caps=["text"],
-            api_key="k",
-            reasoning_effort="high",
+    model = cast(
+        Any,
+        build_chat_model(
+            ResolvedModel(
+                provider_id=1,
+                provider_type="anthropic",
+                base_url="https://api.anthropic.com",
+                external_id="claude-sonnet-4-6",
+                label="claude",
+                caps=["text"],
+                api_key="k",
+                reasoning_effort="high",
+            ),
+            transport=None,
+            timeout=30.0,
         ),
-        transport=None,
-        timeout=30.0,
-    ))
+    )
     assert model.reasoning_effort == "high"
 
 
 def test_anthropic_reasoning_effort_out_of_set_is_dropped() -> None:
     from app.ai.chat_models import build_chat_model
 
-    model = cast(Any, build_chat_model(
-        ResolvedModel(
-            provider_id=1,
-            provider_type="anthropic",
-            base_url="https://api.anthropic.com",
-            external_id="claude-sonnet-4-6",
-            label="claude",
-            caps=["text"],
-            api_key="k",
-            reasoning_effort="none",
+    model = cast(
+        Any,
+        build_chat_model(
+            ResolvedModel(
+                provider_id=1,
+                provider_type="anthropic",
+                base_url="https://api.anthropic.com",
+                external_id="claude-sonnet-4-6",
+                label="claude",
+                caps=["text"],
+                api_key="k",
+                reasoning_effort="none",
+            ),
+            transport=None,
+            timeout=30.0,
         ),
-        transport=None,
-        timeout=30.0,
-    ))
+    )
     assert model.reasoning_effort is None
 
 
@@ -763,8 +765,11 @@ def test_structured_generation_bills_real_usage(tmp_path: object) -> None:
         session.add(provider)
         session.flush()
         model = AiModel(
-            provider_id=provider.id, external_id="m", label="m",
-            caps=["text", "tools"], enabled=True,
+            provider_id=provider.id,
+            external_id="m",
+            label="m",
+            caps=["text", "tools"],
+            enabled=True,
         )
         session.add(model)
         session.flush()
@@ -879,9 +884,7 @@ def test_embedder_records_embeddings_in_ledger(tmp_path: object) -> None:
     assert result[1] == [[0.1, 0.2]]
 
     with factory() as session:
-        row = session.scalars(
-            select(AiInteraction).where(AiInteraction.task == "embeddings")
-        ).one()
+        row = session.scalars(select(AiInteraction).where(AiInteraction.task == "embeddings")).one()
         assert row.model == "nomic"
         assert row.input_tokens > 0
         assert row.latency_ms >= 0

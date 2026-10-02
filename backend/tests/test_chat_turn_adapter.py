@@ -25,9 +25,7 @@ def test_late_tail_after_round_end_is_flushed_at_teardown() -> None:
     pump.flush()
     assert [event["delta"] for event in events] == []
     pump.flush_round_end()
-    assert [event["delta"] for event in events] == [
-        "the tail arrives without a trailing newline"
-    ]
+    assert [event["delta"] for event in events] == ["the tail arrives without a trailing newline"]
 
 
 def test_concurrent_chunks_and_flushes_lose_no_text() -> None:
@@ -109,6 +107,7 @@ def test_tail_delivered_after_last_update_is_flushed_at_teardown(
         )
     )
     assert message is not None
-    assert "".join(
-        event["delta"] for event in events if event.get("type") == "stream_delta"
-    ) == "streamed answer the tail chunk"
+    assert (
+        "".join(event["delta"] for event in events if event.get("type") == "stream_delta")
+        == "streamed answer the tail chunk"
+    )

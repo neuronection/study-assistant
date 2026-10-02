@@ -37,14 +37,10 @@ def upgrade() -> None:
         sa.Column("node_id", sa.Integer(), nullable=True),
         sa.Column("title", sa.String(length=300), nullable=False),
         sa.Column("detail", sa.String(length=500), nullable=True),
-        sa.Column(
-            "kind", sa.String(length=20), nullable=False, server_default="study"
-        ),
+        sa.Column("kind", sa.String(length=20), nullable=False, server_default="study"),
         sa.Column("due_date", sa.Date(), nullable=False),
         sa.Column("done_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "origin", sa.String(length=20), nullable=False, server_default="manual"
-        ),
+        sa.Column("origin", sa.String(length=20), nullable=False, server_default="manual"),
         sa.Column("sort_key", sa.Integer(), nullable=False, server_default="0"),
         sa.Column(
             "created_at",
@@ -57,12 +53,8 @@ def upgrade() -> None:
             ["tree_nodes.id", "tree_nodes.course_id"],
         ),
     )
-    op.create_index(
-        "ix_plan_items_course_due", "plan_items", ["course_id", "due_date"]
-    )
-    op.create_index(
-        "ix_plan_items_profile_due", "plan_items", ["profile_id", "due_date"]
-    )
+    op.create_index("ix_plan_items_course_due", "plan_items", ["course_id", "due_date"])
+    op.create_index("ix_plan_items_profile_due", "plan_items", ["profile_id", "due_date"])
 
 
 def downgrade() -> None:

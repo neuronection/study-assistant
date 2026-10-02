@@ -80,9 +80,7 @@ def cancel_jobs_for(
     wanted_notes = {int(entry) for entry in note_ids}
     if not material_ids and not chat_session_ids and not note_ids:
         return 0
-    active = list(
-        session.scalars(select(Job).where(Job.status.in_(_active_statuses)))
-    )
+    active = list(session.scalars(select(Job).where(Job.status.in_(_active_statuses))))
     cancelled = 0
     for job in active:
         if not _job_matches(job, wanted_materials, wanted_chats, wanted_notes):
@@ -104,9 +102,7 @@ def cancel_jobs_for_material(session: Session, material_id: int) -> int:
     return cancel_jobs_for(session, material_ids=[material_id])
 
 
-def ensure_target_exists(
-    session: Session, model: type, entity_id: int, label: str
-) -> None:
+def ensure_target_exists(session: Session, model: type, entity_id: int, label: str) -> None:
     session.expire_all()
     if session.get(model, entity_id) is None:
         raise JobCancelled(f"{label} was deleted while this job was running")

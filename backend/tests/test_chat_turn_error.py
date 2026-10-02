@@ -47,9 +47,7 @@ def client(tmp_path: Path) -> Iterator[tuple[TestClient, FastAPI, list[dict[str,
         yield test_client, app, events
 
 
-def wait_for_condition(
-    condition: Any, timeout: float = 30.0, describe: Any = None
-) -> None:
+def wait_for_condition(condition: Any, timeout: float = 30.0, describe: Any = None) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if condition():
@@ -65,9 +63,7 @@ def test_failed_turn_emits_turn_error_and_fails_job(
     test_client, app, events = client
     with test_client:
         course_id = make_course(test_client)
-        session = test_client.post(
-            "/api/v1/chat/sessions", json={"course_id": course_id}
-        ).json()
+        session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
         sent = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
             json={"content": "hi"},
@@ -97,9 +93,7 @@ def test_failed_turn_emits_turn_error_and_fails_job(
             assert "provider offline" in (job.error or "")
         finally:
             db.close()
-        messages = test_client.get(
-            f"/api/v1/chat/sessions/{session['id']}/messages"
-        ).json()
+        messages = test_client.get(f"/api/v1/chat/sessions/{session['id']}/messages").json()
         # The failed turn persists a display-only marker row (uniform chat
         # error display): an empty assistant message with state.turn_failed;
         # excluded from the model context on the next turn.

@@ -41,9 +41,7 @@ def _profile_domain() -> list[Table]:
     drop before their parents or FK enforcement blocks the rebuild)."""
     metadata = Base.metadata
     names: set[str] = {"profiles"}
-    names.update(
-        table.name for table in metadata.tables.values() if "profile_id" in table.c
-    )
+    names.update(table.name for table in metadata.tables.values() if "profile_id" in table.c)
     changed = True
     while changed:
         changed = False

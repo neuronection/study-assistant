@@ -59,9 +59,7 @@ def test_validate_accepts_empty_and_existing_sa_dirs(tmp_path: Path) -> None:
     junk.mkdir()
     (junk / "random.txt").write_text("x")
     with make_client(tmp_path) as client:
-        body = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(empty)}
-        ).json()
+        body = client.post("/api/v1/config/working-dir/validate", json={"path": str(empty)}).json()
         assert body["valid"] is True
         assert body["empty"] is True
 
@@ -71,9 +69,7 @@ def test_validate_accepts_empty_and_existing_sa_dirs(tmp_path: Path) -> None:
         assert body["valid"] is True
         assert body["has_app_db"] is True
 
-        body = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(junk)}
-        ).json()
+        body = client.post("/api/v1/config/working-dir/validate", json={"path": str(junk)}).json()
         assert body["valid"] is False
         assert body["reason"] == "not_empty"
 
@@ -93,9 +89,7 @@ def test_validate_rejects_unwritable_and_accepts_creatable(tmp_path: Path) -> No
         finally:
             unwritable.chmod(0o755)
 
-        body = client.post(
-            "/api/v1/config/working-dir/validate", json={"path": str(deep)}
-        ).json()
+        body = client.post("/api/v1/config/working-dir/validate", json={"path": str(deep)}).json()
         assert body["valid"] is True
 
 

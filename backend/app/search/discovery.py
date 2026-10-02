@@ -77,9 +77,7 @@ class WebSearchProvider(DiscoveryProvider):
     id = "web"
     label = "Web"
 
-    def __init__(
-        self, base_url: str, flavor: str, api_key: str = "", cap_limit: int = 8
-    ) -> None:
+    def __init__(self, base_url: str, flavor: str, api_key: str = "", cap_limit: int = 8) -> None:
         self._base_url = base_url
         self._flavor = flavor
         self._api_key = api_key
@@ -160,9 +158,7 @@ def search_videos(query: str, cap: int) -> list[dict[str, Any]]:
     """yt-dlp flat search — module-level so tests inject fakes."""
     import yt_dlp  # type: ignore[import-untyped]
 
-    with yt_dlp.YoutubeDL(
-        {"quiet": True, "no_warnings": True, "extract_flat": True}
-    ) as ydl:
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "extract_flat": True}) as ydl:
         info = dict(ydl.extract_info(f"ytsearch{cap}:{query}", download=False))
     entries = info.get("entries") if isinstance(info, dict) else None
     return [entry for entry in entries if isinstance(entry, dict)] if entries else []
@@ -250,9 +246,7 @@ class McpDiscoveryProvider(DiscoveryProvider):
             data = json.loads(text)
         except (json.JSONDecodeError, TypeError):
             logger.warning("mcp_discovery_non_json", provider=self.id)
-            raise McpToolError(
-                f"MCP tool '{self._tool_name}' returned non-JSON output"
-            ) from None
+            raise McpToolError(f"MCP tool '{self._tool_name}' returned non-JSON output") from None
         if isinstance(data, dict):
             data = data.get("results")
         if not isinstance(data, list):
@@ -316,9 +310,7 @@ def resolve_providers(
 
     providers: list[DiscoveryProvider] = []
     if "web" in enabled and config is not None:
-        providers.append(
-            WebSearchProvider(config["base_url"], config["flavor"], api_key)
-        )
+        providers.append(WebSearchProvider(config["base_url"], config["flavor"], api_key))
     if "youtube" in enabled:
         providers.append(YouTubeSearchProvider())
 
@@ -348,9 +340,7 @@ def resolve_providers(
                     config["flavor"],
                     api_key=api_key,
                     label=str(entry.get("label") or site),
-                    default_kind=str(
-                        entry.get("kind") or DiscoveryKind.COURSE.value
-                    ),
+                    default_kind=str(entry.get("kind") or DiscoveryKind.COURSE.value),
                 )
             )
 
@@ -366,7 +356,5 @@ def resolve_providers(
         available_ids = [provider.id for provider in providers]
         missing = [entry for entry in requested if entry not in available_ids]
         if missing:
-            raise DiscoveryError(
-                f"discovery provider(s) not configured: {', '.join(missing)}"
-            )
+            raise DiscoveryError(f"discovery provider(s) not configured: {', '.join(missing)}")
     return providers

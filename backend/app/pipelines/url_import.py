@@ -35,9 +35,7 @@ def make_url_import_handler(
             _transcribe_audio(session, blobs, material, job, report)
             return
         report(20, "fetch")
-        transport = (
-            transport_provider() if transport_provider is not None else None
-        )
+        transport = transport_provider() if transport_provider is not None else None
         registry = build_registry(
             transport,
             language=material.language,
@@ -46,10 +44,7 @@ def make_url_import_handler(
         )
         parser = resolve_parser(registry, source_url)
         if parser is None:
-            raise JobError(
-                f"no parser for this URL: {source_url} — the link stays "
-                "as a reference"
-            )
+            raise JobError(f"no parser for this URL: {source_url} — the link stays as a reference")
         report(40, "download")
         parsed = parser.fetch(source_url)
         if is_cancel_requested(job.id):

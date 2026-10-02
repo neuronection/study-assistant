@@ -69,46 +69,36 @@ def validate_table_answer(answer: dict[str, Any]) -> list[str]:
             kind = _cell_kind(cell)
             if kind not in CELL_KINDS:
                 problems.append(
-                    f"cell ({row_index}, {cell_index}): kind must be one of "
-                    + "|".join(CELL_KINDS)
+                    f"cell ({row_index}, {cell_index}): kind must be one of " + "|".join(CELL_KINDS)
                 )
                 continue
             value = _cell_value(cell)
             if kind == "locked":
                 if value is None or not value.strip():
-                    problems.append(
-                        f"cell ({row_index}, {cell_index}): locked cells need text"
-                    )
+                    problems.append(f"cell ({row_index}, {cell_index}): locked cells need text")
                 continue
             fillable += 1
             if value is None or not value.strip():
-                problems.append(
-                    f"cell ({row_index}, {cell_index}): expected value required"
-                )
+                problems.append(f"cell ({row_index}, {cell_index}): expected value required")
                 continue
             if kind == "numeric":
                 try:
                     float(value)
                 except ValueError:
                     problems.append(
-                        f"cell ({row_index}, {cell_index}): numeric value must "
-                        "parse as a number"
+                        f"cell ({row_index}, {cell_index}): numeric value must parse as a number"
                     )
                 tolerance = cell.get("tolerance") if isinstance(cell, dict) else None
-                if tolerance is not None and (
-                    not _is_number(tolerance) or float(tolerance) < 0
-                ):
+                if tolerance is not None and (not _is_number(tolerance) or float(tolerance) < 0):
                     problems.append(
-                        f"cell ({row_index}, {cell_index}): tolerance must be "
-                        "a non-negative number"
+                        f"cell ({row_index}, {cell_index}): tolerance must be a non-negative number"
                     )
             elif kind == "equation":
                 try:
                     parse_math(value)
                 except Exception:
                     problems.append(
-                        f"cell ({row_index}, {cell_index}): equation value must "
-                        "parse as math"
+                        f"cell ({row_index}, {cell_index}): equation value must parse as math"
                     )
     if fillable == 0:
         problems.append("at least one fillable cell is required")
@@ -140,10 +130,7 @@ def table_public_input(answer: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "widget": "table_fill",
         "headers": [str(header) for header in headers],
-        "row_labels": [
-            str(row.get("label", "")) if isinstance(row, dict) else ""
-            for row in rows
-        ],
+        "row_labels": [str(row.get("label", "")) if isinstance(row, dict) else "" for row in rows],
         "cells": grid,
     }
 
@@ -166,9 +153,7 @@ def _grade_cell(cell: dict[str, Any], response_value: str) -> bool:
         expected = float(value)
         raw_tolerance = cell.get("tolerance")
         tolerance_value = DEFAULT_TOLERANCE
-        if isinstance(raw_tolerance, (int, float)) and not isinstance(
-            raw_tolerance, bool
-        ):
+        if isinstance(raw_tolerance, (int, float)) and not isinstance(raw_tolerance, bool):
             tolerance_value = float(raw_tolerance)
         return abs(number - expected) <= tolerance_value
     if kind == "equation":

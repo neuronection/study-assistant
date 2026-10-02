@@ -148,9 +148,7 @@ def test_boot_recovery_restores_newest_valid_backup(tmp_path: Path) -> None:
     with client:
         client.post("/api/v1/courses", json={"title": "Precious"})
         settings = _settings(client)
-        create_backup(
-            settings.db_path, settings.blobs_dir, settings.backups_dir, prefix="auto"
-        )
+        create_backup(settings.db_path, settings.blobs_dir, settings.backups_dir, prefix="auto")
     db_path = settings.db_path
     db_path.write_bytes(b"this is not a database anymore")
     (db_path.parent / (db_path.name + "-wal")).write_bytes(b"junk")
@@ -219,9 +217,7 @@ def test_backup_api_status_create_settings_delete(tmp_path: Path) -> None:
         assert status.json()["settings"]["interval_hours"] == 6
         assert status.json()["settings"]["keep_daily"] == 5
 
-        bad_sync = client.put(
-            "/api/v1/backup/settings", json={"sync_dir": "/nonexistent/path"}
-        )
+        bad_sync = client.put("/api/v1/backup/settings", json={"sync_dir": "/nonexistent/path"})
         assert bad_sync.status_code == 422
 
         sync_dir = tmp_path / "synced"

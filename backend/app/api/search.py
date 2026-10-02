@@ -21,9 +21,7 @@ def search(
         return result
 
     hits = hybrid_search(session, q, limit, embed_query, course_id)
-    placements = node_placements_for_materials(
-        session, [int(hit["material_id"]) for hit in hits]
-    )
+    placements = node_placements_for_materials(session, [int(hit["material_id"]) for hit in hits])
     return SearchOut(
         query=q,
         hits=[

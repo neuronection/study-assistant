@@ -255,9 +255,7 @@ def _sqlite_is_healthy(database: bytes) -> bool:
             integrity = connection.execute("PRAGMA integrity_check").fetchone()
             if not integrity or integrity[0] != "ok":
                 return False
-            version = connection.execute(
-                "SELECT version_num FROM alembic_version"
-            ).fetchone()
+            version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
             return version is not None
         except sqlite3.DatabaseError:
             return False
@@ -322,9 +320,7 @@ def _parse_stamp(path: Path) -> datetime | None:
         return None
 
 
-def apply_retention(
-    target_dir: Path, keep_daily: int, keep_weekly: int
-) -> list[Path]:
+def apply_retention(target_dir: Path, keep_daily: int, keep_weekly: int) -> list[Path]:
     if not target_dir.is_dir():
         return []
     stamped = sorted(
@@ -360,17 +356,17 @@ def list_backups(target_dir: Path) -> list[dict[str, Any]]:
             size = path.stat().st_size
         except OSError:
             continue
-        entries.append(
-            {"name": path.name, "size": size, "created_at": stamp.isoformat()}
-        )
+        entries.append({"name": path.name, "size": size, "created_at": stamp.isoformat()})
     entries.sort(key=lambda entry: entry["created_at"], reverse=True)
     return entries
 
 
 def last_backup_time(target_dir: Path) -> datetime | None:
-    stamps = [
-        stamp for path in target_dir.iterdir() if (stamp := _parse_stamp(path))
-    ] if target_dir.is_dir() else []
+    stamps = (
+        [stamp for path in target_dir.iterdir() if (stamp := _parse_stamp(path))]
+        if target_dir.is_dir()
+        else []
+    )
     return max(stamps) if stamps else None
 
 
@@ -500,9 +496,7 @@ class BackupScheduler:
     def start(self) -> None:
         if self._thread is not None:
             return
-        self._thread = threading.Thread(
-            target=self._run, name="backup-scheduler", daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, name="backup-scheduler", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
@@ -550,9 +544,7 @@ class BackupScheduler:
                 now=self._clock(),
                 database_url=self._database_url,
             )
-            apply_retention(
-                self._backups_dir, effective.keep_daily, effective.keep_weekly
-            )
+            apply_retention(self._backups_dir, effective.keep_daily, effective.keep_weekly)
             if effective.sync_dir:
                 sync_dir = Path(effective.sync_dir).expanduser()
                 sync_to_dir(path, sync_dir)

@@ -52,9 +52,7 @@ def build_job_runner(app: FastAPI) -> JobRunner:
                 app.state.embedder,
                 app.state.bus,
                 turn_engine_provider=_turn_engine,
-                search_transport_provider=lambda: getattr(
-                    app.state, "search_transport", None
-                ),
+                search_transport_provider=lambda: getattr(app.state, "search_transport", None),
                 turn_locks=app.state.turn_locks,
             ),
             "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),

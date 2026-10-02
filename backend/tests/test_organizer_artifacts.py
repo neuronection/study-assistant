@@ -128,9 +128,7 @@ def wait_until(predicate: Any, timeout: float = 5.0) -> None:
 
 
 def seed_node_with_material(client: TestClient) -> tuple[int, int]:
-    course_id = client.post(
-        "/api/v1/courses", json={"title": "Calculus"}
-    ).json()["id"]
+    course_id = client.post("/api/v1/courses", json={"title": "Calculus"}).json()["id"]
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     root_id = tree[0]["id"]
     node = client.post(
@@ -149,9 +147,7 @@ def seed_node_with_material(client: TestClient) -> tuple[int, int]:
     )
     assert material.status_code == 200, material.text
     material_id = material.json()["material"]["id"]
-    linked = client.post(
-        f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id}
-    )
+    linked = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert linked.status_code in (200, 201), linked.text
     return course_id, node_id
 
@@ -223,9 +219,7 @@ def test_cheatsheet_compose_persists_and_regenerates_as_new_version(tmp_path: An
                 )
             )
             cheat_sheets = [
-                row
-                for row in sheets
-                if (row.provenance or {}).get("kind") == "cheat_sheet"
+                row for row in sheets if (row.provenance or {}).get("kind") == "cheat_sheet"
             ]
             assert len(cheat_sheets) == 1
 
@@ -248,9 +242,10 @@ def test_review_persists_dated_and_is_excluded_from_retrieval(tmp_path: Any) -> 
             f"{extraction_versions(client, review_material_id)[0]['version']}"
         ).json()["markdown"]
         assert "Taylor series" in report
-        assert "Review 20" in client.get(
-            f"/api/v1/materials/{review_material_id}"
-        ).json()["material"]["title"]
+        assert (
+            "Review 20"
+            in client.get(f"/api/v1/materials/{review_material_id}").json()["material"]["title"]
+        )
 
         sheet = client.post(
             "/api/v1/materials/compose",
@@ -305,12 +300,8 @@ def test_draft_note_finds_existing(tmp_path: Any) -> None:
         with app.state.session_factory() as db:
             from app.domain.models import Note
 
-            drafts = list(
-                db.query(Note).filter(Note.node_id == node_id, Note.tags.is_not(None))
-            )
-            ai_drafts = [
-                note for note in drafts if "ai-draft" in (note.tags or [])
-            ]
+            drafts = list(db.query(Note).filter(Note.node_id == node_id, Note.tags.is_not(None)))
+            ai_drafts = [note for note in drafts if "ai-draft" in (note.tags or [])]
             assert len(ai_drafts) == 1
 
 
