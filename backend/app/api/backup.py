@@ -233,9 +233,12 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(blob_data)
 
-    from ..local import run_migrations
+    # Restore is the declared D6 exception (reference-architecture §4):
+    # an ops action that migrates — the swapped-in DB comes to head before
+    # the instance serves it again. The C3 gate allows exactly this site.
+    from ..local import run_migrations  # gate-allow: run_migrations (F12 restore)
 
-    run_migrations(request.app.state.engine)
+    run_migrations(request.app.state.engine)  # gate-allow: run_migrations (F12 restore)
 
     from sqlalchemy import select, text
 

@@ -210,6 +210,79 @@ def test_backup_export_restore_round_trip() -> None:
             )
 
 
+def test_restore_migrates_the_restored_db(tmp_path: Path) -> None:
+    """F12 — restore is a declared ops action that migrates (D6
+    exception): the swapped-in database is brought to head before the
+    instance serves it again."""
+    import io
+    import zipfile
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import create_engine, text
+
+    from alembic import command
+    from app.local import find_alembic_ini
+    from app.services.platform.backup import BACKUP_FORMAT
+
+    ini = find_alembic_ini()
+    config = Config(str(ini))
+    config.set_main_option("script_location", str(ini.parent / "alembic"))
+    script = ScriptDirectory.from_config(config)
+    head = script.get_current_head()
+    assert isinstance(head, str)
+    root = None
+    for revision in script.walk_revisions():
+        if revision.down_revision is None:
+            root = revision
+            break
+    assert root is not None
+
+    # An "older release" database: schema stamped at the chain's root
+    # revision — healthy per the restore validator, far from head.
+    old_db = tmp_path / "old-release.sqlite3"
+    engine = create_engine(f"sqlite:///{old_db}")
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, root.revision)
+    engine.dispose()
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("manifest.json", json.dumps({"format": BACKUP_FORMAT}))
+        archive.writestr(DB_NAME, old_db.read_bytes())
+
+    target_app = create_app(
+        Settings(data_dir=tmp_path / "target", log_level="WARNING"),
+        gateway=ScriptedGateway([]),
+        embedder=NoAI(),  # type: ignore[arg-type]
+        describer=NoAI(),  # type: ignore[arg-type]
+    )
+    with TestClient(target_app) as target:
+        restored = target.post(
+            "/api/v1/backup/restore",
+            files={"file": ("backup.zip", buffer.getvalue(), "application/zip")},
+        )
+        assert restored.status_code == 200, restored.text
+
+    restored_engine = create_engine(f"sqlite:///{target_app.state.settings.db_path}")
+    try:
+        with restored_engine.connect() as connection:
+            version = connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).fetchone()
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table'")
+                )
+            }
+    finally:
+        restored_engine.dispose()
+    assert version == (head,), "restore must migrate the restored DB to head (F12)"
+    assert "notes" in tables
+
+
 def test_restore_rejects_garbage() -> None:
     client = make_client([])
     with client:
