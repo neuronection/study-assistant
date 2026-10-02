@@ -1,4 +1,3 @@
-# ruff: noqa: E501 -- frozen schema map lines; reflow when touched
 """rename legacy CourseAssistant strings to their StudyAssistant forms
 
 One-shot rewrite of stored strings (plan 20 Phase 6, D10 — no dual-read
