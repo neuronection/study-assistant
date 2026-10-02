@@ -31,7 +31,8 @@ from app.domain.models import Course, Material, Profile, User
 from app.services.search import hybrid_search
 from app.storage.fts import sync_material_fts
 
-DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")  # gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
+# gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
+DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
     pytest.skip(

@@ -22,7 +22,8 @@ from sqlalchemy.pool import NullPool
 
 from alembic import command
 
-DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")  # gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
+# gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
+DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
 
 if not DATABASE_URL:
     pytest.skip(
