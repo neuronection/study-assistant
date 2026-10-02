@@ -45,6 +45,7 @@ jobs:
           sudo apt-get install -y libgirepository1.0-dev libcairo2-dev
       - run: uv sync --frozen
       - run: uv run --directory backend ruff check .
+      - run: uv run --directory backend ruff format --check .
       - run: uv run --directory backend mypy .
       - run: uv run --directory backend pytest
         env:
