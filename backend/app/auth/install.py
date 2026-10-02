@@ -12,6 +12,15 @@ ADR-0028 glue:
 - the §11 shell gate: armed only when a shell actually attaches
   (`SA_SHELL=1`), disarmed with loud warnings otherwise (ADR-0023).
 
+Knob routing (kit 0.3.2 migration note): every knob — `identity_mode`
+included — resolves through the one getter (`SA_*` env name → `Settings`
+field), and `require_shell_secret` is routed deliberately as the
+**computed** §11 value (`shell_attached`: the gate arms iff a shell
+actually attached, whatever `SA_REQUIRE_SHELL_SECRET` in the environment
+says — it has no `Settings` field on purpose). Neither knob is passed as
+an explicit `from_env` kwarg: the §16 map owns both now (explicit kwargs
+collide with the routed dict — the kit CHANGELOG [0.3.2] breaking note).
+
 Profile binding is separate middleware (`app.middleware`) and must be
 registered **before** this call so session enforcement stays outermost.
 """
@@ -21,7 +30,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import replace
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import FastAPI
 from nx_auth import AuthConfig, KeyRing
@@ -97,18 +106,26 @@ def install_identity(
     if shell_attached:
         shell_secret = settings.shell_secret or generate_shell_secret()
 
-    kit_identity: Literal["server", "desktop"] = (
-        "desktop" if settings.identity_mode is IdentityMode.DESKTOP else "server"
-    )
+    def _knob(name: str) -> object | None:
+        # One getter for every §16 knob (ADR-0028): `SA_IDENTITY_MODE`
+        # resolves through Settings like the rest. `SA_REQUIRE_SHELL_SECRET`
+        # is the computed §11 truth (`shell_attached`) — it always routes,
+        # so the kit default can never silently apply, and the computed
+        # value wins over any `SA_REQUIRE_SHELL_SECRET` env attempt (an
+        # env flag must never arm a gate no shell can answer).
+        if name == "SA_REQUIRE_SHELL_SECRET":
+            return shell_attached
+        return _settings_knob(settings, name)
+
     auth_config = AuthConfig.from_env(
         "SA",
         iss="study",
-        identity_mode=kit_identity,
-        require_shell_secret=shell_attached,
         # §16 knobs routed through Settings (ADR-0028): the `.env` file
         # and the process environment both reach the kit config (OS env
         # wins per key) — the kit's own `os.environ` read is the fallback.
-        **knob_overrides("SA", lambda name: _settings_knob(settings, name)),
+        # `identity_mode`/`require_shell_secret` ride the same map (kit
+        # 0.3.2) — see the module docstring for the routing note.
+        **knob_overrides("SA", _knob),
     )
     auth_config = replace(
         auth_config,
