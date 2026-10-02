@@ -1,8 +1,22 @@
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from app.core.config import Settings, default_data_dir
+
+
+def settings_from_env_file(env_file: Path | str | None) -> Settings:
+    """Build ``Settings`` with the env-file source pinned explicitly.
+
+    ``Settings.__init__`` is typed from the model's fields only, so
+    pydantic-settings' init-only kwargs (``_env_file``) are invisible to
+    mypy. Routing the call through an untyped factory alias keeps the
+    documented constructor call intact with a single, named point of
+    looseness instead of a ``# type: ignore`` per call site.
+    """
+    factory: Callable[..., Settings] = Settings
+    return factory(_env_file=env_file)
 
 
 def test_defaults() -> None:
@@ -116,7 +130,7 @@ def test_unrelated_env_file_keys_are_ignored(
         "TRANSLATION_API_KEY=sk-test\nTRANSLATION_MODEL=gpt-test\nSA_PORT=9124\n",
         encoding="utf-8",
     )
-    settings = Settings(_env_file=str(env_file))
+    settings = settings_from_env_file(env_file)
     assert settings.port == 9124
 
 

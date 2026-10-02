@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from test_config import settings_from_env_file
 
 from app.core.config import Settings, default_data_dir
 from app.core.working_dir import POINTER_FILENAME, read_override, write_override
@@ -152,13 +153,13 @@ def test_boot_resolution_pointer_then_env_wins(
     # `_env_file=None` pins the resolution source: the walk-up `.env` is
     # resolved once per process (ADR-0028) and must not leak into this
     # pointer-resolution case.
-    settings = Settings(_env_file=None)
+    settings = settings_from_env_file(None)
     assert settings.data_dir == target
 
     env_dir = tmp_path / "env-wins"
     monkeypatch.setenv("SA_DATA_DIR", str(env_dir))
-    assert Settings(_env_file=None).data_dir == env_dir
+    assert settings_from_env_file(None).data_dir == env_dir
 
     monkeypatch.delenv("SA_DATA_DIR")
     (config_dir / POINTER_FILENAME).write_text("relative/path\n", encoding="utf-8")
-    assert Settings(_env_file=None).data_dir == default_data_dir()
+    assert settings_from_env_file(None).data_dir == default_data_dir()
