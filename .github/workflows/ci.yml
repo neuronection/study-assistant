@@ -80,7 +80,16 @@ jobs:
           # modules are still landing) — tolerate that and nothing else.
           if [ "$code" -ne 0 ] && [ "$code" -ne 5 ]; then exit "$code"; fi
       - name: OpenAPI schema drift guard
+        # Exporting the schema boots the app: dev-mode skips the production
+        # boot guards (nx_auth §8 pins), and entrypoint-owned migrations
+        # (plan 20 Phase 4) mean create_app no longer migrates — so build the
+        # schema in a scratch datastore first (the export script forces its
+        # own throwaway data_dir, hence SA_DATABASE_URL).
+        env:
+          SA_APP_ENV: development
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-data/openapi-export.sqlite3
         run: |
+          uv run --directory backend alembic upgrade head
           uv run --directory backend python ../scripts/export-openapi.py
           git diff --exit-code -- frontend/openapi.json
 
