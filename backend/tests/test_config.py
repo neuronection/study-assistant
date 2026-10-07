@@ -138,6 +138,15 @@ def test_env_file_resolution_explicit_dev_and_production(
     env_file = tmp_path / "deployment.env"
     env_file.write_text("SA_PORT=9125\n", encoding="utf-8")
 
+    # Hermetic walk-up (S9): the §4 walk-up is anchored on the config
+    # module's own path (`app/core/` upward), not the CWD, and the
+    # checkout's real `.env` is untracked (absent in CI). Anchor it at a
+    # constructed tree with its own `.env` so every branch resolves
+    # against fixtures instead of ambient state.
+    monkeypatch.setattr("app.core.config.__file__", str(tmp_path / "app" / "core" / "config.py"))
+    walked_env = tmp_path / ".env"
+    walked_env.write_text("SA_PORT=9126\n", encoding="utf-8")
+
     monkeypatch.delenv("SA_ENV_FILE", raising=False)
     monkeypatch.setenv("SA_APP_ENV", "production")
     assert _resolve_env_file() is None, "no silent .env in production"
@@ -147,4 +156,6 @@ def test_env_file_resolution_explicit_dev_and_production(
 
     monkeypatch.delenv("SA_ENV_FILE", raising=False)
     monkeypatch.setenv("SA_APP_ENV", "development")
-    assert _resolve_env_file() is not None, "dev walk-up still finds the checkout .env"
+    resolved = _resolve_env_file()
+    assert resolved is not None, "dev walk-up still finds the constructed .env"
+    assert Path(resolved).resolve() == walked_env.resolve(), "walk-up returns the constructed .env"
