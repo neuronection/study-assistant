@@ -6,21 +6,23 @@ import pytest
 from app.core.config import Settings, default_data_dir
 
 
-def settings_from_env_file(env_file: Path | str | None) -> Settings:
+def settings_from_env_file(env_file: Path | str | None, **kwargs: object) -> Settings:
     """Build ``Settings`` with the env-file source pinned explicitly.
 
     ``Settings.__init__`` is typed from the model's fields only, so
     pydantic-settings' init-only kwargs (``_env_file``) are invisible to
     mypy. Routing the call through an untyped factory alias keeps the
     documented constructor call intact with a single, named point of
-    looseness instead of a ``# type: ignore`` per call site.
+    looseness instead of a ``# type: ignore`` per call site. Field kwargs
+    (e.g. ``data_dir``) flow through the same point. Passing ``None``
+    keeps tests hermetic: the checkout's untracked ``.env`` is never read.
     """
     factory: Callable[..., Settings] = Settings
-    return factory(_env_file=env_file)
+    return factory(_env_file=env_file, **kwargs)
 
 
 def test_defaults() -> None:
-    settings = Settings()
+    settings = settings_from_env_file(None)
     assert settings.app_name == "Study Assistant"
     assert settings.host == "127.0.0.1"
     assert settings.port == 8200
@@ -34,13 +36,13 @@ def test_defaults() -> None:
 def test_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SA_PORT", "9123")
     monkeypatch.setenv("SA_LOG_LEVEL", "DEBUG")
-    settings = Settings()
+    settings = settings_from_env_file(None)
     assert settings.port == 9123
     assert settings.log_level == "DEBUG"
 
 
 def test_ensure_dirs(tmp_path: Path) -> None:
-    settings = Settings(data_dir=tmp_path)
+    settings = settings_from_env_file(None, data_dir=tmp_path)
     settings.ensure_dirs()
     assert settings.db_path.parent.is_dir()
     assert settings.blobs_dir.is_dir()
