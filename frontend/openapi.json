@@ -1020,7 +1020,7 @@
             "type": "string"
           },
           "kind": {
-            "default": "basic",
+            "default": "card_basic",
             "title": "Kind",
             "type": "string"
           },
