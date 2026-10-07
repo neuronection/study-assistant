@@ -4970,7 +4970,7 @@ export interface components {
             front_md: string;
             /**
              * Kind
-             * @default basic
+             * @default card_basic
              */
             kind: string;
             /** Node Id */
