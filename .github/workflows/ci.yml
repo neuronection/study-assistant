@@ -128,7 +128,6 @@ jobs:
     # datastore itself comes from SA_DATABASE_URL, fresh on every runner.
     env:
       SA_APP_ENV: test
-      SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
     steps:
       - uses: actions/checkout@v4
       - name: Provide family auth-kit (editable path dep)
@@ -154,9 +153,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
       - name: Prepare e2e datastore (migrations)
+        env:
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
         run: uv run --directory backend alembic upgrade head
       - run: pnpm --filter frontend exec playwright install --with-deps chromium
       - run: pnpm --filter frontend e2e
+        env:
+          SA_DATABASE_URL: sqlite:///${{ runner.temp }}/sa-e2e.sqlite3
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
