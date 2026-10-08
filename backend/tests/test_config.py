@@ -1,24 +1,13 @@
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from app.core.config import Settings, default_data_dir
+# The one validated construction site (rename guard, audit b): kwarg
+# names are checked against Settings.model_fields — see the module.
+# (tests/ is on sys.path via pytest's rootdir insertion.)
+from settings_factory import settings_from_env_file
 
-
-def settings_from_env_file(env_file: Path | str | None, **kwargs: object) -> Settings:
-    """Build ``Settings`` with the env-file source pinned explicitly.
-
-    ``Settings.__init__`` is typed from the model's fields only, so
-    pydantic-settings' init-only kwargs (``_env_file``) are invisible to
-    mypy. Routing the call through an untyped factory alias keeps the
-    documented constructor call intact with a single, named point of
-    looseness instead of a ``# type: ignore`` per call site. Field kwargs
-    (e.g. ``data_dir``) flow through the same point. Passing ``None``
-    keeps tests hermetic: the checkout's untracked ``.env`` is never read.
-    """
-    factory: Callable[..., Settings] = Settings
-    return factory(_env_file=env_file, **kwargs)
+from app.core.config import default_data_dir
 
 
 def test_defaults() -> None:

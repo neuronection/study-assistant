@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from test_config import settings_from_env_file
+from settings_factory import settings_from_env_file
 
 from app.core.config import Settings, default_data_dir
 from app.core.working_dir import POINTER_FILENAME, read_override, write_override
