@@ -57,7 +57,7 @@ def wait_for_condition(condition: Any, timeout: float = 30.0, describe: Any = No
     raise AssertionError(f"condition never met within {timeout}s{detail}")
 
 
-def test_failed_turn_emits_turn_error_and_fails_job(
+def test_failed_turn_emits_flow_failed_and_fails_job(
     client: tuple[TestClient, FastAPI, list[dict[str, Any]]],
 ) -> None:
     test_client, app, events = client
@@ -71,7 +71,7 @@ def test_failed_turn_emits_turn_error_and_fails_job(
         assert sent.status_code == 200
         job_id = sent.json()["job_id"]
         wait_for_condition(
-            lambda: any(e.get("type") == "turn_error" for e in events),
+            lambda: any(e.get("type") == "flow_failed" for e in events),
             describe=lambda: f"event types={[e.get('type') for e in events]}",
         )
         db = app.state.session_factory()
@@ -100,5 +100,10 @@ def test_failed_turn_emits_turn_error_and_fails_job(
         assert [m["role"] for m in messages] == ["user", "assistant"]
         assert messages[-1]["markdown"] == ""
         assert messages[-1]["state"]["turn_failed"]["code"] == "turn_error"
-        error_event = next(e for e in events if e.get("type") == "turn_error")
-        assert error_event["detail"] == "provider offline"
+        error_event = next(e for e in events if e.get("type") == "flow_failed")
+        assert error_event == {
+            "type": "flow_failed",
+            "code": "turn_error",
+            "message": "provider offline",
+            "retryable": True,
+        }

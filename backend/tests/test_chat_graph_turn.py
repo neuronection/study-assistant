@@ -177,53 +177,27 @@ def drain_until(ws: Any, terminal: set[str], timeout: float = 30.0) -> list[dict
 
 
 def normalize(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Engine-agnostic event comparison.
+    """Engine-agnostic event comparison over the family vocabulary.
 
-    Keeps the legacy WS contract plus the family flow endpoints; derived
-    family events (delta/node_*) mirror the legacy events 1:1 via the
-    unit-tested mapper and add only noise. Delta chunk boundaries are
-    timing-dependent (throttle windows), so consecutive same-kind deltas
-    coalesce into one.
+    Delta chunk boundaries are timing-dependent (throttle windows), so
+    consecutive same-kind deltas coalesce into one; run ids are volatile.
     """
     stripped = [
-        {
-            key: value
-            for key, value in event.items()
-            if key not in ("elapsed_ms", "run_id", "start_ms", "duration_ms")
-        }
+        {key: value for key, value in event.items() if key not in ("run_id", "duration_ms")}
         for event in events
-        if event.get("type") not in ("delta", "node_started", "node_finished")
     ]
     coalesced: list[dict[str, Any]] = []
     for event in stripped:
         previous = coalesced[-1] if coalesced else None
         if (
-            event.get("type") == "stream_delta"
+            event.get("type") == "delta"
             and previous is not None
-            and previous.get("type") == "stream_delta"
+            and previous.get("type") == "delta"
             and (previous.get("kind") == "reasoning") == (event.get("kind") == "reasoning")
         ):
-            previous["delta"] += event.get("delta", "")
+            previous["text"] += event.get("text", "")
             continue
         coalesced.append(event)
-    for event in coalesced:
-        if event.get("type") == "assistant_message":
-            trace = event.get("trace") or {}
-            event["trace"] = {
-                key: value
-                for key, value in trace.items()
-                if key not in ("run_id", "latency_ms", "rounds", "thinking")
-            }
-            message = event.get("message") or {}
-            event["message"] = {key: value for key, value in message.items() if key != "id"}
-            event["message"]["tool_calls"] = [
-                {
-                    key: value
-                    for key, value in tool_call.items()
-                    if key not in ("start_ms", "duration_ms")
-                }
-                for tool_call in message.get("tool_calls") or []
-            ]
     return coalesced
 
 
@@ -238,9 +212,9 @@ def thread_ids(checkpoints_path: Path) -> list[str]:
 
 def streamed_text(events: list[dict[str, Any]]) -> str:
     return "".join(
-        event["delta"]
+        event["text"]
         for event in events
-        if event.get("type") == "stream_delta" and "kind" not in event
+        if event.get("type") == "delta" and event.get("kind") != "reasoning"
     )
 
 
@@ -264,20 +238,16 @@ def test_graph_turn_persists_and_emits_contract_events(tmp_path: Path) -> None:
     ):
         send(h, "Explain the chain rule")
         messages = wait_for_assistant(h)
-        events = drain_until(ws, {"assistant_message"})
+        events = drain_until(ws, {"flow_finished"})
 
     assert messages[-1]["blocks"][0]["md"] == ("Follow the derivation **step by step**.")
     assert [event["type"] for event in events] == [
-        "stream_start",
         "flow_started",
-        "phase",
         "node_started",
-        "assistant_message",
         "flow_finished",
     ]
-    assert events[1]["flow"] == "chat"
-    assert events[2]["phase"] == "thinking"
-    assert events[3]["id"] == "thinking"
+    assert events[0]["flow"] == "chat"
+    assert events[1]["node"] == "thinking"
     assert messages[-1]["trace"]["repair_rounds"] == 0
     assert thread_ids(tmp_path / "checkpoints.sqlite3") == [str(h.session_id)]
 
@@ -290,15 +260,15 @@ def test_graph_streams_the_production_delta_path(
         subscribe(h.client, h.session_id) as ws,
     ):
         send(h, "question one")
-        wait_for_assistant(h)
-        events = normalize(drain_until(ws, {"assistant_message"}))
+        messages = wait_for_assistant(h)
+        raw_events = drain_until(ws, {"flow_finished"})
+        events = normalize(raw_events)
 
     assert streamed_text(events) == "Hello from the model."
     types = [event["type"] for event in events]
-    assert types[0] == "stream_start"
-    assert "flow_started" in types
+    assert types[0] == "flow_started"
     assert types[-1] == "flow_finished"
-    assert any(event.get("type") == "assistant_message" and event.get("trace") for event in events)
+    assert messages[-1]["trace"]["run_id"] == raw_events[0]["run_id"]
 
 
 def test_graph_tool_round_runs_the_degraded_grammar(
@@ -313,7 +283,7 @@ def test_graph_tool_round_runs_the_degraded_grammar(
         send(h, "compute 2*21 with the tool")
         wait_for_assistant(h)
         messages = h.client.get(f"/api/v1/chat/sessions/{h.session_id}/messages").json()
-        events = normalize(drain_until(ws, {"assistant_message"}))
+        events = normalize(drain_until(ws, {"flow_finished"}))
 
     assert messages[-1]["blocks"][0]["md"] == "The answer is $42$."
     tool_events = [event for event in events if event.get("type") == "tool_call"]
@@ -330,7 +300,7 @@ def test_round_close_drops_straggler_delta(tmp_path: Path) -> None:
     after CALC's tool_call). A later langgraph_step reopens the pump."""
     emitted: list[dict[str, Any]] = []
     engine = ChatTurnEngine(None, None)  # type: ignore[arg-type]
-    pump = _DeltaPump(emitted.append, started=time.monotonic())
+    pump = _DeltaPump(emitted.append)
 
     def feed(text: str, step: int) -> None:
         engine._on_messages_chunk(pump, (AIMessageChunk(content=text), {"langgraph_step": step}))
@@ -339,13 +309,13 @@ def test_round_close_drops_straggler_delta(tmp_path: Path) -> None:
     pump.close_round(True)
     feed("*21\n", 4)
     assert pump.closed
-    assert [event for event in emitted if event["type"] == "stream_delta"] == []
+    assert [event for event in emitted if event["type"] == "delta"] == []
 
     feed("The answer ", 6)
     assert not pump.closed
     feed("is $42$.\n", 6)
     pump.flush()
-    deltas = "".join(event["delta"] for event in emitted if event["type"] == "stream_delta")
+    deltas = "".join(event["text"] for event in emitted if event["type"] == "delta")
     assert deltas == "The answer is $42$.\n"
 
 
@@ -356,7 +326,7 @@ def test_tool_free_round_close_keeps_straggler_delta(tmp_path: Path) -> None:
     line but the pump stays open."""
     emitted: list[dict[str, Any]] = []
     engine = ChatTurnEngine(None, None)  # type: ignore[arg-type]
-    pump = _DeltaPump(emitted.append, started=time.monotonic())
+    pump = _DeltaPump(emitted.append)
 
     def feed(text: str, step: int) -> None:
         engine._on_messages_chunk(pump, (AIMessageChunk(content=text), {"langgraph_step": step}))
@@ -366,7 +336,7 @@ def test_tool_free_round_close_keeps_straggler_delta(tmp_path: Path) -> None:
     assert not pump.closed
     feed("word " * 120, 2)
     pump.flush_round_end()
-    deltas = "".join(event["delta"] for event in emitted if event["type"] == "stream_delta")
+    deltas = "".join(event["text"] for event in emitted if event["type"] == "delta")
     assert deltas == "The answer is " + "word " * 120
 
 
@@ -380,10 +350,10 @@ def test_graph_repair_round_records_phases(tmp_path: Path, migrated_db_template:
     ):
         send(h, "say something short")
         wait_for_assistant(h)
-        events = normalize(drain_until(ws, {"assistant_message"}))
+        events = normalize(drain_until(ws, {"flow_finished"}))
 
-    phases = [event["phase"] for event in events if event.get("type") == "phase"]
-    assert phases == ["thinking", "repairing"]
+    nodes = [event["node"] for event in events if event.get("type") == "node_started"]
+    assert nodes == ["thinking", "repairing"]
     assert streamed_text(events).endswith("short answer")
 
 
@@ -434,18 +404,17 @@ def test_graph_stop_mid_stream_persists_prefix(tmp_path: Path) -> None:
                 time.sleep(0.05)
             assert stopped, "turn was not running when stop was requested"
             messages = wait_for_assistant(Harness(client, gateway, session_id))
-            events = drain_until(ws, {"assistant_message"})
+            events = drain_until(ws, {"flow_finished"})
 
     stored = messages[-1]["blocks"][0]["md"]
     assert stored == "" or stored.startswith("chunk 0 ")
     assert "chunk 399" not in stored
-    assert messages[-1]["trace"]["stream_interrupted"] is True
-    assert [event["type"] for event in events][-3:] == [
-        "stream_interrupted",
-        "assistant_message",
+    assert "stopped by user" in str(messages[-1]["trace"]["interruption"])
+    assert [event["type"] for event in events][-2:] == [
+        "flow_interrupted",
         "flow_finished",
     ]
-    assert events[0]["type"] in ("stream_start", "stream_interrupted")
+    assert events[0]["type"] in ("flow_started", "flow_interrupted")
 
 
 def test_open_checkpointer_creates_schema(tmp_path: Path) -> None:

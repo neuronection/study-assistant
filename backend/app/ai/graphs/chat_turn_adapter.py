@@ -7,18 +7,19 @@ worker thread, and consumes the raw stable streaming API
 `astream_events(version="v3")` stays beta on the pinned langgraph — swapping
 it in later is a one-file change confined to this adapter):
 
-- `messages` tuples (`AIMessageChunk`, metadata) → `stream_delta` WS events
+- `messages` tuples (`AIMessageChunk`, metadata) → `delta` events
   (text and reasoning deltas in exact arrival order, tool lines filtered by
   the same line grammar as the legacy engine, 30 ms flush throttle),
 - `updates` (per-node state deltas) → round-boundary flush of the pending
   delta line, capture of the `finalize` node's persisted event payload, and
   the reserved `__interrupt__` mapping point,
 - the captured payload is emitted after the stream ends so token deltas
-  always precede `assistant_message` (and `stream_interrupted`) on the wire.
+  always precede `flow_finished` (and `flow_interrupted`) on the wire.
 
-The external WS EventBus contract (`stream_start`, `phase`, `stream_delta`,
-`tool_call`, `stream_interrupted`, `assistant_message`, `turn_error`) and the
-AG-UI mapping on top of it are unchanged. `thread_id` is the chat session id.
+The external WS EventBus contract is the family event vocabulary
+(`flow_started`, `node_started`, `delta`, `tool_call`, `flow_interrupted`,
+`flow_finished`, `flow_failed`; guidelines ai-features §5). `thread_id` is
+the chat session id.
 """
 
 import asyncio
@@ -33,6 +34,7 @@ from ...core.events import EventBus
 from ...domain.models import ChatMessage, ChatSession
 from ...services.platform.chat import ChatError, ChatService, Emitter
 from ..chat_models import reasoning_from_message, text_from_content
+from ..flow_events import delta_event
 from ..gateway import LLMGateway
 from ..tools import TOOL_LINE_RE
 from .chat_turn import ChatTurnDeps, build_chat_turn_graph
@@ -44,7 +46,7 @@ RECURSION_LIMIT = 60
 
 
 class _DeltaPump:
-    """Legacy-faithful delta throttling and tool-line filtering.
+    """Delta throttling and tool-line filtering.
 
     Rounds are closed by `close_round` (wired as `on_round_stream_end`, which
     the graph calls from the node's worker thread after the gateway stream is
@@ -61,9 +63,8 @@ class _DeltaPump:
     chunks arrive on the event loop.
     """
 
-    def __init__(self, emit: Emitter, started: float) -> None:
+    def __init__(self, emit: Emitter) -> None:
         self._emit = emit
-        self._started = started
         self._lock = threading.RLock()
         self._text_buf: list[str] = []
         self._reason_buf: list[str] = []
@@ -71,9 +72,6 @@ class _DeltaPump:
         self._last_flush = time.monotonic()
         self.closed = False
         self.last_step: int | None = None
-
-    def _elapsed_ms(self) -> int:
-        return int((time.monotonic() - self._started) * 1000)
 
     def on_text(self, text: str) -> None:
         with self._lock:
@@ -109,23 +107,10 @@ class _DeltaPump:
     def flush(self) -> None:
         with self._lock:
             if self._reason_buf:
-                self._emit(
-                    {
-                        "type": "stream_delta",
-                        "delta": "".join(self._reason_buf),
-                        "kind": "reasoning",
-                        "elapsed_ms": self._elapsed_ms(),
-                    }
-                )
+                self._emit(delta_event("".join(self._reason_buf), "reasoning"))
                 self._reason_buf.clear()
             if self._text_buf:
-                self._emit(
-                    {
-                        "type": "stream_delta",
-                        "delta": "".join(self._text_buf),
-                        "elapsed_ms": self._elapsed_ms(),
-                    }
-                )
+                self._emit(delta_event("".join(self._text_buf)))
                 self._text_buf.clear()
             self._last_flush = time.monotonic()
 
@@ -179,7 +164,7 @@ class ChatTurnEngine:
             "configurable": {"thread_id": str(chat_session.id)},
             "recursion_limit": RECURSION_LIMIT,
         }
-        pump = _DeltaPump(emit, deps.started)
+        pump = _DeltaPump(emit)
         deps.on_round_stream_end = pump.close_round
         final_events: list[dict[str, Any]] = []
         message_id: int | None = None

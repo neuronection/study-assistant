@@ -43,7 +43,7 @@ def test_trace_is_persisted_and_returned(tmp_path: Any, migrated_db_template: An
     ):
         send(h, "what is 2^10")
         messages = wait_for_assistant(h.client, h.session_id)
-        events = drain_until(ws, {"assistant_message"})
+        events = drain_until(ws, {"flow_finished"})
     assistant = messages[-1]
     trace = assistant["trace"]
     assert trace["run_id"]
@@ -62,17 +62,18 @@ def test_trace_is_persisted_and_returned(tmp_path: Any, migrated_db_template: An
     assert call["start_ms"] >= 0
     assert call["duration_ms"] >= 0
 
-    stream_start = next(e for e in events if e.get("type") == "stream_start")
-    assert stream_start["run_id"] == trace["run_id"]
-    assert stream_start["elapsed_ms"] >= 0
-    deltas = [e for e in events if e.get("type") == "stream_delta"]
-    assert deltas and all(e["elapsed_ms"] >= 0 for e in deltas)
-    phases = [e for e in events if e.get("type") == "phase"]
-    assert any(e["phase"] == "thinking" for e in phases)
+    flow_started = next(e for e in events if e.get("type") == "flow_started")
+    assert flow_started["run_id"] == trace["run_id"]
+    deltas = [e for e in events if e.get("type") == "delta"]
+    assert deltas
+    phases = [e for e in events if e.get("type") == "node_started"]
+    assert any(e["node"] == "thinking" for e in phases)
     tool_events = [e for e in events if e.get("type") == "tool_call"]
     assert tool_events and all(e["status"] == "done" for e in tool_events)
-    assistant_event = next(e for e in events if e.get("type") == "assistant_message")
-    assert assistant_event["trace"]["run_id"] == trace["run_id"]
+    assert all(e["id"] and e["args"] is not None for e in tool_events)
+    flow_finished = next(e for e in events if e.get("type") == "flow_finished")
+    assert flow_finished["run_id"] == trace["run_id"]
+    assert flow_finished["result_ref"] == str(assistant["id"])
 
 
 def test_reasoning_is_captured_but_kept_out_of_the_answer(tmp_path: Path) -> None:
@@ -130,10 +131,10 @@ def test_stream_deltas_are_coalesced(tmp_path: Any, migrated_db_template: Any) -
     ):
         send(h, "give me a long answer")
         wait_for_assistant(h.client, h.session_id)
-        events = drain_until(ws, {"assistant_message"})
-    deltas = [e for e in events if e.get("type") == "stream_delta"]
+        events = drain_until(ws, {"flow_finished"})
+    deltas = [e for e in events if e.get("type") == "delta"]
     assert deltas
-    joined = "".join(e["delta"] for e in deltas)
+    joined = "".join(e["text"] for e in deltas)
     assert joined == long_text
     assert len(deltas) < len(long_text) / 8
 
@@ -151,11 +152,11 @@ def test_tool_lines_are_not_streamed_as_text_and_final_answer_streams(
     ):
         send(h, "what is 2^10")
         wait_for_assistant(h.client, h.session_id)
-        events = drain_until(ws, {"assistant_message"})
+        events = drain_until(ws, {"flow_finished"})
     joined = "".join(
-        e["delta"]
+        e["text"]
         for e in events
-        if e.get("type") == "stream_delta" and e.get("kind") != "reasoning"
+        if e.get("type") == "delta" and e.get("kind") != "reasoning"
     )
     assert "CALC" not in joined
     assert "Let me verify." in joined

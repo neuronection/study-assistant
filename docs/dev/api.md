@@ -90,8 +90,10 @@ a bounded `limit` for any new list endpoint and document the ordering.
 backend `EventBus` bridges worker threads to subscribers via
 `publish_threadsafe`, and topics are built by `WsTopic` factories in
 `core/vocab.py` (`jobs:{id}`, `chat:{id}`, `source:{id}`, `externalsource:{id}`,
-`note:{id}`). The frontend mirrors these builders in `lib/constants.ts`. Job and
-chat progress stream over these topics.
+`note:{id}`). The frontend mirrors these builders in `lib/constants.ts`. Job
+progress streams over `jobs:{id}`; chat turns stream the **family event
+vocabulary** over `chat:{id}` (see [ai.md](ai.md) — event name in the `type`
+field, `FlowEvent` StrEnum, frozen §5 payload fields).
 
 ## OpenAPI and generated types
 

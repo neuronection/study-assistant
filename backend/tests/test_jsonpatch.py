@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from app.agui.state import StateStore, apply_deltas, apply_patch
+from app.core.jsonpatch import StateStore, apply_deltas, apply_patch
 
 
 def test_add_object_key() -> None:

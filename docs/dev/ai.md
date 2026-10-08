@@ -246,8 +246,8 @@ The model may end a chat turn with **up to three** fenced action proposals
   the UI.
 - **Storage** (`chat_proposals`, migration 0024): message, action, payload,
   status `proposed|approved|dismissed|executed|stale|conflict` (the
-  `ChatProposalStatus` vocabulary, plan 78-D), result, timestamps. Surfaced on
-  the messages API and the `assistant_message` WS event.
+  `ChatProposalStatus` vocabulary, plan 78-D), result, timestamps. Surfaced
+  on the messages API (`ProposalOut` cards per message).
 - **Conflict re-diff instead of stale (plan 78-D, ADR-192)**: when an
   edit-in-place proposal is approved after its target changed, the approve
   endpoint refreshes the snapshot, re-resolves anchored `text_edits` against
@@ -684,7 +684,8 @@ feeds results back as real `ToolMessage`s. Text-only/local models keep the promp
 (`TOOL_LINE_RE`) unchanged. If a `tools`-capped model's endpoint rejects the bound-tools
 payload, the turn **auto-degrades to the prompt grammar for that model** (remembered in-memory
 per provider+model; the Settings `tools` override is the durable fix). A provider failure
-before the first streamed chunk surfaces as a `turn_error` (frontend banner), never an empty
+before the first streamed chunk surfaces as a `flow_failed` event (frontend
+banner), never an empty
 message. Models carry an optional **`reasoning_effort`** setting (Settings → Providers → edit
 model) passed to `ChatOpenAI`/`ChatAnthropic`/`ChatGoogleGenerativeAI` — set `none` on OpenAI
 reasoning models that reject `tools` to re-enable native function calling, or
@@ -739,7 +740,7 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   app's event loop (integrator ruling 2026-09-04 — `astream_events(version=
   "v3")` is still beta on the pinned langgraph; swapping it in later is a
   one-file change confined to the adapter): `messages` tuples
-  (`AIMessageChunk`, metadata) map onto throttled `stream_delta` WS events
+  (`AIMessageChunk`, metadata) map onto throttled `delta` events
    (tool lines filtered at round boundaries), text and reasoning in
    exact arrival order — the pump's buffers are shared across the node
    worker thread and the event loop, so all mutations run under an RLock
@@ -749,8 +750,8 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
    stream ends so deltas always precede it on the wire) plus the reserved
    `__interrupt__` mapping point for `interrupt()`-based proposals (today's
    proposals remain the fence protocol — external contract frozen).
-   `stream_start`/`phase`/`tool_call` carry turn-semantic payloads with no
-   LangGraph projection, so nodes emit them through the same `Emitter` the
+   `flow_started`/`node_started`/`tool_call` carry turn-semantic payloads with
+   no LangGraph projection, so nodes emit them through the same `Emitter` the
    job handler wires. `thread_id` = chat session id.
 - **Checkpointer** (dual-mode): dialect-picked in `graphs/checkpointer.py` —
   `AsyncSqliteSaver` on `data_dir/checkpoints.db` (desktop) or
@@ -764,24 +765,40 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   and a retry policy that only retries raw transport leaks (`httpx.HTTPError`)
   over the gateway's own retries — `ProviderError` (already retried with
   fallback inside the gateway) is never double-retried. Failures bubble to the
-  job handler, which emits `turn_error`.
+  job handler, which emits `flow_failed`.
 
-## Family event vocabulary (Phase 6.2)
+## Chat stream vocabulary (family §5, plan 24 V2)
 
-Chat turns emit the **family event vocabulary** additively alongside the
-turn-semantic WS event names, on the same `chat:{session_id}` topic — one pure
-mapper (`app/agui/family.py`), applied to every turn event: `stream_start` →
-`flow_started` (flow `chat`, run_id, canonical
-steps thinking/tools/answer) · `phase` → `node_started` · `tool_call` →
-`node_finished` (`tool:{phase}` id, outcome + result detail) ·
-`stream_delta` → `delta` (`kind: reasoning` when reasoning) ·
-`assistant_message` → `flow_finished` (result ref = message id) ·
-`turn_error` → `flow_failed` (retryable false). `stream_interrupted` has no
-family equivalent and maps to nothing. Event names are the closed
-`FlowEvent` StrEnum (`core/vocab.py`). The turn-semantic names stay the chat
-panel's contract (its handler ignores unknown types); the family stream feeds
-`FlowStatusCard` surfaces — adopted first in the shared editor's AI helper
-(Phase 6.3), with `TraceTimeline` unchanged for the rich chat view.
+Chat turns emit the **family event vocabulary natively** on the
+`chat:{session_id}` WS topic — one vocabulary, no legacy names, no
+dual-emit. Event names are the closed `FlowEvent` StrEnum
+(`core/vocab.py`); payload fields follow the frozen §5 table
+(`ai/flow_events.py` builders, unit-pinned by `tests/test_family_events.py`
+including the vocabulary wall: every event type on the chat topic must be
+a family event):
+
+- `flow_started` — flow `chat`, `run_id`, canonical steps
+  thinking/tools/answer
+- `node_started` — `node` id only (thinking / repairing / reading /
+  plotting / computing); labels are applied client-side (i18n)
+- `delta` — `text` chunk, `kind: reasoning` when reasoning
+- `tool_call` — `id` (`{name}@{start_ms}`), `name`, `status`, `args`,
+  optional `result` / `title` / `duration_ms`; a projection of the
+  persisted tool entry (`chat_messages.tool_calls` keeps its own storage
+  shape with `argument`/`phase`/`start_ms`/`quiz`)
+- `flow_finished` — `run_id`, `result_ref` (message id), optional
+  `model` / `total_ms` / `tool_count`
+- `flow_interrupted` — terminal server-broadcast stop
+  (`reason: user | server`, `partial`); replaces the legacy
+  `stream_interrupted` which no consumer could render — the library
+  reducer maps it to `status: interrupted, stopped: true`
+- `flow_failed` — `code` (`turn_error` | `ai_not_configured`), `message`,
+  `retryable: true` (the regenerate affordance)
+
+The frontend consumes these directly (`features/chat/chatTransport.ts`)
+with per-turn run-id gating; the persisted turn `trace` block and REST
+message shapes are unchanged — history renders from the DB, the live
+events only feed the streaming tail.
 
 ## Features built on the gateway
 

@@ -56,7 +56,7 @@ logger = structlog.get_logger(__name__)
 class TaskUnassigned(RuntimeError):
     def __init__(self, task: str) -> None:
         # Family-uniform wording (matches career's gateway) — surfaced
-        # verbatim in the chat turn_error card with code `ai_not_configured`.
+        # verbatim in the chat failure card with code `ai_not_configured`.
         super().__init__(
             "AI is not configured yet. An admin can add a provider and assign "
             "models in Settings → AI Configuration."

@@ -10,13 +10,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ..agui.family import to_family_events
-from ..agui.state import apply_patch
+from ..ai.flow_events import flow_failed_event
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS
 from ..core.errors import sanitize_error_detail
 from ..core.events import EventBus
+from ..core.jsonpatch import apply_patch
 from ..core.vocab import ChatProposalStatus, WsTopic
 from ..domain.models import (
     AiInteraction,
@@ -1156,8 +1156,6 @@ def make_chat_turn_handler(
 
             def emit(event: dict[str, Any]) -> None:
                 bus.publish_threadsafe(WsTopic.chat(chat_session.id), event)
-                for family_event in to_family_events(event):
-                    bus.publish_threadsafe(WsTopic.chat(chat_session.id), family_event)
 
             stop_event = _register_stop_event(chat_session.id)
             try:
@@ -1168,7 +1166,7 @@ def make_chat_turn_handler(
             except Exception as error:
                 detail = sanitize_error_detail(str(error)) or error.__class__.__name__
                 code = "ai_not_configured" if isinstance(error, TaskUnassigned) else "turn_error"
-                emit({"type": "turn_error", "code": code, "detail": detail})
+                emit(flow_failed_event(code, detail))
                 # Persist the failure on the turn (uniform chat error
                 # display): the transcript keeps rendering it after a
                 # refresh, with Retry through the regenerate endpoint.

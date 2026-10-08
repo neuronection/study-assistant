@@ -8,17 +8,18 @@ Implements the chat turn as a checkpointed StateGraph:
 A custom StateGraph instead of `create_agent`: the turn interleaves two tool
 modes (native `.bind_tools()` plus the degraded prompt-line grammar), enforces
 per-kind budgets (math 2 / READ 3 / STATE 3 / resource 5 per turn), emits
-legacy WS progress events, and runs the deterministic contract repair loop —
-none of which agent middleware can host (the plan-10 §5.2 decision point).
+family flow events (`ai/flow_events.py`), and runs the deterministic contract
+repair loop — none of which agent middleware can host (the plan-10 §5.2
+decision point).
 
 Nodes call the gateway only for model I/O; retrieval, tools, contracts, and
 persistence are the plain `ChatService` methods
 (`prepare_turn_context` / `prepare_turn_contract` / `finalize_turn`).
-`stream_start`, `phase`, and `tool_call` WS events are emitted from nodes
+`flow_started`, `node_started`, and `tool_call` events are emitted from nodes
 through the injected `Emitter` (turn-semantic payloads with no LangGraph
 projection); token
 deltas flow through the raw `astream(stream_mode=["updates", "messages"])`
-messages mode and are mapped onto `stream_delta` by `chat_turn_adapter`.
+messages mode and are mapped onto `delta` by `chat_turn_adapter`.
 
 Fault tolerance is layered over the gateway's own retries: the graph retries
 only raw transport leaks (`httpx.HTTPError`) — `ProviderError` has already
@@ -56,6 +57,7 @@ from ...services.platform.chat import (
     MAX_SEARCH_ROUNDS,
     MAX_STATE_ROUNDS,
     MAX_TOOL_ROUNDS,
+    STOP_MESSAGE,
     ChatService,
     Emitter,
     TurnPrep,
@@ -65,6 +67,7 @@ from ...services.platform.chat import (
 )
 from ..chat_models import degrade_native_tools
 from ..contracts.contracts import ValidationResult, validate
+from ..flow_events import flow_started_event, node_started_event, tool_call_event
 from ..gateway import LLMGateway, Message, ProviderError, is_tool_unsupported_error
 from ..tools import extract_tool_calls, run_tool_line, strip_tool_lines
 
@@ -73,7 +76,6 @@ logger = structlog.get_logger(__name__)
 MAX_ROUND_BUDGET = MAX_TOOL_ROUNDS + MAX_READ_ROUNDS + 1
 NODE_RUN_TIMEOUT_SEC = 600
 
-STOP_MESSAGE = "generation stopped by user"
 DEGRADED = "@degraded"
 
 READISH_TOOLS = frozenset(
@@ -334,7 +336,7 @@ def _execute_tools(
         tool_phase = (
             "reading" if kind in READISH_TOOLS else "plotting" if kind == "PLOT" else "computing"
         )
-        deps.emit({"type": "phase", "phase": tool_phase, "elapsed_ms": tool_start_ms})
+        deps.emit(node_started_event(tool_phase))
         if kind == "READ":
             if read_used >= MAX_READ_ROUNDS:
                 results.append(
@@ -373,7 +375,7 @@ def _execute_tools(
                     title=entry.title if entry is not None else None,
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "STATE":
             if state_used >= MAX_STATE_ROUNDS:
                 results.append(
@@ -395,7 +397,7 @@ def _execute_tools(
                     _tool_result_summary("STATE", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind in RESOURCE_TOOL_BY_KEYWORD:
             if resource_used >= MAX_RESOURCE_ROUNDS:
                 results.append(
@@ -417,7 +419,7 @@ def _execute_tools(
                     _tool_result_summary(kind, content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "FIND":
             if state["find_used"] >= MAX_FIND_ROUNDS:
                 results.append(
@@ -439,7 +441,7 @@ def _execute_tools(
                     _tool_result_summary("FIND", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "SEARCH":
             if state["search_used"] >= MAX_SEARCH_ROUNDS:
                 results.append(
@@ -466,7 +468,7 @@ def _execute_tools(
                     _tool_result_summary("SEARCH", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "DISCOVER":
             if state["discover_used"] >= MAX_DISCOVER_ROUNDS:
                 results.append(
@@ -493,7 +495,7 @@ def _execute_tools(
                     _tool_result_summary("DISCOVER", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "FETCH":
             if state["fetch_used"] >= MAX_FETCH_ROUNDS:
                 results.append(
@@ -517,7 +519,7 @@ def _execute_tools(
                     _tool_result_summary("FETCH", content),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
         elif kind == "QUIZ":
             if state["quiz_used"] >= MAX_QUIZ_ROUNDS:
                 results.append("QUIZ -> error: QUIZ budget for this turn is spent")
@@ -553,7 +555,7 @@ def _execute_tools(
                     _tool_result_summary(kind, result),
                 )
             )
-            deps.emit({"type": "tool_call", **tool_calls_seen[-1]})
+            deps.emit(tool_call_event(tool_calls_seen[-1]))
     updates: dict[str, Any] = {
         "read_used": read_used,
         "state_used": state_used,
@@ -616,15 +618,9 @@ def _agent_round(deps: ChatTurnDeps, state: ChatTurnState) -> dict[str, Any]:
     attempt = state["attempt"]
     round_start_ms = deps.elapsed_ms()
     if round_index == 0:
-        deps.emit(
-            {
-                "type": "stream_start",
-                "run_id": state["run_id"],
-                "elapsed_ms": round_start_ms,
-            }
-        )
+        deps.emit(flow_started_event(state["run_id"]))
     round_phase = "repairing" if attempt > 0 else "thinking"
-    deps.emit({"type": "phase", "phase": round_phase, "elapsed_ms": round_start_ms})
+    deps.emit(node_started_event(round_phase))
     messages = _round_messages(deps, prep, state)
     buffer, native_raw, reasoning, interruption = _consume_stream(deps, state, messages)
     trace_rounds = list(state["trace_rounds"])

@@ -17,6 +17,11 @@ from ...ai.contracts.contracts import (
     Constraint,
     ValidationResult,
 )
+from ...ai.flow_events import (
+    flow_finished_event,
+    flow_interrupted_event,
+    tool_call_event,
+)
 from ...ai.gateway import LLMGateway, Message
 from ...ai.mentions import MentionRegistry, registry_from_json
 from ...ai.parsing import blocks_to_md as _blocks_to_md
@@ -91,6 +96,7 @@ _URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
 
 CHAT_TASK = "chat"
 CHAT_SKILL = "chat.answer"
+STOP_MESSAGE = "generation stopped by user"
 MAX_REPAIR_ROUNDS = 1
 MAX_TOOL_ROUNDS = 2
 MAX_READ_ROUNDS = 3
@@ -1157,7 +1163,7 @@ class ChatService:
                 "has not enabled it; do not attempt to quiz them"
             )
             entry["result"] = result
-            emit({"type": "tool_call", **entry})
+            emit(tool_call_event(entry))
             return result, entry
         try:
             args = (
@@ -1172,7 +1178,7 @@ class ChatService:
         except ValueError as error:
             result = f"error: {error}"
             entry["result"] = result
-            emit({"type": "tool_call", **entry})
+            emit(tool_call_event(entry))
             return result, entry
         pending["awaiting_answer"] = True
         chat_session.quiz_pending = pending
@@ -1186,7 +1192,7 @@ class ChatService:
             "question": pending["question"],
             "choices": pending.get("choices"),
         }
-        emit({"type": "tool_call", **entry})
+        emit(tool_call_event(entry))
         return result, entry
 
     def _read_widget_state(self, chat_session: ChatSession, widget_id: str) -> str:
@@ -1480,14 +1486,12 @@ class ChatService:
         if reasoning_parts:
             trace["thinking"] = "".join(reasoning_parts)
         if stream_interruption is not None:
-            trace["stream_interrupted"] = True
             trace["interruption"] = stream_interruption
             emit(
-                {
-                    "type": "stream_interrupted",
-                    "detail": stream_interruption,
-                    "elapsed_ms": latency_ms,
-                }
+                flow_interrupted_event(
+                    "user" if stream_interruption == STOP_MESSAGE else "server",
+                    partial=bool(final_output.strip()),
+                )
             )
         self._log_interaction(
             chat_session.id,
@@ -1565,7 +1569,6 @@ class ChatService:
         message.parent_id = user_message.id
         user_message.active_child_id = message.id
         self._session.flush()
-        proposal_rows: list[ChatProposal] = []
         for action, stored_payload in prepared_proposals:
             target = resolve_proposal_target(
                 self._session,
@@ -1575,14 +1578,14 @@ class ChatService:
             )
             if target:
                 stored_payload.update(target)
-            row = ChatProposal(
-                message_id=message.id,
-                action=action,
-                payload=stored_payload,
-                status="proposed",
+            self._session.add(
+                ChatProposal(
+                    message_id=message.id,
+                    action=action,
+                    payload=stored_payload,
+                    status="proposed",
+                )
             )
-            self._session.add(row)
-            proposal_rows.append(row)
         self._session.flush()
         self._session.commit()
         logger.info(
@@ -1592,22 +1595,13 @@ class ChatService:
             duration_ms=int((time.monotonic() - finalize_started) * 1000),
         )
         emit(
-            {
-                "type": "assistant_message",
-                "elapsed_ms": latency_ms,
-                "trace": trace,
-                "message": {
-                    "id": message.id,
-                    "role": "assistant",
-                    "markdown": final_output,
-                    "citations": citations,
-                    "mentions": [entry.as_dict() for entry in used_mentions],
-                    "reads": reads,
-                    "tool_calls": final_tool_calls,
-                    "proposals": [proposal_out(row) for row in proposal_rows],
-                    "grounded": grounded,
-                },
-            }
+            flow_finished_event(
+                run_id,
+                message.id,
+                model=model_name,
+                total_ms=latency_ms,
+                tool_count=len(final_tool_calls),
+            )
         )
         return message
 

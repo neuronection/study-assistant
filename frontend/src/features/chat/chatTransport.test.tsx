@@ -35,17 +35,17 @@ vi.mock('@/lib/ws-client', () => ({
 const phaseLabel = (phase: string) => `phase:${phase}`
 
 describe('mapStudyEvent', () => {
-  test('stream_start opens the family flow without touching status', () => {
-    expect(mapStudyEvent({ type: 'stream_start' }, { phaseLabel, runId: 'turn-1' })).toEqual({
+  test('flow_started opens the family flow without touching status', () => {
+    expect(mapStudyEvent({ type: 'flow_started' }, { phaseLabel, runId: 'turn-1' })).toEqual({
       event: 'flow_started',
       flow: 'chat',
       run_id: 'turn-1',
     })
   })
 
-  test('phase events map to node_started with the i18n label', () => {
+  test('node_started maps the wire node id to the i18n label', () => {
     expect(
-      mapStudyEvent({ type: 'phase', phase: 'reading' }, { phaseLabel, runId: 'turn-1' }),
+      mapStudyEvent({ type: 'node_started', node: 'reading' }, { phaseLabel, runId: 'turn-1' }),
     ).toEqual({
       event: 'node_started',
       node: 'reading',
@@ -56,29 +56,28 @@ describe('mapStudyEvent', () => {
 
   test('answer deltas carry kind text and reasoning deltas kind reasoning', () => {
     expect(
-      mapStudyEvent({ type: 'stream_delta', delta: 'Hello ' }, { phaseLabel, runId: 'turn-1' }),
+      mapStudyEvent({ type: 'delta', text: 'Hello ' }, { phaseLabel, runId: 'turn-1' }),
     ).toEqual({ event: 'delta', kind: 'text', text: 'Hello ', run_id: 'turn-1' })
     expect(
       mapStudyEvent(
-        { type: 'stream_delta', delta: 'thought', kind: 'reasoning' },
+        { type: 'delta', text: 'thought', kind: 'reasoning' },
         { phaseLabel, runId: 'turn-1' },
       ),
     ).toEqual({ event: 'delta', kind: 'reasoning', text: 'thought', run_id: 'turn-1' })
-    expect(mapStudyEvent({ type: 'stream_delta' }, { phaseLabel })).toBeNull()
+    expect(mapStudyEvent({ type: 'delta' }, { phaseLabel })).toBeNull()
   })
 
-  test('tool_call events synthesize a stable name@start_ms id', () => {
+  test('tool_call events pass the frozen wire fields through', () => {
     expect(
       mapStudyEvent(
         {
           type: 'tool_call',
+          id: 'SYMPY@42',
           name: 'SYMPY',
-          argument: 'diff x**3',
+          args: 'diff x**3',
           result: '3*x**2',
           title: 'Symbolic math',
-          phase: 'math',
           status: 'done',
-          start_ms: 42,
           duration_ms: 120,
         },
         { phaseLabel, runId: 'turn-1' },
@@ -98,26 +97,35 @@ describe('mapStudyEvent', () => {
 
   test('tool_call without a result or status reports running', () => {
     const event = mapStudyEvent(
-      { type: 'tool_call', name: 'SEARCH', argument: 'chain rule', start_ms: 7 },
+      { type: 'tool_call', id: 'SEARCH@7', name: 'SEARCH', args: 'chain rule' },
       { phaseLabel },
     )
     expect(event).toMatchObject({ event: 'tool_call', id: 'SEARCH@7', status: 'running' })
   })
 
-  test('final and interrupted assistant messages both finalize the flow', () => {
-    expect(mapStudyEvent({ type: 'assistant_message' }, { phaseLabel, runId: 'turn-1' })).toEqual({
+  test('flow_finished finalizes and flow_interrupted stops the turn', () => {
+    expect(mapStudyEvent({ type: 'flow_finished' }, { phaseLabel, runId: 'turn-1' })).toEqual({
       event: 'flow_finished',
       run_id: 'turn-1',
     })
-    expect(mapStudyEvent({ type: 'stream_interrupted' }, { phaseLabel, runId: 'turn-1' })).toEqual({
-      event: 'flow_finished',
-      run_id: 'turn-1',
+    expect(
+      mapStudyEvent(
+        { type: 'flow_interrupted', reason: 'user', partial: true },
+        { phaseLabel, runId: 'turn-1' },
+      ),
+    ).toEqual({
+      event: 'flow_interrupted',
+      reason: 'user',
+      partial: true,
     })
   })
 
-  test('turn_error maps to a retryable flow failure', () => {
+  test('flow_failed maps to a retryable flow failure', () => {
     expect(
-      mapStudyEvent({ type: 'turn_error', detail: 'provider offline' }, { phaseLabel, runId: 'turn-1' }),
+      mapStudyEvent(
+        { type: 'flow_failed', code: 'turn_error', message: 'provider offline', retryable: true },
+        { phaseLabel, runId: 'turn-1' },
+      ),
     ).toEqual({
       event: 'flow_failed',
       code: 'turn_error',
@@ -125,6 +133,9 @@ describe('mapStudyEvent', () => {
       retryable: true,
       run_id: 'turn-1',
     })
+    expect(
+      mapStudyEvent({ type: 'flow_failed', message: 'late' }, { phaseLabel, runId: 'turn-1' }),
+    ).toMatchObject({ event: 'flow_failed', code: 'turn_error', retryable: true })
   })
 
   test('unknown event names are dropped (additive contract)', () => {
@@ -167,11 +178,11 @@ describe('createStudyChatTransport', () => {
     sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 2 })
     const transport = makeTransport()
     const seen: { event: string; run_id?: string }[] = []
-    transport.subscribe({ onEvent: (event) => seen.push({ event: event.event, run_id: event.run_id }) })
+    transport.subscribe({ onEvent: (event) => seen.push({ event: event.event, run_id: 'run_id' in event ? event.run_id : undefined }) })
 
-    transport.push({ type: 'stream_start' })
-    transport.push({ type: 'stream_delta', delta: 'a' })
-    transport.push({ type: 'assistant_message' })
+    transport.push({ type: 'flow_started', flow: 'chat', run_id: 'server-1' })
+    transport.push({ type: 'delta', text: 'a' })
+    transport.push({ type: 'flow_finished' })
     expect(seen).toEqual([
       { event: 'flow_started', run_id: 'turn-0' },
       { event: 'delta', run_id: 'turn-0' },
@@ -179,12 +190,12 @@ describe('createStudyChatTransport', () => {
     ])
 
     await transport.send({ text: 'next' })
-    transport.push({ type: 'stream_delta', delta: 'straggler' })
-    transport.push({ type: 'turn_error', detail: 'late' })
+    transport.push({ type: 'delta', text: 'straggler' })
+    transport.push({ type: 'flow_failed', code: 'turn_error', message: 'late' })
     expect(seen).toHaveLength(3)
 
-    transport.push({ type: 'stream_start' })
-    transport.push({ type: 'stream_delta', delta: 'fresh' })
+    transport.push({ type: 'flow_started', flow: 'chat', run_id: 'server-2' })
+    transport.push({ type: 'delta', text: 'fresh' })
     expect(seen).toHaveLength(5)
     expect(seen[3]).toEqual({ event: 'flow_started', run_id: 'turn-1' })
     expect(seen[4]).toEqual({ event: 'delta', run_id: 'turn-1' })
@@ -214,16 +225,34 @@ describe('useStudyChat (provider wiring)', () => {
     expect(result.current.stream.status).toBe('pending')
 
     act(() => {
-      chatHandler!({ type: 'stream_start' })
-      chatHandler!({ type: 'stream_delta', delta: 'The answer is ' })
-      chatHandler!({ type: 'stream_delta', delta: '$2x$' })
+      chatHandler!({ type: 'flow_started', flow: 'chat', run_id: 'server-1' })
+      chatHandler!({ type: 'delta', text: 'The answer is ' })
+      chatHandler!({ type: 'delta', text: '$2x$' })
     })
     await waitFor(() => expect(result.current.stream.text).toBe('The answer is $2x$'))
 
     act(() => {
-      chatHandler!({ type: 'assistant_message' })
+      chatHandler!({ type: 'flow_finished', run_id: 'server-1' })
     })
     await waitFor(() => expect(result.current.stream.live).toBeNull())
+  })
+
+  test('a server-stopped turn ends interrupted through flow_interrupted', async () => {
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 1 })
+    const { result } = renderInProvider(4)
+    await act(async () => {
+      await result.current.send('stop me')
+    })
+    act(() => {
+      chatHandler!({ type: 'flow_started', flow: 'chat', run_id: 'server-2' })
+      chatHandler!({ type: 'delta', text: 'partial answ' })
+      chatHandler!({ type: 'flow_interrupted', reason: 'user', partial: true })
+    })
+    await waitFor(() => {
+      expect(result.current.stream.status).toBe('interrupted')
+      expect(result.current.stream.stopped).toBe(true)
+      expect(result.current.stream.text).toBe('partial answ')
+    })
   })
 
   test('reasoning and tool call events land in the live turn state', async () => {
@@ -233,10 +262,17 @@ describe('useStudyChat (provider wiring)', () => {
       await result.current.send('think')
     })
     act(() => {
-      chatHandler!({ type: 'stream_start' })
-      chatHandler!({ type: 'stream_delta', delta: 'inner', kind: 'reasoning' })
-      chatHandler!({ type: 'phase', phase: 'reading' })
-      chatHandler!({ type: 'tool_call', name: 'READ', argument: 'M12', result: 'ok', start_ms: 9 })
+      chatHandler!({ type: 'flow_started', flow: 'chat', run_id: 'server-3' })
+      chatHandler!({ type: 'delta', text: 'inner', kind: 'reasoning' })
+      chatHandler!({ type: 'node_started', node: 'reading' })
+      chatHandler!({
+        type: 'tool_call',
+        id: 'READ@9',
+        name: 'READ',
+        args: 'M12',
+        result: 'ok',
+        status: 'done',
+      })
     })
     await waitFor(() => {
       expect(result.current.stream.reasoning).toBe('inner')
@@ -264,9 +300,9 @@ describe('useStudyChat (provider wiring)', () => {
       await result.current.send('hi')
     })
     act(() => {
-      chatHandler!({ type: 'stream_start' })
+      chatHandler!({ type: 'flow_started', flow: 'chat', run_id: 'server-4' })
       for (const chunk of ['a', 'b', 'c']) {
-        chatHandler!({ type: 'stream_delta', delta: chunk })
+        chatHandler!({ type: 'delta', text: chunk })
       }
     })
     await waitFor(() => expect(result.current.stream.text).toBe('abc'))

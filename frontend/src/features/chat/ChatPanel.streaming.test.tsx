@@ -33,15 +33,21 @@ vi.mock('@/lib/api', async (importOriginal) => {
 
 type ChatEvent = {
   type: string
-  delta?: string
+  flow?: string
+  run_id?: string
+  text?: string
   kind?: string
-  phase?: string
+  node?: string
+  id?: string
   name?: string
-  argument?: string
+  args?: string
   result?: string
   title?: string
-  detail?: string
-  message?: unknown
+  status?: string
+  duration_ms?: number
+  reason?: 'user' | 'server'
+  partial?: boolean
+  message?: string
   code?: string
 }
 
@@ -111,9 +117,9 @@ describe('ChatPanel streaming', () => {
     expect(await screen.findByText('Thinking…')).toBeInTheDocument()
 
     expect(chatHandler).not.toBeNull()
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: 'The answer is ' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: '$2x$' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'The answer is ' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: '$2x$' } satisfies ChatEvent)
     expect(await screen.findByText(/The answer is/)).toBeInTheDocument()
 
     listChatMessages.mockResolvedValue([
@@ -126,7 +132,7 @@ describe('ChatPanel streaming', () => {
         grounded: true,
       },
     ])
-    chatHandler!({ type: 'assistant_message', message: {} } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_finished' } satisfies ChatEvent)
     await waitFor(() => {
       const bubble = screen.getByText(/answer is/, { exact: false })
       expect(bubble.closest('[data-as="chat-message"][data-status="done"]')).not.toBeNull()
@@ -145,15 +151,15 @@ describe('ChatPanel streaming', () => {
     fireEvent.change(input, { target: { value: 'derive x^2' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
     chatHandler!({
-      type: 'stream_delta',
-      delta: 'inner thoughts',
+      type: 'delta',
+      text: 'inner thoughts',
       kind: 'reasoning',
     } satisfies ChatEvent)
     expect(await screen.findByText('inner thoughts')).toBeInTheDocument()
 
-    chatHandler!({ type: 'stream_delta', delta: 'The answer is ' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'The answer is ' } satisfies ChatEvent)
     expect(await screen.findByText(/The answer is/)).toBeInTheDocument()
     expect(screen.getByText('inner thoughts')).toBeInTheDocument()
   })
@@ -170,13 +176,14 @@ describe('ChatPanel streaming', () => {
     fireEvent.change(input, { target: { value: 'verify' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
     chatHandler!({
       type: 'tool_call',
+      id: 'CALC@42',
       name: 'CALC',
-      argument: 'sin(pi/6)',
+      args: 'sin(pi/6)',
       result: '0.5',
-      phase: 'math',
+      status: 'done',
     } satisfies ChatEvent)
     const toggle = await screen.findByRole('button', { name: /CALC/ })
     expect(toggle).toHaveTextContent('CALC')
@@ -199,14 +206,15 @@ describe('ChatPanel streaming', () => {
     fireEvent.change(input, { target: { value: 'read my note' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
     chatHandler!({
       type: 'tool_call',
+      id: 'READ@7',
       name: 'READ',
-      argument: 'M12',
+      args: 'M12',
       title: 'Lecture 3',
       result: 'read 1234 chars',
-      phase: 'read',
+      status: 'done',
     } satisfies ChatEvent)
     const toggle = await screen.findByRole('button', { name: /Lecture 3/ })
     expect(toggle).toHaveTextContent('READ')
@@ -231,8 +239,8 @@ describe('ChatPanel streaming', () => {
       'Thinking…',
     )
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: 'Streaming the answer ' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'Streaming the answer ' } satisfies ChatEvent)
     expect(await screen.findByText(/Streaming the answer/)).toBeInTheDocument()
     await waitFor(() => expect(useChatStore.getState().pendingSend).toBeNull())
     act(() => {
@@ -262,13 +270,51 @@ describe('ChatPanel streaming', () => {
       'Thinking…',
     )
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: 'The answer is ' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: '$2x$' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'The answer is ' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: '$2x$' } satisfies ChatEvent)
     expect(await screen.findByText(/The answer is/)).toBeInTheDocument()
   })
 
-  test('turn_error clears pending and renders the transcript error card', async () => {
+  test('a server-stopped turn keeps the partial answer and finalizes the panel', async () => {
+    listChatSessions.mockResolvedValue([SESSION])
+    listChatMessages.mockResolvedValue([])
+    sendChatMessage.mockResolvedValue({
+      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: 13,
+    })
+    renderPanel()
+    const input = await screen.findByPlaceholderText('Ask about your material…')
+    fireEvent.change(input, { target: { value: 'long answer please' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(chatHandler).not.toBeNull())
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'Partial answ' } satisfies ChatEvent)
+    expect(await screen.findByText(/Partial answ/)).toBeInTheDocument()
+    chatHandler!({
+      type: 'flow_interrupted',
+      reason: 'user',
+      partial: true,
+    } satisfies ChatEvent)
+
+    listChatMessages.mockResolvedValue([
+      { id: 9, role: 'user', markdown: 'long answer please', citations: [], grounded: null },
+      {
+        id: 10,
+        role: 'assistant',
+        markdown: 'Partial answ',
+        citations: [],
+        grounded: null,
+      },
+    ])
+    await waitFor(() => {
+      const bubble = screen.getByText(/Partial answ/, { exact: false })
+      expect(bubble.closest('[data-as="chat-message"][data-status="done"]')).not.toBeNull()
+    })
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
+  })
+
+  test('flow_failed clears pending and renders the transcript error card', async () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
@@ -280,9 +326,9 @@ describe('ChatPanel streaming', () => {
     fireEvent.change(input, { target: { value: 'hello?' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: 'Partial answ' } satisfies ChatEvent)
-    chatHandler!({ type: 'turn_error', detail: 'provider offline' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'Partial answ' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_failed', code: 'turn_error', message: 'provider offline' } satisfies ChatEvent)
     // The uniform card replaces the thinking indicator in the transcript…
     const alert = await screen.findByRole('alert')
     expect(screen.queryByText('Thinking…')).not.toBeInTheDocument()
@@ -331,11 +377,11 @@ describe('ChatPanel streaming', () => {
     fireEvent.change(input, { target: { value: 'hello?' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
     chatHandler!({
-      type: 'turn_error',
+      type: 'flow_failed',
       code: 'ai_not_configured',
-      detail: 'AI is not configured yet. An admin can add a provider and assign models in Settings → AI Configuration.',
+      message: 'AI is not configured yet. An admin can add a provider and assign models in Settings → AI Configuration.',
     } satisfies ChatEvent)
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(

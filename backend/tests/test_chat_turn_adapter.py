@@ -1,7 +1,6 @@
 import asyncio
 import sys
 import threading
-import time
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
 from typing import Any
@@ -15,7 +14,7 @@ from app.ai.graphs.chat_turn_adapter import ChatTurnEngine, _DeltaPump
 
 def _pump() -> tuple[_DeltaPump, list[dict[str, Any]]]:
     events: list[dict[str, Any]] = []
-    return _DeltaPump(events.append, time.monotonic()), events
+    return _DeltaPump(events.append), events
 
 
 def test_late_tail_after_round_end_is_flushed_at_teardown() -> None:
@@ -23,9 +22,9 @@ def test_late_tail_after_round_end_is_flushed_at_teardown() -> None:
     pump.close_round(False)
     pump.on_text("the tail arrives without a trailing newline")
     pump.flush()
-    assert [event["delta"] for event in events] == []
+    assert [event["text"] for event in events] == []
     pump.flush_round_end()
-    assert [event["delta"] for event in events] == ["the tail arrives without a trailing newline"]
+    assert [event["text"] for event in events] == ["the tail arrives without a trailing newline"]
 
 
 def test_concurrent_chunks_and_flushes_lose_no_text() -> None:
@@ -50,7 +49,7 @@ def test_concurrent_chunks_and_flushes_lose_no_text() -> None:
         worker.join()
         sys.setswitchinterval(previous_interval)
     pump.flush_round_end()
-    assert "".join(event["delta"] for event in events) == "".join(chunks)
+    assert "".join(event["text"] for event in events) == "".join(chunks)
 
 
 class _FakeGraph:
@@ -108,6 +107,6 @@ def test_tail_delivered_after_last_update_is_flushed_at_teardown(
     )
     assert message is not None
     assert (
-        "".join(event["delta"] for event in events if event.get("type") == "stream_delta")
+        "".join(event["text"] for event in events if event.get("type") == "delta")
         == "streamed answer the tail chunk"
     )

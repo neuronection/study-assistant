@@ -7,23 +7,33 @@ import {
   type ChatAttachmentInput,
 } from '@/lib/api'
 
+/**
+ * A family-vocabulary event as it arrives on the `chat:<id>` WS topic
+ * (guidelines ai-features §5 payload table; plan 24 V2 — the backend emits
+ * these natively, no legacy names on the wire).
+ */
 export interface StudyWsEvent {
   type: string
-  delta?: string
+  flow?: string
+  run_id?: string
+  steps?: { id: string; label?: string }[]
+  node?: string
+  label?: string
+  text?: string
   kind?: string
-  phase?: string
+  id?: string
   name?: string
-  argument?: string
-  result?: string | null
   title?: string | null
   status?: string | null
-  start_ms?: number | null
+  args?: string
+  result?: string | null
   duration_ms?: number | null
-  detail?: string
-  message?: string
-  /** Stable machine code (e.g. `ai_not_configured`) for error events. */
+  reason?: 'user' | 'server'
+  partial?: boolean
+  /** Stable machine code (e.g. `ai_not_configured`) for failure events. */
   code?: string
-  trace?: unknown
+  message?: string
+  retryable?: boolean | null
 }
 
 export interface MapStudyEventOptions {
@@ -37,29 +47,28 @@ export function mapStudyEvent(
 ): ChatStreamEvent | null {
   const runId = options.runId
   switch (event.type) {
-    case 'stream_start':
-      return { event: 'flow_started', flow: 'chat', run_id: runId }
-    case 'phase': {
-      const phase = event.phase ?? 'thinking'
+    case 'flow_started':
+      return { event: 'flow_started', flow: event.flow ?? 'chat', run_id: runId }
+    case 'node_started': {
+      const node = event.node ?? 'thinking'
       return {
         event: 'node_started',
-        node: phase,
-        label: options.phaseLabel(phase),
+        node,
+        label: options.phaseLabel(node),
         run_id: runId,
       }
     }
-    case 'stream_delta': {
-      if (!event.delta) {
+    case 'delta': {
+      if (!event.text) {
         return null
       }
       if (event.kind === 'reasoning') {
-        return { event: 'delta', kind: 'reasoning', text: event.delta, run_id: runId }
+        return { event: 'delta', kind: 'reasoning', text: event.text, run_id: runId }
       }
-      return { event: 'delta', kind: 'text', text: event.delta, run_id: runId }
+      return { event: 'delta', kind: 'text', text: event.text, run_id: runId }
     }
     case 'tool_call': {
       const name = event.name ?? ''
-      const id = `${name}@${event.start_ms ?? 0}`
       const explicit = event.status
       const status =
         explicit === 'running' || explicit === 'failed'
@@ -71,26 +80,30 @@ export function mapStudyEvent(
               : 'running'
       return {
         event: 'tool_call',
-        id,
+        id: event.id ?? `${name}@0`,
         name,
         title: event.title ?? undefined,
         status,
-        args: event.argument,
+        args: event.args,
         result: event.result ?? undefined,
         durationMs: event.duration_ms ?? undefined,
         run_id: runId,
       }
     }
-    case 'assistant_message':
+    case 'flow_finished':
       return { event: 'flow_finished', run_id: runId }
-    case 'stream_interrupted':
-      return { event: 'flow_finished', run_id: runId }
-    case 'turn_error':
+    case 'flow_interrupted':
+      return {
+        event: 'flow_interrupted',
+        reason: event.reason,
+        partial: event.partial,
+      }
+    case 'flow_failed':
       return {
         event: 'flow_failed',
         code: event.code || 'turn_error',
-        message: event.detail || event.message || 'turn_error',
-        retryable: true,
+        message: event.message || 'turn_error',
+        retryable: event.retryable ?? true,
         run_id: runId,
       }
     default:
@@ -119,11 +132,14 @@ type SendIntent =
 
 /**
  * App-side WS adapter (family plan 11 §3 / ADR-0006): feeds the session
- * topic `chat:<id>` through `mapStudyEvent` into the library's family
- * vocabulary. A per-turn epoch arms on `send` and gates stragglers from a
- * previous turn: nothing but `stream_start` passes before the turn's own
- * start, and every mapped event carries `turn-<epoch>` as `run_id` so the
- * reducer also drops cross-turn leakage.
+ * topic `chat:<id>` — family events straight from the backend — into the
+ * library's client vocabulary. A per-turn epoch arms on `send` and gates
+ * stragglers from a previous turn: nothing but `flow_started` passes
+ * before the turn's own start, and every mapped event carries
+ * `turn-<epoch>` as `run_id` so the reducer also drops cross-turn
+ * leakage. `flow_interrupted` is the one broadcast event that keeps its
+ * server shape (no run id — any mid-turn consumer must learn about the
+ * stop).
  */
 export function createStudyChatTransport(
   deps: StudyChatTransportDeps,
@@ -154,7 +170,7 @@ export function createStudyChatTransport(
       if (!event || typeof event.type !== 'string') {
         return
       }
-      if (event.type === 'stream_start') {
+      if (event.type === 'flow_started') {
         armed = false
         deliver(mapStudyEvent(event, { phaseLabel: deps.phaseLabel, runId: runId() }))
         return

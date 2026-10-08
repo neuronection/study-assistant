@@ -257,8 +257,9 @@ def test_native_tool_call_ws_event_emitted(tmp_path: Path) -> None:
     tool_calls = [e for e in events if e["type"] == "tool_call"]
     assert len(tool_calls) == 1
     assert tool_calls[0]["name"] == "CALC"
-    assert tool_calls[0]["argument"] == "sin(pi/2)"
+    assert tool_calls[0]["args"] == "sin(pi/2)"
     assert tool_calls[0]["result"] == "1"
+    assert tool_calls[0]["id"].startswith("CALC@")
 
 
 def test_gateway_streams_native_tool_call_chunk() -> None:
@@ -410,7 +411,7 @@ class FailingGateway(NativeGateway):
         raise ProviderError(self.resolve(task), "HTTP 500 service unavailable")
 
 
-def test_pre_stream_failure_persists_marker_and_fires_turn_error(
+def test_pre_stream_failure_persists_marker_and_fires_flow_failed(
     tmp_path: Path,
 ) -> None:
     sys.path.insert(0, "tests")
@@ -444,8 +445,8 @@ def test_pre_stream_failure_persists_marker_and_fires_turn_error(
         session = _session(client)
         client.post(f"/api/v1/chat/sessions/{session}/messages", json={"content": "hi"})
         deadline = time.monotonic() + 5.0
-        while not any(e["type"] == "turn_error" for e in events):
-            assert time.monotonic() < deadline, "no turn_error event"
+        while not any(e["type"] == "flow_failed" for e in events):
+            assert time.monotonic() < deadline, "no flow_failed event"
             time.sleep(0.05)
         messages = client.get(f"/api/v1/chat/sessions/{session}/messages").json()
     # The failed turn persists a display-only marker row (uniform chat
@@ -455,4 +456,4 @@ def test_pre_stream_failure_persists_marker_and_fires_turn_error(
     failure = messages[-1]
     assert failure["markdown"] == ""
     assert failure["state"]["turn_failed"]["code"] == "turn_error"
-    assert any(e["type"] == "turn_error" for e in events)
+    assert any(e["type"] == "flow_failed" for e in events)

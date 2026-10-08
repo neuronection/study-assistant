@@ -31,9 +31,11 @@ vi.mock('@/lib/api', async (importOriginal) => {
 
 type ChatEvent = {
   type: string
-  delta?: string
+  flow?: string
+  run_id?: string
+  text?: string
   kind?: string
-  message?: unknown
+  message?: string
 }
 
 let chatHandler: ((payload: unknown) => void) | null = null
@@ -118,9 +120,9 @@ describe('ChatPage full-page streaming', () => {
     )
 
     await waitFor(() => expect(chatHandler).not.toBeNull())
-    chatHandler!({ type: 'stream_start' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: 'The answer is ' } satisfies ChatEvent)
-    chatHandler!({ type: 'stream_delta', delta: '$2x$' } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_started', flow: 'chat' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: 'The answer is ' } satisfies ChatEvent)
+    chatHandler!({ type: 'delta', text: '$2x$' } satisfies ChatEvent)
     expect(await screen.findByText(/The answer is/)).toBeInTheDocument()
 
     listChatMessages.mockResolvedValue([
@@ -133,7 +135,7 @@ describe('ChatPage full-page streaming', () => {
         grounded: true,
       },
     ])
-    chatHandler!({ type: 'assistant_message', message: {} } satisfies ChatEvent)
+    chatHandler!({ type: 'flow_finished' } satisfies ChatEvent)
     await waitFor(() => {
       const bubble = screen.getByText(/answer is/, { exact: false })
       expect(bubble.closest('[data-as="chat-message"][data-status="done"]')).not.toBeNull()

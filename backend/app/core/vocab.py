@@ -66,7 +66,9 @@ class FlowEvent(StrVocab):
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
     DELTA = "delta"
+    TOOL_CALL = "tool_call"
     INTERRUPT = "interrupt"
+    FLOW_INTERRUPTED = "flow_interrupted"
     FLOW_FINISHED = "flow_finished"
     FLOW_FAILED = "flow_failed"
 

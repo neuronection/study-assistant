@@ -11,6 +11,18 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (plan 24 V2)
+- **One family chat vocabulary on the chat stream:** the WS chat topic now
+  carries only the family events (`flow_started` / `node_started` / `delta`
+  / `tool_call` / `flow_finished` / `flow_failed` / `flow_interrupted`) —
+  the legacy names (`stream_start`, `phase`, `stream_delta`,
+  `assistant_message`, `turn_error`, `stream_interrupted`) and the
+  dual-emit mapper are gone, backend and frontend in the same change. A
+  stopped generation now ends through the terminal `flow_interrupted`
+  event (library ≥ 0.51.0), so every consumer of a turn learns about the
+  stop; chat behavior is otherwise unchanged (same reasoning stream, tool
+  cards, stop UX, edit/regenerate).
+
 ### Fixed
 - **Dev-db interpolation could read the prod env file:** `docker compose -f
   docker/docker-compose.dev-db.yml` interpolates `${POSTGRES_DB}` /
