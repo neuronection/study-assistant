@@ -94,6 +94,7 @@ GUARD_FIELDS = (
     "session_key",
     "refresh_key",
     "data_key",
+    "data_key_previous",
     "auth_mode",
     "identity_mode",
     "app_env",

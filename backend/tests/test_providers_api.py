@@ -75,9 +75,8 @@ def test_create_provider_stores_masked_key_not_plaintext(
     provider = create_provider(client)
     assert provider["masked_key"] == "••••1234"
     assert "supersecret" not in str(provider)
-    assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == (
-        "AIza-supersecret-1234"
-    )
+    stored = fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
+    assert stored is not None and stored.startswith("enc::")
 
 
 def test_provider_country_accepts_iso_alpha2_rejects_everything_else(
@@ -111,11 +110,11 @@ def test_update_provider_replaces_key_only_when_given(
     provider = create_provider(client)
     response = client.patch(f"/api/v1/providers/{provider['id']}", json={"name": "Renamed"})
     assert response.status_code == 200
-    assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == (
-        "AIza-supersecret-1234"
-    )
+    kept = fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
+    assert kept is not None and kept.startswith("enc::")
     client.patch(f"/api/v1/providers/{provider['id']}", json={"api_key": "sk-new-9999"})
-    assert fake_keyring.get_password(SERVICE, f"provider:{provider['id']}") == "sk-new-9999"
+    replaced = fake_keyring.get_password(SERVICE, f"provider:{provider['id']}")
+    assert replaced is not None and replaced.startswith("enc::") and replaced != kept
 
 
 def test_delete_provider_removes_key_and_models(

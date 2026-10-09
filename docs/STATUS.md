@@ -6,6 +6,27 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**At-rest cipher on the family module (plan 19 Phase 4, 2026-10-09):**
+`app/core/secrets.py` is now a thin adapter over `nx_auth.atrest`
+(ADR-0027) — keyring-held values (AI provider keys, the web-search key,
+MCP server tokens/env) are sealed as `enc::<fernet-token>` strings under
+the KeyRing `SA_DATA_KEY` before entering the OS keyring; reads are
+plaintext-tolerant (D4 ruling: study's values are keyring-held, there is
+no DB ciphertext surface — **no backfill script**; pre-adoption plaintext
+entries read verbatim, undecryptable values read `None`, never a guess).
+New capability: non-disruptive at-rest key rotation via
+`SA_DATA_KEY_PREVIOUS` (comma-separated, decryption-only) — the
+production boot guard validates every prior entry (fatal on non-Fernet
+material), and the runbook lives in docs/dev/security.md. The legacy
+`CourseAssistant` keyring-service fallback died inside the rewrite (plan
+20 §6c folded into this phase per the owner's no-legacy directive). Kit
+pin: the root pyproject/uv.lock already resolve the v0.3.2 release
+commit (`b133787`, verified in a clean venv); `app/core/keys.py` is the
+new shared §8 resolution point for the at-rest ring. The suite gained a
+hermeticity fix: conftest points `SA_CONFIG_DIR` at a per-process
+scratch dir so the cipher's KeyRing resolution never touches the real
+user config dir.
+
 **One family chat vocabulary (plan 24 V2, 2026-10-09):** the chat stream is
 family-native end to end. Backend: graph nodes, the streaming adapter, the
 chat service, and the turn job handler emit the §5 vocabulary directly

@@ -119,12 +119,15 @@ def create_app(
     # boots are unaffected.
     from nx_auth.boot import validate_boot_config
 
+    from .core.keys import data_key_previous
+
     for warning in validate_boot_config(
         production=settings.is_production,
         identity_mode=settings.identity_mode,
         session_key=settings.session_key,
         refresh_key=settings.refresh_key,
         data_key=settings.data_key,
+        data_key_previous=data_key_previous(settings),
         key_env_prefix="SA",
         debug=settings.debug,
         demo_mode=settings.demo_mode,

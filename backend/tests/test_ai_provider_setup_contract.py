@@ -174,7 +174,11 @@ def test_case_1_happy_path_openai_binds_chat_vision_and_stt(
     assert calls == [("openai_compatible", "https://api.openai.com/v1", "sk-live-key")]
     provider = db_session.get(Provider, outcome.provider_id)
     assert provider is not None and provider.preset_key == "openai"
-    assert keyring.get_password(SERVICE, provider.keyring_ref) == "sk-live-key"
+    from app.core.secrets import get_secret
+
+    stored = keyring.get_password(SERVICE, provider.keyring_ref)
+    assert stored is not None and stored.startswith("enc::")
+    assert get_secret(provider.keyring_ref) == "sk-live-key"
     by_id = {m.external_id: m for m in models_of(db_session, provider.id)}
     assert by_id["whisper-1"].caps == ["stt"]
     assert by_id["gpt-5.6-terra"].enabled is True
@@ -226,7 +230,9 @@ def test_case_2_re_setup_appends_the_fetched_catalog_and_dedupes(
 
     provider = db_session.get(Provider, first.provider_id)
     assert provider is not None
-    assert keyring.get_password(SERVICE, provider.keyring_ref) == "sk-second"
+    from app.core.secrets import get_secret
+
+    assert get_secret(provider.keyring_ref) == "sk-second"
     models = models_of(db_session, provider.id)
     assert sorted(m.external_id for m in models) == [
         "gpt-5.6-luna",

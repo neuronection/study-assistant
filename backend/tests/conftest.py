@@ -1,6 +1,7 @@
 import os
 import socket
 import sqlite3
+import tempfile
 from collections.abc import Iterator, Sequence
 from functools import lru_cache
 from pathlib import Path
@@ -11,6 +12,12 @@ from typing import Any
 # production and demand pinned keys. Forced — tests must be hermetic;
 # the boot-guard cases override per-Settings.
 os.environ["SA_APP_ENV"] = "test"
+# Hermetic §8 key resolution: the at-rest cipher resolves its KeyRing
+# through `get_settings()`, so without an explicit config dir the suite
+# would read (or first-run generate!) `auth_keys.json` in the real user
+# config dir. Every Settings-built-from-env points here instead;
+# fixtures that pass an explicit tmp config_dir override it.
+os.environ.setdefault("SA_CONFIG_DIR", tempfile.mkdtemp(prefix="sa-test-config-"))
 
 import fastapi.testclient as fastapi_testclient
 import keyring
@@ -77,6 +84,21 @@ def _reset_native_tools_degradation() -> Iterator[None]:
     _NATIVE_TOOLS_DEGRADED.clear()
     yield
     _NATIVE_TOOLS_DEGRADED.clear()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_atrest_key_material() -> Iterator[None]:
+    """Per-test at-rest key resolution (tests pin/rotate keys between
+    cases; the underlying auth_keys.json in the scratch config dir is
+    shared per process, so untouched tests see one stable key)."""
+    from app.core import keys
+    from app.core import secrets as app_secrets
+
+    keys.reset_keyring_cache()
+    app_secrets.reset_secret_caches()
+    yield
+    keys.reset_keyring_cache()
+    app_secrets.reset_secret_caches()
 
 
 def _block_network() -> None:

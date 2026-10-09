@@ -146,6 +146,10 @@ class Settings(BaseSettings):
     session_key: str | None = None
     refresh_key: str | None = None
     data_key: str | None = None
+    # Prior DATA_KEY values (comma-separated, decryption-only) for
+    # non-disruptive at-rest key rotation — see docs/dev/security.md
+    # "Rotating the at-rest key". New writes always seal under data_key.
+    data_key_previous: str | None = None
 
     @field_validator("identity_mode", mode="before")
     @classmethod

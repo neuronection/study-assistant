@@ -11,6 +11,24 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Security (plan 19 Phase 4)
+- **At-rest secrets now sealed with the family cipher:** values stored in
+  the OS keyring (AI provider keys, the web-search key, MCP server
+  tokens/env) are written as `enc::<fernet-token>` strings under the
+  per-instance `SA_DATA_KEY` (`nx_auth.atrest`, the shared audited
+  implementation) instead of plaintext keyring entries — the keyring
+  stays the only storage. Existing plaintext entries keep reading
+  verbatim (study's values are keyring-held; there is no database
+  ciphertext to migrate), and values that cannot be decrypted read as
+  empty — never a guess.
+- **At-rest key rotation:** set `SA_DATA_KEY_PREVIOUS` (comma-separated)
+  to prior keys to keep old sealed entries readable after swapping
+  `SA_DATA_KEY`; the production boot guard now validates every prior
+  entry too. Runbook: `docs/dev/security.md` "Rotating the at-rest key".
+- The legacy pre-rename `CourseAssistant` keyring-service fallback is
+  gone (plan 20 §6c, folded into this phase): keyring entries written
+  under the old service name are no longer copied forward.
+
 ### Changed (plan 24 V2)
 - **One family chat vocabulary on the chat stream:** the WS chat topic now
   carries only the family events (`flow_started` / `node_started` / `delta`
