@@ -10,7 +10,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .working_dir import read_override
 
 APP_DIR_NAME = "StudyAssistant"
-LEGACY_APP_DIR_NAME = "CourseAssistant"
 
 _DEV_ENVS = ("development", "test", "testing")
 
@@ -60,11 +59,7 @@ def _platform_config_base() -> Path:
 
 
 def default_data_dir() -> Path:
-    data_dir = _platform_base() / APP_DIR_NAME
-    legacy = data_dir.with_name(LEGACY_APP_DIR_NAME)
-    if legacy.is_dir() and not data_dir.exists():
-        legacy.rename(data_dir)
-    return data_dir
+    return _platform_base() / APP_DIR_NAME
 
 
 def default_config_dir() -> Path:

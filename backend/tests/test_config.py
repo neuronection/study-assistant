@@ -66,44 +66,14 @@ def test_data_dir_macos(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     assert default_data_dir() == tmp_path / "Library" / "Application Support" / "StudyAssistant"
 
 
-def test_data_dir_migrates_legacy_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("sys.platform", "linux")
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
-    legacy = tmp_path / "CourseAssistant"
-    (legacy / "blobs").mkdir(parents=True)
-    (legacy / "app.db").write_bytes(b"db")
-
-    assert default_data_dir() == tmp_path / "StudyAssistant"
-    assert not legacy.exists()
-    assert (tmp_path / "StudyAssistant" / "app.db").read_bytes() == b"db"
-    assert (tmp_path / "StudyAssistant" / "blobs").is_dir()
-
-
-def test_data_dir_keeps_new_dir_when_legacy_also_exists(
+def test_data_dir_is_a_pure_path_computation(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr("sys.platform", "linux")
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
-    legacy = tmp_path / "CourseAssistant"
-    legacy.mkdir()
-    (legacy / "old.db").write_bytes(b"old")
-    current = tmp_path / "StudyAssistant"
-    current.mkdir()
-    (current / "app.db").write_bytes(b"new")
-
-    assert default_data_dir() == current
-    assert legacy.exists()
-    assert (legacy / "old.db").read_bytes() == b"old"
-    assert (current / "app.db").read_bytes() == b"new"
-
-
-def test_data_dir_untouched_without_legacy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr("sys.platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
 
     assert default_data_dir() == tmp_path / "StudyAssistant"
     assert not (tmp_path / "StudyAssistant").exists()
-    assert not (tmp_path / "CourseAssistant").exists()
 
 
 def test_unrelated_env_file_keys_are_ignored(

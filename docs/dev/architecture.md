@@ -104,10 +104,8 @@ without touching app code.
   desktop/tests — web mode runs PostgreSQL per ADR-0022; `blobs/`, `cache/`,
   `thumbnails/`, `backups/`, `backup-settings.json`, `last-recovery.json`). Config
   via `SA_*` env vars; API keys only in the OS keyring
-  (`StudyAssistant/provider:{id}`). A pre-rename `CourseAssistant` data dir is
-  renamed automatically on first launch (when the new one doesn't exist yet);
-  keyring entries under the legacy `CourseAssistant` service are copied to
-  `StudyAssistant` on first read (legacy entries stay in place as a backup).
+  (`StudyAssistant/provider:{id}`), each value sealed under
+  `SA_DATA_KEY` with the family cipher (`nx_auth.atrest`, plan 19).
 
 ## Security posture
 

@@ -162,8 +162,7 @@ pnpm dev --reset --all --yes    # also delete backups/
 
 `--reset` works the same on `pnpm webapp` and `pnpm app`. It resolves the exact
 location from the `SA_DATA_DIR` environment variable, else `XDG_DATA_HOME`, else
-`~/.local/share/StudyAssistant`. If an old `~/.local/share/CourseAssistant`
-folder exists (pre-rename), it is renamed automatically on the next launch.
+`~/.local/share/StudyAssistant`.
 **API keys are not here** — they live in your
 operating system's keyring, referenced by the provider rows in `app.db`.
 

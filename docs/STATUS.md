@@ -19,7 +19,11 @@ New capability: non-disruptive at-rest key rotation via
 production boot guard validates every prior entry (fatal on non-Fernet
 material), and the runbook lives in docs/dev/security.md. The legacy
 `CourseAssistant` keyring-service fallback died inside the rewrite (plan
-20 §6c folded into this phase per the owner's no-legacy directive). Kit
+20 §6c folded into this phase per the owner's no-legacy directive), and
+the legacy `CourseAssistant` **data-dir rename** went with it in its own
+commit (`LEGACY_APP_DIR_NAME` + the first-launch rename in
+`default_data_dir` deleted; a pre-rename data dir is no longer migrated
+— move or re-link it manually). Kit
 pin: the root pyproject/uv.lock already resolve the v0.3.2 release
 commit (`b133787`, verified in a clean venv); `app/core/keys.py` is the
 new shared §8 resolution point for the at-rest ring. The suite gained a

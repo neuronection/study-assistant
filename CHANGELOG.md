@@ -28,6 +28,10 @@ Release history from before the public launch lives in the
 - The legacy pre-rename `CourseAssistant` keyring-service fallback is
   gone (plan 20 §6c, folded into this phase): keyring entries written
   under the old service name are no longer copied forward.
+- The pre-rename `CourseAssistant` data directory is no longer migrated:
+  `default_data_dir()` is a pure path computation now (plan 20 §6c,
+  folded into this phase). A machine still on the old directory name
+  moves or re-links it manually (`SA_DATA_DIR` also relocates it).
 
 ### Changed (plan 24 V2)
 - **One family chat vocabulary on the chat stream:** the WS chat topic now
