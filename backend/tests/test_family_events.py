@@ -15,7 +15,8 @@ from typing import Any
 from fastapi.testclient import TestClient
 from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway
 
-from app.ai.flow_events import (
+from app.ai.flow_events import FlowEvent
+from app.ai.flow_events_chat import (
     CHAT_FLOW_STEPS,
     delta_event,
     flow_failed_event,
@@ -25,7 +26,6 @@ from app.ai.flow_events import (
     node_started_event,
     tool_call_event,
 )
-from app.core.vocab import FlowEvent
 from app.main import create_app
 
 FAMILY_TYPES = frozenset(member.value for member in FlowEvent)

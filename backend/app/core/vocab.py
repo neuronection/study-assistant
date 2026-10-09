@@ -61,18 +61,6 @@ class ChatProposalStatus(StrVocab):
         return (cls.APPROVED, cls.DISMISSED, cls.EXECUTED, cls.STALE, cls.CONFLICT)
 
 
-class FlowEvent(StrVocab):
-    FLOW_STARTED = "flow_started"
-    NODE_STARTED = "node_started"
-    NODE_FINISHED = "node_finished"
-    DELTA = "delta"
-    TOOL_CALL = "tool_call"
-    INTERRUPT = "interrupt"
-    FLOW_INTERRUPTED = "flow_interrupted"
-    FLOW_FINISHED = "flow_finished"
-    FLOW_FAILED = "flow_failed"
-
-
 class DiscoveryKind(StrVocab):
     VIDEO = "video"
     COURSE = "course"

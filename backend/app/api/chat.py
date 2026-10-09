@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ..ai.flow_events import flow_failed_event
+from ..ai.flow_events_chat import flow_failed_event
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS

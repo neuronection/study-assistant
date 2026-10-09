@@ -17,7 +17,7 @@ from ...ai.contracts.contracts import (
     Constraint,
     ValidationResult,
 )
-from ...ai.flow_events import (
+from ...ai.flow_events_chat import (
     flow_finished_event,
     flow_interrupted_event,
     tool_call_event,

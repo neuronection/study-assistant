@@ -67,7 +67,7 @@ from ...services.platform.chat import (
 )
 from ..chat_models import degrade_native_tools
 from ..contracts.contracts import ValidationResult, validate
-from ..flow_events import flow_started_event, node_started_event, tool_call_event
+from ..flow_events_chat import flow_started_event, node_started_event, tool_call_event
 from ..gateway import LLMGateway, Message, ProviderError, is_tool_unsupported_error
 from ..tools import extract_tool_calls, run_tool_line, strip_tool_lines
 
