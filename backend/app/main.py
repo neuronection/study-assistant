@@ -31,7 +31,7 @@ from .core.events import EventBus
 from .core.logging import setup_logging
 from .jobs.registry import build_job_runner
 from .jobs.runner import JobRunner
-from .middleware import ProfileBindingMiddleware, SpaStaticFiles
+from .middleware import ProfileBindingMiddleware, SpaStaticFiles, mount_rate_limiting
 from .ocr.gateway_ocr import GatewayOcr
 from .seeds import run_startup_seeds
 from .services.platform.backup import (
@@ -161,6 +161,11 @@ def create_app(
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             allow_headers=["content-type", "x-profile-id", "x-csrf-token"],
         )
+    # Kit limiter + security headers (plan 21, new coverage): registered
+    # before profile binding so session enforcement stays the outermost
+    # middleware — headers wrap the limiter, so a 429 still carries the
+    # hardened header set.
+    mount_rate_limiting(app, settings)
     app.state.settings = settings
     app.state.bus = EventBus()
     app.state.engine = make_engine(settings.db_url)

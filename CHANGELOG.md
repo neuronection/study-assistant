@@ -11,6 +11,21 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Security (plan 21)
+- **App-level rate limiting + hardened response headers (new coverage;
+  kit v0.4.0, re-pinned `eb3499103ce91cb52e3282c72129f72ed419f3bb`).**
+  Study previously had no limits above the auth surface and no response
+  hardening. The kit's family limiter + `SecurityHeadersMiddleware` now
+  mount with study's policy: `SA_RATELIMIT_{ENABLED,AUTH,AUTH_EMAIL,AI,
+  MCP,DEFAULT}` ceilings (requests/minute; `0` disables a general
+  bucket), login-shaped endpoints → AUTH, AI surfaces (`/ai`, `/chat`) →
+  AI, other `/api/` → DEFAULT, trusted-proxy per-IP identity, and the
+  family header baseline with the web/desktop CSP split (`'unsafe-eval'`
+  only for the valid per-boot `?shell=` marker — the desktop shell
+  document). New `tests/test_rate_limit.py` +
+  `tests/test_security_headers.py` pin the R1–R7 / H1–H3 matrix rows as
+  contract cases (§18.19–22).
+
 ### Security (plan 19 Phase 4)
 - **At-rest secrets now sealed with the family cipher:** values stored in
   the OS keyring (AI provider keys, the web-search key, MCP server

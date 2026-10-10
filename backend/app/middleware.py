@@ -2,17 +2,25 @@
 
 `ProfileBindingMiddleware` implements the X-Profile-Id ownership binding
 (identity-auth §15); `SpaStaticFiles` serves the built SPA with an
-index.html fallback. `create_app` registers both.
+index.html fallback. Rate limiting and security headers are the kit's
+(plan 21) — `mount_rate_limiting` mounts both with study's policy.
+`create_app` registers them.
 """
 
 from __future__ import annotations
 
+import hmac
 import json
+from collections.abc import Callable
 from typing import Any
 
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from nx_auth.headers import HeaderPolicy, SecurityHeadersMiddleware, desktop_csp, web_csp
+from nx_auth.ratelimit import InMemoryCounter, RateLimitPolicy, client_ip, mount_rate_limit
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .core.config import Settings
 from .core.profile_context import (
     reset_active_profile,
     reset_active_user,
@@ -25,6 +33,76 @@ from .services.platform.profiles import (
     last_used_profile,
     touch_last_used,
 )
+
+# Login-shaped endpoints ride the AUTH bucket (career's rule, family law
+# since plan 21); AI surfaces (the gateway-backed /ai + /chat routes)
+# ride AI; every other /api/ path rides DEFAULT.
+_AUTH_BUCKET_SUFFIXES = ("/auth/login", "/auth/register", "/admin/instance", "/me/password")
+_AI_BUCKET_PREFIXES = ("/api/v1/ai", "/api/v1/chat")
+
+
+def api_bucket_for(scope: dict[str, Any]) -> str | None:
+    """Route an API request to its family bucket (None = untouched)."""
+    path: str = scope.get("path", "")
+    if not path.startswith("/api/"):
+        return None
+    if path.endswith(_AUTH_BUCKET_SUFFIXES):
+        return "AUTH"
+    if path.startswith(_AI_BUCKET_PREFIXES):
+        return "AI"
+    return "DEFAULT"
+
+
+def client_identity(scope: dict[str, Any]) -> str:
+    """Client key for per-IP limits — trusted hops only (§7/§16).
+
+    `SA_TRUSTED_PROXY_COUNT` (default 0) says how many rightmost
+    `X-Forwarded-For` hops are believed; a client-supplied header is
+    trusted only as far as the proxy chain is explicitly trusted.
+    """
+    settings: Settings = scope["app"].state.settings
+    client = scope.get("client")
+    headers = scope.get("headers") or []
+    parsed = {k.decode().lower(): v.decode() for k, v in headers}
+    return client_ip(
+        client[0] if client else None,
+        parsed.get("x-forwarded-for", ""),
+        settings.trusted_proxy_count,
+    )
+
+
+def _shell_marker(app: FastAPI) -> Callable[[str | None], bool]:
+    """The per-boot `?shell=` secret marks the desktop shell document
+    (identity-auth §11 — the same secret the X-Shell-Token gate checks)."""
+
+    def marker(value: str | None) -> bool:
+        secret = getattr(getattr(app.state, "auth", None), "shell_secret", None)
+        if not secret or not value:
+            return False
+        return hmac.compare_digest(str(value), str(secret))
+
+    return marker
+
+
+def mount_rate_limiting(app: FastAPI, settings: Settings) -> None:
+    """Mount the kit limiter + security headers with study's policy.
+
+    In-memory counter: study's single-process topology (desktop +
+    self-host web). The policy closes over the *app's* Settings so the
+    §16 knobs route from `.env` and OS env identically (D5).
+    """
+    policy = RateLimitPolicy(
+        ceiling=lambda bucket: getattr(settings, f"ratelimit_{bucket.lower()}"),
+        enabled=lambda: settings.ratelimit_enabled,
+        counter=InMemoryCounter(),
+        trusted_proxy_count=settings.trusted_proxy_count,
+    )
+    mount_rate_limit(app, policy=policy, bucket_for=api_bucket_for)
+    app.add_middleware(
+        SecurityHeadersMiddleware,
+        policy=HeaderPolicy(web_csp=web_csp(), desktop_csp=desktop_csp()),
+        desktop_marker=_shell_marker(app),
+    )
 
 PROFILE_BIND_EXEMPT_PREFIXES = (
     "/api/v1/auth",

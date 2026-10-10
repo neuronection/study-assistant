@@ -92,6 +92,22 @@ would require a full keyring census first and stays tracked with plan
   `SA_REGISTRATION_ENABLED`, `SA_TRUSTED_PROXY_COUNT`, `SA_RATELIMIT_*`)
   reach the kit exactly like OS-environment ones (OS env wins per key).
   Pinned by `tests/test_sec16_env.py` (§18.14).
+- **App-level rate limiting + hardened response headers (plan 21).** The
+  kit's family limiter (`nx_auth.ratelimit`) mounts with study's policy:
+  in-memory counter (single-process topology), Settings-routed
+  `SA_RATELIMIT_{ENABLED,AUTH,AUTH_EMAIL,AI,MCP,DEFAULT}` ceilings read
+  per request (`0` disables a general bucket; the AUTH/AUTH_EMAIL knobs
+  also feed the kit's auth-flow limiters, which keep their F8 `>= 1`
+  floor), login-shaped endpoints ride AUTH, the AI surfaces
+  (`/api/v1/ai/*`, `/api/v1/chat/*`) ride AI, other `/api/` paths ride
+  DEFAULT, and per-IP identity trusts only rightmost
+  `SA_TRUSTED_PROXY_COUNT` hops of `X-Forwarded-For`. Responses carry the
+  family baseline (`nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  CSP with `frame-ancestors 'none'`) from `nx_auth.headers` — web CSP
+  strict, the desktop shell document (valid per-boot `?shell=` token)
+  gets the `'unsafe-eval'` variant for the pywebview bridge. Pinned by
+  `tests/test_rate_limit.py` + `tests/test_security_headers.py`
+  (§18.19–22).
 - **Production boot guards.** `nx_auth.boot.validate_boot_config` runs at
   app construction and aborts production boots (`SA_APP_ENV=production`,
   the fail-safe default) on partial/weak key pins, non-Fernet

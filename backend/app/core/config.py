@@ -133,8 +133,15 @@ class Settings(BaseSettings):
     registration_enabled: bool = True
     cookie_secure: bool = False
     trusted_proxy_count: int = 0
+    # §16 rate-limit ceilings (plan 21: the kit's family limiter; units
+    # are requests per minute, 0 disables a bucket, ENABLED stops all).
+    # AUTH/AUTH_EMAIL also feed the kit's auth limiters (§7).
+    ratelimit_enabled: bool = True
     ratelimit_auth: int = 10
     ratelimit_auth_email: int = 30
+    ratelimit_ai: int = 30
+    ratelimit_mcp: int = 120
+    ratelimit_default: int = 240
 
     # --- §8 key pins (optional — generated 0600 auth_keys.json when
     # unset; all three or none, resolved through KeyRing.load_for).
