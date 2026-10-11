@@ -83,7 +83,15 @@ export default async function setup() {
       '--data-dir',
       dataDir,
     ],
-    { cwd: BACKEND, stdio: ['ignore', backendLog, backendLog], detached: true }
+    {
+      cwd: BACKEND,
+      stdio: ['ignore', backendLog, backendLog],
+      detached: true,
+      // Plan 21: the e2e suite drives chat/material flows far harder
+      // than the per-minute ceilings allow (career's run-e2e.sh has the
+      // same contract — limits are unit-pinned, not e2e-pinned).
+      env: { ...process.env, SA_RATELIMIT_ENABLED: 'false', SA_RATELIMIT_AI: '0' },
+    }
   )
   const baseUrl = `http://127.0.0.1:${backendPort}`
   await waitHealthy(`${baseUrl}/api/v1/health`, 60_000)
