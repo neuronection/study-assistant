@@ -104,6 +104,7 @@ def mount_rate_limiting(app: FastAPI, settings: Settings) -> None:
         desktop_marker=_shell_marker(app),
     )
 
+
 PROFILE_BIND_EXEMPT_PREFIXES = (
     "/api/v1/auth",
     "/api/v1/me",

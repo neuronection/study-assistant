@@ -154,9 +154,7 @@ def test_tool_lines_are_not_streamed_as_text_and_final_answer_streams(
         wait_for_assistant(h.client, h.session_id)
         events = drain_until(ws, {"flow_finished"})
     joined = "".join(
-        e["text"]
-        for e in events
-        if e.get("type") == "delta" and e.get("kind") != "reasoning"
+        e["text"] for e in events if e.get("type") == "delta" and e.get("kind") != "reasoning"
     )
     assert "CALC" not in joined
     assert "Let me verify." in joined

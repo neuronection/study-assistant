@@ -39,9 +39,7 @@ def install_fake_keyring(monkeypatch: pytest.MonkeyPatch) -> FakeKeyring:
     return fake
 
 
-def pin_data_key(
-    monkeypatch: pytest.MonkeyPatch, data: str, previous: str | None = None
-) -> None:
+def pin_data_key(monkeypatch: pytest.MonkeyPatch, data: str, previous: str | None = None) -> None:
     settings = get_settings()
     monkeypatch.setattr(settings, "session_key", SESSION_TOKEN)
     monkeypatch.setattr(settings, "refresh_key", REFRESH_TOKEN)
@@ -122,9 +120,7 @@ def test_data_key_previous_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
     assert keys.data_key_previous(Settings(data_key_previous=None)) == []
 
 
-def test_boot_guard_receives_previous_ring(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_boot_guard_receives_previous_ring(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import nx_auth.boot as kit_boot
 
     from app.main import create_app
