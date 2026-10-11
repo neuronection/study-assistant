@@ -11,6 +11,14 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (plan 20 S14 residual)
+- **The §4.5 control now knows the entrypoint mode:** the public
+  `GET /api/v1/instance/config` reports `identity_mode` (from the auth
+  kit — public fact, not secret), and the settings Users tab passes
+  `serverIdentity` to `InstanceModeControl` — "Remove login" is blocked
+  with the server reason on server instances instead of being offered
+  and failing at the API. OpenAPI types regenerated (`pnpm api:types`).
+
 ### Security (plan 21)
 - **App-level rate limiting + hardened response headers (new coverage;
   kit v0.4.0, re-pinned `eb3499103ce91cb52e3282c72129f72ed419f3bb`).**

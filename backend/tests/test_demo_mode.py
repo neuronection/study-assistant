@@ -203,6 +203,9 @@ def test_instance_config_is_public_and_profile_exempt(raw_client: TestClient) ->
         "demo_mode": False,
         "auth_mode": "authenticated",
         "registration_enabled": True,
+        # §4 entrypoint mode is public fact — the §4.5 control blocks
+        # "Remove login" on server instances (S14).
+        "identity_mode": "server",
     }
 
 

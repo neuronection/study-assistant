@@ -19,6 +19,7 @@ class InstanceConfigOut(BaseModel):
     demo_mode: bool
     auth_mode: str
     registration_enabled: bool
+    identity_mode: str
 
 
 @router.get("/config", response_model=InstanceConfigOut)
@@ -29,4 +30,8 @@ def get_instance_config(request: Request) -> dict[str, object]:
         "demo_mode": state.demo_mode,
         "auth_mode": effective_auth_mode(state).value,
         "registration_enabled": kit.config.registration_enabled,
+        # The entrypoint mode (§4) is public fact, not secret: the SPA's
+        # §4.5 control needs it to mark server instances as permanently
+        # authenticated ("Remove login" is never offered there).
+        "identity_mode": kit.config.identity_mode,
     }

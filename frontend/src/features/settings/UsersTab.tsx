@@ -100,6 +100,7 @@ export function UsersTab() {
     <div className="space-y-6">
       <InstanceModeControl
         mode={instance.data?.auth_mode === 'open' ? 'open' : 'authenticated'}
+        serverIdentity={instance.data?.identity_mode === 'server'}
         otherUserCount={Math.max(0, (users.data?.length ?? 1) - 1)}
         loading={instance.isLoading}
         error={instance.error ? t('settings.instance.errorGeneric') : null}

@@ -6289,6 +6289,8 @@ export interface components {
             auth_mode: string;
             /** Demo Mode */
             demo_mode: boolean;
+            /** Identity Mode */
+            identity_mode: string;
             /** Registration Enabled */
             registration_enabled: boolean;
         };
