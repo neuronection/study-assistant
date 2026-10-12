@@ -325,6 +325,19 @@ in the family report: provider-logo tiles are text-only (no assistant-ui
 vendor marks yet — promotion candidate), and the chat-side "no model
 assigned" deep-link needs a stable chat error-code contract (open item).
 
+**Plan 26 Phase 2 — setup UI on the library kit (2026-10-13):**
+`ProviderSetupModal` (tiles + guided form), `ReRunSetupDialog` (review) and
+the provider mark now render `@neuronection/assistant-ui` 0.54 components —
+`provider-setup-tiles` (+ `ProviderSetupManualTile` for **Custom**),
+`provider-setup-form` (hosting toggle + country ride `advancedExtra`;
+§15 error copy via `errorLabels` + i18n-interpolated `suspectedVendorHint`),
+`setup-review` (emits the five-bind options body; the wire body keeps its
+four snake_case keys until `bind_decision` lands with the Phase 3 decision
+port) and `provider-logo` (local `ProviderLogo.tsx` deleted; the review
+cards drop their per-card vendor mark). All 13 setup tests unchanged-green
+through the swap; dep pin `^0.51.0` → `^0.54.0` (registry-pinned lockfile,
+publish-ready; `minimumReleaseAgeExclude` gains 0.54.0).
+
 **Plan 78 — COMPLETE (2026-09-18, A–E; ADR-192):** chat proposals adopt the
 family ADR-0015 Class-B contract in full — **A** HITL capability discovery
 (tools catalog `PROPOSE_EDITS`/`PROPOSE_GENERATIONS` entries with the warning

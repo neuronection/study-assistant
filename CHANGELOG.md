@@ -11,6 +11,21 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (plan 26 Phase 2)
+- **Setup UI swaps to the library kit:** `ProviderSetupModal`'s tiles and
+  guided form and `ReRunSetupDialog`'s review now render
+  `@neuronection/assistant-ui` components (`provider-setup-tiles` with the
+  manual tile, `provider-setup-form` with hosting/country riding
+  `advancedExtra` and §15 error-enum copy via `errorLabels`,
+  `setup-review` over the library switch row); the local `ProviderLogo.tsx`
+  and the hand-rolled review `SwitchRow` are deleted in the same commit.
+  The review keeps its four-key snake_case wire body (`bind_decision`
+  arrives with the Phase 3 decision port). Dep pin `^0.51.0` → `^0.54.0`
+  (0.54.0 pending publish — verified against the packed release-candidate
+  tarball: frontend lint + typecheck + 1429/1429 tests + build, backend
+  1407 passed + 4 skipped, byok R1–R7 + alignment gates green;
+  `minimumReleaseAgeExclude` gains 0.54.0).
+
 ### Fixed (plan 20 S14 residual)
 - **The §4.5 control now knows the entrypoint mode:** the public
   `GET /api/v1/instance/config` reports `identity_mode` (from the auth

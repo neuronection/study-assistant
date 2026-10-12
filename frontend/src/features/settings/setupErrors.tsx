@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { ProviderSetupErrorDetail } from '@/lib/api'
 
-const ERROR_CODES = [
+export const ERROR_CODES = [
   'invalid_key',
   'insufficient_credit',
   'new_user_quota',
