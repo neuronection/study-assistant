@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 
-import { McpTab } from './McpTab'
+import { ConnectorsSection } from './ConnectorsSection'
 
 const listMcpInfo = vi.fn()
 
@@ -18,12 +18,12 @@ function renderTab() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <McpTab />
+      <ConnectorsSection />
     </QueryClientProvider>,
   )
 }
 
-describe('McpTab', () => {
+describe('ConnectorsSection', () => {
   test('renders the launch command and the read-only tool list', async () => {
     listMcpInfo.mockResolvedValue({
       command: 'python -m studyassistant mcp',

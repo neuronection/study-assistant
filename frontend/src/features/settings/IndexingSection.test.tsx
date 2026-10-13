@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { SearchTab } from './SearchTab'
+import { IndexingSection } from './IndexingSection'
 
 const getProfilePreferences = vi.fn()
 const updateProfilePreferences = vi.fn()
@@ -19,12 +19,12 @@ function renderTab() {
   })
   return render(
     <QueryClientProvider client={client}>
-      <SearchTab />
+      <IndexingSection />
     </QueryClientProvider>
   )
 }
 
-describe('SearchTab', () => {
+describe('IndexingSection', () => {
   beforeEach(() => {
     getProfilePreferences.mockClear()
     updateProfilePreferences.mockClear()

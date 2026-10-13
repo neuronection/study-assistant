@@ -8,9 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { listMcpInfo } from '@/lib/api'
 import { McpConnectorsCard } from './McpConnectorsCard'
-import { WebSourcesCard } from './WebSourcesCard'
 
-export function McpTab() {
+// Tools → connectors section (ADR-0033, domain tools.connectors): MCP client
+// connectors plus the read-only MCP resource server info card. Web sources
+// moved to their own tools section (tools.web-sources) in plan 27 Phase 2.
+export function ConnectorsSection() {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const info = useQuery({ queryKey: ['mcp-info'], queryFn: listMcpInfo })
@@ -31,7 +33,6 @@ export function McpTab() {
 
   return (
     <div className="space-y-4">
-      <WebSourcesCard />
       <McpConnectorsCard />
       <header>
         <h2 className="text-sm font-medium">{t('settings.mcpTitle')}</h2>

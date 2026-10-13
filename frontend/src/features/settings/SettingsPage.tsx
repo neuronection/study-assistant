@@ -1,43 +1,90 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   Database,
-  Globe,
   Settings,
   SlidersHorizontal,
   Sparkles,
   Terminal,
   Users as UsersIcon,
+  Wrench,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { SettingsShell } from '@/components/ui/settings-shell'
 import { getCurrentUser } from '@/lib/auth-session'
+import { ConnectorsSection } from './ConnectorsSection'
 import { DataTab } from './DataTab'
 import { DeveloperTab } from './DeveloperTab'
+import { DiscoveryCard } from './DiscoveryCard'
 import { GeneralTab } from './GeneralTab'
-import { McpTab } from './McpTab'
+import { IndexingSection } from './IndexingSection'
 import { ModelsTab } from './ModelsTab'
 import { ProvidersTab } from './ProvidersTab'
-import { SearchTab } from './SearchTab'
+import { SearchProviderCard } from './SearchProviderCard'
 import { SkillsTab } from './SkillsTab'
 import { TasksTab } from './TasksTab'
 import { UsersTab } from './UsersTab'
+import { WebSourcesCard } from './WebSourcesCard'
 
-const TABS = ['general', 'ai', 'search', 'data', 'users', 'developer'] as const
-type Tab = (typeof TABS)[number]
+// Settings structure follows the family contract (contracts/settings-map.json,
+// ADR-0033): the AI tab hosts exactly ai.* domains; web search, discovery,
+// web sources, connectors, indexing and skills are tools.* and live in the
+// tools tab. The arrays are exported for the settings-map conformance test.
+export const SETTINGS_TABS = [
+  'general',
+  'ai',
+  'tools',
+  'data',
+  'users',
+  'developer',
+] as const
+type Tab = (typeof SETTINGS_TABS)[number]
 
-const AI_SECTIONS = ['providers', 'models', 'tasks', 'skills', 'mcp'] as const
-type AiSection = (typeof AI_SECTIONS)[number]
+export const AI_TAB_SECTIONS = ['providers', 'models', 'tasks'] as const
+type AiSection = (typeof AI_TAB_SECTIONS)[number]
+
+export const TOOLS_TAB_SECTIONS = [
+  'web-search',
+  'discovery',
+  'web-sources',
+  'connectors',
+  'indexing',
+  'skills',
+] as const
+type ToolsSection = (typeof TOOLS_TAB_SECTIONS)[number]
+
+type Section = AiSection | ToolsSection
+
+// Legacy deep links keep working (INV-6): the former top-level `search` tab
+// (embeddings + OCR) folded into tools → indexing, and the AI tab's former
+// skills / mcp sections moved to tools (plan 27 Phase 2).
+const LEGACY_TAB_REDIRECTS: Record<string, { tab: Tab; section?: Section }> = {
+  search: { tab: 'tools', section: 'indexing' },
+}
+
+const LEGACY_SECTION_REDIRECTS: Record<string, { tab: Tab; section: Section }> = {
+  'ai:skills': { tab: 'tools', section: 'skills' },
+  'ai:mcp': { tab: 'tools', section: 'connectors' },
+}
 
 const TAB_ICONS = {
   general: SlidersHorizontal,
   ai: Sparkles,
-  search: Globe,
+  tools: Wrench,
   data: Database,
   users: UsersIcon,
   developer: Terminal,
 } as const satisfies Record<Tab, typeof SlidersHorizontal>
+
+const SECTIONS_PER_TAB: Record<Tab, readonly string[]> = {
+  general: [],
+  ai: AI_TAB_SECTIONS,
+  tools: TOOLS_TAB_SECTIONS,
+  data: [],
+  users: [],
+  developer: [],
+}
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -46,28 +93,33 @@ export function SettingsPage() {
     tab?: string
     section?: string
   }
-  const tab: Tab = (TABS as readonly string[]).includes(search.tab ?? '')
-    ? (search.tab as Tab)
-    : 'general'
-  const section: AiSection = (AI_SECTIONS as readonly string[]).includes(
-    search.section ?? '',
-  )
-    ? (search.section as AiSection)
-    : 'providers'
 
-  // The Users tab is admin-only (identity-auth §12): hidden — and
+  // Users tab is admin-only (identity-auth §12): hidden — and
   // unreachable via `?tab=users` — for everyone else.
   const allowedTabs: Tab[] = getCurrentUser()?.is_admin
-    ? [...TABS]
-    : TABS.filter((key) => key !== 'users')
-  const activeTab: Tab = allowedTabs.includes(tab) ? tab : 'general'
+    ? [...SETTINGS_TABS]
+    : SETTINGS_TABS.filter((key) => key !== 'users')
 
-  const open = (next: Tab, nextSection?: AiSection) =>
+  const redirect = LEGACY_TAB_REDIRECTS[search.tab ?? '']
+  const sectionRedirect =
+    !redirect && search.section ? LEGACY_SECTION_REDIRECTS[`${search.tab}:${search.section}`] : undefined
+  const requestedTab: Tab = redirect || sectionRedirect
+    ? (redirect ?? sectionRedirect!).tab
+    : (SETTINGS_TABS as readonly string[]).includes(search.tab ?? '')
+      ? (search.tab as Tab)
+      : 'general'
+  const activeTab: Tab = allowedTabs.includes(requestedTab) ? requestedTab : 'general'
+
+  const sections = SECTIONS_PER_TAB[activeTab]
+  const requestedSection = redirect?.section ?? sectionRedirect?.section ?? search.section ?? ''
+  const activeSection: string = sections.includes(requestedSection)
+    ? requestedSection
+    : sections[0]
+
+  const open = (next: Tab, nextSection?: Section) =>
     void navigate({
       to: '/settings',
-      search: nextSection
-        ? { tab: next, section: nextSection }
-        : { tab: next },
+      search: nextSection ? { tab: next, section: nextSection } : { tab: next },
     })
 
   const nav = allowedTabs.map((key) => ({
@@ -77,7 +129,7 @@ export function SettingsPage() {
     description: t(`settings.nav.${key}Desc`),
   }))
 
-  const sectionTabs = AI_SECTIONS.map((key) => ({
+  const sectionTabs = sections.map((key) => ({
     value: key,
     label: t(`settings.tabs.${key}`),
   }))
@@ -86,7 +138,7 @@ export function SettingsPage() {
     <div className="mx-auto max-w-6xl p-8">
       <SettingsShell
         nav={nav}
-        active={tab}
+        active={activeTab}
         onNavigate={(id) => open(id as Tab)}
         header={{ icon: Settings, title: t('settings.title') }}
         navClassName="lg:top-0 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
@@ -98,21 +150,28 @@ export function SettingsPage() {
               {t(`settings.nav.${activeTab}Desc`)}
             </p>
           </div>
-          {activeTab === 'ai' ? (
+          {sections.length > 0 ? (
             <SegmentedTabs
-              ariaLabel={t('settings.aiSectionsAria')}
+              ariaLabel={t(`settings.${activeTab}SectionsAria`)}
               items={sectionTabs}
-              value={section}
-              onValueChange={(next) => open('ai', next as AiSection)}
+              value={activeSection}
+              onValueChange={(next) => open(activeTab, next as Section)}
             />
           ) : null}
           {activeTab === 'general' ? <GeneralTab /> : null}
-          {activeTab === 'ai' && section === 'providers' ? <ProvidersTab /> : null}
-          {activeTab === 'ai' && section === 'models' ? <ModelsTab /> : null}
-          {activeTab === 'ai' && section === 'tasks' ? <TasksTab /> : null}
-          {activeTab === 'ai' && section === 'skills' ? <SkillsTab /> : null}
-          {activeTab === 'ai' && section === 'mcp' ? <McpTab /> : null}
-          {activeTab === 'search' ? <SearchTab /> : null}
+          {activeTab === 'ai' && activeSection === 'providers' ? <ProvidersTab /> : null}
+          {activeTab === 'ai' && activeSection === 'models' ? <ModelsTab /> : null}
+          {activeTab === 'ai' && activeSection === 'tasks' ? <TasksTab /> : null}
+          {activeTab === 'tools' && activeSection === 'web-search' ? (
+            <SearchProviderCard />
+          ) : null}
+          {activeTab === 'tools' && activeSection === 'discovery' ? <DiscoveryCard /> : null}
+          {activeTab === 'tools' && activeSection === 'web-sources' ? <WebSourcesCard /> : null}
+          {activeTab === 'tools' && activeSection === 'connectors' ? (
+            <ConnectorsSection />
+          ) : null}
+          {activeTab === 'tools' && activeSection === 'indexing' ? <IndexingSection /> : null}
+          {activeTab === 'tools' && activeSection === 'skills' ? <SkillsTab /> : null}
           {activeTab === 'data' ? <DataTab /> : null}
           {activeTab === 'users' ? <UsersTab /> : null}
           {activeTab === 'developer' ? <DeveloperTab /> : null}

@@ -13,7 +13,7 @@ import { getProfilePreferences, updateProfilePreferences } from '@/lib/api'
 
 const MAX_EDGE_OPTIONS = [0, 1024, 1568, 2048] as const
 
-export function SearchTab() {
+export function IndexingSection() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const preferences = useQuery({

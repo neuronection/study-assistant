@@ -418,6 +418,37 @@ describe('SettingsPage', () => {
     )
   })
 
+  test('web search and discovery live under the tools tab, not under AI providers', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
+    await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    // tools.* domains never render under the ai tab (ADR-0033 INV-2)
+    expect(screen.queryByText('Web search provider')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('discovery-card')).not.toBeInTheDocument()
+  })
+
+  test('the tools tab hosts web search by default and discovery via ?section=', async () => {
+    await renderSettings('/settings?tab=tools')
+    expect(await screen.findByText('Web search provider')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Web search' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Discovery' }))
+    expect(await screen.findByTestId('discovery-card')).toBeInTheDocument()
+    expect(screen.queryByText('Web search provider')).not.toBeInTheDocument()
+  })
+
+  test('legacy ?tab=search deep links land on tools → Search & OCR', async () => {
+    await renderSettings('/settings?tab=search')
+    expect(await screen.findByText(/semantic search/i)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Search & OCR' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
   test('rail navigation switches top-level sections', async () => {
     await renderSettings()
     fireEvent.click(screen.getByRole('button', { name: /^data/i }))
@@ -425,8 +456,25 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
   })
 
-  test('the AI section deep-links via ?section=', async () => {
-    listProviders.mockResolvedValue([])
+  test('the tools connectors section deep-links via ?section=', async () => {
+    await renderSettings('/settings?tab=tools&section=connectors')
+    expect((await screen.findAllByText(/mcp resource server/i)).length).toBeGreaterThan(0)
+    expect(screen.getByRole('tab', { name: 'Integrations' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  test('legacy AI-section deep links for skills and mcp land in the tools tab', async () => {
+    await renderSettings('/settings?tab=ai&section=skills')
+    expect(await screen.findByText(/named behaviors per task/i)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Skills' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  test('legacy ?tab=ai&section=mcp deep link lands on tools → Integrations', async () => {
     await renderSettings('/settings?tab=ai&section=mcp')
     expect((await screen.findAllByText(/mcp resource server/i)).length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Integrations' })).toHaveAttribute(

@@ -13,8 +13,6 @@ import { useWizardStore } from '@/features/onboarding/wizardStore'
 import { LocalEngines } from './LocalEngines'
 import { ProviderSetupModal } from './ProviderSetupModal'
 import { ReRunSetupDialog } from './ReRunSetupDialog'
-import { SearchProviderCard } from './SearchProviderCard'
-import { DiscoveryCard } from './DiscoveryCard'
 import { useConfirm } from '@/lib/use-confirm'
 import { ProviderFormDialog } from './ProviderFormDialog'
 
@@ -169,8 +167,6 @@ export function ProvidersTab() {
           </div>
         </div>
       ) : null}
-      <SearchProviderCard />
-      <DiscoveryCard />
       {setupOpen ? <ProviderSetupModal onClose={() => setSetupOpen(false)} /> : null}
       {reSetupProvider ? (
         <ReRunSetupDialog provider={reSetupProvider} onClose={() => setReSetupProvider(null)} />
