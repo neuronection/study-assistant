@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "contract": "search-providers",
+  "updated": "2026-10-14",
+  "purpose": "Family web-search provider catalog (ADR-0035 / plan 28). One description of every supported provider — label, key URL, base-URL rules, extra fields — driving every product's settings UI and validation. Adding a provider = edit this file + extend the adapters in search_providers.py (and the desktop TS reference) in the same wave. Wire behavior is frozen by contracts/search_providers.py and its fixture suite; this file describes configuration surfaces.",
+
+  "providerOrder": ["searxng", "tavily", "brave", "exa", "serper", "google-pse"],
+
+  "providers": {
+    "searxng": {
+      "label": "SearXNG",
+      "requiresKey": false,
+      "keyUrl": null,
+      "baseUrl": null,
+      "baseUrlRequired": true,
+      "baseUrlHint": "https://searx.example.org",
+      "notes": "Self-hosted metasearch — never bundled. Enable the JSON format on the instance (settings.yml: search.formats: [json])."
+    },
+    "tavily": {
+      "label": "Tavily",
+      "requiresKey": true,
+      "keyUrl": "https://app.tavily.com/app/api-key",
+      "baseUrl": "https://api.tavily.com",
+      "baseUrlRequired": false,
+      "baseUrlHint": "https://api.tavily.com",
+      "notes": "Tavily-compatible endpoints work with a custom base URL."
+    },
+    "brave": {
+      "label": "Brave Search",
+      "requiresKey": true,
+      "keyUrl": "https://api-dashboard.search.brave.com/keys",
+      "baseUrl": "https://api.search.brave.com/res/v1",
+      "baseUrlRequired": false,
+      "baseUrlHint": "https://api.search.brave.com/res/v1",
+      "notes": null
+    },
+    "exa": {
+      "label": "Exa",
+      "requiresKey": true,
+      "keyUrl": "https://dashboard.exa.ai/api-keys",
+      "baseUrl": "https://api.exa.ai",
+      "baseUrlRequired": false,
+      "baseUrlHint": "https://api.exa.ai",
+      "notes": null
+    },
+    "serper": {
+      "label": "Serper (Google)",
+      "requiresKey": true,
+      "keyUrl": "https://serper.dev/api-key",
+      "baseUrl": "https://google.serper.dev",
+      "baseUrlRequired": false,
+      "baseUrlHint": "https://google.serper.dev",
+      "notes": null
+    },
+    "google-pse": {
+      "label": "Google Programmable Search",
+      "requiresKey": true,
+      "keyUrl": "https://programmablesearchengine.google.com/controlpanel/create",
+      "baseUrl": "https://www.googleapis.com/customsearch/v1",
+      "baseUrlRequired": false,
+      "baseUrlHint": "https://www.googleapis.com/customsearch/v1",
+      "notes": "Needs a Programmable Search Engine id (cx) with 'Search the entire web' enabled.",
+      "fields": [
+        {
+          "id": "google_cx",
+          "label": "Engine id (cx)",
+          "required": true,
+          "placeholder": "a1b2c3d4e5f6g7h8j"
+        }
+      ]
+    }
+  },
+
+  "limits": {
+    "maxResults": { "default": 5, "min": 1, "max": 10 },
+    "timeoutMs": { "default": 8000, "min": 500, "max": 30000 }
+  }
+}

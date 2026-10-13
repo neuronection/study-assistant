@@ -169,36 +169,126 @@ export async function updateProfilePreferences(
   return json<ProfilePreferences>(response)
 }
 
-export interface SearchProviderInfo {
-  assigned: boolean
+export interface SearchProvider {
+  id: string
+  name: string
+  type: string
+  enabled: boolean
   base_url: string | null
-  flavor: string | null
+  google_cx: string | null
+  key_hint: string | null
+  timeout_ms: number
+  max_results: number
   key_set: boolean
 }
 
-export async function getSearchProvider(): Promise<SearchProviderInfo> {
-  const response = await apiFetch('/api/v1/search-provider')
-  return json<SearchProviderInfo>(response)
+export interface SearchProviderCatalogField {
+  id: string
+  label: string
+  required: boolean
+  placeholder?: string
 }
 
-export async function updateSearchProvider(body: {
-  base_url: string
-  flavor: string
+export interface SearchProviderCatalogEntry {
+  label: string
+  requiresKey: boolean
+  keyUrl: string | null
+  baseUrl: string | null
+  baseUrlRequired: boolean
+  baseUrlHint?: string
+  notes?: string | null
+  fields?: SearchProviderCatalogField[]
+}
+
+export interface SearchProviderCatalog {
+  providerOrder: string[]
+  providers: Record<string, SearchProviderCatalogEntry>
+  limits: {
+    maxResults: { default: number; min: number; max: number }
+    timeoutMs: { default: number; min: number; max: number }
+  }
+}
+
+export interface SearchProviderProbe {
+  status: string
+  latency_ms: number
+  result_count: number | null
+  error: string | null
+}
+
+// Family web-search contract (ADR-0035 / plan 28): an ordered multi-provider
+// list — the first enabled provider that answers wins.
+export async function listSearchProviders(): Promise<SearchProvider[]> {
+  const response = await apiFetch('/api/v1/search-providers')
+  const body = (await json<{ providers: SearchProvider[] }>(response)).providers
+  return body
+}
+
+export async function getSearchProviderCatalog(): Promise<SearchProviderCatalog> {
+  const response = await apiFetch('/api/v1/search-providers/catalog')
+  return json<SearchProviderCatalog>(response)
+}
+
+export async function createSearchProvider(body: {
+  type: string
+  name?: string | null
+  base_url?: string | null
+  google_cx?: string | null
   api_key?: string | null
-}): Promise<SearchProviderInfo> {
-  const response = await apiFetch('/api/v1/search-provider', {
+}): Promise<SearchProvider> {
+  const response = await apiFetch('/api/v1/search-providers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return json<SearchProvider>(response)
+}
+
+export async function updateSearchProvider(
+  providerId: string,
+  body: {
+    name?: string | null
+    type?: string | null
+    base_url?: string | null
+    google_cx?: string | null
+    enabled?: boolean | null
+    api_key?: string | null
+  },
+): Promise<SearchProvider> {
+  const response = await apiFetch(`/api/v1/search-providers/${providerId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  return json<SearchProviderInfo>(response)
+  return json<SearchProvider>(response)
 }
 
-export async function clearSearchProvider(): Promise<void> {
-  const response = await apiFetch('/api/v1/search-provider', { method: 'DELETE' })
+export async function moveSearchProvider(
+  providerId: string,
+  direction: 'up' | 'down',
+): Promise<SearchProvider[]> {
+  const response = await apiFetch(`/api/v1/search-providers/${providerId}/move`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ direction }),
+  })
+  return (await json<{ providers: SearchProvider[] }>(response)).providers
+}
+
+export async function deleteSearchProvider(providerId: string): Promise<void> {
+  const response = await apiFetch(`/api/v1/search-providers/${providerId}`, {
+    method: 'DELETE',
+  })
   if (!response.ok && response.status !== 204) {
-    throw new Error(`clear failed (${response.status})`)
+    throw new Error(`delete failed (${response.status})`)
   }
+}
+
+export async function testSearchProvider(providerId: string): Promise<SearchProviderProbe> {
+  const response = await apiFetch(`/api/v1/search-providers/${providerId}/test`, {
+    method: 'POST',
+  })
+  return json<SearchProviderProbe>(response)
 }
 
 export interface OnboardingState {

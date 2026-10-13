@@ -291,7 +291,9 @@ def test_site_search_scan_uses_provider_and_site_filter(
 ) -> None:
     seen_queries: list[str] = []
 
-    def fake_search(base_url: str, flavor: str, query: str, api_key: str) -> list[dict[str, str]]:
+    def fake_fallback(
+        session: Session, profile_id: str, query: str, *, transport: object = None, limit: int | None = None
+    ) -> list[dict[str, str]]:
         seen_queries.append(query)
         return [
             {
@@ -301,17 +303,11 @@ def test_site_search_scan_uses_provider_and_site_filter(
             }
         ]
 
-    monkeypatch.setattr(ext, "_perform_site_search", fake_search)
+    monkeypatch.setattr(ext, "search_with_fallback", fake_fallback)
 
     profile = Profile(
         user_id=owner.id,
         name="p",
-        preferences={
-            "search_provider": {
-                "base_url": "https://searxng.example",
-                "flavor": "searxng",
-            }
-        },
     )
     db_session.add(profile)
     db_session.commit()

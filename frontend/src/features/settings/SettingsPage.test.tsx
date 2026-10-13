@@ -423,13 +423,13 @@ describe('SettingsPage', () => {
     await renderSettings('/settings?tab=ai&section=providers')
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
     // tools.* domains never render under the ai tab (ADR-0033 INV-2)
-    expect(screen.queryByText('Web search provider')).not.toBeInTheDocument()
+    expect(screen.queryByText('Web search providers')).not.toBeInTheDocument()
     expect(screen.queryByTestId('discovery-card')).not.toBeInTheDocument()
   })
 
   test('the tools tab hosts web search by default and discovery via ?section=', async () => {
     await renderSettings('/settings?tab=tools')
-    expect(await screen.findByText('Web search provider')).toBeInTheDocument()
+    expect(await screen.findByText('Web search providers')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Web search' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -437,7 +437,7 @@ describe('SettingsPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Discovery' }))
     expect(await screen.findByTestId('discovery-card')).toBeInTheDocument()
-    expect(screen.queryByText('Web search provider')).not.toBeInTheDocument()
+    expect(screen.queryByText('Web search providers')).not.toBeInTheDocument()
   })
 
   test('legacy ?tab=search deep links land on tools → Search & OCR', async () => {

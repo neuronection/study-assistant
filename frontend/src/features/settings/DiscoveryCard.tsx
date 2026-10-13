@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   getProfilePreferences,
-  getSearchProvider,
+  listSearchProviders,
   updateProfilePreferences,
   type DiscoverySitePreset,
 } from '@/lib/api'
@@ -23,7 +23,10 @@ export function DiscoveryCard() {
     queryKey: ['profile-preferences'],
     queryFn: getProfilePreferences,
   })
-  const searchProvider = useQuery({ queryKey: ['search-provider'], queryFn: getSearchProvider })
+  const searchProviders = useQuery({
+    queryKey: ['search-providers'],
+    queryFn: listSearchProviders,
+  })
 
   const [webEnabled, setWebEnabled] = useState(true)
   const [youtubeEnabled, setYoutubeEnabled] = useState(true)
@@ -70,7 +73,7 @@ export function DiscoveryCard() {
     onError: (error: Error) => setNotice(error.message),
   })
 
-  const searchAssigned = searchProvider.data?.assigned ?? false
+  const searchAssigned = (searchProviders.data ?? []).some((provider) => provider.enabled)
   const sitePresetsActive = searchAssigned
 
   const updateSite = (index: number, patch: Partial<EditableSite>) => {

@@ -6,7 +6,7 @@ import { GenesisDialog } from './GenesisDialog'
 
 const draftGenesis = vi.fn()
 const createGenesisCourse = vi.fn()
-const getSearchProvider = vi.fn()
+const listSearchProviders = vi.fn()
 const navigate = vi.fn()
 
 vi.mock('@tanstack/react-router', () => ({
@@ -19,7 +19,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     draftGenesis: (...args: unknown[]) => draftGenesis(...(args as [])),
     createGenesisCourse: (...args: unknown[]) => createGenesisCourse(...(args as [])),
-    getSearchProvider: () => getSearchProvider(),
+    listSearchProviders: () => listSearchProviders(),
   }
 })
 
@@ -57,12 +57,10 @@ function renderDialog(onClose: () => void = vi.fn()) {
 describe('GenesisDialog', () => {
   test('web-grounding toggle appears only with a provider and passes ground', async () => {
     draftGenesis.mockResolvedValue(DRAFT)
-    getSearchProvider.mockResolvedValue({
-      assigned: true,
-      base_url: 'https://api.tavily.com',
-      flavor: 'tavily',
-      key_set: true,
-    })
+    listSearchProviders.mockResolvedValue([
+      { id: 'sp1', name: 'Tavily', type: 'tavily', enabled: true, base_url: 'https://api.tavily.com',
+        google_cx: null, key_hint: null, timeout_ms: 8000, max_results: 5, key_set: true },
+    ])
     renderDialog()
     fireEvent.change(await screen.findByPlaceholderText(/Linear algebra/), {
       target: { value: 'Topic' },
@@ -76,12 +74,7 @@ describe('GenesisDialog', () => {
       ground: true,
     }))
 
-    getSearchProvider.mockResolvedValue({
-      assigned: false,
-      base_url: null,
-      flavor: null,
-      key_set: false,
-    })
+    listSearchProviders.mockResolvedValue([])
     draftGenesis.mockClear()
     renderDialog()
     fireEvent.change(await screen.findByPlaceholderText(/Linear algebra/), {
@@ -92,12 +85,7 @@ describe('GenesisDialog', () => {
 
   test('drafts, reviews, edits a chapter and commits with options', async () => {
     draftGenesis.mockResolvedValue(DRAFT)
-    getSearchProvider.mockResolvedValue({
-      assigned: false,
-      base_url: null,
-      flavor: null,
-      key_set: false,
-    })
+    listSearchProviders.mockResolvedValue([])
     createGenesisCourse.mockResolvedValue({
       course: { id: 42, title: 'Linear Algebra for Economists' },
       job_id: 7,
@@ -151,12 +139,7 @@ describe('GenesisDialog', () => {
 
   test('draft requires a topic and the create button needs at least one option', async () => {
     draftGenesis.mockResolvedValue(DRAFT)
-    getSearchProvider.mockResolvedValue({
-      assigned: false,
-      base_url: null,
-      flavor: null,
-      key_set: false,
-    })
+    listSearchProviders.mockResolvedValue([])
     renderDialog()
 
     expect(screen.getByRole('button', { name: 'Draft outline' })).toBeDisabled()

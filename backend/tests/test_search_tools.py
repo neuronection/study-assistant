@@ -15,7 +15,7 @@ from app.ai.contracts.contracts import Constraint, validate
 from app.core.config import Settings
 from app.core.secrets import get_secret
 from app.main import create_app
-from app.search import SEARCH_KEYRING_REF, SearchError, perform_fetch, perform_search
+from app.search import SearchError, perform_fetch, perform_search, provider_key_ref
 
 TAVILY_BODY = {
     "results": [
@@ -57,10 +57,12 @@ def searxng_transport() -> httpx.MockTransport:
     return httpx.MockTransport(handler)
 
 
+TAVILY_CONFIG = {"id": "sp1", "name": "Tavily", "type": "tavily", "enabled": True}
+
+
 def test_perform_search_tavily_flavor() -> None:
     hits = perform_search(
-        "https://api.tavily.com",
-        "tavily",
+        TAVILY_CONFIG,
         "p vs np curriculum",
         api_key="tvly-key",
         transport=tavily_transport(),
@@ -74,8 +76,7 @@ def test_perform_search_tavily_flavor() -> None:
 
 def test_perform_search_searxng_flavor() -> None:
     hits = perform_search(
-        "http://localhost:8888",
-        "searxng",
+        {"id": "sp2", "type": "searxng", "base_url": "http://localhost:8888"},
         "p vs np curriculum",
         transport=searxng_transport(),
     )
@@ -86,15 +87,15 @@ def test_perform_search_errors_surface_as_search_error() -> None:
     error_transport = httpx.MockTransport(lambda request: httpx.Response(503, text="down"))
     with pytest.raises(SearchError):
         perform_search(
-            "https://api.tavily.com",
-            "tavily",
+            TAVILY_CONFIG,
             "query",
+            api_key="k",
             transport=error_transport,
         )
     with pytest.raises(SearchError):
         perform_fetch("ftp://example.com/x")
     with pytest.raises(SearchError):
-        perform_search("https://x", "bogus", "query", transport=tavily_transport())
+        perform_search({"id": "sp3", "type": "bogus"}, "query", transport=tavily_transport())
 
 
 def test_perform_fetch_converts_html_and_truncates() -> None:
@@ -132,41 +133,63 @@ def client(
         yield test_client, gateway, app
 
 
-def test_search_provider_settings_roundtrip(
+def test_search_providers_crud_roundtrip(
     client: tuple[TestClient, ScriptedGateway, FastAPI],
 ) -> None:
     test_client, _gateway, _app = client
     with test_client:
-        empty = test_client.get("/api/v1/search-provider")
+        empty = test_client.get("/api/v1/search-providers")
         assert empty.status_code == 200
-        assert empty.json() == {
-            "assigned": False,
-            "base_url": None,
-            "flavor": None,
-            "key_set": False,
-        }
+        assert empty.json() == {"providers": []}
 
-        saved = test_client.put(
-            "/api/v1/search-provider",
-            json={
-                "base_url": "https://api.tavily.com/",
-                "flavor": "tavily",
-                "api_key": "tvly-secret",
-            },
+        created = test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "name": "Tavily", "api_key": "tvly-secret"},
         )
-        assert saved.status_code == 200, saved.text
-        assert saved.json()["assigned"] is True
-        assert saved.json()["base_url"] == "https://api.tavily.com"
-        assert saved.json()["key_set"] is True
-        assert get_secret(SEARCH_KEYRING_REF) == "tvly-secret"
+        assert created.status_code == 201, created.text
+        provider = created.json()
+        assert provider["type"] == "tavily"
+        assert provider["enabled"] is True
+        assert provider["key_set"] is True
+        assert provider["key_hint"] == "••••cret"
+        assert get_secret(provider_key_ref(provider["id"])) == "tvly-secret"
 
-        fetched = test_client.get("/api/v1/search-provider").json()
-        assert fetched["assigned"] is True
+        # key semantics (desktop): absent keeps the stored key, "" clears it
+        kept = test_client.put(
+            f"/api/v1/search-providers/{provider['id']}",
+            json={"name": "Tavily main"},
+        )
+        assert kept.status_code == 200, kept.text
+        assert kept.json()["key_set"] is True
+        assert kept.json()["name"] == "Tavily main"
 
-        cleared = test_client.delete("/api/v1/search-provider")
-        assert cleared.status_code == 204
-        assert test_client.get("/api/v1/search-provider").json()["assigned"] is False
-        assert get_secret(SEARCH_KEYRING_REF) in (None, "")
+        cleared = test_client.put(
+            f"/api/v1/search-providers/{provider['id']}", json={"api_key": ""}
+        )
+        assert cleared.json()["key_set"] is False
+        assert get_secret(provider_key_ref(provider["id"])) in (None, "")
+
+        # ordered list: move up swaps, delete removes
+        second = test_client.post(
+            "/api/v1/search-providers", json={"type": "searxng", "base_url": "https://searx.example.org"}
+        )
+        assert second.status_code == 201, second.text
+        second_id = second.json()["id"]
+        moved = test_client.post(
+            f"/api/v1/search-providers/{second_id}/move", json={"direction": "up"}
+        )
+        assert [entry["id"] for entry in moved.json()["providers"]] == [second_id, provider["id"]]
+
+        assert (
+            test_client.delete(f"/api/v1/search-providers/{second_id}").status_code == 204
+        )
+        remaining = test_client.get("/api/v1/search-providers").json()["providers"]
+        assert [entry["id"] for entry in remaining] == [provider["id"]]
+
+        catalog = test_client.get("/api/v1/search-providers/catalog")
+        assert catalog.status_code == 200
+        assert "searxng" in catalog.json()["providers"]
+        assert catalog.json()["providers"]["tavily"]["requiresKey"] is True
 
 
 def test_search_provider_settings_reject_bad_input(
@@ -174,16 +197,84 @@ def test_search_provider_settings_reject_bad_input(
 ) -> None:
     test_client, _gateway, _app = client
     with test_client:
-        bad_url = test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "api.tavily.com", "flavor": "tavily"},
+        bad_type = test_client.post("/api/v1/search-providers", json={"type": "google"})
+        assert bad_type.status_code == 422
+        missing_base = test_client.post("/api/v1/search-providers", json={"type": "searxng"})
+        assert missing_base.status_code == 422
+        bad_url = test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "api.tavily.com"},
         )
         assert bad_url.status_code == 422
-        bad_flavor = test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "google"},
+        unknown = test_client.put(
+            "/api/v1/search-providers/nope", json={"name": "x"}
         )
-        assert bad_flavor.status_code == 422
+        assert unknown.status_code == 404
+
+
+def test_search_provider_test_endpoint_probes(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, _gateway, app = client
+    with test_client:
+        app.state.search_transport = searxng_transport()
+        created = test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "searxng", "base_url": "https://searx.example.org"},
+        )
+        provider_id = created.json()["id"]
+        probe = test_client.post(f"/api/v1/search-providers/{provider_id}/test")
+        assert probe.status_code == 200, probe.text
+        assert probe.json()["status"] == "ok"
+        assert probe.json()["result_count"] == 2
+
+
+def test_legacy_single_provider_preference_migrates(
+    client: tuple[TestClient, ScriptedGateway, FastAPI],
+) -> None:
+    test_client, _gateway, app = client
+    with test_client:
+        from sqlalchemy import select
+        from sqlalchemy.orm import sessionmaker
+
+        from app.core.secrets import set_secret
+        from app.domain.models import Profile
+
+        # first request ensures the default profile exists
+        assert test_client.get("/api/v1/search-providers").json() == {"providers": []}
+
+        # seed the pre-plan-28 shape directly: one {base_url, flavor}
+        # preference + the single legacy key slot
+        factory = sessionmaker(bind=app.state.engine)
+        with factory() as db:
+            profile = db.scalars(select(Profile)).first()
+            assert profile is not None
+            profile.preferences = {
+                "search_provider": {
+                    "base_url": "https://searx.example.org/",
+                    "flavor": "searxng",
+                }
+            }
+            db.commit()
+        set_secret("search:api_key", "legacy-secret")
+
+        migrated = test_client.get("/api/v1/search-providers").json()["providers"]
+        assert len(migrated) == 1
+        provider = migrated[0]
+        assert provider["id"] == "legacy"
+        assert provider["type"] == "searxng"
+        assert provider["base_url"] == "https://searx.example.org"
+        assert provider["enabled"] is True
+        assert provider["key_set"] is True
+        assert get_secret(provider_key_ref("legacy")) == "legacy-secret"
+        assert get_secret("search:api_key") in (None, "")
+
+        # the legacy preference key is gone — migration is one-shot
+        factory = sessionmaker(bind=app.state.engine)
+        with factory() as db:
+            profile = db.scalars(select(Profile)).first()
+            assert isinstance(profile.preferences, dict)
+            assert "search_provider" not in profile.preferences
 
 
 def wait_for_assistant(
@@ -226,11 +317,11 @@ def test_chat_search_tool_returns_cited_results(
     test_client, gateway, app = client
     with test_client:
         app.state.search_transport = tavily_transport()
-        saved = test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        saved = test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
-        assert saved.status_code == 200, saved.text
+        assert saved.status_code == 201, saved.text
 
         course_id = make_course(test_client)
         gateway.responses.append("SEARCH p vs np curriculum")
@@ -282,11 +373,11 @@ def test_genesis_grounding_uses_search_provider(
     test_client, gateway, app = client
     with test_client:
         app.state.search_transport = tavily_transport()
-        saved = test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        saved = test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
-        assert saved.status_code == 200
+        assert saved.status_code == 201
         gateway.responses.append(
             json.dumps(
                 {

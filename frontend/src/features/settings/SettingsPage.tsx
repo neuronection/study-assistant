@@ -21,7 +21,7 @@ import { GeneralTab } from './GeneralTab'
 import { IndexingSection } from './IndexingSection'
 import { ModelsTab } from './ModelsTab'
 import { ProvidersTab } from './ProvidersTab'
-import { SearchProviderCard } from './SearchProviderCard'
+import { WebSearchSection } from './WebSearchSection'
 import { SkillsTab } from './SkillsTab'
 import { TasksTab } from './TasksTab'
 import { UsersTab } from './UsersTab'
@@ -163,7 +163,7 @@ export function SettingsPage() {
           {activeTab === 'ai' && activeSection === 'models' ? <ModelsTab /> : null}
           {activeTab === 'ai' && activeSection === 'tasks' ? <TasksTab /> : null}
           {activeTab === 'tools' && activeSection === 'web-search' ? (
-            <SearchProviderCard />
+            <WebSearchSection />
           ) : null}
           {activeTab === 'tools' && activeSection === 'discovery' ? <DiscoveryCard /> : null}
           {activeTab === 'tools' && activeSection === 'web-sources' ? <WebSourcesCard /> : null}

@@ -64,7 +64,7 @@
       "scope": "user (web) / profile (desktop)",
       "adopters": {
         "desktop-assistant": "aligned (section id 'search': ordered multi-provider list)",
-        "study-assistant": "aligned (single provider; multi-instance is the family target shape)",
+        "study-assistant": "aligned (multi-provider family shape since plan 28 Phase 1: ordered providers[] + vendored adapter core, ADR-0035)",
         "career-assistant": "aligned (admin tools tab → web-search section, SearXNG URL)",
         "health-assistant/core": "n/a (no web search yet)"
       }

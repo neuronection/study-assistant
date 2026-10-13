@@ -109,11 +109,11 @@ def test_discover_here_builds_query_from_node_context(
     with test_client:
         app.state.search_transport = tavily_transport()
         assert (
-            test_client.put(
-                "/api/v1/search-provider",
-                json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+            test_client.post(
+                "/api/v1/search-providers",
+                json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
             )
-        ).status_code == 200
+        ).status_code == 201
         enable_web_only(test_client)
 
         course_id = make_course(test_client)
@@ -158,9 +158,9 @@ def test_discover_here_falls_back_to_course_context(
     seen_queries.clear()
     with test_client:
         app.state.search_transport = tavily_transport()
-        test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
         enable_web_only(test_client)
         course_id = make_course(test_client, title="Linear Algebra")
@@ -182,9 +182,9 @@ def test_discover_here_without_course_is_honest(
     test_client, gateway, app = client
     with test_client:
         app.state.search_transport = tavily_transport()
-        test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
         enable_web_only(test_client)
 
@@ -226,9 +226,9 @@ def test_discover_budget_is_two_per_turn(
     test_client, gateway, app = client
     with test_client:
         app.state.search_transport = tavily_transport()
-        test_client.put(
-            "/api/v1/search-provider",
-            json={"base_url": "https://api.tavily.com", "flavor": "tavily"},
+        test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
         )
         enable_web_only(test_client)
         course_id = make_course(test_client)

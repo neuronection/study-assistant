@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { DiscoveryCard } from './DiscoveryCard'
 
 const getProfilePreferences = vi.fn()
-const getSearchProvider = vi.fn()
+const listSearchProviders = vi.fn()
 const updateProfilePreferences = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -13,7 +13,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     getProfilePreferences: () => getProfilePreferences(),
-    getSearchProvider: () => getSearchProvider(),
+    listSearchProviders: () => listSearchProviders(),
     updateProfilePreferences: (body: unknown) => updateProfilePreferences(body),
   }
 })
@@ -38,10 +38,13 @@ function renderCard() {
 
 beforeEach(() => {
   getProfilePreferences.mockReset()
-  getSearchProvider.mockReset()
+  listSearchProviders.mockReset()
   updateProfilePreferences.mockReset()
   getProfilePreferences.mockResolvedValue(PREFS)
-  getSearchProvider.mockResolvedValue({ assigned: true, base_url: 'https://x', flavor: 'tavily', key_set: true })
+  listSearchProviders.mockResolvedValue([
+    { id: 'sp1', name: 'Tavily', type: 'tavily', enabled: true, base_url: 'https://x',
+      google_cx: null, key_hint: null, timeout_ms: 8000, max_results: 5, key_set: true },
+  ])
 })
 
 describe('DiscoveryCard', () => {
@@ -57,7 +60,7 @@ describe('DiscoveryCard', () => {
   })
 
   test('web toggle is honestly disabled without a search provider', async () => {
-    getSearchProvider.mockResolvedValue({ assigned: false, base_url: null, flavor: null, key_set: false })
+    listSearchProviders.mockResolvedValue([])
     renderCard()
     const web = await screen.findByRole('checkbox', { name: /web search/i })
     expect(web).toBeDisabled()

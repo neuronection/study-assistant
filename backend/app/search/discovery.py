@@ -24,10 +24,7 @@ from ..ai.mcp_client import (
 from ..core.secrets import get_secret
 from ..core.vocab import DiscoveryKind
 from ..domain.models import Profile
-from .provider import (
-    SEARCH_KEYRING_REF,
-    search_provider_config,
-)
+from .provider import list_search_providers, provider_key_ref, search_with_fallback_configs
 
 logger = structlog.get_logger(__name__)
 
@@ -77,25 +74,28 @@ class WebSearchProvider(DiscoveryProvider):
     id = "web"
     label = "Web"
 
-    def __init__(self, base_url: str, flavor: str, api_key: str = "", cap_limit: int = 8) -> None:
-        self._base_url = base_url
-        self._flavor = flavor
-        self._api_key = api_key
+    def __init__(
+        self,
+        providers: list[dict[str, object]],
+        keys: dict[str, str],
+        cap_limit: int = 8,
+    ) -> None:
+        self._providers = providers
+        self._keys = keys
         self._cap_limit = cap_limit
 
     def search(
         self, query: str, *, cap: int, transport: httpx.BaseTransport | None = None
     ) -> list[DiscoveryResult]:
-        from .provider import perform_search
-
-        hits = perform_search(
-            self._base_url,
-            self._flavor,
+        hits = search_with_fallback_configs(
+            self._providers,
+            self._keys,
             query,
-            api_key=self._api_key,
             transport=transport,
             limit=min(cap, self._cap_limit),
         )
+        if not hits:
+            return []
         return [
             DiscoveryResult(
                 provider=self.id,
@@ -112,17 +112,15 @@ class SiteSearchProvider(DiscoveryProvider):
     def __init__(
         self,
         site: str,
-        base_url: str,
-        flavor: str,
-        api_key: str = "",
+        providers: list[dict[str, object]],
+        keys: dict[str, str],
         label: str | None = None,
         default_kind: str = DiscoveryKind.COURSE.value,
         cap_limit: int = 8,
     ) -> None:
         self.site = site
-        self._base_url = base_url
-        self._flavor = flavor
-        self._api_key = api_key
+        self._providers = providers
+        self._keys = keys
         self.id = f"site:{site}"
         self.label = label or site
         self._default_kind = default_kind
@@ -131,16 +129,15 @@ class SiteSearchProvider(DiscoveryProvider):
     def search(
         self, query: str, *, cap: int, transport: httpx.BaseTransport | None = None
     ) -> list[DiscoveryResult]:
-        from .provider import perform_search
-
-        hits = perform_search(
-            self._base_url,
-            self._flavor,
+        hits = search_with_fallback_configs(
+            self._providers,
+            self._keys,
             f"{query} site:{self.site}",
-            api_key=self._api_key,
             transport=transport,
             limit=min(cap, self._cap_limit),
         )
+        if not hits:
+            return []
         return [
             DiscoveryResult(
                 provider=self.id,
@@ -296,8 +293,13 @@ def resolve_providers(
     transport: httpx.BaseTransport | None = None,
     requested: list[str] | None = None,
 ) -> list[DiscoveryProvider]:
-    config = search_provider_config(session, profile_id)
-    api_key = get_secret(SEARCH_KEYRING_REF) or ""
+    search_providers = [
+        provider for provider in list_search_providers(session, profile_id) if provider["enabled"]
+    ]
+    keys = {
+        provider["id"]: get_secret(provider_key_ref(provider["id"])) or ""
+        for provider in search_providers
+    }
     preferences = discovery_preferences(session, profile_id)
     enabled_raw = preferences.get("enabled")
     enabled = (
@@ -309,8 +311,8 @@ def resolve_providers(
         enabled = [entry for entry in enabled if entry in requested]
 
     providers: list[DiscoveryProvider] = []
-    if "web" in enabled and config is not None:
-        providers.append(WebSearchProvider(config["base_url"], config["flavor"], api_key))
+    if "web" in enabled and search_providers:
+        providers.append(WebSearchProvider(search_providers, keys))
     if "youtube" in enabled:
         providers.append(YouTubeSearchProvider())
 
@@ -320,7 +322,7 @@ def resolve_providers(
         if isinstance(sites_raw, list)
         else []
     )
-    if config is not None:
+    if search_providers:
         if not sites:
             sites = [
                 {
@@ -336,9 +338,8 @@ def resolve_providers(
             providers.append(
                 SiteSearchProvider(
                     site,
-                    config["base_url"],
-                    config["flavor"],
-                    api_key=api_key,
+                    search_providers,
+                    keys,
                     label=str(entry.get("label") or site),
                     default_kind=str(entry.get("kind") or DiscoveryKind.COURSE.value),
                 )

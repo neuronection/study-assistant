@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "contract": "search-providers fixtures",
+  "purpose": "Canned HTTP exchanges freezing the family web-search wire contract (ADR-0035). Every implementation of the contract — the Python core (contracts/search_providers.py) and the desktop TS reference — must turn each case's response into exactly the expected hits (or the expected SearchError kind). Cases are transport-injected: the test wall builds a client-side transport that serves response for the request and asserts method/url/params/body.",
+
+  "cases": [
+    {
+      "id": "searxng_ok",
+      "config": { "id": "sp1", "name": "My SearXNG", "type": "searxng", "enabled": true, "base_url": "https://searx.example.org" },
+      "query": "acid base chemistry",
+      "api_key": "",
+      "request": { "method": "GET", "url": "https://searx.example.org/search", "params": { "q": "acid base chemistry", "format": "json" } },
+      "response": { "status": 200, "json": { "results": [
+        { "title": "Acid–base reaction", "url": "https://en.wikipedia.org/wiki/Acid%E2%80%93base_reaction", "content": "An acid–base reaction is a chemical reaction." },
+        { "url": "https://chem.libretexts.org/abc", "snippet": "Brønsted–Lowry definition." }
+      ] } },
+      "expected_hits": [
+        { "title": "Acid–base reaction", "url": "https://en.wikipedia.org/wiki/Acid%E2%80%93base_reaction", "content": "An acid–base reaction is a chemical reaction." },
+        { "title": "https://chem.libretexts.org/abc", "url": "https://chem.libretexts.org/abc", "content": "Brønsted–Lowry definition." }
+      ]
+    },
+    {
+      "id": "searxng_json_disabled",
+      "config": { "id": "sp1", "type": "searxng", "base_url": "https://searx.example.org" },
+      "query": "anything",
+      "api_key": "",
+      "request": { "method": "GET", "url": "https://searx.example.org/search", "params": { "q": "anything", "format": "json" } },
+      "response": { "status": 403, "text": "<html><body>403 Forbidden</body></html>", "content_type": "text/html" },
+      "expected_error_kind": "json_disabled"
+    },
+    {
+      "id": "tavily_ok",
+      "config": { "id": "sp2", "name": "Tavily", "type": "tavily" },
+      "query": "study techniques",
+      "api_key": "tvly-secret",
+      "request": { "method": "POST", "url": "https://api.tavily.com/search", "auth_bearer": "tvly-secret", "body_contains": { "query": "study techniques" } },
+      "response": { "status": 200, "json": { "results": [
+        { "title": "Spaced repetition", "url": "https://example.org/spaced", "content": "Review at increasing intervals." }
+      ] } },
+      "expected_hits": [
+        { "title": "Spaced repetition", "url": "https://example.org/spaced", "content": "Review at increasing intervals." }
+      ]
+    },
+    {
+      "id": "tavily_missing_key",
+      "config": { "id": "sp2", "type": "tavily" },
+      "query": "study techniques",
+      "api_key": "",
+      "request": null,
+      "response": null,
+      "expected_error_kind": "missing_key"
+    },
+    {
+      "id": "tavily_auth",
+      "config": { "id": "sp2", "type": "tavily" },
+      "query": "study techniques",
+      "api_key": "tvly-wrong",
+      "request": { "method": "POST", "url": "https://api.tavily.com/search" },
+      "response": { "status": 401, "json": { "detail": "Invalid API key" } },
+      "expected_error_kind": "auth"
+    },
+    {
+      "id": "brave_ok",
+      "config": { "id": "sp3", "type": "brave" },
+      "query": "electron configuration",
+      "api_key": "BSA-secret",
+      "request": { "method": "GET", "url": "https://api.search.brave.com/res/v1/web/search", "params": { "q": "electron configuration", "count": "5" }, "header": "X-Subscription-Token:BSA-secret" },
+      "response": { "status": 200, "json": { "web": { "results": [
+        { "title": "Electron configuration", "url": "https://example.org/ec", "description": "How electrons fill orbitals." }
+      ] } } },
+      "expected_hits": [
+        { "title": "Electron configuration", "url": "https://example.org/ec", "content": "How electrons fill orbitals." }
+      ]
+    },
+    {
+      "id": "brave_rate_limited",
+      "config": { "id": "sp3", "type": "brave" },
+      "query": "electron configuration",
+      "api_key": "BSA-secret",
+      "request": { "method": "GET", "url": "https://api.search.brave.com/res/v1/web/search" },
+      "response": { "status": 429, "json": { "message": "rate limited" } },
+      "expected_error_kind": "rate_limit"
+    },
+    {
+      "id": "exa_ok",
+      "config": { "id": "sp4", "type": "exa" },
+      "query": "linear algebra course",
+      "api_key": "exa-secret",
+      "request": { "method": "POST", "url": "https://api.exa.ai/search", "header": "x-api-key:exa-secret", "body_contains": { "numResults": 5 } },
+      "response": { "status": 200, "json": { "results": [
+        { "title": "MIT 18.06", "url": "https://ocw.mit.edu/18-06", "text": "Linear algebra lectures." }
+      ] } },
+      "expected_hits": [
+        { "title": "MIT 18.06", "url": "https://ocw.mit.edu/18-06", "content": "Linear algebra lectures." }
+      ]
+    },
+    {
+      "id": "serper_ok",
+      "config": { "id": "sp5", "type": "serper" },
+      "query": "photosynthesis",
+      "api_key": "serper-secret",
+      "request": { "method": "POST", "url": "https://google.serper.dev/search", "header": "X-API-KEY:serper-secret", "body_contains": { "q": "photosynthesis" } },
+      "response": { "status": 200, "json": { "organic": [
+        { "title": "Photosynthesis", "link": "https://example.org/photo", "snippet": "Plants convert light into energy." }
+      ] } },
+      "expected_hits": [
+        { "title": "Photosynthesis", "url": "https://example.org/photo", "content": "Plants convert light into energy." }
+      ]
+    },
+    {
+      "id": "google_pse_ok",
+      "config": { "id": "sp6", "type": "google-pse", "google_cx": "a1b2c3d4e5f6g7h8j" },
+      "query": "kinetics",
+      "api_key": "AIza-secret",
+      "request": { "method": "GET", "url": "https://www.googleapis.com/customsearch/v1", "params": { "cx": "a1b2c3d4e5f6g7h8j", "q": "kinetics" } },
+      "response": { "status": 200, "json": { "items": [
+        { "title": "Chemical kinetics", "link": "https://example.org/kinetics", "snippet": "Reaction rates." }
+      ] } },
+      "expected_hits": [
+        { "title": "Chemical kinetics", "url": "https://example.org/kinetics", "content": "Reaction rates." }
+      ]
+    },
+    {
+      "id": "google_pse_missing_cx",
+      "config": { "id": "sp6", "type": "google-pse" },
+      "query": "kinetics",
+      "api_key": "AIza-secret",
+      "request": null,
+      "response": null,
+      "expected_error_kind": "missing_config"
+    },
+    {
+      "id": "unknown_type",
+      "config": { "id": "sp7", "type": "altavista" },
+      "query": "anything",
+      "api_key": "",
+      "request": null,
+      "response": null,
+      "expected_error_kind": "unknown_type"
+    }
+  ]
+}

@@ -34,7 +34,10 @@ def test_web_provider_normalizes_tavily_results() -> None:
             },
         )
 
-    provider = WebSearchProvider("https://tavily.example", "tavily", api_key="k")
+    provider = WebSearchProvider(
+        [{"id": "sp1", "type": "tavily", "base_url": "https://tavily.example", "enabled": True}],
+        {"sp1": "k"},
+    )
     results = provider.search("chain rule", cap=5, transport=httpx.MockTransport(handler))
     assert len(results) == 1
     assert results[0].provider == "web"
@@ -54,8 +57,8 @@ def test_site_provider_appends_site_filter() -> None:
 
     provider = SiteSearchProvider(
         KHAN_ACADEMY_SITE,
-        "https://searxng.example",
-        "searxng",
+        [{"id": "sp2", "type": "searxng", "base_url": "https://searxng.example", "enabled": True}],
+        {},
         label="Khan Academy",
     )
     results = provider.search("limits", cap=5, transport=httpx.MockTransport(handler))

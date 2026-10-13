@@ -1,7 +1,9 @@
+import json
+from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -47,9 +49,15 @@ from ..domain.models import (
     TaskAssignment,
 )
 from ..search import (
-    SEARCH_FLAVORS,
-    SEARCH_KEYRING_REF,
-    search_provider_config,
+    PROVIDER_TYPES,
+    SearchError,
+    delete_search_provider,
+    list_search_providers,
+    move_search_provider,
+    provider_key_ref,
+    probe_provider,
+    search_provider_views,
+    upsert_search_provider,
 )
 from .deps import get_session
 from .schemas import (
@@ -71,16 +79,42 @@ router = APIRouter(tags=["ai"])
 
 
 class SearchProviderOut(BaseModel):
-    assigned: bool
+    id: str
+    name: str
+    type: str
+    enabled: bool = True
     base_url: str | None = None
-    flavor: str | None = None
+    google_cx: str | None = None
+    key_hint: str | None = None
+    timeout_ms: int = 8000
+    max_results: int = 5
     key_set: bool = False
 
 
 class SearchProviderIn(BaseModel):
-    base_url: str = Field(min_length=1, max_length=500)
-    flavor: str
+    name: str | None = Field(default=None, max_length=120)
+    type: str | None = None
+    base_url: str | None = Field(default=None, max_length=500)
+    google_cx: str | None = Field(default=None, max_length=120)
+    enabled: bool | None = None
+    max_results: int | None = Field(default=None, ge=1, le=10)
+    # absent = keep the stored key, "" = clear it, value = store it
     api_key: str | None = Field(default=None, max_length=500)
+
+
+class SearchProvidersOut(BaseModel):
+    providers: list[SearchProviderOut]
+
+
+class SearchProviderProbeOut(BaseModel):
+    status: str
+    latency_ms: int
+    result_count: int | None = None
+    error: str | None = None
+
+
+def _provider_view(view: dict) -> SearchProviderOut:
+    return SearchProviderOut.model_validate(view)
 
 
 def _ensure_profile(session: Session) -> Profile:
@@ -89,60 +123,100 @@ def _ensure_profile(session: Session) -> Profile:
     return ensure_default_profile(session)
 
 
-@router.get("/search-provider", response_model=SearchProviderOut)
-def get_search_provider(
-    session: Session = Depends(get_session),
-) -> SearchProviderOut:
+# Family web-search contract (ADR-0035 / plan 28): ordered multi-provider
+# list; the catalog (labels, key URLs, base-URL rules) is the vendored
+# contracts/search-providers.json copy — data-once, never edited here.
+_CATALOG_PATH = Path(__file__).resolve().parents[1] / "search" / "providers_catalog.json"
+
+
+@router.get("/search-providers", response_model=SearchProvidersOut)
+def get_search_providers(session: Session = Depends(get_session)) -> SearchProvidersOut:
     profile = _ensure_profile(session)
-    config = search_provider_config(session, profile.id)
-    if config is None:
-        return SearchProviderOut(assigned=False)
-    return SearchProviderOut(
-        assigned=True,
-        base_url=config["base_url"],
-        flavor=config["flavor"],
-        key_set=bool(get_secret(SEARCH_KEYRING_REF)),
+    return SearchProvidersOut(
+        providers=[_provider_view(view) for view in search_provider_views(session, profile.id)]
     )
 
 
-@router.put("/search-provider", response_model=SearchProviderOut)
-def update_search_provider(
+@router.get("/search-providers/catalog", response_model=dict[str, Any])
+def search_provider_catalog() -> dict[str, Any]:
+    return json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+
+
+@router.post("/search-providers", response_model=SearchProviderOut, status_code=201)
+def create_search_provider(
     body: SearchProviderIn, session: Session = Depends(get_session)
 ) -> SearchProviderOut:
     profile = _ensure_profile(session)
-    base_url = body.base_url.strip().rstrip("/")
-    if not base_url.startswith(("http://", "https://")):
-        raise HTTPException(status_code=422, detail="base_url must be an http(s) URL")
-    if body.flavor not in SEARCH_FLAVORS:
-        raise HTTPException(
-            status_code=422,
-            detail=f"flavor must be one of {list(SEARCH_FLAVORS)}",
+    try:
+        view = upsert_search_provider(
+            session,
+            profile.id,
+            {key: value for key, value in body.model_dump().items()},
         )
-    prefs = dict(profile.preferences or {})
-    prefs["search_provider"] = {"base_url": base_url, "flavor": body.flavor}
-    profile.preferences = prefs
-    if body.api_key is not None:
-        if body.api_key.strip():
-            set_secret(SEARCH_KEYRING_REF, body.api_key.strip())
-        else:
-            delete_secret(SEARCH_KEYRING_REF)
-    session.commit()
-    return SearchProviderOut(
-        assigned=True,
-        base_url=base_url,
-        flavor=body.flavor,
-        key_set=bool(get_secret(SEARCH_KEYRING_REF)),
-    )
+    except SearchError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return _provider_view(view)
 
 
-@router.delete("/search-provider", status_code=204)
-def clear_search_provider(session: Session = Depends(get_session)) -> None:
+@router.put("/search-providers/{provider_id}", response_model=SearchProviderOut)
+def update_search_provider(
+    provider_id: str, body: SearchProviderIn, session: Session = Depends(get_session)
+) -> SearchProviderOut:
     profile = _ensure_profile(session)
-    prefs = dict(profile.preferences or {})
-    prefs.pop("search_provider", None)
-    profile.preferences = prefs
-    delete_secret(SEARCH_KEYRING_REF)
-    session.commit()
+    try:
+        view = upsert_search_provider(
+            session,
+            profile.id,
+            {key: value for key, value in body.model_dump().items()},
+            provider_id=provider_id,
+        )
+    except SearchError as error:
+        raise HTTPException(status_code=404 if "not found" in str(error) else 422, detail=str(error)) from error
+    return _provider_view(view)
+
+
+class SearchProviderMoveIn(BaseModel):
+    direction: str = Field(pattern="^(up|down)$")
+
+
+@router.post("/search-providers/{provider_id}/move", response_model=SearchProvidersOut)
+def reorder_search_provider(
+    provider_id: str,
+    body: SearchProviderMoveIn,
+    session: Session = Depends(get_session),
+) -> SearchProvidersOut:
+    profile = _ensure_profile(session)
+    try:
+        views = move_search_provider(session, profile.id, provider_id, body.direction)
+    except SearchError as error:
+        raise HTTPException(status_code=404 if "not found" in str(error) else 422, detail=str(error)) from error
+    return SearchProvidersOut(providers=[_provider_view(view) for view in views])
+
+
+@router.delete("/search-providers/{provider_id}", status_code=204)
+def remove_search_provider(provider_id: str, session: Session = Depends(get_session)) -> None:
+    profile = _ensure_profile(session)
+    if not delete_search_provider(session, profile.id, provider_id):
+        raise HTTPException(status_code=404, detail="provider not found")
+
+
+@router.post("/search-providers/{provider_id}/test", response_model=SearchProviderProbeOut)
+def test_search_provider(
+    provider_id: str, request: Request, session: Session = Depends(get_session)
+) -> SearchProviderProbeOut:
+    profile = _ensure_profile(session)
+    provider = next(
+        (entry for entry in list_search_providers(session, profile.id) if entry["id"] == provider_id),
+        None,
+    )
+    if provider is None:
+        raise HTTPException(status_code=404, detail="provider not found")
+    result = probe_provider(
+        provider,
+        api_key=get_secret(provider_key_ref(provider_id)) or "",
+        transport=getattr(request.app.state, "search_transport", None),
+    )
+    return SearchProviderProbeOut.model_validate(result)
 
 
 def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:

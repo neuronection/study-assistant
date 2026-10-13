@@ -18,11 +18,10 @@ from urllib.parse import urlparse
 import httpx
 from sqlalchemy.orm import Session
 
-from ...core.secrets import get_secret
 from ...core.urls import normalize_url
 from ...core.vocab import DiscoveryKind, ExternalSourceKind
 from ...domain.models import ExternalSource, utcnow
-from ...search.provider import SEARCH_KEYRING_REF, search_provider_config
+from ...search.provider import search_with_fallback
 from ..content.discovery import record_scan_suggestion
 
 MIN_SCAN_INTERVAL_SEC = 900
@@ -305,27 +304,20 @@ def _scan_youtube(session: Session, source: ExternalSource) -> dict[str, int]:
     return stats
 
 
-def _perform_site_search(
-    base_url: str, flavor: str, query: str, api_key: str
-) -> list[dict[str, str]]:
-    from ...search.provider import perform_search
-
-    return perform_search(base_url, flavor, query, api_key=api_key)
-
-
 def _scan_site_search(session: Session, source: ExternalSource) -> dict[str, int]:
     options = source.options if isinstance(source.options, dict) else {}
-    config = search_provider_config(session, source.profile_id)
-    if config is None:
-        raise ExternalSourcesError("no search provider configured — connect one in Settings")
-    api_key = get_secret(SEARCH_KEYRING_REF) or ""
     site = str(options.get("site") or "").strip()
     query = f"{options.get('query', '')}".strip()
     if site:
         query = f"{query} site:{site}"
+    hits = search_with_fallback(session, source.profile_id, query)
+    if hits is None:
+        raise ExternalSourcesError(
+            "no search provider configured — connect one in Settings → Tools → Web search"
+        )
     stats = {"new": 0, "updated": 0}
     provider = f"site:{site}" if site else "site-search"
-    for hit in _perform_site_search(config["base_url"], config["flavor"], query, api_key):
+    for hit in hits:
         outcome = record_scan_suggestion(
             session,
             source.profile_id,

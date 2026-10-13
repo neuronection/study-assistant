@@ -76,11 +76,9 @@ from ...mcp_resources import (
     build_resource_tool_doc,
 )
 from ...search.provider import (
-    SEARCH_KEYRING_REF,
     SearchError,
     perform_fetch,
-    perform_search,
-    search_provider_config,
+    search_with_fallback,
 )
 from ..knowledge.context import ContextResolver, ContextScope, ContextSpec
 from ..search import hybrid_search, retrieve_chunks_hybrid
@@ -1104,23 +1102,18 @@ class ChatService:
 
     def _search_web(self, query: str) -> tuple[str, list[str]]:
         profile = ensure_default_profile(self._session)
-        config = search_provider_config(self._session, profile.id)
-        if config is None:
-            return (
-                "error: no search provider configured — the student can add one "
-                "in Settings → Providers → Web search",
-                [],
-            )
         try:
-            hits = perform_search(
-                config["base_url"],
-                config["flavor"],
-                query,
-                api_key=get_secret(SEARCH_KEYRING_REF) or "",
-                transport=self._search_transport,
+            hits = search_with_fallback(
+                self._session, profile.id, query, transport=self._search_transport
             )
         except SearchError as error:
             return f"error: {error}", []
+        if hits is None:
+            return (
+                "error: no search provider configured — the student can add one "
+                "in Settings → Tools → Web search",
+                [],
+            )
         if not hits:
             return "no results found", []
         lines: list[str] = []

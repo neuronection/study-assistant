@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   createGenesisCourse,
   draftGenesis,
-  getSearchProvider,
+  listSearchProviders,
   type GenesisDraft,
 } from '@/lib/api'
 import { useCloseFloatings } from '@/lib/ui-overlays'
@@ -33,10 +33,10 @@ export function GenesisDialog({ onClose }: { onClose: () => void }) {
   const [flashcards, setFlashcards] = useState(false)
   const [ground, setGround] = useState(false)
   const provider = useQuery({
-    queryKey: ['search-provider'],
-    queryFn: getSearchProvider,
+    queryKey: ['search-providers'],
+    queryFn: listSearchProviders,
   })
-  const providerAssigned = provider.data?.assigned ?? false
+  const providerAssigned = (provider.data ?? []).some((entry) => entry.enabled)
 
   const draftMutation = useMutation({
     mutationFn: () =>

@@ -22,10 +22,8 @@ from ..domain.models import (
     utcnow,
 )
 from ..search.provider import (
-    SEARCH_KEYRING_REF,
     SearchError,
-    perform_search,
-    search_provider_config,
+    search_with_fallback,
 )
 from ..services.knowledge.concepts import (
     ConceptsError,
@@ -460,27 +458,26 @@ def genesis_draft(
     sources_block: str | None = None
     found_sources: list[str] = []
     if body.ground:
-        config = search_provider_config(session, profile.id)
-        if config is not None:
-            transport = getattr(request.app.state, "search_transport", None)
-            lines: list[str] = []
-            for suffix in ("overview", "key concepts", "curriculum"):
-                try:
-                    hits = perform_search(
-                        config["base_url"],
-                        config["flavor"],
-                        f"{body.topic.strip()} {suffix}",
-                        api_key=get_secret(SEARCH_KEYRING_REF) or "",
-                        transport=transport,
-                    )
-                except SearchError:
+        transport = getattr(request.app.state, "search_transport", None)
+        lines: list[str] = []
+        for suffix in ("overview", "key concepts", "curriculum"):
+            try:
+                hits = search_with_fallback(
+                    session,
+                    profile.id,
+                    f"{body.topic.strip()} {suffix}",
+                    transport=transport,
+                )
+            except SearchError:
+                continue
+            if not hits:
+                continue
+            for hit in hits[:2]:
+                if hit["url"] in found_sources:
                     continue
-                for hit in hits[:2]:
-                    if hit["url"] in found_sources:
-                        continue
-                    found_sources.append(hit["url"])
-                    lines.append(f"- {hit['title']} — {hit['url']}\n  {hit['content']}")
-            sources_block = "\n".join(lines) if lines else None
+                found_sources.append(hit["url"])
+                lines.append(f"- {hit['title']} — {hit['url']}\n  {hit['content']}")
+        sources_block = "\n".join(lines) if lines else None
     try:
         draft = OutlineService(request.app.state.gateway).draft_genesis(
             profile_id=profile.id,
