@@ -11,6 +11,16 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (plan 26 §13.8/§15 no-legacy + single-source sweep, 2026-10-13)
+- **No canonical model ids as code literals:** the decision probe's
+  model id derives from the synced preset data via
+  `decision_probe_model_id()` (specs → `decision_default`, raising on a
+  preset that declares neither — never an invented `jev-latest`), and
+  the key-only `POST /providers/{id}/test` probe derives from the
+  provider's preset stamp; a decision provider with neither models nor
+  a derivable preset returns an actionable failure. Contract matrix
+  gains the derivation pin (case 20b).
+
 ### Changed (plan 26 Phase 6 closeout)
 - **Ruff: the generated presets module is excluded from the formatter**
   (`[tool.ruff.format]` exclude; the lint E501 per-file-ignore stays) —

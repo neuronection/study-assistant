@@ -768,3 +768,22 @@ def test_case_20_preset_catalog_decision_data_shape() -> None:
                 "choice",
                 "score",
             }
+
+
+def test_case_20b_probe_model_id_derives_from_canonical_data() -> None:
+    """§15 single-source: probe ids come from the synced preset data —
+    never a code literal (family closeout fix, 2026-10-13)."""
+    from app.ai.providers.presets import ALL_PRESETS, decision_probe_model_id
+
+    # specs lead…
+    assert decision_probe_model_id({"decision_models": [{"id": "custom-jev"}]}) == "custom-jev"
+    # …then the declared default…
+    assert decision_probe_model_id({"decision_default": "fallback-id"}) == "fallback-id"
+    # …and the real catalog answers with its own data, matching what setup
+    # and the test endpoint will ask the provider about.
+    assert decision_probe_model_id(ALL_PRESETS["typesafe"]) == "jev-latest"
+    assert decision_probe_model_id(ALL_PRESETS["openrouter"]) == "openrouter.jev-latest"
+    # A decision preset that declares neither is a data inconsistency —
+    # surfaced, never papered over with an invented id.
+    with pytest.raises(ValueError, match="declares no decision models"):
+        decision_probe_model_id({})

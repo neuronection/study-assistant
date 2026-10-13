@@ -11,7 +11,7 @@ from ..decide.systemone.probe import DecisionProbeInput, probe_decision_provider
 from ..decide.types import DECISION_SLOTS
 from ..tasks import TASKS_BY_NAME
 from .errors import ClassifiedProviderError, classify_provider_error
-from .presets import ALL_PRESETS
+from .presets import ALL_PRESETS, decision_probe_model_id
 from .service import (
     ProviderError,
     _check_capability,
@@ -169,8 +169,8 @@ def _upsert_decision_models(
     return persisted
 
 
-def _probe_decision_preset(provider: Provider, api_key: str, specs: list[dict[str, Any]]) -> None:
-    external_id = str(specs[0]["id"]) if specs else "jev-latest"
+def _probe_decision_preset(provider: Provider, api_key: str, preset: dict[str, Any]) -> None:
+    external_id = decision_probe_model_id(preset)
     model = AiModel(
         provider_id=provider.id,
         external_id=external_id,
@@ -241,7 +241,7 @@ def setup_provider_from_preset(
     catalog: list[_PersistedModel] = []
     try:
         if decision_only:
-            _probe_decision_preset(provider, key, decision_specs)
+            _probe_decision_preset(provider, key, preset)
         else:
             for remote in fetch_remote_models(
                 provider.type, provider.base_url, key or None, transport=transport

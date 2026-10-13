@@ -6,6 +6,7 @@ from .presets import KEY_PREFIX_HINTS as KEY_PREFIX_HINTS
 from .presets import PRESET_ORDER as PRESET_ORDER
 from .presets import PRESETS as PRESETS
 from .presets import SETUP_PRESETS as SETUP_PRESETS
+from .presets import decision_probe_model_id as decision_probe_model_id
 from .presets import guess_preset_for_key as guess_preset_for_key
 from .presets import is_any_preset_key as is_any_preset_key
 from .presets import is_preset_key as is_preset_key
@@ -73,6 +74,7 @@ __all__ = [
     "assign_default_task",
     "assign_task",
     "classify_provider_error",
+    "decision_probe_model_id",
     "detect_local_engines",
     "extract_error_status",
     "fetch_remote_models",

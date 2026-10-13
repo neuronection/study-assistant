@@ -21,6 +21,7 @@ from ..ai.providers import (
     assign_course_task,
     assign_default_task,
     assign_task,
+    decision_probe_model_id,
     fetch_remote_models,
     list_assignments,
     list_course_assignments,
@@ -422,13 +423,27 @@ def _probe_provider(session: Session, provider: Provider) -> DecisionProbeResult
     api_key = ProvidersService(session).api_key(provider)
     model = session.scalars(
         select(AiModel).where(AiModel.provider_id == provider.id).order_by(AiModel.id)
-    ).first() or AiModel(
-        provider_id=provider.id,
-        external_id="jev-latest",
-        label="jev-latest",
-        caps=["decision"],
-        decision_transport="systemone",
-    )
+    ).first()
+    if model is None:
+        # §15 single-source: a key-only probe derives its model id from the
+        # provider's preset stamp in the synced canonical data — never a
+        # code literal. A decision provider with neither models nor a
+        # declarable preset gets an actionable failure, not an invented id.
+        preset = ALL_PRESETS.get(provider.preset_key) if provider.preset_key else None
+        if preset is None:
+            return DecisionProbeResult(
+                ok=False,
+                latency_ms=0,
+                error="Add a decision model to this provider, then test again.",
+            )
+        external_id = decision_probe_model_id(preset)
+        model = AiModel(
+            provider_id=provider.id,
+            external_id=external_id,
+            label=external_id,
+            caps=["decision"],
+            decision_transport="systemone",
+        )
     return probe_decision_provider(
         DecisionProbeInput(provider=provider, model=model, api_key=api_key or "")
     )
