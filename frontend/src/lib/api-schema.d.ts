@@ -6924,6 +6924,8 @@ export interface components {
         ModelOut: {
             /** Caps */
             caps: string[];
+            /** Decision Transport */
+            decision_transport?: string | null;
             /** Enabled */
             enabled: boolean;
             /** External Id */
@@ -7604,6 +7606,12 @@ export interface components {
             base_url: string;
             /** Curated Models */
             curated_models?: string[] | null;
+            /** Decision Default */
+            decision_default?: string | null;
+            /** Decision Models */
+            decision_models?: {
+                [key: string]: unknown;
+            }[] | null;
             /** Fixed Base */
             fixed_base: boolean;
             /** Free Tier Note */
@@ -7618,6 +7626,8 @@ export interface components {
             preferred_model?: {
                 [key: string]: unknown;
             } | null;
+            /** Provisional */
+            provisional?: boolean | null;
             /** Steps */
             steps?: string[] | null;
             /** Stt Model */
@@ -8281,6 +8291,11 @@ export interface components {
              */
             bind_chat: boolean;
             /**
+             * Bind Decision
+             * @default true
+             */
+            bind_decision: boolean;
+            /**
              * Bind Stt
              * @default true
              */
@@ -8297,6 +8312,10 @@ export interface components {
         SetupOut: {
             /** Assigned Chat Model */
             assigned_chat_model?: string | null;
+            /** Assigned Decision Slots */
+            assigned_decision_slots?: {
+                [key: string]: string;
+            } | null;
             /** Assigned Stt Model */
             assigned_stt_model?: string | null;
             /** Assigned Vision Model */

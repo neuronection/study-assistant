@@ -103,6 +103,7 @@ class ModelOut(BaseModel):
     external_id: str
     label: str
     caps: list[str]
+    decision_transport: str | None = None
     enabled: bool
     missing: bool
     reasoning_effort: str | None = None

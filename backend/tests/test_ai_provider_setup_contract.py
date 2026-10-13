@@ -16,6 +16,18 @@ Case manifest (normative semantics, names indicative):
 11. capability inference split (whisper-1 → stt; tts-* → tts);
 12. set-default: task-scoped binding with capability guards + cross-provider
     rejection.
+
+Plan 26 / ADR-0032 additions (decision capability + slots):
+13. bind_decision capability-aware gap-fill (declared slots, never live);
+14. bind_decision=false binds nothing;
+15. live decision slots never clobbered (fill empty only);
+16. decision-only preset (wire type `decision`) validates via the decision
+    probe — ok path persists + binds, failure persists nothing;
+17. probe timeout classifies `timeout`;
+18. probe is no oracle without a valid key (401/402/403 classification);
+19. slot separation enforced both directions + `open-args` never assignable;
+20. preset catalog decision data shape (provisional rides `presets`, not
+    `presetOrder`).
 """
 
 from typing import Any
@@ -28,6 +40,7 @@ from keyring.backend import KeyringBackend
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ai.decide.systemone.probe import DecisionProbeResult
 from app.ai.providers import service as service_module
 from app.ai.providers import setup as byok_setup
 from app.ai.providers.errors import classify_provider_error, extract_error_status
@@ -507,4 +520,250 @@ def test_setup_options_use_contract_names() -> None:
     assert hasattr(options, "bind_chat")
     assert hasattr(options, "bind_vision")
     assert hasattr(options, "bind_stt")
+    assert hasattr(options, "bind_decision")
     assert ProviderErrorCode.TIMEOUT.value == "timeout"
+
+
+def test_case_13_bind_decision_gapfills_declared_slots(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_catalog(monkeypatch, wire_catalog(["openrouter/auto"]))
+    outcome = byok_setup.setup_provider_from_preset(db_session, "openrouter", "sk-or-v1-key")
+
+    assert outcome.assigned_chat_model == "openrouter/auto"
+    assert outcome.assigned_decision_slots is not None
+    assert set(outcome.assigned_decision_slots) == {
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    }
+    assert set(outcome.assigned_decision_slots.values()) == {"openrouter.jev-latest"}
+    provider = db_session.get(Provider, outcome.provider_id)
+    assert provider is not None
+    decision_models = [
+        m for m in models_of(db_session, provider.id) if "decision" in (m.caps or [])
+    ]
+    assert [m.external_id for m in decision_models] == ["openrouter.jev-latest"]
+    assert decision_models[0].decision_transport == "systemone"
+    assert outcome.catalog_count == 2
+    for slot in outcome.assigned_decision_slots:
+        row = db_session.get(DefaultTaskAssignment, slot)
+        assert row is not None and row.model_id == decision_models[0].id
+
+
+def test_case_14_bind_decision_off_binds_nothing(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_catalog(monkeypatch, wire_catalog(["openrouter/auto"]))
+    options = byok_setup.SetupOptions(bind_decision=False)
+    outcome = byok_setup.setup_provider_from_preset(
+        db_session, "openrouter", "sk-or-v1-key", options=options
+    )
+
+    assert outcome.assigned_decision_slots is None
+    provider = db_session.get(Provider, outcome.provider_id)
+    assert provider is not None
+    decision_models = [
+        m for m in models_of(db_session, provider.id) if "decision" in (m.caps or [])
+    ]
+    assert [m.external_id for m in decision_models] == ["openrouter.jev-latest"]
+    for slot in ("decision:tool-dispatch", "decision:boolean-gate",
+                 "decision:choice", "decision:score"):
+        row = db_session.get(DefaultTaskAssignment, slot)
+        assert row is None or row.model_id is None
+
+
+def test_case_15_bind_decision_never_clobbers_live_slots(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_catalog(monkeypatch, wire_catalog(["openrouter/auto"]))
+    live_slot = "decision:tool-dispatch"
+    other = seed_manual_provider(db_session, name="Other", type_="decision",
+                                 base_url="https://api.typesafe.ai")
+    live_model = add_model(db_session, other.id, "pinned-jev", ["decision"])
+    live_model.decision_transport = "systemone"
+    db_session.flush()
+    row = db_session.get(DefaultTaskAssignment, live_slot)
+    assert row is not None
+    row.model_id = live_model.id
+    db_session.flush()
+
+    outcome = byok_setup.setup_provider_from_preset(db_session, "openrouter", "sk-or-v1-b")
+
+    assert outcome.assigned_chat_model == "openrouter/auto"
+    assert outcome.assigned_decision_slots is not None
+    assert live_slot not in outcome.assigned_decision_slots
+    assert set(outcome.assigned_decision_slots) == {
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    }
+    live_row = db_session.get(DefaultTaskAssignment, live_slot)
+    assert live_row is not None and live_row.model_id == live_model.id
+
+
+def install_probe(
+    monkeypatch: pytest.MonkeyPatch,
+    result: DecisionProbeResult | Exception,
+) -> list[tuple[str, str, str]]:
+    from app.ai.decide.systemone.probe import DecisionProbeInput
+
+    calls: list[tuple[str, str, str]] = []
+
+    def fake_probe(probe_input: DecisionProbeInput) -> DecisionProbeResult:
+        calls.append(
+            (
+                probe_input.provider.preset_key or "",
+                probe_input.model.external_id,
+                probe_input.api_key,
+            )
+        )
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(byok_setup, "probe_decision_provider", fake_probe)
+    return calls
+
+
+def test_case_16_decision_only_preset_probe_validates_and_persists(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    probe_calls = install_probe(
+        monkeypatch,
+        DecisionProbeResult(ok=True, latency_ms=5, resolved_model="jev-1.13"),
+    )
+    outcome = byok_setup.setup_provider_from_preset(db_session, "typesafe", "  ts-key  ")
+
+    assert probe_calls == [("typesafe", "jev-latest", "ts-key")]
+    assert outcome.assigned_chat_model is None
+    assert outcome.assigned_decision_slots is not None
+    assert set(outcome.assigned_decision_slots.values()) == {"jev-latest"}
+    assert outcome.catalog_count == 1
+    provider = db_session.get(Provider, outcome.provider_id)
+    assert provider is not None
+    assert provider.type == "decision"
+    assert provider.base_url == "https://api.typesafe.ai"
+    models = models_of(db_session, provider.id)
+    assert [m.external_id for m in models] == ["jev-latest"]
+    assert models[0].caps == ["decision"]
+    assert models[0].decision_transport == "systemone"
+    from app.core.secrets import get_secret
+
+    assert get_secret(provider.keyring_ref) == "ts-key"
+
+
+def test_case_16_decision_only_probe_failure_persists_nothing(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_probe(
+        monkeypatch,
+        DecisionProbeResult(ok=False, latency_ms=5, status=401, error="bad key"),
+    )
+
+    with pytest.raises(byok_setup.SetupError) as excinfo:
+        byok_setup.setup_provider_from_preset(db_session, "typesafe", "ts-bad")
+
+    assert excinfo.value.classified.code.value == "invalid_key"
+    db_session.rollback()
+    assert list(db_session.scalars(select(Provider))) == []
+    assert list(db_session.scalars(select(AiModel))) == []
+
+
+def test_case_17_decision_only_probe_timeout_classifies_timeout(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_probe(
+        monkeypatch,
+        DecisionProbeResult(
+            ok=False, latency_ms=10_000, kind="timeout", error="probe timed out"
+        ),
+    )
+
+    with pytest.raises(byok_setup.SetupError) as excinfo:
+        byok_setup.setup_provider_from_preset(db_session, "typesafe", "ts-key")
+
+    assert excinfo.value.classified.code.value == "timeout"
+    db_session.rollback()
+    assert list(db_session.scalars(select(Provider))) == []
+
+
+def test_case_18_probe_is_no_oracle_without_a_valid_key(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_probe(
+        monkeypatch,
+        DecisionProbeResult(ok=False, latency_ms=5, status=403, error="forbidden"),
+    )
+
+    with pytest.raises(byok_setup.SetupError) as forbidden:
+        byok_setup.setup_provider_from_preset(db_session, "typesafe", "not-a-real-key")
+    assert forbidden.value.classified.code.value == "unknown"
+
+    install_probe(
+        monkeypatch,
+        DecisionProbeResult(
+            ok=False, latency_ms=5, status=402, error="no credit"
+        ),
+    )
+    with pytest.raises(byok_setup.SetupError) as credit:
+        byok_setup.setup_provider_from_preset(db_session, "typesafe", "not-a-real-key")
+    assert credit.value.classified.code.value == "insufficient_credit"
+    db_session.rollback()
+    assert list(db_session.scalars(select(Provider))) == []
+
+
+def test_case_19_slot_separation_enforced_both_directions(
+    db_session: Session,
+) -> None:
+    from app.ai.providers import ProviderError, assign_default_task
+
+    chat_provider = seed_manual_provider(db_session, name="Chat")
+    text_model = add_model(db_session, chat_provider.id, "gpt-x", ["text", "vision"])
+    decision_provider = seed_manual_provider(
+        db_session, name="TypeSafe", type_="decision", base_url="https://api.typesafe.ai"
+    )
+    decision_model = add_model(db_session, decision_provider.id, "jev-latest", ["decision"])
+    decision_model.decision_transport = "systemone"
+    db_session.flush()
+
+    bound = assign_default_task(db_session, "decision:tool-dispatch", decision_model.id, None)
+    assert bound.model_id == decision_model.id
+
+    with pytest.raises(ProviderError, match="decision"):
+        assign_default_task(db_session, "text", decision_model.id, None)
+    with pytest.raises(ProviderError, match="decision"):
+        assign_default_task(db_session, "decision:choice", text_model.id, None)
+    with pytest.raises(ProviderError, match="unknown capability"):
+        assign_default_task(db_session, "decision:open-args", decision_model.id, None)
+    with pytest.raises(ProviderError, match="unknown capability"):
+        assign_default_task(db_session, "decision", decision_model.id, None)
+
+    routed = add_model(db_session, decision_provider.id, "partial-jev", ["decision"])
+    routed.decision_transport = "scoreless"
+    db_session.flush()
+    with pytest.raises(ProviderError, match="transport"):
+        assign_default_task(db_session, "decision:score", routed.id, None)
+
+
+def test_case_20_preset_catalog_decision_data_shape() -> None:
+    from app.ai.providers.presets import ALL_PRESETS, PRESET_ORDER, decision_models_for_preset
+
+    assert "typesafe" in ALL_PRESETS
+    assert "typesafe" not in PRESET_ORDER
+    assert ALL_PRESETS["typesafe"]["type"] == "decision"
+    assert ALL_PRESETS["typesafe"]["provisional"] is True
+    assert ALL_PRESETS["typesafe"]["decision_default"] == "jev-latest"
+    openrouter = ALL_PRESETS["openrouter"]
+    assert openrouter["decision_default"] == "openrouter.jev-latest"
+    assert openrouter["decision_models"][0]["provisional"] is True
+    assert decision_models_for_preset("openai") == []
+    for preset in ALL_PRESETS.values():
+        for entry in preset["decision_models"] or []:
+            assert set(entry["caps"]) <= {
+                "tool-dispatch",
+                "boolean-gate",
+                "choice",
+                "score",
+            }

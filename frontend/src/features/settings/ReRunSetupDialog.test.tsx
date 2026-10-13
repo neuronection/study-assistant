@@ -32,6 +32,9 @@ const PRESETS: Record<string, unknown> = {
     preferred_model: { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', caps: ['text', 'tools', 'vision'] },
     curated_models: ['gpt-5.6-terra', 'gpt-5.6-luna', 'whisper-1'],
     stt_model: 'whisper-1',
+    decision_models: null,
+    decision_default: null,
+    provisional: null,
     steps: null,
     free_tier_note: null,
   },
@@ -45,6 +48,33 @@ const PRESETS: Record<string, unknown> = {
     preferred_model: { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', caps: ['text', 'tools', 'vision'] },
     curated_models: ['gemini-3.8-flash'],
     stt_model: null,
+    decision_models: null,
+    decision_default: null,
+    provisional: null,
+    steps: null,
+    free_tier_note: null,
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    type: 'openai_compatible',
+    base_url: 'https://openrouter.ai/api/v1',
+    fixed_base: false,
+    local: false,
+    key_url: null,
+    preferred_model: { id: 'openrouter/auto', name: 'Auto (best match)', caps: ['text', 'tools'] },
+    curated_models: ['openrouter/auto'],
+    stt_model: null,
+    decision_models: [
+      {
+        id: 'openrouter.jev-latest',
+        name: 'Jev via OpenRouter (latest)',
+        transport: 'systemone',
+        caps: ['tool-dispatch', 'boolean-gate', 'choice', 'score'],
+        provisional: true,
+      },
+    ],
+    decision_default: 'openrouter.jev-latest',
+    provisional: null,
     steps: null,
     free_tier_note: null,
   },
@@ -117,7 +147,47 @@ describe('ReRunSetupDialog', () => {
     await waitFor(() =>
       expect(setupMutation).toHaveBeenCalledWith('gemini', {
         api_key: null,
-        options: { curated_ids: ['gemini-3.8-flash'], bind_chat: true, bind_vision: true, bind_stt: true },
+        options: {
+          curated_ids: ['gemini-3.8-flash'],
+          bind_chat: true,
+          bind_vision: true,
+          bind_stt: true,
+          bind_decision: false,
+        },
+      })
+    )
+  })
+
+  test('presets declaring decision models show the decision switch defaulted on (five-bind body)', async () => {
+    setupMutation.mockResolvedValue({ ok: true })
+    const openrouter: Provider = {
+      ...PROVIDER,
+      id: 5,
+      name: 'OpenRouter',
+      type: 'openai_compatible',
+      preset_key: 'openrouter',
+    }
+    renderDialog(openrouter)
+    await screen.findByText(/uses the stored key for/i)
+
+    const decisionSwitch = await screen.findByRole('switch', {
+      name: /fill empty decision slots/i,
+    })
+    expect(decisionSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText(/0 of 4 decision slots filled/i)).toBeInTheDocument()
+    await screen.findByRole('button', { pressed: true, name: /openrouter\/auto/i })
+
+    fireEvent.click(screen.getByRole('button', { name: /^apply$/i }))
+    await waitFor(() =>
+      expect(setupMutation).toHaveBeenCalledWith('openrouter', {
+        api_key: null,
+        options: {
+          curated_ids: ['openrouter/auto'],
+          bind_chat: true,
+          bind_vision: true,
+          bind_stt: true,
+          bind_decision: true,
+        },
       })
     )
   })

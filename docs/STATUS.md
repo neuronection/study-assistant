@@ -31,6 +31,44 @@ hermeticity fix: conftest points `SA_CONFIG_DIR` at a per-process
 scratch dir so the cipher's KeyRing resolution never touches the real
 user config dir.
 
+**Plan 26 Phase 3 — decision models (the Python decision reference,
+2026-10-13):** study gains decision support ported in shape from desktop.
+`Capability` gains sparse `decision` (explicit only) and `AiModel` a
+nullable `decision_transport` seam (`systemone` today; migration 0069 with
+a tested downgrade, which also seeds the four `decision:*` slot rows into
+`default_task_assignments`/course defaults — primary + fallback, D2b-enforced
+both directions at assignment). `app/ai/decide/` is the decision funnel:
+transport registry resolving `decision:<cap>` slot → model → provider with
+capability routing + per-assignments-revision caching, the `typesafe-sdk`
+client behind a typed seam (kinded errors, 8 s timeout/backoff, preset
+`base_url_override`), the tool-dispatch projection (`__tool__` Choice with a
+`__none__` out), the 10 s decision probe, and `run_decision` with one
+`ai_interactions` audit row per invocation — conformance-tested against the
+shared suite (transport mocked, no network/keyring). Setup gains
+`bind_decision` (capability-aware gap-fill into empty declared slots only,
+never `open-args`, never a live slot) and validates the provisional
+decision-only `typesafe` preset via the probe (classified failure persists
+nothing; it still renders no tile — rides `presets`, not `presetOrder`).
+The contract-test matrix grows cases 13–20 (study stays the family's most
+complete matrix: 20 cases). UI: a *Decision models* group (primary +
+fallback, library pickers, decision-model-only filtering) with the verbatim
+privacy notice in TasksTab, decision rebind rows in the setup success
+panel, and the re-run review's five-bind body (`bind_decision` defaulted on
+for presets declaring decision models). The alignment gate needed a master
+fix to accept the port: R1's Python factory scope now sanctions the whole
+`app/ai` layer for `typesafe_sdk` (matching desktop's JS scope and the
+frozen §3.7 text); the re-vendored copy is byte-identical to the dev
+master. One `typesafe-sdk>=0.7,<0.8` dependency added (AI-layer confined).
+Also: `pnpm api:types` works headless again (`scripts/export-openapi.py`
+now migrates its scratch DB and pins `app_env=development` — the startup
+seed needs tables), and the lockfile resolved the published 0.54.0
+integrity (owner published; the Phase 2 registry-pin follow-up).
+
+**Plan 26 Phase 2 swap (2026-10-13):** `ProviderSetupModal` and
+`ReRunSetupDialog` moved onto the `@neuronection/assistant-ui` kit
+(`provider-setup-tiles`, `provider-setup-form`, `setup-review`);
+`ProviderLogo` deleted. Backend 1407+4skip, frontend 1429/1429.
+
 **One family chat vocabulary (plan 24 V2, 2026-10-09):** the chat stream is
 family-native end to end. Backend: graph nodes, the streaming adapter, the
 chat service, and the turn job handler emit the §5 vocabulary directly

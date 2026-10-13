@@ -11,6 +11,37 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (plan 26 Phase 3)
+- **Decision models (Python decision reference):** `decision` joins the
+  model-capability vocabulary (explicit only) and `models.decision_transport`
+  (`systemone`) is the transport seam (migration 0069, tested downgrade);
+  assignment moves to four `decision:tool-dispatch | decision:boolean-gate |
+  decision:choice | decision:score` slots (primary + fallback) in
+  `DefaultTaskAssignment`/course defaults. Setup gains `bind_decision`
+  (capability-aware gap-fill, never a live slot or `open-args`), decision
+  rows persist from preset `decision_models`, and the provisional
+  decision-only `typesafe` preset validates via the 10 s decision probe
+  (classified failure persists nothing; it renders no tile). New
+  `app/ai/decide/` funnel: transport registry over the slots (D2b routing,
+  fallback chain, per-assignments-revision cache), `typesafe-sdk` client
+  behind a typed seam, the tool-dispatch projection, `run_decision` with one
+  audit row per invocation, and the shared conformance suite. Settings UI:
+  *Decision models* group (library pickers, decision-only filtering, privacy
+  notice at the group), decision rebind rows in the setup success panel, and
+  the re-run review's five-bind body. Contract-test matrix grows to 20 cases
+  (bind_decision, probe, slot separation, presets-v2 shape).
+
+### Changed (plan 26 Phase 3)
+- `scripts/check-ai-alignment.sh` re-vendored after a dev-master fix: R1's
+  Python scope sanctions `typesafe_sdk` inside the whole `app/ai` layer
+  (matching desktop's JS scope and the frozen §3.7 text) instead of the chat
+  factory file alone. `typesafe-sdk>=0.7,<0.8` added (AI-layer confined).
+- `pnpm api:types` works headless again: `scripts/export-openapi.py` now
+  migrates its scratch database and pins `app_env=development` (the startup
+  seed needs tables; the production boot guard no longer trips on export).
+- `pnpm-lock.yaml` resolved the published `@neuronection/assistant-ui@0.54.0`
+  integrity (owner published the RC; the Phase 2 registry-pin follow-up).
+
 ### Changed (plan 26 Phase 2)
 - **Setup UI swaps to the library kit:** `ProviderSetupModal`'s tiles and
   guided form and `ReRunSetupDialog`'s review now render

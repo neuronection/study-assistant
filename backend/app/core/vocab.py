@@ -164,6 +164,28 @@ class Capability(StrVocab):
     EMBEDDINGS = "embeddings"
     STT = "stt"
     TTS = "tts"
+    DECISION = "decision"
+
+
+class DecisionCapability(StrVocab):
+    TOOL_DISPATCH = "tool-dispatch"
+    BOOLEAN_GATE = "boolean-gate"
+    CHOICE = "choice"
+    SCORE = "score"
+    OPEN_ARGS = "open-args"
+
+
+class DecisionTransport(StrVocab):
+    SYSTEMONE = "systemone"
+
+
+class SystemOneErrorKind(StrVocab):
+    AUTH = "auth"
+    RATE_LIMIT = "rate-limit"
+    OVERLOADED = "overloaded"
+    VALIDATION = "validation"
+    TIMEOUT = "timeout"
+    UNAVAILABLE = "unavailable"
 
 
 class ProviderErrorCode(StrVocab):

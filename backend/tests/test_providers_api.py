@@ -423,6 +423,10 @@ def test_task_defaults_endpoints_and_inheritance(
         "embeddings",
         "stt",
         "tts",
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
     ]
     assert all(entry["model_id"] is None for entry in defaults)
 

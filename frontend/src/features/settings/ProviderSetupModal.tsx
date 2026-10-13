@@ -43,6 +43,13 @@ const TILE_ORDER = [
   'ollama',
 ] as const
 
+const DECISION_SLOTS = [
+  'decision:tool-dispatch',
+  'decision:boolean-gate',
+  'decision:choice',
+  'decision:score',
+] as const
+
 type Phase = 'tiles' | 'form' | 'manual' | 'done'
 
 function ModalShell({
@@ -173,6 +180,24 @@ function SuccessDefaults({
   const externalToId = new Map(providerModels.map((model) => [model.external_id, String(model.id)]))
   const defaultByCap = new Map((defaults.data ?? []).map((entry) => [entry.requires, entry]))
 
+  const decisionModels = providerModels.filter(
+    (model) => Boolean(model.decision_transport) || model.caps.includes('decision')
+  )
+  const decisionCatalog: ModelPickerProvider[] =
+    decisionModels.length > 0
+      ? [
+          {
+            id: String(providerId),
+            name: providerName,
+            models: decisionModels.map((model) => ({
+              id: String(model.id),
+              name: model.label || model.external_id,
+              capabilities: model.caps,
+            })),
+          },
+        ]
+      : []
+
   const bind = useMutation({
     mutationFn: ({ requires, modelId }: { requires: string; modelId: string }) => {
       const fallback = defaultByCap.get(requires)?.fallback_model_id ?? null
@@ -202,6 +227,14 @@ function SuccessDefaults({
       ? [{ requires: 'stt', label: t('settings.setup.slot.stt'), assigned: result.assigned_stt_model }]
       : []),
   ]
+  const decisionRows =
+    decisionModels.length > 0
+      ? DECISION_SLOTS.map((slot) => ({
+          requires: slot,
+          label: t(`settings.decisionSlots.${slot.slice('decision:'.length)}`),
+          assigned: result.assigned_decision_slots?.[slot] ?? null,
+        }))
+      : []
 
   if (providerModels.length === 0) {
     return <p className="text-muted-foreground text-xs">{t('settings.setup.noDefaults')}</p>
@@ -214,6 +247,19 @@ function SuccessDefaults({
         <ModelPicker
           key={row.requires}
           providers={catalog}
+          value={slotValue(row.requires, row.assigned)}
+          onChange={(modelId) => {
+            setError(null)
+            bind.mutate({ requires: row.requires, modelId })
+          }}
+          clearable={false}
+          label={row.label}
+        />
+      ))}
+      {decisionRows.map((row) => (
+        <ModelPicker
+          key={row.requires}
+          providers={decisionCatalog}
           value={slotValue(row.requires, row.assigned)}
           onChange={(modelId) => {
             setError(null)
@@ -342,6 +388,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
           assigned_chat_model: null,
           assigned_vision_model: null,
           assigned_stt_model: null,
+          assigned_decision_slots: null,
         }))
       }
       return setupProviderPreset(presetKey ?? '', {

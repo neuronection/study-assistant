@@ -131,6 +131,39 @@ describe('ProviderSetupModal', () => {
     expect(screen.getByText(/custom/i)).toBeInTheDocument()
   })
 
+  test('the provisional decision-only preset never renders a tile (rides presets, not presetOrder)', async () => {
+    listPresets.mockResolvedValue({
+      ...PRESETS,
+      typesafe: {
+        name: 'TypeSafe',
+        type: 'decision',
+        base_url: 'https://api.typesafe.ai',
+        fixed_base: false,
+        local: false,
+        key_url: 'https://console.typesafe.ai/keys',
+        preferred_model: null,
+        curated_models: null,
+        stt_model: null,
+        decision_models: [
+          {
+            id: 'jev-latest',
+            name: 'Jev (latest)',
+            transport: 'systemone',
+            caps: ['tool-dispatch', 'boolean-gate', 'choice', 'score'],
+          },
+        ],
+        decision_default: 'jev-latest',
+        provisional: true,
+        steps: null,
+        free_tier_note: null,
+      },
+    })
+    renderModal()
+
+    await screen.findByText('OpenAI')
+    expect(screen.queryByText('TypeSafe')).not.toBeInTheDocument()
+  })
+
   test('preset form shows steps, key link, and advanced base URL; copies steps', async () => {
     renderModal()
     fireEvent.click(await screen.findByText('OpenAI'))
@@ -164,6 +197,72 @@ describe('ProviderSetupModal', () => {
     )
     expect(await screen.findByText(/connected/i)).toBeInTheDocument()
     expect(screen.getByText('whisper-1')).toBeInTheDocument()
+  })
+
+  test('success panel renders decision slot rows bound to the decision model only', async () => {
+    listPresets.mockResolvedValue({
+      ...PRESETS,
+      openrouter: {
+        name: 'OpenRouter',
+        type: 'openai_compatible',
+        base_url: 'https://openrouter.ai/api/v1',
+        fixed_base: false,
+        local: false,
+        key_url: null,
+        preferred_model: { id: 'openrouter/auto', name: 'Auto', caps: ['text', 'tools'] },
+        curated_models: ['openrouter/auto'],
+        stt_model: null,
+        decision_models: [
+          {
+            id: 'openrouter.jev-latest',
+            name: 'Jev via OpenRouter (latest)',
+            transport: 'systemone',
+            caps: ['tool-dispatch', 'boolean-gate', 'choice', 'score'],
+            provisional: true,
+          },
+        ],
+        decision_default: 'openrouter.jev-latest',
+        provisional: null,
+        steps: null,
+        free_tier_note: null,
+      },
+    })
+    listModels.mockResolvedValue([
+      ...PROVIDER_MODELS,
+      {
+        id: 13, provider_id: 1, external_id: 'openrouter.jev-latest', label: 'Jev via OpenRouter',
+        caps: ['decision'], decision_transport: 'systemone', enabled: true, missing: false,
+        reasoning_effort: null,
+      },
+    ])
+    setupMutation.mockResolvedValue({
+      ...SETUP_OK,
+      assigned_decision_slots: {
+        'decision:tool-dispatch': 'openrouter.jev-latest',
+        'decision:boolean-gate': 'openrouter.jev-latest',
+        'decision:choice': 'openrouter.jev-latest',
+        'decision:score': 'openrouter.jev-latest',
+      },
+    })
+    renderModal()
+    fireEvent.click(await screen.findByText('OpenAI'))
+    fireEvent.change(await screen.findByLabelText(/api key/i), { target: { value: 'sk-test' } })
+    fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
+
+    expect(await screen.findByText('Tool dispatch')).toBeInTheDocument()
+    expect(screen.getByText('Boolean gate')).toBeInTheDocument()
+    expect(screen.getByText('Choice')).toBeInTheDocument()
+    expect(screen.getByText('Score')).toBeInTheDocument()
+    const decisionPicker = screen.getAllByRole('combobox', { name: 'Tool dispatch' })[0]
+    fireEvent.click(decisionPicker)
+    const jevOption = await screen.findByRole('option', { name: /jev via openrouter/i })
+    const decisionListbox = jevOption.closest('[role="listbox"]')
+    expect(decisionListbox).not.toBeNull()
+    const decisionOptions = Array.from(
+      decisionListbox!.querySelectorAll('[role="option"]')
+    ).map((option) => option.textContent)
+    expect(decisionOptions).toHaveLength(1)
+    expect(decisionOptions[0]).toMatch(/jev via openrouter/i)
   })
 
   test('edited base URL routes through the manual form', async () => {

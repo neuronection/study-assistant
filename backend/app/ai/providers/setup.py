@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session
 
 from ...core import secrets
 from ...domain.models import AiModel, DefaultTaskAssignment, Provider, TaskAssignment
+from ..decide.systemone.probe import DecisionProbeInput, probe_decision_provider
+from ..decide.types import DECISION_SLOTS
 from ..tasks import TASKS_BY_NAME
 from .errors import ClassifiedProviderError, classify_provider_error
-from .presets import SETUP_PRESETS
+from .presets import ALL_PRESETS
 from .service import (
     ProviderError,
     _check_capability,
@@ -39,6 +41,7 @@ class SetupOptions:
     bind_chat: bool = True
     bind_vision: bool = True
     bind_stt: bool = True
+    bind_decision: bool = True
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,7 @@ class SetupOutcome:
     assigned_chat_model: str | None = None
     assigned_vision_model: str | None = None
     assigned_stt_model: str | None = None
+    assigned_decision_slots: dict[str, str] | None = None
 
 
 @dataclass
@@ -126,6 +130,72 @@ def _match_curated(model_id: str, curated: list[str]) -> str | None:
     return None
 
 
+def _decision_model_specs(preset: dict[str, Any]) -> list[dict[str, Any]]:
+    models = preset.get("decision_models") or []
+    return [dict(entry) for entry in models]
+
+
+def _upsert_decision_models(
+    session: Session,
+    provider: Provider,
+    specs: list[dict[str, Any]],
+) -> dict[str, AiModel]:
+    persisted: dict[str, AiModel] = {}
+    existing = {
+        model.external_id: model
+        for model in session.scalars(select(AiModel).where(AiModel.provider_id == provider.id))
+    }
+    for entry in specs:
+        external_id = str(entry["id"])
+        transport = str(entry.get("transport") or "systemone")
+        model = existing.get(external_id)
+        if model is None:
+            model = AiModel(
+                provider_id=provider.id,
+                external_id=external_id,
+                label=str(entry.get("name") or external_id),
+                caps=["decision"],
+                decision_transport=transport,
+                enabled=True,
+                missing=False,
+            )
+            session.add(model)
+            session.flush()
+        else:
+            model.caps = list(dict.fromkeys([*(model.caps or []), "decision"]))
+            model.decision_transport = transport
+            model.missing = False
+        persisted[external_id] = model
+    return persisted
+
+
+def _probe_decision_preset(provider: Provider, api_key: str, specs: list[dict[str, Any]]) -> None:
+    external_id = str(specs[0]["id"]) if specs else "jev-latest"
+    model = AiModel(
+        provider_id=provider.id,
+        external_id=external_id,
+        label=external_id,
+        caps=["decision"],
+        decision_transport="systemone",
+    )
+    result = probe_decision_provider(
+        DecisionProbeInput(provider=provider, model=model, api_key=api_key)
+    )
+    if result.ok:
+        return
+    if result.kind == "timeout":
+        raise httpx.ReadTimeout(result.error or "decision probe timed out") from None
+    if result.status is not None:
+        request = httpx.Request("POST", provider.base_url)
+        response = httpx.Response(
+            result.status, request=request, text=result.error or "decision probe failed"
+        )
+        raise httpx.HTTPStatusError(
+            f"Client error {result.status}", request=request, response=response
+        ) from None
+    raise RuntimeError(result.error or "decision probe failed") from None
+
+
 def setup_provider_from_preset(
     session: Session,
     preset_key: str,
@@ -136,12 +206,13 @@ def setup_provider_from_preset(
     transport: httpx.BaseTransport | None = None,
 ) -> SetupOutcome:
     options = options or SetupOptions()
-    preset = SETUP_PRESETS.get(preset_key)
+    preset = ALL_PRESETS.get(preset_key)
     if preset is None:
         raise UnknownPresetError(f"unknown provider preset '{preset_key}'")
 
+    decision_only = preset["type"] == "decision"
     existing = _resolve_target_row(session, preset_key, preset)
-    key = "" if preset["local"] else (api_key or "").strip()
+    key = "" if (preset["local"] and not decision_only) else (api_key or "").strip()
     if not key and existing is not None:
         key = secrets.get_secret(existing.keyring_ref) or ""
 
@@ -166,10 +237,18 @@ def setup_provider_from_preset(
     provider.preset_key = preset_key
     session.flush()
 
+    decision_specs = _decision_model_specs(preset)
+    catalog: list[_PersistedModel] = []
     try:
-        catalog = fetch_remote_models(
-            provider.type, provider.base_url, key or None, transport=transport
-        )
+        if decision_only:
+            _probe_decision_preset(provider, key, decision_specs)
+        else:
+            for remote in fetch_remote_models(
+                provider.type, provider.base_url, key or None, transport=transport
+            ):
+                catalog.append(
+                    _PersistedModel(external_id=remote.external_id, caps=list(remote.caps))
+                )
     except Exception as error:
         classified = classify_provider_error(
             error,
@@ -183,9 +262,7 @@ def setup_provider_from_preset(
     use_preset_curated = options.curated_ids is None
     curated = preset["curated_models"] if use_preset_curated else options.curated_ids
     curated = curated or []
-    persist_catalog = [
-        _PersistedModel(external_id=item.external_id, caps=list(item.caps)) for item in catalog
-    ]
+    persist_catalog = catalog
     for item in persist_catalog:
         if not item.caps:
             item.caps = infer_caps(item.external_id)
@@ -284,13 +361,33 @@ def setup_provider_from_preset(
             stt_row.model_id = by_wire_id[stt_resolved_id].model_id
             session.flush()
 
+    decision_rows: dict[str, AiModel] = {}
+    if decision_specs:
+        decision_rows = _upsert_decision_models(session, provider, decision_specs)
+        session.flush()
+
+    assigned_decision: dict[str, str] = {}
+    decision_default = preset.get("decision_default")
+    if options.bind_decision and decision_rows and decision_default:
+        candidate = decision_rows.get(str(decision_default))
+        if candidate is None:
+            candidate = next(iter(decision_rows.values()))
+        for slot in DECISION_SLOTS:
+            row, live_model = _slot_alive(session, slot)
+            if live_model is None:
+                assigned_decision[slot] = candidate.external_id
+                row.model_id = candidate.id
+        if assigned_decision:
+            session.flush()
+
     return SetupOutcome(
         provider_id=provider.id,
-        catalog_count=len(persist_catalog),
+        catalog_count=len(persist_catalog) + len(decision_rows),
         curated_missed=curated_missed,
         assigned_chat_model=assigned_chat,
         assigned_vision_model=assigned_vision,
         assigned_stt_model=assigned_stt,
+        assigned_decision_slots=assigned_decision or None,
     )
 
 
@@ -319,11 +416,13 @@ def set_default_model(
         ).first()
         if elsewhere is not None:
             raise CrossProviderModelError(f"model '{model_name}' belongs to another provider")
+        decision_provider = provider.type == "decision"
         model = AiModel(
             provider_id=provider_id,
             external_id=model_name,
             label=model_name,
-            caps=infer_caps(model_name),
+            caps=["decision"] if decision_provider else infer_caps(model_name),
+            decision_transport="systemone" if decision_provider else None,
             enabled=True,
             missing=False,
         )

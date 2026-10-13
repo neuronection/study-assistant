@@ -4,13 +4,16 @@ import {
   Database,
   FileText,
   Eye,
+  Languages,
   ListChecks,
   MessageSquare,
   Network,
   PenLine,
   Puzzle,
   ScanText,
+  ShieldCheck,
   Sparkles,
+  Tag,
   Volume2,
   Wrench,
 } from 'lucide-react'
@@ -41,7 +44,19 @@ const CONSEQUENCE: Record<string, string> = {
 
 const CAP_ORDER = ['text', 'vision', 'embeddings', 'stt', 'tts'] as const
 const DEFAULT_PREFIX = 'default:'
-const CAP_ICONS = { text: FileText, vision: Eye, tools: Wrench, embeddings: Database, stt: AudioLines, tts: Volume2 }
+const DECISION_SLOTS = [
+  'decision:tool-dispatch',
+  'decision:boolean-gate',
+  'decision:choice',
+  'decision:score',
+] as const
+const DECISION_ICONS = {
+  'decision:tool-dispatch': Wrench,
+  'decision:boolean-gate': ShieldCheck,
+  'decision:choice': Languages,
+  'decision:score': Tag,
+} as const
+const CAP_ICONS = { text: FileText, vision: Eye, tools: Wrench, embeddings: Database, stt: AudioLines, tts: Volume2, decision: Sparkles }
 const TASK_ICONS: Record<string, typeof ListChecks> = {
   quizgen: ListChecks,
   exgen: Puzzle,
@@ -129,6 +144,11 @@ export function TasksTab() {
     secondaryValue[`${DEFAULT_PREFIX}${cap}`] =
       entry?.fallback_model_id != null ? String(entry.fallback_model_id) : null
   }
+  for (const slot of DECISION_SLOTS) {
+    const entry = defaultByCap.get(slot)
+    value[slot] = entry?.model_id != null ? String(entry.model_id) : null
+    secondaryValue[slot] = entry?.fallback_model_id != null ? String(entry.fallback_model_id) : null
+  }
   for (const task of tasks.data ?? []) {
     value[task.task] = task.model_id != null ? String(task.model_id) : null
   }
@@ -136,11 +156,13 @@ export function TasksTab() {
   const handleAssign = (taskId: string, modelId: string | null) => {
     setError(null)
     const id = modelId ? Number(modelId) : null
-    if (taskId.startsWith(DEFAULT_PREFIX)) {
-      const cap = taskId.slice(DEFAULT_PREFIX.length)
-      const entry = defaultByCap.get(cap)
+    if (taskId.startsWith(DEFAULT_PREFIX) || taskId.startsWith('decision:')) {
+      const requires = taskId.startsWith(DEFAULT_PREFIX)
+        ? taskId.slice(DEFAULT_PREFIX.length)
+        : taskId
+      const entry = defaultByCap.get(requires)
       assignDefault.mutate({
-        requires: cap,
+        requires,
         modelId: id,
         fallbackModelId: entry?.fallback_model_id ?? null,
       })
@@ -151,10 +173,12 @@ export function TasksTab() {
 
   const handleAssignSecondary = (taskId: string, modelId: string | null) => {
     setError(null)
-    const cap = taskId.slice(DEFAULT_PREFIX.length)
-    const entry = defaultByCap.get(cap)
+    const requires = taskId.startsWith(DEFAULT_PREFIX)
+      ? taskId.slice(DEFAULT_PREFIX.length)
+      : taskId
+    const entry = defaultByCap.get(requires)
     assignDefault.mutate({
-      requires: cap,
+      requires,
       modelId: entry?.model_id ?? null,
       fallbackModelId: modelId ? Number(modelId) : null,
     })
@@ -171,6 +195,22 @@ export function TasksTab() {
         label: beautifyId(t(`settings.caps.${cap}`)),
         requires: cap,
         icon: CAP_ICONS[cap],
+      })),
+    },
+    {
+      id: 'decision',
+      label: t('settings.decisionGroupTitle'),
+      description: t('settings.decisionGroupPrivacy'),
+      secondary: true,
+      tasks: DECISION_SLOTS.map((slot) => ({
+        id: slot,
+        label: t(`settings.decisionSlots.${slot.slice('decision:'.length)}`),
+        description: t(
+          `settings.decisionSlots.${slot.slice('decision:'.length)}Description`
+        ),
+        requires: 'decision',
+        icon: DECISION_ICONS[slot],
+        secondary: true,
       })),
     },
     {

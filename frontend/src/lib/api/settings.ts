@@ -27,6 +27,9 @@ export interface ProviderPreset {
   preferred_model: { id: string; name: string; caps: string[] } | null
   curated_models: string[] | null
   stt_model: string | null
+  decision_models: { id: string; name: string; transport: string; caps: string[]; provisional?: boolean }[] | null
+  decision_default: string | null
+  provisional: boolean | null
   steps: string[] | null
   free_tier_note: string | null
 }
@@ -46,6 +49,7 @@ export interface ProviderSetupOptions {
   bind_chat?: boolean
   bind_vision?: boolean
   bind_stt?: boolean
+  bind_decision?: boolean
 }
 
 export interface ProviderSetupResult {
@@ -56,6 +60,7 @@ export interface ProviderSetupResult {
   assigned_chat_model: string | null
   assigned_vision_model: string | null
   assigned_stt_model: string | null
+  assigned_decision_slots: Record<string, string> | null
 }
 
 export interface ProviderSetupErrorDetail {
@@ -166,6 +171,7 @@ export interface AiModel {
   external_id: string
   label: string
   caps: string[]
+  decision_transport: string | null
   enabled: boolean
   missing: boolean
   reasoning_effort: string | null

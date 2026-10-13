@@ -1195,7 +1195,9 @@
         "now": "now: {{model}}",
         "unset": "unset",
         "footnote": "Existing assignments and models are never removed.",
-        "apply": "Apply"
+        "apply": "Apply",
+        "fillDecision": "Fill empty decision slots",
+        "decisionNow": "{{count}} of 4 decision slots filled"
       }
     },
     "account": {
@@ -1280,6 +1282,18 @@
       "auditNote": "This change is recorded in the audit log.",
       "errorGeneric": "Something went wrong — try again.",
       "errorForbidden": "Not allowed."
+    },
+    "decisionGroupTitle": "Decision models",
+    "decisionGroupPrivacy": "Decision models run in the cloud: your prompt and the candidate tools for the step are sent to the assigned provider (e.g. TypeSafe or OpenRouter). Your API key stays on this device.",
+    "decisionSlots": {
+      "tool-dispatch": "Tool dispatch",
+      "tool-dispatchDescription": "Picks the tool (if any) a step should use",
+      "boolean-gate": "Boolean gate",
+      "boolean-gateDescription": "Yes/no checks that guard a step",
+      "choice": "Choice",
+      "choiceDescription": "Picks one option from a known set",
+      "score": "Score",
+      "scoreDescription": "Rates input against a rubric"
     }
   },
   "spike": {

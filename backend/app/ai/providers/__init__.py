@@ -1,11 +1,13 @@
 from .errors import ClassifiedProviderError as ClassifiedProviderError
 from .errors import classify_provider_error as classify_provider_error
 from .errors import extract_error_status as extract_error_status
+from .presets import ALL_PRESETS as ALL_PRESETS
 from .presets import KEY_PREFIX_HINTS as KEY_PREFIX_HINTS
 from .presets import PRESET_ORDER as PRESET_ORDER
 from .presets import PRESETS as PRESETS
 from .presets import SETUP_PRESETS as SETUP_PRESETS
 from .presets import guess_preset_for_key as guess_preset_for_key
+from .presets import is_any_preset_key as is_any_preset_key
 from .presets import is_preset_key as is_preset_key
 from .presets_data import KEY_PREFIX_HINTS as KEY_PREFIX_HINTS_DATA
 from .presets_data import PRESET_ORDER as PRESET_ORDER_DATA
@@ -42,6 +44,7 @@ from .setup import set_default_model as set_default_model
 from .setup import setup_provider_from_preset as setup_provider_from_preset
 
 __all__ = [
+    "ALL_PRESETS",
     "DEFAULT_BASE_URLS",
     "DEFAULT_REQUIRES",
     "DETECT_CONNECT_TIMEOUT",
@@ -75,6 +78,7 @@ __all__ = [
     "fetch_remote_models",
     "guess_preset_for_key",
     "infer_caps",
+    "is_any_preset_key",
     "is_preset_key",
     "list_assignments",
     "list_course_assignments",

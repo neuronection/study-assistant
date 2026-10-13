@@ -7081,6 +7081,17 @@
             "title": "Caps",
             "type": "array"
           },
+          "decision_transport": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Transport"
+          },
           "enabled": {
             "title": "Enabled",
             "type": "boolean"
@@ -9239,6 +9250,32 @@
             ],
             "title": "Curated Models"
           },
+          "decision_default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Default"
+          },
+          "decision_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Models"
+          },
           "fixed_base": {
             "title": "Fixed Base",
             "type": "boolean"
@@ -9284,6 +9321,17 @@
               }
             ],
             "title": "Preferred Model"
+          },
+          "provisional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provisional"
           },
           "steps": {
             "anyOf": [
@@ -11404,6 +11452,11 @@
             "title": "Bind Chat",
             "type": "boolean"
           },
+          "bind_decision": {
+            "default": true,
+            "title": "Bind Decision",
+            "type": "boolean"
+          },
           "bind_stt": {
             "default": true,
             "title": "Bind Stt",
@@ -11445,6 +11498,20 @@
               }
             ],
             "title": "Assigned Chat Model"
+          },
+          "assigned_decision_slots": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Decision Slots"
           },
           "assigned_stt_model": {
             "anyOf": [

@@ -626,7 +626,8 @@ SQLAlchemy, unchanged), `errors.py` and `setup.py`.
   the preset's `stt_model`, e.g. openai `whisper-1` — live assignments
   never clobbered), and `preset_key` stamping with manual-row adoption
   (same type + base_url, earliest first). Options body (snake_case):
-  `curated_ids[] / bind_chat / bind_vision / bind_stt`.
+  `curated_ids[] / bind_chat / bind_vision / bind_stt / bind_decision`
+  (plan 26).
 - **Error routing** (`app/ai/providers/errors.py` →
   `ProviderErrorCode` StrEnum): `invalid_key | insufficient_credit |
   new_user_quota | region_unavailable | timeout | local_not_running |
@@ -639,16 +640,78 @@ SQLAlchemy, unchanged), `errors.py` and `setup.py`.
   provider → 409; capability guards reuse the task registry (`ocr` needs
   vision, `transcribe` needs stt, `tts` needs tts).
 - **Capability vocabulary** is `text | vision | tools | stt | tts |
-  embeddings` (§15; no `audio`) — `Capability` StrEnum drives
-  `DEFAULT_REQUIRES` seeding; migration 0064 rewrote stored caps/rows.
-  Local engine detection (`GET /providers/detect-local`) remains outside
+  embeddings | decision` (§15 + plan 26; no `audio`) — `Capability`
+  StrEnum drives `DEFAULT_REQUIRES` seeding (the bare `decision`
+  capability is model-only; assignment slots are the four
+  `decision:*` keys); migration 0064 rewrote stored caps/rows. Local
+  engine detection (`GET /providers/detect-local`) remains outside
   the canonical presets (study keeps llama.cpp/LM Studio probes).
+- **Decision presets** (presets v2, schema 2): `decision_models[]` +
+  `decision_default` ride every preset; presets without them create no
+  decision bindings. `bind_decision` gap-fills each **empty**
+  `decision:<cap>` slot the transport declares (never `open-args`, never
+  a live slot). The **`typesafe` preset** (wire type `decision`,
+  provisional) rides `presets` but **not** `presetOrder` — setup accepts
+  it and validates via the **decision probe**, never a catalog fetch; it
+  renders no tile (joining `presetOrder` is the exposure switch — a
+  canonical edit, never a per-repo one). Mixed providers (OpenRouter)
+  keep their chat wire type and gain the decision rows on setup.
 - **Gates**: `scripts/check-byok-contract.sh` (vendored byte-identical
   from the dev repo; R1 generated-data drift, R2 no `audio` capability
   literals in backend/app, R3 orchestration confined to
   `app/ai/providers/` + API layer, R4 the 12-case contract-test matrix in
   `tests/test_ai_provider_setup_contract.py`, R5 snake_case options) runs
   in CI beside `check-ai-alignment.sh` (`.github/workflows/byok-contract.yml`).
+
+## Decision models (`app/ai/decide/` — plan 26 Phase 3, ADR-0032)
+
+Study is the family's **Python decision reference**: non-chat decision
+support beside chat (never replacing it), ported in shape from the desktop
+reference (`desktop-assistant src/main/ai/decide/`). A decision model is an
+ordinary provider model — `AiModel.caps` gains the sparse **`decision`**
+capability (explicit only, never inferred) and `AiModel.decision_transport`
+(`systemone` today) is the transport seam; assignment replaces the old
+engine enum via four family slots — `decision:tool-dispatch |
+decision:boolean-gate | decision:choice | decision:score` — stored as
+`DefaultTaskAssignment`/`CourseDefaultTaskAssignment` `requires` rows with
+primary + `fallback_model_id` (§3 slot-storage table; `decision:open-args`
+is vocabulary-reserved, never assignable).
+
+- **Registry** (`decide/registry.py`): one registration per transport
+  (`resolve/create/audit/probe` hooks); resolution reads
+  `decision:<cap>` slot → model row → provider row, **capability routing
+  enforced** (a slot resolves only through a model whose transport declares
+  the capability), `off` is a resolution result (unassigned slot → the
+  point does not run — fail-open), fallback chain primary → fallback →
+  fall-through, and resolution is cached per assignments-revision
+  fingerprint (the study adaptation of desktop's per-config-revision cache;
+  `clear_decision_resolution_cache()` is the test seam).
+- **Typesafe client** (`decide/systemone/client.py`): `typesafe-sdk`
+  behind the `SystemOneClient` seam — typed errors (`TypeSafeError` kinds
+  `auth/rate-limit/overloaded/validation/timeout/unavailable`), 8 s default
+  timeout + SDK `RetryPolicy` backoff, base URL from the provider row with
+  the preset's `base_url_override` winning and chat-style `/v1` suffixes
+  stripped. The SDK import is confined to `app/ai/decide/` (alignment-gate
+  SDK_RE; gate R1 sanctions the whole `app/ai` layer for it).
+- **Projection** (`decide/systemone/projection.py`): tool dispatch as a
+  TypeSafe question set — a `__tool__` Choice that always carries a
+  `__none__` out, plus a question per closed-set/boolean argument; typed
+  questions (`noul`/`choice`/`score`) pass through natively.
+- **Funnel** (`decide/funnel.py` → `run_decision`): resolve → create →
+  decide → audit → band (`act ≥ 0.85 / confirm ≥ 0.5 / refuse`, the desktop
+  defaults — study ships no behavior surface yet, so callers may override
+  the thresholds). One audit row per invocation lands in `ai_interactions`
+  (`context_type='decision'`, `task='decision'`, resolved model, token
+  usage, latency); every non-`decided` status means fall through.
+- **Probe** (`decide/systemone/probe.py`): the decision-only-provider
+  validation (§15/D13/D18) — one minimal typed question under the family
+  10 s abort timeout; classified failure persists nothing.
+- **Conformance** (`tests/test_decide_conformance.py`): the shared suite
+  every shipping transport passes (bounded confidence, one audit row, empty
+  input never throws, transport mocked — no network/keyring), plus slot
+  resolution, D2b routing, caching, and probe cases. Slot separation is
+  enforced both directions at assignment time (`decision`-cap models only
+  satisfy `decision:*` slots and vice versa; matrix cases 19–20).
 
 ## Gateway (`app/ai/gateway.py`)
 

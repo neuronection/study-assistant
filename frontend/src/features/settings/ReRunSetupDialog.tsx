@@ -18,6 +18,13 @@ import { useCloseFloatings } from '@/lib/ui-overlays'
 
 import { SetupErrorPanel } from './setupErrors'
 
+const DECISION_SLOTS = [
+  'decision:tool-dispatch',
+  'decision:boolean-gate',
+  'decision:choice',
+  'decision:score',
+] as const
+
 const CAP_ICONS = {
   text: Type,
   vision: Eye,
@@ -53,7 +60,7 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
     bindChat: true,
     bindVision: true,
     bindStt: true,
-    bindDecision: false,
+    bindDecision: true,
   })
   const initialized = useRef(false)
   useEffect(() => {
@@ -67,6 +74,11 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
   const [plainError, setPlainError] = useState<string | null>(null)
 
   const defaultByCap = new Map((defaults.data ?? []).map((entry) => [entry.requires, entry]))
+  const decisionFilled = DECISION_SLOTS.filter(
+    (slot) => defaultByCap.get(slot)?.model_id != null
+  ).length
+  const decisionDeclared = (preset?.decision_models?.length ?? 0) > 0
+  const bindDecision = decisionDeclared && options.bindDecision
   const nowLabel = (requires: string) => {
     const label = defaultByCap.get(requires)?.model_label
     return t('settings.setup.review.now', { model: label ?? t('settings.setup.review.unset') })
@@ -98,6 +110,17 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
           },
         ]
       : []),
+    ...(decisionDeclared
+      ? [
+          {
+            id: 'decision',
+            label: t('settings.setup.review.fillDecision'),
+            bind: bindDecision,
+            currentValue: t('settings.setup.review.decisionNow', { count: decisionFilled }),
+            optionsKey: 'bindDecision' as const,
+          },
+        ]
+      : []),
   ]
 
   const apply = useMutation({
@@ -109,6 +132,7 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
           bind_chat: options.bindChat,
           bind_vision: options.bindVision,
           bind_stt: options.bindStt,
+          bind_decision: bindDecision,
         },
       }),
     onSuccess: async () => {

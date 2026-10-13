@@ -17,10 +17,20 @@ from ...domain.models import (
     TaskAssignment,
     utcnow,
 )
+from ..decide.types import (
+    DECISION_SLOT_PREFIX,
+    DECISION_SLOTS,
+    decision_slot_capability,
+    transport_decision_caps,
+)
 
-PROVIDER_TYPES = ("google", "openai_compatible", "anthropic")
+PROVIDER_TYPES = ("google", "openai_compatible", "anthropic", "decision")
 
-DEFAULT_REQUIRES = tuple(c.value for c in Capability)
+CAPABILITY_REQUIRES = tuple(
+    capability.value for capability in Capability if capability is not Capability.DECISION
+)
+
+DEFAULT_REQUIRES = CAPABILITY_REQUIRES + DECISION_SLOTS
 
 DEFAULT_BASE_URLS: dict[str, str] = {
     "google": "https://generativelanguage.googleapis.com",
@@ -319,19 +329,21 @@ class ProvidersService:
         provider: Provider,
         transport: httpx.BaseTransport | None = None,
     ) -> list[AiModel]:
+        existing = list(
+            self._session.scalars(
+                select(AiModel).where(AiModel.provider_id == provider.id)
+            )
+        )
+        if provider.type == "decision":
+            return existing
         remote = fetch_remote_models(
             provider.type, provider.base_url, self.api_key(provider), transport
         )
-        existing = {
-            model.external_id: model
-            for model in self._session.scalars(
-                select(AiModel).where(AiModel.provider_id == provider.id)
-            )
-        }
+        known = {model.external_id: model for model in existing}
         seen: set[str] = set()
         for item in remote:
             seen.add(item.external_id)
-            model = existing.get(item.external_id)
+            model = known.get(item.external_id)
             if model is None:
                 self._session.add(
                     AiModel(
@@ -347,7 +359,7 @@ class ProvidersService:
             else:
                 model.missing = False
                 model.last_seen_at = utcnow()
-        for external_id, model in existing.items():
+        for external_id, model in known.items():
             if external_id not in seen:
                 model.missing = True
         self._session.flush()
@@ -373,6 +385,18 @@ def _check_capability(
         raise ProviderError(f"{field} model not found")
     if not model.enabled:
         raise ProviderError(f"{field} model is not enabled")
+    if requires.startswith(DECISION_SLOT_PREFIX):
+        capability = decision_slot_capability(requires)
+        if capability is None:
+            raise ProviderError(f"'{requires}' is not an assignable decision slot")
+        if Capability.DECISION.value not in (model.caps or []):
+            raise ProviderError("task requires the 'decision' capability")
+        declared = transport_decision_caps(model.decision_transport)
+        if capability not in declared:
+            raise ProviderError(f"the model's transport does not serve '{requires}'")
+        return
+    if Capability.DECISION.value in (model.caps or []):
+        raise ProviderError("decision models are assigned to decision:* slots only")
     if requires not in (model.caps or []):
         raise ProviderError(f"task requires the '{requires}' capability")
 

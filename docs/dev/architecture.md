@@ -24,7 +24,8 @@ without touching app code.
 │      │              providers/tasks, chat_models, types,                  │
 │      │               embeddings, tools, contracts registry,          │
 │      │               task runner + shared parsing helpers,           │
-│      │               graphs/ (LangGraph chat-turn engine + checkpointer) │
+│      │               graphs/ (LangGraph chat-turn engine + checkpointer), │
+│      │               decide/ (decision funnel — plan 26, Python reference) │
 │      ├─ math/        equivalence chain, hint-leak guard              │
 │      ├─ ocr/         OcrEngine interface + task-routed implementation│
 │      ├─ jobs/        durable runner (jobs table, worker thread)      │

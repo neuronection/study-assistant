@@ -56,14 +56,19 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   for preset setup rows; NULL = manually added), enabled, status JSON (last
   test: ok/error/count)
 - **models**: id, provider_id, external_id, label, caps JSON (text/vision/tools/
-  embeddings/stt/tts — vocabulary per family §15 after 0064), ctx_tokens,
+  embeddings/stt/tts/decision — vocabulary per family §15 + plan 26 after
+  0064; `decision` is explicit-only, never inferred), **decision_transport?**
+  (0069 — the transport seam, `systemone` today), ctx_tokens,
   cost_in/out, **reasoning_effort?** (0038 — per-model reasoning
   control: OpenAI `none/low/medium/high` (set `none` to enable function tools on reasoning
   models), Anthropic `minimal/low/medium/high`), enabled, missing — unique (provider, external_id)
 - **task_assignments**: task (PK: ocr, notes_ocr, description, outline, concepts,
   quizgen, exgen, tutor, grade, chat, flashcards, embeddings), model_id,
   fallback_model_id, params
-- **default_task_assignments** (0041): requires (PK: text | vision | embeddings),
+- **default_task_assignments** (0041): requires (PK: text | vision |
+  embeddings | stt | tts | decision:tool-dispatch | decision:boolean-gate |
+  decision:choice | decision:score — the four `decision:*` slots seeded by
+  0069, plan 26),
   model_id, fallback_model_id — per-capability default models; a task's unset
   model/fallback inherits its capability's default (ADR-088)
 - **course_task_assignments** (0042): course_id+task (composite PK), model_id,
@@ -335,6 +340,15 @@ staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
 signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
+
+- **0069 (plan 26 Phase 3, ADR-0032)**: decision models — `models` gains
+  nullable `decision_transport` (VARCHAR(20), the transport seam,
+  `systemone` today), and the four `decision:*` slot rows are seeded into
+  `default_task_assignments` (insert-if-absent; boot seeding is
+  idempotent too). Downgrade drops the column and deletes the four slot
+  rows; round-trip + idempotence pinned in
+  `tests/test_decision_transport_migration.py`. No data migration (study
+  had no legacy decision code — greenfield per §13.8).
 
 - **S3 Postgres twins (2026-09-24, no revision numbers):** the
   existing migrations were made dialect-aware in place (no backwards

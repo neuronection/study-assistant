@@ -901,7 +901,12 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   presets incl. Ollama, and per-capability **default models** with per-task override
   (inherit-or-custom) — I3/I7 (wizard polish pending); **per-course task-model
   overrides** via the workspace root's Settings tab → Tasks subtab (course title +
-  description in the General subtab) — ADR-091
+  description in the General subtab) — ADR-091; **decision models** (plan 26):
+  a *Decision models* group with four `decision:*` slots (primary + fallback)
+  in the same Tasks subtab, decision-capable models marked in Providers, and
+  one-click setup that can fill the decision slots alongside chat/vision/stt
+  (a privacy notice shows at the Decision group — decision models run in the
+  cloud)
 - ✅ **Settings in a two-pane shell** (family-uniform, 2026-09-20): the assistant-ui
   `SettingsShell` renders a sticky rail (icon + label + description per entry,
   collapsing to a chip row on narrow windows) over five sections — General ·

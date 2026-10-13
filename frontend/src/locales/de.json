@@ -1157,7 +1157,9 @@
         "now": "aktuell: {{model}}",
         "unset": "nicht gesetzt",
         "footnote": "Bestehende Zuweisungen und Modelle werden nie entfernt.",
-        "apply": "Anwenden"
+        "apply": "Anwenden",
+        "fillDecision": "Leere Entscheidungsslots füllen",
+        "decisionNow": "{{count}} von 4 Entscheidungsslots gefüllt"
       }
     },
     "account": {
@@ -1242,6 +1244,18 @@
       "auditNote": "Diese Änderung wird im Audit-Log festgehalten.",
       "errorGeneric": "Etwas ist schiefgelaufen — versuche es erneut.",
       "errorForbidden": "Nicht erlaubt."
+    },
+    "decisionGroupTitle": "Entscheidungsmodelle",
+    "decisionGroupPrivacy": "Entscheidungsmodelle laufen in der Cloud: Ihr Prompt und die Kandidaten-Tools des Schritts werden an den zugewiesenen Anbieter gesendet (z. B. TypeSafe oder OpenRouter). Ihr API-Schlüssel bleibt auf diesem Gerät.",
+    "decisionSlots": {
+      "tool-dispatch": "Tool-Auswahl",
+      "tool-dispatchDescription": "Wählt das Tool (falls nötig) für einen Schritt",
+      "boolean-gate": "Boolesche Sperre",
+      "boolean-gateDescription": "Ja/Nein-Prüfungen, die einen Schritt absichern",
+      "choice": "Auswahl",
+      "choiceDescription": "Wählt eine Option aus einer bekannten Menge",
+      "score": "Bewertung",
+      "scoreDescription": "Bewertet Eingaben anhand einer Rubrik"
     }
   },
   "genesis": {

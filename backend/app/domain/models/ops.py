@@ -93,6 +93,7 @@ class AiModel(Base):
     external_id: Mapped[str] = mapped_column(String(200))
     label: Mapped[str] = mapped_column(String(200))
     caps: Mapped[list[str]] = mapped_column(JSON)
+    decision_transport: Mapped[str | None] = mapped_column(String(20))
     ctx_tokens: Mapped[int | None] = mapped_column(Integer)
     cost_in: Mapped[float | None] = mapped_column(Float)
     cost_out: Mapped[float | None] = mapped_column(Float)

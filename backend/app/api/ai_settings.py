@@ -6,9 +6,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..ai.decide import probe_decision_provider
+from ..ai.decide.systemone.probe import DecisionProbeInput, DecisionProbeResult
 from ..ai.providers import (
+    ALL_PRESETS,
     DEFAULT_REQUIRES,
-    PRESETS,
     CrossProviderModelError,
     ProviderError,
     ProvidersService,
@@ -167,6 +169,9 @@ class PresetOut(BaseModel):
     preferred_model: dict[str, Any] | None = None
     curated_models: list[str] | None = None
     stt_model: str | None = None
+    decision_models: list[dict[str, Any]] | None = None
+    decision_default: str | None = None
+    provisional: bool | None = None
     steps: list[str] | None = None
     free_tier_note: str | None = None
 
@@ -184,10 +189,13 @@ def provider_presets() -> dict[str, PresetOut]:
             preferred_model=preset["preferred_model"],
             curated_models=preset["curated_models"],
             stt_model=preset["stt_model"],
+            decision_models=preset["decision_models"],
+            decision_default=preset["decision_default"],
+            provisional=preset["provisional"],
             steps=preset["steps"],
             free_tier_note=preset["free_tier_note"],
         )
-        for key, preset in PRESETS.items()
+        for key, preset in ALL_PRESETS.items()
     }
 
 
@@ -196,6 +204,7 @@ class SetupOptionsIn(BaseModel):
     bind_chat: bool = True
     bind_vision: bool = True
     bind_stt: bool = True
+    bind_decision: bool = True
 
 
 class ProviderSetupIn(BaseModel):
@@ -212,6 +221,7 @@ class SetupOut(BaseModel):
     assigned_chat_model: str | None = None
     assigned_vision_model: str | None = None
     assigned_stt_model: str | None = None
+    assigned_decision_slots: dict[str, str] | None = None
 
 
 @router.post("/providers/{preset_key}/setup", response_model=SetupOut)
@@ -228,6 +238,7 @@ def setup_preset_provider(
             bind_chat=body.options.bind_chat,
             bind_vision=body.options.bind_vision,
             bind_stt=body.options.bind_stt,
+            bind_decision=body.options.bind_decision,
         )
     try:
         outcome = setup_provider_from_preset(
@@ -263,6 +274,7 @@ def setup_preset_provider(
         assigned_chat_model=outcome.assigned_chat_model,
         assigned_vision_model=outcome.assigned_vision_model,
         assigned_stt_model=outcome.assigned_stt_model,
+        assigned_decision_slots=outcome.assigned_decision_slots,
     )
 
 
@@ -388,6 +400,15 @@ def test_provider(provider_id: int, session: Session = Depends(get_session)) -> 
     provider = session.get(Provider, provider_id)
     if provider is None:
         raise HTTPException(status_code=404, detail="provider not found")
+    if provider.type == "decision":
+        probe = _probe_provider(session, provider)
+        service.record_status(
+            provider,
+            ok=probe.ok,
+            error=None if probe.ok else (probe.error or "decision probe failed"),
+        )
+        session.commit()
+        return _provider_out(service, provider)
     try:
         remote = fetch_remote_models(provider.type, provider.base_url, service.api_key(provider))
         service.record_status(provider, ok=True, error=None, model_count=len(remote))
@@ -395,6 +416,27 @@ def test_provider(provider_id: int, session: Session = Depends(get_session)) -> 
         service.record_status(provider, ok=False, error=str(error)[:300])
     session.commit()
     return _provider_out(service, provider)
+
+
+def _probe_provider(session: Session, provider: Provider) -> DecisionProbeResult:
+    api_key = ProvidersService(session).api_key(provider)
+    model = (
+        session.scalars(
+            select(AiModel)
+            .where(AiModel.provider_id == provider.id)
+            .order_by(AiModel.id)
+        ).first()
+        or AiModel(
+            provider_id=provider.id,
+            external_id="jev-latest",
+            label="jev-latest",
+            caps=["decision"],
+            decision_transport="systemone",
+        )
+    )
+    return probe_decision_provider(
+        DecisionProbeInput(provider=provider, model=model, api_key=api_key or "")
+    )
 
 
 def _remote_error_detail(service: ProvidersService, provider: Provider, error: Exception) -> str:
@@ -451,6 +493,7 @@ def _model_out(model: AiModel) -> ModelOut:
         external_id=model.external_id,
         label=model.label,
         caps=list(model.caps or []),
+        decision_transport=model.decision_transport,
         enabled=model.enabled,
         missing=model.missing,
         reasoning_effort=model.reasoning_effort,
@@ -477,14 +520,17 @@ def create_model(
 ) -> ModelOut:
     from ..ai.providers import infer_caps
 
-    if session.get(Provider, body.provider_id) is None:
+    provider = session.get(Provider, body.provider_id)
+    if provider is None:
         raise HTTPException(status_code=404, detail="provider not found")
     external_id = body.external_id.strip()
     if not external_id:
         raise HTTPException(status_code=422, detail="external_id is required")
     caps = body.caps
+    decision_provider = provider.type == "decision"
     if caps is None:
-        caps = infer_caps(external_id)
+        caps = ["decision"] if decision_provider else infer_caps(external_id)
+    decision_transport = "systemone" if decision_provider else None
     model = session.scalars(
         select(AiModel).where(
             AiModel.provider_id == body.provider_id,
@@ -497,6 +543,7 @@ def create_model(
             external_id=external_id,
             label=(body.label or external_id).strip() or external_id,
             caps=caps,
+            decision_transport=decision_transport,
             enabled=body.enabled,
             missing=False,
             reasoning_effort=(body.reasoning_effort or "").strip() or None,
@@ -507,6 +554,7 @@ def create_model(
         model.missing = False
         model.caps = caps
         model.enabled = body.enabled
+        model.decision_transport = decision_transport
         if body.label is not None:
             model.label = body.label.strip() or external_id
         if body.reasoning_effort is not None:
