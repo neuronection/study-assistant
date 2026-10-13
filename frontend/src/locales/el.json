@@ -1304,7 +1304,8 @@
     "modelCapsStandalone": "Αυτόνομος τύπος",
     "modelTransport": "Μεταφορά",
     "useCatalog": "Επιλογή από τον κατάλογο",
-    "modelProvider": "Πάροχος"
+    "modelProvider": "Πάροχος",
+    "suggestedDecisionDefault": "Πρόταση: {{model}} ({{provider}})"
   },
   "spike": {
     "title": "Δοκιμή απόδοσης",

@@ -1304,7 +1304,8 @@
     "modelCapsStandalone": "Standalone kind",
     "modelTransport": "Transport",
     "useCatalog": "Pick from the catalog",
-    "modelProvider": "Provider"
+    "modelProvider": "Provider",
+    "suggestedDecisionDefault": "Suggested: {{model}} ({{provider}})"
   },
   "spike": {
     "title": "Rendering spike",

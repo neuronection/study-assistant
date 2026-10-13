@@ -41,6 +41,7 @@ class SetupOptions:
     bind_chat: bool = True
     bind_vision: bool = True
     bind_stt: bool = True
+    bind_embeddings: bool = True
     bind_decision: bool = True
 
 
@@ -52,6 +53,7 @@ class SetupOutcome:
     assigned_chat_model: str | None = None
     assigned_vision_model: str | None = None
     assigned_stt_model: str | None = None
+    assigned_embeddings_model: str | None = None
     assigned_decision_slots: dict[str, str] | None = None
 
 
@@ -288,6 +290,7 @@ def setup_provider_from_preset(
     assigned_chat: str | None = None
     assigned_vision: str | None = None
     assigned_stt: str | None = None
+    assigned_embeddings: str | None = None
     by_wire_id = {item.external_id: item for item in persist_catalog}
 
     preferred = preset["preferred_model"]
@@ -361,6 +364,25 @@ def setup_provider_from_preset(
             stt_row.model_id = by_wire_id[stt_resolved_id].model_id
             session.flush()
 
+    embeddings_model_id = preset["embeddings_model"]
+    embeddings_resolved_id = None
+    if embeddings_model_id:
+        embeddings_resolved_id = next(
+            (
+                item.external_id
+                for item in persist_catalog
+                if item.external_id == embeddings_model_id
+                or _match_curated(item.external_id, curated) == embeddings_model_id
+            ),
+            None,
+        )
+    if options.bind_embeddings and embeddings_resolved_id:
+        embeddings_row, embeddings_model = _slot_alive(session, "embeddings")
+        if embeddings_model is None:
+            assigned_embeddings = embeddings_resolved_id
+            embeddings_row.model_id = by_wire_id[embeddings_resolved_id].model_id
+            session.flush()
+
     decision_rows: dict[str, AiModel] = {}
     if decision_specs:
         decision_rows = _upsert_decision_models(session, provider, decision_specs)
@@ -387,6 +409,7 @@ def setup_provider_from_preset(
         assigned_chat_model=assigned_chat,
         assigned_vision_model=assigned_vision,
         assigned_stt_model=assigned_stt,
+        assigned_embeddings_model=assigned_embeddings,
         assigned_decision_slots=assigned_decision or None,
     )
 

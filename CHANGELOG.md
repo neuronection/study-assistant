@@ -24,6 +24,23 @@ Release history from before the public launch lives in the
   selecting Vision or Tools auto-enables Text, and deselecting Text
   drops everything that implies it. Catalog picks normalize the same
   way. i18n en + el + de.
+- **Decision slots suggest their basic default:** an empty decision slot
+  shows a muted "Suggested: {{model}} ({{provider}})" line from the
+  first canonical preset declaring a `decision_default` — display-only,
+  never an assignment.
+
+### Changed (embeddings defaults wave — the embeddings slot gap-fills at setup, 2026-10-13)
+- **Embeddings defaults join the setup flow:** the canonical presets gain
+  `embeddings_model` (docs-verified: openai `text-embedding-3-small`,
+  gemini `gemini-embedding-2`, mistral `mistral-embed`, ollama
+  `nomic-embed-text` — pull-required; honest nulls elsewhere; openai and
+  gemini ids join curated lists so catalog curation keeps them) and
+  setup gap-fills the EMPTY `embeddings` default slot from it —
+  `bind_embeddings` joins the options body (D14's binds + embeddings),
+  `assigned_embeddings_model` rides the outcome, never-clobber rules
+  hold, and `bind_embeddings: false` binds nothing. Contract matrix
+  cases 21/21b pin the gap-fill both ways. i18n unchanged (the slot
+  predates this wave).
 
 ### Added (plan 26 follow-up — decision models in the manual Add-model form, 2026-10-13)
 - **Add-model speaks decision:** the models-tab add/edit form (library

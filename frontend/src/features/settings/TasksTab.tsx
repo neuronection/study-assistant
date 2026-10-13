@@ -32,6 +32,7 @@ import {
   getCosts,
   listModels,
   listProviders,
+  listPresets,
   listTaskDefaults,
   listTasks,
 } from '@/lib/api'
@@ -80,7 +81,20 @@ export function TasksTab() {
   const tasks = useQuery({ queryKey: ['tasks'], queryFn: listTasks })
   const defaults = useQuery({ queryKey: ['task-defaults'], queryFn: listTaskDefaults })
   const costs = useQuery({ queryKey: ['costs'], queryFn: getCosts })
+  const presetsQ = useQuery({ queryKey: ['presets'], queryFn: listPresets })
   const [error, setError] = useState<string | null>(null)
+
+  // The family's basic decision default: the first canonical preset (in
+  // presetOrder) declaring one — a display-level suggestion for empty
+  // decision slots, never an assignment.
+  const decisionSuggestion = (() => {
+    for (const preset of Object.values(presetsQ.data ?? {})) {
+      if (preset.decision_default) {
+        return { model: preset.decision_default, provider: preset.name }
+      }
+    }
+    return null
+  })()
 
   const enabledModels = (models.data ?? []).filter(
     (model) => model.enabled && !model.missing
@@ -253,6 +267,20 @@ export function TasksTab() {
         disabled={assign.isPending || assignDefault.isPending}
         renderMeta={(task) => {
           if (task.id.startsWith(DEFAULT_PREFIX)) {
+            return null
+          }
+          if (task.id.startsWith('decision:') && !value[task.id]) {
+            const suggestion = decisionSuggestion
+            if (suggestion) {
+              return (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('settings.suggestedDecisionDefault', {
+                    model: suggestion.model,
+                    provider: suggestion.provider,
+                  })}
+                </p>
+              )
+            }
             return null
           }
           const info = (tasks.data ?? []).find((entry) => entry.task === task.id)

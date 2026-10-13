@@ -206,6 +206,7 @@ class SetupOptionsIn(BaseModel):
     bind_chat: bool = True
     bind_vision: bool = True
     bind_stt: bool = True
+    bind_embeddings: bool = True
     bind_decision: bool = True
 
 
@@ -223,6 +224,7 @@ class SetupOut(BaseModel):
     assigned_chat_model: str | None = None
     assigned_vision_model: str | None = None
     assigned_stt_model: str | None = None
+    assigned_embeddings_model: str | None = None
     assigned_decision_slots: dict[str, str] | None = None
 
 
@@ -240,6 +242,7 @@ def setup_preset_provider(
             bind_chat=body.options.bind_chat,
             bind_vision=body.options.bind_vision,
             bind_stt=body.options.bind_stt,
+            bind_embeddings=body.options.bind_embeddings,
             bind_decision=body.options.bind_decision,
         )
     try:
@@ -276,6 +279,7 @@ def setup_preset_provider(
         assigned_chat_model=outcome.assigned_chat_model,
         assigned_vision_model=outcome.assigned_vision_model,
         assigned_stt_model=outcome.assigned_stt_model,
+        assigned_embeddings_model=outcome.assigned_embeddings_model,
         assigned_decision_slots=outcome.assigned_decision_slots,
     )
 

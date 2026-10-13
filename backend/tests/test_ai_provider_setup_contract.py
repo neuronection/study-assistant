@@ -27,7 +27,9 @@ Plan 26 / ADR-0032 additions (decision capability + slots):
 18. probe is no oracle without a valid key (401/402/403 classification);
 19. slot separation enforced both directions + `open-args` never assignable;
 20. preset catalog decision data shape (docs-verified decision presets
-    ride `presetOrder`; no provisional markers remain).
+    ride `presetOrder`; no provisional markers remain);
+21. embeddings default gap-fill (`embeddings_model` + `bind_embeddings`;
+    empty slots only, never clobbers a live binding).
 """
 
 from typing import Any
@@ -863,3 +865,42 @@ def test_case_20b_probe_model_id_derives_from_canonical_data() -> None:
     # surfaced, never papered over with an invented id.
     with pytest.raises(ValueError, match="declares no decision models"):
         decision_probe_model_id({})
+
+
+def test_case_21_embeddings_default_gapfills_empty_slot(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§15 follow-up: the preset's docs-verified embeddings default
+    gap-fills the empty `embeddings` slot (`bind_embeddings`, empty slots
+    only — never a live binding)."""
+    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "text-embedding-3-small"]))
+    outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key")
+
+    assert outcome.assigned_embeddings_model == "text-embedding-3-small"
+    row = db_session.get(DefaultTaskAssignment, "embeddings")
+    assert row is not None and row.model_id is not None
+    embeddings_model = db_session.get(AiModel, row.model_id)
+    assert embeddings_model is not None
+    assert embeddings_model.external_id == "text-embedding-3-small"
+    assert embeddings_model.caps == ["embeddings"]
+
+    # never clobbers: a live embeddings binding survives re-setup
+    other = add_model(db_session, outcome.provider_id, "my-embed", ["embeddings"])
+    row.model_id = other.id
+    db_session.flush()
+    outcome_two = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key")
+    assert outcome_two.assigned_embeddings_model is None
+    db_session.refresh(row)
+    assert row.model_id == other.id
+
+
+def test_case_21b_bind_embeddings_off_binds_nothing(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "text-embedding-3-small"]))
+    options = byok_setup.SetupOptions(bind_embeddings=False)
+    outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key", options=options)
+
+    assert outcome.assigned_embeddings_model is None
+    row = db_session.get(DefaultTaskAssignment, "embeddings")
+    assert row is None or row.model_id is None

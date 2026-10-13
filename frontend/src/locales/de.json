@@ -1266,7 +1266,8 @@
     "modelCapsStandalone": "Eigenständige Art",
     "modelTransport": "Transport",
     "useCatalog": "Aus dem Katalog wählen",
-    "modelProvider": "Anbieter"
+    "modelProvider": "Anbieter",
+    "suggestedDecisionDefault": "Vorschlag: {{model}} ({{provider}})"
   },
   "genesis": {
     "title": "Kurs erstellen",

@@ -419,6 +419,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
           assigned_chat_model: null,
           assigned_vision_model: null,
           assigned_stt_model: null,
+          assigned_embeddings_model: null,
           assigned_decision_slots: null,
         }))
       }

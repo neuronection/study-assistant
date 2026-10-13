@@ -60,6 +60,7 @@ export interface ProviderSetupResult {
   assigned_chat_model: string | null
   assigned_vision_model: string | null
   assigned_stt_model: string | null
+  assigned_embeddings_model: string | null
   assigned_decision_slots: Record<string, string> | null
 }
 
