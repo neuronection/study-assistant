@@ -12,7 +12,7 @@ const createProvider = vi.fn()
 const listModels = vi.fn()
 const listTaskDefaults = vi.fn()
 const assignTaskDefault = vi.fn()
-const clipboardWrite = vi.fn()
+const clipboardWrite = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
