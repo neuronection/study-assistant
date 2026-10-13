@@ -1153,6 +1153,7 @@ def make_chat_turn_handler(
                     raise JobError("no pending user message")
                 pending = messages[-1]
             service.chain_under_later_reply(pending)
+            session.commit()
 
             def emit(event: dict[str, Any]) -> None:
                 bus.publish_threadsafe(WsTopic.chat(chat_session.id), event)

@@ -31,9 +31,24 @@ hermeticity fix: conftest points `SA_CONFIG_DIR` at a per-process
 scratch dir so the cipher's KeyRing resolution never touches the real
 user config dir.
 
+**Chat-turn DB lock scope + profile-touch hygiene (2026-10-13, incident
+fix):** a failing chat turn (provider 400 on `reasoning_effort='none'`)
+held the SQLite write transaction across its minutes-long retry window
+and every concurrent request 500'd with `database is locked` — each
+request's `touch_last_used` write blocked 30 s. Two fixes: (1) turn
+transaction boundaries — the handler commits the pre-engine writes before
+`turn_engine.run` and `prepare_turn_context`'s mention-registry refresh
+commits immediately (previously it flushed into a transaction that stayed
+open until `contract_guard`); `tests/test_chat_turn_lock_scope.py` pins
+the invariant with blocked-model/blocked-prepare/retry probes from a
+second connection; (2) `touch_last_used` is throttled (60 s interval —
+enough for last-used ordering) and fail-soft (a busy database logs and
+skips instead of 500ing the request; naive stored timestamps are treated
+as UTC). The incident's user-side trigger: `gpt-6.1-sol` carried
+`reasoning_effort='none'`, which that model rejects — cleared to NULL.
+
 **Plan 26 Phase 3 — decision models (the Python decision reference,
-2026-10-13):** study gains decision support ported in shape from desktop.
-`Capability` gains sparse `decision` (explicit only) and `AiModel` a
+2026-10-13):** study gains decision support ported in shape from desktop.`Capability` gains sparse `decision` (explicit only) and `AiModel` a
 nullable `decision_transport` seam (`systemone` today; migration 0069 with
 a tested downgrade, which also seeds the four `decision:*` slot rows into
 `default_task_assignments`/course defaults — primary + fallback, D2b-enforced

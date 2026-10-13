@@ -11,6 +11,20 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (2026-10-13 incident)
+- **One failing chat turn no longer locks the whole app:** the turn job
+  held its SQLite write transaction across minutes of provider retries, so
+  every concurrent request failed with `database is locked`. The handler
+  now commits the pre-engine writes before the turn engine starts, and the
+  mention-registry refresh inside turn preparation commits immediately
+  instead of flushing into a transaction that stayed open until the
+  contract step. Regression tests probe the write lock from a second
+  connection during a blocked model call, blocked preparation, and the
+  retry window.
+- **`touch_last_used` is throttled and fail-soft:** the per-request
+  profile-timestamp write runs at most once a minute per profile and a
+  busy database logs-and-skips instead of failing the request.
+
 ### Added (plan 26 Phase 3)
 - **Decision models (Python decision reference):** `decision` joins the
   model-capability vocabulary (explicit only) and `models.decision_transport`

@@ -7,13 +7,17 @@ last profile re-provisions it. Exactly one `is_default` per user.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ...core.profile_context import active_profile_id, active_user_id
 from ...domain.models import Profile
+
+_TOUCH_LAST_USED_MIN_INTERVAL = timedelta(seconds=60)
 
 
 def _norm(value: str | None) -> str | None:
@@ -144,9 +148,20 @@ def touch_last_used(session: Session, profile_id: str) -> None:
     from datetime import UTC, datetime
 
     profile = session.get(Profile, _norm(profile_id) or profile_id)
-    if profile is not None:
-        profile.last_used_at = datetime.now(UTC)
+    if profile is None:
+        return
+    now = datetime.now(UTC)
+    last = profile.last_used_at
+    if last is not None:
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=UTC)
+        if now - last < _TOUCH_LAST_USED_MIN_INTERVAL:
+            return
+    profile.last_used_at = now
+    try:
         session.commit()
+    except SQLAlchemyError:
+        session.rollback()
 
 
 def last_used_profile(session: Session, user_id: str) -> Profile | None:

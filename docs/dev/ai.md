@@ -793,6 +793,18 @@ middleware can host. Single-call tasks stay on `TaskRunner` by design.
   `prepare_turn_contract` / `finalize_turn`, called by the graph nodes —
   the external contract (WS events, proposal cards, message rows,
   `ai_interactions` ledger) is stable and pinned by the chat API/e2e tests.
+- **Transaction boundaries (2026-10-13 incident fix)**: a turn must never
+  hold the SQLite write transaction across a slow await — a provider call
+  that hangs or retries for minutes would otherwise block every concurrent
+  write (each request touches `profiles.last_used_at`) and turn one bad
+  turn into app-wide `database is locked` 500s. The handler commits the
+  pre-engine writes (message chaining) before `turn_engine.run`;
+  `prepare_turn_context`'s one write (the mention-registry refresh)
+  commits immediately instead of flushing into a transaction that would
+  stay open until `contract_guard`; finalize and the failure path commit
+  their own writes. Pinned by `tests/test_chat_turn_lock_scope.py`
+  (blocked-model, blocked-prepare, and retry-window probes from a second
+  connection).
 - **Nodes call the gateway only** for model I/O; retrieval, deterministic
   tools, contracts, and persistence are plain code called from nodes. Node
   bodies run via `asyncio.to_thread` (LangGraph node timeouts require async

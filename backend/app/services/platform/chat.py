@@ -643,7 +643,7 @@ class ChatService:
         for note in notes:
             registry.add("note", note.id, note.title, note.course_id)
         chat_session.mention_registry = registry.to_json()
-        self._session.flush()
+        self._session.commit()
         return registry
 
     def _root_node(self, course_id: int) -> TreeNode | None:
