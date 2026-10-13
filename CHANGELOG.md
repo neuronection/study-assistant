@@ -11,6 +11,22 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (plan 26 Phase 6 closeout)
+- **Ruff: the generated presets module is excluded from the formatter**
+  (`[tool.ruff.format]` exclude; the lint E501 per-file-ignore stays) —
+  the scoped family accommodation for a file that is emitted, never
+  hand-edited, and not formatter-stable. Ten Phase-3 files
+  (`app/ai/decide/`, `app/ai/providers/`, `app/api/ai_settings.py` and
+  four test files) are reformatted: `ruff format --check .` was red on
+  them. Vendored gates re-synced (byok gate **R8** — no needle/llm
+  decision-engine code; alignment family table all-strict; convergence
+  `--self` layout probe).
+### Fixed (plan 26 Phase 6)
+- **The setup-modal clipboard mock restores the writeText Promise
+  contract** (`mockResolvedValue`) — a bare `vi.fn()` returning
+  undefined fired an unhandled rejection that red-exited the whole
+  vitest run even at 1436/1436 green.
+
 ### Fixed (2026-10-13 incident)
 - **One failing chat turn no longer locks the whole app:** the turn job
   held its SQLite write transaction across minutes of provider retries, so
