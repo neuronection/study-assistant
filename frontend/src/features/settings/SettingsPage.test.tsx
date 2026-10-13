@@ -532,8 +532,56 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('models tab offers manual add with cap correction when listing fails', async () => {
+  test('models tab adds decision models as a standalone kind with the transport seam', async () => {
     listProviders.mockResolvedValue([PROVIDER])
+    listModels.mockResolvedValue([])
+    listRemoteModels.mockRejectedValue(new Error('no key'))
+    createModel.mockResolvedValue({
+      id: 21,
+      provider_id: 1,
+      external_id: 'nimble',
+      label: 'nimble',
+      caps: ['decision'],
+      decision_transport: 'systemone',
+      enabled: true,
+      missing: false,
+    })
+    await renderSettings()
+    await openAiSection('Models')
+    fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByText(/no key/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: /manual/i }))
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText('Model')).toBeInTheDocument(),
+    )
+    fireEvent.change(within(dialog).getByLabelText('Model'), {
+      target: { value: 'nimble' },
+    })
+    // standalone kind: decision replaces the chat caps, hides the
+    // generation options, and stamps the transport
+    fireEvent.click(within(dialog).getByRole('button', { name: 'text' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'decision' }))
+    expect(within(dialog).getByRole('button', { name: 'text' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(within(dialog).getByText('Transport:')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Temperature')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
+    await waitFor(() =>
+      expect(createModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          external_id: 'nimble',
+          caps: ['decision'],
+          decision_transport: 'systemone',
+        }),
+      ),
+    )
+  })
+
+  test('models tab offers manual add with cap correction when listing fails', async () => {    listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([])
     listRemoteModels.mockRejectedValue(
       new Error(

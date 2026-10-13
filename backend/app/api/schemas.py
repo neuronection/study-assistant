@@ -3,9 +3,24 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
-from ..core.vocab import MaterialKind, MaterialStatus, applicable_extraction_modes
+from ..core.vocab import (
+    DecisionTransport,
+    MaterialKind,
+    MaterialStatus,
+    applicable_extraction_modes,
+)
 
-MODEL_CAPS = ("text", "vision", "tools", "embeddings", "stt", "tts")
+MODEL_CAPS = ("text", "vision", "tools", "embeddings", "stt", "tts", "decision")
+
+
+def _validate_decision_transport(value: str | None) -> str | None:
+    """The decision transport seam (D2): one shipping transport today —
+    anything else is a data error, never silently coerced."""
+    if value is None:
+        return value
+    if value != DecisionTransport.SYSTEMONE.value:
+        raise ValueError(f"unknown decision transport: {value}")
+    return value
 
 
 class HealthResponse(BaseModel):
@@ -71,6 +86,7 @@ class ModelCreateIn(BaseModel):
     reasoning_effort: str | None = Field(default=None, max_length=20)
     temperature: float | None = Field(default=None, ge=0, le=2)
     max_tokens: int | None = Field(default=None, ge=1)
+    decision_transport: str | None = Field(default=None, max_length=20)
 
     @field_validator("caps")
     @classmethod
@@ -81,6 +97,11 @@ class ModelCreateIn(BaseModel):
         if unknown:
             raise ValueError(f"unknown caps: {', '.join(unknown)}")
         return value
+
+    @field_validator("decision_transport")
+    @classmethod
+    def transport_within_vocabulary(cls, value: str | None) -> str | None:
+        return _validate_decision_transport(value)
 
 
 class ProviderOut(BaseModel):
@@ -118,6 +139,12 @@ class ModelUpdate(BaseModel):
     reasoning_effort: str | None = Field(default=None, max_length=20)
     temperature: float | None = Field(default=None, ge=0, le=2)
     max_tokens: int | None = Field(default=None, ge=1)
+    decision_transport: str | None = Field(default=None, max_length=20)
+
+    @field_validator("decision_transport")
+    @classmethod
+    def transport_within_vocabulary(cls, value: str | None) -> str | None:
+        return _validate_decision_transport(value)
 
     @field_validator("caps")
     @classmethod

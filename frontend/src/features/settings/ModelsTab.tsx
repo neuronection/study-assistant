@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Database, Eye, FileText, AudioLines, Volume2, Wrench } from 'lucide-react'
+import { Database, Eye, FileText, AudioLines, ListChecks, Volume2, Wrench } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -20,7 +20,10 @@ import {
 } from '@/lib/api'
 import { useConfirm } from '@/lib/use-confirm'
 
-const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'stt', 'tts'] as const
+const MODEL_CAPS = ['text', 'vision', 'tools', 'embeddings', 'stt', 'tts', 'decision'] as const
+/** Standalone kinds: selecting one makes the model exactly that kind —
+ * chat caps combine, standalone kinds replace everything (D4 in the form). */
+const STANDALONE_CAPS = ['embeddings', 'stt', 'tts', 'decision'] as const
 const REASONING_EFFORT_OPTIONS = ['none', 'low', 'medium', 'high', 'max', 'xhigh'] as const
 const CAP_ICONS = {
   text: FileText,
@@ -29,6 +32,7 @@ const CAP_ICONS = {
   embeddings: Database,
   stt: AudioLines,
   tts: Volume2,
+  decision: ListChecks,
 } as const
 
 export function ModelsTab() {
@@ -73,6 +77,7 @@ export function ModelsTab() {
         reasoning_effort: draft.reasoningEffort || null,
         temperature: draft.temperature ?? null,
         max_tokens: draft.maxTokens ?? null,
+        decision_transport: draft.decisionTransport ?? null,
       })
       await refresh()
     } catch (err) {
@@ -115,6 +120,9 @@ export function ModelsTab() {
           : {}),
         ...(patch.temperature !== undefined ? { temperature: patch.temperature } : {}),
         ...(patch.maxTokens !== undefined ? { max_tokens: patch.maxTokens } : {}),
+        ...(patch.decisionTransport !== undefined
+          ? { decision_transport: patch.decisionTransport || null }
+          : {}),
       })
       await refresh()
     } catch (err) {
@@ -163,6 +171,7 @@ export function ModelsTab() {
       caps: model.caps,
       enabled: model.enabled,
       reasoningEffort: model.reasoning_effort ?? undefined,
+      decisionTransport: model.decision_transport ?? undefined,
       missing: model.missing,
     }))
 
@@ -204,6 +213,10 @@ export function ModelsTab() {
         missingLabel={t('settings.missing')}
         capsLabel={t('settings.modelCaps')}
         capsHint={t('settings.modelCapsHint')}
+        standaloneCaps={[...STANDALONE_CAPS]}
+        standaloneLabel={t('settings.modelCapsStandalone')}
+        decisionTransport="systemone"
+        decisionTransportLabel={t('settings.modelTransport')}
         searchPlaceholder={t('settings.searchModels')}
         searchLabel={t('settings.searchModels')}
         emptyProviderLabel={t('settings.noModels')}

@@ -526,6 +526,62 @@ def test_setup_options_use_contract_names() -> None:
     assert ProviderErrorCode.TIMEOUT.value == "timeout"
 
 
+def test_manual_decision_model_on_any_provider(client: TestClient) -> None:
+    """Manual add-model can declare the decision capability on any provider
+    row (plan 26 follow-up): the transport seam is stamped from the payload
+    or the one shipping transport, explicit-only (unknown transports 422),
+    and cleared when the capability goes away."""
+    created = client.post(
+        "/api/v1/providers",
+        json={
+            "name": "OpenAI",
+            "type": "openai_compatible",
+            "base_url": "https://api.openai.com/v1",
+        },
+    )
+    assert created.status_code == 201, created.text
+    provider_id = created.json()["id"]
+
+    model = client.post(
+        "/api/v1/models",
+        json={"provider_id": provider_id, "external_id": "nimble", "caps": ["decision"]},
+    )
+    assert model.status_code == 201, model.text
+    assert model.json()["caps"] == ["decision"]
+    assert model.json()["decision_transport"] == "systemone"
+
+    explicit = client.post(
+        "/api/v1/models",
+        json={
+            "provider_id": provider_id,
+            "external_id": "jev-latest",
+            "caps": ["decision"],
+            "decision_transport": "systemone",
+        },
+    )
+    assert explicit.status_code == 201, explicit.text
+    assert explicit.json()["decision_transport"] == "systemone"
+
+    rejected = client.post(
+        "/api/v1/models",
+        json={
+            "provider_id": provider_id,
+            "external_id": "bad-transport",
+            "caps": ["decision"],
+            "decision_transport": "carrier-pigeon",
+        },
+    )
+    assert rejected.status_code == 422
+
+    model_id = model.json()["id"]
+    edited = client.patch(f"/api/v1/models/{model_id}", json={"caps": ["text"]})
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["decision_transport"] is None
+    back = client.patch(f"/api/v1/models/{model_id}", json={"caps": ["decision"]})
+    assert back.status_code == 200, back.text
+    assert back.json()["decision_transport"] == "systemone"
+
+
 def test_case_13_bind_decision_gapfills_declared_slots(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

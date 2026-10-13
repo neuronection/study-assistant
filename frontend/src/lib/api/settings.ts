@@ -206,6 +206,7 @@ export async function createModel(body: {
   reasoning_effort?: string | null
   temperature?: number | null
   max_tokens?: number | null
+  decision_transport?: string | null
 }): Promise<AiModel> {
   const response = await apiFetch('/api/v1/models', {
     method: 'POST',
@@ -224,6 +225,7 @@ export async function updateModel(
     reasoning_effort?: string | null
     temperature?: number | null
     max_tokens?: number | null
+    decision_transport?: string | null
   }
 ): Promise<AiModel> {
   const response = await apiFetch(`/api/v1/models/${id}`, {

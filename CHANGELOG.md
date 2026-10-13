@@ -11,6 +11,24 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (plan 26 follow-up — decision models in the manual Add-model form, 2026-10-13)
+- **Add-model speaks decision:** the models-tab add/edit form (library
+  `ModelRegistry`, assistant-ui 0.56.0) gains standalone capability
+  kinds — decision, speech-to-text, text-to-speech and embeddings select
+  exclusively (a standalone kind replaces the chat caps and vice versa —
+  the family's D4 slot-separation law expressed in the form), and a
+  decision selection stamps the transport seam (read-only
+  `Transport: systemone`, carried on the row). Generation options —
+  temperature, max tokens, reasoning effort — now render per capability
+  (only for chat-family caps), so decision/stt/tts/embeddings models get
+  the minimal form.
+- **Backend contract:** `POST/PATCH /api/v1/models` accept `decision`
+  caps on any provider row (the API vocabulary gains the frozen §15
+  `decision` capability) plus `decision_transport` (validated — the one
+  shipping transport, `systemone`); creating/editing a decision model
+  stamps the transport from the payload or the default, and editing the
+  caps away clears it. Matrix-pinned by the new contract test.
+
 ### Added (plan 26 follow-up wave B — capability chips on the setup tiles, 2026-10-13)
 - **The preset grid is self-explanatory:** the setup wizard derives
   per-tile capability chips from the API preset data — chat type → Chat

@@ -982,7 +982,8 @@
       "tools": "Tools",
       "embeddings": "Embeddings",
       "stt": "Sprache-zu-Text",
-      "tts": "Text-zu-Sprache"
+      "tts": "Text-zu-Sprache",
+      "decision": "Entscheidung"
     },
     "deleteModel": "Modell löschen",
     "confirmDeleteModel": "Dieses Modell entfernen? Die Zuweisungen zu diesem Modell werden aufgehoben.",
@@ -1261,7 +1262,9 @@
       "choiceDescription": "Wählt eine Option aus einer bekannten Menge",
       "score": "Bewertung",
       "scoreDescription": "Bewertet Eingaben anhand einer Rubrik"
-    }
+    },
+    "modelCapsStandalone": "Eigenständige Art",
+    "modelTransport": "Transport"
   },
   "genesis": {
     "title": "Kurs erstellen",

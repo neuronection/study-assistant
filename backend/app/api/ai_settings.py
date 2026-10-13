@@ -35,6 +35,7 @@ from ..ai.providers import (
 )
 from ..ai.tasks import TASK_DEFS, TaskDef
 from ..core.secrets import delete_secret, get_secret, set_secret
+from ..core.vocab import DecisionTransport
 from ..domain.models import (
     AiModel,
     Course,
@@ -540,7 +541,18 @@ def create_model(
     decision_provider = provider.type == "decision"
     if caps is None:
         caps = ["decision"] if decision_provider else infer_caps(external_id)
-    decision_transport = "systemone" if decision_provider else None
+    # The decision transport seam (D2): decision-only providers imply it;
+    # an explicit decision capability on any provider row stamps the
+    # payload's transport or the one shipping transport; without the
+    # capability there is no transport to carry.
+    if decision_provider or "decision" in caps:
+        decision_transport = (
+            body.decision_transport
+            if body.decision_transport is not None
+            else DecisionTransport.SYSTEMONE.value
+        )
+    else:
+        decision_transport = None
     model = session.scalars(
         select(AiModel).where(
             AiModel.provider_id == body.provider_id,
@@ -623,6 +635,17 @@ def update_model(
         model.temperature = body.temperature
     if "max_tokens" in body.model_fields_set:
         model.max_tokens = body.max_tokens
+    effective_caps = body.caps if body.caps is not None else model.caps
+    provider_row = session.get(Provider, model.provider_id)
+    decision_kept = "decision" in effective_caps or (
+        provider_row is not None and provider_row.type == "decision"
+    )
+    if decision_kept:
+        model.decision_transport = body.decision_transport or DecisionTransport.SYSTEMONE.value
+    elif "decision_transport" in body.model_fields_set or body.caps is not None:
+        # caps changed away from decision (or the transport was set
+        # explicitly) — nothing to carry without the capability.
+        model.decision_transport = body.decision_transport
     session.commit()
     return _model_out(model)
 

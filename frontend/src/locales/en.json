@@ -1020,7 +1020,8 @@
       "tools": "tools",
       "embeddings": "embeddings",
       "stt": "speech-to-text",
-      "tts": "text-to-speech"
+      "tts": "text-to-speech",
+      "decision": "decision"
     },
     "deleteModel": "Delete model",
     "confirmDeleteModel": "Remove this model? Tasks assigned to it will be cleared.",
@@ -1299,7 +1300,9 @@
       "choiceDescription": "Picks one option from a known set",
       "score": "Score",
       "scoreDescription": "Rates input against a rubric"
-    }
+    },
+    "modelCapsStandalone": "Standalone kind",
+    "modelTransport": "Transport"
   },
   "spike": {
     "title": "Rendering spike",
