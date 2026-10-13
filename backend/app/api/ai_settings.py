@@ -420,19 +420,14 @@ def test_provider(provider_id: int, session: Session = Depends(get_session)) -> 
 
 def _probe_provider(session: Session, provider: Provider) -> DecisionProbeResult:
     api_key = ProvidersService(session).api_key(provider)
-    model = (
-        session.scalars(
-            select(AiModel)
-            .where(AiModel.provider_id == provider.id)
-            .order_by(AiModel.id)
-        ).first()
-        or AiModel(
-            provider_id=provider.id,
-            external_id="jev-latest",
-            label="jev-latest",
-            caps=["decision"],
-            decision_transport="systemone",
-        )
+    model = session.scalars(
+        select(AiModel).where(AiModel.provider_id == provider.id).order_by(AiModel.id)
+    ).first() or AiModel(
+        provider_id=provider.id,
+        external_id="jev-latest",
+        label="jev-latest",
+        caps=["decision"],
+        decision_transport="systemone",
     )
     return probe_decision_provider(
         DecisionProbeInput(provider=provider, model=model, api_key=api_key or "")

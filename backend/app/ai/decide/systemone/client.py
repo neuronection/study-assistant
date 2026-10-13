@@ -241,8 +241,7 @@ class TypeSafeSdkSystemOneClient:
 
     def system_one(self, params: SystemOneCallParams) -> TypeSafeResult:
         payload = {
-            question_id: question.to_payload()
-            for question_id, question in params.questions.items()
+            question_id: question.to_payload() for question_id, question in params.questions.items()
         }
         try:
             result = self._client.system_one(state=params.state, questions=payload)

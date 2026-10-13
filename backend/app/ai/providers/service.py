@@ -330,9 +330,7 @@ class ProvidersService:
         transport: httpx.BaseTransport | None = None,
     ) -> list[AiModel]:
         existing = list(
-            self._session.scalars(
-                select(AiModel).where(AiModel.provider_id == provider.id)
-            )
+            self._session.scalars(select(AiModel).where(AiModel.provider_id == provider.id))
         )
         if provider.type == "decision":
             return existing

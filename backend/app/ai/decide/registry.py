@@ -76,9 +76,7 @@ class DecisionTransportRegistration:
     transport: DecisionTransport
     capabilities: frozenset[DecisionCapability]
     display_name: str
-    resolve_candidate: Callable[
-        [Provider, AiModel, DecisionEngineDeps], DecisionResolution
-    ]
+    resolve_candidate: Callable[[Provider, AiModel, DecisionEngineDeps], DecisionResolution]
     create: Callable[[DecisionResolution, DecisionEngineDeps], DecisionEngine]
     audit: Callable[[DecisionResolution], AuditMeta | None]
     probe: Callable[[DecisionProbeInput], DecisionProbeResult]
@@ -89,9 +87,7 @@ def _resolve_systemone_candidate(
 ) -> DecisionResolution:
     base_url = resolve_systemone_base_url(provider, model)
     if base_url is None:
-        return UnavailableResolution(
-            reason="The provider base URL is missing or invalid."
-        )
+        return UnavailableResolution(reason="The provider base URL is missing or invalid.")
     api_key = deps.api_key_of(provider)
     if not api_key:
         return UnavailableResolution(
@@ -99,14 +95,10 @@ def _resolve_systemone_candidate(
             code="needs-key",
             provider_id=provider.id,
         )
-    return SystemOneResolution(
-        provider=provider, model=model, api_key=api_key, base_url=base_url
-    )
+    return SystemOneResolution(provider=provider, model=model, api_key=api_key, base_url=base_url)
 
 
-def _create_systemone(
-    resolution: DecisionResolution, deps: DecisionEngineDeps
-) -> DecisionEngine:
+def _create_systemone(resolution: DecisionResolution, deps: DecisionEngineDeps) -> DecisionEngine:
     if not isinstance(resolution, SystemOneResolution):
         raise ValueError("systemone registration received a non-systemone resolution")
     return SystemOneDecisionEngine(

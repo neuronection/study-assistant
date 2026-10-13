@@ -45,19 +45,15 @@ def test_migration_0069_adds_decision_transport_and_seeds_slots(tmp_path: Path) 
     raw = sqlite3.connect(db_path)
     columns = {row[1] for row in raw.execute("PRAGMA table_info(models)").fetchall()}
     assert "decision_transport" in columns
-    transport = raw.execute(
-        "SELECT decision_transport FROM models WHERE id = 100"
-    ).fetchone()[0]
+    transport = raw.execute("SELECT decision_transport FROM models WHERE id = 100").fetchone()[0]
     assert transport is None
     requires = {
-        row[0]
-        for row in raw.execute("SELECT requires FROM default_task_assignments").fetchall()
+        row[0] for row in raw.execute("SELECT requires FROM default_task_assignments").fetchall()
     }
     assert set(_DECISION_SLOTS) <= requires
     for slot in _DECISION_SLOTS:
         model_id, fallback = raw.execute(
-            "SELECT model_id, fallback_model_id FROM default_task_assignments "
-            "WHERE requires = ?",
+            "SELECT model_id, fallback_model_id FROM default_task_assignments WHERE requires = ?",
             (slot,),
         ).fetchone()
         assert model_id is None and fallback is None
@@ -69,8 +65,7 @@ def test_migration_0069_adds_decision_transport_and_seeds_slots(tmp_path: Path) 
     columns = {row[1] for row in raw.execute("PRAGMA table_info(models)").fetchall()}
     assert "decision_transport" not in columns
     requires = {
-        row[0]
-        for row in raw.execute("SELECT requires FROM default_task_assignments").fetchall()
+        row[0] for row in raw.execute("SELECT requires FROM default_task_assignments").fetchall()
     }
     assert not (set(_DECISION_SLOTS) & requires)
     raw.close()
@@ -104,8 +99,7 @@ def test_migration_0069_upgrade_is_idempotent_on_seeded_slots(tmp_path: Path) ->
 
     raw = sqlite3.connect(db_path)
     rows = raw.execute(
-        "SELECT requires, model_id FROM default_task_assignments "
-        "WHERE requires = 'decision:score'"
+        "SELECT requires, model_id FROM default_task_assignments WHERE requires = 'decision:score'"
     ).fetchall()
     assert rows == [("decision:score", None)]
     raw.close()

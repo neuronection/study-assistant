@@ -167,9 +167,7 @@ def run_decision(deps: DecisionFunnelDeps, params: RunDecisionParams) -> Decisio
         and deps.observe_resolved_model is not None
     ):
         with contextlib.suppress(Exception):
-            deps.observe_resolved_model(
-                resolution.model.external_id, outcome.resolved_model
-            )
+            deps.observe_resolved_model(resolution.model.external_id, outcome.resolved_model)
     return DecisionDecidedStatus(
         band=decision_band(outcome.confidence, params.act_threshold, params.confirm_threshold),
         outcome=outcome,

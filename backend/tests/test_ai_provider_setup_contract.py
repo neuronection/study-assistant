@@ -568,8 +568,12 @@ def test_case_14_bind_decision_off_binds_nothing(
         m for m in models_of(db_session, provider.id) if "decision" in (m.caps or [])
     ]
     assert [m.external_id for m in decision_models] == ["openrouter.jev-latest"]
-    for slot in ("decision:tool-dispatch", "decision:boolean-gate",
-                 "decision:choice", "decision:score"):
+    for slot in (
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    ):
         row = db_session.get(DefaultTaskAssignment, slot)
         assert row is None or row.model_id is None
 
@@ -579,8 +583,9 @@ def test_case_15_bind_decision_never_clobbers_live_slots(
 ) -> None:
     install_catalog(monkeypatch, wire_catalog(["openrouter/auto"]))
     live_slot = "decision:tool-dispatch"
-    other = seed_manual_provider(db_session, name="Other", type_="decision",
-                                 base_url="https://api.typesafe.ai")
+    other = seed_manual_provider(
+        db_session, name="Other", type_="decision", base_url="https://api.typesafe.ai"
+    )
     live_model = add_model(db_session, other.id, "pinned-jev", ["decision"])
     live_model.decision_transport = "systemone"
     db_session.flush()
@@ -676,9 +681,7 @@ def test_case_17_decision_only_probe_timeout_classifies_timeout(
 ) -> None:
     install_probe(
         monkeypatch,
-        DecisionProbeResult(
-            ok=False, latency_ms=10_000, kind="timeout", error="probe timed out"
-        ),
+        DecisionProbeResult(ok=False, latency_ms=10_000, kind="timeout", error="probe timed out"),
     )
 
     with pytest.raises(byok_setup.SetupError) as excinfo:
@@ -703,9 +706,7 @@ def test_case_18_probe_is_no_oracle_without_a_valid_key(
 
     install_probe(
         monkeypatch,
-        DecisionProbeResult(
-            ok=False, latency_ms=5, status=402, error="no credit"
-        ),
+        DecisionProbeResult(ok=False, latency_ms=5, status=402, error="no credit"),
     )
     with pytest.raises(byok_setup.SetupError) as credit:
         byok_setup.setup_provider_from_preset(db_session, "typesafe", "not-a-real-key")

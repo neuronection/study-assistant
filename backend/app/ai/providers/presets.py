@@ -52,9 +52,7 @@ ALL_PRESETS: dict[str, dict[str, Any]] = {
 }
 
 SETUP_PRESETS: dict[str, dict[str, Any]] = {
-    key: ALL_PRESETS[key]
-    for key in _PRESET_ORDER
-    if key in ALL_PRESETS
+    key: ALL_PRESETS[key] for key in _PRESET_ORDER if key in ALL_PRESETS
 }
 
 PRESETS: dict[str, dict[str, Any]] = SETUP_PRESETS

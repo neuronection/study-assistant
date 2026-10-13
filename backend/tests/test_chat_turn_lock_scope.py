@@ -96,15 +96,13 @@ def test_turn_does_not_hold_the_write_lock_across_the_model_call(tmp_path: Path)
         messages: list[dict[str, Any]] = []
         stop = time.monotonic() + 30.0
         while time.monotonic() < stop:
-            messages = client.get(
-                f"/api/v1/chat/sessions/{session_id}/messages"
-            ).json()
+            messages = client.get(f"/api/v1/chat/sessions/{session_id}/messages").json()
             if any(m["role"] == "assistant" for m in messages):
                 break
             time.sleep(0.05)
-        assert any(
-            m["role"] == "assistant" for m in messages
-        ), f"assistant message never appeared; last messages: {messages!r}"
+        assert any(m["role"] == "assistant" for m in messages), (
+            f"assistant message never appeared; last messages: {messages!r}"
+        )
 
 
 def test_turn_does_not_hold_the_write_lock_during_prepare(tmp_path: Path) -> None:

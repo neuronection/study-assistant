@@ -273,9 +273,9 @@ def test_conformance_typed_questions_route_to_the_question_slot(
     client = FakeSystemOneClient(
         TypeSafeResult(
             model="jev-1.13",
-            answers={"__probe__": DecisionAnswer(
-                type=DecisionCapabilityVocab.BOOLEAN_GATE, noul=0.97
-            )},
+            answers={
+                "__probe__": DecisionAnswer(type=DecisionCapabilityVocab.BOOLEAN_GATE, noul=0.97)
+            },
         )
     )
 
@@ -418,9 +418,7 @@ def test_probe_ok_reports_latency_and_resolved_model() -> None:
         TypeSafeResult(
             model="jev-1.13",
             answers={
-                "__probe__": DecisionAnswer(
-                    type=DecisionCapabilityVocab.BOOLEAN_GATE, noul=0.99
-                )
+                "__probe__": DecisionAnswer(type=DecisionCapabilityVocab.BOOLEAN_GATE, noul=0.99)
             },
         )
     )
@@ -435,9 +433,7 @@ def test_probe_ok_reports_latency_and_resolved_model() -> None:
 
 
 def test_probe_failure_carries_status_and_kind() -> None:
-    client = FakeSystemOneClient(
-        TypeSafeError(SystemOneErrorKind.AUTH, "bad key", 401)
-    )
+    client = FakeSystemOneClient(TypeSafeError(SystemOneErrorKind.AUTH, "bad key", 401))
     result = probe_decision_provider(
         DecisionProbeInput(
             provider=probe_provider_row(), model=probe_model_row(), api_key="k", client=client
