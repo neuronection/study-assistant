@@ -1198,7 +1198,12 @@
         "apply": "Εφαρμογή",
         "fillDecision": "Συμπλήρωση κενών slots αποφάσεων",
         "decisionNow": "{{count}} από 4 slots αποφάσεων συμπληρωμένα"
-      }
+      },
+      "chipChat": "Συνομιλία",
+      "chipVision": "Όραση",
+      "chipStt": "Ομιλία-σε-κείμενο",
+      "chipDecision": "Απόφαση",
+      "chipLocal": "Τοπικό"
     },
     "account": {
       "title": "Account",

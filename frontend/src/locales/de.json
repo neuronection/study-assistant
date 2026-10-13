@@ -1160,7 +1160,12 @@
         "apply": "Anwenden",
         "fillDecision": "Leere Entscheidungsslots füllen",
         "decisionNow": "{{count}} von 4 Entscheidungsslots gefüllt"
-      }
+      },
+      "chipChat": "Chat",
+      "chipVision": "Vision",
+      "chipStt": "Sprache-zu-Text",
+      "chipDecision": "Entscheidung",
+      "chipLocal": "Lokal"
     },
     "account": {
       "title": "Account",

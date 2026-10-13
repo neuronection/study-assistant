@@ -1198,7 +1198,12 @@
         "apply": "Apply",
         "fillDecision": "Fill empty decision slots",
         "decisionNow": "{{count}} of 4 decision slots filled"
-      }
+      },
+      "chipChat": "Chat",
+      "chipVision": "Vision",
+      "chipStt": "Speech-to-text",
+      "chipDecision": "Decision",
+      "chipLocal": "Local"
     },
     "account": {
       "title": "Account",

@@ -29,6 +29,7 @@ import {
 import { COUNTRIES, countryDisplayName } from '@neuronection/assistant-ui/countries'
 import { Combobox } from '@/components/ui/combobox'
 import { useCloseFloatings } from '@/lib/ui-overlays'
+import type { ProviderSetupTileChip } from '@neuronection/assistant-ui/provider-setup-tiles'
 
 import { ERROR_CODES, SetupErrorPanel } from './setupErrors'
 
@@ -43,6 +44,35 @@ const TILE_ORDER = [
   'deepseek',
   'ollama',
 ] as const
+
+/**
+ * Capability chips for a preset tile (plan 26 §13.3 follow-up): derived
+ * from the API preset data — chat type → chat (+ vision where the
+ * preferred model carries it, + stt where stt_model exists),
+ * decision_models → decision, keyless-local → local. Labels via i18n.
+ */
+function chipsForPreset(
+  preset: { type: string; local: boolean; preferred_model: { caps: string[] } | null; stt_model: string | null; decision_models: unknown[] | null },
+  t: (key: string) => string,
+): ProviderSetupTileChip[] {
+  const chips: ProviderSetupTileChip[] = []
+  if (preset.type !== 'decision') {
+    chips.push({ key: 'chat', label: t('settings.setup.chipChat') })
+    if (preset.preferred_model?.caps.includes('vision')) {
+      chips.push({ key: 'vision', label: t('settings.setup.chipVision') })
+    }
+    if (preset.stt_model) {
+      chips.push({ key: 'stt', label: t('settings.setup.chipStt') })
+    }
+  }
+  if (preset.decision_models && preset.decision_models.length > 0) {
+    chips.push({ key: 'decision', label: t('settings.setup.chipDecision') })
+  }
+  if (preset.local) {
+    chips.push({ key: 'local', label: t('settings.setup.chipLocal') })
+  }
+  return chips
+}
 
 const DECISION_SLOTS = [
   'decision:tool-dispatch',
@@ -453,7 +483,12 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
         <ProviderSetupTiles
           presets={order.map((key) => {
             const presetTile = presets.data?.[key]
-            return { key, name: presetTile?.name ?? key, local: presetTile?.local ?? false }
+            if (!presetTile) return { key, name: key }
+            return {
+              key,
+              name: presetTile.name,
+              chips: chipsForPreset(presetTile, t),
+            }
           })}
           onSelect={openForm}
           label={t('settings.setup.title')}
