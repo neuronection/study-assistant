@@ -650,12 +650,17 @@ SQLAlchemy, unchanged), `errors.py` and `setup.py`.
   `decision_default` ride every preset; presets without them create no
   decision bindings. `bind_decision` gap-fills each **empty**
   `decision:<cap>` slot the transport declares (never `open-args`, never
-  a live slot). The **`typesafe` preset** (wire type `decision`,
-  provisional) rides `presets` but **not** `presetOrder` — setup accepts
-  it and validates via the **decision probe**, never a catalog fetch; it
-  renders no tile (joining `presetOrder` is the exposure switch — a
-  canonical edit, never a per-repo one). Mixed providers (OpenRouter)
-  keep their chat wire type and gain the decision rows on setup.
+  a live slot). The **`typesafe` preset** (wire type `decision`) is
+  docs-verified and rides `presetOrder` like every preset (the §13.3
+  exposure switch flipped 2026-10-13 — a canonical edit, never a
+  per-repo one); setup accepts it and validates via the **decision
+  probe**, never a catalog fetch. Mixed providers (OpenRouter: pinned
+  `typesafe/jev-1.13` + rolling `~typesafe/jev-latest`, systemone
+  surface pinned via `base_url_override`) and **keyless local presets**
+  (Ollama: `nimble`/`tev1`/`clef`/`clef-flash`, pull-required, v0.35.0+
+  — clef models v0.35.1+) keep their chat wire type and gain the
+  decision rows on setup; keyless decision resolution carries the
+  explicit sentinel key (the official SDK requires a non-empty key).
 - **Gates**: `scripts/check-byok-contract.sh` (vendored byte-identical
   from the dev repo; R1 generated-data drift, R2 no `audio` capability
   literals in backend/app, R3 orchestration confined to

@@ -131,7 +131,7 @@ describe('ProviderSetupModal', () => {
     expect(screen.getByText(/custom/i)).toBeInTheDocument()
   })
 
-  test('the provisional decision-only preset never renders a tile (rides presets, not presetOrder)', async () => {
+  test('the docs-verified decision-only preset renders a tile (exposure switch flipped, §13.3 superseded)', async () => {
     listPresets.mockResolvedValue({
       ...PRESETS,
       typesafe: {
@@ -140,7 +140,7 @@ describe('ProviderSetupModal', () => {
         base_url: 'https://api.typesafe.ai',
         fixed_base: false,
         local: false,
-        key_url: 'https://console.typesafe.ai/keys',
+        key_url: 'https://docs.typesafe.ai/api',
         preferred_model: null,
         curated_models: null,
         stt_model: null,
@@ -153,7 +153,7 @@ describe('ProviderSetupModal', () => {
           },
         ],
         decision_default: 'jev-latest',
-        provisional: true,
+        provisional: null,
         steps: null,
         free_tier_note: null,
       },
@@ -161,7 +161,12 @@ describe('ProviderSetupModal', () => {
     renderModal()
 
     await screen.findByText('OpenAI')
-    expect(screen.queryByText('TypeSafe')).not.toBeInTheDocument()
+    const typesafeTile = screen.getByRole('button', { name: /TypeSafe/ })
+    expect(typesafeTile).toBeInTheDocument()
+    const gemini = screen.getByRole('button', { name: /Google Gemini/ })
+    const ollama = screen.getByRole('button', { name: /Ollama/ })
+    expect(gemini.compareDocumentPosition(typesafeTile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(typesafeTile.compareDocumentPosition(ollama) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   test('preset form shows steps, key link, and advanced base URL; copies steps', async () => {

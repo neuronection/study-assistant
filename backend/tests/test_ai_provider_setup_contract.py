@@ -26,8 +26,8 @@ Plan 26 / ADR-0032 additions (decision capability + slots):
 17. probe timeout classifies `timeout`;
 18. probe is no oracle without a valid key (401/402/403 classification);
 19. slot separation enforced both directions + `open-args` never assignable;
-20. preset catalog decision data shape (provisional rides `presets`, not
-    `presetOrder`).
+20. preset catalog decision data shape (docs-verified decision presets
+    ride `presetOrder`; no provisional markers remain).
 """
 
 from typing import Any
@@ -155,7 +155,9 @@ def test_preset_metadata_uniformity() -> None:
         "ollama",
         "openai",
         "openrouter",
+        "typesafe",
     ]
+    assert PRESET_ORDER.index("typesafe") > PRESET_ORDER.index("openrouter")
     assert SETUP_PRESETS["ollama"]["local"] is True
     assert SETUP_PRESETS["gemini"]["type"] == "google"
     assert SETUP_PRESETS["gemini"]["base_url"] == "https://generativelanguage.googleapis.com"
@@ -538,15 +540,15 @@ def test_case_13_bind_decision_gapfills_declared_slots(
         "decision:choice",
         "decision:score",
     }
-    assert set(outcome.assigned_decision_slots.values()) == {"openrouter.jev-latest"}
+    assert set(outcome.assigned_decision_slots.values()) == {"typesafe/jev-1.13"}
     provider = db_session.get(Provider, outcome.provider_id)
     assert provider is not None
     decision_models = [
         m for m in models_of(db_session, provider.id) if "decision" in (m.caps or [])
     ]
-    assert [m.external_id for m in decision_models] == ["openrouter.jev-latest"]
+    assert [m.external_id for m in decision_models] == ["typesafe/jev-1.13", "~typesafe/jev-latest"]
     assert decision_models[0].decision_transport == "systemone"
-    assert outcome.catalog_count == 2
+    assert outcome.catalog_count == 3
     for slot in outcome.assigned_decision_slots:
         row = db_session.get(DefaultTaskAssignment, slot)
         assert row is not None and row.model_id == decision_models[0].id
@@ -567,7 +569,7 @@ def test_case_14_bind_decision_off_binds_nothing(
     decision_models = [
         m for m in models_of(db_session, provider.id) if "decision" in (m.caps or [])
     ]
-    assert [m.external_id for m in decision_models] == ["openrouter.jev-latest"]
+    assert [m.external_id for m in decision_models] == ["typesafe/jev-1.13", "~typesafe/jev-latest"]
     for slot in (
         "decision:tool-dispatch",
         "decision:boolean-gate",
@@ -751,14 +753,32 @@ def test_case_19_slot_separation_enforced_both_directions(
 def test_case_20_preset_catalog_decision_data_shape() -> None:
     from app.ai.providers.presets import ALL_PRESETS, PRESET_ORDER, decision_models_for_preset
 
-    assert "typesafe" in ALL_PRESETS
-    assert "typesafe" not in PRESET_ORDER
+    # §13.3 exposure switch flipped (2026-10-13): the docs-verified
+    # decision presets ride presetOrder; no provisional markers remain.
+    assert "typesafe" in PRESET_ORDER
     assert ALL_PRESETS["typesafe"]["type"] == "decision"
-    assert ALL_PRESETS["typesafe"]["provisional"] is True
+    assert ALL_PRESETS["typesafe"]["provisional"] is None
     assert ALL_PRESETS["typesafe"]["decision_default"] == "jev-latest"
     openrouter = ALL_PRESETS["openrouter"]
-    assert openrouter["decision_default"] == "openrouter.jev-latest"
-    assert openrouter["decision_models"][0]["provisional"] is True
+    assert openrouter["decision_default"] == "typesafe/jev-1.13"
+    assert [entry["id"] for entry in openrouter["decision_models"]] == [
+        "typesafe/jev-1.13",
+        "~typesafe/jev-latest",
+    ]
+    assert all(
+        entry.get("base_url_override") == "https://openrouter.ai/api"
+        for entry in openrouter["decision_models"]
+    )
+    assert all("provisional" not in entry for entry in openrouter["decision_models"])
+    ollama = ALL_PRESETS["ollama"]
+    assert [entry["id"] for entry in ollama["decision_models"]] == [
+        "nimble",
+        "tev1",
+        "clef",
+        "clef-flash",
+    ]
+    assert ollama["decision_default"] == "nimble"
+    assert ollama["key_url"] is None
     assert decision_models_for_preset("openai") == []
     for preset in ALL_PRESETS.values():
         for entry in preset["decision_models"] or []:
@@ -782,7 +802,7 @@ def test_case_20b_probe_model_id_derives_from_canonical_data() -> None:
     # …and the real catalog answers with its own data, matching what setup
     # and the test endpoint will ask the provider about.
     assert decision_probe_model_id(ALL_PRESETS["typesafe"]) == "jev-latest"
-    assert decision_probe_model_id(ALL_PRESETS["openrouter"]) == "openrouter.jev-latest"
+    assert decision_probe_model_id(ALL_PRESETS["openrouter"]) == "typesafe/jev-1.13"
     # A decision preset that declares neither is a data inconsistency —
     # surfaced, never papered over with an invented id.
     with pytest.raises(ValueError, match="declares no decision models"):

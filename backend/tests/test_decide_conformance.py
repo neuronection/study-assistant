@@ -342,6 +342,79 @@ def test_resolution_needs_key_then_fallback_chain(db_session: Session) -> None:
     assert fallback_gone.code == "needs-key"
 
 
+def test_resolution_keyless_preset_uses_the_sentinel_key(db_session: Session) -> None:
+    """§13.3 follow-up: local Ollama decision models resolve keylessly — the
+    official SDK requires a non-empty key (D9), so keyless presets (no
+    ``key_url`` in the canonical data) carry the explicit sentinel."""
+    from app.ai.decide.systemone.client import KEYLESS_SYSTEMONE_API_KEY
+
+    provider = Provider(
+        name="Ollama (local)",
+        type="openai_compatible",
+        base_url="http://localhost:11434/v1",
+        keyring_ref="provider:ollama-local",
+        preset_key="ollama",
+        enabled=True,
+        status=None,
+    )
+    db_session.add(provider)
+    db_session.flush()
+    model = AiModel(
+        provider_id=provider.id,
+        external_id="nimble",
+        label="Nimble",
+        caps=["decision"],
+        decision_transport="systemone",
+        enabled=True,
+        missing=False,
+    )
+    db_session.add(model)
+    db_session.flush()
+    assign_slot(db_session, "decision:tool-dispatch", model.id)
+    clear_decision_resolution_cache()
+
+    resolution = resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session)
+
+    assert isinstance(resolution, SystemOneResolution)
+    assert resolution.api_key == KEYLESS_SYSTEMONE_API_KEY
+    assert resolution.base_url == "http://localhost:11434"
+    assert resolution.model.external_id == "nimble"
+
+
+def test_resolution_keyed_preset_without_key_still_needs_key(db_session: Session) -> None:
+    """The keyless path is preset-data-driven (no ``key_url``), never a
+    local/key heuristic a keyed preset could ride."""
+    provider = Provider(
+        name="OpenRouter",
+        type="openai_compatible",
+        base_url="https://openrouter.ai/api/v1",
+        keyring_ref="provider:or-no-key",
+        preset_key="openrouter",
+        enabled=True,
+        status=None,
+    )
+    db_session.add(provider)
+    db_session.flush()
+    model = AiModel(
+        provider_id=provider.id,
+        external_id="typesafe/jev-1.13",
+        label="Jev 1.13 via OpenRouter (pinned)",
+        caps=["decision"],
+        decision_transport="systemone",
+        enabled=True,
+        missing=False,
+    )
+    db_session.add(model)
+    db_session.flush()
+    assign_slot(db_session, "decision:tool-dispatch", model.id)
+    clear_decision_resolution_cache()
+
+    resolution = resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session)
+
+    assert isinstance(resolution, UnavailableResolution)
+    assert resolution.code == "needs-key"
+
+
 def test_resolution_rejects_non_decision_models_in_slots(db_session: Session) -> None:
     chat_provider = Provider(
         name="OpenAI",

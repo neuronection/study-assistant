@@ -61,9 +61,11 @@ client behind a typed seam (kinded errors, 8 s timeout/backoff, preset
 `ai_interactions` audit row per invocation — conformance-tested against the
 shared suite (transport mocked, no network/keyring). Setup gains
 `bind_decision` (capability-aware gap-fill into empty declared slots only,
-never `open-args`, never a live slot) and validates the provisional
-decision-only `typesafe` preset via the probe (classified failure persists
-nothing; it still renders no tile — rides `presets`, not `presetOrder`).
+never `open-args`, never a live slot) and validates the decision-only
+`typesafe` preset via the probe (classified failure persists nothing; the
+docs-verified preset tiles normally — the §13.3 exposure switch flipped
+2026-10-13, and keyless local Ollama decision models resolve through the
+keyless sentinel).
 The contract-test matrix grows cases 13–20 (study stays the family's most
 complete matrix: 20 cases). UI: a *Decision models* group (primary +
 fallback, library pickers, decision-model-only filtering) with the verbatim
