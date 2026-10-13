@@ -11,6 +11,20 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (Add-model form polish — provider context, modern manual toggle, capability implications, 2026-10-13)
+- **The form always answers "model of what?":** the add/edit modal opens
+  with a discreet provider context banner (configured name + base URL)
+  above the picker, and the manual-id toggle becomes a labelled ghost
+  control with direction copy (pen icon → manual entry; "Pick from the
+  catalog" to go back) — library 0.57.0 (`providerContextLabel`,
+  `useCatalogLabel`).
+- **Vision/tools imply text:** the form expresses the family's own
+  semantics (`infer_caps` builds text first and appends the modifiers;
+  every preset vision/tool model carries text) via `capImplications` —
+  selecting Vision or Tools auto-enables Text, and deselecting Text
+  drops everything that implies it. Catalog picks normalize the same
+  way. i18n en + el + de.
+
 ### Added (plan 26 follow-up — decision models in the manual Add-model form, 2026-10-13)
 - **Add-model speaks decision:** the models-tab add/edit form (library
   `ModelRegistry`, assistant-ui 0.56.0) gains standalone capability

@@ -1302,7 +1302,9 @@
       "scoreDescription": "Rates input against a rubric"
     },
     "modelCapsStandalone": "Standalone kind",
-    "modelTransport": "Transport"
+    "modelTransport": "Transport",
+    "useCatalog": "Pick from the catalog",
+    "modelProvider": "Provider"
   },
   "spike": {
     "title": "Rendering spike",

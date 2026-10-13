@@ -1264,7 +1264,9 @@
       "scoreDescription": "Bewertet Eingaben anhand einer Rubrik"
     },
     "modelCapsStandalone": "Eigenständige Art",
-    "modelTransport": "Transport"
+    "modelTransport": "Transport",
+    "useCatalog": "Aus dem Katalog wählen",
+    "modelProvider": "Anbieter"
   },
   "genesis": {
     "title": "Kurs erstellen",

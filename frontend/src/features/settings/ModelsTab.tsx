@@ -215,8 +215,11 @@ export function ModelsTab() {
         capsHint={t('settings.modelCapsHint')}
         standaloneCaps={[...STANDALONE_CAPS]}
         standaloneLabel={t('settings.modelCapsStandalone')}
+        capImplications={{ vision: ['text'], tools: ['text'] }}
         decisionTransport="systemone"
         decisionTransportLabel={t('settings.modelTransport')}
+        useCatalogLabel={t('settings.useCatalog')}
+        providerContextLabel={t('settings.modelProvider')}
         searchPlaceholder={t('settings.searchModels')}
         searchLabel={t('settings.searchModels')}
         emptyProviderLabel={t('settings.noModels')}

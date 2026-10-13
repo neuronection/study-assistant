@@ -1302,7 +1302,9 @@
       "scoreDescription": "Αξιολογεί τις εισόδους με βάση ρουμπρίκα"
     },
     "modelCapsStandalone": "Αυτόνομος τύπος",
-    "modelTransport": "Μεταφορά"
+    "modelTransport": "Μεταφορά",
+    "useCatalog": "Επιλογή από τον κατάλογο",
+    "modelProvider": "Πάροχος"
   },
   "spike": {
     "title": "Δοκιμή απόδοσης",
