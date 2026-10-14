@@ -237,7 +237,6 @@ def test_resolve_falls_back_to_capability_default(tmp_path: object) -> None:
             DefaultTaskAssignment(
                 requires="text",
                 model_id=default_model.id,
-                fallback_model_id=default_model.id,
             )
         )
         session.commit()
@@ -255,11 +254,23 @@ def test_resolve_falls_back_to_capability_default(tmp_path: object) -> None:
         )
         session.add(override)
         session.flush()
-        session.add(TaskAssignment(task="chat", model_id=override.id))
+        # ADR-0037: the default carries no fallback; the specialist task
+        # assignment's own fallback is the only second hop.
+        session.add(
+            TaskAssignment(task="chat", model_id=override.id, fallback_model_id=default_model.id)
+        )
         session.commit()
 
     chain = gateway._resolve_chain("chat", None)
     assert [entry.external_id for entry in chain] == ["override-text", "default-text"]
+
+    with factory() as session:
+        row = session.get(TaskAssignment, "chat")
+        row.fallback_model_id = None
+        session.commit()
+
+    chain = gateway._resolve_chain("chat", None)
+    assert [entry.external_id for entry in chain] == ["override-text"]
 
     with factory() as session:
         session.delete(session.get(TaskAssignment, "chat"))

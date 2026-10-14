@@ -120,6 +120,9 @@ class DefaultTaskAssignment(Base):
 
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+    # ADR-0037: capability defaults (incl. `decision`) are single-slot —
+    # this stays populated only on the decision kind override rows, which
+    # are specialist assignments.
     fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
 
 
@@ -137,12 +140,13 @@ class CourseTaskAssignment(Base):
 class CourseDefaultTaskAssignment(Base):
     __tablename__ = "course_default_task_assignments"
 
+    # ADR-0037: capability defaults (global and per-course) are
+    # single-slot — no fallback. Only specialist assignments carry one.
     course_id: Mapped[int] = mapped_column(
         ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
     model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
-    fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
 
 
 class DeletedItem(Base):

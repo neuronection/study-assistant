@@ -5309,12 +5309,6 @@ export interface components {
         };
         /** CourseDefaultTaskOut */
         CourseDefaultTaskOut: {
-            /** Fallback Model Id */
-            fallback_model_id: number | null;
-            /** Fallback Model Label */
-            fallback_model_label: string | null;
-            /** Global Fallback Model Label */
-            global_fallback_model_label: string | null;
             /** Global Model Label */
             global_model_label: string | null;
             /** Model Id */
@@ -8985,8 +8979,6 @@ export interface components {
         };
         /** TaskOut */
         TaskOut: {
-            /** Default Fallback Model Label */
-            default_fallback_model_label?: string | null;
             /** Default Model Label */
             default_model_label?: string | null;
             /** Description */

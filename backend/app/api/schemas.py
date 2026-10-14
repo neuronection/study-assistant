@@ -174,13 +174,16 @@ class TaskOut(BaseModel):
     fallback_model_label: str | None
     inherits_default: bool = False
     default_model_label: str | None = None
-    default_fallback_model_label: str | None = None
+    # ADR-0037: capability defaults are single-slot — no inherited-fallback
+    # label; the prior `default_fallback_model_label` is removed.
     monthly_cap_usd: float | None = None
 
 
 class DefaultTaskOut(BaseModel):
     requires: str
     model_id: int | None
+    # Fallback stays on the wire for the decision kind override rows this
+    # endpoint also serves (ADR-0037); capability rows always carry null.
     fallback_model_id: int | None
     model_label: str | None
     fallback_model_label: str | None
@@ -203,13 +206,12 @@ class CourseTaskOut(BaseModel):
 
 
 class CourseDefaultTaskOut(BaseModel):
+    # ADR-0037: course capability defaults are single-slot — no fallback
+    # fields; the inherited view is the global default's primary.
     requires: str
     model_id: int | None
-    fallback_model_id: int | None
     model_label: str | None
-    fallback_model_label: str | None
     global_model_label: str | None
-    global_fallback_model_label: str | None
 
 
 class MaterialOut(BaseModel):

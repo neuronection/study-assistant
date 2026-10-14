@@ -442,10 +442,17 @@ def assign_default_task(
     session: Session,
     requires: str,
     model_id: int | None,
-    fallback_model_id: int | None,
+    fallback_model_id: int | None = None,
 ) -> DefaultTaskAssignment:
     if requires not in DEFAULT_REQUIRES:
         raise ProviderError(f"unknown capability '{requires}'")
+    # ADR-0037: capability defaults (incl. `decision`) are single-slot —
+    # only the specialist `decision:<kind>` override rows carry fallbacks.
+    if fallback_model_id is not None and requires not in DECISION_SLOTS:
+        raise ProviderError(
+            f"capability defaults are single-slot: '{requires}' carries no fallback — "
+            "only decision:<kind> overrides do"
+        )
 
     _check_capability(session, model_id, requires, "assigned")
     _check_capability(session, fallback_model_id, requires, "fallback")
@@ -501,29 +508,26 @@ def assign_course_default_task(
     course_id: int,
     requires: str,
     model_id: int | None,
-    fallback_model_id: int | None,
 ) -> CourseDefaultTaskAssignment:
     from ...domain.models import Course
 
+    # ADR-0037: course capability defaults are single-slot.
     if requires not in DEFAULT_REQUIRES:
         raise ProviderError(f"unknown capability '{requires}'")
     if session.get(Course, course_id) is None:
         raise ProviderError(f"course {course_id} not found")
 
     _check_capability(session, model_id, requires, "assigned")
-    _check_capability(session, fallback_model_id, requires, "fallback")
     assignment = session.get(CourseDefaultTaskAssignment, (course_id, requires))
     if assignment is None:
         assignment = CourseDefaultTaskAssignment(
             course_id=course_id,
             requires=requires,
             model_id=model_id,
-            fallback_model_id=fallback_model_id,
         )
         session.add(assignment)
     else:
         assignment.model_id = model_id
-        assignment.fallback_model_id = fallback_model_id
     session.flush()
     return assignment
 

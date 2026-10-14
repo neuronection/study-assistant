@@ -475,6 +475,15 @@ def test_task_defaults_endpoints_and_inheritance(
     assert mismatch.status_code == 422
     assert "vision" in mismatch.json()["detail"]
 
+    # ADR-0037: capability defaults reject a fallback (kind rows keep
+    # accepting one — see the decide conformance fallback chains).
+    rejected = client.put(
+        "/api/v1/tasks/defaults/text",
+        json={"model_id": default_model["id"], "fallback_model_id": override["id"]},
+    )
+    assert rejected.status_code == 422
+    assert "single-slot" in rejected.json()["detail"]
+
     unknown = client.put("/api/v1/tasks/defaults/telepathy", json={"model_id": default_model["id"]})
     assert unknown.status_code == 422
 

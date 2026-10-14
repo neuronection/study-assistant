@@ -263,8 +263,11 @@ class LLMGateway:
             if task_def is not None:
                 default = session.get(DefaultTaskAssignment, task_def.requires)
 
+            # ADR-0037: capability defaults are single-slot — the overlay's
+            # default and course-default layers contribute a primary only;
+            # the fallback position belongs to specialist assignments.
             global_model_id = default.model_id if default is not None else None
-            global_fallback_id = default.fallback_model_id if default is not None else None
+            global_fallback_id: int | None = None
             if assignment is not None:
                 if assignment.model_id is not None:
                     global_model_id = assignment.model_id
@@ -277,11 +280,9 @@ class LLMGateway:
                     CourseDefaultTaskAssignment,
                     (course_id, task_def.requires),
                 )
-                if course_default is not None:
-                    if course_default.model_id is not None:
-                        global_model_id = course_default.model_id
-                    if course_default.fallback_model_id is not None:
-                        global_fallback_id = course_default.fallback_model_id
+                # ADR-0037: the course layer contributes a primary only.
+                if course_default is not None and course_default.model_id is not None:
+                    global_model_id = course_default.model_id
 
             if course_id is not None:
                 course_override = session.get(CourseTaskAssignment, (course_id, task))

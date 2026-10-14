@@ -182,7 +182,9 @@ def test_gateway_resolves_per_course_override(client: TestClient) -> None:
 
 
 def test_gateway_four_level_precedence_chain(client: TestClient) -> None:
-    """global default < global task < course default < course task, per slot."""
+    """global default < global task < course default < course task — per
+    slot: the primaries overlay across the four layers; the fallback
+    position belongs to specialist assignments only (ADR-0037)."""
     app = client.app
     assert isinstance(app, FastAPI)
     factory = app.state.session_factory
@@ -192,7 +194,6 @@ def test_gateway_four_level_precedence_chain(client: TestClient) -> None:
     task_model = add_model(client, provider["id"], "task-global")
     course_default = add_model(client, provider["id"], "course-default")
     course_task = add_model(client, provider["id"], "course-task")
-    fb_course_default = add_model(client, provider["id"], "fb-course-default")
     client.put("/api/v1/tasks/defaults/text", json={"model_id": cap_default})
     client.put("/api/v1/tasks/chat", json={"model_id": task_model})
     course_id = create_course(client)
@@ -204,34 +205,34 @@ def test_gateway_four_level_precedence_chain(client: TestClient) -> None:
 
     set_default = client.put(
         f"/api/v1/courses/{course_id}/tasks/defaults/text",
-        json={"model_id": course_default, "fallback_model_id": fb_course_default},
+        json={"model_id": course_default},
     )
     assert set_default.status_code == 200, set_default.text
     body = set_default.json()
     assert body["model_label"] == "course-default"
     assert body["global_model_label"] == "cap-default"
+    # ADR-0037: course defaults reject a fallback.
+    rejected = client.put(
+        f"/api/v1/courses/{course_id}/tasks/defaults/text",
+        json={"model_id": course_default, "fallback_model_id": task_model},
+    )
+    assert rejected.status_code == 422
 
     chain = gateway._resolve_chain("chat", None, course_id)
-    assert [entry.external_id for entry in chain] == [
-        "course-default",
-        "fb-course-default",
-    ]
+    assert [entry.external_id for entry in chain] == ["course-default"]
 
     client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": course_task})
     chain = gateway._resolve_chain("chat", None, course_id)
-    assert [entry.external_id for entry in chain] == [
-        "course-task",
-        "fb-course-default",
-    ]
+    assert [entry.external_id for entry in chain] == ["course-task"]
 
     listed = chat_task(client.get(f"/api/v1/courses/{course_id}/tasks").json())
     assert listed["model_id"] is not None
     assert listed["global_model_label"] == "course-default"
-    assert listed["global_fallback_model_label"] == "fb-course-default"
+    assert listed["global_fallback_model_label"] is None
 
     cleared_default = client.put(
         f"/api/v1/courses/{course_id}/tasks/defaults/text",
-        json={"model_id": None, "fallback_model_id": None},
+        json={"model_id": None},
     )
     assert cleared_default.status_code == 200
     chain = gateway._resolve_chain("chat", None, course_id)
@@ -284,7 +285,6 @@ def test_purge_course_removes_overrides(client: TestClient) -> None:
 def test_delete_model_unassigns_course_tasks_and_defaults(client: TestClient) -> None:
     provider = create_provider(client)
     model = add_model(client, provider["id"], "course-model")
-    other = add_model(client, provider["id"], "keep-model")
     course_id = create_course(client)
     assert (
         client.put(f"/api/v1/courses/{course_id}/tasks/chat", json={"model_id": model})
@@ -292,7 +292,7 @@ def test_delete_model_unassigns_course_tasks_and_defaults(client: TestClient) ->
     assert (
         client.put(
             f"/api/v1/courses/{course_id}/tasks/defaults/text",
-            json={"model_id": model, "fallback_model_id": other},
+            json={"model_id": model},
         )
     ).status_code == 200
 
@@ -304,4 +304,3 @@ def test_delete_model_unassigns_course_tasks_and_defaults(client: TestClient) ->
     defaults = client.get(f"/api/v1/courses/{course_id}/tasks/defaults").json()
     text_default = next(entry for entry in defaults if entry["requires"] == "text")
     assert text_default["model_id"] is None
-    assert text_default["fallback_model_id"] == other

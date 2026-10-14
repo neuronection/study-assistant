@@ -1849,39 +1849,6 @@
       },
       "CourseDefaultTaskOut": {
         "properties": {
-          "fallback_model_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fallback Model Id"
-          },
-          "fallback_model_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Fallback Model Label"
-          },
-          "global_fallback_model_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Global Fallback Model Label"
-          },
           "global_model_label": {
             "anyOf": [
               {
@@ -1923,11 +1890,8 @@
         "required": [
           "requires",
           "model_id",
-          "fallback_model_id",
           "model_label",
-          "fallback_model_label",
-          "global_model_label",
-          "global_fallback_model_label"
+          "global_model_label"
         ],
         "title": "CourseDefaultTaskOut",
         "type": "object"
@@ -13369,17 +13333,6 @@
       },
       "TaskOut": {
         "properties": {
-          "default_fallback_model_label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Default Fallback Model Label"
-          },
           "default_model_label": {
             "anyOf": [
               {

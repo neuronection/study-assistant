@@ -171,7 +171,9 @@ def update_search_provider(
             provider_id=provider_id,
         )
     except SearchError as error:
-        raise HTTPException(status_code=404 if "not found" in str(error) else 422, detail=str(error)) from error
+        raise HTTPException(
+            status_code=404 if "not found" in str(error) else 422, detail=str(error)
+        ) from error
     return _provider_view(view)
 
 
@@ -189,7 +191,9 @@ def reorder_search_provider(
     try:
         views = move_search_provider(session, profile.id, provider_id, body.direction)
     except SearchError as error:
-        raise HTTPException(status_code=404 if "not found" in str(error) else 422, detail=str(error)) from error
+        raise HTTPException(
+            status_code=404 if "not found" in str(error) else 422, detail=str(error)
+        ) from error
     return SearchProvidersOut(providers=[_provider_view(view) for view in views])
 
 
@@ -206,7 +210,11 @@ def test_search_provider(
 ) -> SearchProviderProbeOut:
     profile = _ensure_profile(session)
     provider = next(
-        (entry for entry in list_search_providers(session, profile.id) if entry["id"] == provider_id),
+        (
+            entry
+            for entry in list_search_providers(session, profile.id)
+            if entry["id"] == provider_id
+        ),
         None,
     )
     if provider is None:
@@ -678,6 +686,8 @@ def delete_model(model_id: int, session: Session = Depends(get_session)) -> None
     for default_assignment in session.scalars(select(DefaultTaskAssignment)):
         if default_assignment.model_id == model_id:
             default_assignment.model_id = None
+        # ADR-0037: only decision kind overrides carry fallbacks, but the
+        # null-out is safe for every row kind.
         if default_assignment.fallback_model_id == model_id:
             default_assignment.fallback_model_id = None
     for course_assignment in session.scalars(select(CourseTaskAssignment)):
@@ -688,8 +698,6 @@ def delete_model(model_id: int, session: Session = Depends(get_session)) -> None
     for course_default in session.scalars(select(CourseDefaultTaskAssignment)):
         if course_default.model_id == model_id:
             course_default.model_id = None
-        if course_default.fallback_model_id == model_id:
-            course_default.fallback_model_id = None
     session.delete(model)
     session.commit()
 
@@ -737,6 +745,8 @@ def _task_out(
 ) -> TaskOut:
     model_id = assignment.model_id if assignment else None
     fallback_id = assignment.fallback_model_id if assignment else None
+    # ADR-0037: capability defaults are single-slot — the task row's own
+    # fallback is the only fallback leg left; no inherited-fallback label.
     return TaskOut(
         task=task_def.task,
         description=task_def.description,
@@ -749,11 +759,6 @@ def _task_out(
         default_model_label=(
             labels.get(default.model_id)
             if default is not None and default.model_id is not None
-            else None
-        ),
-        default_fallback_model_label=(
-            labels.get(default.fallback_model_id)
-            if default is not None and default.fallback_model_id is not None
             else None
         ),
         monthly_cap_usd=monthly_cap,
@@ -920,11 +925,9 @@ def _course_inherited_labels(
         default.model_id if default else None,
         course_default.model_id if course_default else None,
     )
-    fallback_id = slot(
-        assignment.fallback_model_id if assignment else None,
-        default.fallback_model_id if default else None,
-        course_default.fallback_model_id if course_default else None,
-    )
+    # ADR-0037: capability defaults are single-slot — the only fallback
+    # leg is the task's own assignment.
+    fallback_id = assignment.fallback_model_id if assignment is not None else None
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     return (
         labels.get(model_id) if model_id is not None else None,
@@ -942,11 +945,10 @@ def _global_task_labels(session: Session, task_def: TaskDef) -> tuple[str | None
         if default
         else None
     )
+    # ADR-0037: the fallback leg is the task's own assignment only.
     global_fallback_id = (
         assignment.fallback_model_id
         if assignment and assignment.fallback_model_id is not None
-        else default.fallback_model_id
-        if default
         else None
     )
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
@@ -987,21 +989,16 @@ def _course_default_out(
     row: CourseDefaultTaskAssignment | None,
 ) -> CourseDefaultTaskOut:
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
+    # ADR-0037: course defaults are single-slot; the inherited view is the
+    # global default's primary.
     default = session.get(DefaultTaskAssignment, requires)
     global_model_id = default.model_id if default is not None else None
-    global_fallback_id = default.fallback_model_id if default is not None else None
     model_id = row.model_id if row else None
-    fallback_id = row.fallback_model_id if row else None
     return CourseDefaultTaskOut(
         requires=requires,
         model_id=model_id,
-        fallback_model_id=fallback_id,
         model_label=labels.get(model_id) if model_id is not None else None,
-        fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
         global_model_label=(labels.get(global_model_id) if global_model_id is not None else None),
-        global_fallback_model_label=(
-            labels.get(global_fallback_id) if global_fallback_id is not None else None
-        ),
     )
 
 
@@ -1048,11 +1045,19 @@ def put_course_task_default(
     body: TaskAssignmentIn,
     session: Session = Depends(get_session),
 ) -> CourseDefaultTaskOut:
+    # ADR-0037: course capability defaults are single-slot — face the
+    # same actionable rejection as the global defaults endpoint.
+    if body.fallback_model_id is not None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"capability defaults are single-slot: '{requires}' carries no fallback — "
+                "only decision:<kind> overrides do"
+            ),
+        )
     _get_course_or_404(course_id, session)
     try:
-        row = assign_course_default_task(
-            session, course_id, requires, body.model_id, body.fallback_model_id
-        )
+        row = assign_course_default_task(session, course_id, requires, body.model_id)
     except ProviderError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     session.commit()
