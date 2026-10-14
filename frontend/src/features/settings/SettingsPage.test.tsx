@@ -173,7 +173,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([])
@@ -200,7 +199,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
       {
         task: 'concepts',
@@ -212,7 +210,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([])
@@ -248,7 +245,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: true,
         default_model_label: 'gemini-2.5-flash',
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([
@@ -286,7 +282,6 @@ describe('SettingsPage', () => {
         fallback_model_label: null,
         inherits_default: false,
         default_model_label: null,
-        default_fallback_model_label: null,
       },
     ])
     listModels.mockResolvedValue([

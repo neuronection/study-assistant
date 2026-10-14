@@ -70,7 +70,6 @@ const TASKS = [
     fallback_model_label: null,
     inherits_default: false,
     default_model_label: null,
-    default_fallback_model_label: null,
     monthly_cap_usd: null,
   },
 ]

@@ -303,26 +303,16 @@ export function TasksTab() {
 
   const value: Record<string, string | null> = {}
   const secondaryValue: Record<string, string | null> = {}
-  for (const cap of CAP_ORDER) {
-    const entry = defaultByCap.get(cap)
-    value[`${DEFAULT_PREFIX}${cap}`] = entry?.model_id != null ? String(entry.model_id) : null
-    secondaryValue[`${DEFAULT_PREFIX}${cap}`] =
-      entry?.fallback_model_id != null ? String(entry.fallback_model_id) : null
-  }
-  // ADR-0036: the `decision` default row rides the defaults mechanic
-  // (`default:decision`), beside the four kind overrides.
-  const decisionDefaultEntry = defaultByCap.get('decision')
-  value[`${DEFAULT_PREFIX}decision`] =
-    decisionDefaultEntry?.model_id != null ? String(decisionDefaultEntry.model_id) : null
-  secondaryValue[`${DEFAULT_PREFIX}decision`] =
-    decisionDefaultEntry?.fallback_model_id != null
-      ? String(decisionDefaultEntry.fallback_model_id)
-      : null
+  // ADR-0037: capability defaults are single-slot — the kind rows carry
+  // the only fallback wiring on default-backed rows.
   for (const slot of DECISION_SLOTS) {
     const entry = defaultByCap.get(slot)
     value[slot] = entry?.model_id != null ? String(entry.model_id) : null
     secondaryValue[slot] = entry?.fallback_model_id != null ? String(entry.fallback_model_id) : null
   }
+  const decisionDefaultEntry = defaultByCap.get('decision')
+  value[`${DEFAULT_PREFIX}decision`] =
+    decisionDefaultEntry?.model_id != null ? String(decisionDefaultEntry.model_id) : null
   for (const task of tasks.data ?? []) {
     value[task.task] = task.model_id != null ? String(task.model_id) : null
   }
@@ -338,7 +328,8 @@ export function TasksTab() {
       assignDefault.mutate({
         requires,
         modelId: id,
-        fallbackModelId: entry?.fallback_model_id ?? null,
+        fallbackModelId:
+          entry?.fallback_model_id != null ? Number(entry.fallback_model_id) : null,
       })
     } else {
       assign.mutate({ task: taskId, modelId: id })
@@ -394,10 +385,7 @@ export function TasksTab() {
   const sharedPickerProps = {
     providers: catalog,
     value,
-    secondaryValue,
     onAssign: handleAssign,
-    onAssignSecondary: handleAssignSecondary,
-    secondaryLabel: t('settings.defaultFallbackLabel'),
     primaryLabel: t('settings.primaryPicker'),
     primaryInfo: t('settings.primaryInfo'),
     fallbackInfo: t('settings.fallbackInfo'),
@@ -409,7 +397,8 @@ export function TasksTab() {
     id: 'defaults',
     label: t('settings.defaultModelsTitle'),
     description: t('settings.defaultModelsHint'),
-    secondary: true,
+    // ADR-0037: capability defaults are single-slot — one picker per row,
+    // no fallback pickers (the Decision kinds group keeps its own).
     tasks: [
       ...CAP_ORDER.map((cap) => ({
         id: `${DEFAULT_PREFIX}${cap}`,
@@ -427,7 +416,6 @@ export function TasksTab() {
         label: t('settings.decisionDefaultLabel'),
         requires: 'decision',
         icon: CAP_ICONS.decision,
-        secondary: true,
       },
     ],
   }

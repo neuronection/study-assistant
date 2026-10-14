@@ -254,7 +254,6 @@ export interface TaskInfo {
   fallback_model_label: string | null
   inherits_default: boolean
   default_model_label: string | null
-  default_fallback_model_label: string | null
   monthly_cap_usd?: number | null
 }
 

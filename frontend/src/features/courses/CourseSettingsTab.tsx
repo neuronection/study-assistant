@@ -167,18 +167,11 @@ function TasksSection({ courseId }: { courseId: number }) {
   const assignDefault = useMutation({
     mutationFn: ({
       requires,
-      field,
-      otherValue,
       modelId,
     }: {
       requires: string
-      field: 'model' | 'fallback'
-      otherValue: number | null
       modelId: number | null
-    }) =>
-      field === 'model'
-        ? assignCourseTaskDefault(courseId, requires, modelId, otherValue)
-        : assignCourseTaskDefault(courseId, requires, otherValue, modelId),
+    }) => assignCourseTaskDefault(courseId, requires, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['course-task-defaults', courseId] })
       await queryClient.invalidateQueries({ queryKey: ['course-tasks', courseId] })
@@ -232,33 +225,10 @@ function TasksSection({ courseId }: { courseId: number }) {
                   const value = event.target.value
                   assignDefault.mutate({
                     requires,
-                    field: 'model',
-                    otherValue: entry?.fallback_model_id ?? null,
                     modelId: value === '' ? null : Number(value),
                   })
                 }}
                 aria-label={t('settings.defaultModelLabel', { cap: capLabel })}
-              >
-                <option value="">{t('settings.unassigned')}</option>
-                {options.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
-                value={entry?.fallback_model_id ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value
-                  assignDefault.mutate({
-                    requires,
-                    field: 'fallback',
-                    otherValue: entry?.model_id ?? null,
-                    modelId: value === '' ? null : Number(value),
-                  })
-                }}
-                aria-label={`${t('settings.defaultModelLabel', { cap: capLabel })} — ${t('settings.defaultFallbackLabel')}`}
               >
                 <option value="">{t('settings.unassigned')}</option>
                 {options.map((model) => (

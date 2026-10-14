@@ -222,7 +222,7 @@ describe('CourseSettingsTab defaults card', () => {
 
     fireEvent.change(textSelect, { target: { value: '1' } })
     await waitFor(() =>
-      expect(assignCourseTaskDefault).toHaveBeenCalledWith(3, 'text', 1, null)
+      expect(assignCourseTaskDefault).toHaveBeenCalledWith(3, 'text', 1)
     )
     await waitFor(() => expect(textSelect).toHaveValue('1'))
     expect(listCourseTaskDefaults).toHaveBeenCalledWith(3)

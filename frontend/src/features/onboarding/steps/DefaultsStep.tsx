@@ -29,12 +29,10 @@ export function DefaultsStep() {
     mutationFn: ({
       requires,
       modelId,
-      fallbackModelId,
     }: {
       requires: string
       modelId: number | null
-      fallbackModelId: number | null
-    }) => assignTaskDefault(requires, modelId, fallbackModelId),
+    }) => assignTaskDefault(requires, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['task-defaults'] })
       await queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -80,7 +78,6 @@ export function DefaultsStep() {
                       {
                         requires,
                         modelId: value === '' ? null : Number(value),
-                        fallbackModelId: entry?.fallback_model_id ?? null,
                       },
                       { onError: (err: Error) => setError(err.message) }
                     )

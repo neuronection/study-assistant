@@ -20,13 +20,11 @@ export interface CourseTaskInfo {
 }
 
 export interface CourseDefaultTaskInfo {
+  // ADR-0037: course capability defaults are single-slot.
   requires: string
   model_id: number | null
-  fallback_model_id: number | null
   model_label: string | null
-  fallback_model_label: string | null
   global_model_label: string | null
-  global_fallback_model_label: string | null
 }
 
 export async function listCourseTasks(courseId: number): Promise<CourseTaskInfo[]> {
@@ -58,15 +56,15 @@ export async function listCourseTaskDefaults(
 export async function assignCourseTaskDefault(
   courseId: number,
   requires: string,
-  modelId: number | null,
-  fallbackModelId: number | null = null
+  modelId: number | null
 ): Promise<CourseDefaultTaskInfo> {
+  // ADR-0037: course capability defaults are single-slot.
   const response = await apiFetch(
     `/api/v1/courses/${courseId}/tasks/defaults/${requires}`,
     {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model_id: modelId, fallback_model_id: fallbackModelId }),
+      body: JSON.stringify({ model_id: modelId }),
     }
   )
   return json<CourseDefaultTaskInfo>(response)
