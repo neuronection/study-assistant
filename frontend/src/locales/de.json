@@ -1180,8 +1180,7 @@
         "unset": "nicht gesetzt",
         "footnote": "Bestehende Zuweisungen und Modelle werden nie entfernt.",
         "apply": "Anwenden",
-        "fillDecision": "Leere Entscheidungsslots füllen",
-        "decisionNow": "{{count}} von 4 Entscheidungsslots gefüllt"
+        "fillDecision": "Standard-Entscheidungsmodell setzen"
       },
       "chipChat": "Chat",
       "chipVision": "Vision",
@@ -1284,6 +1283,12 @@
       "score": "Bewertung",
       "scoreDescription": "Bewertet Eingaben anhand einer Rubrik"
     },
+    "decisionDefaultsTitle": "Standardwerte für Entscheidungen",
+    "decisionDefaultLabel": "Standard-Entscheidungsmodell",
+    "decisionDefaultsEmptyHint": "Weise ein Entscheidungsmodell zu, das alle vier Entscheidungsarten versorgt — überschreibe eine Art nur, wenn sie ein anderes Modell benötigt.",
+    "decisionInheritsLabel": "Übernimmt — {{model}}",
+    "decisionInheritsEmpty": "Übernimmt",
+    "decisionSimplifyUseAsDefault": "Vereinfachen: {{model}} als Standard verwenden",
     "modelCapsStandalone": "Eigenständige Art",
     "modelTransport": "Transport",
     "useCatalog": "Aus dem Katalog wählen",

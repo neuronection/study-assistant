@@ -74,13 +74,6 @@ function chipsForPreset(
   return chips
 }
 
-const DECISION_SLOTS = [
-  'decision:tool-dispatch',
-  'decision:boolean-gate',
-  'decision:choice',
-  'decision:score',
-] as const
-
 type Phase = 'tiles' | 'form' | 'manual' | 'done'
 
 function ModalShell({
@@ -258,13 +251,17 @@ function SuccessDefaults({
       ? [{ requires: 'stt', label: t('settings.setup.slot.stt'), assigned: result.assigned_stt_model }]
       : []),
   ]
+  // ADR-0036 §3: setup binds the `decision` default slot only — one
+  // assignment, one review row; the kind slots inherit.
   const decisionRows =
     decisionModels.length > 0
-      ? DECISION_SLOTS.map((slot) => ({
-          requires: slot,
-          label: t(`settings.decisionSlots.${slot.slice('decision:'.length)}`),
-          assigned: result.assigned_decision_slots?.[slot] ?? null,
-        }))
+      ? [
+          {
+            requires: 'decision',
+            label: t('settings.decisionDefaultLabel'),
+            assigned: result.assigned_decision_slots?.['decision'] ?? null,
+          },
+        ]
       : []
 
   if (providerModels.length === 0) {

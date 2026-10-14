@@ -204,7 +204,7 @@ describe('ProviderSetupModal', () => {
     expect(screen.getByText('whisper-1')).toBeInTheDocument()
   })
 
-  test('success panel renders decision slot rows bound to the decision model only', async () => {
+  test('success panel renders one decision review row — the default slot (ADR-0036 §3)', async () => {
     listPresets.mockResolvedValue({
       ...PRESETS,
       openrouter: {
@@ -242,23 +242,20 @@ describe('ProviderSetupModal', () => {
     ])
     setupMutation.mockResolvedValue({
       ...SETUP_OK,
-      assigned_decision_slots: {
-        'decision:tool-dispatch': 'openrouter.jev-latest',
-        'decision:boolean-gate': 'openrouter.jev-latest',
-        'decision:choice': 'openrouter.jev-latest',
-        'decision:score': 'openrouter.jev-latest',
-      },
+      assigned_decision_slots: { decision: 'openrouter.jev-latest' },
     })
     renderModal()
     fireEvent.click(await screen.findByText('OpenAI'))
     fireEvent.change(await screen.findByLabelText(/api key/i), { target: { value: 'sk-test' } })
     fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
 
-    expect(await screen.findByText('Tool dispatch')).toBeInTheDocument()
-    expect(screen.getByText('Boolean gate')).toBeInTheDocument()
-    expect(screen.getByText('Choice')).toBeInTheDocument()
-    expect(screen.getByText('Score')).toBeInTheDocument()
-    const decisionPicker = screen.getAllByRole('combobox', { name: 'Tool dispatch' })[0]
+    // One decision row (the default slot), never the four kind rows.
+    expect(await screen.findByText('Default decision model')).toBeInTheDocument()
+    expect(screen.queryByText('Tool dispatch')).not.toBeInTheDocument()
+    expect(screen.queryByText('Boolean gate')).not.toBeInTheDocument()
+    expect(screen.queryByText('Choice')).not.toBeInTheDocument()
+    expect(screen.queryByText('Score')).not.toBeInTheDocument()
+    const decisionPicker = screen.getByRole('combobox', { name: 'Default decision model' })
     fireEvent.click(decisionPicker)
     const jevOption = await screen.findByRole('option', { name: /jev via openrouter/i })
     const decisionListbox = jevOption.closest('[role="listbox"]')

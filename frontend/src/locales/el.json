@@ -1218,8 +1218,7 @@
         "unset": "κανένα",
         "footnote": "Οι υπάρχουσες αναθέσεις και τα μοντέλα δεν διαγράφονται ποτέ.",
         "apply": "Εφαρμογή",
-        "fillDecision": "Συμπλήρωση κενών slots αποφάσεων",
-        "decisionNow": "{{count}} από 4 slots αποφάσεων συμπληρωμένα"
+        "fillDecision": "Ορισμός προεπιλεγμένου μοντέλου αποφάσεων"
       },
       "chipChat": "Συνομιλία",
       "chipVision": "Όραση",
@@ -1322,6 +1321,12 @@
       "score": "Βαθμολόγηση",
       "scoreDescription": "Αξιολογεί τις εισόδους με βάση ρουμπρίκα"
     },
+    "decisionDefaultsTitle": "Προεπιλογές αποφάσεων",
+    "decisionDefaultLabel": "Προεπιλεγμένο μοντέλο αποφάσεων",
+    "decisionDefaultsEmptyHint": "Αναθέστε ένα μοντέλο αποφάσεων για να εξυπηρετεί και τα τέσσερα είδη αποφάσεων — παρακάμψτε ένα είδος μόνο όταν χρειάζεται διαφορετικό μοντέλο.",
+    "decisionInheritsLabel": "Κληρονομεί — {{model}}",
+    "decisionInheritsEmpty": "Κληρονομεί",
+    "decisionSimplifyUseAsDefault": "Απλοποίηση: χρήση του {{model}} ως προεπιλογή",
     "modelCapsStandalone": "Αυτόνομος τύπος",
     "modelTransport": "Μεταφορά",
     "useCatalog": "Επιλογή από τον κατάλογο",

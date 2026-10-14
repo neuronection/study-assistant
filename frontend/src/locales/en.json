@@ -1218,8 +1218,7 @@
         "unset": "unset",
         "footnote": "Existing assignments and models are never removed.",
         "apply": "Apply",
-        "fillDecision": "Fill empty decision slots",
-        "decisionNow": "{{count}} of 4 decision slots filled"
+        "fillDecision": "Set the default decision model"
       },
       "chipChat": "Chat",
       "chipVision": "Vision",
@@ -1322,6 +1321,12 @@
       "score": "Score",
       "scoreDescription": "Rates input against a rubric"
     },
+    "decisionDefaultsTitle": "Decision defaults",
+    "decisionDefaultLabel": "Default decision model",
+    "decisionDefaultsEmptyHint": "Assign one decision model to power all four decision kinds — override a kind only when it needs a different model.",
+    "decisionInheritsLabel": "Inherits — {{model}}",
+    "decisionInheritsEmpty": "Inherits",
+    "decisionSimplifyUseAsDefault": "Simplify: use {{model}} as default",
     "modelCapsStandalone": "Standalone kind",
     "modelTransport": "Transport",
     "useCatalog": "Pick from the catalog",

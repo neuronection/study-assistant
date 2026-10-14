@@ -99,6 +99,7 @@ const TASK_DEFAULTS = [
   { requires: 'vision', model_id: 42, fallback_model_id: null, model_label: 'gemini-2.5-flash', fallback_model_label: null },
   { requires: 'stt', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
   { requires: 'embeddings', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
+  { requires: 'decision', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
 ]
 
 function renderDialog(provider: Provider = PROVIDER) {
@@ -171,10 +172,12 @@ describe('ReRunSetupDialog', () => {
     await screen.findByText(/uses the stored key for/i)
 
     const decisionSwitch = await screen.findByRole('switch', {
-      name: /fill empty decision slots/i,
+      name: /set the default decision model/i,
     })
     expect(decisionSwitch).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByText(/0 of 4 decision slots filled/i)).toBeInTheDocument()
+    // ADR-0036 §3: the review reads the single default slot like any
+    // capability row (chat and decision both read unset in this fixture).
+    expect(screen.getAllByText('now: unset').length).toBeGreaterThan(0)
     await screen.findByRole('button', { pressed: true, name: /openrouter\/auto/i })
 
     fireEvent.click(screen.getByRole('button', { name: /^apply$/i }))

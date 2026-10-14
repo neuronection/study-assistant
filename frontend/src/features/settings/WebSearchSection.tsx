@@ -92,7 +92,21 @@ export function WebSearchSection() {
     setTestingId(id)
     try {
       const result = await testSearchProvider(id)
-      setProbes((current) => ({ ...current, [id]: result }))
+      // The panel's probe view narrows the wire status to its closed set;
+      // unknown statuses degrade to 'error' (fail-honest).
+      const KNOWN = new Set([
+        'ok',
+        'unreachable',
+        'auth',
+        'rate_limit',
+        'json_disabled',
+        'error',
+      ])
+      const status = (KNOWN.has(result.status) ? result.status : 'error') as WebSearchProviderProbeView['status']
+      setProbes((current) => ({
+        ...current,
+        [id]: { status, latencyMs: result.latency_ms, error: result.error },
+      }))
     } finally {
       setTestingId(null)
     }
@@ -156,8 +170,8 @@ export function WebSearchSection() {
         }}
         onSave={save.mutate}
         onDelete={(id) => void handleDelete(id)}
-        onMove={move.mutate}
-        onToggle={(id, enabled) => {
+        onMove={(id, direction) => move.mutate({ id, direction })}
+        onToggle={(id) => {
           const provider = providers.data?.find((entry) => entry.id === id)
           if (provider) toggle.mutate(provider)
         }}

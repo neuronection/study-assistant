@@ -264,6 +264,9 @@ export interface DefaultTaskInfo {
   fallback_model_id: number | null
   model_label: string | null
   fallback_model_label: string | null
+  /** ADR-0036: the model a decision:<kind> row inherits when its picker's
+   * labeled null option is chosen (the `decision` default resolution). */
+  resolved_inherit_label?: string | null
 }
 
 export async function listTasks(): Promise<TaskInfo[]> {
