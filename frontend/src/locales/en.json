@@ -1174,6 +1174,11 @@
     "discoverySave": "Save discovery settings",
     "setup": {
       "title": "Connect a provider",
+      "step": {
+        "progress": "Setup progress",
+        "connect": "Connect provider",
+        "defaults": "Choose defaults"
+      },
       "hint": "Pick a provider, paste its API key, and defaults are set up automatically.",
       "cloud": "Cloud",
       "local": "Runs locally",
@@ -1211,6 +1216,14 @@
       "review": {
         "keyNote": "Uses the stored key for “{{name}}”.",
         "modelsLabel": "Curated models",
+        "intro": "{{name}} connected — {{count}} models found. Register models, then choose which empty defaults they fill.",
+        "modelsTitle": "Models to add",
+        "modelsHint": "Selected models are registered and become assignable everywhere.",
+        "modelsFootnote": "Only the selected models are registered — you can add more anytime.",
+        "assignmentsTitle": "Default assignments",
+        "assignmentsHint": "Each switch fills that empty default with the shown model — existing assignments are never touched.",
+        "fills": "fills: {{model}}",
+        "noCandidate": "no model selected",
         "fillText": "Fill the empty default chat model",
         "fillVision": "Fill the empty default vision model",
         "fillStt": "Fill the empty default transcription model",

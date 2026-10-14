@@ -81,6 +81,7 @@ const SETUP_OK = {
   assigned_chat_model: 'gpt-5.6-terra',
   assigned_vision_model: 'gpt-5.6-terra',
   assigned_stt_model: 'whisper-1',
+  assigned_embeddings_model: null,
 }
 
 function renderModal() {
@@ -101,6 +102,7 @@ const TASK_DEFAULTS = [
   { requires: 'vision', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
   { requires: 'stt', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
   { requires: 'embeddings', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
+  { requires: 'decision', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
 ]
 
 beforeEach(() => {
@@ -190,21 +192,52 @@ describe('ProviderSetupModal', () => {
     expect(screen.getByDisplayValue('https://generativelanguage.googleapis.com')).toHaveAttribute('readonly')
   })
 
-  test('set up automatically posts the setup mutation with the trimmed key', async () => {
+  test('setup walks connect (bind-less) → review → apply (binds) → done', async () => {
     setupMutation.mockResolvedValue(SETUP_OK)
     renderModal()
     fireEvent.click(await screen.findByText('OpenAI'))
     fireEvent.change(await screen.findByLabelText(/api key/i), { target: { value: '  sk-test  ' } })
     fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
 
+    // connect registers only — binds stay off, the review step decides
     await waitFor(() =>
-      expect(setupMutation).toHaveBeenCalledWith('openai', { api_key: 'sk-test', name: null })
+      expect(setupMutation).toHaveBeenCalledWith('openai', {
+        api_key: 'sk-test',
+        name: null,
+        options: {
+          bind_chat: false,
+          bind_vision: false,
+          bind_stt: false,
+          bind_embeddings: false,
+          bind_decision: false,
+        },
+      })
+    )
+    // step 2 is explicit: the wizard header names it, and the assignment
+    // rows carry now/fills context per task (terra serves chat and vision)
+    expect(await screen.findByText('Choose defaults')).toBeInTheDocument()
+    expect(screen.getByText('Default assignments')).toBeInTheDocument()
+    expect(screen.getAllByText(/fills: gpt-5\.6-terra/)).toHaveLength(2)
+    expect(screen.getByRole('switch', { name: /^Chat/ })).not.toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }))
+    await waitFor(() =>
+      expect(setupMutation).toHaveBeenLastCalledWith('openai', {
+        api_key: 'sk-test',
+        name: null,
+        options: {
+          curated_ids: ['gpt-5.6-terra', 'whisper-1'],
+          bind_chat: true,
+          bind_vision: true,
+          bind_stt: true,
+          bind_decision: false,
+        },
+      })
     )
     expect(await screen.findByText(/connected/i)).toBeInTheDocument()
     expect(screen.getByText('whisper-1')).toBeInTheDocument()
   })
 
-  test('success panel renders one decision review row — the default slot (ADR-0036 §3)', async () => {
+  test('setup: review offers the decision default for decision-capable presets', async () => {
     listPresets.mockResolvedValue({
       ...PRESETS,
       openrouter: {
@@ -242,14 +275,35 @@ describe('ProviderSetupModal', () => {
     ])
     setupMutation.mockResolvedValue({
       ...SETUP_OK,
+      provider: { ...SETUP_OK.provider, name: 'OpenRouter', preset_key: 'openrouter' },
       assigned_decision_slots: { decision: 'openrouter.jev-latest' },
     })
     renderModal()
-    fireEvent.click(await screen.findByText('OpenAI'))
-    fireEvent.change(await screen.findByLabelText(/api key/i), { target: { value: 'sk-test' } })
+    fireEvent.click(await screen.findByText('OpenRouter'))
+    fireEvent.change(await screen.findByLabelText(/api key$/i), { target: { value: 'sk-or-key' } })
     fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
 
-    // One decision row (the default slot), never the four kind rows.
+    // review: the decision default row names the model it would bind
+    // (openrouter declares decision models; the Jev card never rides the
+    // curated list, so the sub-line is where it must surface)
+    expect(await screen.findByText('Default decision model')).toBeInTheDocument()
+    expect(
+      await screen.findByText(/fills: Jev via OpenRouter \(latest\)/)
+    ).toBeInTheDocument()
+    // auto has no vision caps and no other card carries them — the vision
+    // switch honestly reports "no model selected" and stays disabled
+    expect(screen.getByText(/no model selected/)).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: /^Vision/ })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }))
+    await waitFor(() =>
+      expect(setupMutation).toHaveBeenLastCalledWith(
+        'openrouter',
+        expect.objectContaining({
+          options: expect.objectContaining({ bind_decision: true }),
+        })
+      )
+    )
+    // done: the registered decision model feeds the default-decision picker
     expect(await screen.findByText('Default decision model')).toBeInTheDocument()
     expect(screen.queryByText('Tool dispatch')).not.toBeInTheDocument()
     expect(screen.queryByText('Boolean gate')).not.toBeInTheDocument()

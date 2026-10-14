@@ -1136,6 +1136,11 @@
     "discoverySave": "Entdecken-Einstellungen speichern",
     "setup": {
       "title": "Anbieter verbinden",
+      "step": {
+        "progress": "Einrichtungsfortschritt",
+        "connect": "Anbieter verbinden",
+        "defaults": "Standards wählen"
+      },
       "hint": "Anbieter wählen, API-Schlüssel einfügen — die Standardmodelle werden automatisch gesetzt.",
       "cloud": "Cloud",
       "local": "Läuft lokal",
@@ -1173,6 +1178,14 @@
       "review": {
         "keyNote": "Verwendet den gespeicherten Schlüssel für „{{name}}“.",
         "modelsLabel": "Kuratierte Modelle",
+        "intro": "„{{name}}“ verbunden — {{count}} Modelle gefunden. Registriere Modelle und wähle dann, welche leeren Standards sie füllen.",
+        "modelsTitle": "Hinzuzufügende Modelle",
+        "modelsHint": "Ausgewählte Modelle werden registriert und sind überall zuweisbar.",
+        "modelsFootnote": "Nur die ausgewählten Modelle werden registriert — du kannst jederzeit weitere ergänzen.",
+        "assignmentsTitle": "Standard-Zuweisungen",
+        "assignmentsHint": "Jeder Schalter füllt den leeren Standard mit dem gezeigten Modell — bestehende Zuweisungen werden nie angetastet.",
+        "fills": "füllt: {{model}}",
+        "noCandidate": "kein Modell ausgewählt",
         "fillText": "Leeres Standard-Chat-Modell füllen",
         "fillVision": "Leeres Standard-Vision-Modell füllen",
         "fillStt": "Leeres Standard-Transkriptionsmodell füllen",

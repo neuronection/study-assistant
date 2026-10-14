@@ -49,6 +49,7 @@ export interface ProviderSetupOptions {
   bind_chat?: boolean
   bind_vision?: boolean
   bind_stt?: boolean
+  bind_embeddings?: boolean
   bind_decision?: boolean
 }
 

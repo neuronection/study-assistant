@@ -18,7 +18,9 @@ import { useCloseFloatings } from '@/lib/ui-overlays'
 
 import { SetupErrorPanel } from './setupErrors'
 
-const CAP_ICONS = {
+/** Shared with the setup modal's review step (capability icons + the
+ * curated-card capability guess). */
+export const CAP_ICONS = {
   text: Type,
   vision: Eye,
   tools: Wrench,
@@ -27,7 +29,7 @@ const CAP_ICONS = {
   tts: Volume2,
 } as const
 
-function guessCaps(externalId: string): string[] {
+export function guessCaps(externalId: string): string[] {
   const id = externalId.toLowerCase()
   if (id.includes('embedding') || id.includes('bge')) return ['embeddings']
   if (/(whisper|transcribe|stt)/.test(id)) return ['stt']

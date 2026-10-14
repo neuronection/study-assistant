@@ -347,6 +347,7 @@ describe('SettingsPage', () => {
   test('add provider: preset tile leads to the guided form with set-up-automatically', async () => {
     listProviders.mockResolvedValue([])
     listPresets.mockResolvedValue(PRESETS)
+    listTaskDefaults.mockResolvedValue([])
     setupProviderPreset.mockResolvedValue({
       ok: true,
       provider: { ...PROVIDER, preset_key: 'openai' },
@@ -364,10 +365,21 @@ describe('SettingsPage', () => {
       target: { value: 'sk-test' },
     })
     fireEvent.click(screen.getByRole('button', { name: /set up automatically/i }))
+    // connect registers only — binds stay off, the review step decides
     await waitFor(() =>
-      expect(setupProviderPreset).toHaveBeenCalledWith('openai', { api_key: 'sk-test', name: null })
+      expect(setupProviderPreset).toHaveBeenCalledWith('openai', {
+        api_key: 'sk-test',
+        name: null,
+        options: {
+          bind_chat: false,
+          bind_vision: false,
+          bind_stt: false,
+          bind_embeddings: false,
+          bind_decision: false,
+        },
+      })
     )
-    expect(await screen.findByText(/connected/i)).toBeInTheDocument()
+    expect(await screen.findByText('Default assignments')).toBeInTheDocument()
   })
 
   test('add provider: custom tile keeps a typed name and requires a base URL', async () => {
