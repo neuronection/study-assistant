@@ -1271,7 +1271,6 @@
       "errorGeneric": "Etwas ist schiefgelaufen — versuche es erneut.",
       "errorForbidden": "Nicht erlaubt."
     },
-    "decisionGroupTitle": "Entscheidungsmodelle",
     "decisionGroupPrivacy": "Entscheidungsmodelle laufen in der Cloud: Ihr Prompt und die Kandidaten-Tools des Schritts werden an den zugewiesenen Anbieter gesendet (z. B. TypeSafe oder OpenRouter). Ihr API-Schlüssel bleibt auf diesem Gerät.",
     "decisionSlots": {
       "tool-dispatch": "Tool-Auswahl",
@@ -1283,7 +1282,7 @@
       "score": "Bewertung",
       "scoreDescription": "Bewertet Eingaben anhand einer Rubrik"
     },
-    "decisionDefaultsTitle": "Standardwerte für Entscheidungen",
+    "decisionKindsTitle": "Entscheidungsarten",
     "decisionDefaultLabel": "Standard-Entscheidungsmodell",
     "decisionDefaultsEmptyHint": "Weise ein Entscheidungsmodell zu, das alle vier Entscheidungsarten versorgt — überschreibe eine Art nur, wenn sie ein anderes Modell benötigt.",
     "decisionInheritsLabel": "Übernimmt — {{model}}",

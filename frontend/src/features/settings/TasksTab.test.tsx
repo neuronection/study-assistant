@@ -144,17 +144,21 @@ beforeEach(() => {
   assignTaskDefault.mockReset().mockResolvedValue({})
 })
 
-describe('TasksTab Decision defaults card (plan 29 / ADR-0036)', () => {
-  test('renders the Decision defaults card: one default row, four kind rows, the privacy notice', async () => {
+describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling)', () => {
+  test('the decision default rides the Default models section; the four kinds form the Decision kinds group with the privacy notice', async () => {
     renderTab()
 
-    expect(await screen.findByText('Decision defaults')).toBeInTheDocument()
-    expect(screen.getByText(/decision models run in the cloud/i)).toBeInTheDocument()
+    expect(await screen.findByText('Default models')).toBeInTheDocument()
     expect(screen.getByText('Default decision model')).toBeInTheDocument()
+    expect(screen.getByText('Decision kinds')).toBeInTheDocument()
+    expect(screen.getByText(/decision models run in the cloud/i)).toBeInTheDocument()
     expect(screen.getByText('Tool dispatch')).toBeInTheDocument()
     expect(screen.getByText('Boolean gate')).toBeInTheDocument()
     expect(screen.getByText('Choice')).toBeInTheDocument()
     expect(screen.getByText('Score')).toBeInTheDocument()
+    // No legacy card title.
+    expect(screen.queryByText('Decision defaults')).not.toBeInTheDocument()
+    expect(screen.queryByText('Decision models')).not.toBeInTheDocument()
   })
 
   test('an empty default shows the D4 hint line and the canonical preset suggestion', async () => {

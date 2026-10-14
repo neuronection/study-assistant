@@ -410,12 +410,26 @@ export function TasksTab() {
     label: t('settings.defaultModelsTitle'),
     description: t('settings.defaultModelsHint'),
     secondary: true,
-    tasks: CAP_ORDER.map((cap) => ({
-      id: `${DEFAULT_PREFIX}${cap}`,
-      label: beautifyId(t(`settings.caps.${cap}`)),
-      requires: cap,
-      icon: CAP_ICONS[cap],
-    })),
+    tasks: [
+      ...CAP_ORDER.map((cap) => ({
+        id: `${DEFAULT_PREFIX}${cap}`,
+        label: beautifyId(t(`settings.caps.${cap}`)),
+        requires: cap,
+        icon: CAP_ICONS[cap],
+      })),
+      // The decision default rides the uniform section like every other
+      // capability default (ADR-0036 §4, post-landing owner ruling): same
+      // row machinery, same endpoint, same `default:` id convention —
+      // the picker's own `requires` filter narrows it to decision-capable
+      // models.
+      {
+        id: `${DEFAULT_PREFIX}decision`,
+        label: t('settings.decisionDefaultLabel'),
+        requires: 'decision',
+        icon: CAP_ICONS.decision,
+        secondary: true,
+      },
+    ],
   }
 
   const overridesSection: TaskAssignmentSection = {
@@ -444,59 +458,62 @@ export function TasksTab() {
         </p>
       ) : null}
       {error ? <p className="text-danger text-xs">{error}</p> : null}
-      <TaskAssignmentPicker sections={[defaultsSection]} {...sharedPickerProps} />
+      <TaskAssignmentPicker
+        sections={[defaultsSection]}
+        {...sharedPickerProps}
+        renderMeta={(task) => {
+          // Per-row context for the decision default row only: the
+          // empty-default hint + the canonical preset suggestion, and the
+          // D7 "Simplify" chip — a suggestion, never automatic.
+          if (task.id !== `${DEFAULT_PREFIX}decision`) {
+            return null
+          }
+          return (
+            <div className="space-y-1">
+              {decisionDefaultEmpty ? (
+                <p className="text-xs text-[var(--as-muted-fg)]">
+                  {t('settings.decisionDefaultsEmptyHint')}
+                  {decisionSuggestion
+                    ? ' ' +
+                      t('settings.suggestedDecisionDefault', {
+                        model: decisionSuggestion.model,
+                        provider: decisionSuggestion.provider,
+                      })
+                    : ''}
+                </p>
+              ) : null}
+              {simplifyModelId !== null ? (
+                <button
+                  type="button"
+                  className="justify-self-start rounded-full bg-subtle px-2.5 py-1 text-[11px] text-[var(--as-fg)] transition-colors hover:bg-[var(--as-muted)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--as-focus-ring)] disabled:opacity-50"
+                  disabled={assignDefault.isPending}
+                  onClick={() => {
+                    setError(null)
+                    assignDefault.mutate({
+                      requires: 'decision',
+                      modelId: Number(simplifyModelId),
+                      fallbackModelId: null,
+                    })
+                  }}
+                >
+                  {t('settings.decisionSimplifyUseAsDefault', {
+                    model: modelLabels.get(simplifyModelId) ?? simplifyModelId,
+                  })}
+                </button>
+              ) : null}
+            </div>
+          )
+        }}
+      />
       <div className="flex flex-col gap-2">
-        <TaskAssignmentPicker
-          sections={[
-            {
-              id: 'decision-default',
-              label: t('settings.decisionDefaultsTitle'),
-              description: t('settings.decisionGroupPrivacy'),
-              tasks: [
-                {
-                  id: `${DEFAULT_PREFIX}decision`,
-                  label: t('settings.decisionDefaultLabel'),
-                  requires: 'decision',
-                  icon: CAP_ICONS.decision,
-                  secondary: true,
-                },
-              ],
-            },
-          ]}
-          {...sharedPickerProps}
-          providers={decisionCatalog}
-        />
-        {decisionDefaultEmpty ? (
-          <p className="text-xs text-[var(--as-muted-fg)]">
-            {t('settings.decisionDefaultsEmptyHint')}
-            {decisionSuggestion
-              ? ' ' +
-                t('settings.suggestedDecisionDefault', {
-                  model: decisionSuggestion.model,
-                  provider: decisionSuggestion.provider,
-                })
-              : ''}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--as-muted-fg)]">
+            {t('settings.decisionKindsTitle')}
           </p>
-        ) : null}
-        {simplifyModelId !== null ? (
-          <button
-            type="button"
-            className="justify-self-start rounded-full bg-subtle px-2.5 py-1 text-[11px] text-[var(--as-fg)] transition-colors hover:bg-[var(--as-muted)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--as-focus-ring)] disabled:opacity-50"
-            disabled={assignDefault.isPending}
-            onClick={() => {
-              setError(null)
-              assignDefault.mutate({
-                requires: 'decision',
-                modelId: Number(simplifyModelId),
-                fallbackModelId: null,
-              })
-            }}
-          >
-            {t('settings.decisionSimplifyUseAsDefault', {
-              model: modelLabels.get(simplifyModelId) ?? simplifyModelId,
-            })}
-          </button>
-        ) : null}
+          <p className="mt-0.5 text-xs text-[var(--as-muted-fg)]">
+            {t('settings.decisionGroupPrivacy')}
+          </p>
+        </div>
         {DECISION_SLOTS.map((slot) => (
           <DecisionKindRow
             key={slot}

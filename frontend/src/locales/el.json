@@ -1309,7 +1309,6 @@
       "errorGeneric": "Κάτι πήγε στραβά — δοκίμασε ξανά.",
       "errorForbidden": "Δεν επιτρέπεται."
     },
-    "decisionGroupTitle": "Μοντέλα αποφάσεων",
     "decisionGroupPrivacy": "Τα μοντέλα αποφάσεων εκτελούνται στο cloud: το prompt σας και τα υποψήλια εργαλεία του βήματος αποστέλλονται στον εκχωρημένο πάροχο (π.χ. TypeSafe ή OpenRouter). Το κλειδί API σας παραμένει σε αυτή τη συσκευή.",
     "decisionSlots": {
       "tool-dispatch": "Επιλογή εργαλείου",
@@ -1321,7 +1320,7 @@
       "score": "Βαθμολόγηση",
       "scoreDescription": "Αξιολογεί τις εισόδους με βάση ρουμπρίκα"
     },
-    "decisionDefaultsTitle": "Προεπιλογές αποφάσεων",
+    "decisionKindsTitle": "Είδη αποφάσεων",
     "decisionDefaultLabel": "Προεπιλεγμένο μοντέλο αποφάσεων",
     "decisionDefaultsEmptyHint": "Αναθέστε ένα μοντέλο αποφάσεων για να εξυπηρετεί και τα τέσσερα είδη αποφάσεων — παρακάμψτε ένα είδος μόνο όταν χρειάζεται διαφορετικό μοντέλο.",
     "decisionInheritsLabel": "Κληρονομεί — {{model}}",

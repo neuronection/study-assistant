@@ -1309,7 +1309,6 @@
       "errorGeneric": "Something went wrong — try again.",
       "errorForbidden": "Not allowed."
     },
-    "decisionGroupTitle": "Decision models",
     "decisionGroupPrivacy": "Decision models run in the cloud: your prompt and the candidate tools for the step are sent to the assigned provider (e.g. TypeSafe or OpenRouter). Your API key stays on this device.",
     "decisionSlots": {
       "tool-dispatch": "Tool dispatch",
@@ -1321,7 +1320,7 @@
       "score": "Score",
       "scoreDescription": "Rates input against a rubric"
     },
-    "decisionDefaultsTitle": "Decision defaults",
+    "decisionKindsTitle": "Decision kinds",
     "decisionDefaultLabel": "Default decision model",
     "decisionDefaultsEmptyHint": "Assign one decision model to power all four decision kinds — override a kind only when it needs a different model.",
     "decisionInheritsLabel": "Inherits — {{model}}",
