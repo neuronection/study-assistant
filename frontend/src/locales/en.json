@@ -922,6 +922,7 @@
     "webSearchConfirmDelete": "Delete {{name}}? Its key is removed from the keyring.",
     "webSearchDisabled": "disabled — skipped during search",
     "webSearchEnabledAria": "Enable {{name}}",
+    "webSearchEnabledProviderAria": "Enable provider",
     "webSearchProbeOk": "Reachable",
     "webSearchProbeUnreachable": "Unreachable",
     "webSearchProbeAuth": "API key rejected",

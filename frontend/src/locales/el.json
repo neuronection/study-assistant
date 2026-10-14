@@ -905,6 +905,7 @@
     "webSearchConfirmDelete": "Διαγραφή του {{name}}; Το κλειδί αφαιρείται από το keyring.",
     "webSearchDisabled": "ανενεργό — παρακάτεται κατά την αναζήτηση",
     "webSearchEnabledAria": "Ενεργοποίηση {{name}}",
+    "webSearchEnabledProviderAria": "Ενεργοποίηση παρόχου",
     "webSearchProbeOk": "Επιτυχής σύνδεση",
     "webSearchProbeUnreachable": "Μη προσβάσιμο",
     "webSearchProbeAuth": "Το κλειδί API απορρίφθηκε",
