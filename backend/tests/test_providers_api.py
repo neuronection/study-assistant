@@ -417,18 +417,24 @@ def test_task_defaults_endpoints_and_inheritance(
     client: TestClient, fake_keyring: FakeKeyring
 ) -> None:
     defaults = client.get("/api/v1/tasks/defaults").json()
+    # ADR-0036: the `decision` default slot joins the vocabulary beside the
+    # four kind overrides.
     assert [entry["requires"] for entry in defaults] == [
         "text",
         "vision",
         "embeddings",
         "stt",
         "tts",
+        "decision",
         "decision:tool-dispatch",
         "decision:boolean-gate",
         "decision:choice",
         "decision:score",
     ]
     assert all(entry["model_id"] is None for entry in defaults)
+    # Every row carries the ADR-0036 inherit-label field; with the default
+    # empty it is honestly None everywhere.
+    assert all(entry["resolved_inherit_label"] is None for entry in defaults)
 
     provider = create_provider(client, type="openai_compatible", base_url="http://localhost:1/v1")
     default_model = client.post(
@@ -471,6 +477,57 @@ def test_task_defaults_endpoints_and_inheritance(
 
     unknown = client.put("/api/v1/tasks/defaults/telepathy", json={"model_id": default_model["id"]})
     assert unknown.status_code == 422
+
+
+def test_decision_default_slot_assignment_and_inherit_labels(
+    client: TestClient, fake_keyring: FakeKeyring
+) -> None:
+    """ADR-0036: the `decision` default slot is a first-class
+    DefaultTaskAssignment — decision-capable models only — and the kind
+    rows surface what their inherit state resolves to."""
+    provider = create_provider(client, type="decision", base_url="https://api.typesafe.ai")
+    decision_model = client.post(
+        "/api/v1/models",
+        json={
+            "provider_id": provider["id"],
+            "external_id": "typesafe/jev-1.13",
+            "caps": ["decision"],
+            "decision_transport": "systemone",
+        },
+    ).json()
+    chat_provider = create_provider(
+        client, name="Text Co", type="openai_compatible", base_url="http://localhost:2/v1"
+    )
+    text_model = client.post(
+        "/api/v1/models",
+        json={"provider_id": chat_provider["id"], "external_id": "gpt-x", "caps": ["text"]},
+    ).json()
+
+    # Slot separation (ADR-0032 D4, unchanged): a text model never
+    # satisfies the decision default.
+    rejected = client.put("/api/v1/tasks/defaults/decision", json={"model_id": text_model["id"]})
+    assert rejected.status_code == 422
+    assert "decision" in rejected.json()["detail"]
+
+    assigned = client.put(
+        "/api/v1/tasks/defaults/decision", json={"model_id": decision_model["id"]}
+    )
+    assert assigned.status_code == 200, assigned.text
+    assert assigned.json()["model_label"] == "typesafe/jev-1.13"
+
+    defaults = client.get("/api/v1/tasks/defaults").json()
+    default_row = next(entry for entry in defaults if entry["requires"] == "decision")
+    assert default_row["model_id"] == decision_model["id"]
+    # The kind rows' inherit state names the default's resolution.
+    for kind in (
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    ):
+        kind_row = next(entry for entry in defaults if entry["requires"] == kind)
+        assert kind_row["model_id"] is None
+        assert kind_row["resolved_inherit_label"] == "typesafe/jev-1.13"
 
 
 def test_delete_model_unassigns_task_defaults(

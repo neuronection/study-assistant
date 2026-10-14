@@ -4081,20 +4081,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/search-provider": {
+    "/api/v1/search-providers": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Search Provider */
-        get: operations["get_search_provider_api_v1_search_provider_get"];
-        /** Update Search Provider */
-        put: operations["update_search_provider_api_v1_search_provider_put"];
+        /** Get Search Providers */
+        get: operations["get_search_providers_api_v1_search_providers_get"];
+        put?: never;
+        /** Create Search Provider */
+        post: operations["create_search_provider_api_v1_search_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search-providers/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Provider Catalog */
+        get: operations["search_provider_catalog_api_v1_search_providers_catalog_get"];
+        put?: never;
         post?: never;
-        /** Clear Search Provider */
-        delete: operations["clear_search_provider_api_v1_search_provider_delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search-providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Search Provider */
+        put: operations["update_search_provider_api_v1_search_providers__provider_id__put"];
+        post?: never;
+        /** Remove Search Provider */
+        delete: operations["remove_search_provider_api_v1_search_providers__provider_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search-providers/{provider_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reorder Search Provider */
+        post: operations["reorder_search_provider_api_v1_search_providers__provider_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search-providers/{provider_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Search Provider */
+        post: operations["test_search_provider_api_v1_search_providers__provider_id__test_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5414,6 +5482,8 @@ export interface components {
             model_label: string | null;
             /** Requires */
             requires: string;
+            /** Resolved Inherit Label */
+            resolved_inherit_label?: string | null;
         };
         /** DeleteFailedBody */
         DeleteFailedBody: {
@@ -6902,6 +6972,8 @@ export interface components {
         ModelCreateIn: {
             /** Caps */
             caps?: string[] | null;
+            /** Decision Transport */
+            decision_transport?: string | null;
             /**
              * Enabled
              * @default true
@@ -6949,6 +7021,8 @@ export interface components {
         ModelUpdate: {
             /** Caps */
             caps?: string[] | null;
+            /** Decision Transport */
+            decision_transport?: string | null;
             /** Enabled */
             enabled?: boolean | null;
             /** Label */
@@ -8203,23 +8277,73 @@ export interface components {
             /** Api Key */
             api_key?: string | null;
             /** Base Url */
-            base_url: string;
-            /** Flavor */
-            flavor: string;
+            base_url?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Google Cx */
+            google_cx?: string | null;
+            /** Max Results */
+            max_results?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Type */
+            type?: string | null;
+        };
+        /** SearchProviderMoveIn */
+        SearchProviderMoveIn: {
+            /** Direction */
+            direction: string;
         };
         /** SearchProviderOut */
         SearchProviderOut: {
-            /** Assigned */
-            assigned: boolean;
             /** Base Url */
             base_url?: string | null;
-            /** Flavor */
-            flavor?: string | null;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Google Cx */
+            google_cx?: string | null;
+            /** Id */
+            id: string;
+            /** Key Hint */
+            key_hint?: string | null;
             /**
              * Key Set
              * @default false
              */
             key_set: boolean;
+            /**
+             * Max Results
+             * @default 5
+             */
+            max_results: number;
+            /** Name */
+            name: string;
+            /**
+             * Timeout Ms
+             * @default 8000
+             */
+            timeout_ms: number;
+            /** Type */
+            type: string;
+        };
+        /** SearchProviderProbeOut */
+        SearchProviderProbeOut: {
+            /** Error */
+            error?: string | null;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Result Count */
+            result_count?: number | null;
+            /** Status */
+            status: string;
+        };
+        /** SearchProvidersOut */
+        SearchProvidersOut: {
+            /** Providers */
+            providers: components["schemas"]["SearchProviderOut"][];
         };
         /** SessionContextOut */
         SessionContextOut: {
@@ -8296,6 +8420,11 @@ export interface components {
              */
             bind_decision: boolean;
             /**
+             * Bind Embeddings
+             * @default true
+             */
+            bind_embeddings: boolean;
+            /**
              * Bind Stt
              * @default true
              */
@@ -8316,6 +8445,8 @@ export interface components {
             assigned_decision_slots?: {
                 [key: string]: string;
             } | null;
+            /** Assigned Embeddings Model */
+            assigned_embeddings_model?: string | null;
             /** Assigned Stt Model */
             assigned_stt_model?: string | null;
             /** Assigned Vision Model */
@@ -18243,7 +18374,7 @@ export interface operations {
             };
         };
     };
-    get_search_provider_api_v1_search_provider_get: {
+    get_search_providers_api_v1_search_providers_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -18258,16 +18389,73 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SearchProviderOut"];
+                    "application/json": components["schemas"]["SearchProvidersOut"];
                 };
             };
         };
     };
-    update_search_provider_api_v1_search_provider_put: {
+    create_search_provider_api_v1_search_providers_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchProviderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchProviderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_provider_catalog_api_v1_search_providers_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    update_search_provider_api_v1_search_providers__provider_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -18296,11 +18484,13 @@ export interface operations {
             };
         };
     };
-    clear_search_provider_api_v1_search_provider_delete: {
+    remove_search_provider_api_v1_search_providers__provider_id__delete: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                provider_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -18311,6 +18501,81 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_search_provider_api_v1_search_providers__provider_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchProviderMoveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchProvidersOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_search_provider_api_v1_search_providers__provider_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchProviderProbeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

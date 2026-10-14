@@ -48,7 +48,7 @@
       "id": "ai.tasks",
       "group": "ai",
       "title": "Task assignments",
-      "definition": "Capability/task → model slots (text/vision/stt/tts/embeddings) plus decision:* slots, primary + fallback. Includes the decision-group privacy notice.",
+      "definition": "Capability/task → model slots (text/vision/stt/tts/embeddings), the decision default slot (decision) and its decision:<kind> override slots, primary + fallback — resolution per ADR-0036 (kind override → decision default → unassigned). Includes the decision-group privacy note.",
       "home": { "tab": "ai", "section": "tasks" },
       "secrets": "none",
       "scope": "user > system fallback (web) / profile (desktop)",

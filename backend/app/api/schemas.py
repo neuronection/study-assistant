@@ -58,7 +58,9 @@ class ProviderCreate(BaseModel):
     is_local: bool | None = None
     country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
     name: str = Field(min_length=1, max_length=120)
-    type: str = Field(pattern="^(google|openai_compatible|anthropic)$")
+    # `decision` = decision-typed providers (ADR-0032: the typesafe preset's
+    # wire type); models added under one default to the decision capability.
+    type: str = Field(pattern="^(google|openai_compatible|anthropic|decision)$")
     base_url: str | None = None
     api_key: str | None = None
 
@@ -182,6 +184,10 @@ class DefaultTaskOut(BaseModel):
     fallback_model_id: int | None
     model_label: str | None
     fallback_model_label: str | None
+    # ADR-0036 §4: the model a decision kind inherits when its picker's
+    # labeled null option is chosen (the `decision` default resolution).
+    # Populated for decision:<kind> rows only.
+    resolved_inherit_label: str | None = None
 
 
 class CourseTaskOut(BaseModel):

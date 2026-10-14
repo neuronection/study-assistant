@@ -2532,6 +2532,17 @@
           "requires": {
             "title": "Requires",
             "type": "string"
+          },
+          "resolved_inherit_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Inherit Label"
           }
         },
         "required": [
@@ -7000,6 +7011,18 @@
             ],
             "title": "Caps"
           },
+          "decision_transport": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Transport"
+          },
           "enabled": {
             "default": true,
             "title": "Enabled",
@@ -7177,6 +7200,18 @@
               }
             ],
             "title": "Caps"
+          },
+          "decision_transport": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Transport"
           },
           "enabled": {
             "anyOf": [
@@ -9783,7 +9818,7 @@
             "type": "string"
           },
           "type": {
-            "pattern": "^(google|openai_compatible|anthropic)$",
+            "pattern": "^(google|openai_compatible|anthropic|decision)$",
             "title": "Type",
             "type": "string"
           }
@@ -11186,29 +11221,96 @@
             "title": "Api Key"
           },
           "base_url": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Base Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
           },
-          "flavor": {
-            "title": "Flavor",
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "google_cx": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Cx"
+          },
+          "max_results": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Results"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "title": "SearchProviderIn",
+        "type": "object"
+      },
+      "SearchProviderMoveIn": {
+        "properties": {
+          "direction": {
+            "pattern": "^(up|down)$",
+            "title": "Direction",
             "type": "string"
           }
         },
         "required": [
-          "base_url",
-          "flavor"
+          "direction"
         ],
-        "title": "SearchProviderIn",
+        "title": "SearchProviderMoveIn",
         "type": "object"
       },
       "SearchProviderOut": {
         "properties": {
-          "assigned": {
-            "title": "Assigned",
-            "type": "boolean"
-          },
           "base_url": {
             "anyOf": [
               {
@@ -11220,7 +11322,12 @@
             ],
             "title": "Base Url"
           },
-          "flavor": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "google_cx": {
             "anyOf": [
               {
                 "type": "string"
@@ -11229,18 +11336,109 @@
                 "type": "null"
               }
             ],
-            "title": "Flavor"
+            "title": "Google Cx"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "key_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Hint"
           },
           "key_set": {
             "default": false,
             "title": "Key Set",
             "type": "boolean"
+          },
+          "max_results": {
+            "default": 5,
+            "title": "Max Results",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "default": 8000,
+            "title": "Timeout Ms",
+            "type": "integer"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
           }
         },
         "required": [
-          "assigned"
+          "id",
+          "name",
+          "type"
         ],
         "title": "SearchProviderOut",
+        "type": "object"
+      },
+      "SearchProviderProbeOut": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "result_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Count"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "latency_ms"
+        ],
+        "title": "SearchProviderProbeOut",
+        "type": "object"
+      },
+      "SearchProvidersOut": {
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/SearchProviderOut"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "providers"
+        ],
+        "title": "SearchProvidersOut",
         "type": "object"
       },
       "SessionContextOut": {
@@ -11457,6 +11655,11 @@
             "title": "Bind Decision",
             "type": "boolean"
           },
+          "bind_embeddings": {
+            "default": true,
+            "title": "Bind Embeddings",
+            "type": "boolean"
+          },
           "bind_stt": {
             "default": true,
             "title": "Bind Stt",
@@ -11512,6 +11715,17 @@
               }
             ],
             "title": "Assigned Decision Slots"
+          },
+          "assigned_embeddings_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Embeddings Model"
           },
           "assigned_stt_model": {
             "anyOf": [
@@ -27955,23 +28169,40 @@
         ]
       }
     },
-    "/api/v1/search-provider": {
-      "delete": {
-        "operationId": "clear_search_provider_api_v1_search_provider_delete",
+    "/api/v1/search-providers": {
+      "get": {
+        "operationId": "get_search_providers_api_v1_search_providers_get",
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchProvidersOut"
+                }
+              }
+            },
             "description": "Successful Response"
           }
         },
-        "summary": "Clear Search Provider",
+        "summary": "Get Search Providers",
         "tags": [
           "ai"
         ]
       },
-      "get": {
-        "operationId": "get_search_provider_api_v1_search_provider_get",
+      "post": {
+        "operationId": "create_search_provider_api_v1_search_providers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchProviderIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -27980,15 +28211,94 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Get Search Provider",
+        "summary": "Create Search Provider",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/search-providers/catalog": {
+      "get": {
+        "operationId": "search_provider_catalog_api_v1_search_providers_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Search Provider Catalog Api V1 Search Providers Catalog Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Search Provider Catalog",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/search-providers/{provider_id}": {
+      "delete": {
+        "operationId": "remove_search_provider_api_v1_search_providers__provider_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Search Provider",
         "tags": [
           "ai"
         ]
       },
       "put": {
-        "operationId": "update_search_provider_api_v1_search_provider_put",
+        "operationId": "update_search_provider_api_v1_search_providers__provider_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -28022,6 +28332,100 @@
           }
         },
         "summary": "Update Search Provider",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/search-providers/{provider_id}/move": {
+      "post": {
+        "operationId": "reorder_search_provider_api_v1_search_providers__provider_id__move_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchProviderMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchProvidersOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Search Provider",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/search-providers/{provider_id}/test": {
+      "post": {
+        "operationId": "test_search_provider_api_v1_search_providers__provider_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchProviderProbeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Search Provider",
         "tags": [
           "ai"
         ]

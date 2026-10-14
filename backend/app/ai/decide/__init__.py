@@ -28,6 +28,7 @@ from .registry import (
     engine_readiness,
     get_decision_transport_registration,
     resolve_decision,
+    resolve_decision_inherit,
 )
 from .systemone.client import (
     SystemOneCallParams,
@@ -50,6 +51,7 @@ from .systemone.probe import (
 from .types import (
     DECISION_ACT_THRESHOLD_DEFAULT,
     DECISION_CONFIRM_THRESHOLD_DEFAULT,
+    DECISION_DEFAULT_SLOT,
     DECISION_PROBE_TIMEOUT_SECONDS,
     DECISION_SLOT_PREFIX,
     DECISION_SLOTS,
@@ -76,6 +78,7 @@ from .types import (
 __all__ = [
     "DECISION_ACT_THRESHOLD_DEFAULT",
     "DECISION_CONFIRM_THRESHOLD_DEFAULT",
+    "DECISION_DEFAULT_SLOT",
     "DECISION_PROBE_TIMEOUT_SECONDS",
     "DECISION_SLOTS",
     "DECISION_SLOT_PREFIX",
@@ -134,6 +137,7 @@ __all__ = [
     "probe_decision_provider",
     "resolution_transport",
     "resolve_decision",
+    "resolve_decision_inherit",
     "resolve_systemone_base_url",
     "run_decision",
     "sanitize_confidence",

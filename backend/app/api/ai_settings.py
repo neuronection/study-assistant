@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai.decide import probe_decision_provider
+from ..ai.decide import is_decision_slot, probe_decision_provider
 from ..ai.decide.systemone.probe import DecisionProbeInput, DecisionProbeResult
+from ..ai.decide.types import decision_slot_capability
 from ..ai.providers import (
     ALL_PRESETS,
     DEFAULT_REQUIRES,
@@ -36,7 +37,7 @@ from ..ai.providers import (
     detect_local_engines as probe_local_engines,
 )
 from ..ai.tasks import TASK_DEFS, TaskDef
-from ..core.secrets import delete_secret, get_secret, set_secret
+from ..core.secrets import get_secret
 from ..core.vocab import DecisionTransport
 from ..domain.models import (
     AiModel,
@@ -49,13 +50,12 @@ from ..domain.models import (
     TaskAssignment,
 )
 from ..search import (
-    PROVIDER_TYPES,
     SearchError,
     delete_search_provider,
     list_search_providers,
     move_search_provider,
-    provider_key_ref,
     probe_provider,
+    provider_key_ref,
     search_provider_views,
     upsert_search_provider,
 )
@@ -797,9 +797,30 @@ def list_task_defaults(session: Session = Depends(get_session)) -> list[DefaultT
                 fallback_model_id=fallback_id,
                 model_label=labels.get(model_id) if model_id is not None else None,
                 fallback_model_label=(labels.get(fallback_id) if fallback_id is not None else None),
+                resolved_inherit_label=(
+                    _decision_inherit_label(session, requires)
+                    if is_decision_slot(requires)
+                    else None
+                ),
             )
         )
     return result
+
+
+def _decision_inherit_label(session: Session, requires: str) -> str | None:
+    """ADR-0036 §4: what the kind's labeled null option names — the model
+    the `decision` default slot resolves to for this kind, or None when
+    the inherit state honestly resolves to nothing."""
+    from ..ai.decide import OffResolution, resolve_decision_inherit
+
+    capability = decision_slot_capability(requires)
+    if capability is None:
+        return None
+    resolution = resolve_decision_inherit(capability, session)
+    if isinstance(resolution, OffResolution):
+        return None
+    label = resolution.model.label or resolution.model.external_id
+    return label or None
 
 
 @router.put("/tasks/defaults/{requires}", response_model=DefaultTaskOut)

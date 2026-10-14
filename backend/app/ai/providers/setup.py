@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ...core import secrets
 from ...domain.models import AiModel, DefaultTaskAssignment, Provider, TaskAssignment
 from ..decide.systemone.probe import DecisionProbeInput, probe_decision_provider
-from ..decide.types import DECISION_SLOTS
+from ..decide.types import DECISION_DEFAULT_SLOT
 from ..tasks import TASKS_BY_NAME
 from .errors import ClassifiedProviderError, classify_provider_error
 from .presets import ALL_PRESETS, decision_probe_model_id
@@ -394,12 +394,13 @@ def setup_provider_from_preset(
         candidate = decision_rows.get(str(decision_default))
         if candidate is None:
             candidate = next(iter(decision_rows.values()))
-        for slot in DECISION_SLOTS:
-            row, live_model = _slot_alive(session, slot)
-            if live_model is None:
-                assigned_decision[slot] = candidate.external_id
-                row.model_id = candidate.id
-        if assigned_decision:
+        # ADR-0036 §3: setup binds the `decision` default slot only — one
+        # assignment, one review row; kind slots inherit (their per-kind
+        # fill is retired). Empty slot only, never clobbering a live row.
+        row, live_model = _slot_alive(session, DECISION_DEFAULT_SLOT)
+        if live_model is None:
+            assigned_decision[DECISION_DEFAULT_SLOT] = candidate.external_id
+            row.model_id = candidate.id
             session.flush()
 
     return SetupOutcome(

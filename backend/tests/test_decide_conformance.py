@@ -25,6 +25,7 @@ from app.ai.decide import (
     clear_decision_resolution_cache,
     probe_decision_provider,
     resolve_decision,
+    resolve_decision_inherit,
     run_decision,
 )
 from app.ai.decide.funnel import DecisionDecidedStatus, DecisionErrorStatus
@@ -41,7 +42,12 @@ from app.ai.decide.systemone.client import (
     TypeSafeUsage,
 )
 from app.ai.decide.systemone.probe import DecisionProbeInput
-from app.ai.decide.types import DecisionAnswer
+from app.ai.decide.types import (
+    DECISION_DEFAULT_SLOT,
+    DECISION_SLOTS,
+    DecisionAnswer,
+    decision_slot,
+)
 from app.core.vocab import DecisionCapability as DecisionCapabilityVocab
 from app.core.vocab import DecisionTransport, SystemOneErrorKind
 from app.domain.models import AiInteraction, AiModel, DefaultTaskAssignment, Provider
@@ -463,6 +469,155 @@ def test_resolution_open_args_is_never_assignable(db_session: Session) -> None:
     resolution = resolve_decision(DecisionCapability.OPEN_ARGS, db_session)
 
     assert resolution.kind == "off"
+
+
+def test_resolution_default_serves_all_kinds(db_session: Session) -> None:
+    """ADR-0036 matrix 1: a `decision` default alone serves all four kinds —
+    every kind slot stays empty and inherits."""
+    _provider, model = decision_provider(db_session)
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, model.id)
+
+    for capability in (
+        DecisionCapability.TOOL_DISPATCH,
+        DecisionCapability.BOOLEAN_GATE,
+        DecisionCapability.CHOICE,
+        DecisionCapability.SCORE,
+    ):
+        resolution = resolve_decision(capability, db_session)
+        assert isinstance(resolution, SystemOneResolution)
+        assert resolution.model.external_id == "jev-latest"
+        kind_row = db_session.get(DefaultTaskAssignment, decision_slot(capability))
+        assert kind_row is None or kind_row.model_id is None
+
+
+def test_resolution_kind_override_wins_only_for_its_kind(db_session: Session) -> None:
+    """ADR-0036 matrix 2: the override serves its kind; the other kinds keep
+    inheriting the default."""
+    _default_provider, default_model = decision_provider(db_session, external_id="default-jev")
+    _override_provider, override_model = decision_provider(db_session, external_id="override-jev")
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, default_model.id)
+    assign_slot(db_session, "decision:tool-dispatch", override_model.id)
+
+    dispatched = resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session)
+    assert isinstance(dispatched, SystemOneResolution)
+    assert dispatched.model.external_id == "override-jev"
+
+    gated = resolve_decision(DecisionCapability.BOOLEAN_GATE, db_session)
+    assert isinstance(gated, SystemOneResolution)
+    assert gated.model.external_id == "default-jev"
+
+    scored = resolve_decision(DecisionCapability.SCORE, db_session)
+    assert isinstance(scored, SystemOneResolution)
+    assert scored.model.external_id == "default-jev"
+
+
+def test_resolution_override_never_hops_to_the_default_when_unusable(
+    db_session: Session,
+) -> None:
+    """ADR-0036 §2, 'never a third hop': a kind override owns its kind — an
+    override that exists but cannot serve the kind reports honestly
+    unavailable, it never silently substitutes the default."""
+    _default_provider, default_model = decision_provider(db_session, external_id="default-jev")
+    chat_provider = Provider(
+        name="OpenAI",
+        type="openai_compatible",
+        base_url="https://api.openai.com/v1",
+        keyring_ref="provider:text-1",
+        enabled=True,
+        status=None,
+    )
+    db_session.add(chat_provider)
+    db_session.flush()
+    text_model = AiModel(
+        provider_id=chat_provider.id,
+        external_id="gpt-x",
+        label="gpt-x",
+        caps=["text"],
+        enabled=True,
+        missing=False,
+    )
+    db_session.add(text_model)
+    db_session.flush()
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, default_model.id)
+    assign_slot(db_session, "decision:tool-dispatch", text_model.id)
+
+    resolution = resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session)
+
+    assert isinstance(resolution, UnconfiguredResolution)
+    assert "not a decision model" in resolution.reason
+
+
+def test_resolution_legacy_four_slot_data_unchanged(db_session: Session) -> None:
+    """ADR-0036 matrix 5: pre-ADR-0036 configs (four individual slots, no
+    default row) behave identically — each kind serves its own assignment."""
+    _provider, model = decision_provider(db_session)
+    for slot in DECISION_SLOTS:
+        assign_slot(db_session, slot, model.id)
+
+    assert db_session.get(DefaultTaskAssignment, DECISION_DEFAULT_SLOT) is None
+    for capability in (
+        DecisionCapability.TOOL_DISPATCH,
+        DecisionCapability.BOOLEAN_GATE,
+        DecisionCapability.CHOICE,
+        DecisionCapability.SCORE,
+    ):
+        resolution = resolve_decision(capability, db_session)
+        assert isinstance(resolution, SystemOneResolution)
+        assert resolution.model.external_id == "jev-latest"
+
+
+def test_inherit_view_names_the_default_not_the_override(db_session: Session) -> None:
+    """ADR-0036 §4: the labeled null option names the default's resolution —
+    what choosing inherit would give — even when an override is present."""
+    _default_provider, default_model = decision_provider(db_session, external_id="default-jev")
+    _override_provider, override_model = decision_provider(db_session, external_id="override-jev")
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, default_model.id)
+    assign_slot(db_session, "decision:tool-dispatch", override_model.id)
+
+    inherited = resolve_decision_inherit(DecisionCapability.TOOL_DISPATCH, db_session)
+    assert isinstance(inherited, SystemOneResolution)
+    assert inherited.model.external_id == "default-jev"
+
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, None)
+    empty = resolve_decision_inherit(DecisionCapability.TOOL_DISPATCH, db_session)
+    assert empty.kind == "off"
+
+
+def test_resolution_cache_tracks_the_decision_default(db_session: Session) -> None:
+    """The `decision` default row participates in the cache revision: flipping
+    it re-resolves every inheriting kind."""
+    _provider, model = decision_provider(db_session)
+    key_calls: list[int] = []
+
+    def counting_key(provider: Provider) -> str:
+        key_calls.append(provider.id)
+        return "decision-key"
+
+    deps = DecisionFunnelDeps(session=db_session, get_api_key=counting_key)
+
+    assert resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session, deps).kind == "off"
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, model.id)
+    resolution = resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session, deps)
+    assert isinstance(resolution, SystemOneResolution)
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, None)
+    assert resolve_decision(DecisionCapability.TOOL_DISPATCH, db_session, deps).kind == "off"
+
+
+def test_funnel_decides_through_the_default(db_session: Session) -> None:
+    """ADR-0036 matrix 1 at the funnel seam: a default-only config decides —
+    no per-kind assignment anywhere."""
+    _provider, model = decision_provider(db_session)
+    assign_slot(db_session, DECISION_DEFAULT_SLOT, model.id)
+    client = FakeSystemOneClient(CALL_RESULT)
+
+    result = run_decision(
+        DecisionFunnelDeps(session=db_session, client=client),
+        RunDecisionParams(input="dim the living room", tools=TOOLS),
+    )
+
+    assert isinstance(result, DecisionDecidedStatus)
+    assert result.outcome.engine == "jev-latest"
+    assert result.outcome.resolved_model == "jev-1.13"
 
 
 def test_resolution_caches_per_revision(db_session: Session) -> None:

@@ -7,6 +7,11 @@ from ...core.vocab import DecisionTransport as DecisionTransport
 
 DECISION_SLOT_PREFIX = "decision:"
 
+# ADR-0036 §1: the `decision` default slot joins the vocabulary beside the
+# kind overrides — study stores it as a DefaultTaskAssignment on
+# requires='decision' (the family's `default:decision` row).
+DECISION_DEFAULT_SLOT = "decision"
+
 SYSTEMONE_DECISION_CAPS: tuple[DecisionCapability, ...] = (
     DecisionCapability.TOOL_DISPATCH,
     DecisionCapability.BOOLEAN_GATE,

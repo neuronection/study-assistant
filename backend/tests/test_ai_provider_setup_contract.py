@@ -17,10 +17,12 @@ Case manifest (normative semantics, names indicative):
 12. set-default: task-scoped binding with capability guards + cross-provider
     rejection.
 
-Plan 26 / ADR-0032 additions (decision capability + slots):
-13. bind_decision capability-aware gap-fill (declared slots, never live);
+Plan 26 / ADR-0032 additions (decision capability + slots; 13/15 amended
+by ADR-0036 — setup binds the `decision` default slot only):
+13. bind_decision gap-fills the empty `decision` default slot (one
+    assignment, one review row; kind slots inherit);
 14. bind_decision=false binds nothing;
-15. live decision slots never clobbered (fill empty only);
+15. a live `decision` default is never clobbered (fill empty only);
 16. decision-only preset (wire type `decision`) validates via the decision
     probe — ok path persists + binds, failure persists nothing;
 17. probe timeout classifies `timeout`;
@@ -584,20 +586,17 @@ def test_manual_decision_model_on_any_provider(client: TestClient) -> None:
     assert back.json()["decision_transport"] == "systemone"
 
 
-def test_case_13_bind_decision_gapfills_declared_slots(
+def test_case_13_bind_decision_binds_the_default_slot_only(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """ADR-0036 §3: setup binds the `decision` default slot only — one
+    assignment, one review row; kind slots inherit."""
     install_catalog(monkeypatch, wire_catalog(["openrouter/auto"]))
     outcome = byok_setup.setup_provider_from_preset(db_session, "openrouter", "sk-or-v1-key")
 
     assert outcome.assigned_chat_model == "openrouter/auto"
     assert outcome.assigned_decision_slots is not None
-    assert set(outcome.assigned_decision_slots) == {
-        "decision:tool-dispatch",
-        "decision:boolean-gate",
-        "decision:choice",
-        "decision:score",
-    }
+    assert set(outcome.assigned_decision_slots) == {"decision"}
     assert set(outcome.assigned_decision_slots.values()) == {"typesafe/jev-1.13"}
     provider = db_session.get(Provider, outcome.provider_id)
     assert provider is not None
@@ -607,9 +606,16 @@ def test_case_13_bind_decision_gapfills_declared_slots(
     assert [m.external_id for m in decision_models] == ["typesafe/jev-1.13", "~typesafe/jev-latest"]
     assert decision_models[0].decision_transport == "systemone"
     assert outcome.catalog_count == 3
-    for slot in outcome.assigned_decision_slots:
-        row = db_session.get(DefaultTaskAssignment, slot)
-        assert row is not None and row.model_id == decision_models[0].id
+    default_row = db_session.get(DefaultTaskAssignment, "decision")
+    assert default_row is not None and default_row.model_id == decision_models[0].id
+    for slot in (
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    ):
+        kind_row = db_session.get(DefaultTaskAssignment, slot)
+        assert kind_row is None or kind_row.model_id is None
 
 
 def test_case_14_bind_decision_off_binds_nothing(
@@ -638,11 +644,11 @@ def test_case_14_bind_decision_off_binds_nothing(
         assert row is None or row.model_id is None
 
 
-def test_case_15_bind_decision_never_clobbers_live_slots(
+def test_case_15_bind_decision_never_clobbers_a_live_default(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     install_catalog(monkeypatch, wire_catalog(["openrouter/auto"]))
-    live_slot = "decision:tool-dispatch"
+    live_slot = "decision"
     other = seed_manual_provider(
         db_session, name="Other", type_="decision", base_url="https://api.typesafe.ai"
     )
@@ -650,20 +656,19 @@ def test_case_15_bind_decision_never_clobbers_live_slots(
     live_model.decision_transport = "systemone"
     db_session.flush()
     row = db_session.get(DefaultTaskAssignment, live_slot)
-    assert row is not None
-    row.model_id = live_model.id
+    if row is None:
+        row = DefaultTaskAssignment(
+            requires=live_slot, model_id=live_model.id, fallback_model_id=None
+        )
+        db_session.add(row)
+    else:
+        row.model_id = live_model.id
     db_session.flush()
 
     outcome = byok_setup.setup_provider_from_preset(db_session, "openrouter", "sk-or-v1-b")
 
     assert outcome.assigned_chat_model == "openrouter/auto"
-    assert outcome.assigned_decision_slots is not None
-    assert live_slot not in outcome.assigned_decision_slots
-    assert set(outcome.assigned_decision_slots) == {
-        "decision:boolean-gate",
-        "decision:choice",
-        "decision:score",
-    }
+    assert outcome.assigned_decision_slots is None
     live_row = db_session.get(DefaultTaskAssignment, live_slot)
     assert live_row is not None and live_row.model_id == live_model.id
 
@@ -798,8 +803,9 @@ def test_case_19_slot_separation_enforced_both_directions(
         assign_default_task(db_session, "decision:choice", text_model.id, None)
     with pytest.raises(ProviderError, match="unknown capability"):
         assign_default_task(db_session, "decision:open-args", decision_model.id, None)
-    with pytest.raises(ProviderError, match="unknown capability"):
-        assign_default_task(db_session, "decision", decision_model.id, None)
+    # ADR-0036: `decision` is the default slot — a decision model binds it.
+    default_row = assign_default_task(db_session, "decision", decision_model.id, None)
+    assert default_row.model_id == decision_model.id
 
     routed = add_model(db_session, decision_provider.id, "partial-jev", ["decision"])
     routed.decision_transport = "scoreless"

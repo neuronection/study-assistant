@@ -15,6 +15,7 @@ from .systemone.client import (
 from .systemone.engine import SystemOneDecisionEngine, SystemOneEngineParams
 from .systemone.probe import DecisionProbeInput, DecisionProbeResult, probe_decision_provider
 from .types import (
+    DECISION_DEFAULT_SLOT,
     DECISION_SLOTS,
     SYSTEMONE_DECISION_CAPS,
     DecisionEngine,
@@ -167,10 +168,8 @@ def decision_transport_of(provider: Provider, model: AiModel) -> DecisionTranspo
     return None
 
 
-def _assigned_candidates(
-    session: Session, capability: DecisionCapability
-) -> list[dict[str, object]]:
-    row = session.get(DefaultTaskAssignment, decision_slot(capability))
+def _slot_candidates(session: Session, slot: str) -> list[dict[str, object]]:
+    row = session.get(DefaultTaskAssignment, slot)
     if row is None:
         return []
     candidates: list[dict[str, object]] = []
@@ -181,9 +180,26 @@ def _assigned_candidates(
     return candidates
 
 
+def _assigned_candidates(
+    session: Session, capability: DecisionCapability
+) -> list[dict[str, object]]:
+    """ADR-0036 §2 resolution order: the kind override's candidates when it
+    has any, else the `decision` default slot's — never a third hop."""
+    candidates = _slot_candidates(session, decision_slot(capability))
+    if candidates:
+        return candidates
+    return _slot_candidates(session, DECISION_DEFAULT_SLOT)
+
+
+def _default_slot_candidates(session: Session) -> list[dict[str, object]]:
+    return _slot_candidates(session, DECISION_DEFAULT_SLOT)
+
+
 def default_config_revision(session: Session) -> str:
+    # The `decision` default row is part of every kind's resolution chain
+    # (ADR-0036 §2), so it participates in the cache revision.
     parts: list[str] = []
-    for slot in DECISION_SLOTS:
+    for slot in (DECISION_DEFAULT_SLOT, *DECISION_SLOTS):
         row = session.get(DefaultTaskAssignment, slot)
         if row is None:
             parts.append(f"{slot}:-")
@@ -220,12 +236,12 @@ def clear_decision_resolution_cache() -> None:
     _RESOLUTION_CACHE.clear()
 
 
-def _compute_resolution(
-    capability: DecisionCapability, session: Session, deps: DecisionEngineDeps
+def _resolve_candidates(
+    candidates: list[dict[str, object]],
+    capability: DecisionCapability,
+    session: Session,
+    deps: DecisionEngineDeps,
 ) -> DecisionResolution:
-    candidates = _assigned_candidates(session, capability)
-    if not candidates:
-        return OffResolution()
     rejections: list[str] = []
     last_index = len(candidates) - 1
     for index, candidate in enumerate(candidates):
@@ -261,20 +277,63 @@ def _compute_resolution(
     )
 
 
+def _compute_resolution(
+    capability: DecisionCapability, session: Session, deps: DecisionEngineDeps
+) -> DecisionResolution:
+    candidates = _assigned_candidates(session, capability)
+    if not candidates:
+        return OffResolution()
+    return _resolve_candidates(candidates, capability, session, deps)
+
+
+def _cached_resolution(
+    cache_key: str,
+    compute: Callable[[], DecisionResolution],
+    session: Session,
+    deps: DecisionEngineDeps,
+) -> DecisionResolution:
+    revision_source = deps.config_revision or default_config_revision
+    revision = revision_source(session)
+    cached = _RESOLUTION_CACHE.get(cache_key)
+    if cached is not None and cached[0] == revision:
+        return cached[1]
+    resolution = compute()
+    _RESOLUTION_CACHE[cache_key] = (revision, resolution)
+    return resolution
+
+
 def resolve_decision(
     capability: DecisionCapability,
     session: Session,
     deps: DecisionEngineDeps | None = None,
 ) -> DecisionResolution:
     deps = deps or DecisionEngineDeps(session=session)
-    revision_source = deps.config_revision or default_config_revision
-    revision = revision_source(session)
-    cached = _RESOLUTION_CACHE.get(capability.value)
-    if cached is not None and cached[0] == revision:
-        return cached[1]
-    resolution = _compute_resolution(capability, session, deps)
-    _RESOLUTION_CACHE[capability.value] = (revision, resolution)
-    return resolution
+    return _cached_resolution(
+        capability.value,
+        lambda: _compute_resolution(capability, session, deps),
+        session,
+        deps,
+    )
+
+
+def resolve_decision_inherit(
+    capability: DecisionCapability,
+    session: Session,
+    deps: DecisionEngineDeps | None = None,
+) -> DecisionResolution:
+    """The inherit view of a kind (ADR-0036 §2/§4): what serves it when the
+    kind slot carries no override — the `decision` default slot's candidates
+    only. This is what the pickers' labeled null option names."""
+    deps = deps or DecisionEngineDeps(session=session)
+    candidates = _default_slot_candidates(session)
+    if not candidates:
+        return OffResolution()
+    return _cached_resolution(
+        f"inherit:{capability.value}",
+        lambda: _resolve_candidates(candidates, capability, session, deps),
+        session,
+        deps,
+    )
 
 
 def engine_readiness(resolution: DecisionResolution) -> dict[str, str | None]:

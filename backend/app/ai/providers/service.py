@@ -18,6 +18,7 @@ from ...domain.models import (
     utcnow,
 )
 from ..decide.types import (
+    DECISION_DEFAULT_SLOT,
     DECISION_SLOT_PREFIX,
     DECISION_SLOTS,
     decision_slot_capability,
@@ -30,7 +31,9 @@ CAPABILITY_REQUIRES = tuple(
     capability.value for capability in Capability if capability is not Capability.DECISION
 )
 
-DEFAULT_REQUIRES = CAPABILITY_REQUIRES + DECISION_SLOTS
+# ADR-0036 §1: the `decision` default slot joins the vocabulary beside the
+# four kind overrides — one `DefaultTaskAssignment` on requires='decision'.
+DEFAULT_REQUIRES = (*CAPABILITY_REQUIRES, DECISION_DEFAULT_SLOT, *DECISION_SLOTS)
 
 DEFAULT_BASE_URLS: dict[str, str] = {
     "google": "https://generativelanguage.googleapis.com",
@@ -392,6 +395,15 @@ def _check_capability(
         declared = transport_decision_caps(model.decision_transport)
         if capability not in declared:
             raise ProviderError(f"the model's transport does not serve '{requires}'")
+        return
+    if requires == DECISION_DEFAULT_SLOT:
+        # ADR-0036 §7: the default must be an explicit decision model whose
+        # transport declares decision capabilities; per-kind serviceability
+        # is the resolver's honest per-kind check at resolution time.
+        if Capability.DECISION.value not in (model.caps or []):
+            raise ProviderError("task requires the 'decision' capability")
+        if not transport_decision_caps(model.decision_transport):
+            raise ProviderError("the model's transport declares no decision capabilities")
         return
     if Capability.DECISION.value in (model.caps or []):
         raise ProviderError("decision models are assigned to decision:* slots only")
