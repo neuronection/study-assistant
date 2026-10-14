@@ -867,6 +867,7 @@
     "webSearchConfirmDelete": "{{name}} löschen? Der Schlüssel wird aus dem Schlüsselbund entfernt.",
     "webSearchDisabled": "deaktiviert — wird bei der Suche übersprungen",
     "webSearchEnabledAria": "{{name}} aktivieren",
+    "webSearchEnabledProviderAria": "Anbieter aktivieren",
     "webSearchProbeOk": "Erreichbar",
     "webSearchProbeUnreachable": "Nicht erreichbar",
     "webSearchProbeAuth": "API-Schlüssel abgelehnt",
