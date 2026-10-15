@@ -173,56 +173,52 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     expect(await screen.findByText(/suggested: typesafe\/jev-1\.13/i)).toBeInTheDocument()
   })
 
-  test('decision pickers offer only decision-declaring models with the inherit entry leading (D2b/D4)', async () => {
+  test('decision pickers offer only decision-declaring models — no explicit inherit entry; the empty trigger reads the short state word (D2b/D4)', async () => {
     renderTab()
     await screen.findByText('Tool dispatch')
 
-    // The primary kind picker (exact name — the fallback picker's name is
-    // "Fallback — Tool dispatch").
-    fireEvent.click(screen.getByRole('combobox', { name: 'Tool dispatch' }))
+    // The unset kind picker's trigger reads the short muted state word —
+    // honestly bare "Inherited" while the default is empty, and no
+    // defaults-to meta line when nothing resolves.
+    const toolDispatch = screen.getByRole('combobox', { name: 'Tool dispatch' })
+    expect(toolDispatch).toHaveTextContent('Inherited')
+    expect(screen.queryByText(/defaults to/i)).not.toBeInTheDocument()
+
+    fireEvent.click(toolDispatch)
     const jevOption = await screen.findByRole('option', { name: /^Jev \(latest\)$/ })
     const listbox = jevOption.closest('[role="listbox"]')
     expect(listbox).not.toBeNull()
     const names = Array.from(listbox!.querySelectorAll('[role="option"]')).map(
       (option) => option.textContent
     )
-    // The labeled null entry leads; with the default empty it honestly
-    // names no model.
-    expect(names).toEqual(['Inherits', 'Jev (latest)'])
+    // No labeled inherit entry: an unset kind simply *is* the inherit
+    // state (the backend resolves the default).
+    expect(names).toEqual(['Jev (latest)'])
   })
 
-  test('the null option renders the resolved default model name (matrix 7)', async () => {
+  test('the resolved default moves to a "Defaults to" meta line; the trigger keeps the short state word (matrix 7)', async () => {
     listTaskDefaults.mockResolvedValue(
       defaultsFixture({ defaultModelId: 10, resolvedInheritLabel: 'Jev (latest)' })
     )
     renderTab()
-    await screen.findByText('Tool dispatch')
+    const booleanGate = await screen.findByRole('combobox', { name: 'Boolean gate' })
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Boolean gate' }))
-    const inheritOption = await screen.findByRole('option', {
-      name: 'Inherits — Jev (latest)',
-    })
-    const listbox = inheritOption.closest('[role="listbox"]')
+    // Empty kind = inherit: the trigger reads the short muted state word
+    // and the resolution detail rides the meta line under the description
+    // (the label arrives with the defaults query — wait for it). All four
+    // unset kinds resolve to the same default here.
+    await waitFor(() =>
+      expect(screen.getAllByText('Defaults to Jev (latest)')).toHaveLength(4)
+    )
+    expect(booleanGate).toHaveTextContent('Inherited')
+
+    fireEvent.click(booleanGate)
+    const jevOption = await screen.findByRole('option', { name: /^Jev \(latest\)$/ })
+    const listbox = jevOption.closest('[role="listbox"]')
     const names = Array.from(listbox!.querySelectorAll('[role="option"]')).map(
       (option) => option.textContent
     )
-    expect(names).toEqual(['Inherits — Jev (latest)', 'Jev (latest)'])
-  })
-
-  test('default-only assignment serves all kinds: choosing the inherit entry clears the kind (matrix 1)', async () => {
-    listTaskDefaults.mockResolvedValue(
-      defaultsFixture({ defaultModelId: 10, resolvedInheritLabel: 'Jev (latest)' })
-    )
-    renderTab()
-    await screen.findByText('Tool dispatch')
-
-    fireEvent.click(screen.getByRole('combobox', { name: 'Boolean gate' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Inherits — Jev (latest)' }))
-
-    await waitFor(() =>
-      expect(assignTaskDefault).toHaveBeenCalledWith('decision:boolean-gate', null, null)
-    )
-    expect(assignTask).not.toHaveBeenCalled()
+    expect(names).toEqual(['Jev (latest)'])
   })
 
   test('assigning a decision kind posts the decision:<cap> override (matrix 2)', async () => {
@@ -236,22 +232,6 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
       expect(assignTaskDefault).toHaveBeenCalledWith('decision:boolean-gate', 10, null)
     )
     expect(assignTask).not.toHaveBeenCalled()
-  })
-
-  test('the decision fallback picker posts the fallback model', async () => {
-    renderTab()
-    await screen.findByText('Tool dispatch')
-
-    fireEvent.click(screen.getByRole('combobox', { name: 'Fallback — Boolean gate' }))
-    fireEvent.click(await screen.findByRole('option', { name: /jev \(latest\)/i }))
-
-    await waitFor(() => {
-      expect(assignTaskDefault).toHaveBeenCalled()
-      const [requires, modelId, fallbackId] = assignTaskDefault.mock.calls[0]
-      expect(requires).toBe('decision:boolean-gate')
-      expect(modelId).toBe(null)
-      expect(fallbackId).toBe(10)
-    })
   })
 
   test('the default decision row posts the decision requires key', async () => {
@@ -272,6 +252,12 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     )
     renderTab()
     await screen.findByText('Tool dispatch')
+
+    // An overridden kind shows its model in the trigger — no defaults-to
+    // meta line for it.
+    const booleanGate = screen.getByRole('combobox', { name: 'Boolean gate' })
+    await waitFor(() => expect(booleanGate).toHaveTextContent('Jev (latest)'))
+    expect(screen.queryByText(/defaults to/i)).not.toBeInTheDocument()
 
     fireEvent.click(
       await screen.findByRole('button', { name: 'Clear assignment — Boolean gate' })

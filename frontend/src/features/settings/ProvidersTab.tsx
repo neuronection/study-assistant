@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { House, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { Pencil, PlugZap, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { ConnectionTestRow } from '@/components/ui/connection-test-row'
-import { deleteProvider, listProviders, testProvider, type Provider } from '@/lib/api'
+import type { ConnectionTestStatus } from '@/components/ui/connection-test-row'
+import { ProviderCard } from '@/components/ui/provider-card'
+import {
+  deleteProvider,
+  listModels,
+  listProviders,
+  testProvider,
+  type Provider,
+} from '@/lib/api'
 import { getCountryFlag } from '@neuronection/assistant-ui/countries'
 import { useWizardStore } from '@/features/onboarding/wizardStore'
 
@@ -21,6 +27,7 @@ export function ProvidersTab() {
   const queryClient = useQueryClient()
   const openWizard = useWizardStore((state) => state.openWizard)
   const providers = useQuery({ queryKey: ['providers'], queryFn: listProviders })
+  const models = useQuery({ queryKey: ['models'], queryFn: listModels })
   const [form, setForm] = useState<{ provider: Provider } | null>(null)
   const [setupOpen, setSetupOpen] = useState(false)
   const [reSetupProvider, setReSetupProvider] = useState<Provider | null>(null)
@@ -46,6 +53,26 @@ export function ProvidersTab() {
     },
   })
 
+  const hasRegisteredModel = (providerId: number) =>
+    (models.data ?? []).some((model) => model.provider_id === providerId)
+
+  // Live count from the models query — `status.model_count` is only a
+  // snapshot written by catalog-fetching flows, so manually added models
+  // (or hand-edited catalogs) never showed on the card.
+  const modelCount = (providerId: number) =>
+    (models.data ?? []).filter((model) => model.provider_id === providerId).length
+
+  const runDelete = async (provider: Provider) => {
+    const ok = await confirm({
+      title: t('settings.deleteProvider'),
+      description: t('settings.confirmDeleteProvider'),
+      confirmLabel: t('settings.deleteProvider'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    })
+    if (ok) remove.mutate(provider.id)
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -55,104 +82,113 @@ export function ProvidersTab() {
           {t('settings.addProvider')}
         </Button>
       </div>
-      {(providers.data ?? []).map((provider) => (
-        <Card key={provider.id}>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="truncate text-sm font-medium">
-                {provider.name} <span className="text-muted-foreground">· {provider.type}</span>
-                {provider.is_local ? (
-                  <span className="bg-primary/10 text-primary ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]">
-                    <House className="size-3" aria-hidden />
-                    {t('settings.localKind')}
-                  </span>
-                ) : provider.country ? (
-                  <span className="ml-2 text-xs">{getCountryFlag(provider.country)}</span>
-                ) : null}
-                {!provider.enabled ? (
-                  <span className="text-muted-foreground ml-2 text-xs">
-                    {t('settings.disabled')}
-                  </span>
-                ) : null}
-              </p>
-              <p className="text-muted-foreground truncate font-mono text-xs">
-                {provider.base_url} · {provider.masked_key ?? t('settings.noKey')}
-              </p>
-              <ConnectionTestRow
-                variant="inline"
-                label={t('settings.connection')}
-                status={
-                  busyId === provider.id
-                    ? 'testing'
-                    : provider.status
-                      ? provider.status.ok
-                        ? 'ok'
-                        : 'fail'
-                      : 'idle'
-                }
-                errorMessage={provider.status?.error ?? null}
-                meta={
-                  provider.status?.model_count !== null &&
-                  provider.status?.model_count !== undefined
-                    ? `${provider.status.model_count} ${t('settings.modelsCount')}`
-                    : undefined
-                }
-                okLabel={t('settings.testOk')}
-                failLabel={t('settings.testFail')}
-              />
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {provider.preset_key ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  title={t('settings.setup.automatically')}
-                  onClick={() => setReSetupProvider(provider)}
-                >
-                  <Sparkles className="size-4" aria-hidden />
-                  {t('settings.setup.automatically')}
-                </Button>
-              ) : null}
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busyId === provider.id}
-                onClick={() => test.mutate(provider.id)}
-              >
-                {busyId === provider.id ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : null}
-                {t('settings.test')}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                title={t('settings.editProvider')}
-                onClick={() => setForm({ provider })}
-              >
-                <Pencil className="size-4" aria-hidden />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                title={t('settings.deleteProvider')}
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: t('settings.deleteProvider'),
-                    description: t('settings.confirmDeleteProvider'),
-                    confirmLabel: t('settings.deleteProvider'),
-                    cancelLabel: t('common.cancel'),
-                    destructive: true,
-                  })
-                  if (ok) remove.mutate(provider.id)
-                }}
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      {(providers.data ?? []).map((provider) => {
+        const testing = busyId === provider.id
+        const status: ConnectionTestStatus = testing
+          ? 'testing'
+          : provider.status
+            ? provider.status.ok
+              ? 'ok'
+              : 'fail'
+            : 'idle'
+        const actions = [
+          ...(provider.preset_key
+            ? [
+                {
+                  key: 'setup',
+                  label: t('settings.setup.automatically'),
+                  icon: Sparkles,
+                  onSelect: () => setReSetupProvider(provider),
+                },
+              ]
+            : []),
+          {
+            key: 'edit',
+            label: t('settings.edit'),
+            icon: Pencil,
+            onSelect: () => setForm({ provider }),
+          },
+          ...(hasRegisteredModel(provider.id)
+            ? [
+                {
+                  key: 'test',
+                  label: t('settings.test'),
+                  icon: PlugZap,
+                  disabled: testing,
+                  pending: testing,
+                  onSelect: () => test.mutate(provider.id),
+                },
+              ]
+            : []),
+          {
+            key: 'delete',
+            label: t('settings.deleteProvider'),
+            icon: Trash2,
+            danger: true,
+            onSelect: () => void runDelete(provider),
+          },
+        ]
+        return (
+          <ProviderCard
+            key={provider.id}
+            name={provider.name}
+            logoPreset={provider.preset_key ?? undefined}
+            nameTitle={provider.base_url}
+            subtitle={provider.base_url}
+            status={status}
+            idleLabel={t('settings.notTested')}
+            okLabel={t('settings.testOk')}
+            failLabel={t('settings.testFail')}
+            errorMessage={provider.status?.error ?? null}
+            meta={`${modelCount(provider.id)} ${t('settings.modelsCount')}`}
+            badges={[
+              { key: 'type', label: provider.type },
+              ...(provider.is_local != null
+                ? [
+                    {
+                      key: 'hosting',
+                      label: provider.is_local
+                        ? t('settings.localKind')
+                        : t('settings.cloudKind'),
+                      testId: `provider-hosting-${provider.id}`,
+                    },
+                  ]
+                : []),
+              ...(provider.country
+                ? [
+                    {
+                      key: 'country',
+                      label: `${getCountryFlag(provider.country)} ${provider.country}`,
+                      title: provider.country,
+                      testId: `provider-country-${provider.id}`,
+                    },
+                  ]
+                : []),
+              ...(!provider.masked_key
+                ? [
+                    {
+                      key: 'key',
+                      label: t('settings.noKey'),
+                      danger: true,
+                      testId: `provider-key-${provider.id}`,
+                    },
+                  ]
+                : []),
+              ...(!provider.enabled
+                ? [
+                    {
+                      key: 'inactive',
+                      label: t('settings.disabled'),
+                      danger: true,
+                    },
+                  ]
+                : []),
+            ]}
+            actions={actions}
+            actionsLabel={t('settings.actionsAria', { name: provider.name })}
+          />
+        )
+      })}
       {providers.data && providers.data.length === 0 ? (
         <div className="space-y-2 py-8 text-center">
           <p className="text-muted-foreground text-sm">{t('settings.noProviders')}</p>
@@ -178,4 +214,3 @@ export function ProvidersTab() {
     </div>
   )
 }
-

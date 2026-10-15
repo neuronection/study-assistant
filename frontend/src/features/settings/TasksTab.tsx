@@ -13,7 +13,6 @@ import {
   ScanText,
   ShieldCheck,
   Sparkles,
-  Star,
   Tag,
   Volume2,
   Wrench,
@@ -26,7 +25,6 @@ import { beautifyId } from '@neuronection/assistant-ui/fuzzy'
 import type { LucideIcon } from 'lucide-react'
 import type { ModelPickerProvider } from '@/components/ui/model-picker'
 import { ModelPicker } from '@/components/ui/model-picker'
-import { InfoButton } from '@/components/ui/InfoButton'
 import {
   TaskAssignmentPicker,
   type TaskAssignmentSection,
@@ -85,25 +83,25 @@ interface DecisionKindRowProps {
   icon: LucideIcon
   catalog: ModelPickerProvider[]
   modelValue: string | null
-  fallbackValue: string | null
+  /** Short muted state word ("Inherited") for the unset picker trigger. */
   inheritLabel: string
-  fallbackLabel: string
-  primaryLabel: string
-  primaryInfo: string
-  fallbackInfo: string
+  /** Small detail line under the description (e.g. "Defaults to {model}"). */
+  meta?: React.ReactNode
   clearLabel: string
   disabled: boolean
   onAssign: (slot: string, modelId: string | null) => void
-  onAssignFallback: (slot: string, modelId: string | null) => void
 }
 
 /**
- * One Decision defaults card kind row (plan 29 / ADR-0036 D3/D4): the row
- * shape users already know (icon tile, fallback + primary pickers, X
- * clears), but the primary picker's option list LEADS with the labeled
- * null entry — "Inherits — {resolved default model}" — and choosing it
- * assigns null, which *is* the inherit state. Composed app-side from the
- * library `ModelPicker nullOption` primitive; `TaskAssignmentPicker` is
+ * One Decision kinds group kind row (plan 29 / ADR-0036 D4, uniform
+ * family ruling): a single-picker task-assignment row — empty *is* the
+ * inherit state (the backend resolves the Default decision model), and
+ * the trigger reads the short muted state word ("Inherited"); the
+ * resolution detail rides an optional meta line under the description.
+ * No explicit "Inherits — …" entry in the model list, no fallback picker
+ * (fallback data stays in the backend untouched; the UI stops offering
+ * it). X clears back to inherit. Composed app-side from the library
+ * `ModelPicker placeholder` primitive; `TaskAssignmentPicker` is
  * untouched.
  */
 function DecisionKindRow({
@@ -113,16 +111,11 @@ function DecisionKindRow({
   icon: Icon,
   catalog,
   modelValue,
-  fallbackValue,
   inheritLabel,
-  fallbackLabel,
-  primaryLabel,
-  primaryInfo,
-  fallbackInfo,
+  meta,
   clearLabel,
   disabled,
   onAssign,
-  onAssignFallback,
 }: DecisionKindRowProps) {
   return (
     <div className="flex flex-col gap-2 rounded-[var(--as-radius-lg)] border border-[var(--as-border)] bg-[var(--as-surface-raised)] p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -133,81 +126,32 @@ function DecisionKindRow({
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-[var(--as-fg)]">{label}</p>
           <p className="truncate text-xs text-[var(--as-muted-fg)]">{description}</p>
+          {meta ? <p className="truncate text-xs text-[var(--as-muted-fg)]">{meta}</p> : null}
         </div>
       </div>
-      <div className="flex shrink-0 flex-col items-start gap-2 self-center">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--as-muted)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--as-muted-fg)]">
-            {fallbackLabel}
-          </span>
-          <ModelPicker
-            providers={catalog}
-            value={fallbackValue ?? ''}
-            onChange={(modelId) => onAssignFallback(slot, modelId)}
+      <div className="flex items-center gap-1.5 self-center">
+        <ModelPicker
+          providers={catalog}
+          value={modelValue ?? ''}
+          placeholder={inheritLabel}
+          onChange={(modelId) => onAssign(slot, modelId)}
+          disabled={disabled}
+          clearable={false}
+          label={label}
+          hideLabel
+          className="w-52"
+        />
+        {modelValue ? (
+          <button
+            type="button"
+            aria-label={`${clearLabel} — ${label}`}
             disabled={disabled}
-            clearable={false}
-            label={`${fallbackLabel} — ${label}`}
-            hideLabel
-            className="w-52"
-          />
-          {fallbackInfo ? (
-            <InfoButton
-              label={`${fallbackLabel} — ${label}`}
-              showOnHover={false}
-              openOnHover={false}
-            >
-              {fallbackInfo}
-            </InfoButton>
-          ) : null}
-          {fallbackValue ? (
-            <button
-              type="button"
-              aria-label={`${clearLabel} — ${fallbackLabel} ${label}`}
-              disabled={disabled}
-              onClick={() => onAssignFallback(slot, null)}
-              className="cursor-pointer rounded-[var(--as-radius-sm)] p-1.5 text-[var(--as-muted-fg)] transition-colors hover:bg-[var(--as-muted)] hover:text-[var(--as-fg)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--as-focus-ring)] disabled:pointer-events-none disabled:opacity-50"
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--as-muted)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--as-muted-fg)]">
-            <Star className="size-2.5" aria-hidden />
-            {primaryLabel}
-          </span>
-          <ModelPicker
-            providers={catalog}
-            value={modelValue ?? ''}
-            nullOption={{ label: inheritLabel }}
-            onChange={(modelId: string | null) => onAssign(slot, modelId)}
-            disabled={disabled}
-            clearable={false}
-            label={label}
-            hideLabel
-            className="w-52"
-          />
-          {primaryInfo ? (
-            <InfoButton
-              label={`${primaryLabel} — ${label}`}
-              showOnHover={false}
-              openOnHover={false}
-            >
-              {primaryInfo}
-            </InfoButton>
-          ) : null}
-          {modelValue ? (
-            <button
-              type="button"
-              aria-label={`${clearLabel} — ${label}`}
-              disabled={disabled}
-              onClick={() => onAssign(slot, null)}
-              className="cursor-pointer rounded-[var(--as-radius-sm)] p-1.5 text-[var(--as-muted-fg)] transition-colors hover:bg-[var(--as-muted)] hover:text-[var(--as-fg)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--as-focus-ring)] disabled:pointer-events-none disabled:opacity-50"
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          ) : null}
-        </div>
+            onClick={() => onAssign(slot, null)}
+            className="cursor-pointer rounded-[var(--as-radius-sm)] p-1.5 text-[var(--as-muted-fg)] transition-colors hover:bg-[var(--as-muted)] hover:text-[var(--as-fg)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--as-focus-ring)] disabled:pointer-events-none disabled:opacity-50"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </div>
   )
@@ -302,13 +246,11 @@ export function TasksTab() {
   )
 
   const value: Record<string, string | null> = {}
-  const secondaryValue: Record<string, string | null> = {}
-  // ADR-0037: capability defaults are single-slot — the kind rows carry
-  // the only fallback wiring on default-backed rows.
+  // ADR-0037: capability defaults are single-slot — kind rows are
+  // single-picker too (uniform ruling): empty = inherit, no UI fallback.
   for (const slot of DECISION_SLOTS) {
     const entry = defaultByCap.get(slot)
     value[slot] = entry?.model_id != null ? String(entry.model_id) : null
-    secondaryValue[slot] = entry?.fallback_model_id != null ? String(entry.fallback_model_id) : null
   }
   const decisionDefaultEntry = defaultByCap.get('decision')
   value[`${DEFAULT_PREFIX}decision`] =
@@ -328,6 +270,8 @@ export function TasksTab() {
       assignDefault.mutate({
         requires,
         modelId: id,
+        // Fallback data stays in the backend untouched — the API round-
+        // trips whatever is stored; the UI just stops offering a picker.
         fallbackModelId:
           entry?.fallback_model_id != null ? Number(entry.fallback_model_id) : null,
       })
@@ -336,27 +280,15 @@ export function TasksTab() {
     }
   }
 
-  const handleAssignSecondary = (taskId: string, modelId: string | null) => {
-    setError(null)
-    const requires = taskId.startsWith(DEFAULT_PREFIX)
-      ? taskId.slice(DEFAULT_PREFIX.length)
-      : taskId
-    const entry = defaultByCap.get(requires)
-    assignDefault.mutate({
-      requires,
-      modelId: entry?.model_id ?? null,
-      fallbackModelId: modelId ? Number(modelId) : null,
-    })
-  }
-
-  // ADR-0036 §4: what a kind's labeled null option names — the resolved
-  // inherit model (the `decision` default's resolution for that kind),
-  // surfaced by the API; honestly bare "Inherits" when nothing resolves.
-  const inheritLabelFor = (slot: string): string => {
+  // Presentation ruling (2026-10-14): the unset kind trigger reads the
+  // short muted state word ("Inherited"); the detail — the model the
+  // `decision` default resolves to for that kind, surfaced by the API —
+  // moves to a "Defaults to {model}" meta line, honestly absent when
+  // nothing resolves. Empty *is* the inherit state; there is no explicit
+  // inherit entry in the model list.
+  const defaultsToMeta = (slot: string): string | null => {
     const resolved = defaultByCap.get(slot)?.resolved_inherit_label ?? null
-    return resolved
-      ? t('settings.decisionInheritsLabel', { model: resolved })
-      : t('settings.decisionInheritsEmpty')
+    return resolved ? t('settings.defaultsTo', { model: resolved }) : null
   }
 
   // D7 "Simplify": only when all four kinds resolve to one model and the
@@ -398,7 +330,8 @@ export function TasksTab() {
     label: t('settings.defaultModelsTitle'),
     description: t('settings.defaultModelsHint'),
     // ADR-0037: capability defaults are single-slot — one picker per row,
-    // no fallback pickers (the Decision kinds group keeps its own).
+    // no fallback pickers (the Decision kinds rows are single-picker too:
+    // uniform family ruling, empty = inherit).
     tasks: [
       ...CAP_ORDER.map((cap) => ({
         id: `${DEFAULT_PREFIX}${cap}`,
@@ -513,16 +446,11 @@ export function TasksTab() {
             icon={DECISION_ICONS[slot]}
             catalog={decisionCatalog}
             modelValue={value[slot] ?? null}
-            fallbackValue={secondaryValue[slot] ?? null}
-            inheritLabel={inheritLabelFor(slot)}
-            fallbackLabel={t('settings.defaultFallbackLabel')}
-            primaryLabel={t('settings.primaryPicker')}
-            primaryInfo={t('settings.primaryInfo')}
-            fallbackInfo={t('settings.fallbackInfo')}
+            inheritLabel={t('settings.inherited')}
+            meta={value[slot] == null ? defaultsToMeta(slot) : undefined}
             clearLabel={t('settings.clearAssignment')}
             disabled={assign.isPending || assignDefault.isPending}
             onAssign={handleAssign}
-            onAssignFallback={handleAssignSecondary}
           />
         ))}
       </div>

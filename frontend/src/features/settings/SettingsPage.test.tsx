@@ -8,6 +8,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
 import { SettingsPage } from './SettingsPage'
@@ -119,12 +120,95 @@ const PROVIDER = {
 }
 
 describe('SettingsPage', () => {
-  test('providers tab lists providers with masked key', async () => {
+  test('providers tab lists providers with no raw key — keyless ones flag it', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     await await renderSettings('/settings?tab=ai&section=providers')
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
-    expect(screen.getByText(/••••1234/)).toBeInTheDocument()
+    // the base URL rides as a discrete subtitle; a keyed provider shows no
+    // key chip (implied) and the raw key never leaks
+    expect(screen.getByText('https://generativelanguage.googleapis.com')).toBeInTheDocument()
+    expect(screen.queryByTestId('provider-key-1')).not.toBeInTheDocument()
+    expect(screen.queryByText(/••••1234/)).not.toBeInTheDocument()
     expect(screen.queryByText(/supersecret/i)).not.toBeInTheDocument()
+  })
+
+  test('providers tab shows hosting, country and disabled badges', async () => {
+    listProviders.mockResolvedValue([
+      {
+        ...PROVIDER,
+        id: 2,
+        name: 'Local Ollama',
+        is_local: true,
+        country: 'DE',
+        enabled: false,
+        masked_key: null,
+      },
+      { ...PROVIDER, id: 3, name: 'Cloud Gemini', is_local: false, country: 'US' },
+    ])
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Local Ollama')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-hosting-2')).toHaveTextContent('Local / on-premise')
+    expect(screen.getByTestId('provider-country-2')).toHaveTextContent('🇩🇪 DE')
+    expect(screen.getByTestId('provider-hosting-3')).toHaveTextContent('Cloud')
+    expect(screen.getByTestId('provider-country-3')).toHaveTextContent('🇺🇸 US')
+    // keyed provider → no key chip (implied); keyless provider → danger "no key" chip;
+    // disabled provider → danger badge
+    expect(screen.queryByTestId('provider-key-3')).not.toBeInTheDocument()
+    expect(screen.getByTestId('provider-key-2')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-key-2')).toHaveTextContent('no key')
+    expect(screen.getByText('Disabled')).toBeInTheDocument()
+  })
+
+  test('providers tab tests a provider from the actions menu', async () => {
+    const user = userEvent.setup()
+    listProviders.mockResolvedValue([PROVIDER])
+    listModels.mockResolvedValue([
+      {
+        id: 11,
+        provider_id: 1,
+        external_id: 'gemini-2.5-flash',
+        label: 'gemini-2.5-flash',
+        caps: ['text'],
+        decision_transport: null,
+        enabled: true,
+        missing: false,
+        reasoning_effort: null,
+      },
+    ])
+    testProvider.mockResolvedValue({
+      ...PROVIDER,
+      status: { last_tested_at: '2026-08-18T00:00:00Z', ok: true, error: null, model_count: 43 },
+    })
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Test' }))
+    await waitFor(() => expect(testProvider).toHaveBeenCalledWith(1))
+    expect(await screen.findByText('Connected')).toBeInTheDocument()
+  })
+
+  test('providers tab omits the Test action without a registered model', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
+    listModels.mockResolvedValue([])
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
+    expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Test' })).toBeNull()
+  })
+
+  test('providers tab deletes a provider through the actions menu and confirm', async () => {
+    listProviders.mockResolvedValue([PROVIDER])
+    await await renderSettings('/settings?tab=ai&section=providers')
+    expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete provider' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/delete this provider/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete provider' }))
+    await waitFor(() => expect(deleteProvider).toHaveBeenCalledWith(1))
   })
 
   test('models tab lists selected (enabled) models with a catalog trigger', async () => {
@@ -506,8 +590,11 @@ describe('SettingsPage', () => {
   test('edit provider dialog patches without touching the key when blank', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     await await renderSettings('/settings?tab=ai&section=providers')
-    const edit = await screen.findByRole('button', { name: /edit provider/i })
-    edit.click()
+    const user = userEvent.setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'Actions for Google Gemini' }),
+    )
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
     const nameInput = await screen.findByLabelText(/name/i)
     expect(nameInput).toHaveValue('Google Gemini')
     expect(
