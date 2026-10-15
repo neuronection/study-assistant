@@ -727,7 +727,11 @@ speaks the provider families through **LangChain chat models** (plan 37A / ADR-0
 
 - **google** — `ChatGoogleGenerativeAI` (`generateContent` / `streamGenerateContent?alt=sse`)
 - **openai_compatible** — `ChatOpenAI` (`chat/completions` + SSE streaming; also covers
-  Ollama's `openai_compatible` preset and `embeddings`)
+  Ollama's `openai_compatible` preset and `embeddings`). The token cap rides
+  the endpoint's wire parameter (ADR-0038): api.openai.com gets
+  `max_completion_tokens`, every other base URL keeps `max_tokens` via
+  `CompatibleCaChatOpenAI` — the SDK's unconditional rename is bypassed, never
+  decided by model id
 - **anthropic** — `ChatAnthropic` (`messages` with system + content blocks, SSE streaming)
 
 Messages are typed (`system`/`user`/`assistant` with text or image parts); the gateway

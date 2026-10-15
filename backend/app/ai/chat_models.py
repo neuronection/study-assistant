@@ -23,7 +23,19 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
+from app.ai.wire_params import (
+    CompatibleChatOpenAI,
+    is_openai_endpoint,
+    is_openai_wire,
+)
+
 from .types import ImagePart, Message, ResolvedModel, TextPart, Usage
+
+__all__ = [
+    "CompatibleChatOpenAI",
+    "is_openai_endpoint",
+    "is_openai_wire",
+]
 
 ANTHROPIC_BASE_URL = "https://api.anthropic.com"
 GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com"
@@ -79,6 +91,16 @@ class CaChatOpenAI(ChatOpenAI):
         if reasoning and generation.message is not None:
             generation.message.additional_kwargs["reasoning_content"] = reasoning
         return generation
+
+
+class CompatibleCaChatOpenAI(CaChatOpenAI, CompatibleChatOpenAI):
+    """Compatible-wire variant of ``CaChatOpenAI``.
+
+    Method resolution keeps both overrides: ``_default_params`` from
+    ``CompatibleChatOpenAI`` (``max_tokens`` stays on the wire) and
+    ``_convert_chunk_to_generation_chunk`` from ``CaChatOpenAI``
+    (reasoning deltas from local reasoning models still surface).
+    """
 
 
 def _content_blocks(content: list[TextPart | ImagePart]) -> list[str | dict[Any, Any]]:
@@ -184,6 +206,7 @@ def _http_client(transport: httpx.BaseTransport, timeout: float) -> httpx.Client
 def _openai_model(
     resolved: ResolvedModel, transport: httpx.BaseTransport | None, timeout: float
 ) -> CaChatOpenAI:
+    openai_wire = is_openai_wire(resolved.provider_type, resolved.base_url)
     kwargs: dict[str, Any] = {
         "model": resolved.external_id,
         "api_key": resolved.api_key or _KEYLESS_API_KEY,
@@ -196,12 +219,19 @@ def _openai_model(
     if resolved.temperature is not None:
         kwargs["temperature"] = resolved.temperature
     if resolved.max_tokens is not None:
-        kwargs["max_tokens"] = resolved.max_tokens
+        # ADR-0038 endpoint split: OpenAI's own API accepts the modern
+        # parameter on every model, while compatible endpoints standardized
+        # on the classic name — the id alone cannot decide this.
+        if openai_wire:
+            kwargs["max_completion_tokens"] = resolved.max_tokens
+        else:
+            kwargs["max_tokens"] = resolved.max_tokens
     if resolved.base_url:
         kwargs["base_url"] = resolved.base_url
     if transport is not None:
         kwargs["http_client"] = _http_client(transport, timeout)
-    return CaChatOpenAI(**kwargs)
+    cls: type[CaChatOpenAI] = ChatOpenAI if openai_wire else CompatibleCaChatOpenAI
+    return cls(**kwargs)
 
 
 def _anthropic_model(

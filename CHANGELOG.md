@@ -11,6 +11,25 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (OpenAI-compatible wire sends `max_tokens` again — endpoint-routed token cap, 2026-10-15)
+- **Local and OpenAI-compatible endpoints stop receiving
+  `max_completion_tokens`:** Python `langchain-openai` renames the token
+  cap unconditionally, which modern OpenAI models require but strict
+  compatible servers (Ollama, LM Studio, llama.cpp, vLLM) reject. The
+  factory now routes by endpoint (ADR-0038) — api.openai.com keeps the
+  modern name, every other base URL gets `max_tokens` via
+  `CompatibleChatOpenAI` (with `CompatibleCaChatOpenAI` preserving the
+  reasoning-delta extraction). Model ids are never sniffed for the wire
+  contract. Pinned by tests/test_chat_models.py.
+- **The policy is canonical and enforced:** the wire rules live in the
+  vendored `app/ai/wire_params.py` (byte-identical across the family —
+  this repo no longer carries its own copy), temperature stays
+  omit-unless-configured (study never manufactured a default), the
+  shared fixture table (`tests/fixtures/wire_params.fixtures.json`)
+  drives the new tests/test_wire_params_contract.py alongside the other
+  repos, and alignment rules R6/R7 keep wire construction in the AI
+  layer and temperature defaults out of app code.
+
 ### Changed (Add-model form polish — provider context, modern manual toggle, capability implications, 2026-10-13)
 - **The form always answers "model of what?":** the add/edit modal opens
   with a discreet provider context banner (configured name + base URL)
