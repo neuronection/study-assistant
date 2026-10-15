@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '@/lib/api'
@@ -62,10 +62,18 @@ const PRESETS: Record<string, unknown> = {
     fixed_base: false,
     local: true,
     key_url: null,
-    preferred_model: null,
+    preferred_model: { id: 'gemma4:e4b', name: 'Gemma 4 E4B', caps: ['text', 'tools', 'vision'] },
     curated_models: null,
     stt_model: null,
-    steps: null,
+    embeddings_model: 'embeddinggemma-2:440m',
+    steps: [
+      'Install Ollama v0.35.0 or newer from ollama.com (the clef decision models need v0.35.1+).',
+      'Pull the default chat/vision model, e.g. run: ollama pull gemma4:e4b',
+      'Pull the embeddings model, e.g. run: ollama pull embeddinggemma-2:440m',
+      'Pull the decision models you want, e.g. run: ollama pull nimble',
+      'Make sure Ollama is running on this machine.',
+      'Connect below — no API key needed.',
+    ],
     free_tier_note: null,
   },
 }
@@ -171,18 +179,29 @@ describe('ProviderSetupModal', () => {
     expect(typesafeTile.compareDocumentPosition(ollama) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  test('preset form shows steps, key link, and advanced base URL; copies steps', async () => {
+  test('preset form shows steps, key link, and advanced base URL; command-less steps carry no copy', async () => {
     renderModal()
     fireEvent.click(await screen.findByText('OpenAI'))
     expect(await screen.findByText(/open https:\/\/platform\.openai\.com\/api-keys and sign in\./i)).toBeInTheDocument()
-    fireEvent.click(screen.getAllByRole('button', { name: /copy/i })[0])
-    expect(clipboardWrite).toHaveBeenCalledWith('Open {url} and sign in.')
+    const checklist = screen.getByRole('list', { name: 'Setup steps' })
+    expect(within(checklist).queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /get an api key/i })).toHaveAttribute(
       'href',
       'https://platform.openai.com/api-keys'
     )
     fireEvent.click(screen.getByText(/advanced/i))
     expect(screen.getByDisplayValue('https://api.openai.com/v1')).not.toHaveAttribute('readonly')
+  })
+
+  test('ollama steps copy exactly the run command, not the prose line', async () => {
+    renderModal()
+    fireEvent.click(await screen.findByRole('button', { name: /Ollama/ }))
+    expect(
+      await screen.findByText('ollama pull gemma4:e4b'),
+    ).toBeInTheDocument()
+    const checklist = screen.getByRole('list', { name: 'Setup steps' })
+    fireEvent.click(within(checklist).getAllByRole('button', { name: /copy/i })[0])
+    expect(clipboardWrite).toHaveBeenCalledWith('ollama pull gemma4:e4b')
   })
 
   test('fixed-base preset locks the base URL field', async () => {
