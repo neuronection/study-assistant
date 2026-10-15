@@ -182,13 +182,13 @@ def test_case_1_happy_path_openai_binds_chat_vision_and_stt(
     db_session: Session, monkeypatch: pytest.MonkeyPatch, fake_keyring: FakeKeyring
 ) -> None:
     calls = install_catalog(
-        monkeypatch, wire_catalog(["gpt-5.6-terra", "gpt-5.6-luna", "whisper-1"])
+        monkeypatch, wire_catalog(["gpt-6.1-sol", "gpt-6-luna", "whisper-1"])
     )
     outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "  sk-live-key  ")
 
     assert outcome.catalog_count == 3
-    assert outcome.assigned_chat_model == "gpt-5.6-terra"
-    assert outcome.assigned_vision_model == "gpt-5.6-terra"
+    assert outcome.assigned_chat_model == "gpt-6.1-sol"
+    assert outcome.assigned_vision_model == "gpt-6.1-sol"
     assert outcome.assigned_stt_model == "whisper-1"
     assert calls == [("openai_compatible", "https://api.openai.com/v1", "sk-live-key")]
     provider = db_session.get(Provider, outcome.provider_id)
@@ -200,12 +200,12 @@ def test_case_1_happy_path_openai_binds_chat_vision_and_stt(
     assert get_secret(provider.keyring_ref) == "sk-live-key"
     by_id = {m.external_id: m for m in models_of(db_session, provider.id)}
     assert by_id["whisper-1"].caps == ["stt"]
-    assert by_id["gpt-5.6-terra"].enabled is True
+    assert by_id["gpt-6.1-sol"].enabled is True
     chat = db_session.get(DefaultTaskAssignment, "text")
     vision = db_session.get(DefaultTaskAssignment, "vision")
     stt = db_session.get(DefaultTaskAssignment, "stt")
-    assert chat is not None and chat.model_id == by_id["gpt-5.6-terra"].id
-    assert vision is not None and vision.model_id == by_id["gpt-5.6-terra"].id
+    assert chat is not None and chat.model_id == by_id["gpt-6.1-sol"].id
+    assert vision is not None and vision.model_id == by_id["gpt-6.1-sol"].id
     assert stt is not None and stt.model_id == by_id["whisper-1"].id
 
 
@@ -241,7 +241,7 @@ def test_case_1_happy_path_ollama_keyless(
 def test_case_2_re_setup_appends_the_fetched_catalog_and_dedupes(
     db_session: Session, monkeypatch: pytest.MonkeyPatch, fake_keyring: FakeKeyring
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "gpt-5.6-luna"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol", "gpt-6-luna"]))
     first = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-first")
     manual_model = add_model(db_session, first.provider_id, "old-favorite", ["text"])
 
@@ -254,19 +254,19 @@ def test_case_2_re_setup_appends_the_fetched_catalog_and_dedupes(
     assert get_secret(provider.keyring_ref) == "sk-second"
     models = models_of(db_session, provider.id)
     assert sorted(m.external_id for m in models) == [
-        "gpt-5.6-luna",
-        "gpt-5.6-terra",
+        "gpt-6-luna",
+        "gpt-6.1-sol",
         "old-favorite",
     ]
     assert db_session.get(AiModel, manual_model.id) is not None
-    terra_rows = [m for m in models if m.external_id == "gpt-5.6-terra"]
-    assert len(terra_rows) == 1
+    sol_rows = [m for m in models if m.external_id == "gpt-6.1-sol"]
+    assert len(sol_rows) == 1
 
 
 def test_case_3_adopts_manual_row_earliest_first_and_stamps(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol"]))
     earliest = seed_manual_provider(db_session, name="My OpenAI")
     later = seed_manual_provider(db_session, name="Other OpenAI")
 
@@ -283,7 +283,7 @@ def test_case_3_adopts_manual_row_earliest_first_and_stamps(
 def test_case_4_never_clobbers_live_assignments(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "whisper-1"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol", "whisper-1"]))
     provider = seed_manual_provider(db_session)
     custom = add_model(db_session, provider.id, "my-custom-model", ["text"])
     seed_default_task_assignments(db_session)
@@ -309,7 +309,7 @@ def test_case_4_never_clobbers_live_assignments(
 def test_case_5_dead_id_assignments_rebind(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol"]))
     seed_default_task_assignments(db_session)
     db_session.commit()
     connection = db_session.connection()
@@ -327,9 +327,9 @@ def test_case_5_dead_id_assignments_rebind(
     outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key")
 
     by_id = {m.external_id: m.id for m in models_of(db_session)}
-    assert outcome.assigned_chat_model == "gpt-5.6-terra"
+    assert outcome.assigned_chat_model == "gpt-6.1-sol"
     chat = db_session.get(DefaultTaskAssignment, "text")
-    assert chat is not None and chat.model_id == by_id["gpt-5.6-terra"]
+    assert chat is not None and chat.model_id == by_id["gpt-6.1-sol"]
 
 
 def test_case_6_invalid_key_persists_nothing(
@@ -360,7 +360,7 @@ def test_case_6_invalid_key_persists_nothing(
 def test_case_7_unknown_preset_typed_error_without_fetch(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls = install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra"]))
+    calls = install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol"]))
 
     with pytest.raises(byok_setup.UnknownPresetError):
         byok_setup.setup_provider_from_preset(db_session, "not-a-preset", "sk-key")
@@ -443,12 +443,12 @@ def test_case_9_classifier_table_and_suspectedVendor_hints() -> None:
 def test_case_10_snapshot_suffix_curation_and_zero_match_fallback(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra-2026-09-11", "gpt-oss-120b"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol-2026-10-05", "gpt-oss-120b"]))
     outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key")
 
     assert outcome.curated_missed is False
     assert outcome.catalog_count == 1
-    assert outcome.assigned_chat_model == "gpt-5.6-terra-2026-09-11"
+    assert outcome.assigned_chat_model == "gpt-6.1-sol-2026-10-05"
 
     install_catalog(monkeypatch, wire_catalog(["gpt-99-turbo", "gpt-99-mini"]))
     drifted = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key")
@@ -464,13 +464,13 @@ def test_case_11_capability_inference_split() -> None:
     assert infer_caps("tts-1") == ["tts"]
     assert infer_caps("tts-1-hd") == ["tts"]
     assert infer_caps("text-embedding-3-small") == ["embeddings"]
-    assert infer_caps("gpt-5.6-terra") == ["text", "vision", "tools"]
+    assert infer_caps("gpt-6.1-sol") == ["text", "vision", "tools"]
 
 
 def test_case_12_set_default_task_scoping_guards_and_cross_provider_rejection(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "text-only"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol", "text-only"]))
     monkeypatch.setattr(service_module, "fetch_remote_models", lambda *a, **k: [])
 
     setup = client.post("/api/v1/providers/openai/setup", json={"api_key": "sk-test"})
@@ -483,12 +483,12 @@ def test_case_12_set_default_task_scoping_guards_and_cross_provider_rejection(
 
     bound = client.put(
         f"/api/v1/providers/{provider_id}/set-default",
-        json={"model_name": "gpt-5.6-terra"},
+        json={"model_name": "gpt-6.1-sol"},
     )
     assert bound.status_code == 200, bound.text
     tasks_after = client.get("/api/v1/tasks").json()
     chat_after = next(t for t in tasks_after if t["task"] == "chat")
-    assert chat_after["model_label"] == "gpt-5.6-terra"
+    assert chat_after["model_label"] == "gpt-6.1-sol"
 
     guard = client.put(
         f"/api/v1/providers/{provider_id}/set-default",
@@ -879,7 +879,7 @@ def test_case_21_embeddings_default_gapfills_empty_slot(
     """§15 follow-up: the preset's docs-verified embeddings default
     gap-fills the empty `embeddings` slot (`bind_embeddings`, empty slots
     only — never a live binding)."""
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "text-embedding-3-small"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol", "text-embedding-3-small"]))
     outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key")
 
     assert outcome.assigned_embeddings_model == "text-embedding-3-small"
@@ -903,7 +903,7 @@ def test_case_21_embeddings_default_gapfills_empty_slot(
 def test_case_21b_bind_embeddings_off_binds_nothing(
     db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_catalog(monkeypatch, wire_catalog(["gpt-5.6-terra", "text-embedding-3-small"]))
+    install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol", "text-embedding-3-small"]))
     options = byok_setup.SetupOptions(bind_embeddings=False)
     outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "sk-key", options=options)
 
