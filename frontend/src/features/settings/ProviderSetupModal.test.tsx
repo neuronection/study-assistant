@@ -218,7 +218,7 @@ describe('ProviderSetupModal', () => {
     expect(await screen.findByText('Choose defaults')).toBeInTheDocument()
     expect(screen.getByText('Default assignments')).toBeInTheDocument()
     expect(screen.getAllByText(/fills: gpt-5\.6-terra/)).toHaveLength(2)
-    expect(screen.getByRole('switch', { name: /^Chat/ })).not.toBeDisabled()
+    expect(screen.getByRole('switch', { name: /^Text/ })).not.toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: /apply/i }))
     await waitFor(() =>
       expect(setupMutation).toHaveBeenLastCalledWith('openai', {
@@ -286,7 +286,7 @@ describe('ProviderSetupModal', () => {
     // review: the decision default row names the model it would bind
     // (openrouter declares decision models; the Jev card never rides the
     // curated list, so the sub-line is where it must surface)
-    expect(await screen.findByText('Default decision model')).toBeInTheDocument()
+    expect(await screen.findByText('Decision')).toBeInTheDocument()
     expect(
       await screen.findByText(/fills: Jev via OpenRouter \(latest\)/)
     ).toBeInTheDocument()
@@ -304,12 +304,12 @@ describe('ProviderSetupModal', () => {
       )
     )
     // done: the registered decision model feeds the default-decision picker
-    expect(await screen.findByText('Default decision model')).toBeInTheDocument()
+    expect(await screen.findByText('Decision')).toBeInTheDocument()
     expect(screen.queryByText('Tool dispatch')).not.toBeInTheDocument()
     expect(screen.queryByText('Boolean gate')).not.toBeInTheDocument()
     expect(screen.queryByText('Choice')).not.toBeInTheDocument()
     expect(screen.queryByText('Score')).not.toBeInTheDocument()
-    const decisionPicker = screen.getByRole('combobox', { name: 'Default decision model' })
+    const decisionPicker = screen.getByRole('combobox', { name: 'Decision' })
     fireEvent.click(decisionPicker)
     const jevOption = await screen.findByRole('option', { name: /jev via openrouter/i })
     const decisionListbox = jevOption.closest('[role="listbox"]')

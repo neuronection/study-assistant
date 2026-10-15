@@ -216,6 +216,19 @@ export function ModelsTab() {
         standaloneCaps={[...STANDALONE_CAPS]}
         standaloneLabel={t('settings.modelCapsStandalone')}
         capImplications={{ vision: ['text'], tools: ['text'] }}
+        defaultCaps={(provider) =>
+          provider.type === 'decision' ? ['decision'] : ['text', 'vision', 'tools']
+        }
+        modifiersLabel={t('settings.capsModifiers')}
+        kindStepLabel={t('settings.modelKindStep')}
+        changeKindLabel={t('settings.modelChangeKind')}
+        kindDescriptions={{
+          text: t('settings.modelKindText'),
+          stt: t('settings.modelKindStt'),
+          tts: t('settings.modelKindTts'),
+          embeddings: t('settings.modelKindEmbeddings'),
+          decision: t('settings.modelKindDecision'),
+        }}
         decisionTransport="systemone"
         decisionTransportLabel={t('settings.modelTransport')}
         useCatalogLabel={t('settings.useCatalog')}

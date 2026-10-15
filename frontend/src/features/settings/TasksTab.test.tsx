@@ -148,7 +148,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     renderTab()
 
     expect(await screen.findByText('Default models')).toBeInTheDocument()
-    expect(screen.getByText('Default decision model')).toBeInTheDocument()
+    expect(screen.getByText('Decision')).toBeInTheDocument()
     expect(screen.getByText('Decision kinds')).toBeInTheDocument()
     expect(screen.getByText(/decision models run in the cloud/i)).toBeInTheDocument()
     expect(screen.getByText('Tool dispatch')).toBeInTheDocument()
@@ -236,9 +236,9 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
 
   test('the default decision row posts the decision requires key', async () => {
     renderTab()
-    await screen.findByText('Default decision model')
+    await screen.findByText('Decision')
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'Default decision model' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Decision' }))
     fireEvent.click(await screen.findByRole('option', { name: /jev \(latest\)/i }))
 
     await waitFor(() =>
@@ -284,7 +284,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     renderTab()
 
     const defaultPicker = await screen.findByRole('combobox', {
-      name: 'Default decision model',
+      name: 'Decision',
     })
     await waitFor(() => expect(defaultPicker).toHaveTextContent('Jev (latest)'))
     expect(screen.queryByRole('button', { name: /simplify/i })).not.toBeInTheDocument()

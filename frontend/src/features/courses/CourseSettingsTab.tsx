@@ -208,15 +208,15 @@ function TasksSection({ courseId }: { courseId: number }) {
             <div key={requires} className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">
-                  {t('settings.defaultModelLabel', { cap: capLabel })}
+                  {capLabel}
                 </p>
-                <p className="text-muted-foreground text-xs">
-                  {entry?.global_model_label != null
-                    ? t('settings.inheritedFromDefault', {
-                        label: entry.global_model_label,
-                      })
-                    : t('settings.defaultModelHint', { cap: capLabel })}
-                </p>
+                {entry?.global_model_label != null && (
+                  <p className="text-muted-foreground text-xs">
+                    {t('settings.inheritedFromDefault', {
+                      label: entry.global_model_label,
+                    })}
+                  </p>
+                )}
               </div>
               <select
                 className="bg-surface border-border max-w-52 rounded-md border px-2 py-1.5 text-xs"
@@ -228,7 +228,7 @@ function TasksSection({ courseId }: { courseId: number }) {
                     modelId: value === '' ? null : Number(value),
                   })
                 }}
-                aria-label={t('settings.defaultModelLabel', { cap: capLabel })}
+                aria-label={capLabel}
               >
                 <option value="">{t('settings.unassigned')}</option>
                 {options.map((model) => (

@@ -63,9 +63,7 @@ export function DefaultsStep() {
               <div key={requires} className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">
-                    {t('settings.defaultModelLabel', {
-                      cap: t(`settings.caps.${requires}`),
-                    })}
+                    {t(`settings.caps.${requires}`)}
                   </p>
                 </div>
                 <select
@@ -82,9 +80,7 @@ export function DefaultsStep() {
                       { onError: (err: Error) => setError(err.message) }
                     )
                   }}
-                  aria-label={t('settings.defaultModelLabel', {
-                    cap: t(`settings.caps.${requires}`),
-                  })}
+                  aria-label={t(`settings.caps.${requires}`)}
                 >
                   <option value="">{t('settings.unassigned')}</option>
                   {options.map((model) => (

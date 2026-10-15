@@ -335,7 +335,7 @@ export function TasksTab() {
     tasks: [
       ...CAP_ORDER.map((cap) => ({
         id: `${DEFAULT_PREFIX}${cap}`,
-        label: beautifyId(t(`settings.caps.${cap}`)),
+        label: t(`settings.caps.${cap}`),
         requires: cap,
         icon: CAP_ICONS[cap],
       })),

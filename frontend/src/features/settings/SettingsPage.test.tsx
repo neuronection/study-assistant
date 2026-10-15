@@ -236,7 +236,7 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Models')
     expect(await screen.findByText('gemini-2.5-flash')).toBeInTheDocument()
-    expect(screen.getAllByText('image / vision').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Vision').length).toBeGreaterThan(0)
     expect(screen.queryByText('gemini-2.5-pro')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     const browse = screen.getByRole('button', { name: 'Add model' })
@@ -263,7 +263,7 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Tasks')
     expect(await screen.findByText('OCR')).toBeInTheDocument()
-    expect(screen.getByText('vision')).toBeInTheDocument()
+    expect(screen.getByText('Vision')).toBeInTheDocument()
     expect(
       screen.getAllByRole('combobox', { name: 'OCR' })[0],
     ).toHaveTextContent(/select a model/i)
@@ -345,9 +345,9 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Tasks')
     expect(await screen.findByText(/default models/i)).toBeInTheDocument()
-    expect(screen.getByText(/set one default per capability/i)).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Text' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Image / Vision' })).toBeInTheDocument()
+    expect(screen.getByText(/one default per capability/i)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'LLM' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Vision' })).toBeInTheDocument()
     expect((await screen.findAllByRole('combobox')).length).toBeGreaterThanOrEqual(5)
     expect(await screen.findByText(/Inherited — using gemini-2.5-flash/)).toBeInTheDocument()
   })
@@ -411,7 +411,7 @@ describe('SettingsPage', () => {
     await await renderSettings()
     await openAiSection('Tasks')
     await screen.findByText(/default models/i)
-    const textPrimary = screen.getByRole('combobox', { name: 'Text' })
+    const textPrimary = screen.getByRole('combobox', { name: 'LLM' })
     fireEvent.click(textPrimary)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
@@ -651,12 +651,14 @@ describe('SettingsPage', () => {
     await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
+    // step 1 — pick the LLM kind, then the catalog picker appears
+    fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
     const picker = await within(dialog).findByRole('combobox', { name: 'Model' })
     fireEvent.click(picker)
     fireEvent.click(await screen.findByRole('option', { name: 'gemini-2.5-pro' }))
     expect(
-      within(dialog).getByRole('button', { name: 'image / vision' }),
+      within(dialog).getByRole('button', { name: 'Vision' }),
     ).toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
@@ -693,6 +695,8 @@ describe('SettingsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
 
+    // step 1 — the decision kind card seeds caps and stamps the transport
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Decision/ }))
     expect(await within(dialog).findByText(/no key/i)).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: /manual/i }))
     await waitFor(() =>
@@ -703,12 +707,6 @@ describe('SettingsPage', () => {
     })
     // standalone kind: decision replaces the chat caps, hides the
     // generation options, and stamps the transport
-    fireEvent.click(within(dialog).getByRole('button', { name: 'text' }))
-    fireEvent.click(within(dialog).getByRole('button', { name: 'decision' }))
-    expect(within(dialog).getByRole('button', { name: 'text' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
     expect(within(dialog).getByText('Transport:')).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Temperature')).not.toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
@@ -743,6 +741,8 @@ describe('SettingsPage', () => {
     await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
+    // step 1 — the LLM kind (chat family pre-selected in step 2)
+    fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
     expect(await within(dialog).findByText(/no API key is stored/i)).toBeInTheDocument()
 
@@ -750,7 +750,9 @@ describe('SettingsPage', () => {
     fireEvent.change(within(dialog).getByLabelText('Model'), {
       target: { value: 'gpt-9-turbo' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'image / vision' }))
+    // the chat family comes pre-selected (text+vision+tools); the correction
+    // drops tools for this vision-only model
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tools' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add model' }))
 
     await waitFor(() =>
@@ -800,6 +802,8 @@ describe('SettingsPage', () => {
     await openAiSection('Models')
     fireEvent.click(await screen.findByRole('button', { name: 'Add model' }))
     const dialog = await screen.findByRole('dialog')
+    // step 1 — pick the LLM kind so the add-all footer action appears
+    fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
     fireEvent.click(within(dialog).getByRole('button', { name: /add all \(3\)/i }))
 
@@ -841,7 +845,7 @@ describe('SettingsPage', () => {
 
     const labelInput = await within(dialog).findByLabelText(/display name/i)
     fireEvent.change(labelInput, { target: { value: 'Flash' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'image / vision' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Vision' }))
 
     fireEvent.click(within(dialog).getByRole('button', { name: /^save$/i }))
     await waitFor(() =>

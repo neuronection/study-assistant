@@ -215,7 +215,7 @@ describe('CourseSettingsTab defaults card', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Tasks' }))
 
     const textSelect = await screen.findByRole('combobox', {
-      name: 'Default text model',
+      name: 'LLM',
     })
     expect(textSelect).toHaveValue('')
     expect(await screen.findByText(/using cloud-default/i)).toBeInTheDocument()

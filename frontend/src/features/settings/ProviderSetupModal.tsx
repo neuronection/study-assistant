@@ -753,6 +753,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
       {phase === 'form' && preset ? (
         <ProviderSetupForm
           preset={{
+            key: presetKey ?? undefined,
             name: preset.name,
             keyUrl: preset.key_url ?? undefined,
             steps: preset.steps ?? undefined,
