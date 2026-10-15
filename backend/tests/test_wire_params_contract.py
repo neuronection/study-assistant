@@ -15,7 +15,7 @@ import pytest
 
 from app.ai.chat_models import build_chat_model
 from app.ai.types import ResolvedModel
-from app.ai.wire_params import is_openai_endpoint, resolve_max_tokens_param
+from app.ai.wire_params import is_openai_endpoint, resolve_chat_transport, resolve_max_tokens_param
 
 FIXTURES = json.loads(
     (Path(__file__).parent / "fixtures" / "wire_params.fixtures.json").read_text()
@@ -48,6 +48,11 @@ def test_endpoint_detection(row):
 @pytest.mark.parametrize("row", FIXTURES["maxTokensParam"], ids=lambda r: r["name"])
 def test_max_tokens_param_resolution(row):
     assert resolve_max_tokens_param(row["providerType"], row["apiBase"], row["override"]) == row["expected"]
+
+
+@pytest.mark.parametrize("row", FIXTURES["chatTransport"], ids=lambda r: r["name"])
+def test_chat_transport_resolution(row):
+    assert resolve_chat_transport(row["providerType"], row["apiBase"], row["override"]) == row["expected"]
 
 
 @pytest.mark.parametrize("row", FIXTURES["temperatureOmission"], ids=lambda r: r["name"])

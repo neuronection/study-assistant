@@ -44,6 +44,7 @@ class ResolvedModel:
     reasoning_effort: str | None = None
     temperature: float | None = None
     max_tokens: int | None = None
+    chat_transport: str | None = None
 
 
 @dataclass(frozen=True)

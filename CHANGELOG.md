@@ -30,6 +30,17 @@ Release history from before the public launch lives in the
   repos, and alignment rules R6/R7 keep wire construction in the AI
   layer and temperature defaults out of app code.
 
+### Added (model transport knob — reasoning + function tools on gpt-6 via the Responses API, 2026-10-15)
+- **Model rows can set `chat_transport='responses'`** (nullable column,
+  migration 0071) to ride the Responses API — honored only when the
+  base URL is api.openai.com (compatible servers don't implement
+  /responses and keep completions), always store-less (`store=False`).
+  The gpt-6 family rejects function tools + `reasoning_effort` on chat
+  completions; the knob keeps reasoning on tool tasks, while
+  `reasoning_effort='none'` remains the zero-config alternative.
+  `auto`/NULL stays on completions — nothing changes for existing rows.
+  The shared fixture table pins the resolution matrix.
+
 ### Changed (Add-model form polish — provider context, modern manual toggle, capability implications, 2026-10-13)
 - **The form always answers "model of what?":** the add/edit modal opens
   with a discreet provider context banner (configured name + base URL)

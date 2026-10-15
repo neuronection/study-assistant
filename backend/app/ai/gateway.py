@@ -317,6 +317,7 @@ class LLMGateway:
                         reasoning_effort=db_model.reasoning_effort,
                         temperature=db_model.temperature,
                         max_tokens=db_model.max_tokens,
+                        chat_transport=db_model.chat_transport,
                     )
                 )
             if chain:

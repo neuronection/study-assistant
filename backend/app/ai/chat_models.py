@@ -27,6 +27,7 @@ from app.ai.wire_params import (
     CompatibleChatOpenAI,
     is_openai_endpoint,
     is_openai_wire,
+    resolve_chat_transport,
 )
 
 from .types import ImagePart, Message, ResolvedModel, TextPart, Usage
@@ -226,6 +227,12 @@ def _openai_model(
             kwargs["max_completion_tokens"] = resolved.max_tokens
         else:
             kwargs["max_tokens"] = resolved.max_tokens
+    # ADR-0039: a row opted into the Responses API rides /responses
+    # (honored only on OpenAI's endpoint) store-less — reasoning_effort
+    # passes through, so gpt-6-family models keep reasoning on tool tasks.
+    if resolve_chat_transport(resolved.provider_type, resolved.base_url, resolved.chat_transport) == "responses":
+        kwargs["use_responses_api"] = True
+        kwargs["store"] = False
     if resolved.base_url:
         kwargs["base_url"] = resolved.base_url
     if transport is not None:

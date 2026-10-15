@@ -100,6 +100,10 @@ class AiModel(Base):
     reasoning_effort: Mapped[str | None] = mapped_column(String(20))
     temperature: Mapped[float | None] = mapped_column(Float)
     max_tokens: Mapped[int | None] = mapped_column(Integer)
+    # ADR-0039: the OpenAI API surface seam ('responses' | 'completions';
+    # NULL/anything else = auto = chat completions). Honored only when the
+    # base URL rides OpenAI's own API.
+    chat_transport: Mapped[str | None] = mapped_column(String(20))
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     missing: Mapped[bool] = mapped_column(Boolean, default=False)
     discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

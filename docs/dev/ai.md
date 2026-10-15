@@ -731,7 +731,9 @@ speaks the provider families through **LangChain chat models** (plan 37A / ADR-0
   the endpoint's wire parameter (ADR-0038): api.openai.com gets
   `max_completion_tokens`, every other base URL keeps `max_tokens` via
   `CompatibleCaChatOpenAI` — the SDK's unconditional rename is bypassed, never
-  decided by model id
+  decided by model id. A model row's `chat_transport='responses'` opts that
+  row into the Responses API (ADR-0039, OpenAI endpoint only, store-less)
+  for families that reject tools + reasoning_effort on completions (gpt-6)
 - **anthropic** — `ChatAnthropic` (`messages` with system + content blocks, SSE streaming)
 
 Messages are typed (`system`/`user`/`assistant` with text or image parts); the gateway
