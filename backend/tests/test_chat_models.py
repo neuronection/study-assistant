@@ -62,11 +62,20 @@ def test_is_openai_wire() -> None:
 
 
 def test_openai_endpoint_cap_uses_modern_parameter() -> None:
-    model = _build(_resolved(base_url="https://api.openai.com/v1", max_tokens=512))
+    """Auto rows on the OpenAI endpoint ride the Responses wire
+    (ADR-0039) — the cap converts to max_output_tokens, and Compatible
+    classes never apply there."""
+    model = _build(
+        _resolved(base_url="https://api.openai.com/v1", max_tokens=512, chat_transport="completions")
+    )
     assert isinstance(model, ChatOpenAI)
     assert not isinstance(model, CompatibleChatOpenAI)
     assert model._default_params["max_completion_tokens"] == 512
     assert "max_tokens" not in model._default_params
+    # Auto (no chat_transport) on the OpenAI endpoint opts into responses:
+    auto = _build(_resolved(base_url="https://api.openai.com/v1", max_tokens=512))
+    assert auto.use_responses_api is True
+    assert auto.store is False
 
 
 def test_compatible_endpoint_cap_keeps_classic_parameter() -> None:
@@ -109,6 +118,7 @@ def test_responses_transport_ignored_off_the_openai_endpoint() -> None:
 def test_chat_transport_resolution_matrix() -> None:
     assert resolve_chat_transport("openai", "https://api.openai.com/v1", "responses") == "responses"
     assert resolve_chat_transport("openai", None, "responses") == "responses"
-    assert resolve_chat_transport("openai_compatible", "http://localhost:8080/v1", "responses") == "completions"
-    assert resolve_chat_transport("openai", "https://api.openai.com/v1", None) == "completions"
+    # Auto routes by endpoint: OpenAI's API → responses, elsewhere → completions.
+    assert resolve_chat_transport("openai", "https://api.openai.com/v1", None) == "responses"
+    assert resolve_chat_transport("openai_compatible", "http://localhost:8080/v1", None) == "completions"
     assert resolve_chat_transport("openai", "https://api.openai.com/v1", "completions") == "completions"
