@@ -11,8 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import app.services.content.external_sources as ext
+import app.extensions.builtin.external_sources as extconn
 from app.domain.models import ExternalSource, MaterialSuggestion, Profile
+from app.services.content import external_sources as ext
 
 RSS_FEED = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
@@ -137,7 +138,7 @@ def test_rss_scan_lands_sanitized_suggestions(
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         return FakeResponse(200, content=RSS_FEED)
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         stats = client.post(f"/api/v1/external-sources/{source['id']}/scan")
@@ -175,7 +176,7 @@ def test_rss_cursor_prevents_resurfacing(
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         return FakeResponse(200, content=next(seen_feeds))
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         first = client.post(f"/api/v1/external-sources/{source['id']}/scan").json()
@@ -188,7 +189,7 @@ def test_rss_cursor_prevents_resurfacing(
     assert row is not None
     assert isinstance(row.cursor, dict)
     assert "chain-1" in row.cursor["seen"]
-    assert len(row.cursor["seen"]) <= ext.MAX_SEEN_IDS
+    assert len(row.cursor["seen"]) <= extconn.MAX_SEEN_IDS
 
 
 def test_rss_304_short_circuits(
@@ -200,7 +201,7 @@ def test_rss_304_short_circuits(
         calls.append(url)
         return FakeResponse(304)
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         stats = client.post(f"/api/v1/external-sources/{source['id']}/scan")
@@ -227,7 +228,7 @@ def test_youtube_scan_records_video_suggestions(
             {"title": "no id, no url"},
         ]
 
-    monkeypatch.setattr(ext, "extract_flat_entries", fake_entries)
+    monkeypatch.setattr(extconn, "extract_flat_entries", fake_entries)
     with client:
         source = _create_source(
             client,
@@ -262,7 +263,7 @@ def test_saved_suggestion_is_never_resurfaced(
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         return FakeResponse(200, content=RSS_FEED)
 
-    monkeypatch.setattr(ext, "fetch_url", fake_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", fake_fetch)
     with client:
         saved = client.post(
             "/api/v1/discovery/suggestions",
@@ -292,7 +293,12 @@ def test_site_search_scan_uses_provider_and_site_filter(
     seen_queries: list[str] = []
 
     def fake_fallback(
-        session: Session, profile_id: str, query: str, *, transport: object = None, limit: int | None = None
+        session: Session,
+        profile_id: str,
+        query: str,
+        *,
+        transport: object = None,
+        limit: int | None = None,
     ) -> list[dict[str, str]]:
         seen_queries.append(query)
         return [
@@ -303,7 +309,7 @@ def test_site_search_scan_uses_provider_and_site_filter(
             }
         ]
 
-    monkeypatch.setattr(ext, "search_with_fallback", fake_fallback)
+    monkeypatch.setattr(extconn, "search_with_fallback", fake_fallback)
 
     profile = Profile(
         user_id=owner.id,
@@ -349,7 +355,7 @@ def test_scan_failure_is_isolated_and_recorded(
     def failing_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         raise OSError("network unreachable")
 
-    monkeypatch.setattr(ext, "fetch_url", failing_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", failing_fetch)
     with client:
         source = _create_source(client, course_id=course_id)
         response = client.post(f"/api/v1/external-sources/{source['id']}/scan")
@@ -495,7 +501,7 @@ def test_scheduler_due_logic_overlap_guard_and_error_isolation(
     def failing_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         raise OSError("network unreachable")
 
-    monkeypatch.setattr(ext, "fetch_url", failing_fetch)
+    monkeypatch.setattr(extconn, "fetch_url", failing_fetch)
 
     assert scheduler._scan_one(source_id) is None
     with app.state.session_factory() as session:

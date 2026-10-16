@@ -2836,6 +2836,12 @@
     "contract_none": "Καμία σύμβαση",
     "contract_discovery": "Αναζήτηση",
     "contract_parse": "Ανάλυση",
-    "urlPattern": "Μοτίβο URL"
+    "urlPattern": "Μοτίβο URL",
+    "status_ok": "Υγιής",
+    "status_degraded": "Υποβαθμισμένος",
+    "status_failing": "Αποτυχίες",
+    "status_stale": "Παρωχημένος",
+    "needsConfig": "Ημιτελής ρύθμιση",
+    "t3Disclosure": "Εξωτερική διεργασία"
   }
 }

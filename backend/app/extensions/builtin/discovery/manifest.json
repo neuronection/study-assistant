@@ -1,0 +1,65 @@
+{
+  "apiVersion": "extension/v1",
+  "kindVersion": 1,
+  "kind": "connector",
+  "id": "discovery",
+  "version": "1.0.0",
+  "description": "One normalized-result discovery registry over pluggable providers: web (the ADR-0035 search trio), YouTube flat search, site presets, and external MCP servers speaking the discovery contract. Results are suggestions rendered in chat — never auto-imported, never persisted. Provider shapes are the study profile recorded in the charter; MCP legs run out-of-process (T3), rows validated and capped.",
+  "author": "Neuronection",
+  "license": "MIT",
+  "categories": [
+    "search"
+  ],
+  "capabilities": [
+    "chat-tools"
+  ],
+  "tools": [
+    {
+      "id": "discover",
+      "riskClass": "read-only",
+      "titleKey": "tools.discover.title",
+      "descriptionKey": "tools.discover.description"
+    }
+  ],
+  "privacy": {
+    "sendsContent": true,
+    "sensitiveGlobs": []
+  },
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Provider id"
+      },
+      "title": {
+        "type": "string",
+        "title": "Result title (≤300 chars)"
+      },
+      "url": {
+        "type": "string",
+        "title": "Result URL (http(s)-validated, ≤2048 chars)"
+      },
+      "kind": {
+        "type": "string",
+        "title": "Discovery kind vocabulary"
+      },
+      "description": {
+        "type": "string",
+        "title": "Capped result description (≤800 chars)"
+      }
+    }
+  },
+  "supportsIncremental": false,
+  "i18n": {
+    "defaultLocale": "en",
+    "locales": {
+      "en": {
+        "title": "Discovery",
+        "summary": "Normalized suggestions from web search, YouTube, site presets and MCP connectors.",
+        "tools.discover.title": "Discover",
+        "tools.discover.description": "Query the enabled discovery providers; results are read-only suggestions."
+      }
+    }
+  }
+}

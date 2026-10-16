@@ -111,7 +111,11 @@ def test_discover_here_builds_query_from_node_context(
         assert (
             test_client.post(
                 "/api/v1/search-providers",
-                json={"type": "tavily", "base_url": "https://api.tavily.com", "api_key": "tvly-key"},
+                json={
+                    "type": "tavily",
+                    "base_url": "https://api.tavily.com",
+                    "api_key": "tvly-key",
+                },
             )
         ).status_code == 201
         enable_web_only(test_client)

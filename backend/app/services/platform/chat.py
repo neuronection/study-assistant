@@ -44,7 +44,6 @@ from ...ai.tools import (
     QUIZ_TOOL_DOC,
 )
 from ...ai.widgets import CHAT_WIDGET_DOC
-from ...core.secrets import get_secret
 from ...core.vocab import ChatProposalStatus
 from ...domain.models import (
     Activity,
@@ -70,15 +69,15 @@ from ...domain.models import (
     StepAttempt,
     TreeNode,
 )
+from ...extensions.search.provider import (
+    SearchError,
+    perform_fetch,
+    search_with_fallback,
+)
 from ...mcp_resources import (
     RESOURCE_TOOL_BY_KEYWORD,
     ResourceError,
     build_resource_tool_doc,
-)
-from ...search.provider import (
-    SearchError,
-    perform_fetch,
-    search_with_fallback,
 )
 from ..knowledge.context import ContextResolver, ContextScope, ContextSpec
 from ..search import hybrid_search, retrieve_chunks_hybrid
@@ -1055,8 +1054,11 @@ class ChatService:
         return None
 
     def _discover(self, argument: str, chat_session: ChatSession) -> tuple[str, list[str]]:
-        from ...search.discovery import DiscoveryError, resolve_providers
+        from ...extensions.registry import extension_registry
+        from ...extensions.search.discovery import DiscoveryError, resolve_providers
 
+        if not extension_registry.has_capability("discovery", "chat-tools"):
+            return "error: the discovery bundle does not declare chat-tools", []
         query = argument.strip()
         if query.lower() == "here":
             built = self._here_query(chat_session)

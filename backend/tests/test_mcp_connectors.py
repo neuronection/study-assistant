@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 import app.ai.mcp_client as mcp_client
 from app.ai.mcp_client import McpToolError
 from app.domain.models import AiInteraction, MaterialSuggestion, Profile
+from app.extensions.runtime.mcp_parse import McpParseParser
+from app.extensions.search.discovery import resolve_providers
 from app.parsers.base import ParserError, build_registry, resolve_parser
-from app.parsers.mcp_parse import McpParseParser
-from app.search.discovery import resolve_providers
 
 
 def make_config(command: str, args: list[str]) -> mcp_client.McpServerConfig:
@@ -206,7 +206,7 @@ def test_mcp_discovery_provider_normalizes_and_dedupes(
 
     del profile_id
 
-    monkeypatch.setattr("app.search.discovery.call_tool_sync", fake_call)
+    monkeypatch.setattr("app.extensions.search.discovery.call_tool_sync", fake_call)
 
     profile = db_session.scalars(select(Profile)).first()
     assert profile is not None
@@ -234,7 +234,7 @@ def test_discovery_search_with_mcp_provider_audits(
     ) -> str:
         return json.dumps({"results": [DISCOVERY_ROWS[0]]})
 
-    monkeypatch.setattr("app.search.discovery.call_tool_sync", fake_call)
+    monkeypatch.setattr("app.extensions.search.discovery.call_tool_sync", fake_call)
     with client:
         response = client.post(
             "/api/v1/discovery/search",
@@ -279,7 +279,7 @@ def test_mcp_parse_parser_matches_and_validates_contract(
             }
         )
 
-    monkeypatch.setattr("app.parsers.mcp_parse.call_tool_sync", fake_call)
+    monkeypatch.setattr("app.extensions.runtime.mcp_parse.call_tool_sync", fake_call)
     parsed = parser.fetch("https://coursehub.example/learn/42")
     assert parsed.title == "Course 42"
     assert (parsed.markdown or "").startswith("# Course 42")
@@ -294,12 +294,14 @@ def test_mcp_parse_parser_rejects_contract_violations(
 
     parser._config = make_config("python", [])
 
-    monkeypatch.setattr("app.parsers.mcp_parse.call_tool_sync", lambda *a, **k: "not json at all")
+    monkeypatch.setattr(
+        "app.extensions.runtime.mcp_parse.call_tool_sync", lambda *a, **k: "not json at all"
+    )
     with pytest.raises(ParserError, match="non-JSON"):
         parser.fetch("https://coursehub.example/learn/1")
 
     monkeypatch.setattr(
-        "app.parsers.mcp_parse.call_tool_sync",
+        "app.extensions.runtime.mcp_parse.call_tool_sync",
         lambda *a, **k: json.dumps({"title": "no markdown"}),
     )
     with pytest.raises(ParserError, match="no markdown"):
@@ -353,7 +355,7 @@ def test_parse_contract_lands_in_url_import(
                 }
             )
 
-        monkeypatch.setattr("app.parsers.mcp_parse.call_tool_sync", fake_call)
+        monkeypatch.setattr("app.extensions.runtime.mcp_parse.call_tool_sync", fake_call)
 
         queued = client.post(f"/api/v1/materials/{material_id}/parse")
         assert queued.status_code == 200, queued.text
@@ -463,7 +465,7 @@ def test_create_server_validation_for_transports(client: TestClient) -> None:
 
 
 def test_build_mcp_config_loads_secrets(client: TestClient, db_session: Session) -> None:
-    from app.services.platform.mcp_servers import build_mcp_config
+    from app.extensions.mcp_servers import build_mcp_config
 
     with client:
         created = client.post(

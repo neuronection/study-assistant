@@ -1,0 +1,94 @@
+{
+  "apiVersion": "extension/v1",
+  "kindVersion": 1,
+  "kind": "connector",
+  "id": "external-sources",
+  "version": "1.0.0",
+  "description": "Bundled external web sources (RSS/Atom, YouTube channel/playlist, site-search) polled into the suggestion funnel — never auto-imported, never an LLM call. Every source URL is user-configured, so no fixed domain list scopes a 'net' grant: RSS rides httpx conditional GET, YouTube is a yt-dlp subprocess outside the app's perimeter, site-search rides the search trio.",
+  "author": "Neuronection",
+  "license": "MIT",
+  "categories": [
+    "search"
+  ],
+  "capabilities": [
+    "sync"
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "kind": {
+        "type": "string",
+        "enum": [
+          "rss",
+          "youtube_channel",
+          "youtube_playlist",
+          "site_search"
+        ],
+        "title": "Source kind"
+      },
+      "url": {
+        "type": "string",
+        "title": "Source URL",
+        "minLength": 1,
+        "maxLength": 2048
+      },
+      "label": {
+        "type": "string",
+        "title": "Display label",
+        "maxLength": 200
+      },
+      "enabled": {
+        "type": "boolean",
+        "title": "Enabled"
+      },
+      "scan_interval_sec": {
+        "type": "number",
+        "title": "Minimum seconds between scans",
+        "minimum": 900
+      }
+    },
+    "required": [
+      "kind",
+      "url"
+    ]
+  },
+  "itemSchema": {
+    "type": "object",
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Provider line (rss:label | youtube:kind | site:domain)"
+      },
+      "title": {
+        "type": "string",
+        "title": "Item title (HTML-stripped)"
+      },
+      "url": {
+        "type": "string",
+        "title": "Item URL (http(s)-validated)"
+      },
+      "kind": {
+        "type": "string",
+        "title": "Discovery kind vocabulary"
+      },
+      "snippet": {
+        "type": "string",
+        "title": "Capped summary (≤2000 chars)"
+      },
+      "published": {
+        "type": "string",
+        "title": "Published timestamp (RFC3339, when declared)"
+      }
+    }
+  },
+  "supportsIncremental": true,
+  "i18n": {
+    "defaultLocale": "en",
+    "locales": {
+      "en": {
+        "title": "External web sources",
+        "summary": "RSS feeds, YouTube channels/playlists and site searches polled into suggestions."
+      }
+    }
+  }
+}

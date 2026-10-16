@@ -2836,6 +2836,12 @@
     "contract_none": "Kein Kontrakt",
     "contract_discovery": "Discovery",
     "contract_parse": "Parser",
-    "urlPattern": "URL-Muster"
+    "urlPattern": "URL-Muster",
+    "status_ok": "Funktioniert",
+    "status_degraded": "Eingeschränkt",
+    "status_failing": "Fehlerhaft",
+    "status_stale": "Veraltet",
+    "needsConfig": "Unvollständige Konfiguration",
+    "t3Disclosure": "Externer Prozess"
   }
 }

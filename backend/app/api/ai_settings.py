@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -49,7 +49,7 @@ from ..domain.models import (
     Provider,
     TaskAssignment,
 )
-from ..search import (
+from ..extensions.search import (
     SearchError,
     delete_search_provider,
     list_search_providers,
@@ -113,7 +113,7 @@ class SearchProviderProbeOut(BaseModel):
     error: str | None = None
 
 
-def _provider_view(view: dict) -> SearchProviderOut:
+def _provider_view(view: dict[str, Any]) -> SearchProviderOut:
     return SearchProviderOut.model_validate(view)
 
 
@@ -126,7 +126,9 @@ def _ensure_profile(session: Session) -> Profile:
 # Family web-search contract (ADR-0035 / plan 28): ordered multi-provider
 # list; the catalog (labels, key URLs, base-URL rules) is the vendored
 # contracts/search-providers.json copy — data-once, never edited here.
-_CATALOG_PATH = Path(__file__).resolve().parents[1] / "search" / "providers_catalog.json"
+_CATALOG_PATH = (
+    Path(__file__).resolve().parents[1] / "extensions" / "search" / "providers_catalog.json"
+)
 
 
 @router.get("/search-providers", response_model=SearchProvidersOut)
@@ -139,7 +141,7 @@ def get_search_providers(session: Session = Depends(get_session)) -> SearchProvi
 
 @router.get("/search-providers/catalog", response_model=dict[str, Any])
 def search_provider_catalog() -> dict[str, Any]:
-    return json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(_CATALOG_PATH.read_text(encoding="utf-8")))
 
 
 @router.post("/search-providers", response_model=SearchProviderOut, status_code=201)
@@ -151,7 +153,7 @@ def create_search_provider(
         view = upsert_search_provider(
             session,
             profile.id,
-            {key: value for key, value in body.model_dump().items()},
+            dict(body.model_dump()),
         )
     except SearchError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -167,7 +169,7 @@ def update_search_provider(
         view = upsert_search_provider(
             session,
             profile.id,
-            {key: value for key, value in body.model_dump().items()},
+            dict(body.model_dump()),
             provider_id=provider_id,
         )
     except SearchError as error:
@@ -816,13 +818,15 @@ def _decision_inherit_label(session: Session, requires: str) -> str | None:
     """ADR-0036 §4: what the kind's labeled null option names — the model
     the `decision` default slot resolves to for this kind, or None when
     the inherit state honestly resolves to nothing."""
-    from ..ai.decide import OffResolution, resolve_decision_inherit
+    from ..ai.decide import OffResolution, SystemOneResolution, resolve_decision_inherit
 
     capability = decision_slot_capability(requires)
     if capability is None:
         return None
     resolution = resolve_decision_inherit(capability, session)
     if isinstance(resolution, OffResolution):
+        return None
+    if not isinstance(resolution, SystemOneResolution):
         return None
     label = resolution.model.label or resolution.model.external_id
     return label or None

@@ -5,7 +5,7 @@ import httpx
 import pytest
 from sqlalchemy.orm import Session
 
-from app.search.discovery import (
+from app.extensions.search.discovery import (
     KHAN_ACADEMY_SITE,
     DiscoveryError,
     SiteSearchProvider,
@@ -69,7 +69,7 @@ def test_site_provider_appends_site_filter() -> None:
 def test_youtube_provider_normalizes_flat_entries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.search.discovery as discovery_module
+    import app.extensions.search.discovery as discovery_module
 
     def fake_search(query: str, cap: int) -> list[dict[str, object]]:
         assert query == "integration by parts"
@@ -96,7 +96,7 @@ def test_youtube_provider_normalizes_flat_entries(
 def test_search_videos_builds_ytsearch_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.search.discovery as discovery_module
+    import app.extensions.search.discovery as discovery_module
 
     captured: dict[str, str] = {}
 

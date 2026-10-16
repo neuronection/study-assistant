@@ -9,6 +9,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.extensions.errors import ExtensionError
+
 from ... import __version__
 from ...domain.models import (
     Activity,
@@ -1512,7 +1514,7 @@ def import_course_bundle(
                 str(entry.get("url") or ""),
                 entry.get("options"),
             )
-        except ValueError:
+        except ExtensionError:
             continue
         session.add(
             ExternalSource(

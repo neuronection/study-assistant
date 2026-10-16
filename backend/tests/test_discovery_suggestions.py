@@ -261,7 +261,7 @@ def test_search_annotates_known_suggestions(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import app.api.discovery as discovery_api
-    from app.search.discovery import DiscoveryResult
+    from app.extensions.search.discovery import DiscoveryResult
 
     class FakeProvider:
         id = "web"

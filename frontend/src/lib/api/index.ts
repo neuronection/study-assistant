@@ -641,11 +641,12 @@ export {
   updateExternalSource,
 } from './external-sources'
 
-export type { McpServerRow, McpServerToolInfo } from './mcp-servers'
+export type { McpServerRow, McpServerToolInfo, McpCharter } from './mcp-servers'
 
 export {
   createMcpServer,
   deleteMcpServer,
+  getMcpCharter,
   listMcpServers,
   refreshMcpServer,
   updateMcpServer,

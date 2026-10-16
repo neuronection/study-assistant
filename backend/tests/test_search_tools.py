@@ -14,8 +14,8 @@ from test_chat_api import NoDescriber, NoEmbedder, ScriptedGateway, make_course
 from app.ai.contracts.contracts import Constraint, validate
 from app.core.config import Settings
 from app.core.secrets import get_secret
+from app.extensions.search import SearchError, perform_fetch, perform_search, provider_key_ref
 from app.main import create_app
-from app.search import SearchError, perform_fetch, perform_search, provider_key_ref
 
 TAVILY_BODY = {
     "results": [
@@ -273,6 +273,7 @@ def test_legacy_single_provider_preference_migrates(
         factory = sessionmaker(bind=app.state.engine)
         with factory() as db:
             profile = db.scalars(select(Profile)).first()
+            assert profile is not None
             assert isinstance(profile.preferences, dict)
             assert "search_provider" not in profile.preferences
 

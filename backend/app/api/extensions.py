@@ -8,9 +8,10 @@ from ..ai import mcp_client
 from ..ai.mcp_client import env_secret_ref, token_secret_ref
 from ..core.secrets import get_secret
 from ..core.vocab import McpTransport
-from ..services.platform.mcp_servers import (
+from ..extensions.errors import ExtensionError
+from ..extensions.instance_status import instance_status_surface
+from ..extensions.mcp_servers import (
     UNSET,
-    McpServersError,
     build_mcp_config,
     create_server,
     delete_server,
@@ -19,10 +20,12 @@ from ..services.platform.mcp_servers import (
     patch_server,
     save_servers,
 )
+from ..extensions.registry import t3_perimeter_disclosure
 from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 
 router = APIRouter(prefix="/mcp/servers", tags=["mcp-servers"])
+charter_router = APIRouter(prefix="/mcp", tags=["mcp-servers"])
 
 
 class McpServerIn(BaseModel):
@@ -71,10 +74,25 @@ class McpServerOut(BaseModel):
     max_concurrent: int
     has_token: bool
     has_env: bool
+    status: str
+    last_success_at: str | None
+    consecutive_failures: int
+    conditions: list[str] = Field(default_factory=list)
+    declared_contracts: list[str] = Field(default_factory=list)
 
 
 def _out(entry: dict[str, Any]) -> McpServerOut:
     server_id = str(entry.get("id") or "")
+    status = instance_status_surface(entry)
+    declared_contracts = sorted(
+        {
+            str(tool.get("contract"))
+            for tool in entry.get("tools", [])
+            if isinstance(tool, dict)
+            and tool.get("enabled")
+            and tool.get("contract") in ("discovery", "parse")
+        }
+    )
     return McpServerOut(
         id=server_id,
         name=str(entry.get("name") or ""),
@@ -90,6 +108,29 @@ def _out(entry: dict[str, Any]) -> McpServerOut:
         max_concurrent=int(entry.get("max_concurrent") or 4),
         has_token=get_secret(token_secret_ref(server_id)) is not None,
         has_env=get_secret(env_secret_ref(server_id)) is not None,
+        status=str(status["status"]),
+        last_success_at=status.get("last_success_at"),
+        consecutive_failures=int(status["consecutive_failures"]),
+        conditions=list(status.get("conditions") or []),
+        declared_contracts=declared_contracts,
+    )
+
+
+class McpCharterOut(BaseModel):
+    t3_perimeter_disclosure: str
+    capabilities: list[str]
+
+
+@charter_router.get("/charter", response_model=McpCharterOut)
+def get_mcp_charter() -> McpCharterOut:
+    """The D19/D22 instance-surface data: the T3 perimeter disclosure is
+    the charter's verbatim copy (paraphrasing it away is a conformance
+    failure) plus the bundled mcp connector's declared capabilities."""
+    from ..extensions.registry import extension_registry
+
+    return McpCharterOut(
+        t3_perimeter_disclosure=t3_perimeter_disclosure(),
+        capabilities=extension_registry.capabilities("mcp"),
     )
 
 
@@ -120,9 +161,9 @@ def add_server(
             env=body.env,
         )
         session.commit()
-    except McpServersError as error:
+    except ExtensionError as error:
         session.rollback()
-        raise HTTPException(status_code=422, detail=str(error)) from error
+        raise HTTPException(status_code=422, detail=error.detail) from error
     return _out(entry)
 
 
@@ -150,9 +191,9 @@ def update_server(
             env=body.env if "env" in provided else UNSET,
         )
         session.commit()
-    except McpServersError as error:
+    except ExtensionError as error:
         session.rollback()
-        raise HTTPException(status_code=422, detail=str(error)) from error
+        raise HTTPException(status_code=422, detail=error.detail) from error
     return _out(entry)
 
 

@@ -2734,6 +2734,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mcp/charter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Mcp Charter
+         * @description The D19/D22 instance-surface data: the T3 perimeter disclosure is
+         *     the charter's verbatim copy (paraphrasing it away is a conformance
+         *     failure) plus the bundled mcp connector's declared capabilities.
+         */
+        get: operations["get_mcp_charter_api_v1_mcp_charter_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp/servers": {
         parameters: {
             query?: never;
@@ -6689,6 +6711,13 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** McpCharterOut */
+        McpCharterOut: {
+            /** Capabilities */
+            capabilities: string[];
+            /** T3 Perimeter Disclosure */
+            t3_perimeter_disclosure: string;
+        };
         /** McpInfoOut */
         McpInfoOut: {
             /** Command */
@@ -6742,6 +6771,12 @@ export interface components {
             args: string[];
             /** Command */
             command: string;
+            /** Conditions */
+            conditions?: string[];
+            /** Consecutive Failures */
+            consecutive_failures: number;
+            /** Declared Contracts */
+            declared_contracts?: string[];
             /** Enabled */
             enabled: boolean;
             /** Has Env */
@@ -6752,12 +6787,16 @@ export interface components {
             id: string;
             /** Last Error */
             last_error: string | null;
+            /** Last Success At */
+            last_success_at: string | null;
             /** Max Concurrent */
             max_concurrent: number;
             /** Name */
             name: string;
             /** Refreshed At */
             refreshed_at: string | null;
+            /** Status */
+            status: string;
             /** Timeout Sec */
             timeout_sec: number;
             /** Tools */
@@ -15408,6 +15447,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mcp_charter_api_v1_mcp_charter_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpCharterOut"];
                 };
             };
         };

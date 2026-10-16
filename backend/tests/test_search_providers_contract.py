@@ -1,6 +1,6 @@
 """Family web-search contract wall (ADR-0035 / plan 28).
 
-The vendored core (app/search/providers_contract.py, dev canonical
+The vendored core (app/extensions/search/providers_contract.py, dev canonical
 contracts/search_providers.py — never edited here) must satisfy every
 fixture in providers_contract.fixtures.json exactly: same requests out,
 same normalized hits (or the same SearchError kind) in. The fixtures are
@@ -15,7 +15,7 @@ from typing import Any
 import httpx
 import pytest
 
-from app.search.providers_contract import (
+from app.extensions.search.providers_contract import (
     PROVIDER_TYPES,
     SearchError,
     normalize_provider_config,
@@ -23,7 +23,11 @@ from app.search.providers_contract import (
 )
 
 FIXTURES_PATH = (
-    Path(__file__).resolve().parents[1] / "app" / "search" / "providers_contract.fixtures.json"
+    Path(__file__).resolve().parents[1]
+    / "app"
+    / "extensions"
+    / "search"
+    / "providers_contract.fixtures.json"
 )
 CASES: list[dict[str, Any]] = json.loads(FIXTURES_PATH.read_text(encoding="utf-8"))["cases"]
 
@@ -42,10 +46,15 @@ def _transport_for(case: dict[str, Any]) -> httpx.MockTransport | None:
         for key, value in (request_spec.get("params") or {}).items():
             assert request.url.params.get(key) == value, f"{case['id']}: param {key}"
         if "auth_bearer" in request_spec:
-            assert request.headers.get("Authorization") == f"Bearer {request_spec['auth_bearer']}", (
+            assert request.headers.get("Authorization") == (
+                f"Bearer {request_spec['auth_bearer']}"
+            ), (
                 f"{case['id']}: bearer"
             )
-        for header in request_spec.get("header", "").split(";") if request_spec.get("header") else []:
+        raw_headers = (
+            request_spec.get("header", "").split(";") if request_spec.get("header") else []
+        )
+        for header in raw_headers:
             name, _, value = header.partition(":")
             assert request.headers.get(name) == value, f"{case['id']}: header {name}"
         if "body_contains" in request_spec:

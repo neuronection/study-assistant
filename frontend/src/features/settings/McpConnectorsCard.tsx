@@ -24,6 +24,7 @@ import {
 import {
   createMcpServer,
   deleteMcpServer,
+  getMcpCharter,
   listMcpServers,
   refreshMcpServer,
   updateMcpServer,
@@ -375,6 +376,8 @@ function ServerRow({ server, onEdit }: { server: McpServerRow; onEdit: () => voi
       ? [server.command, ...server.args].join(' ')
       : server.url
 
+  const needsConfig = (server.conditions ?? []).includes('needs-config')
+
   return (
     <div className="border-border space-y-2 rounded-md border p-2" data-testid="mcp-server-row">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -382,8 +385,17 @@ function ServerRow({ server, onEdit }: { server: McpServerRow; onEdit: () => voi
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-medium">{server.name}</span>
             <Badge variant="outline">{server.transport}</Badge>
+            <Badge variant="outline" data-testid="mcp-server-status">
+              {t(`mcpConnectors.status_${server.status}`)}
+            </Badge>
             {!server.enabled ? (
               <Badge variant="outline">{t('mcpConnectors.off')}</Badge>
+            ) : null}
+            {needsConfig ? (
+              <Badge variant="outline" className="text-warning">
+                <AlertTriangle className="size-3" aria-hidden />
+                {t('mcpConnectors.needsConfig')}
+              </Badge>
             ) : null}
           </div>
           <code className="text-muted-foreground block truncate font-mono text-[11px]">
@@ -513,6 +525,7 @@ function ServerRow({ server, onEdit }: { server: McpServerRow; onEdit: () => voi
 export function McpConnectorsCard() {
   const { t } = useTranslation()
   const servers = useQuery({ queryKey: ['mcp-servers'], queryFn: listMcpServers })
+  const charter = useQuery({ queryKey: ['mcp-charter'], queryFn: getMcpCharter })
   const [dialog, setDialog] = useState<'closed' | 'new' | McpServerRow>('closed')
 
   return (
@@ -522,6 +535,17 @@ export function McpConnectorsCard() {
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-muted-foreground text-xs">{t('mcpConnectors.hint')}</p>
+        {charter.data ? (
+          <div className="bg-subtle rounded-md p-2" data-testid="mcp-t3-disclosure">
+            <p className="flex items-center gap-1 text-[11px] font-semibold">
+              <AlertTriangle className="size-3 shrink-0" aria-hidden />
+              {t('mcpConnectors.t3Disclosure')}
+            </p>
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              {charter.data.t3_perimeter_disclosure}
+            </p>
+          </div>
+        ) : null}
         <div className="space-y-2" data-testid="mcp-servers-list">
           {(servers.data ?? []).length === 0 ? (
             <p className="text-muted-foreground text-xs">{t('mcpConnectors.empty')}</p>

@@ -828,7 +828,7 @@ def import_url_material(
 ) -> MaterialUploadOut:
     from urllib.parse import urlparse
 
-    from ..search.provider import SearchError, perform_fetch
+    from ..extensions.search.provider import SearchError, perform_fetch
 
     service = _service(request, session)
     profile = ensure_default_profile(session)

@@ -6,14 +6,15 @@ factory routes by endpoint — never by model id, which prefixes, chat
 variants, and future families make unreliable.
 """
 
-import httpx
+from typing import Any
 
+import httpx
 from langchain_openai import ChatOpenAI
 
 from app.ai.chat_models import (
+    CaChatOpenAI,
     CompatibleCaChatOpenAI,
     CompatibleChatOpenAI,
-    CaChatOpenAI,
     build_chat_model,
     is_openai_endpoint,
     is_openai_wire,
@@ -42,9 +43,11 @@ def _resolved(
     )
 
 
-def _build(resolved: ResolvedModel):
+def _build(resolved: ResolvedModel) -> Any:
     return build_chat_model(
-        resolved, transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={})), timeout=5.0
+        resolved,
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={})),
+        timeout=5.0,
     )
 
 
@@ -66,7 +69,9 @@ def test_openai_endpoint_cap_uses_modern_parameter() -> None:
     (ADR-0039) — the cap converts to max_output_tokens, and Compatible
     classes never apply there."""
     model = _build(
-        _resolved(base_url="https://api.openai.com/v1", max_tokens=512, chat_transport="completions")
+        _resolved(
+            base_url="https://api.openai.com/v1", max_tokens=512, chat_transport="completions"
+        )
     )
     assert isinstance(model, ChatOpenAI)
     assert not isinstance(model, CompatibleChatOpenAI)
@@ -88,7 +93,10 @@ def test_compatible_endpoint_cap_keeps_classic_parameter() -> None:
 def test_compatible_class_keeps_reasoning_delta_support() -> None:
     """The compatible subclass must not drop CaChatOpenAI's delta handling."""
     model = _build(_resolved(max_tokens=512))
-    assert type(model)._convert_chunk_to_generation_chunk is CaChatOpenAI._convert_chunk_to_generation_chunk
+    assert (
+        type(model)._convert_chunk_to_generation_chunk
+        is CaChatOpenAI._convert_chunk_to_generation_chunk
+    )
 
 
 def test_compatible_without_cap_sends_neither_parameter() -> None:
@@ -120,5 +128,11 @@ def test_chat_transport_resolution_matrix() -> None:
     assert resolve_chat_transport("openai", None, "responses") == "responses"
     # Auto routes by endpoint: OpenAI's API → responses, elsewhere → completions.
     assert resolve_chat_transport("openai", "https://api.openai.com/v1", None) == "responses"
-    assert resolve_chat_transport("openai_compatible", "http://localhost:8080/v1", None) == "completions"
-    assert resolve_chat_transport("openai", "https://api.openai.com/v1", "completions") == "completions"
+    assert (
+        resolve_chat_transport("openai_compatible", "http://localhost:8080/v1", None)
+        == "completions"
+    )
+    assert (
+        resolve_chat_transport("openai", "https://api.openai.com/v1", "completions")
+        == "completions"
+    )

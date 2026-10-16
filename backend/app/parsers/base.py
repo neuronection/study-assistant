@@ -1,4 +1,9 @@
-"""URL parser registry: deterministic fetch+convert, never user code (ADR-165)."""
+"""URL parser registry: deterministic fetch+convert, never user code (ADR-165).
+
+The registry belongs to the content pipeline (``pipelines/url_import`` and
+the materials API import it); extension adapters (the MCP parse contract)
+register into it at composition time from the extension subsystem home.
+"""
 
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -49,7 +54,7 @@ def build_registry(
 
     registry: list[URLParser] = []
     if session is not None and profile_id is not None:
-        from .mcp_parse import build_mcp_parsers
+        from ..extensions.runtime.mcp_parse import build_mcp_parsers
 
         registry.extend(build_mcp_parsers(session, profile_id))
     registry.extend(

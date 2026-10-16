@@ -11,6 +11,33 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (family extension charter — plan 32 Phase 7, 2026-10-16)
+- **Study converges onto the family extension charter (ADR-0040)** with the
+  D24 subsystem home: `backend/app/extensions/` (vendored contract modules +
+  the app-side registry, typed errors, instance status, the relocated
+  ADR-0035 search trio, the MCP instance lifecycle) and repo-root
+  `contracts/` (charter, envelope/source schemas, capability-RPC, the
+  contract + polite-HTTP fixture walls — byte-identical via the dev sync
+  scripts). Bundled connectors (`external-sources`, `discovery`, `mcp`)
+  carry charter-envelope manifests validated at registration — an invalid
+  or unhonored-capability manifest throws, never half-runs — and capability
+  use is gated by declared data (D3), never probed.
+- **MCP servers surface as D19 instances**: `GET /mcp/servers` rows now
+  carry the family status vocabulary (`ok | degraded | failing | stale`,
+  `last_success_at`, `consecutive_failures`, `needs-config` conditions —
+  computed without a migration) and the declared `discovery | parse` tool
+  contracts; the settings card renders the status and, verbatim from the
+  vendored charter, the T3 perimeter disclosure (`GET /mcp/charter`).
+- **The charter typed 15-code error model** (`extensions/errors.py`)
+  replaces the local error vocabularies on the extension surface: external
+  sources raise typed codes (`invalid`, `not-ready`, `protocol`,
+  `provider`, `unreachable`), MCP validation raises `invalid`, and the
+  vendored ADR-0035 `SearchError` taxonomy maps onto the charter codes via
+  the D4 projection (the vendored trio itself stays byte-identical per the
+  ADR-0035 wire contract).
+- `docs/user/settings.md` corrected to the real settings tabs (General, AI,
+  Tools, Data, Users, Developer) and the MCP/Integrations + status copy.
+
 ### Fixed (OpenAI-compatible wire sends `max_tokens` again — endpoint-routed token cap, 2026-10-15)
 - **Local and OpenAI-compatible endpoints stop receiving
   `max_completion_tokens`:** Python `langchain-openai` renames the token

@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError
-from ..core.secrets import get_secret
 from ..core.vocab import CourseOrigin, PlanItemKind, PlanItemOrigin, StudyStatus
 from ..domain.models import (
     Concept,
@@ -21,7 +20,7 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from ..search.provider import (
+from ..extensions.search.provider import (
     SearchError,
     search_with_fallback,
 )

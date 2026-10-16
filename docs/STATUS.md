@@ -6,6 +6,39 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 32 Phase 7 — study converges onto the family extension charter
+(ADR-0040, 2026-10-16):** study adopts the D24 extension-subsystem home
+(`backend/app/extensions/` + repo-root `contracts/` for the vendored
+charter/schema/fixture set, all byte-identical via the sync scripts —
+verify-wiring `ext OK`). The ADR-0035 web-search trio moves to
+`extensions/search/` (path change rode the dev canonical + sync ledger —
+the D18 rider; content byte-identical); `app/parsers/` stays with the
+content pipeline and only its MCP parse-contract adapter relocates to
+`extensions/runtime/`, registering into the parser registry at
+composition time; the external-source scan legs relocate to
+`extensions/builtin/external_sources/` as the bundled connector
+(declared `sync`, envelope manifest, suggestion funnel injected from the
+host adapter — the scheduler stays in `services/`); the MCP machinery
+moves to `extensions/mcp_servers.py` + `api/extensions.py`. The new
+`extensions/registry.py` validates every bundled manifest (external-sources,
+discovery, mcp) against the vendored envelope schema at registration and
+gates capability use by declared data (D3); the charter typed 15-code
+error model lands in `extensions/errors.py` with the D4 projection from
+the vendored SearchError taxonomy (the trio stays byte-identical, so the
+canonical enum keeps its wire contract — recorded in the charter's study
+host profile). MCP rows surface as D19 instances: per-server family
+status (`ok | degraded | failing | stale` + `needs-config`, computed
+without a migration), declared `discovery | parse` tool contracts, and
+the T3 perimeter disclosure rendered verbatim from the vendored charter
+(`GET /mcp/charter` + the settings card). The charter's study host
+profile now records the connector-kind study profile (discovery/parse
+adapter shapes, `honors` capability list). Suites green
+(1609 backend, 1460 frontend + 2 pre-existing assistant-ui-0.66 drift
+failures in ProviderSetupModal that reproduce at the parent commit);
+ruff + mypy fully green (the pre-existing 25 ruff / 18 mypy errors at
+the parent commit — the ADR-0039 session's same-commit debt — fixed en
+route).
+
 **At-rest cipher on the family module (plan 19 Phase 4, 2026-10-09):**
 `app/core/secrets.py` is now a thin adapter over `nx_auth.atrest`
 (ADR-0027) — keyring-held values (AI provider keys, the web-search key,

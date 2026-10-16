@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..core.vocab import DiscoveryKind, SuggestionStatus
 from ..domain.models import MaterialSuggestion
-from ..search.discovery import (
+from ..extensions.search.discovery import (
     DiscoveryError,
     DiscoveryResult,
     resolve_providers,

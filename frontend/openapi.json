@@ -6121,6 +6121,27 @@
         "title": "MaterializeOut",
         "type": "object"
       },
+      "McpCharterOut": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "t3_perimeter_disclosure": {
+            "title": "T3 Perimeter Disclosure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "t3_perimeter_disclosure",
+          "capabilities"
+        ],
+        "title": "McpCharterOut",
+        "type": "object"
+      },
       "McpInfoOut": {
         "properties": {
           "command": {
@@ -6240,6 +6261,24 @@
             "title": "Command",
             "type": "string"
           },
+          "conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conditions",
+            "type": "array"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "declared_contracts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Declared Contracts",
+            "type": "array"
+          },
           "enabled": {
             "title": "Enabled",
             "type": "boolean"
@@ -6267,6 +6306,17 @@
             ],
             "title": "Last Error"
           },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
           "max_concurrent": {
             "title": "Max Concurrent",
             "type": "integer"
@@ -6285,6 +6335,10 @@
               }
             ],
             "title": "Refreshed At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           },
           "timeout_sec": {
             "title": "Timeout Sec",
@@ -6321,7 +6375,10 @@
           "url",
           "max_concurrent",
           "has_token",
-          "has_env"
+          "has_env",
+          "status",
+          "last_success_at",
+          "consecutive_failures"
         ],
         "title": "McpServerOut",
         "type": "object"
@@ -23818,6 +23875,28 @@
         "summary": "Transcribe Link Audio",
         "tags": [
           "materials"
+        ]
+      }
+    },
+    "/api/v1/mcp/charter": {
+      "get": {
+        "description": "The D19/D22 instance-surface data: the T3 perimeter disclosure is\nthe charter's verbatim copy (paraphrasing it away is a conformance\nfailure) plus the bundled mcp connector's declared capabilities.",
+        "operationId": "get_mcp_charter_api_v1_mcp_charter_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpCharterOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Mcp Charter",
+        "tags": [
+          "mcp-servers"
         ]
       }
     },

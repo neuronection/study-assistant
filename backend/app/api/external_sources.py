@@ -5,14 +5,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.extensions.builtin.external_sources import MIN_SCAN_INTERVAL_SEC
+from app.extensions.errors import ExtensionError
+
 from ..domain.models import Course, ExternalSource
 from ..services.content import external_sources as external
 from ..services.platform.profiles import ensure_default_profile
 from .deps import get_session
 
 router = APIRouter(prefix="/external-sources", tags=["external-sources"])
-
-MIN_INTERVAL_SEC = external.MIN_SCAN_INTERVAL_SEC
 
 
 class ExternalSourceIn(BaseModel):
@@ -22,14 +23,14 @@ class ExternalSourceIn(BaseModel):
     label: str | None = Field(default=None, max_length=200)
     options: dict[str, Any] | None = None
     enabled: bool = True
-    scan_interval_sec: int | None = Field(default=None, ge=MIN_INTERVAL_SEC)
+    scan_interval_sec: int | None = Field(default=None, ge=MIN_SCAN_INTERVAL_SEC)
 
 
 class ExternalSourcePatch(BaseModel):
     label: str | None = Field(default=None, max_length=200)
     enabled: bool | None = None
     options: dict[str, Any] | None = None
-    scan_interval_sec: int | None = Field(default=None, ge=MIN_INTERVAL_SEC)
+    scan_interval_sec: int | None = Field(default=None, ge=MIN_SCAN_INTERVAL_SEC)
 
 
 class ExternalSourceOut(BaseModel):
@@ -91,8 +92,8 @@ def create_source(
         raise HTTPException(status_code=422, detail="course not found")
     try:
         kind, url, options = external.validate_source(body.kind, body.url, body.options)
-    except ValueError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
+    except ExtensionError as error:
+        raise HTTPException(status_code=422, detail=error.detail) from error
     source = ExternalSource(
         profile_id=profile.id,
         course_id=body.course_id,
@@ -125,8 +126,8 @@ def patch_source(
     if body.options is not None:
         try:
             _, _, options = external.validate_source(source.kind, source.url, body.options)
-        except ValueError as error:
-            raise HTTPException(status_code=422, detail=str(error)) from error
+        except ExtensionError as error:
+            raise HTTPException(status_code=422, detail=error.detail) from error
         source.options = options
     session.commit()
     return _out(source)
@@ -153,9 +154,16 @@ def scan_source(
     try:
         stats = external.run_scan(session, source)
         session.commit()
-    except (external.ExternalSourcesError, ValueError) as error:
+    except ExtensionError as error:
         session.rollback()
-        raise HTTPException(status_code=422, detail=str(error)) from error
+        if error.code == "invalid":
+            raise HTTPException(status_code=422, detail=error.detail) from error
+        dead = session.get(ExternalSource, source_id)
+        if dead is not None:
+            dead.last_scan_error = f"{error.code}: {error.detail}"[:500]
+            session.commit()
+        status_code = 422 if error.code == "not-ready" else 502
+        raise HTTPException(status_code=status_code, detail=error.detail) from error
     except Exception as error:
         session.rollback()
         dead = session.get(ExternalSource, source_id)
@@ -163,5 +171,4 @@ def scan_source(
             dead.last_scan_error = str(error)[:500]
             session.commit()
         raise HTTPException(status_code=502, detail=f"scan failed: {str(error)[:300]}") from error
-    return stats
     return stats

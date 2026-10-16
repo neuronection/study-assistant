@@ -517,7 +517,9 @@ def test_openai_reasoning_effort_sent_when_set() -> None:
     model = ResolvedModel(
         provider_id=2,
         provider_type="openai_compatible",
-        base_url="https://api.openai.com/v1",
+        # A compatible endpoint — the completions wire (ADR-0039 auto
+        # routing keeps api.openai.com on /responses, a different body).
+        base_url="http://localhost:8080/v1",
         external_id="gpt-5.6-luna",
         label="gpt-5.6-luna",
         caps=["text", "tools"],

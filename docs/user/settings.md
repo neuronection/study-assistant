@@ -1,10 +1,11 @@
 # Settings reference
 
-Settings has five top-level tabs — **General**, **AI**, **Search & OCR**,
-**Data** and **Developer** — and every tab is URL-addressable, so you can
-bookmark or share a deep link (for example `/settings?tab=ai&section=models`).
-This page explains what each tab does. For the study features themselves, see
-the [user guide overview](README.md).
+Settings has six top-level tabs — **General**, **AI**, **Tools**,
+**Data**, **Users** and **Developer** — and every tab is URL-addressable,
+so you can bookmark or share a deep link (for example
+`/settings?tab=tools&section=web-search`). This page explains what each tab
+does. For the study features themselves, see the [user guide
+overview](README.md).
 
 ## General
 
@@ -20,8 +21,7 @@ the [user guide overview](README.md).
 
 ## AI
 
-The AI tab has five sections: **Providers**, **Models**, **Tasks**, **Skills**
-and **Integrations**.
+The AI tab has three sections: **Providers**, **Models** and **Tasks**.
 
 ### Providers
 
@@ -67,35 +67,35 @@ that task's dropdown (it becomes an override). Notes:
 - A cost summary and per-task assignment info help you see what is inherited
   and what is overridden.
 
-### Skills
+## Tools
 
-The **prompt library**: every AI behavior (tutor hint ladder, quiz generation,
-chat answer, flashcard authoring, …) is a skill — a prompt template plus a
-behavior contract. Skills are seeded from the app and stored in the database;
-the database is the live runtime source. You can edit a skill, inspect its
-scope, view version history and run it in a sandbox to see the result before
-saving. See [Skills & prompt library](skills.md).
+The Tools tab gathers every web-facing and indexing surface:
 
-### Integrations (MCP connectors)
-
-Connect external MCP servers to bring their tools into discovery and import.
-Servers are disabled until you refresh and enable individual tools; each tool
-declares a contract (discovery or parse) and, for parse tools, a URL pattern.
-Failures are recorded honestly on the row. See the
-[feature catalog](features.md) for details.
-
-## Search & OCR
-
-- **Semantic search** — toggle embedding-backed search on or off. It requires
-  the `embeddings` task to have a model assigned.
-- **OCR image size** — the long-edge cap applied to images before a vision OCR
-  call (smaller is cheaper/faster, larger keeps more detail).
-- **Search provider** — configure the web search used by chat research and
-  discovery (Tavily or a SearXNG instance); the key is stored in the keyring.
+- **Web search** — configure the web search used by chat research and
+  discovery. Multiple providers can be ordered (Tavily, SearXNG, Brave, Exa,
+  Serper, Google PSE); the first enabled provider that answers wins. API keys
+  are stored in the keyring.
+- **Discovery** — choose which discovery providers feed suggestions: web
+  search, YouTube, site-filtered presets and external MCP connectors.
 - **Web sources** — manage external web sources (RSS/Atom feeds, YouTube
-  channels/playlists, site-filtered searches) that suggest new material.
-- **Local engines** — detect and configure local AI engines such as Ollama or
-  LM Studio.
+  channels/playlists, site-filtered searches) that suggest new material on a
+  schedule.
+- **Integrations** — connect external MCP servers to bring their tools into
+  discovery and import. Each server row shows its health at a glance
+  (healthy / degraded / stale / incomplete configuration) and discloses, in
+  plain language, that an MCP server runs as a separate process that opens
+  its own network connections. Servers are disabled until you refresh and
+  enable individual tools; each tool declares a contract (discovery or parse)
+  and, for parse tools, a URL pattern. Failures are recorded honestly on the
+  row. See the [feature catalog](features.md) for details.
+- **Search & OCR** — semantic search on/off, the OCR image-size cap and local
+  AI engine detection.
+- **Skills** — the prompt library; see [Skills & prompt library](skills.md).
+
+## Users
+
+Admin-only (appears for admin accounts): manage the instance's users,
+sessions and admin rights.
 
 ## Data
 

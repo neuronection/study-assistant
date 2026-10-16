@@ -28,6 +28,10 @@ without touching app code.
 │      │               decide/ (decision funnel — plan 26, Python reference) │
 │      ├─ math/        equivalence chain, hint-leak guard              │
 │      ├─ ocr/         OcrEngine interface + task-routed implementation│
+│      ├─ extensions/  extension subsystem (D24): vendored contract    │
+│      │               modules, registry, bundled connectors, the      │
+│      │               ADR-0035 search trio + discovery, the D19 MCP   │
+│      │               instance lifecycle                              │
 │      ├─ jobs/        durable runner (jobs table, worker thread)      │
 │      └─ storage/     dialect-aware engine (SQLite/PG), blobs, fts    │
 └──────────────────────────────────────────────────────────────────────┘
@@ -43,17 +47,18 @@ without touching app code.
 | `main.py` | App factory: runs Alembic migrations on startup, seeds default profile + task registry, wires gateway/OCR/embedder/describer/jobs |
 | `shell.py` | Entrypoint `python -m studyassistant [app\|web]`: `app` sanitizes snap-polluted env (VS Code terminals), starts uvicorn thread + pywebview window with localStorage enabled; `web` runs uvicorn in the foreground (`SA_PORT`, default 8200) and opens the default browser. Launch scripts: `scripts/{webapp,dev,app}.sh` / `pnpm {webapp,dev,app}` |
 | `mcp_resources.py` | **MCP resource server (9E) + shared resource-tool registry (plan 36, ADR-080)**: `python -m studyassistant mcp` runs a read-only **stdio** MCP server (official SDK 2.0) exposing eight node-scoped tools (`list_courses`, `get_node_overview/materials/concepts/exercises/quizzes/notes`, `get_node_context`) over the same services as the REST API — for external AI agents. Plan 36 lifts each tool's execution into a module-level function + a `RESOURCE_TOOLS` registry so the chat can call a curated subset (`COURSES`/`NODE_OVERVIEW`/`NODE_QUIZZES`/`NODE_EXERCISES`/`NODE_NOTES`) with zero drift; `get_node_context` runs the shared `ContextResolver` (FTS-only, no embeddings) and returns the same budgeted manifest as `POST /ai/context/preview` (plan 17 F). No write tools; logs forced to stderr (stdio purity); the mcp launch path never imports `app.main` |
-| `api/` | Routers (health, materials, blobs, search, folders, courses, chat, quiz, exercises, ai-settings, ai context preview), `/ws` endpoint, Pydantic DTOs |
+| `api/` | Routers (health, materials, blobs, search, folders, courses, chat, quiz, exercises, ai-settings, ai context preview, extensions), `/ws` endpoint, Pydantic DTOs |
 | `core/` | `Settings` (pydantic-settings, `SA_*` env), structlog logging, keyring secrets, in-process EventBus with threadsafe publish, `jsonpatch.py` (RFC-6902 apply-patch for widget state) |
 | `domain/` | SQLAlchemy 2 models in a package (54-C): `models/core.py` (profiles/courses/tree), `models/content.py`, `models/study.py`, `models/chat.py`, `models/ops.py` (jobs/analytics/trash/skills) — `models/__init__` re-exports everything; single source of truth for Alembic autogen |
 | `services/` | Business logic over the models, grouped by domain (54-D): `content/`, `study/`, `knowledge/`, `platform/`, `search/` (see ai.md / features.md for behavior) |
 | `core/vocab.py` | StrEnum vocabularies (55-A, ADR-128): JobStatus/JobType/MaterialKind/MaterialStatus/AttemptMode/ComposeKind/Capability/ProvenanceKind + `WsTopic` factories — closed sets never appear as bare literals; DB columns stay strings |
 | `pipelines/` | Multi-step flows: ingest (PDF text / OCR / native / office-web conversion via `convert/` / AV transcription, plan 47 ADR-103/104), postprocess (embed + index cards), drawing_ocr + image_ocr (background transcription of drawings and extracted document images, ADR-102/103), quizgen (blueprint → LLM → validate → repair), compose (plan 11D + 70: quality gates + async job), **url_import (plan 73-B, ADR-165): parser-driven URL imports — dispatches the ordered parser registry over a link material's `source_url`, fills the extraction (html/youtube) or downloads the file into the blob store and enqueues standard ingest (direct_file)** |
-| `parsers/` | **URL parser registry (plan 73-B, ADR-165)**: `URLParser` protocol (`matches`/`fetch` → `ParsedDocument{title, markdown, metadata, kind_hint, blob, mime}`), ordered first-match-wins — `youtube` (yt-dlp metadata + captions, manual before auto, material language → en, `[mm:ss]`-anchored transcript, honest `parse_note` when captions are missing; extractor failures name the URL and suggest updating yt-dlp), `direct_file` (extension-keyed download to the blob store with the 200 MB upload cap + HTML-content-type guard), `html` (wraps `perform_fetch` + `html2text` — the same implementation behind `import-url`). Parsers are pure fetch+convert and never execute user code; yt-dlp entry points are module-level functions so tests inject fakes (no network) |
+| `parsers/` | **URL parser registry (plan 73-B, ADR-165)**: `URLParser` protocol (`matches`/`fetch` → `ParsedDocument{title, markdown, metadata, kind_hint, blob, mime}`), ordered first-match-wins — `youtube` (yt-dlp metadata + captions, manual before auto, material language → en, `[mm:ss]`-anchored transcript, honest `parse_note` when captions are missing; extractor failures name the URL and suggest updating yt-dlp), `direct_file` (extension-keyed download to the blob store with the 200 MB upload cap + HTML-content-type guard), `html` (wraps `perform_fetch` + `html2text` — the same implementation behind `import-url`). Parsers are pure fetch+convert and never execute user code; yt-dlp entry points are module-level functions so tests inject fakes (no network). This package STAYS with the content pipeline (`pipelines/url_import` + the materials API import it) — the MCP parse-contract adapter registers into it at composition time from the extension subsystem home (D24) |
 | `ai/` | Model layer — see [ai.md](ai.md) |
 | `math/` | Deterministic math trust layer — see [math-verification.md](math-verification.md) |
 | `ocr/` | `OcrEngine` interface; `GatewayOcr` routes page images through the `ocr` task (any assigned vision model); `imaging.py` caps the long edge and re-encodes payloads (WebP q85) before any vision call (ADR-102) |
-| `search/` | hybrid FTS/trigram/vector engine (`materials.py` — `GET /search`; hits annotated post-search with `nodes` placements from `material_links`, plan 80-D/ADR-195) + `provider.py` (chat SEARCH/FETCH adapter — Tavily POST / SearXNG JSON, key in keyring) + **`discovery.py` (plan 73-C, ADR-166): one normalized-result registry over pluggable providers — `web` (existing flavors), `youtube` (yt-dlp flat search), site-filtered SearXNG/Tavily presets (Khan Academy ships as a preset, no ToS-restricted first-party code); `POST /discovery/search` returns normalized rows + per-provider errors, never persisted; unconfigured requested providers are an honest 503** |
+| `extensions/` | **The extension subsystem home (plan 32 Phase 7, ADR-0040 D24)** — one package for every extension-shaped concern: vendored family contract modules (`contract.py` envelope validator, `polite_http.py` the D5 polite runtime, `conformance.py` the authoring kit — byte-identical to `dev/contracts/` via the sync scripts, mirrored at repo-root `contracts/`), `registry.py` (bundled manifests validated at registration against the vendored envelope schema — throws, never half-runs; declared-capability gates per D3), `errors.py` (the charter 15-code typed error model + the D4 projection from the vendored ADR-0035 `SearchError` taxonomy), `instance_status.py` (the D21 `ok | degraded | failing | stale` + `needs-config` surface, computed without a migration), `search/` (the ADR-0035 vendored trio + the app shell `provider.py` — providers/keys/fallback in `Profile.preferences` — and `discovery.py`), `runtime/` (`mcp_parse.py`, the T3 MCP parse-contract adapter), `mcp_servers.py` (the D19 instance lifecycle over the `mcp.servers` preference rows), and `builtin/` (the bundled connectors `external-sources`, `discovery`, `mcp` — one dir each with the charter-envelope `manifest.json`). `services/search/` (hybrid knowledge retrieval) and the external-source **scheduler** stay in `services/` — orchestration, rule 4 |
+| `search/` | *(moved — see `extensions/`)*: the web-search provider trio, chat SEARCH/FETCH shell and the discovery registry live in `extensions/search/` since plan 32 Phase 7; `services/search/` remains the hybrid FTS/trigram/vector retrieval engine (`GET /search`; hits annotated post-search with `nodes` placements from `material_links`, plan 80-D/ADR-195) |
 | `storage/` | Dialect-aware engine (SQLite WAL/foreign-key/busy-timeout pragmas + sqlite-vec load; PostgreSQL 16 + pgvector in web mode, ADR-0022); content-addressed blob store; FTS sync; vector store |
 | `jobs/` | Claim-based worker **pool** over the `jobs` table (default 4 workers) — durable, crash-safe: failed jobs are recorded + **logged** (structlog `job_failed`), the worker pool continues, **`running` jobs left by a restart are reclaimed as `failed`/interrupted on startup**, and an optional per-job timeout (`job_timeout_sec`) is available; progress via EventBus → WS. **Retry surface (2026-08-27): `api/jobs.py` exposes `GET /jobs` (+`/summary`), `POST /jobs/{id}/retry` and `POST /jobs/retry-failed`; a failed job is retriable iff its type has a registered handler and isn't a chat turn — retry resets status→queued, clears error/stage, wakes the pool**. **Cancellation (54-A, ADR-126): `cancellation.py` + terminal `cancelled` status — cancel-on-purge, cooperative checkpoints, commit-time stale re-checks; `payloads.py` TypedDicts type every enqueue/handler payload (55-C)** |
 
@@ -93,6 +98,25 @@ without touching app code.
   LLM call; overlap guard prevents stacked scans of one source, feed/yt-dlp
   metadata is untrusted (HTML-stripped, http(s)-validated), errors isolate per
   source into `last_scan_error` and publish on WS `externalsource:{id}`.
+- **Extension subsystem (plan 32 Phase 7, ADR-0040)**: study hosts the charter
+  **connector** kind at T0/T1/T3 with the D24 home (`backend/app/extensions/`,
+  vendored artifacts at repo-root `contracts/`). Registration validates every
+  bundled manifest against the vendored envelope schema and throws on an
+  invalid or unhonored-capability declaration; capability use is gated by the
+  registry's declared data (D3), never probed. Bundled connectors:
+  `external-sources` (declares `sync`; the fetch-leg transport honesty lives
+  in its manifest description), `discovery` (declares `chat-tools` with the
+  DISCOVER tool at risk class read-only) and `mcp` (declares `secrets` — the
+  T3 MCP instances). Typed errors follow the charter 15-code model
+  (`extensions/errors.py`); the vendored ADR-0035 `SearchError` taxonomy maps
+  onto it app-side (the D4 projection — the trio itself stays byte-identical).
+  MCP servers surface as D19 instances: `GET /mcp/servers` rows carry the
+  family status vocabulary (`ok | degraded | failing | stale` + `needs-config`,
+  computed without a migration) and the declared `discovery | parse` tool
+  contracts; `GET /mcp/charter` serves the T3 perimeter disclosure verbatim
+  from the vendored charter for the settings surface. Sync orchestration (the
+  external-source scheduler), persistence shapes and the AI-layer MCP client
+  (`app/ai/mcp_client.py`) stay exactly where they were.
 - **WebSocket**: `/ws` with subscribe/unsubscribe/publish/ping frames; the backend
   EventBus bridges worker threads to subscribers via `publish_threadsafe`.
 - **Storage**: SQLite (`study.sqlite3`, WAL mode) or PostgreSQL 16 in web

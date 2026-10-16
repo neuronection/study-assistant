@@ -1,0 +1,86 @@
+{
+  "apiVersion": "extension/v1",
+  "kindVersion": 1,
+  "kind": "connector",
+  "id": "mcp",
+  "version": "1.0.0",
+  "description": "External MCP servers (T3): each registered server is one instance of this connector — its own transport config, a keyring-sealed token/env slot, a per-tool allowlist with declared contracts (discovery | parse), explicit refresh (never auto-enabled), one audit row per call. Server processes open their own connections outside the app's perimeter (D22); the app governs only what they return.",
+  "author": "Neuronection",
+  "license": "MIT",
+  "categories": [
+    "developer",
+    "search"
+  ],
+  "capabilities": [
+    "secrets"
+  ],
+  "privacy": {
+    "sendsContent": true,
+    "sensitiveGlobs": []
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Server name",
+        "maxLength": 80
+      },
+      "transport": {
+        "type": "string",
+        "enum": [
+          "stdio",
+          "http",
+          "sse"
+        ],
+        "title": "Transport"
+      },
+      "command": {
+        "type": "string",
+        "title": "Server command (stdio)",
+        "maxLength": 500
+      },
+      "url": {
+        "type": "string",
+        "title": "Server URL (http/sse)",
+        "maxLength": 500
+      },
+      "token": {
+        "type": "string",
+        "title": "Bearer token",
+        "x-secret": true
+      },
+      "env": {
+        "type": "string",
+        "title": "Environment variables for the server process",
+        "x-secret": true
+      },
+      "timeout_sec": {
+        "type": "number",
+        "title": "Per-call tool timeout (seconds)",
+        "minimum": 5,
+        "maximum": 120
+      },
+      "max_concurrent": {
+        "type": "number",
+        "title": "Concurrent tool calls cap",
+        "minimum": 1,
+        "maximum": 8
+      }
+    }
+  },
+  "itemSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "supportsIncremental": false,
+  "i18n": {
+    "defaultLocale": "en",
+    "locales": {
+      "en": {
+        "title": "MCP servers",
+        "summary": "Bring external MCP server tools into discovery and import."
+      }
+    }
+  }
+}

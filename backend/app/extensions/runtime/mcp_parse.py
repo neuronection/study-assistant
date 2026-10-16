@@ -1,7 +1,9 @@
 """MCP parse-contract connector (plan 73-G, ADR-170): a user-registered
 external MCP tool takes `{url}` and returns `{title, markdown, metadata?}`.
 Keyed by a user-declared URL pattern (e.g. `coursera.org/learn/*`); executed
-by the url_import job like any built-in parser. Contract violations fail
+by the url_import job like any built-in parser. It is an extension-runtime
+seam (D24: ``app/parsers/`` stays with the content pipeline) and registers
+into the parser registry at composition time. Contract violations fail
 honestly — external output is untrusted input (family-ai trust boundary).
 """
 
@@ -11,12 +13,12 @@ from fnmatch import fnmatch
 from typing import Any
 from urllib.parse import urlparse
 
-from ..ai.mcp_client import (
+from ...ai.mcp_client import (
     McpToolError,
     audit_mcp_invocation,
     call_tool_sync,
 )
-from .base import ParsedDocument, ParserError
+from ...parsers.base import ParsedDocument, ParserError
 
 
 class McpParseParser:
@@ -26,7 +28,7 @@ class McpParseParser:
         tool: dict[str, Any],
         audit: Any = None,
     ) -> None:
-        from ..services.platform.mcp_servers import build_mcp_config
+        from ..mcp_servers import build_mcp_config
 
         tool_name = str(tool.get("name"))
         self.id = f"mcp.{server.get('name')}.{tool_name}"
@@ -94,7 +96,7 @@ class McpParseParser:
 
 def build_mcp_parsers(session: Any, profile_id: str) -> list[McpParseParser]:
     """All enabled parse-contract tools across enabled servers, ordered."""
-    from ..services.platform.mcp_servers import enabled_tools
+    from ..mcp_servers import enabled_tools
 
     return [
         McpParseParser(server, tool, audit=session)

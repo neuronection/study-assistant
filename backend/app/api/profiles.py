@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..core.vocab import DiscoveryKind
+from ..extensions.search.discovery import DEFAULT_ENABLED
 from ..ocr.imaging import ALLOWED_IMAGE_MAX_EDGE, DEFAULT_IMAGE_MAX_EDGE
-from ..search.discovery import DEFAULT_ENABLED
 from ..services.platform.profiles import (
     create_profile,
     delete_profile,

@@ -1,25 +1,28 @@
 """App-side shell over the vendored family web-search core.
 
-The wire contract (adapters, normalization, error taxonomy, probe) lives in
-the vendored contracts/search_providers.py copy (providers_contract.py —
-dev canonical, ADR-0035 / plan 28, never edited here). This module adds the
-app policy ADR-0031 keeps local: persistence in Profile.preferences
-(`search_providers[]`), per-provider keyring slots, the lazy migration from
-the pre-plan-28 single-provider preference, and the ordered-fallback search
-used by chat tools, discovery, genesis and external sources.
+Lives in the extension subsystem home (D24, plan 32 Phase 7) — the
+ADR-0035 web-search family is connector-kind. The wire contract
+(adapters, normalization, error taxonomy, probe) lives in the vendored
+contracts/search_providers.py copy (providers_contract.py — dev canonical,
+never edited here). This module adds the app policy ADR-0031 keeps local:
+persistence in Profile.preferences (`search_providers[]`), per-provider
+keyring slots, the lazy migration from the pre-plan-28 single-provider
+preference, and the ordered-fallback search used by chat tools, discovery,
+genesis and external sources.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Any, Mapping
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import httpx
 from sqlalchemy.orm import Session
 
-from ..core.secrets import delete_secret, get_secret, set_secret
-from ..domain.models import Profile
-from ..pipelines.convert import html_to_markdown
+from ...core.secrets import delete_secret, get_secret, set_secret
+from ...domain.models import Profile
+from ...pipelines.convert import html_to_markdown
 from .providers_contract import (
     PROVIDER_TYPES,
     SearchError,
@@ -36,8 +39,8 @@ __all__ = [
     "move_search_provider",
     "perform_fetch",
     "perform_search",
-    "provider_key_ref",
     "probe_provider",
+    "provider_key_ref",
     "search_provider_views",
     "search_with_fallback",
     "search_with_fallback_configs",
@@ -154,11 +157,12 @@ def upsert_search_provider(
         providers.append({})  # placeholder replaced by the normalized entry below
         replace_index = len(providers) - 1
     else:
-        replace_index = next(
+        found = next(
             (i for i, entry in enumerate(providers) if entry["id"] == provider_id), None
         )
-        if replace_index is None:
+        if found is None:
             raise SearchError("bad_request", f"provider '{provider_id}' not found")
+        replace_index = found
 
     existing = providers[replace_index] if providers[replace_index] else {}
     merged = {**existing, **{key: value for key, value in raw.items() if value is not None}}
@@ -217,7 +221,7 @@ def move_search_provider(
 # ---------------------------------------------------------------------------
 
 def search_with_fallback_configs(
-    providers: list[Mapping[str, Any]],
+    providers: Sequence[Mapping[str, Any]],
     keys: Mapping[str, str],
     query: str,
     *,

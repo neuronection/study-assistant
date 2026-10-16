@@ -9,6 +9,7 @@ rows run through study's own factory (omit-unless-configured).
 
 import json
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -22,7 +23,7 @@ FIXTURES = json.loads(
 )
 
 
-def _temperature_model(row):
+def _temperature_model(row: Any) -> Any:
     resolved = ResolvedModel(
         provider_id=1,
         provider_type="openai_compatible",
@@ -41,21 +42,23 @@ def _temperature_model(row):
 
 
 @pytest.mark.parametrize("row", FIXTURES["endpointDetection"], ids=lambda r: r["name"])
-def test_endpoint_detection(row):
+def test_endpoint_detection(row: Any) -> None:
     assert is_openai_endpoint(row["apiBase"]) is row["expected"]
 
 
 @pytest.mark.parametrize("row", FIXTURES["maxTokensParam"], ids=lambda r: r["name"])
-def test_max_tokens_param_resolution(row):
-    assert resolve_max_tokens_param(row["providerType"], row["apiBase"], row["override"]) == row["expected"]
+def test_max_tokens_param_resolution(row: Any) -> None:
+    resolved = resolve_max_tokens_param(row["providerType"], row["apiBase"], row["override"])
+    assert resolved == row["expected"]
 
 
 @pytest.mark.parametrize("row", FIXTURES["chatTransport"], ids=lambda r: r["name"])
-def test_chat_transport_resolution(row):
-    assert resolve_chat_transport(row["providerType"], row["apiBase"], row["override"]) == row["expected"]
+def test_chat_transport_resolution(row: Any) -> None:
+    resolved = resolve_chat_transport(row["providerType"], row["apiBase"], row["override"])
+    assert resolved == row["expected"]
 
 
 @pytest.mark.parametrize("row", FIXTURES["temperatureOmission"], ids=lambda r: r["name"])
-def test_temperature_omission(row):
+def test_temperature_omission(row: Any) -> None:
     model = _temperature_model(row)
     assert ("temperature" in model._default_params) is row["sent"]

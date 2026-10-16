@@ -206,7 +206,11 @@ def _http_client(transport: httpx.BaseTransport, timeout: float) -> httpx.Client
 
 def _openai_model(
     resolved: ResolvedModel, transport: httpx.BaseTransport | None, timeout: float
-) -> CaChatOpenAI:
+) -> ChatOpenAI:
+    """The OpenAI-family constructor. The Options wire is honored only on
+    OpenAI's endpoint and rides the stock ``ChatOpenAI``; compatible
+    endpoints construct ``CompatibleCaChatOpenAI`` (the completion-wire
+    delta handling) — both satisfy the chat-model return contract."""
     openai_wire = is_openai_wire(resolved.provider_type, resolved.base_url)
     kwargs: dict[str, Any] = {
         "model": resolved.external_id,
@@ -230,15 +234,19 @@ def _openai_model(
     # ADR-0039: a row opted into the Responses API rides /responses
     # (honored only on OpenAI's endpoint) store-less — reasoning_effort
     # passes through, so gpt-6-family models keep reasoning on tool tasks.
-    if resolve_chat_transport(resolved.provider_type, resolved.base_url, resolved.chat_transport) == "responses":
+    wire_transport = resolve_chat_transport(
+        resolved.provider_type, resolved.base_url, resolved.chat_transport
+    )
+    if wire_transport == "responses":
         kwargs["use_responses_api"] = True
         kwargs["store"] = False
     if resolved.base_url:
         kwargs["base_url"] = resolved.base_url
     if transport is not None:
         kwargs["http_client"] = _http_client(transport, timeout)
-    cls: type[CaChatOpenAI] = ChatOpenAI if openai_wire else CompatibleCaChatOpenAI
-    return cls(**kwargs)
+    if openai_wire:
+        return ChatOpenAI(**kwargs)
+    return CompatibleCaChatOpenAI(**kwargs)
 
 
 def _anthropic_model(

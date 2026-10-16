@@ -1,8 +1,16 @@
-"""Registered external MCP servers (plan 73-G, ADR-170): machine-local
-config in profile preferences (`mcp.servers`), disabled by default, explicit
-refresh, per-tool allowlist — refresh never auto-enables. Server entries hold
-no secrets: bearer tokens and stdio env maps live in the OS keyring
-(`app/core/secrets.py`) under `mcp:<id>:token` / `mcp:<id>:env`.
+"""Registered external MCP servers — the D19 instance lifecycle of the
+bundled ``mcp`` connector (plan 73-G, ADR-170 / ADR-0040).
+
+Configured servers live in profile preferences (``mcp.servers``) — each
+row is one INSTANCE of the bundled connector: its own config, enable
+state, per-tool allowlist (declared ``discovery`` | ``parse`` contracts)
+and status. Rows disabled by default, explicit refresh — refresh never
+auto-enables. Every call funnels into the ``ai_interactions`` audit
+log. Server entries hold NO secrets: bearer tokens and stdio env maps
+live in the OS keyring (``app/core/secrets.py``, sealed slots declared
+``x-secret`` in the bundle manifest) under ``mcp:<id>:token`` /
+``mcp:<id>:env``. Validation errors surface the charter typed model
+(``ExtensionError`` code ``invalid``).
 """
 
 import json
@@ -10,7 +18,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ...ai.mcp_client import (
+from ..ai.mcp_client import (
     DEFAULT_MAX_CONCURRENT,
     DEFAULT_TOOL_TIMEOUT_SEC,
     MAX_CONCURRENT_CAP,
@@ -22,15 +30,12 @@ from ...ai.mcp_client import (
     parse_env_json,
     token_secret_ref,
 )
-from ...core.secrets import delete_secret, get_secret, set_secret
-from ...core.vocab import McpTransport
+from ..core.secrets import delete_secret, get_secret, set_secret
+from ..core.vocab import McpTransport
+from .errors import ExtensionError
 
 TOOL_CONTRACTS = ("none", "discovery", "parse")
 TRANSPORTS = tuple(t.value for t in McpTransport)
-
-
-class McpServersError(ValueError):
-    pass
 
 
 def _validate_transport_fields(
@@ -40,17 +45,17 @@ def _validate_transport_fields(
 ) -> tuple[str, str]:
     if transport not in TRANSPORTS:
         allowed = ", ".join(TRANSPORTS)
-        raise McpServersError(f"unknown transport '{transport}' (allowed: {allowed})")
+        raise ExtensionError("invalid", f"unknown transport '{transport}' (allowed: {allowed})")
     if transport == McpTransport.STDIO:
         return command, ""
     clean_url = url.strip()
     if not clean_url.startswith(("http://", "https://")):
-        raise McpServersError("a http(s) URL is required for remote servers")
+        raise ExtensionError("invalid", "a http(s) URL is required for remote servers")
     return "", clean_url[:500]
 
 
 def load_servers(session: Session, profile_id: str) -> list[dict[str, Any]]:
-    from ...domain.models import Profile
+    from ..domain.models import Profile
 
     profile = session.get(Profile, profile_id)
     prefs = profile.preferences if profile is not None else None
@@ -68,11 +73,11 @@ def load_servers(session: Session, profile_id: str) -> list[dict[str, Any]]:
 def save_servers(session: Session, profile_id: str, servers: list[dict[str, Any]]) -> None:
     from sqlalchemy.orm.attributes import flag_modified
 
-    from ...domain.models import Profile
+    from ..domain.models import Profile
 
     profile = session.get(Profile, profile_id)
     if profile is None:
-        raise McpServersError("profile not found")
+        raise ExtensionError("invalid", "profile not found")
     prefs = dict(profile.preferences or {})
     prefs["mcp"] = {"servers": servers}
     profile.preferences = prefs
@@ -117,16 +122,16 @@ def create_server(
         transport, (command or "").strip(), url or ""
     )
     if not clean_name:
-        raise McpServersError("name is required")
+        raise ExtensionError("invalid", "name is required")
     if transport == McpTransport.STDIO and not clean_command:
-        raise McpServersError("command is required for stdio servers")
+        raise ExtensionError("invalid", "command is required for stdio servers")
     if not 5 <= int(timeout_sec) <= 120:
-        raise McpServersError("timeout_sec must be 5-120")
+        raise ExtensionError("invalid", "timeout_sec must be 5-120")
     if not 1 <= int(max_concurrent) <= MAX_CONCURRENT_CAP:
-        raise McpServersError(f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}")
+        raise ExtensionError("invalid", f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}")
     servers = load_servers(session, profile_id)
     if len(servers) >= MAX_SERVERS:
-        raise McpServersError(f"at most {MAX_SERVERS} servers can be registered")
+        raise ExtensionError("invalid", f"at most {MAX_SERVERS} servers can be registered")
     entry: dict[str, Any] = new_server_config(
         clean_name[:80],
         clean_command[:500],
@@ -165,17 +170,17 @@ def patch_server(
 ) -> dict[str, Any]:
     server = get_server(session, profile_id, server_id)
     if server is None:
-        raise McpServersError("server not found")
+        raise ExtensionError("invalid", "server not found")
     if name is not None:
         clean = name.strip()
         if not clean:
-            raise McpServersError("name must not be empty")
+            raise ExtensionError("invalid", "name must not be empty")
         server["name"] = clean[:80]
     if enabled is not None:
         server["enabled"] = bool(enabled)
     if timeout_sec is not None:
         if not 5 <= int(timeout_sec) <= 120:
-            raise McpServersError("timeout_sec must be 5-120")
+            raise ExtensionError("invalid", "timeout_sec must be 5-120")
         server["timeout_sec"] = int(timeout_sec)
     next_transport = str(transport) if transport is not UNSET else None
     next_url = str(url or "") if url is not UNSET else None
@@ -192,7 +197,7 @@ def patch_server(
         server["url"] = clean_url
     if max_concurrent is not UNSET and max_concurrent is not None:
         if not 1 <= int(max_concurrent) <= MAX_CONCURRENT_CAP:
-            raise McpServersError(f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}")
+            raise ExtensionError("invalid", f"max_concurrent must be 1-{MAX_CONCURRENT_CAP}")
         server["max_concurrent"] = int(max_concurrent)
     if token is not UNSET:
         if token:
@@ -211,13 +216,13 @@ def patch_server(
             None,
         )
         if target is None:
-            raise McpServersError(f"unknown tool '{tool_name}' — refresh first")
+            raise ExtensionError("invalid", f"unknown tool '{tool_name}' — refresh first")
         if "enabled" in update:
             target["enabled"] = bool(update["enabled"])
         if "contract" in update:
             contract = str(update["contract"])
             if contract not in TOOL_CONTRACTS:
-                raise McpServersError(f"unknown contract '{contract}'")
+                raise ExtensionError("invalid", f"unknown contract '{contract}'")
             target["contract"] = contract
         if "url_pattern" in update:
             target["url_pattern"] = str(update["url_pattern"] or "").strip()[:300]

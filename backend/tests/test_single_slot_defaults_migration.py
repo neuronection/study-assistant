@@ -10,8 +10,9 @@ new ORM never create it.
 import sqlite3
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
+
+from alembic import command
 
 
 def _cfg(db_path: Path) -> Config:

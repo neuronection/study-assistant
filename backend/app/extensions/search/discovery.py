@@ -16,14 +16,14 @@ import httpx
 import structlog
 from sqlalchemy.orm import Session
 
-from ..ai.mcp_client import (
+from ...ai.mcp_client import (
     McpToolError,
     audit_mcp_invocation,
     call_tool_sync,
 )
-from ..core.secrets import get_secret
-from ..core.vocab import DiscoveryKind
-from ..domain.models import Profile
+from ...core.secrets import get_secret
+from ...core.vocab import DiscoveryKind
+from ...domain.models import Profile
 from .provider import list_search_providers, provider_key_ref, search_with_fallback_configs
 
 logger = structlog.get_logger(__name__)
@@ -204,7 +204,7 @@ class McpDiscoveryProvider(DiscoveryProvider):
     """
 
     def __init__(self, server: dict[str, Any], tool: dict[str, Any], audit: Any = None):
-        from ..services.platform.mcp_servers import build_mcp_config
+        from ..mcp_servers import build_mcp_config
 
         tool_name = str(tool.get("name"))
         self.id = f"mcp.{server.get('name')}.{tool_name}"
@@ -345,7 +345,7 @@ def resolve_providers(
                 )
             )
 
-    from ..services.platform.mcp_servers import enabled_tools
+    from ..mcp_servers import enabled_tools
 
     for server, tool in enabled_tools(session, profile_id, "discovery"):
         provider = McpDiscoveryProvider(server, tool, audit=session)

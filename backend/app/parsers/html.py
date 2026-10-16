@@ -2,7 +2,7 @@ import re
 
 import httpx
 
-from ..search.provider import SearchError, perform_fetch
+from ..extensions.search.provider import SearchError, perform_fetch
 from .base import ParsedDocument, ParserError
 
 

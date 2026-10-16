@@ -2,6 +2,7 @@ import type { components } from '@/lib/api-schema'
 import { apiFetch, json } from './client'
 
 export type McpServerRow = components['schemas']['McpServerOut']
+export type McpCharter = components['schemas']['McpCharterOut']
 
 export interface McpServerToolInfo {
   name: string
@@ -76,4 +77,9 @@ export async function refreshMcpServer(id: number | string): Promise<McpServerRo
     method: 'POST',
   })
   return json<McpServerRow>(response)
+}
+
+export async function getMcpCharter(): Promise<McpCharter> {
+  const response = await apiFetch('/api/v1/mcp/charter')
+  return json<McpCharter>(response)
 }
