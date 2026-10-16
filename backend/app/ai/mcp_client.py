@@ -10,7 +10,7 @@ config build and they live only in the short-lived config object. External
 tool output is untrusted input (family-ai trust boundary): every consumer
 validates shapes app-side. The `mcp` SDK import lives ONLY here (+ tests),
 matching this repo's existing `mcp`-SDK server precedent
-(`app/mcp_resources.py`).
+(`app/ai/mcp_resources.py`).
 """
 
 import json

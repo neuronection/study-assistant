@@ -2982,6 +2982,23 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-17 — **refactor(ai): the MCP resource server joins the AI layer
+  (plan 32 follow-up — the tightened alignment gate R2).** Phase 9's
+  recorded observation closed: `app/mcp_resources.py` did
+  `from mcp.server.mcpserver import …` OUTSIDE `ai/`, and the family
+  gate's first-level import regex (`from mcp.(server|client|shared)
+  import` only) matched nested module paths nowhere — gate and structure
+  probe agreed by construction while a real violation shipped. The
+  canonical `check-ai-alignment.sh` R2 now catches nested paths and
+  plain `import mcp.*` forms (re-vendored byte-identically); study's
+  structure probe mirrors the tightened fragment (the documented
+  agree-by-construction invariant). The module relocates to
+  `app/ai/mcp_resources.py` per ADR-0012 (the MCP resource server is
+  AI-layer code) with every mount unchanged: the stdio entry
+  (`python -m studyassistant mcp`), `/ai`'s resource-tool registry use,
+  the chat graph and the native tool schemas. Backend suite + structure
+  probe + tightened gate green.
+
 - 2026-09-24 — **feat(auth): enforcement + boot session + login gate
   (family plan 16, S4b + S7 login).** The study hole is closed: the
   family auth-kit's `SessionAuthMiddleware` now requires a valid session

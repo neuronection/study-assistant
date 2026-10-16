@@ -62,7 +62,7 @@ def structured_output_supported(model: BaseChatModel) -> bool:
 
 
 def chat_native_schemas() -> list[dict[Any, Any]]:
-    from ..mcp_resources import resource_native_schemas
+    from .mcp_resources import resource_native_schemas
     from .tools import CHAT_TOOL_CATALOG, QUIZ_NATIVE_SCHEMA, native_tool_schemas
 
     return [

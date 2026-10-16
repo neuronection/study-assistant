@@ -325,8 +325,8 @@ def test_tool_call_events_reassemble_unindexed_stream_fragments() -> None:
 
 
 def test_chat_native_schemas_cover_all_tools() -> None:
+    from app.ai.mcp_resources import RESOURCE_TOOLS
     from app.ai.tools import CHAT_TOOL_CATALOG, QUIZ_TOOL
-    from app.mcp_resources import RESOURCE_TOOLS
 
     schemas = chat_native_schemas()
     names = {s["function"]["name"] for s in schemas}

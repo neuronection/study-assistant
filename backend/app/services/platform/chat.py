@@ -23,6 +23,11 @@ from ...ai.flow_events_chat import (
     tool_call_event,
 )
 from ...ai.gateway import LLMGateway, Message
+from ...ai.mcp_resources import (
+    RESOURCE_TOOL_BY_KEYWORD,
+    ResourceError,
+    build_resource_tool_doc,
+)
 from ...ai.mentions import MentionRegistry, registry_from_json
 from ...ai.parsing import blocks_to_md as _blocks_to_md
 from ...ai.parsing import parse_answer_blocks
@@ -73,11 +78,6 @@ from ...extensions.search.provider import (
     SearchError,
     perform_fetch,
     search_with_fallback,
-)
-from ...mcp_resources import (
-    RESOURCE_TOOL_BY_KEYWORD,
-    ResourceError,
-    build_resource_tool_doc,
 )
 from ..knowledge.context import ContextResolver, ContextScope, ContextSpec
 from ..search import hybrid_search, retrieve_chunks_hybrid

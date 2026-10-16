@@ -215,8 +215,8 @@ def test_extract_resource_tool_lines() -> None:
 
 
 def test_resource_tool_keywords_match_registry() -> None:
+    from app.ai.mcp_resources import RESOURCE_TOOLS
     from app.ai.tools import RESOURCE_TOOL_KEYWORDS
-    from app.mcp_resources import RESOURCE_TOOLS
 
     assert set(RESOURCE_TOOL_KEYWORDS) == {tool["keyword"] for tool in RESOURCE_TOOLS}
 

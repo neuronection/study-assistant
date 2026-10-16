@@ -8,8 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from .ai.parsing import blocks_to_md
-from .domain.models import (
+from ..domain.models import (
     Activity,
     Answer,
     Attempt,
@@ -24,9 +23,10 @@ from .domain.models import (
     Question,
     TreeNode,
 )
-from .services.knowledge.tree import TreeService
-from .services.platform.metrics import exam_status
-from .services.study.exercise_kinds import CARD_KINDS
+from ..services.knowledge.tree import TreeService
+from ..services.platform.metrics import exam_status
+from ..services.study.exercise_kinds import CARD_KINDS
+from .parsing import blocks_to_md
 
 MCP_SERVER_NAME = "studyassistant"
 MCP_INSTRUCTIONS = (
@@ -522,7 +522,7 @@ def _get_node_context(
     max_chunks: int = 12,
     profile_id: str | None = None,
 ) -> dict[str, Any]:
-    from .services.knowledge.context import (
+    from ..services.knowledge.context import (
         ContextError,
         ContextResolver,
         ContextScope,
@@ -789,8 +789,8 @@ def create_resource_server(session_factory: sessionmaker[Session]) -> MCPServer:
 
 def run_mcp_stdio() -> None:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
-    from .core.config import get_settings
-    from .storage.db import make_engine, make_session_factory
+    from ..core.config import get_settings
+    from ..storage.db import make_engine, make_session_factory
 
     settings = get_settings()
     if not settings.db_path.exists():

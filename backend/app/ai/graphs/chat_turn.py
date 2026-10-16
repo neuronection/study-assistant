@@ -44,7 +44,6 @@ from langgraph.types import RetryPolicy, TimeoutPolicy
 from typing_extensions import TypedDict
 
 from ...domain.models import ChatMessage, ChatSession
-from ...mcp_resources import RESOURCE_TOOL_BY_KEYWORD
 from ...services.platform.chat import (
     CHAT_TASK,
     MAX_DISCOVER_ROUNDS,
@@ -69,6 +68,7 @@ from ..chat_models import degrade_native_tools
 from ..contracts.contracts import ValidationResult, validate
 from ..flow_events_chat import flow_started_event, node_started_event, tool_call_event
 from ..gateway import LLMGateway, Message, ProviderError, is_tool_unsupported_error
+from ..mcp_resources import RESOURCE_TOOL_BY_KEYWORD
 from ..tools import extract_tool_calls, run_tool_line, strip_tool_lines
 
 logger = structlog.get_logger(__name__)

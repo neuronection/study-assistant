@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from ..ai.gateway import BudgetExceeded, ProviderError, TaskUnassigned
+from ..ai.mcp_resources import MCP_INSTRUCTIONS, RESOURCE_TOOLS, create_resource_server
 from ..ai.speech import MAX_TTS_CHARS
 from ..ai.tools import CHAT_CAPABILITY_CATALOG, CHAT_TOOL_CATALOG
 from ..core.vocab import ToolEntryKind
-from ..mcp_resources import MCP_INSTRUCTIONS, RESOURCE_TOOLS, create_resource_server
 from ..services.knowledge.context import (
     ContextError,
     ContextParams,

@@ -32,7 +32,7 @@ if __name__ == "__main__":
     mode = resolve_mode(sys.argv)
     if mode == "mcp":
         _bootstrap()
-        from app.mcp_resources import run_mcp_stdio
+        from app.ai.mcp_resources import run_mcp_stdio
 
         run_mcp_stdio()
     elif mode == "web":
