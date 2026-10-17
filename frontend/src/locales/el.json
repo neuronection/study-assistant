@@ -2842,6 +2842,10 @@
     "status_failing": "Αποτυχίες",
     "status_stale": "Παρωχημένος",
     "needsConfig": "Ημιτελής ρύθμιση",
-    "t3Disclosure": "Εξωτερική διεργασία"
+    "t3Disclosure": "Εξωτερική διεργασία",
+    "toolsTitle": "Δηλωμένα εργαλεία",
+    "lastSuccess": "τελευταία επιτυχία",
+    "failures": "συνεχόμενες αποτυχίες",
+    "needsSecret": "χρειάζεται μυστικό"
   }
 }

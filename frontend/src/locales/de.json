@@ -2842,6 +2842,10 @@
     "status_failing": "Fehlerhaft",
     "status_stale": "Veraltet",
     "needsConfig": "Unvollständige Konfiguration",
-    "t3Disclosure": "Externer Prozess"
+    "t3Disclosure": "Externer Prozess",
+    "toolsTitle": "Deklarierte Tools",
+    "lastSuccess": "letzter Erfolg",
+    "failures": "aufeinanderfolgende Fehler",
+    "needsSecret": "braucht Geheimnis"
   }
 }

@@ -11,6 +11,31 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (settings — the MCP instance surface renders through the family kit)
+- **The MCP connectors card swaps onto the `@neuronection/assistant-ui`
+  integrations kit** (plan 33 Phase D / ADR-0040 D19/D25): the hand-rolled
+  server rows are now `IntegrationInstancesList` — every configured MCP
+  server renders as a D19 instance of the ONE bundled `mcp` extension (G1
+  grouping), with the family status vocabulary (`ok | degraded | failing |
+  stale`), `needs-config` conditions, `last_success_at` and
+  `consecutive_failures` coming straight off the wire→kit mapping in
+  `mcpIntegrationViews.ts` (desktop's pure-mapping-module precedent;
+  statuses narrow through the kit's generated vocabulary). The wire line,
+  sealed-credential chips, last error and the refresh/edit actions ride the
+  kit's instance-actions slot; delete is the kit's tombstone action; enable
+  is the kit toggle. **The Phase-7 wall holds: the T3 perimeter disclosure
+  still renders verbatim from the vendored charter** (`GET /mcp/charter` →
+  `mcp-t3-disclosure`, asserted byte-for-byte by the card test). The
+  declared-tool contract editor (`discovery | parse`) stays study-domain
+  app content under the list (the kit has no per-tool channel); the
+  add/edit dialog keeps its bespoke keep-token/clear-env semantics.
+  WebSourcesCard and DiscoveryCard stay app sections — course-scoped
+  RSS/YouTube/site-search scanners and profile site presets are content
+  pipelines, not extension sources (the kit's source row models the
+  GitOps surface; recorded, not forced). Pin moves to `^0.67.0` (the
+  pending library publish wave); local dev runs the tarball overlay
+  until it lands.
+
 ### Added (family extension charter — plan 32 Phase 7, 2026-10-16)
 - **Study converges onto the family extension charter (ADR-0040)** with the
   D24 subsystem home: `backend/app/extensions/` (vendored contract modules +

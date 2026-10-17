@@ -39,6 +39,20 @@ ruff + mypy fully green (the pre-existing 25 ruff / 18 mypy errors at
 the parent commit — the ADR-0039 session's same-commit debt — fixed en
 route).
 
+**Plan 33 Phase D — the MCP instance surface renders through the family
+integrations kit (2026-10-17):** the settings connectors card swaps its
+hand-rolled server rows onto `@neuronection/assistant-ui`'s
+`IntegrationInstancesList` — every configured MCP server is a D19 instance
+of the ONE bundled `mcp` extension (G1 grouping), mapped purely in
+`mcpIntegrationViews.ts` (desktop's mapping-module precedent, vocab-narrowed).
+The T3 perimeter disclosure still renders verbatim from the vendored charter
+(the Phase-7 wall, re-asserted by the card test); the tool-contract editor
+stays study-domain app content; WebSourcesCard/DiscoveryCard stay app
+sections (content pipelines, not extension sources — recorded, not forced).
+Pin `^0.67.0` rides the pending library publish wave (tarball overlay until
+then). Frontend suite green (187 files / 1467 tests), lint + tsc + build
+green.
+
 **At-rest cipher on the family module (plan 19 Phase 4, 2026-10-09):**
 `app/core/secrets.py` is now a thin adapter over `nx_auth.atrest`
 (ADR-0027) — keyring-held values (AI provider keys, the web-search key,

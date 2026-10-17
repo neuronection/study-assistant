@@ -6,12 +6,10 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Trash2,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -21,6 +19,8 @@ import {
   ModalHeader,
   ModalTitle,
 } from '@neuronection/assistant-ui'
+import { IntegrationInstancesList } from '@neuronection/assistant-ui/integration-instances-list'
+import type { IntegrationInstanceView } from '@neuronection/assistant-ui/integration-contracts'
 import {
   createMcpServer,
   deleteMcpServer,
@@ -31,6 +31,7 @@ import {
   type McpServerRow,
   type McpServerToolInfo,
 } from '@/lib/api'
+import { mcpGroup, mcpInstanceMetadata } from './mcpIntegrationViews'
 
 const CONTRACTS = ['none', 'discovery', 'parse'] as const
 
@@ -333,32 +334,82 @@ function ServerDialog({ server, onClose }: ServerDialogProps) {
   )
 }
 
-function ServerRow({ server, onEdit }: { server: McpServerRow; onEdit: () => void }) {
+/** Per-instance kit action slot: the app-owned refresh domain action plus
+ * the wire line, sealed-credential chips and the last error (study-domain
+ * detail the kit rows carry via instance metadata). */
+function McpInstanceActions({
+  server,
+  onEdit,
+  onError,
+}: {
+  server: McpServerRow
+  onEdit: () => void
+  onError: (message: string) => void
+}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [notice, setNotice] = useState<string | null>(null)
-
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
-  }
-
-  const toggle = useMutation({
-    mutationFn: (enabled: boolean) => updateMcpServer(server.id, { enabled }),
-    onSuccess: invalidate,
-    onError: (cause: Error) => setNotice(cause.message),
-  })
 
   const refresh = useMutation({
     mutationFn: () => refreshMcpServer(server.id),
-    onSuccess: invalidate,
-    onError: (cause: Error) => setNotice(cause.message),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
+    },
+    onError: (cause: Error) => onError(cause.message),
   })
 
-  const remove = useMutation({
-    mutationFn: () => deleteMcpServer(server.id),
-    onSuccess: invalidate,
-    onError: (cause: Error) => setNotice(cause.message),
-  })
+  const meta = mcpInstanceMetadata(server)
+
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <code
+        className="text-muted-foreground max-w-56 truncate font-mono text-[11px]"
+        data-testid={`mcp-server-command-${server.id}`}
+      >
+        {meta.commandLine}
+      </code>
+      {meta.hasToken || meta.hasEnv ? (
+        <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+          <KeyRound className="size-3 shrink-0" aria-hidden />
+          {meta.hasToken ? t('mcpConnectors.tokenStored') : null}
+          {meta.hasToken && meta.hasEnv ? ' · ' : null}
+          {meta.hasEnv ? t('mcpConnectors.envStored') : null}
+        </span>
+      ) : null}
+      {meta.lastError ? (
+        <span className="text-warning flex items-center gap-1 text-[11px]">
+          <AlertTriangle className="size-3 shrink-0" aria-hidden />
+          {meta.lastError}
+        </span>
+      ) : null}
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={refresh.isPending}
+        onClick={() => refresh.mutate()}
+        title={t('mcpConnectors.refresh')}
+      >
+        {refresh.isPending ? (
+          <Loader2 className="animate-spin" aria-hidden />
+        ) : (
+          <RefreshCw aria-hidden />
+        )}
+        {t('mcpConnectors.refresh')}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onEdit} title={t('mcpConnectors.edit')}>
+        <Pencil aria-hidden />
+        {t('mcpConnectors.edit')}
+      </Button>
+    </span>
+  )
+}
+
+/** Study-domain tool-contract editor (discovery | parse | none) — the kit's
+ * instance rows have no per-tool channel; this stays app content under the
+ * list, one section per server that declares tools. */
+function McpToolContracts({ server }: { server: McpServerRow }) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [notice, setNotice] = useState<string | null>(null)
 
   const setTool = useMutation({
     mutationFn: (patch: {
@@ -367,152 +418,68 @@ function ServerRow({ server, onEdit }: { server: McpServerRow; onEdit: () => voi
       contract?: string
       url_pattern?: string
     }) => updateMcpServer(server.id, { tools: [patch] }),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
+    },
     onError: (cause: Error) => setNotice(cause.message),
   })
 
-  const commandLine =
-    server.transport === 'stdio'
-      ? [server.command, ...server.args].join(' ')
-      : server.url
-
-  const needsConfig = (server.conditions ?? []).includes('needs-config')
+  if (server.tools.length === 0) return null
 
   return (
-    <div className="border-border space-y-2 rounded-md border p-2" data-testid="mcp-server-row">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-medium">{server.name}</span>
-            <Badge variant="outline">{server.transport}</Badge>
-            <Badge variant="outline" data-testid="mcp-server-status">
-              {t(`mcpConnectors.status_${server.status}`)}
-            </Badge>
-            {!server.enabled ? (
-              <Badge variant="outline">{t('mcpConnectors.off')}</Badge>
-            ) : null}
-            {needsConfig ? (
-              <Badge variant="outline" className="text-warning">
-                <AlertTriangle className="size-3" aria-hidden />
-                {t('mcpConnectors.needsConfig')}
-              </Badge>
-            ) : null}
-          </div>
-          <code className="text-muted-foreground block truncate font-mono text-[11px]">
-            {commandLine}
-          </code>
-          {server.has_token || server.has_env ? (
-            <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[11px]">
-              <KeyRound className="size-3 shrink-0" aria-hidden />
-              {server.has_token ? t('mcpConnectors.tokenStored') : null}
-              {server.has_token && server.has_env ? ' · ' : null}
-              {server.has_env ? t('mcpConnectors.envStored') : null}
-            </p>
-          ) : null}
-          {server.last_error ? (
-            <p className="text-warning mt-0.5 flex items-center gap-1 text-[11px]">
-              <AlertTriangle className="size-3 shrink-0" aria-hidden />
-              {server.last_error}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <label className="text-muted-foreground flex items-center gap-1 text-[11px]">
+    <div className="border-border space-y-1 rounded-md border p-2" data-testid={`mcp-server-tools-${server.id}`}>
+      <p className="text-muted-foreground text-[11px] font-semibold">
+        {t('mcpConnectors.toolsTitle')}: {server.name}
+      </p>
+      {(server.tools as unknown as McpServerToolInfo[]).map((tool) => (
+        <div
+          key={tool.name}
+          className="bg-subtle flex flex-wrap items-center gap-2 rounded-md px-2 py-1"
+        >
+          <input
+            type="checkbox"
+            checked={tool.enabled}
+            aria-label={`${t('mcpConnectors.toolEnabled')}: ${tool.name}`}
+            onChange={(event) =>
+              setTool.mutate({ name: tool.name, enabled: event.target.checked })
+            }
+          />
+          <code className="text-xs font-semibold">{tool.name}</code>
+          <select
+            className="bg-surface border-border rounded-md border px-1.5 py-0.5 text-[11px]"
+            value={tool.contract}
+            aria-label={`${t('mcpConnectors.contract')}: ${tool.name}`}
+            onChange={(event) =>
+              setTool.mutate({ name: tool.name, contract: event.target.value })
+            }
+          >
+            {CONTRACTS.map((contract) => (
+              <option key={contract} value={contract}>
+                {t(`mcpConnectors.contract_${contract}`)}
+              </option>
+            ))}
+          </select>
+          {tool.contract === 'parse' ? (
             <input
-              type="checkbox"
-              checked={server.enabled}
-              aria-label={t('mcpConnectors.enabledLabel')}
-              onChange={(event) => toggle.mutate(event.target.checked)}
+              className="bg-surface border-border w-44 rounded-md border px-1.5 py-0.5 text-[11px]"
+              placeholder="example.com/learn/*"
+              value={tool.url_pattern ?? ''}
+              aria-label={`${t('mcpConnectors.urlPattern')}: ${tool.name}`}
+              onChange={(event) =>
+                setTool.mutate({
+                  name: tool.name,
+                  url_pattern: event.target.value,
+                })
+              }
             />
-            {t('mcpConnectors.enabledShort')}
-          </label>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onEdit}
-            title={t('mcpConnectors.edit')}
-          >
-            <Pencil aria-hidden />
-            {t('mcpConnectors.edit')}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={refresh.isPending}
-            onClick={() => refresh.mutate()}
-            title={t('mcpConnectors.refresh')}
-          >
-            {refresh.isPending ? (
-              <Loader2 className="animate-spin" aria-hidden />
-            ) : (
-              <RefreshCw aria-hidden />
-            )}
-            {t('mcpConnectors.refresh')}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-destructive"
-            onClick={() => remove.mutate()}
-            title={t('mcpConnectors.delete')}
-          >
-            <Trash2 aria-hidden />
-          </Button>
+          ) : null}
+          {tool.description ? (
+            <span className="text-muted-foreground truncate text-[11px]">
+              {String(tool.description)}
+            </span>
+          ) : null}
         </div>
-      </div>
-      {server.tools.length > 0 ? (
-        <div className="space-y-1">
-          {(server.tools as unknown as McpServerToolInfo[]).map((tool) => (
-            <div
-              key={tool.name}
-              className="bg-subtle flex flex-wrap items-center gap-2 rounded-md px-2 py-1"
-            >
-              <input
-                type="checkbox"
-                checked={tool.enabled}
-                aria-label={`${t('mcpConnectors.toolEnabled')}: ${tool.name}`}
-                onChange={(event) =>
-                  setTool.mutate({ name: tool.name, enabled: event.target.checked })
-                }
-              />
-              <code className="text-xs font-semibold">{tool.name}</code>
-              <select
-                className="bg-surface border-border rounded-md border px-1.5 py-0.5 text-[11px]"
-                value={tool.contract}
-                aria-label={`${t('mcpConnectors.contract')}: ${tool.name}`}
-                onChange={(event) =>
-                  setTool.mutate({ name: tool.name, contract: event.target.value })
-                }
-              >
-                {CONTRACTS.map((contract) => (
-                  <option key={contract} value={contract}>
-                    {t(`mcpConnectors.contract_${contract}`)}
-                  </option>
-                ))}
-              </select>
-              {tool.contract === 'parse' ? (
-                <input
-                  className="bg-surface border-border w-44 rounded-md border px-1.5 py-0.5 text-[11px]"
-                  placeholder="example.com/learn/*"
-                  value={tool.url_pattern ?? ''}
-                  aria-label={`${t('mcpConnectors.urlPattern')}: ${tool.name}`}
-                  onChange={(event) =>
-                    setTool.mutate({
-                      name: tool.name,
-                      url_pattern: event.target.value,
-                    })
-                  }
-                />
-              ) : null}
-              {tool.description ? (
-                <span className="text-muted-foreground truncate text-[11px]">
-                  {String(tool.description)}
-                </span>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      ))}
       {notice !== null ? (
         <p className="text-destructive text-xs" role="alert">
           {notice}
@@ -524,9 +491,30 @@ function ServerRow({ server, onEdit }: { server: McpServerRow; onEdit: () => voi
 
 export function McpConnectorsCard() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const servers = useQuery({ queryKey: ['mcp-servers'], queryFn: listMcpServers })
   const charter = useQuery({ queryKey: ['mcp-charter'], queryFn: getMcpCharter })
   const [dialog, setDialog] = useState<'closed' | 'new' | McpServerRow>('closed')
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const rows = servers.data ?? []
+
+  const invalidate = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
+  }
+
+  const toggle = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      updateMcpServer(id, { enabled }),
+    onSuccess: invalidate,
+    onError: (cause: Error) => setNotice(cause.message),
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteMcpServer(id),
+    onSuccess: invalidate,
+    onError: (cause: Error) => setNotice(cause.message),
+  })
 
   return (
     <Card data-testid="mcp-connectors-card">
@@ -546,18 +534,54 @@ export function McpConnectorsCard() {
             </p>
           </div>
         ) : null}
-        <div className="space-y-2" data-testid="mcp-servers-list">
-          {(servers.data ?? []).length === 0 ? (
-            <p className="text-muted-foreground text-xs">{t('mcpConnectors.empty')}</p>
-          ) : null}
-          {(servers.data ?? []).map((server) => (
-            <ServerRow
-              key={server.id}
-              server={server}
-              onEdit={() => setDialog(server)}
-            />
-          ))}
+        <div data-testid="mcp-servers-list">
+          <IntegrationInstancesList
+            groups={rows.length > 0 ? [mcpGroup(rows)] : []}
+            busy={toggle.isPending || remove.isPending}
+            error={notice}
+            labels={{
+              emptyLabel: t('mcpConnectors.empty'),
+              enableAriaLabel: t('mcpConnectors.enabledLabel'),
+              tombstoneLabel: t('mcpConnectors.delete'),
+              lastSuccessLabel: t('mcpConnectors.lastSuccess'),
+              failuresLabel: t('mcpConnectors.failures'),
+              conditionLabels: {
+                'needs-config': t('mcpConnectors.needsConfig'),
+                'needs-secret': t('mcpConnectors.needsSecret'),
+              },
+              statusLabels: {
+                ok: t('mcpConnectors.status_ok'),
+                degraded: t('mcpConnectors.status_degraded'),
+                failing: t('mcpConnectors.status_failing'),
+                stale: t('mcpConnectors.status_stale'),
+              },
+            }}
+            onToggleEnabled={(instance: IntegrationInstanceView, enabled) =>
+              toggle.mutate({ id: instance.id, enabled })
+            }
+            onTombstone={(instance: IntegrationInstanceView) => remove.mutate(instance.id)}
+            renderInstanceActions={(instance: IntegrationInstanceView) => {
+              const server = rows.find((row) => row.id === instance.id)
+              if (!server) return null
+              return (
+                <McpInstanceActions
+                  server={server}
+                  onEdit={() => setDialog(server)}
+                  onError={setNotice}
+                />
+              )
+            }}
+          />
         </div>
+        {rows.some((server) => server.tools.length > 0) ? (
+          <div className="space-y-2">
+            {rows
+              .filter((server) => server.tools.length > 0)
+              .map((server) => (
+                <McpToolContracts key={server.id} server={server} />
+              ))}
+          </div>
+        ) : null}
         <Button size="sm" variant="outline" onClick={() => setDialog('new')}>
           <Plus aria-hidden />
           {t('mcpConnectors.add')}

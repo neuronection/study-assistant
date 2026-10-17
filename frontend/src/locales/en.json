@@ -2842,6 +2842,10 @@
     "status_failing": "Failing",
     "status_stale": "Stale",
     "needsConfig": "Incomplete configuration",
-    "t3Disclosure": "External process"
+    "t3Disclosure": "External process",
+    "toolsTitle": "Declared tools",
+    "lastSuccess": "last success",
+    "failures": "consecutive failures",
+    "needsSecret": "needs secret"
   }
 }
