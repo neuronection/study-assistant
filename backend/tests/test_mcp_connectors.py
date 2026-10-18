@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -500,3 +501,72 @@ def test_parse_env_json_rejects_non_objects() -> None:
     assert parse_env_json("not json") == {}
     assert parse_env_json("[1, 2]") == {}
     assert parse_env_json('{"A": "B"}') == {"A": "B"}
+
+
+FIXTURE_SERVER = Path(__file__).resolve().parent / "fixtures" / "mcp_discovery_server.py"
+
+
+def test_real_stdio_spawn_feeds_discovery_end_to_end(
+    client: TestClient, db_session: Session
+) -> None:
+    """The quickstart wall (plan 34 wave 5): a REAL local stdio subprocess
+    (the fixture server speaks study's discovery contract; same spawn path
+    the SDK quickstart documents) registered through the connector API,
+    refreshed — a real spawn + list_tools handshake, no monkeypatch —
+    enabled with the discovery contract, then used by DISCOVER. Rows are
+    validated app-side (the empty-title row drops) and the call lands in
+    the ai_interactions audit funnel. Also the regression wall for the
+    AsyncExitStack exit bug: ``with stack:`` on the async stack raised
+    TypeError on every real spawn (suite monkeypatches hid it)."""
+    import sys
+
+    with client:
+        created = client.post(
+            "/api/v1/mcp/servers",
+            json={
+                "name": "coursehub",
+                "command": sys.executable,
+                "args": [str(FIXTURE_SERVER)],
+                "timeout_sec": 30,
+            },
+        )
+        assert created.status_code == 201, created.text
+        server_id = created.json()["id"]
+        assert created.json()["enabled"] is False
+
+        refreshed = client.post(f"/api/v1/mcp/servers/{server_id}/refresh")
+        assert refreshed.status_code == 200, refreshed.text
+        tools = refreshed.json()["tools"]
+        assert [tool["name"] for tool in tools] == ["search_courses"]
+        assert all(tool["enabled"] is False for tool in tools)
+
+        enabled = client.patch(
+            f"/api/v1/mcp/servers/{server_id}",
+            json={
+                "enabled": True,
+                "tools": [
+                    {"name": "search_courses", "enabled": True, "contract": "discovery"}
+                ],
+            },
+        )
+        assert enabled.status_code == 200, enabled.text
+        assert enabled.json()["declared_contracts"] == ["discovery"]
+
+        search = client.post(
+            "/api/v1/discovery/search",
+            json={"query": "chain rule", "providers": ["mcp.coursehub.search_courses"]},
+        )
+        assert search.status_code == 200, search.text
+        rows = search.json()["results"]
+        assert [row["title"] for row in rows] == [
+            "chain rule — interactive course",
+            "chain rule — problem set",
+        ]
+        assert all(row["meta"]["mcp"] is True for row in rows)
+        assert all(row["provider"] == "mcp.coursehub.search_courses" for row in rows)
+
+    audit_rows = list(
+        db_session.scalars(select(AiInteraction).where(AiInteraction.task == "mcp_tool_call"))
+    )
+    assert len(audit_rows) == 1
+    assert audit_rows[0].model == "mcp.coursehub.search_courses"

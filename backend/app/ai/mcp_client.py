@@ -183,7 +183,7 @@ async def _run_tool_call(
     import anyio
 
     stack, session = await _open_session(config)
-    with stack:
+    async with stack:
         with anyio.fail_after(timeout_sec):
             await session.initialize()
             result = await session.call_tool(tool_name, arguments)
@@ -201,7 +201,7 @@ async def _run_list_tools(config: McpServerConfig) -> list[dict[str, Any]]:
     import anyio
 
     stack, session = await _open_session(config)
-    with stack:
+    async with stack:
         with anyio.fail_after(float(config.timeout_sec)):
             await session.initialize()
             listing = await session.list_tools()

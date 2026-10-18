@@ -11,6 +11,18 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (extensions — real MCP spawns)
+- **Every real MCP server spawn raised `TypeError` before the first
+  byte of protocol** (plan 34 wave 5 finding): `app/ai/mcp_client.py`
+  exited its transport/session stack with a *sync* `with` on an
+  `AsyncExitStack` — invalid, and never caught because the whole suite
+  monkeypatches the spawn functions. Fixed to `async with` (two sites);
+  the suite now carries a REAL-subprocess wall
+  (`test_mcp_connectors.py::test_real_stdio_spawn_feeds_discovery_end_to_end`
+  + the `tests/fixtures/mcp_discovery_server.py` twin) so the spawn
+  path can never silently rot again. Refresh/call against actual
+  external servers works for the first time since plan 73-G.
+
 ### Changed (settings — the MCP instance surface renders through the family kit)
 - **The MCP connectors card swaps onto the `@neuronection/assistant-ui`
   integrations kit** (plan 33 Phase D / ADR-0040 D19/D25): the hand-rolled

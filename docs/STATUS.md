@@ -2996,6 +2996,24 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-18 — **fix(extensions): real MCP server spawns work — the
+  AsyncExitStack exit was a sync `with` (TypeError on every real
+  spawn).** Found while building the plan 34 wave 5 quickstart: the
+  quickstart's register → refresh → DISCOVER flow deadlocked against
+  any real server because `app/ai/mcp_client.py` exited its
+  transport/session stack (`contextlib.AsyncExitStack`) with a sync
+  `with` — a `TypeError` the moment a real call ran, masked further by
+  the loop-cleanup deadlock, and never caught by the suite because
+  every test monkeypatches `call_tool_sync`/`list_tools_sync`. Fixed
+  to `async with` (both `_run_tool_call` and `_run_list_tools`) and
+  walled with the suite's first REAL-subprocess e2e:
+  `test_mcp_connectors.py::test_real_stdio_spawn_feeds_discovery_end_to_end`
+  spawns `tests/fixtures/mcp_discovery_server.py` (the quickstart's
+  server written against the `mcp` SDK the app ships — no new deps),
+  registers it through the API, refreshes (real handshake), declares
+  the discovery contract, and asserts DISCOVER returns its rows (the
+  invalid row dropped) + the audit funnel row. Verified live against
+  both fastmcp 4.1 and 2.8 servers.
 - 2026-10-17 — **refactor(ai): the MCP resource server joins the AI layer
   (plan 32 follow-up — the tightened alignment gate R2).** Phase 9's
   recorded observation closed: `app/mcp_resources.py` did
