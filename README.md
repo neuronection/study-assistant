@@ -394,54 +394,16 @@ Found a vulnerability? Do not open a public issue — see
 <!-- NEURONECTION:ECOSYSTEM:START -->
 ---
 
-<div align="center">
-
 ### Part of the Neuronection family
 
 **Study Assistant** is one of four connected, open-source (Apache-2.0) AI assistants
 for life's big decisions — structured data instead of text dumps, AI that explains
 its reasoning, and you in control of your information.
 
-<table>
-  <tr>
-    <td width="50%" align="center" valign="top">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/health-light.svg">
-        <img src="https://neuronection.com/logos/health.svg" height="34" alt="Health Assistant">
-      </picture>
-      <br>
-      <a href="https://neuronection.com/en/health/"><strong>Health Assistant</strong></a>
-      <br><sub>Self-hosted, privacy-first health records — lab results, biomarkers, documents and AI-powered insights into your own data.</sub>
-      <br><sub><a href="https://github.com/health-assistant-io/health-assistant">GitHub</a> · <a href="https://health-assistant.io">health-assistant.io</a></sub>
-    </td>
-    <td width="50%" align="center" valign="top">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://neuronection.com/logos/career-light.svg">
-        <img src="https://neuronection.com/logos/career.svg" height="34" alt="Career Assistant">
-      </picture>
-      <br>
-      <a href="https://neuronection.com/en/career/"><strong>Career Assistant</strong></a>
-      <br><sub>A mapped universe of jobs — family tree + relation graph, AI match scoring and university pathways, built for students deciding their future.</sub>
-      <br><sub><a href="https://github.com/neuronection/career-assistant">GitHub</a> · <a href="https://github.com/neuronection/career-assistant/tree/main/docs">Docs</a></sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center" valign="top">
-      <img src="https://neuronection.com/logos/study.svg" height="34" alt="Study Assistant">
-      <br>
-      <a href="https://neuronection.com/en/study/"><strong>Study Assistant</strong> <sub>· this repo</sub></a>
-      <br><sub>A local-first study workbench, in browser or on desktop — AI-powered course library, handwriting, chat and practice; math-first, subject-agnostic.</sub>
-      <br><sub><a href="https://github.com/neuronection/study-assistant">GitHub</a> · <a href="https://github.com/neuronection/study-assistant/tree/main/docs">Docs</a></sub>
-    </td>
-    <td width="50%" align="center" valign="top">
-      <img src="https://neuronection.com/logos/desktop.svg" height="34" alt="Desktop Assistant">
-      <br>
-      <a href="https://neuronection.com/en/desktop/"><strong>Desktop Assistant</strong></a>
-      <br><sub>A system-tray AI launcher for Windows, Linux and macOS — global hotkey, streaming chat, voice input, attachments; local-only history.</sub>
-      <br><sub><a href="https://github.com/neuronection/desktop-assistant">GitHub</a> · <a href="https://github.com/neuronection/desktop-assistant/tree/main/docs">Docs</a></sub>
-    </td>
-  </tr>
-</table>
+| | |
+| --- | --- |
+| [![Health Assistant](https://neuronection.com/logos/health.svg)](https://neuronection.com/en/health/) — **Health Assistant** · Self-hosted, privacy-first health records — lab results, biomarkers, documents and AI-powered insights into your own data. · [GitHub](https://github.com/health-assistant-io/health-assistant) · [health-assistant.io](https://health-assistant.io) | [![Career Assistant](https://neuronection.com/logos/career.svg)](https://neuronection.com/en/career/) — **Career Assistant** · A mapped universe of jobs — family tree + relation graph, AI match scoring and university pathways, built for students deciding their future. · [GitHub](https://github.com/neuronection/career-assistant) · [Docs](https://github.com/neuronection/career-assistant/tree/main/docs) |
+| [![Study Assistant](https://neuronection.com/logos/study.svg)](https://neuronection.com/en/study/) — **Study Assistant** · A local-first study workbench, in browser or on desktop — AI-powered course library, handwriting, chat and practice; math-first, subject-agnostic. · [GitHub](https://github.com/neuronection/study-assistant) · [Docs](https://github.com/neuronection/study-assistant/tree/main/docs) | [![Desktop Assistant](https://neuronection.com/logos/desktop.svg)](https://neuronection.com/en/desktop/) — **Desktop Assistant** · A system-tray AI launcher for Windows, Linux and macOS — global hotkey, streaming chat, voice input, attachments; local-only history. · [GitHub](https://github.com/neuronection/desktop-assistant) · [Docs](https://github.com/neuronection/desktop-assistant/tree/main/docs) |
 
 Created and maintained by [Ilias Chatzopoulos](https://github.com/constLiakos)
 · [LinkedIn](https://www.linkedin.com/in/ilias-chatzopoulos-aabb22163/)
@@ -449,8 +411,6 @@ Created and maintained by [Ilias Chatzopoulos](https://github.com/constLiakos)
 
 [neuronection.com](https://neuronection.com) — one ecosystem, four guides
 · [♥ Support development](https://buymeacoffee.com/neuronection) · star what you use
-
-</div>
 <!-- NEURONECTION:ECOSYSTEM:END -->
 
 ## License
