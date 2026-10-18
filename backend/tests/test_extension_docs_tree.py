@@ -72,8 +72,13 @@ def test_docs_tree_fixtures_accept(case: dict[str, Any]) -> None:
     "case", DOCS_TREE_FIXTURES.get("invalid", []), ids=lambda case: case["name"]
 )
 def test_docs_tree_fixtures_reject(case: dict[str, Any]) -> None:
+    """Mirrors dev wall 14's fixture runner: an invalid case is rejected
+    by the schema OR by the wall semantics (unique ids, at-most-one
+    index, category slugs once — the checks JSON Schema cannot express;
+    the vendored contract module carries them)."""
     err = contract.validate(DOCS_TREE_SCHEMA, case["doc"], DOCS_TREE_SCHEMA)
-    assert err is not None, f"invalid case {case['name']} was accepted"
+    sem = contract.docs_tree_semantics(case["doc"])
+    assert err is not None or sem, f"invalid case {case['name']} was accepted"
 
 
 # -------------------------------------------------------- study's real tree
