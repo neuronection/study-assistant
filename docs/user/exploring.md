@@ -61,9 +61,9 @@ starting scaffold, not a textbook replacement.
 
 ## Research tools on the web
 
-If a **web search provider** is configured (Settings → AI → Providers → Web search —
-any Tavily-compatible endpoint or a SearXNG instance; the API key lives in your
-system keyring), the tutor gains two research tools:
+If a **web search provider** is configured (Settings → Tools → Web search —
+an ordered list of Tavily, SearXNG, Brave, Exa, Serper or Google PSE rows;
+API keys live in your system keyring), the tutor gains two research tools:
 
 - **SEARCH** — runs a web search and shows the top results as clickable source
   chips on the tool card. Ask about current or contested topics and the tutor

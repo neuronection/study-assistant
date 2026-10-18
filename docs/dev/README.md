@@ -29,6 +29,7 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | Importing or exporting data | [import-export.md](import-export.md) |
 | Deploying or packaging | [deployment.md](deployment.md), [desktop-packaging.md](desktop-packaging.md) |
 | Adding a feature end-to-end | [adding-features.md](adding-features.md) |
+| Building or connecting an extension, source or MCP server | [sdk/overview.md](sdk/overview.md) — the [Extension SDK](sdk/docs-tree.json) set |
 
 ## The pages
 
@@ -51,6 +52,7 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | [deployment.md](deployment.md) | The standalone Docker stack, nginx, TLS, volumes, upgrades and backups |
 | [desktop-packaging.md](desktop-packaging.md) | The PyInstaller build, deb/AppImage/Windows packaging and the release workflow |
 | [adding-features.md](adding-features.md) | End-to-end recipes for the common change types |
+| [sdk/](sdk/overview.md) | The chaptered Extension SDK set (plan 34): overview, quickstart, core concepts, authoring, recipes, security, reference, versioning, diagnostics + its own validated [docs-tree.json](sdk/docs-tree.json) |
 
 ## Ground rules (short version)
 

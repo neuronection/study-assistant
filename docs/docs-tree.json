@@ -165,6 +165,24 @@
               "description": "Every settings page explained: general, AI, search & OCR, data and developer."
             },
             {
+              "id": "add-a-search-provider",
+              "file": "user/add-a-search-provider.md",
+              "title": "Add a search provider",
+              "description": "The web search behind chat research and Discover — Tavily, SearXNG, Brave, Exa, Serper or Google PSE, keys in the keyring, ordered fallback."
+            },
+            {
+              "id": "add-an-mcp-connector",
+              "file": "user/add-an-mcp-connector.md",
+              "title": "Add an MCP connector",
+              "description": "Register an external MCP server, refresh its tools, declare discovery or parser contracts — and the external-process disclosure explained."
+            },
+            {
+              "id": "manage-web-sources",
+              "file": "user/manage-web-sources.md",
+              "title": "Manage web sources",
+              "description": "RSS feeds, YouTube channels and playlists, and site searches that suggest new material on a schedule."
+            },
+            {
               "id": "language",
               "file": "user/language.md",
               "title": "Language",
@@ -193,6 +211,12 @@
               "file": "user/privacy-and-security.md",
               "title": "Privacy and security",
               "description": "Where your data lives, what leaves your machine, and how keys are protected."
+            },
+            {
+              "id": "extension-troubleshooting",
+              "file": "user/extension-troubleshooting.md",
+              "title": "Extension troubleshooting",
+              "description": "Fixes for the Tools tab surfaces — search providers, web sources, MCP connectors and discovery suggestions."
             },
             {
               "id": "troubleshooting",
@@ -317,6 +341,73 @@
               "file": "dev/migrations.md",
               "title": "Migrations",
               "description": "Alembic discipline: sequential ids, model-first changes, tested downgrades and SQLite pitfalls."
+            }
+          ]
+        },
+        {
+          "id": "sdk",
+          "title": "Extension SDK",
+          "icon": "Puzzle",
+          "items": [
+            {
+              "id": "sdk-overview",
+              "file": "dev/sdk/overview.md",
+              "title": "Extension SDK: overview",
+              "description": "What the extension surface is — connectors feeding discovery and import on a dual-mode desktop product — and when to build an extension."
+            },
+            {
+              "id": "sdk-quickstart",
+              "file": "dev/sdk/quickstart.md",
+              "title": "Extension SDK: quickstart",
+              "description": "Register an MCP server modeled on the family template and watch DISCOVER use it — real transcript, CI-pinned pipeline."
+            },
+            {
+              "id": "sdk-core-concepts",
+              "file": "dev/sdk/core-concepts.md",
+              "title": "Extension SDK: core concepts",
+              "description": "Extension, instance, tool contract, provider, source, suggestion, consent — and the vendored-contract discipline."
+            },
+            {
+              "id": "sdk-installation",
+              "file": "dev/sdk/installation-and-modes.md",
+              "title": "Extension SDK: install lifecycle internals",
+              "description": "Desktop vs web modes, where preferences and sealed secrets live, and the bundled-catalog steady state."
+            },
+            {
+              "id": "sdk-authoring",
+              "file": "dev/sdk/authoring-and-configuration.md",
+              "title": "Extension SDK: authoring & configuration",
+              "description": "The MCP registration shape, per-tool discovery/parse contracts and url_patterns, the search-provider config, external-source kinds."
+            },
+            {
+              "id": "sdk-examples",
+              "file": "dev/sdk/examples-and-use-cases.md",
+              "title": "Extension SDK: examples & use cases",
+              "description": "Five recipes: a discovery tool from the family template, a site parser, a catalog search provider, an RSS/YouTube source, git distribution."
+            },
+            {
+              "id": "sdk-security",
+              "file": "dev/sdk/security-and-gotchas.md",
+              "title": "Extension SDK: security & gotchas",
+              "description": "The T3 perimeter disclosure verbatim and what it means, keyring sealing, the SSRF posture, suggestions-never-auto-import."
+            },
+            {
+              "id": "sdk-reference",
+              "file": "dev/sdk/reference.md",
+              "title": "Extension SDK: reference",
+              "description": "The vendored trio's API, error taxonomy and its charter projection, tool-contract and status vocabularies, endpoints, limits."
+            },
+            {
+              "id": "sdk-versioning",
+              "file": "dev/sdk/versioning-and-migration.md",
+              "title": "Extension SDK: versioning & migration",
+              "description": "extension/v1 policy, append-only vocabularies, the no-shims doctrine, and the ADR-0035 sync law."
+            },
+            {
+              "id": "sdk-troubleshooting",
+              "file": "dev/sdk/troubleshooting-and-faq.md",
+              "title": "Extension SDK: developer diagnostics & FAQ",
+              "description": "Every wall-tested failure mode decoded — spawn errors, contract violations, provider taxonomy — plus the FAQ."
             }
           ]
         },

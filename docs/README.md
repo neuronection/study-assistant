@@ -7,7 +7,7 @@ published to the demonstration website's docs section.
 | Audience | Start here | What it covers |
 |---|---|---|
 | **Users** | [user/README.md](user/README.md) | Install, connect AI, courses, library, notes, flashcards, quizzes, exercises, chat, progress, settings, privacy, troubleshooting |
-| **Developers** | [dev/README.md](dev/README.md) | Architecture, workflow, data model, REST API, AI layer, jobs, migrations, frontend, UI conventions, security, deployment, packaging |
+| **Developers** | [dev/README.md](dev/README.md) | Architecture, workflow, data model, REST API, AI layer, jobs, migrations, frontend, UI conventions, security, deployment, packaging, the [Extension SDK](dev/sdk/overview.md) set |
 | **Everyone** | [STATUS.md](STATUS.md) | Single source of truth for what exists and the current phase |
 
 The [root README](https://github.com/neuronection/study-assistant/blob/main/README.md)

@@ -27,7 +27,7 @@ See [Settings reference](settings.md) and [Local AI](local-ai.md).
   only offers vision models; if none are listed, add one under Models).
 - For scans with a poor text layer, re-run extraction and choose OCR explicitly
   from the material's ⋯ menu → **Re-extract**.
-- Very large images are downscaled before OCR (Settings → Search & OCR); raise
+- Very large images are downscaled before OCR (Settings → Tools → Search & OCR); raise
   the long-edge cap if fine detail is being lost.
 
 ## An upload was refused

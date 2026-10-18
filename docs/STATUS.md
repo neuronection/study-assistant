@@ -3014,6 +3014,40 @@ a backend node binding) |
   the discovery contract, and asserts DISCOVER returns its rows (the
   invalid row dropped) + the audit funnel row. Verified live against
   both fastmcp 4.1 and 2.8 servers.
+- 2026-10-18 — **docs(extensions): the Extension SDK doc set — ten
+  chapters at docs/dev/sdk/ (plan 34 wave 5).** The chaptered set per
+  the family taxonomy (`guidelines/extension-docs.md`): Overview
+  (sources/engines on a dual-mode desktop product; connectors vs the
+  content pipeline), Quickstart (register an MCP server modeled on
+  career-connector-template → refresh → declare the discovery contract
+  → DISCOVER uses it — REAL transcript, pipeline pinned by the new
+  real-subprocess e2e wall), Core Concepts (instance model, tool
+  contracts, the vendored-contract discipline, keyring sealing),
+  Installation & Modes internals, Authoring (the MCP registration
+  shape, per-tool contracts + url_patterns, the search-provider config,
+  external-source kinds), five recipes in the four-part frame,
+  Security & Gotchas (the T3 perimeter disclosure VERBATIM + what it
+  means, token sealing, SSRF posture, suggestions-never-auto-import),
+  Reference (the vendored trio's API, error taxonomy → charter codes
+  projection, tool-contract + status vocabularies, endpoints, limits),
+  Versioning & Migration (the ADR-0035 sync law), Troubleshooting & FAQ
+  (user + dev pages). Four audience-tagged user pages
+  (add-a-search-provider, add-an-mcp-connector incl. the disclosure
+  box explained, manage-web-sources, extension-troubleshooting) with
+  labels verified against the frontend locale keys; the product
+  docs-tree lists the set + the new pages (career's both-trees
+  precedent). The set's tree validates in-repo
+  (`backend/tests/test_extension_docs_tree.py`: vendored
+  docs-tree.schema.json + fixtures adopted into the family sync
+  TARGETS + ledger — `--check` clean; audience routing; both-trees
+  listing; T3 disclosure byte-verified against the vendored charter;
+  internal links resolve). Same commit: the truthfulness pass over the
+  pre-plan-28 leftovers (features/exploring/skills/troubleshooting/ai
+  pages re-pointed at the real Tools-tab sections), and
+  architecture.md's extension sections re-point to the set (the fix
+  that made the quickstart's real spawn work rides its own entry
+  above). Backend suite green 1628 (1609 + 18 tree-gate + the new
+  real-spawn e2e), ruff + mypy green; frontend untouched.
 - 2026-10-17 — **refactor(ai): the MCP resource server joins the AI layer
   (plan 32 follow-up — the tightened alignment gate R2).** Phase 9's
   recorded observation closed: `app/mcp_resources.py` did

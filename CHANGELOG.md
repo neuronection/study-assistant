@@ -11,6 +11,28 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (docs — the Extension SDK set)
+- **The extension documentation set lands at `docs/dev/sdk/`** (plan 34
+  wave 5, the last content wave): all ten chapters of the family
+  taxonomy with the `chapters` marker declared, quickstart = register an
+  MCP server (the family template's shape) → refresh → declare the
+  discovery contract → DISCOVER uses it, with a REAL transcript and the
+  CI-pinned pipeline; five recipes in the four-part frame; the T3
+  perimeter disclosure verbatim (byte-verified by the tree gate) in the
+  security chapter and the new
+  [Add an MCP connector](docs/user/add-an-mcp-connector.md) page. Four
+  user pages (`add-a-search-provider`, `add-an-mcp-connector`,
+  `manage-web-sources`, `extension-troubleshooting`) join the user
+  guide; `docs/docs-tree.json` lists the set chapters and the new pages.
+  The set's tree validates in-repo
+  (`backend/tests/test_extension_docs_tree.py` — vendored schema +
+  fixtures via the family sync, audience routing, both-trees listing,
+  verbatim-disclosure + internal-link doc checks). Truthfulness pass
+  over the pre-plan-28 leftovers: every stale `Settings → AI →
+  Integrations/Skills` and `Settings → Search` path in user/dev docs
+  now points at the real Tools-tab sections; `docs/dev/architecture.md`'s
+  extension sections re-point to the set.
+
 ### Fixed (extensions — real MCP spawns)
 - **Every real MCP server spawn raised `TypeError` before the first
   byte of protocol** (plan 34 wave 5 finding): `app/ai/mcp_client.py`

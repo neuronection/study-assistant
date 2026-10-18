@@ -520,7 +520,7 @@ Editing `ocr.page` in Settings changes page OCR; the notes/drawing paths
 **OCR payload efficiency (plan 46, ADR-102)**: every image sent to a vision task
 passes through `app/ocr/imaging.prepare_ocr_image` at the engine boundary — the
 long edge is capped (profile preference `ocr_image_max_edge`: Off / 1024 /
-**1568 default** / 2048 px, edited in Settings → Search & OCR) with a LANCZOS
+**1568 default** / 2048 px, edited in Settings → Tools → Search & OCR) with a LANCZOS
 downscale, then the image is re-encoded as flattened-RGB **WebP q85** (JPEG
 fallback). It applies uniformly to drawings, quiz-answer recognition, uploaded
 images and rasterized PDF pages; stored blobs keep their original quality, and a
@@ -779,7 +779,7 @@ error-based degrade as the safety net (38B/38C, ADR-086/087). **Prompt caching (
 first system block (the invariant prefix) gets an Anthropic `cache_control` ephemeral hint and
 OpenAI's automatic prefix caching is accounted via `input_token_details.cache_read`; the
 `ai_interactions` ledger records `cached_input_tokens` (migration 0037) and discounts cached
-input at 0.1×. **Query embeddings can be disabled** (Settings → Search global preference +
+input at 0.1×. **Query embeddings can be disabled** (Settings → Tools → Search & OCR semantic-search toggle +
 per-chat ✦ toggle in the chat header, migration 0039): when off, chat retrieval is FTS keyword
 search only and the live query-embedding call is skipped (query text stays local). The suite
 runs with sockets blocked (a conftest guard) so no test can touch the network.

@@ -32,11 +32,15 @@ tour below. For the exhaustive list of everything the app does, see the
 | [Today screen and progress](progress.md) | Streaks, goals, scores and diagnostics |
 | [Task activity and retries](activity.md) | Background jobs, failures and retries |
 | [Settings reference](settings.md) | Every settings page explained |
+| [Add a search provider](add-a-search-provider.md) | The web search behind chat research and Discover |
+| [Add an MCP connector](add-an-mcp-connector.md) | External MCP servers as discovery or parser tools |
+| [Manage web sources](manage-web-sources.md) | Feeds, YouTube and site searches that suggest material |
 | [Language](language.md) | English, Ελληνικά, Deutsch |
 | [Printing & PDF export](printing.md) | Print any view, math included |
 | [Backups, trash & restore](backup.md) | Automatic backups, the trash, restoring |
 | [Desktop app](desktop-app.md) | The native window and how it differs from the browser |
 | [Privacy and security](privacy-and-security.md) | Where your data lives and how it is protected |
+| [Extension troubleshooting](extension-troubleshooting.md) | Search providers, web sources, MCP connectors |
 | [Troubleshooting](troubleshooting.md) | Common problems and fixes |
 | [Visual tour](../SCREENSHOTS.md) | The screenshot gallery — every main screen, generated from the demo instance |
 

@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "project": "study-extension-sdk",
+  "title": "Study Assistant extension SDK",
+  "description": "Authoring and operating Study Assistant's extension surface over the family extension charter: the bundled connectors (external sources, discovery, MCP servers), the vendored ADR-0035 web-search trio, per-tool discovery/parse contracts with keyring-sealed secrets, and the T3 MCP instance lifecycle.",
+  "chapters": [
+    "overview",
+    "quickstart",
+    "core-concepts",
+    "installation-and-modes",
+    "authoring-and-configuration",
+    "examples-and-use-cases",
+    "security-and-gotchas",
+    "reference",
+    "versioning-and-migration",
+    "troubleshooting-and-faq"
+  ],
+  "roots": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "description": "What the extension surface is — connectors feeding a dual-mode desktop product's discovery and import pipelines — and when to build an extension instead of a core feature.",
+      "audience": "dev",
+      "file": "overview.md"
+    },
+    {
+      "id": "quickstart",
+      "title": "Quickstart",
+      "description": "Register an MCP server modeled on the family template, refresh to list its real tools, declare the discovery contract, and watch DISCOVER use it — with a real transcript.",
+      "audience": "dev",
+      "file": "quickstart.md"
+    },
+    {
+      "id": "core-concepts",
+      "title": "Core Concepts",
+      "description": "The load-bearing nouns: extension, instance, tool contract, provider, source, suggestion, consent — and the vendored-contract discipline that keeps them honest.",
+      "audience": "dev",
+      "file": "core-concepts.md"
+    },
+    {
+      "id": "installation-and-modes",
+      "title": "Installation & Modes",
+      "description": "Connecting sources and servers in the app: the Tools tab surfaces, the disclosure box, and what enabled means.",
+      "audience": "user",
+      "file": "../../user/add-an-mcp-connector.md",
+      "children": [
+        {
+          "id": "installation-internals",
+          "title": "Install lifecycle internals",
+          "description": "Desktop vs web modes, where preferences and secrets live on disk, and the bundled-catalog steady state.",
+          "audience": "dev",
+          "file": "installation-and-modes.md"
+        },
+        {
+          "id": "add-a-search-provider",
+          "title": "Add a search provider",
+          "description": "Configure the web search behind chat research and discovery — Tavily, SearXNG, Brave, Exa, Serper or Google PSE, keys in the keyring.",
+          "audience": "user",
+          "file": "../../user/add-a-search-provider.md"
+        },
+        {
+          "id": "manage-web-sources",
+          "title": "Manage web sources",
+          "description": "RSS feeds, YouTube channels and playlists, and site-filtered searches that suggest new material on a schedule.",
+          "audience": "user",
+          "file": "../../user/manage-web-sources.md"
+        }
+      ]
+    },
+    {
+      "id": "authoring-and-configuration",
+      "title": "Authoring & Configuration",
+      "description": "The MCP registration shape (transports, per-tool contracts, url_patterns), the web-search provider config, and external-source kinds with their envelope manifests.",
+      "audience": "dev",
+      "file": "authoring-and-configuration.md"
+    },
+    {
+      "id": "examples-and-use-cases",
+      "title": "Examples & Use Cases",
+      "description": "Five complete recipes: a discovery tool from the family template, a parse-contract parser for a site, a catalog-driven search provider, an RSS/YouTube source, and git as the distribution vehicle.",
+      "audience": "dev",
+      "file": "examples-and-use-cases.md"
+    },
+    {
+      "id": "security-and-gotchas",
+      "title": "Security & Gotchas",
+      "description": "The T3 perimeter verbatim and what it means, keyring-sealed tokens, the SSRF posture, and why nothing auto-imports.",
+      "audience": "dev",
+      "file": "security-and-gotchas.md"
+    },
+    {
+      "id": "reference",
+      "title": "Reference",
+      "description": "The vendored trio's API surface, the error taxonomy and its charter projection, tool-contract and status vocabularies, endpoints and limits.",
+      "audience": "dev",
+      "file": "reference.md"
+    },
+    {
+      "id": "versioning-and-migration",
+      "title": "Versioning & Migration",
+      "description": "The extension/v1 envelope policy, append-only vocabularies, and the ADR-0035 sync law: vendored paths change via the dev canonical only.",
+      "audience": "dev",
+      "file": "versioning-and-migration.md"
+    },
+    {
+      "id": "troubleshooting-and-faq",
+      "title": "Troubleshooting & FAQ",
+      "description": "Extension problems decoded: server states, refresh failures, dropped rows, search errors.",
+      "audience": "user",
+      "file": "../../user/extension-troubleshooting.md",
+      "children": [
+        {
+          "id": "troubleshooting-dev",
+          "title": "Developer diagnostics & FAQ",
+          "description": "Every wall-tested failure mode decoded — spawn errors, contract violations, provider taxonomy — plus the real FAQ.",
+          "audience": "dev",
+          "file": "troubleshooting-and-faq.md"
+        }
+      ]
+    }
+  ]
+}

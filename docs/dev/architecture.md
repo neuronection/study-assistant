@@ -57,7 +57,7 @@ without touching app code.
 | `ai/` | Model layer — see [ai.md](ai.md) |
 | `math/` | Deterministic math trust layer — see [math-verification.md](math-verification.md) |
 | `ocr/` | `OcrEngine` interface; `GatewayOcr` routes page images through the `ocr` task (any assigned vision model); `imaging.py` caps the long edge and re-encodes payloads (WebP q85) before any vision call (ADR-102) |
-| `extensions/` | **The extension subsystem home (plan 32 Phase 7, ADR-0040 D24)** — one package for every extension-shaped concern: vendored family contract modules (`contract.py` envelope validator, `polite_http.py` the D5 polite runtime, `conformance.py` the authoring kit — byte-identical to `dev/contracts/` via the sync scripts, mirrored at repo-root `contracts/`), `registry.py` (bundled manifests validated at registration against the vendored envelope schema — throws, never half-runs; declared-capability gates per D3), `errors.py` (the charter 15-code typed error model + the D4 projection from the vendored ADR-0035 `SearchError` taxonomy), `instance_status.py` (the D21 `ok | degraded | failing | stale` + `needs-config` surface, computed without a migration), `search/` (the ADR-0035 vendored trio + the app shell `provider.py` — providers/keys/fallback in `Profile.preferences` — and `discovery.py`), `runtime/` (`mcp_parse.py`, the T3 MCP parse-contract adapter), `mcp_servers.py` (the D19 instance lifecycle over the `mcp.servers` preference rows), and `builtin/` (the bundled connectors `external-sources`, `discovery`, `mcp` — one dir each with the charter-envelope `manifest.json`). `services/search/` (hybrid knowledge retrieval) and the external-source **scheduler** stay in `services/` — orchestration, rule 4 |
+| `extensions/` | **The extension subsystem home (plan 32 Phase 7, ADR-0040 D24)** — one package for every extension-shaped concern: vendored family contract modules (`contract.py` envelope validator, `polite_http.py` the D5 polite runtime, `conformance.py` the authoring kit — byte-identical to `dev/contracts/` via the sync scripts, mirrored at repo-root `contracts/`), `registry.py` (bundled manifests validated at registration against the vendored envelope schema — throws, never half-runs; declared-capability gates per D3), `errors.py` (the charter 15-code typed error model + the D4 projection from the vendored ADR-0035 `SearchError` taxonomy), `instance_status.py` (the D21 `ok \| degraded \| failing \| stale` + `needs-config` surface, computed without a migration), `search/` (the ADR-0035 vendored trio + the app shell `provider.py` — providers/keys/fallback in `Profile.preferences` — and `discovery.py`), `runtime/` (`mcp_parse.py`, the T3 MCP parse-contract adapter), `mcp_servers.py` (the D19 instance lifecycle over the `mcp.servers` preference rows), and `builtin/` (the bundled connectors `external-sources`, `discovery`, `mcp` — one dir each with the charter-envelope `manifest.json`). The full authoring/operating surface — contracts, registration shapes, security posture, reference — is the chaptered **Extension SDK set at [docs/dev/sdk/](sdk/overview.md)** (plan 34 wave 5). `services/search/` (hybrid knowledge retrieval) and the external-source **scheduler** stay in `services/` — orchestration, rule 4 |
 | `search/` | *(moved — see `extensions/`)*: the web-search provider trio, chat SEARCH/FETCH shell and the discovery registry live in `extensions/search/` since plan 32 Phase 7; `services/search/` remains the hybrid FTS/trigram/vector retrieval engine (`GET /search`; hits annotated post-search with `nodes` placements from `material_links`, plan 80-D/ADR-195) |
 | `storage/` | Dialect-aware engine (SQLite WAL/foreign-key/busy-timeout pragmas + sqlite-vec load; PostgreSQL 16 + pgvector in web mode, ADR-0022); content-addressed blob store; FTS sync; vector store |
 | `jobs/` | Claim-based worker **pool** over the `jobs` table (default 4 workers) — durable, crash-safe: failed jobs are recorded + **logged** (structlog `job_failed`), the worker pool continues, **`running` jobs left by a restart are reclaimed as `failed`/interrupted on startup**, and an optional per-job timeout (`job_timeout_sec`) is available; progress via EventBus → WS. **Retry surface (2026-08-27): `api/jobs.py` exposes `GET /jobs` (+`/summary`), `POST /jobs/{id}/retry` and `POST /jobs/retry-failed`; a failed job is retriable iff its type has a registered handler and isn't a chat turn — retry resets status→queued, clears error/stage, wakes the pool**. **Cancellation (54-A, ADR-126): `cancellation.py` + terminal `cancelled` status — cancel-on-purge, cooperative checkpoints, commit-time stale re-checks; `payloads.py` TypedDicts type every enqueue/handler payload (55-C)** |
@@ -100,21 +100,18 @@ without touching app code.
   source into `last_scan_error` and publish on WS `externalsource:{id}`.
 - **Extension subsystem (plan 32 Phase 7, ADR-0040)**: study hosts the charter
   **connector** kind at T0/T1/T3 with the D24 home (`backend/app/extensions/`,
-  vendored artifacts at repo-root `contracts/`). Registration validates every
-  bundled manifest against the vendored envelope schema and throws on an
-  invalid or unhonored-capability declaration; capability use is gated by the
-  registry's declared data (D3), never probed. Bundled connectors:
-  `external-sources` (declares `sync`; the fetch-leg transport honesty lives
-  in its manifest description), `discovery` (declares `chat-tools` with the
-  DISCOVER tool at risk class read-only) and `mcp` (declares `secrets` — the
-  T3 MCP instances). Typed errors follow the charter 15-code model
-  (`extensions/errors.py`); the vendored ADR-0035 `SearchError` taxonomy maps
-  onto it app-side (the D4 projection — the trio itself stays byte-identical).
-  MCP servers surface as D19 instances: `GET /mcp/servers` rows carry the
-  family status vocabulary (`ok | degraded | failing | stale` + `needs-config`,
-  computed without a migration) and the declared `discovery | parse` tool
-  contracts; `GET /mcp/charter` serves the T3 perimeter disclosure verbatim
-  from the vendored charter for the settings surface. Sync orchestration (the
+  vendored artifacts at repo-root `contracts/`) — three bundled connectors
+  (`external-sources` declaring `sync`, `discovery` declaring `chat-tools`
+  with the read-only DISCOVER tool, `mcp` declaring `secrets` for the T3
+  MCP instances), capability use gated by registry-declared data (D3), the
+  charter typed-error model with the D4 projection from the vendored
+  SearchError taxonomy, and MCP servers surfacing as D19 instances (family
+  status vocabulary + declared `discovery | parse` tool contracts, computed
+  without a migration; `GET /mcp/charter` serves the T3 perimeter
+  disclosure verbatim). The complete surface — instance lifecycle, tool
+  contracts, keyring sealing, security posture, reference tables — is
+  documented as the chaptered Extension SDK set:
+  **[docs/dev/sdk/](sdk/overview.md)**. Sync orchestration (the
   external-source scheduler), persistence shapes and the AI-layer MCP client
   (`app/ai/mcp_client.py`) stay exactly where they were.
 - **WebSocket**: `/ws` with subscribe/unsubscribe/publish/ping frames; the backend

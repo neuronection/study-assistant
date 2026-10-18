@@ -248,7 +248,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   interactive practice
 - ✅ **Custom MCP connectors (plan 73-G, ADR-170, 2026-09-16)**: bring your
   own source. Register an external MCP server (stdio, Streamable HTTP or
-  SSE — auth tokens in the OS keyring) in **Settings → AI →
+  SSE — auth tokens in the OS keyring) in **Settings → Tools →
   Integrations**, refresh to list its tools, and assign each tool a
   contract: **Discovery** tools appear as providers in the Discover dialog
   and behind chat DISCOVER; **Parser** tools (keyed by a URL pattern like
@@ -282,7 +282,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   toggle, manual **Scan now**, honest error badges (a dead feed shows its
   last error), overlap guard so slow scans never stack, and untrusted
   feed/yt-dlp metadata is HTML-stripped and http(s)-validated before
-  storage. Settings → AI → Integrations (the former MCP tab) hosts the
+  storage. Settings → Tools → Web sources hosts the
   **Web sources** card with add/edit dialog (kind, URL, label, course,
   interval, per-kind options); sources are course-owned config that rides
   `sa-course/v2` bundles with fresh cursors on import
@@ -341,9 +341,10 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   instead of extraction views. Per-course dedupe is database-enforced on a
   normalized URL (`youtu.be/x` ≡ `youtube.com/watch?v=x`, tracking params
   stripped) — re-attaching the same link surfaces the existing material
-- ✅ **Web research tools (plan 52-D, ADR-136)**: a configurable web search
-  provider (Settings → AI → Providers → Web search; Tavily-compatible or SearXNG,
-  API key in the keyring) unlocks the tutor's **SEARCH** (2/turn) and **FETCH**
+- ✅ **Web research tools (plan 52-D, ADR-136)**: configurable web search
+  providers (Settings → Tools → Web search — an ordered list of Tavily,
+  SearXNG, Brave, Exa, Serper or Google PSE rows, API keys in the keyring,
+  the first enabled provider that answers wins) unlock the tutor's **SEARCH** (2/turn) and **FETCH**
   (1/turn) tools — results render as source-domain chips, retrieved content is
   never stored, and an advisory contract nudges citation when search was used.
   Genesis gains a **Ground the outline in web sources** toggle; grounded
@@ -801,7 +802,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
 - ✅ **Browse your data in chat (plan 36)**: the tutor can list your courses and browse a
   node's quizzes, exercises and notes (`COURSES` / `NODE_OVERVIEW` / `NODE_QUIZZES` /
   `NODE_EXERCISES` / `NODE_NOTES`), read-only — the same tools external agents get via the
-  MCP server (documented under Settings → AI → Integrations)
+  MCP server (documented under Settings → Tools → Integrations; see
+  [Add an MCP connector](add-an-mcp-connector.md))
 - ✅ **Attach menu (+)**: reference courses, materials, notes, quizzes,
   exercises, **course-tree nodes** (plan 72-F — flattened tree with
   summary/breadcrumb meta; picks send `kind:'node'` attachments the tutor can
@@ -980,7 +982,7 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   active skill version once per ingest job and threads it as the system
   prompt (byte-identical to the previous hardcoded constant; falling back to
   that constant when the skill row is missing). Editing the skill in
-  Settings → AI → Skills immediately changes page OCR (it is a normal versioned
+  Settings → Tools → Skills immediately changes page OCR (it is a normal versioned
   skill now — the duplicate constant in `gateway_ocr.py` is gone, one source).
   The document title rides along as page context
   (`Transcribe this page. Document: {title}`) so short pages (captions,
