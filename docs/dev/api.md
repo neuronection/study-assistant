@@ -29,6 +29,7 @@ background work.
 | Materials | `materials`, `blobs_router` | Upload, detail, extraction versions, drawings, blob serving |
 | Search | `search` | Hybrid search hits with node placements |
 | Discovery | `discovery`, `external_sources`, `mcp_servers` | Provider search, external sources, MCP connectors |
+| Extensions | `extensions` (`/extensions/{id}/documentation`) | Per-extension docs surface: the bundle's docs tree + markdown pages (plan 34 wave 8) |
 | Library | `folders`, `sources`, `fs` | Folders, linked sources, filesystem browsing |
 | Courses | `courses` | Courses, tree nodes, tree operations |
 | Chat | `chat` | Sessions, turns, proposals, tools |

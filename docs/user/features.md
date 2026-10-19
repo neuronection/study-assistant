@@ -246,6 +246,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   document reads exactly as before (problems + answers section), and the
   structured items are stored in the material's provenance for future
   interactive practice
+- ✅ **Per-extension documentation (plan 34 wave 8, 2026-10-19)**: every
+  bundled connector now explains itself in-app. The **Web sources**,
+  **Discovery** and **Connectors** cards carry a **Docs** action opening a
+  documentation dialog with a sidebar (Overview / Setup / Usage /
+  Troubleshooting — and Security for MCP servers, including the
+  external-process disclosure verbatim), so the connectors' behavior,
+  limits and sharp edges are readable where you configure them
 - ✅ **Custom MCP connectors (plan 73-G, ADR-170, 2026-09-16)**: bring your
   own source. Register an external MCP server (stdio, Streamable HTTP or
   SSE — auth tokens in the OS keyring) in **Settings → Tools →

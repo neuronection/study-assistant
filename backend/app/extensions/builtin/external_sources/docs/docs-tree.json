@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "category": "overview",
+      "items": [
+        {
+          "id": "overview",
+          "file": "overview.md",
+          "title": "Overview",
+          "description": "What the external web sources connector is, the four source kinds, and when to use it.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "setup",
+      "items": [
+        {
+          "id": "setup",
+          "file": "setup.md",
+          "title": "Setup",
+          "description": "Adding an RSS, YouTube or site-search source, scan intervals and per-source options.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "usage",
+      "items": [
+        {
+          "id": "usage",
+          "file": "usage.md",
+          "title": "Usage",
+          "description": "How scans run, what lands as a suggestion, and how the seen-cursor avoids duplicates.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "troubleshooting",
+      "items": [
+        {
+          "id": "troubleshooting",
+          "file": "troubleshooting.md",
+          "title": "Troubleshooting",
+          "description": "Symptom → cause → fix for failed scans, empty results and wrong-kind suggestions.",
+          "audience": "user"
+        }
+      ]
+    }
+  ]
+}

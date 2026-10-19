@@ -1824,6 +1824,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/extensions/{extension_id}/documentation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Extension Documentation
+         * @description The per-extension documentation surface (plan 34 wave 8 — the
+         *     extensionDocsTree form): tree + markdown, opening on the landing
+         *     page (§10.4). Only registry-known bundles serve; the requested file
+         *     must be a docs-tree-listed page (basename-checked, resolved inside
+         *     the bundle's docs/ dir); raw HTML is neutralized fence-aware (§10.7).
+         */
+        get: operations["get_extension_documentation_api_v1_extensions__extension_id__documentation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/external-sources": {
         parameters: {
             query?: never;
@@ -5909,6 +5933,15 @@ export interface components {
         ExerciseRename: {
             /** Title */
             title: string;
+        };
+        /** ExtensionDocsOut */
+        ExtensionDocsOut: {
+            /** Markdown */
+            markdown: string;
+            /** Tree */
+            tree?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ExternalSourceIn */
         ExternalSourceIn: {
@@ -13469,6 +13502,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_extension_documentation_api_v1_extensions__extension_id__documentation_get: {
+        parameters: {
+            query?: {
+                file?: string | null;
+            };
+            header?: never;
+            path: {
+                extension_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtensionDocsOut"];
                 };
             };
             /** @description Validation Error */

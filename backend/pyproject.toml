@@ -112,7 +112,11 @@ exclude = ["app/ai/providers/presets_data.py"]
 
 [tool.mypy]
 strict = true
-exclude = ["^dist/"]
+# The vendored extension-contract canonical (backend/app/extensions/contract.py)
+# is byte-identical to dev/contracts/contract.py — never edited in-repo, and
+# mypy-strict compliance is the dev canonical's duty (career carries the same
+# exclusion; the unification wave's sync introduced strict-mode findings here).
+exclude = ["^dist/", "app/extensions/contract.py"]
 
 [[tool.mypy.overrides]]
 module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]

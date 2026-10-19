@@ -103,6 +103,7 @@ class ExtensionRegistry:
             )
             if err is not None:
                 raise ValueError(f"bundled extension {ext_id!r} manifest invalid: {err}")
+            self._validate_docs_binding(ext_id, manifest)
             undeclared = [cap for cap in manifest["capabilities"] if cap not in honored]
             if undeclared:
                 raise ValueError(
@@ -111,6 +112,38 @@ class ExtensionRegistry:
                 )
             registered[ext_id] = manifest
         self._manifests = registered
+
+    def _validate_docs_binding(self, ext_id: str, manifest: dict[str, Any]) -> None:
+        """Per-extension docs binding (plan 34 §10.5): a manifest carrying
+        the ``docs`` pointer promises a tree that exists beside it and
+        validates — a broken promise is a registration-time throw exactly
+        like an invalid manifest (the extension never half-runs)."""
+        from app.extensions import docs as ext_docs
+
+        pointer = manifest.get("docs")
+        if pointer is None:
+            return
+        if pointer != ext_docs.DOCS_POINTER:
+            raise ValueError(
+                f"bundled extension {ext_id!r} docs pointer must be "
+                f"{ext_docs.DOCS_POINTER!r}, got {pointer!r}"
+            )
+        docs_dir = _base_path() / dir_of(ext_id) / "docs"
+        try:
+            tree = ext_docs.load_tree(docs_dir)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                f"bundled extension {ext_id!r} points at {ext_docs.DOCS_POINTER} "
+                f"but the tree is unreadable ({exc})"
+            ) from exc
+        if tree is None:
+            raise ValueError(
+                f"bundled extension {ext_id!r} points at {ext_docs.DOCS_POINTER} "
+                "but the tree does not exist"
+            )
+        tree_err = ext_docs.validate_tree(tree, docs_dir)
+        if tree_err is not None:
+            raise ValueError(f"bundled extension {ext_id!r} docs tree invalid: {tree_err}")
 
     def _read_manifest(self, ext_id: str) -> dict[str, Any]:
         manifest_path = _base_path() / dir_of(ext_id) / "manifest.json"
@@ -138,6 +171,10 @@ class ExtensionRegistry:
 
     def capabilities(self, extension_id: str) -> list[str]:
         return list((self._manifests.get(extension_id) or {}).get("capabilities") or [])
+
+    def base_dir(self, extension_id: str) -> Path:
+        """Absolute path of a bundled extension's directory (docs, assets)."""
+        return _base_path() / dir_of(extension_id)
 
 
 def t3_perimeter_disclosure() -> str:

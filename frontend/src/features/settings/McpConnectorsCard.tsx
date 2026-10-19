@@ -32,6 +32,7 @@ import {
   type McpServerToolInfo,
 } from '@/lib/api'
 import { mcpGroup, mcpInstanceMetadata } from './mcpIntegrationViews'
+import { ExtensionDocsButton } from './ExtensionDocsButton'
 
 const CONTRACTS = ['none', 'discovery', 'parse'] as const
 
@@ -519,7 +520,12 @@ export function McpConnectorsCard() {
   return (
     <Card data-testid="mcp-connectors-card">
       <CardHeader>
-        <CardTitle className="text-sm">{t('mcpConnectors.title')}</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2">
+          {t('mcpConnectors.title')}
+          <span className="ml-auto">
+            <ExtensionDocsButton extensionId="mcp" />
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-muted-foreground text-xs">{t('mcpConnectors.hint')}</p>

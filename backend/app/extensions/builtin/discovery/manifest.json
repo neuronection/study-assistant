@@ -10,6 +10,7 @@
   "categories": [
     "search"
   ],
+  "docs": "docs/docs-tree.json",
   "capabilities": [
     "chat-tools"
   ],

@@ -23,6 +23,7 @@ import {
   type ExternalSourceKind,
   type ExternalSourceRow,
 } from '@/lib/api'
+import { ExtensionDocsButton } from './ExtensionDocsButton'
 
 const KINDS: ExternalSourceKind[] = [
   'rss',
@@ -337,7 +338,12 @@ export function WebSourcesCard() {
   return (
     <Card data-testid="web-sources-card">
       <CardHeader>
-        <CardTitle className="text-sm">{t('webSources.title')}</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2">
+          {t('webSources.title')}
+          <span className="ml-auto">
+            <ExtensionDocsButton extensionId="external-sources" />
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-muted-foreground text-xs">{t('webSources.hint')}</p>

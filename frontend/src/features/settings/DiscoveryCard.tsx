@@ -11,6 +11,7 @@ import {
   updateProfilePreferences,
   type DiscoverySitePreset,
 } from '@/lib/api'
+import { ExtensionDocsButton } from './ExtensionDocsButton'
 
 const DISCOVERY_KINDS = ['video', 'course', 'article', 'exercise', 'other'] as const
 
@@ -85,7 +86,12 @@ export function DiscoveryCard() {
   return (
     <Card data-testid="discovery-card">
       <CardHeader>
-        <CardTitle className="text-sm">{t('settings.discoveryTitle')}</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2">
+          {t('settings.discoveryTitle')}
+          <span className="ml-auto">
+            <ExtensionDocsButton extensionId="discovery" />
+          </span>
+        </CardTitle>
         <CardDescription>{t('settings.discoveryDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

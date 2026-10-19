@@ -2847,5 +2847,17 @@
     "lastSuccess": "last success",
     "failures": "consecutive failures",
     "needsSecret": "needs secret"
+  },
+  "extensionDocs": {
+    "title": "Documentation",
+    "open": "Docs",
+    "tree": "Documentation",
+    "empty": "No documentation provided.",
+    "loading": "Loading…",
+    "error": "Failed to load documentation.",
+    "audience": {
+      "user": "For users",
+      "dev": "For developers"
+    }
   }
 }

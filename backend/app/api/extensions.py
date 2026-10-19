@@ -134,6 +134,55 @@ def get_mcp_charter() -> McpCharterOut:
     )
 
 
+class ExtensionDocsOut(BaseModel):
+    markdown: str
+    tree: dict[str, Any] | None = None
+
+
+docs_router = APIRouter(prefix="/extensions", tags=["extensions"])
+
+
+@docs_router.get("/{extension_id}/documentation", response_model=ExtensionDocsOut)
+def get_extension_documentation(extension_id: str, file: str | None = None) -> ExtensionDocsOut:
+    """The per-extension documentation surface (plan 34 wave 8 — the
+    extensionDocsTree form): tree + markdown, opening on the landing
+    page (§10.4). Only registry-known bundles serve; the requested file
+    must be a docs-tree-listed page (basename-checked, resolved inside
+    the bundle's docs/ dir); raw HTML is neutralized fence-aware (§10.7).
+    """
+    import os
+
+    from ..extensions import docs as ext_docs
+    from ..extensions.registry import extension_registry
+
+    if extension_registry.get_manifest(extension_id) is None:
+        raise HTTPException(status_code=404, detail="Extension not found")
+
+    docs_dir = extension_registry.base_dir(extension_id) / "docs"
+    tree = ext_docs.load_tree(docs_dir)
+    if tree is None:
+        return ExtensionDocsOut(
+            markdown=(
+                f"# {extension_id}\n\nNo documentation provided for this extension."
+            )
+        )
+
+    target_file = file or ext_docs.landing_file(tree)
+    markdown_content = ""
+    if target_file:
+        target_file = os.path.basename(target_file)
+        target_file_path = docs_dir / target_file
+        if target_file_path.is_file():
+            markdown_content = ext_docs.strip_raw_html(
+                target_file_path.read_text(encoding="utf-8")
+            )
+        else:
+            markdown_content = (
+                f"# Error\n\nCould not find file {target_file} in docs folder."
+            )
+    return ExtensionDocsOut(markdown=markdown_content, tree=tree)
+
+
 @router.get("", response_model=list[McpServerOut])
 def list_servers(session: Session = Depends(get_session)) -> list[McpServerOut]:
     profile = ensure_default_profile(session)

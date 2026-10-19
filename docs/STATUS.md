@@ -6,6 +6,26 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Plan 34 wave 8 — per-extension documentation lands in study
+(2026-10-19):** the three bundled connectors (`external-sources`,
+`discovery`, `mcp`) carry real `docs/` trees in the closed-category
+`extensionDocsTree` form (overview / setup / usage / troubleshooting;
+mcp adds **security** with the T3 perimeter disclosure verbatim from the
+vendored charter, byte-checked by the suite), bound by the manifest
+`docs` pointer and validated at registration (`extensions/docs.py` +
+the registry binding — a missing or invalid tree throws like an invalid
+manifest, red-checked: missing tree, invalid category slug, duplicate
+`index`, wrong pointer value all covered). The serve seam is
+`GET /api/v1/extensions/{id}/documentation` (tree + markdown, landing
+rule, traversal-safe, fence-aware raw-HTML neutralization); the
+settings Web sources / Discovery / Connectors cards gain a **Docs**
+action rendering the assistant-ui kit's docs dialog (audience badges,
+i18n labels from the tree). Suites green (backend 1655 passed / ruff /
+mypy — the vendored `contract.py` joins the mypy exclude like career's,
+strict-mode findings are the dev canonical's; frontend 188 files /
+1474 tests / lint / tsc / build); the extensions structure probe is
+strict-OK.
+
 **Plan 32 Phase 7 — study converges onto the family extension charter
 (ADR-0040, 2026-10-16):** study adopts the D24 extension-subsystem home
 (`backend/app/extensions/` + repo-root `contracts/` for the vendored

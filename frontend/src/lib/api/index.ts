@@ -641,6 +641,10 @@ export {
   updateExternalSource,
 } from './external-sources'
 
+export type { ExtensionDocs } from './extensions'
+
+export { getExtensionDocumentation } from './extensions'
+
 export type { McpServerRow, McpServerToolInfo, McpCharter } from './mcp-servers'
 
 export {

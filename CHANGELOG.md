@@ -11,6 +11,22 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (per-extension docs — the wave-8 surfaces)
+- **Every bundled connector now documents itself** (plan 34 wave 8): the
+  three builtins (`external-sources`, `discovery`, `mcp`) carry a `docs/`
+  tree (the closed-category `extensionDocsTree` form) with real,
+  code-grounded pages — overview / setup / usage / troubleshooting, and
+  the mcp connector adds **security** with the T3 perimeter disclosure
+  rendered verbatim from the charter (byte-checked by the suite). The
+  manifests bind the trees with the `docs` pointer, and the registry
+  validates the binding at registration — a pointer with a missing or
+  invalid tree throws exactly like an invalid manifest (red-checked).
+- **The docs surface**: `GET /api/v1/extensions/{id}/documentation`
+  (tree + markdown, opens on the landing page, traversal-safe,
+  fence-aware raw-HTML neutralization) and the settings **Docs** action
+  on the Web sources / Discovery / Connectors cards, rendering the kit's
+  docs dialog (sidebar from the tree, audience badges, landing rule).
+
 ### Changed (docs — the Extension SDK set)
 - **The extension documentation set lands at `docs/dev/sdk/`** (plan 34
   wave 5, the last content wave): all ten chapters of the family

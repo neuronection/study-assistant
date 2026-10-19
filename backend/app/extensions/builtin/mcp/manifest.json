@@ -11,6 +11,7 @@
     "developer",
     "search"
   ],
+  "docs": "docs/docs-tree.json",
   "capabilities": [
     "secrets"
   ],

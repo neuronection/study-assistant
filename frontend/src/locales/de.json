@@ -2847,5 +2847,17 @@
     "lastSuccess": "letzter Erfolg",
     "failures": "aufeinanderfolgende Fehler",
     "needsSecret": "braucht Geheimnis"
+  },
+  "extensionDocs": {
+    "title": "Dokumentation",
+    "open": "Doku",
+    "tree": "Dokumentation",
+    "empty": "Keine Dokumentation vorhanden.",
+    "loading": "Wird geladen…",
+    "error": "Dokumentation konnte nicht geladen werden.",
+    "audience": {
+      "user": "Für Nutzer",
+      "dev": "Für Entwickler"
+    }
   }
 }

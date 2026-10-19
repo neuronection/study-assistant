@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "category": "overview",
+      "items": [
+        {
+          "id": "overview",
+          "file": "overview.md",
+          "title": "Overview",
+          "description": "What the mcp connector is, what one instance is, and when to register a server.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "setup",
+      "items": [
+        {
+          "id": "setup",
+          "file": "setup.md",
+          "title": "Setup",
+          "description": "Registering a server: transports, command/URL, sealed token and env slots.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "usage",
+      "items": [
+        {
+          "id": "usage",
+          "file": "usage.md",
+          "title": "Usage",
+          "description": "Refresh, per-tool allowlists and contracts, enable/disable, and what is audited.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "security",
+      "items": [
+        {
+          "id": "security",
+          "file": "security.md",
+          "title": "Security",
+          "description": "The T3 perimeter disclosure verbatim, what the app governs, and what only you govern.",
+          "audience": "user"
+        }
+      ]
+    },
+    {
+      "category": "troubleshooting",
+      "items": [
+        {
+          "id": "troubleshooting",
+          "file": "troubleshooting.md",
+          "title": "Troubleshooting",
+          "description": "Symptom → cause → fix for spawn failures, refresh errors and tool failures.",
+          "audience": "user"
+        }
+      ]
+    }
+  ]
+}

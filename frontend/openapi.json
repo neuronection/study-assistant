@@ -3661,6 +3661,31 @@
         "title": "ExerciseRename",
         "type": "object"
       },
+      "ExtensionDocsOut": {
+        "properties": {
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "tree": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tree"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "ExtensionDocsOut",
+        "type": "object"
+      },
       "ExternalSourceIn": {
         "properties": {
           "course_id": {
@@ -20936,6 +20961,65 @@
         "summary": "Exercise Steps",
         "tags": [
           "exercises"
+        ]
+      }
+    },
+    "/api/v1/extensions/{extension_id}/documentation": {
+      "get": {
+        "description": "The per-extension documentation surface (plan 34 wave 8 \u2014 the\nextensionDocsTree form): tree + markdown, opening on the landing\npage (\u00a710.4). Only registry-known bundles serve; the requested file\nmust be a docs-tree-listed page (basename-checked, resolved inside\nthe bundle's docs/ dir); raw HTML is neutralized fence-aware (\u00a710.7).",
+        "operationId": "get_extension_documentation_api_v1_extensions__extension_id__documentation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "extension_id",
+            "required": true,
+            "schema": {
+              "title": "Extension Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "file",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "File"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionDocsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Extension Documentation",
+        "tags": [
+          "extensions"
         ]
       }
     },
