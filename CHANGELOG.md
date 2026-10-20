@@ -11,6 +11,18 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (extensions — bundled manifest provenance)
+- **The three bundled connectors declared the wrong license.** The
+  envelope manifests of `external-sources`, `discovery` and `mcp`
+  carried `"license": "MIT"`, while Study Assistant itself ships under
+  **Apache-2.0** (repo `LICENSE`, README) — and every sibling host
+  (health / career / desktop) already declares `Apache-2.0` on its
+  bundled manifests. The provenance field is rendered verbatim on the
+  family's extension surfaces (the hub's extension detail pages, the
+  in-app Docs dialog), so the wrong identifier reached visitors.
+  Corrected to `Apache-2.0` in all three manifests — metadata only, no
+  behaviour change.
+
 ### Added (per-extension docs — the wave-8 surfaces)
 - **Every bundled connector now documents itself** (plan 34 wave 8): the
   three builtins (`external-sources`, `discovery`, `mcp`) carry a `docs/`

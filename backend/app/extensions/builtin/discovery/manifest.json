@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "description": "One normalized-result discovery registry over pluggable providers: web (the ADR-0035 search trio), YouTube flat search, site presets, and external MCP servers speaking the discovery contract. Results are suggestions rendered in chat — never auto-imported, never persisted. Provider shapes are the study profile recorded in the charter; MCP legs run out-of-process (T3), rows validated and capped.",
   "author": "Neuronection",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "categories": [
     "search"
   ],

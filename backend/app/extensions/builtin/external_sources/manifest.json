@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "description": "Bundled external web sources (RSS/Atom, YouTube channel/playlist, site-search) polled into the suggestion funnel — never auto-imported, never an LLM call. Every source URL is user-configured, so no fixed domain list scopes a 'net' grant: RSS rides httpx conditional GET, YouTube is a yt-dlp subprocess outside the app's perimeter, site-search rides the search trio.",
   "author": "Neuronection",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "categories": [
     "search"
   ],

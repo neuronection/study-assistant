@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "description": "External MCP servers (T3): each registered server is one instance of this connector — its own transport config, a keyring-sealed token/env slot, a per-tool allowlist with declared contracts (discovery | parse), explicit refresh (never auto-enabled), one audit row per call. Server processes open their own connections outside the app's perimeter (D22); the app governs only what they return.",
   "author": "Neuronection",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "categories": [
     "developer",
     "search"
