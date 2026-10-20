@@ -278,15 +278,20 @@ def refresh_server(
     try:
         discovered = mcp_client.list_tools_sync(build_mcp_config(entry))
     except Exception as error:
-        entry["last_error"] = str(error)[:500]
+        entry["consecutive_failures"] = int(entry.get("consecutive_failures") or 0) + 1
+        entry["last_error"] = "unreachable: MCP refresh failed"
         save_servers(session, profile.id, servers)
         session.commit()
         raise HTTPException(
             status_code=502,
-            detail=f"MCP server failed to refresh: {str(error)[:300]}",
+            detail={
+                "code": "unreachable",
+                "message": "MCP server failed to refresh",
+            },
         ) from error
     merge_refreshed_tools(entry, discovered)
     entry["last_error"] = None
+    entry["consecutive_failures"] = 0
     save_servers(session, profile.id, servers)
     session.commit()
     return _out(entry)

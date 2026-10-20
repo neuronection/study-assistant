@@ -60,6 +60,19 @@ def test_status_degraded_on_last_error() -> None:
     assert surface["consecutive_failures"] == 1
 
 
+def test_status_failing_after_two_consecutive_failures() -> None:
+    surface = instance_status_surface(
+        _server(
+            refreshed_at=NOW.isoformat(),
+            last_error="unreachable: MCP refresh failed",
+            consecutive_failures=2,
+        ),
+        now=NOW,
+    )
+    assert surface["status"] == "failing"
+    assert surface["consecutive_failures"] == 2
+
+
 def test_needs_config_conditions_per_transport() -> None:
     surface = instance_status_surface(_server(command=""), now=NOW)
     assert surface["conditions"] == ["needs-config"]

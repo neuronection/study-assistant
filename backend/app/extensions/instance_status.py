@@ -11,13 +11,12 @@ Every surface that renders an MCP instance's state speaks ONE shape:
   defaulted)
 
 Derivation over the ``mcp.servers`` preference rows (host-profile policy,
-computed without a migration — the rows carry ``enabled``, ``last_error``
-and ``refreshed_at``): a failed refresh is one strike (``degraded``); the
-rows don't count consecutive refresh failures, so ``failing`` needs a
-second consecutive-failure signal study does not track yet. ``stale``
-when the last successful refresh is older than the family window
-(24h — generous; refresh is explicit, so most idle instances render
-``stale``-adjacent ``ok`` only within the window).
+computed without a migration — the rows carry ``enabled``, ``last_error``,
+``consecutive_failures`` and ``refreshed_at``): a failed refresh
+increments the row's counter; one strike is ``degraded``, two or more is
+``failing``. ``stale`` when the last successful refresh is older than the
+family window (24h — generous; refresh is explicit, so most idle instances
+render ``stale``-adjacent ``ok`` only within the window).
 """
 
 from __future__ import annotations
@@ -72,10 +71,15 @@ def instance_status_surface(
 
     last_error = str(server.get("last_error") or "").strip()
     last_success_at = _parse_ts(server.get("refreshed_at"))
+    stored_failures = int(server.get("consecutive_failures") or 0)
 
     if last_error:
-        consecutive_failures = 1
-        status = STATUS_DEGRADED
+        consecutive_failures = max(1, stored_failures)
+        status = (
+            STATUS_FAILING
+            if consecutive_failures >= 2
+            else STATUS_DEGRADED
+        )
     elif last_success_at is None:
         consecutive_failures = 0
         status = STATUS_OK

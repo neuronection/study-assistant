@@ -186,10 +186,13 @@ def test_refresh_failure_is_recorded(
         ).json()
         refreshed = client.post(f"/api/v1/mcp/servers/{created['id']}/refresh")
         assert refreshed.status_code == 502
-        assert "server failed to launch" in refreshed.json()["detail"]
+        detail = refreshed.json()["detail"]
+        assert detail["code"] == "unreachable"
+        assert "server failed to launch" not in refreshed.text
 
         listed = client.get("/api/v1/mcp/servers").json()
-        assert "server failed to launch" in (listed[0]["last_error"] or "")
+        assert listed[0]["last_error"] == "unreachable: MCP refresh failed"
+        assert listed[0]["consecutive_failures"] == 1
 
 
 def test_mcp_discovery_provider_normalizes_and_dedupes(
