@@ -6,6 +6,26 @@ every change (see AGENTS.md).
 **Current phase: public beta** (v0.8.0; installers for Linux and Windows on
 GitHub Releases).
 
+**Next rounds (planned 2026-10-21, plans 81–87 in the family plan index):**
+81 schema baseline & hardening (future-proof foundation — DB-enforced contracts,
+UUID PKs, payload law, squashed single-baseline migration chain) → 82 no-legacy
+code & typed contracts → 83 ledger & docs truth → 84 structure, test gates & eval
+corpus → 85 academic ingest integrations → 86 connected sources → 87 product gap
+closure. Suggested order 81 → 82 → 84 → 83 (interleavable) → 85 → 86 → 87; 81 is
+the gate every later round builds on. ADRs 196–218 reserved.
+
+**Plan 81 — schema baseline & hardening (in progress, 2026-10-21):**
+
+- **A — schema audit & inventory (ADR-199):** `docs/dev/schema-contract.md` is
+  now the guarantee page — the hand-written law (identity, closed sets,
+  temporal, payload, scope/lifecycle) plus a per-table inventory **generated
+  from the models** by `scripts/schema_inventory.py`. The facts metadata cannot
+  express live in `backend/app/domain/schema_contract.py` (closed-set →
+  StrEnum, JSON species, profile-scope path); `tests/test_schema_contract.py`
+  proves every entry names a real table/column, every JSON column is
+  classified, and every table declares its scope. `--check` is a CI drift gate
+  (byte-identical regeneration), so the inventory cannot rot.
+
 **Plan 34 wave 8 — per-extension documentation lands in study
 (2026-10-19):** the three bundled connectors (`external-sources`,
 `discovery`, `mcp`) carry real `docs/` trees in the closed-category

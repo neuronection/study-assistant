@@ -4,6 +4,12 @@ SQLite, WAL mode, foreign keys on, busy-timeout 5 s. Managed by Alembic migratio
 `0001`–`0019`; the app runs migrations on startup. All user-content tables are
 `profile_id`-scoped (no-auth profiles; a default profile is seeded on first run).
 
+The **contract** layer — per-table identity, closed sets and their CHECK twins,
+foreign keys and delete behaviour, JSON species, profile-scope derivation path —
+is generated from the models into
+[schema-contract.md](schema-contract.md) (`scripts/schema_inventory.py --check`
+is a CI gate). This page is the prose narrative; that page is the guarantee.
+
 ## Entity map
 
 ```

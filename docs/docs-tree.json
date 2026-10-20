@@ -282,6 +282,12 @@
               "description": "The SQLite schema as built: entity map, scoping, tables, derived structures and migration notes."
             },
             {
+              "id": "schema-contract",
+              "file": "dev/schema-contract.md",
+              "title": "Schema contract",
+              "description": "What the database guarantees: identity law, closed sets, temporal and payload rules, profile scope, and the generated per-table inventory."
+            },
+            {
               "id": "frontend",
               "file": "dev/frontend.md",
               "title": "Frontend",
