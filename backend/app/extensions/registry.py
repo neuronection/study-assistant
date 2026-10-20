@@ -103,6 +103,11 @@ class ExtensionRegistry:
             )
             if err is not None:
                 raise ValueError(f"bundled extension {ext_id!r} manifest invalid: {err}")
+            problems = contract.manifest_i18n_semantics(manifest)
+            if problems:
+                raise ValueError(
+                    f"bundled extension {ext_id!r} manifest invalid: {'; '.join(problems)}"
+                )
             self._validate_docs_binding(ext_id, manifest)
             undeclared = [cap for cap in manifest["capabilities"] if cap not in honored]
             if undeclared:
