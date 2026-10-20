@@ -100,6 +100,10 @@ class Settings(BaseSettings):
     shell_secret: str | None = None
     cors_origins: str = ""
     fs_roots: str = ""
+    # T3 stdio MCP launch allowlist (plan 37 Phase 6.3): comma-separated
+    # bare commands. Empty = stdio disabled (fail-closed); health's
+    # allowlist is the family reference. No shell, no inline code.
+    mcp_stdio_allowed_commands: str = ""
     config_dir: Path = Field(default_factory=default_config_dir)
     data_dir: Path = Field(default_factory=resolve_data_dir)
     spa_dist: Path | None = None

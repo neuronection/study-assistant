@@ -14,6 +14,8 @@ live in the OS keyring (``app/core/secrets.py``, sealed slots declared
 """
 
 import json
+import os
+import re
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -37,6 +39,68 @@ from .errors import ExtensionError
 TOOL_CONTRACTS = ("none", "discovery", "parse")
 TRANSPORTS = tuple(t.value for t in McpTransport)
 
+_SHELL_META_RE = re.compile(r"[;&|`$<>\n\r\\]")
+_ABS_PATH_RE = re.compile(r"^(/|[A-Za-z]:[\\/]|[.][.][/\\])")
+_INTERPRETER_CODE_FLAGS = {
+    "python": {"-c", "--c"},
+    "python3": {"-c", "--c"},
+    "node": {"-e", "--eval", "-p", "--print", "-pe", "-pd"},
+    "deno": {"-e", "--eval", "eval"},
+    "ruby": {"-e"},
+    "perl": {"-e", "-E"},
+    "bash": {"-c"},
+    "sh": {"-c"},
+    "uvx": set(),
+    "npx": set(),
+}
+
+
+def _allowed_stdio_commands() -> list[str]:
+    from ..core.config import get_settings
+
+    raw = get_settings().mcp_stdio_allowed_commands or ""
+    return [c.strip() for c in raw.split(",") if c.strip()]
+
+
+def _validate_stdio_command(command: str, args: list[str] | None = None) -> str:
+    """The family minimum for T3 stdio launches (plan 37 6.3): bare
+    allowlisted command, argv list only, no shell, no inline code. Empty
+    allowlist = disabled, fail-closed."""
+    if not command or not isinstance(command, str):
+        raise ExtensionError("invalid", "command is required for stdio servers")
+    allowed = _allowed_stdio_commands()
+    if not allowed:
+        raise ExtensionError(
+            "invalid",
+            "STDIO MCP servers are disabled on this instance "
+            "(SA_MCP_STDIO_ALLOWED_COMMANDS is empty); use http/sse transport "
+            "or set the allowlist.",
+        )
+    if _ABS_PATH_RE.match(command.strip()):
+        raise ExtensionError(
+            "invalid",
+            "absolute or path-traversal commands are not allowed; use a bare "
+            f"command from the allowlist: {', '.join(allowed)}",
+        )
+    base = os.path.basename(command.replace("\\", "/"))
+    if base not in allowed:
+        raise ExtensionError(
+            "invalid",
+            f"command '{base}' is not in the STDIO allowlist; allowed: {', '.join(allowed)}",
+        )
+    if _SHELL_META_RE.search(command):
+        raise ExtensionError("invalid", "command contains forbidden shell metacharacters")
+    flags = _INTERPRETER_CODE_FLAGS.get(base, set())
+    for arg in args or []:
+        if not isinstance(arg, str):
+            raise ExtensionError("invalid", "all args must be strings (no shell expansion)")
+        if arg in flags or arg.split("=", 1)[0] in flags:
+            raise ExtensionError(
+                "invalid",
+                f"argument '{arg}' would execute inline code; pass a package/script instead",
+            )
+    return command
+
 
 def _validate_transport_fields(
     transport: str,
@@ -47,7 +111,7 @@ def _validate_transport_fields(
         allowed = ", ".join(TRANSPORTS)
         raise ExtensionError("invalid", f"unknown transport '{transport}' (allowed: {allowed})")
     if transport == McpTransport.STDIO:
-        return command, ""
+        return _validate_stdio_command(command), ""
     clean_url = url.strip()
     if not clean_url.startswith(("http://", "https://")):
         raise ExtensionError("invalid", "a http(s) URL is required for remote servers")
@@ -121,6 +185,8 @@ def create_server(
     clean_command, clean_url = _validate_transport_fields(
         transport, (command or "").strip(), url or ""
     )
+    if transport == McpTransport.STDIO:
+        _validate_stdio_command(clean_command, args or [])
     if not clean_name:
         raise ExtensionError("invalid", "name is required")
     if transport == McpTransport.STDIO and not clean_command:

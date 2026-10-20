@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -507,7 +508,7 @@ FIXTURE_SERVER = Path(__file__).resolve().parent / "fixtures" / "mcp_discovery_s
 
 
 def test_real_stdio_spawn_feeds_discovery_end_to_end(
-    client: TestClient, db_session: Session
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The quickstart wall (plan 34 wave 5): a REAL local stdio subprocess
     (the fixture server speaks study's discovery contract; same spawn path
@@ -520,12 +521,16 @@ def test_real_stdio_spawn_feeds_discovery_end_to_end(
     TypeError on every real spawn (suite monkeypatches hid it)."""
     import sys
 
+    monkeypatch.setenv(
+        "PATH",
+        str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", ""),
+    )
     with client:
         created = client.post(
             "/api/v1/mcp/servers",
             json={
                 "name": "coursehub",
-                "command": sys.executable,
+                "command": Path(sys.executable).name,
                 "args": [str(FIXTURE_SERVER)],
                 "timeout_sec": 30,
             },
@@ -570,3 +575,19 @@ def test_real_stdio_spawn_feeds_discovery_end_to_end(
     )
     assert len(audit_rows) == 1
     assert audit_rows[0].model == "mcp.coursehub.search_courses"
+
+
+def test_stdio_launch_policy_is_allowlisted_and_shell_free(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plan 37 6.3: the family minimum is the only posture — bare
+    allowlisted command, no absolute paths, no inline interpreter code."""
+    with client:
+        monkeypatch.setenv("SA_MCP_STDIO_ALLOWED_COMMANDS", "python3")
+        for payload in (
+            {"name": "bad", "command": "bash"},
+            {"name": "bad", "command": "/usr/bin/python3"},
+            {"name": "bad", "command": "python3", "args": ["-c", "print(1)"]},
+        ):
+            response = client.post("/api/v1/mcp/servers", json=payload)
+            assert response.status_code == 422, (payload, response.text)

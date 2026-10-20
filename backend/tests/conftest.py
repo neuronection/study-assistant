@@ -18,6 +18,9 @@ os.environ["SA_APP_ENV"] = "test"
 # config dir. Every Settings-built-from-env points here instead;
 # fixtures that pass an explicit tmp config_dir override it.
 os.environ.setdefault("SA_CONFIG_DIR", tempfile.mkdtemp(prefix="sa-test-config-"))
+# T3 stdio launches are allowlisted (plan 37 6.3); tests use common
+# interpreter names so the hermetic MCP fixtures can spawn.
+os.environ.setdefault("SA_MCP_STDIO_ALLOWED_COMMANDS", "python,python3,node,uvx,npx")
 
 import fastapi.testclient as fastapi_testclient
 import keyring
