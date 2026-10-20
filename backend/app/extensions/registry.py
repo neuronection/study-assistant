@@ -59,21 +59,39 @@ def _bundled_manifest_schema() -> dict[str, Any]:
         ) from exc
 
 
-def study_honored_capabilities() -> frozenset[str]:
-    """What the study host implements, from the vendored charter."""
+def _charter() -> dict[str, Any]:
     try:
-        charter = cast(dict[str, Any], json.loads(_CHARTER_PATH.read_text(encoding="utf-8")))
+        return cast(dict[str, Any], json.loads(_CHARTER_PATH.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(
             f"extension charter unavailable at {_CHARTER_PATH}: {exc} — "
             "registration fails closed (vendored contract set incomplete)"
         ) from exc
-    for profile in charter["hostProfiles"]["profiles"]:
+
+
+def _profile() -> dict[str, Any]:
+    for profile in _charter()["hostProfiles"]["profiles"]:
         if profile.get("product") == _STUDY_PROFILE_PRODUCT:
-            return frozenset(profile.get("honors") or ())
+            return cast(dict[str, Any], profile)
     raise RuntimeError(
         f"no {product_label()} host profile in the vendored charter — registration fails closed"
     )
+
+
+def study_honored_capabilities() -> frozenset[str]:
+    """What the study host implements, from the vendored charter."""
+    return frozenset(_profile().get("honors") or ())
+
+
+def _docs_tree_schema() -> dict[str, Any]:
+    path = _SCHEMA_PATH.parent / "docs-tree.schema.json"
+    try:
+        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"docs-tree schema unavailable at {path}: {exc} — "
+            "registration fails closed (vendored contract set incomplete)"
+        ) from exc
 
 
 def product_label() -> str:
@@ -90,7 +108,9 @@ class ExtensionRegistry:
         from app.extensions import contract
 
         schema = _bundled_manifest_schema()
-        honored = study_honored_capabilities()
+        charter = _charter()
+        profile = _profile()
+        docs_schema = _docs_tree_schema()
         source = (
             {ext_id: self._read_manifest(ext_id) for ext_id in BUNDLED_IDS}
             if manifests is None
@@ -98,57 +118,23 @@ class ExtensionRegistry:
         )
         registered: dict[str, dict[str, Any]] = {}
         for ext_id, manifest in source.items():
-            err = contract.validate(
-                schema["$defs"]["bundledManifest"], manifest, schema
+            problems = contract.validate_registration(
+                manifest,
+                schema=schema,
+                bundled=True,
+                profile=profile,
+                docs_root=_base_path() / dir_of(ext_id)
+                if ext_id in _BUNDLED_DIRS
+                else None,
+                docs_schema=docs_schema,
+                charter=charter,
             )
-            if err is not None:
-                raise ValueError(f"bundled extension {ext_id!r} manifest invalid: {err}")
-            problems = contract.manifest_i18n_semantics(manifest)
             if problems:
                 raise ValueError(
                     f"bundled extension {ext_id!r} manifest invalid: {'; '.join(problems)}"
                 )
-            self._validate_docs_binding(ext_id, manifest)
-            undeclared = [cap for cap in manifest["capabilities"] if cap not in honored]
-            if undeclared:
-                raise ValueError(
-                    f"bundled extension {ext_id!r} declares capabilities the study "
-                    f"host profile does not honor: {', '.join(undeclared)}"
-                )
             registered[ext_id] = manifest
         self._manifests = registered
-
-    def _validate_docs_binding(self, ext_id: str, manifest: dict[str, Any]) -> None:
-        """Per-extension docs binding (plan 34 §10.5): a manifest carrying
-        the ``docs`` pointer promises a tree that exists beside it and
-        validates — a broken promise is a registration-time throw exactly
-        like an invalid manifest (the extension never half-runs)."""
-        from app.extensions import docs as ext_docs
-
-        pointer = manifest.get("docs")
-        if pointer is None:
-            return
-        if pointer != ext_docs.DOCS_POINTER:
-            raise ValueError(
-                f"bundled extension {ext_id!r} docs pointer must be "
-                f"{ext_docs.DOCS_POINTER!r}, got {pointer!r}"
-            )
-        docs_dir = _base_path() / dir_of(ext_id) / "docs"
-        try:
-            tree = ext_docs.load_tree(docs_dir)
-        except (OSError, json.JSONDecodeError) as exc:
-            raise ValueError(
-                f"bundled extension {ext_id!r} points at {ext_docs.DOCS_POINTER} "
-                f"but the tree is unreadable ({exc})"
-            ) from exc
-        if tree is None:
-            raise ValueError(
-                f"bundled extension {ext_id!r} points at {ext_docs.DOCS_POINTER} "
-                "but the tree does not exist"
-            )
-        tree_err = ext_docs.validate_tree(tree, docs_dir)
-        if tree_err is not None:
-            raise ValueError(f"bundled extension {ext_id!r} docs tree invalid: {tree_err}")
 
     def _read_manifest(self, ext_id: str) -> dict[str, Any]:
         manifest_path = _base_path() / dir_of(ext_id) / "manifest.json"
