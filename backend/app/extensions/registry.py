@@ -171,8 +171,28 @@ class ExtensionRegistry:
 def t3_perimeter_disclosure() -> str:
     """The charter's T3 perimeter consent copy — rendered VERBATIM (D22;
     paraphrasing it away is a conformance failure)."""
-    charter = cast(dict[str, Any], json.loads(_CHARTER_PATH.read_text(encoding="utf-8")))
+    charter = _charter()
     return str(charter["consent"]["t3PerimeterDisclosure"])
+
+
+def host_profile_view() -> dict[str, Any]:
+    """The author-visible host profile (plan 37 §6.2.4): what this host
+    hosts and honors, with the sandbox posture stated as data."""
+    profile = _profile()
+    return {
+        "product": profile.get("product"),
+        "class": profile.get("class"),
+        "kinds": profile.get("kinds", []),
+        "tiers": profile.get("tiers", []),
+        "honors": profile.get("honors", []),
+        "honorsByTier": profile.get("honorsByTier", {}),
+        "honorsByKind": profile.get("honorsByKind", {}),
+        "surfaces": profile.get("surfaces"),
+        "apiVersion": {"envelope": "extension/v1", "connectorKindVersion": 1},
+        "degradeRules": _charter()["surfaces"]["degradeRules"],
+        "t2Isolation": "none",
+        "disclosures": ["t3PerimeterDisclosure"],
+    }
 
 
 extension_registry = ExtensionRegistry()

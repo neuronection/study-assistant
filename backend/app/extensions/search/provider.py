@@ -9,13 +9,22 @@ persistence in Profile.preferences (`search_providers[]`), per-provider
 keyring slots, the lazy migration from the pre-plan-28 single-provider
 preference, and the ordered-fallback search used by chat tools, discovery,
 genesis and external sources.
+
+The web-search provider wire shapes (ADR-0035) are the vendored module's;
+this file stays the product shell. FETCH is app-side policy too, but its
+egress crosses the family polite perimeter
+(:mod:`app.extensions.search.polite_fetch` — SSRF guard, resolve-then-
+connect pinning, per-hop revalidation, size cap, conditional GET; plan 37
+§8 / 4.8) instead of raw httpx.
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy.orm import Session
@@ -23,6 +32,8 @@ from sqlalchemy.orm import Session
 from ...core.secrets import delete_secret, get_secret, set_secret
 from ...domain.models import Profile
 from ...pipelines.convert import html_to_markdown
+from ..polite_http import HostRateLimiter, PoliteHttpError, Resolver
+from .polite_fetch import FETCH_MAX_BYTES, Sleep, fetch_document
 from .providers_contract import (
     PROVIDER_TYPES,
     SearchError,
@@ -30,6 +41,8 @@ from .providers_contract import (
     perform_search,
     probe_provider,
 )
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "PROVIDER_TYPES",
@@ -269,33 +282,91 @@ def search_with_fallback(
 
 
 # ---------------------------------------------------------------------------
-# FETCH stays app-side (markdown conversion is product policy)
+# FETCH stays app-side (markdown conversion is product policy) — but the
+# egress crosses the family polite perimeter (plan 37 §8 / 4.8).
 # ---------------------------------------------------------------------------
+
+# Charter typed code → ADR-0035 SearchError kind (the D4 projection's
+# inverse at this boundary; the SearchError taxonomy stays untouched).
+_FETCH_KIND_BY_CODE: dict[str, str] = {
+    "auth": "auth",
+    "rate-limited": "rate_limit",
+    "unreachable": "unreachable",
+    "net-denied": "bad_request",
+}
+
+
+def _fetch_search_error(error: PoliteHttpError, url: str) -> SearchError:
+    """Project a charter error onto the ADR-0035 kind, sanitizing the one
+    detail that can carry a raw transport exception string (F22)."""
+    if error.code == "unreachable":
+        try:
+            host = urlparse(url).hostname or url
+        except ValueError:  # a malformed URL must not re-raise here
+            host = url
+        message = f"fetch failed: could not reach {host}"
+        logger.warning("fetch unreachable host=%s detail=%s", host, error.detail)
+    else:
+        message = f"fetch failed: {error.detail}"
+    return SearchError(
+        _FETCH_KIND_BY_CODE.get(error.code, "protocol"),
+        message,
+        http_status=error.status,
+    )
+
 
 def perform_fetch(
     url: str,
     *,
     transport: httpx.BaseTransport | None = None,
     max_chars: int = FETCH_MAX_CHARS,
+    state: Mapping[str, object] | None = None,
+    resolver: Resolver | None = None,
+    rate: HostRateLimiter | None = None,
+    sleep: Sleep | None = None,
+    clock: Callable[[], float] | None = None,
+    rng: Callable[[float], float] | None = None,
 ) -> str:
+    """Fetch one URL through the guarded runtime and return markdown/text.
+
+    ``transport`` / ``resolver`` / ``rate`` / ``sleep`` / ``clock`` /
+    ``rng`` are the offline test seams (``httpx.MockTransport`` + a
+    deterministic resolver/clock — no network in tests); production calls
+    pass only the URL. ``state`` is the conditional-GET cursor
+    (``{etag, last_modified}``); a ``304`` is reported as a typed
+    ``protocol`` error because a fetch has no cached body to fall back on.
+    """
     url = url.strip()
     if not url.startswith(("http://", "https://")):
         raise SearchError("bad_request", "FETCH expects an http(s) URL")
     try:
-        with httpx.Client(
-            timeout=httpx.Timeout(1.5, read=10.0, write=10.0, pool=1.5),
+        result = fetch_document(
+            url,
             transport=transport,
-            follow_redirects=True,
-        ) as client:
-            response = client.get(url)
-    except httpx.HTTPError as error:
-        raise SearchError("unreachable", f"fetch failed: {error}") from error
-    if response.status_code != 200:
-        raise SearchError(
-            "protocol", f"fetch returned {response.status_code}", http_status=response.status_code
+            state=state,
+            resolver=resolver,
+            rate=rate,
+            sleep=sleep,
+            clock=clock,
+            rng=rng,
         )
-    content_type = response.headers.get("content-type", "")
-    text = html_to_markdown(response.text) if "html" in content_type else response.text
+    except PoliteHttpError as error:
+        raise _fetch_search_error(error, url) from error
+    if result.not_modified:
+        raise SearchError(
+            "protocol", "fetch returned 304 (not modified)", http_status=304
+        )
+    if result.status != 200:
+        raise SearchError(
+            "protocol", f"fetch returned {result.status}", http_status=result.status
+        )
+    if result.truncated:
+        raise SearchError(
+            "protocol",
+            f"fetch response exceeded the {FETCH_MAX_BYTES // (1024 * 1024)} MiB size cap",
+            http_status=result.status,
+        )
+    text = html_to_markdown(result.text) if "html" in result.content_type else result.text
     text = text.strip()
     if len(text) > max_chars:
         text = text[:max_chars] + "…"

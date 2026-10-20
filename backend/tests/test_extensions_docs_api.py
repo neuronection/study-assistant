@@ -77,7 +77,7 @@ def test_docs_pointer_without_tree_throws_at_registration(
 ) -> None:
     manifest = _manifest_copy("external-sources")
     registry = _registry_with_tmp_bundle(tmp_path, monkeypatch, tree=None)
-    with pytest.raises(ValueError, match="tree does not exist"):
+    with pytest.raises(ValueError, match="tree is unreadable"):
         registry.register_builtins(
             manifests={"external-sources": manifest, "discovery": {}, "mcp": {}}
         )
@@ -91,7 +91,7 @@ def test_docs_pointer_with_invalid_tree_throws_at_registration(
     tree = json.loads((docs_dir / "docs-tree.json").read_text(encoding="utf-8"))
     tree["categories"][0]["category"] = "getting-started"
     registry = _registry_with_tmp_bundle(tmp_path, monkeypatch, tree=tree)
-    with pytest.raises(ValueError, match="docs tree invalid"):
+    with pytest.raises(ValueError, match="\\$\\.docs:"):
         registry.register_builtins(
             manifests={"external-sources": manifest, "discovery": {}, "mcp": {}}
         )

@@ -142,6 +142,14 @@ class ExtensionDocsOut(BaseModel):
 docs_router = APIRouter(prefix="/extensions", tags=["extensions"])
 
 
+@docs_router.get("/host-profile")
+def get_host_profile() -> dict[str, Any]:
+    """The author-visible host profile (plan 37 §6.2.4)."""
+    from ..extensions.registry import host_profile_view
+
+    return host_profile_view()
+
+
 @docs_router.get("/{extension_id}/documentation", response_model=ExtensionDocsOut)
 def get_extension_documentation(extension_id: str, file: str | None = None) -> ExtensionDocsOut:
     """The per-extension documentation surface (plan 34 wave 8 — the

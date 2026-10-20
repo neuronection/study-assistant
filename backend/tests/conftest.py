@@ -115,6 +115,21 @@ def _no_network() -> None:
     _block_network()
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_fetch_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``perform_fetch``'s guard resolver never touches DNS in tests.
+
+    The production path resolves before it connects (plan 37 §8 / 4.8);
+    the suite pins that lookup to a public TEST-NET-free address unless a
+    test passes ``resolver=`` itself. ``socket.getaddrinfo`` is not covered
+    by ``_no_network`` (it only blocks connects), so without this a test
+    would silently resolve on the wire.
+    """
+    from app.extensions.search import polite_fetch
+
+    monkeypatch.setattr(polite_fetch, "system_resolver", lambda host: ["93.184.216.34"])
+
+
 @pytest.fixture(scope="session")
 def migrated_db_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
     template = tmp_path_factory.getbasetemp().parent / "migrated_template.db"

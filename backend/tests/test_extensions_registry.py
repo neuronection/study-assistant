@@ -64,7 +64,7 @@ def test_registration_throws_on_invalid_manifest() -> None:
 def test_registration_throws_on_unhonored_capability() -> None:
     manifest = _valid_manifest_copy()
     manifest["capabilities"] = ["ui:custom-code"]
-    with pytest.raises(ValueError, match="does not honor"):
+    with pytest.raises(ValueError, match="not honored by this host profile"):
         ExtensionRegistry().register_builtins(
             manifests={"external-sources": manifest, "discovery": {}, "mcp": {}}
         )
