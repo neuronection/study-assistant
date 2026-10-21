@@ -102,6 +102,11 @@ export default defineConfig({
     ],
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
+    server: {
+      deps: {
+        inline: ['@neuronection/assistant-ui'],
+      },
+    },
     testTimeout: 15_000,
     hookTimeout: 15_000,
   },

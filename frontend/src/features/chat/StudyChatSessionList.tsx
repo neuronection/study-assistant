@@ -20,7 +20,7 @@ import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { exportSessionAsMarkdown } from '@/features/chat/exportSessionMarkdown'
 import { useConfirm } from '@/lib/use-confirm'
 
-export function ChatSessionList({
+export function StudyChatSessionList({
   onSelect,
   onSelectSession,
   onNewChat,

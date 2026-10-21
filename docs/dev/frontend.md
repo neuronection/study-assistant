@@ -97,6 +97,23 @@ re-implementing locally. Styling uses `--as-*` tokens and `data-as-*`
 attributes; app identity (brand colors, fonts) lives in
 `frontend/src/theme.css`.
 
+**No app file may shadow a library export** (plan 82 A, ADR-202): the library's
+`audit-usage.mjs` scans `frontend/src` for filenames matching a library
+component and fails on a local copy that does not import from
+`@neuronection/assistant-ui`. Mermaid diagrams render through the library
+`MermaidDiagram` (`components/ui/chat-markdown.ts`); `normalizeMathFences`
+stays app-side in `components/editor/markdownFidelity.ts`, and the editor node
+view (`CaMermaid`) owns its own diagnostic via `validateMermaidSource` (the
+library renderer is presentational). App **hosts** that compose library chat
+surfaces carry a `Study` prefix (`features/chat/StudyChatPanel.tsx`,
+`StudyChatSessionList.tsx`) precisely so the detector keeps firing only on real
+copies.
+
+`vite.config.ts` sets `test.server.deps.inline: ['@neuronection/assistant-ui']`
+so vitest transforms the library graph: without it, `vi.mock('mermaid')` and
+friends cannot intercept dynamic imports made inside a published library chunk
+(the renderer ran for real in jsdom and every mermaid test timed out).
+
 ## Feature layout
 
 ```

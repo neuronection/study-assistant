@@ -47,7 +47,7 @@ import { type GenerateRequest } from '@/features/ai/ProposalCard'
 import { AttachMenu, CHAT_UPLOADS_FOLDER, ATTACH_KIND_ICONS, type PendingAttachment } from '@/features/chat/AttachMenu'
 import { BranchTreeButton } from '@/features/chat/BranchTreeButton'
 import { DrawingDialog, EquationDialog, ScreenshotDialog } from '@/features/chat/ComposerExtras'
-import { ChatSessionList } from '@/features/chat/ChatSessionList'
+import { StudyChatSessionList } from '@/features/chat/StudyChatSessionList'
 import { toolCardProps } from '@/features/chat/tools/registry'
 import { useReasoningOpen } from '@/features/chat/useReasoningOpen'
 import { useStudyChatContext } from '@/features/chat/useStudyChat'
@@ -113,7 +113,7 @@ function AttachChip({
   )
 }
 
-export function ChatPanel({
+export function StudyChatPanel({
   onSessionCreated,
   onSelectSession,
   onNewChat,
@@ -649,7 +649,7 @@ export function ChatPanel({
             }
           >
             <div className="h-[26rem]">
-              <ChatSessionList
+              <StudyChatSessionList
                 onSelect={() => setHistoryClose((current) => current + 1)}
                 onSelectSession={onSelectSession}
                 onNewChat={onNewChat}

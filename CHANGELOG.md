@@ -11,6 +11,19 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (no-legacy sweep — mermaid fork removed, plan 82 A / ADR-202)
+- **Mermaid diagrams render through `@neuronection/assistant-ui`.** The local
+  `components/blocks/MermaidDiagram.tsx` fork is deleted; `BlockRenderer` and
+  the editor's mermaid node view consume the library renderer via
+  `components/ui/chat-markdown.ts`, and the editor keeps its own
+  broken-diagram diagnostic (app logic, not renderer logic).
+- **Chat composition hosts renamed** `StudyChatPanel` / `StudyChatSessionList`
+  so the family usage audit stops flagging legitimate composition as a shadow
+  copy; the app keeps zero local copies of library components.
+- The family `HitlProposalCard` gained the study-promoted extras (body slot,
+  conflict re-apply, conflict note, `reapply` label); study adopts it with the
+  next library release.
+
 ### Changed (schema — payload contract law, plan 81 D / ADR-200)
 - **Known-shape JSON state is typed; canonical content documents are
   versioned.** `chat_proposals` stores the card's target/snapshot as columns

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { MermaidDiagram } from '@/components/blocks/MermaidDiagram'
+import { MermaidDiagram } from '@/components/ui/chat-markdown'
 import { BlockFixPanel } from '@/features/ai/BlockFixPanel'
 import { validateMermaidSource } from '@/lib/blockGate'
 import { repairMermaidSource } from '@/lib/mermaidRepair'
@@ -101,6 +101,19 @@ function MermaidView({ node, updateAttributes, selected, editor }: ReactNodeView
   )
 
   useEffect(() => {
+    let cancelled = false
+    void validateMermaid(source).then((result) => {
+      if (cancelled) {
+        return
+      }
+      setDiagnostic(result.ok ? null : (result.error ?? null))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [source, validateMermaid])
+
+  useEffect(() => {
     if (node.attrs.autofocus !== true) {
       return
     }
@@ -120,11 +133,7 @@ function MermaidView({ node, updateAttributes, selected, editor }: ReactNodeView
           selected && 'ring-primary ring-2'
         )}
       >
-        <MermaidDiagram
-          code={source}
-          onError={setDiagnostic}
-          onSuccess={() => setDiagnostic(null)}
-        />
+        <MermaidDiagram code={source} />
         {diagnostic !== null && editor.isEditable ? (
           <div className="mt-1 flex items-center justify-between gap-2">
             <span className="text-danger text-[11px]">{t('editor.mermaidBroken')}</span>

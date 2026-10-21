@@ -9,7 +9,7 @@ import {
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ChatSessionList } from './ChatSessionList'
+import { StudyChatSessionList } from './StudyChatSessionList'
 import type { ChatSession } from '@/lib/api'
 
 const listChatSessions = vi.fn()
@@ -42,7 +42,7 @@ function renderList(
     component: () => (
       <QueryClientProvider client={client}>
         <div className="h-96 w-72">
-          <ChatSessionList {...props} />
+          <StudyChatSessionList {...props} />
         </div>
       </QueryClientProvider>
     ),
@@ -83,7 +83,7 @@ const SESSIONS = [
   },
 ]
 
-describe('ChatSessionList (library list, app actions)', () => {
+describe('StudyChatSessionList (library list, app actions)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

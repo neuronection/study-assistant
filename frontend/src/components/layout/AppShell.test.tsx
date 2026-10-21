@@ -75,8 +75,8 @@ vi.mock('./CommandPalette', () => ({
   useCommandPaletteOpen: () => ({ open: false, close: vi.fn(), openPalette: vi.fn() }),
 }))
 
-vi.mock('@/features/chat/ChatPanel', () => ({
-  ChatPanel: (props: Record<string, unknown>) => {
+vi.mock('@/features/chat/StudyChatPanel', () => ({
+  StudyChatPanel: (props: Record<string, unknown>) => {
     chatPanelState.props = props
     return null
   },

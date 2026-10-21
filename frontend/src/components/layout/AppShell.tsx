@@ -45,7 +45,7 @@ import { useThemePreference } from '@/components/theme/use-theme-preference'
 import { UserMenu } from '@/components/ui/user-menu'
 import { Popover } from '@/components/ui/popover'
 import { SidebarNav } from '@/components/ui/sidebar-nav'
-import { ChatPanel } from '@/features/chat/ChatPanel'
+import { StudyChatPanel } from '@/features/chat/StudyChatPanel'
 import { StudyChatProvider } from '@/features/chat/useStudyChat'
 import { useActiveChatSession } from '@/features/chat/useChatSession'
 import { useDueCount } from '@/features/review/useDueCount'
@@ -711,7 +711,7 @@ export function AppShell() {
       <FileDock />
       {chatOpen && !rail.chatDeferred ? (
         <StudyChatProvider sessionId={sessionId ?? chatSession?.id ?? null}>
-          <ChatPanel
+          <StudyChatPanel
             layoutWidth={rail.chatWidth ?? undefined}
             onSessionCreated={adoptSidebarSession}
             onSelectSession={adoptSidebarSession}

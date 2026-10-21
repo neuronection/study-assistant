@@ -1,8 +1,8 @@
 import { Outlet, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { ChatPanel } from './ChatPanel'
-import { ChatSessionList } from './ChatSessionList'
+import { StudyChatPanel } from './StudyChatPanel'
+import { StudyChatSessionList } from './StudyChatSessionList'
 import { StudyChatProvider } from './useStudyChat'
 import { useActiveChatSession } from './useChatSession'
 import { useChatStore } from '@/lib/chat-store'
@@ -31,7 +31,7 @@ export function ChatPage() {
   return (
     <div className="flex h-screen min-h-0 w-full">
       <aside className="border-border bg-subtle flex min-h-0 w-72 shrink-0 flex-col overflow-hidden border-r">
-        <ChatSessionList />
+        <StudyChatSessionList />
       </aside>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <StudyChatProvider sessionId={sessionId}>
@@ -44,7 +44,7 @@ export function ChatPage() {
               <p className="text-muted-foreground text-sm">{t('chat.notFound')}</p>
             </div>
           ) : (
-            <ChatPanel
+            <StudyChatPanel
               onSessionCreated={openCreated}
               variant="page"
               onCollapse={collapse}

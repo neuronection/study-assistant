@@ -10,7 +10,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, test, vi } from 'vitest'
 
-import { ChatPanel } from './ChatPanel'
+import { StudyChatPanel } from './StudyChatPanel'
 import { StudyChatProvider } from './useStudyChat'
 import { useChatStore } from '@/lib/chat-store'
 
@@ -71,7 +71,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={client}>
       <StudyChatProvider sessionId="4">
-        <ChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
+        <StudyChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
       </StudyChatProvider>
     </QueryClientProvider>
   )
@@ -84,7 +84,7 @@ function renderAdoptingPanel() {
     return (
       <QueryClientProvider client={client}>
         <StudyChatProvider sessionId={sessionId}>
-          <ChatPanel
+          <StudyChatPanel
             onSessionCreated={(session) => setSessionId(session.id)}
             onClose={() => undefined}
           />
@@ -97,7 +97,7 @@ function renderAdoptingPanel() {
 
 const SESSION = { id: '4', public_id: 'uuid-4', course_id: null, title: 'New chat' }
 
-describe('ChatPanel streaming', () => {
+describe('StudyChatPanel streaming', () => {
   test('stream deltas render progressively then finalize', async () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
@@ -352,7 +352,7 @@ describe('ChatPanel streaming', () => {
       component: () => (
         <QueryClientProvider client={client}>
           <StudyChatProvider sessionId="4">
-            <ChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
+            <StudyChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
           </StudyChatProvider>
         </QueryClientProvider>
       ),

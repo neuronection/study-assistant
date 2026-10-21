@@ -9,7 +9,7 @@ import {
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ChatPanel } from './ChatPanel'
+import { StudyChatPanel } from './StudyChatPanel'
 import { StudyChatProvider } from './useStudyChat'
 import { useChatStore } from '@/lib/chat-store'
 import type { ChatSession } from '@/lib/api'
@@ -94,7 +94,7 @@ function renderPanel(
       component: () => (
         <QueryClientProvider client={client}>
           <StudyChatProvider sessionId={props.sessionId ?? null}>
-            <ChatPanel
+            <StudyChatPanel
               onSessionCreated={props.onSessionCreated ?? (() => undefined)}
               onClose={() => undefined}
               variant={props.variant}
@@ -161,7 +161,7 @@ const ASSISTANT = {
   grounded: true,
 }
 
-describe('ChatPanel', () => {
+describe('StudyChatPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -737,7 +737,7 @@ describe('ChatPanel', () => {
   })
 })
 
-describe('ChatPanel message actions (plan 40B)', () => {
+describe('StudyChatPanel message actions (plan 40B)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -911,7 +911,7 @@ describe('ChatPanel message actions (plan 40B)', () => {
     expect(screen.getByTitle('Next variant')).toBeInTheDocument()
   })
 
-describe('ChatPanel stop button (plan 40D)', () => {
+describe('StudyChatPanel stop button (plan 40D)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

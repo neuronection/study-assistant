@@ -9,7 +9,7 @@ import {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { ChatPanel } from './ChatPanel'
+import { StudyChatPanel } from './StudyChatPanel'
 import { StudyChatProvider } from './useStudyChat'
 import type { ChatSession } from '@/lib/api'
 import {
@@ -88,7 +88,7 @@ function renderPanel() {
     component: () => (
       <QueryClientProvider client={client}>
         <StudyChatProvider sessionId="4">
-          <ChatPanel onSessionCreated={() => undefined} />
+          <StudyChatPanel onSessionCreated={() => undefined} />
         </StudyChatProvider>
       </QueryClientProvider>
     ),
@@ -105,7 +105,7 @@ afterEach(() => {
   transcribeMock.mockReset()
 })
 
-describe('ChatPanel dictation', () => {
+describe('StudyChatPanel dictation', () => {
   test('dictated text lands in the composer draft', async () => {
     installDictationMediaStub()
     transcribeMock.mockResolvedValue({ text: 'voice question', model: 'whisper-1' })

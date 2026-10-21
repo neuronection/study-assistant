@@ -14,6 +14,13 @@ corpus → 85 academic ingest integrations → 86 connected sources → 87 produ
 closure. Suggested order 81 → 82 → 84 → 83 (interleavable) → 85 → 86 → 87; 81 is
 the gate every later round builds on. ADRs 196–218 reserved.
 
+**Plan 82 — no-legacy code & typed contracts (2026-10-21, in progress):**
+A — library promotion (ADR-202): mermaid fork deleted + chat hosts renamed
+(step 1 landed); the proposal-card extras are promoted in assistant-ui with a
+Changeset; study's `ProposalCard` swap waits on the release. B — generated
+types everywhere (ADR-203), C — vocabulary sweep (ADR-204), D — legacy residue
+& typed payloads (ADR-205) follow in order.
+
 **Plan 81 — schema baseline & hardening (2026-10-21):**
 
 **Status: COMPLETE (independently reviewed 2026-10-21)** — A–F landed; the
@@ -3141,6 +3148,20 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 82 A step 1: the mermaid fork is gone and the chat hosts
+  stop shadowing library names (ADR-202).** `components/blocks/MermaidDiagram.tsx`
+  (+ its test) is deleted; `BlockRenderer` and the editor's `CaMermaid` node view
+  import the library `MermaidDiagram` through `components/ui/chat-markdown.ts`,
+  with `CaMermaid` owning its broken-diagram diagnostic through the existing
+  `validateMermaidSource` gate. `features/chat/ChatPanel.tsx` /
+  `ChatSessionList.tsx` (legitimate composition hosts) are renamed
+  `StudyChatPanel` / `StudyChatSessionList` so the library usage audit reports
+  zero shadowing copies. `vite.config.ts` inlines the library for vitest so
+  module mocks reach dynamic imports inside published chunks. Library side:
+  `HitlProposalCard` gained the study-promoted extras (body slot, conflict
+  re-apply, `conflictNote`, `reapply` label) in assistant-ui `0fbb61c` with a
+  Changeset — study adoption (delete the app card, bump the pin) is the
+  precisely-scoped residual that waits on that release.
 - 2026-10-21 — **plan 81 E: dead schema removal + scope & lifecycle law
   (ADR-201).** `material_groups` and `materials.group_id` are gone (plan 01
   A4 retired: grouping = node placement + material folders);

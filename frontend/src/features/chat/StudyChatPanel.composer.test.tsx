@@ -9,7 +9,7 @@ import {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ChatPanel } from './ChatPanel'
+import { StudyChatPanel } from './StudyChatPanel'
 import { StudyChatProvider } from './useStudyChat'
 import type { ChatSession } from '@/lib/api'
 
@@ -85,7 +85,7 @@ function renderPanel(sessionId: string | null, session: ChatSession = SESSION) {
     component: () => (
       <QueryClientProvider client={client}>
         <StudyChatProvider sessionId={sessionId}>
-          <ChatPanel onSessionCreated={() => undefined} />
+          <StudyChatPanel onSessionCreated={() => undefined} />
         </StudyChatProvider>
       </QueryClientProvider>
     ),
@@ -121,7 +121,7 @@ function baseMocks(session: ChatSession = SESSION) {
   })
 }
 
-describe('ChatPanel composer extras (plan 40C)', () => {
+describe('StudyChatPanel composer extras (plan 40C)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     baseMocks()

@@ -28,16 +28,16 @@ vi.mock('./useChatSession', () => ({
     },
 }))
 
-vi.mock('./ChatPanel', () => ({
-  ChatPanel: ({ onCollapse }: { onCollapse?: () => void }) => (
+vi.mock('./StudyChatPanel', () => ({
+  StudyChatPanel: ({ onCollapse }: { onCollapse?: () => void }) => (
     <button type="button" onClick={onCollapse}>
       collapse
     </button>
   ),
 }))
 
-vi.mock('./ChatSessionList', () => ({
-  ChatSessionList: () => null,
+vi.mock('./StudyChatSessionList', () => ({
+  StudyChatSessionList: () => null,
 }))
 
 function defaultSession(): void {
