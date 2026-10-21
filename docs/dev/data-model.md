@@ -547,8 +547,9 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
   carried over, derived fts5/vec0 virtual tables are cleared, and
   `downgrade()` raises NotImplementedError. Recreate dev databases and
   reindex search/vectors after upgrading. Legacy-chain data tests stop at
-  `0065_identity_core`; `tests/test_profile_identity_migration.py` pins
-  the head + schema shape.
+  `0065_identity_core`; `tests/test_profile_identity_migration.py` pinned
+  the head + schema shape (superseded by `0001_baseline` — those shape
+  assertions now live in `tests/test_baseline_migration.py`).
 
 - **0065 (family plan 16 S2, ADR-0013)**: identity core — `users`,
   `auth_sessions`, `instance_settings`, `audit_events` (family-normative

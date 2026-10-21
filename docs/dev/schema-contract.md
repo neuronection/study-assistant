@@ -20,11 +20,14 @@ proves every entry names a real table/column and that nothing is unclassified.
 
 **Enforcement status (plan 81):** A — inventory generated and drift-guarded.
 B — named constraints + CHECK twins: enforced and wall-tested. C — UUID
-identity: landed (0073). D — payload law: landed (0074) — typed state out of
-JSON, versioned content documents, TypedDict registry, JSONB verdict inventory,
-and the model⇄DB drift gate. E — dead schema + scope & lifecycle law: landed
-(0075) — `material_groups`/`materials.group_id` removed, `skill_versions.scope_ref`
-typed as UUID, lifecycle inventory + single-tombstone rule, nullable-unique law.
+identity: landed (folded into `0001_baseline`). D — payload law: landed — typed
+state out of JSON, versioned content documents, TypedDict registry, JSONB
+verdict inventory, and the model⇄DB drift gate. E — dead schema + scope &
+lifecycle law: landed — `material_groups`/`materials.group_id` removed,
+`skill_versions.scope_ref` typed as UUID, lifecycle inventory + single-tombstone
+rule, nullable-unique law. F — the chain is one squashed `0001_baseline`
+regenerated from these models (ADR-196); this document describes that
+baseline, and the pre-squash revision numbers below are history.
 
 ## Identity law (ADR-198)
 

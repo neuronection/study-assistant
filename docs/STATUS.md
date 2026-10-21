@@ -14,9 +14,36 @@ corpus → 85 academic ingest integrations → 86 connected sources → 87 produ
 closure. Suggested order 81 → 82 → 84 → 83 (interleavable) → 85 → 86 → 87; 81 is
 the gate every later round builds on. ADRs 196–218 reserved.
 
-**Plan 81 — schema baseline & hardening (in progress, 2026-10-21):**
+**Plan 81 — schema baseline & hardening (2026-10-21):**
 
-**Status: A, B, C, D and E landed; F remains.**
+**Status: A, B, C, D, E and F landed — the plan is COMPLETE, pending review.**
+
+- **F — migration chain squash + forward policy (ADR-196, 2026-10-21):** the
+  `0001`–`0075` chain (74 revisions after the original empty baseline) is
+  deleted and **`0001_baseline` is regenerated from the post-A–E models**.
+  `alembic upgrade head` on an empty database builds the entire 65-table
+  schema — named constraints, CHECK twins, UUID identity, payload law
+  columns/tables, scope/lifecycle indexes, FTS5 / tsvector+pg_trgm twins — in
+  one revision, and `alembic downgrade base` drops it cleanly (the declared
+  destructive baseline squash). Pre-baseline databases are **rebuilt, not
+  migrated**: delete the SQLite file / re-provision PostgreSQL and reseed
+  (`scripts/seed-demo.py`). Every revision-pinned test was reworked to
+  baseline shape/round-trip coverage (`test_course_required`,
+  `test_phase8a_materials`, `test_byok_migration`,
+  `test_chat_branches_migration`, `test_search_fuzzy`,
+  `test_material_tags_starred`, `test_decision_transport_migration`,
+  `test_single_slot_defaults_migration`, `test_uuid_identity_migration`,
+  `test_vocab_checks_migration`, `test_payload_law_migration`,
+  `test_scope_lifecycle_migration`, `test_baseline_migration`); all head
+  assertions read the single `tests/migration_head.py::HEAD_REVISION`
+  constant, and the migrated-template cache is keyed on a schema hash
+  (revisions + models + metadata/vocab declarations), ending the stale
+  `/tmp/pytest-of-*` deletion ritual. The forward policy — model-first, one
+  migration per change batched per round, **no compat columns/aliases/
+  deprecation windows**, squash-from-models for type cuts, schema-lint wall
+  as the floor — is written into `docs/dev/migrations.md`. The family
+  data-model gate is flipped to **strict** (D2's mnemonic revision id is
+  gone with the chain; `scripts/check-data-model.sh` reports no findings).
 
 - **A — schema audit & inventory (ADR-199):** `docs/dev/schema-contract.md` is
   now the guarantee page — the hand-written law (identity, closed sets,

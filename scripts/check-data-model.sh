@@ -56,7 +56,7 @@ PATTERNS="$GATE_DIR/check-data-model.patterns.txt"
 
 # repo (relative to workspace) : mode
 REPOS=(
-  "study-assistant:transition"
+  "study-assistant:strict"
   "career-assistant:transition"
   "health-assistant/core:transition"
 )
