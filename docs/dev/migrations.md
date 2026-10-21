@@ -119,7 +119,7 @@ These have all caused real bugs; check for them when writing a migration:
 
 - **Migrated template cache is schema-hash keyed.** `tests/conftest.py` names
   the cached migrated template `migrated_template_<schema-hash>.db`, where the
-  hash covers `alembic/versions/*.py`, the model package,
+  hash covers `alembic/versions/*.py`, the model package, `core/vocab.py`,
   `schema_contract.py` and `storage/db.py`. A schema change therefore builds a
   new template automatically — the old "delete
   `/tmp/pytest-of-<user>/migrated_template.db*`" ritual is gone. If you ever

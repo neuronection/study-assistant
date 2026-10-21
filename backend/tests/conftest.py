@@ -152,6 +152,7 @@ def _schema_fingerprint() -> str:
     paths = [
         *sorted((backend / "alembic" / "versions").glob("*.py")),
         *sorted((backend / "app" / "domain" / "models").glob("*.py")),
+        backend / "app" / "core" / "vocab.py",
         backend / "app" / "domain" / "schema_contract.py",
         backend / "app" / "storage" / "db.py",
     ]
