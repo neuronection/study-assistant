@@ -135,7 +135,11 @@ def test_regenerate_adds_assistant_variant(tmp_path: Path) -> None:
         assert response.status_code == 200
         regenerated = wait_until(
             h,
-            lambda ms: ms[-1]["role"] == "assistant" and ms[-1]["variant_count"] == 2,
+            lambda ms: (
+                ms[-1]["role"] == "assistant"
+                and ms[-1]["variant_count"] == 2
+                and ms[-1]["markdown"] == "v2"
+            ),
         )
 
         assert regenerated[-1]["markdown"] == "v2"
