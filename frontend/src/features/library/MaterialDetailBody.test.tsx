@@ -604,7 +604,7 @@ describe('MaterialDetailBody text-file tabs', () => {
     expect(onTabChange).toHaveBeenCalledWith('raw')
   })
 
-  test('the legacy extraction tab maps onto Formatted for text materials', async () => {
+  test('the older extraction tab maps onto Formatted for text materials', async () => {
     renderBody({ activeTab: 'extraction' })
     expect(await screen.findByTestId('extraction-view')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Switch view' })).toHaveTextContent(

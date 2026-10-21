@@ -15,7 +15,6 @@ def test_all_phase1_tables_exist(db_session: Session) -> None:
         "profiles",
         "courses",
         "blobs",
-        "material_groups",
         "materials",
         "extractions",
         "chunks",

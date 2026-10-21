@@ -583,8 +583,9 @@ class ExerciseRename(BaseModel):
 def rename_exercise(
     exercise_id: str, body: ExerciseRename, session: Session = Depends(get_session)
 ) -> ExerciseOut:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     exercise.title = body.title.strip()[:300] or exercise.title
     session.commit()
@@ -604,8 +605,9 @@ class ExerciseMove(BaseModel):
 def move_exercise(
     exercise_id: str, body: ExerciseMove, session: Session = Depends(get_session)
 ) -> ExerciseOut:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     try:
         exercise.node_id = TreeService(session).placement_node(exercise.course_id, body.node_id)
@@ -631,8 +633,9 @@ class ExerciseDeletedOut(BaseModel):
 
 @router.delete("/{exercise_id}", response_model=ExerciseDeletedOut)
 def delete_exercise(exercise_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     from ..services.platform import trash
 
@@ -677,8 +680,9 @@ def list_exercises(
 
 @router.get("/{exercise_id}", response_model=ExerciseOut)
 def get_exercise(exercise_id: str, session: Session = Depends(get_session)) -> ExerciseOut:
+    profile = ensure_default_profile(session)
     exercise = session.get(Exercise, exercise_id)
-    if exercise is None:
+    if exercise is None or exercise.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="exercise not found")
     count = len(
         session.scalars(
@@ -702,6 +706,10 @@ def _numberline_input(spec: Mapping[str, Any]) -> dict[str, Any] | None:
 
 @router.get("/{exercise_id}/steps", response_model=list[StepOut])
 def exercise_steps(exercise_id: str, session: Session = Depends(get_session)) -> list[StepOut]:
+    profile = ensure_default_profile(session)
+    exercise = session.get(Exercise, exercise_id)
+    if exercise is None or exercise.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="exercise not found")
     steps = session.scalars(
         select(ExerciseStep)
         .where(ExerciseStep.exercise_id == exercise_id)

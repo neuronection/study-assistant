@@ -6690,8 +6690,6 @@ export interface components {
             filename: string;
             /** Folder Id */
             folder_id: string | null;
-            /** Group Id */
-            group_id: string | null;
             /**
              * Has Extraction
              * @default false

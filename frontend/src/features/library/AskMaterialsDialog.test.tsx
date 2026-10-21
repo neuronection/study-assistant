@@ -24,7 +24,6 @@ function material(id: string, title: string): Material {
     filename: `${title}.pdf`,
     mime: 'application/pdf',
     pages: null,
-    group_id: null,
     folder_id: null,
     blob_sha: null,
     created_at: '2026-09-07T00:00:00Z',

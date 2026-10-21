@@ -163,7 +163,6 @@ class MaterialsService:
         data: bytes,
         mime: str | None,
         course_id: str,
-        group_id: str | None = None,
         folder_id: str | None = None,
         dedup_exclude_id: str | None = None,
     ) -> tuple[Material, bool]:
@@ -196,7 +195,6 @@ class MaterialsService:
         material = Material(
             profile_id=profile_id,
             course_id=course_id,
-            group_id=group_id,
             folder_id=folder_id,
             kind=kind,
             duration_sec=duration_sec,
@@ -393,7 +391,6 @@ class MaterialsService:
         copy = Material(
             profile_id=material.profile_id,
             course_id=material.course_id,
-            group_id=material.group_id,
             folder_id=folder_id,
             kind=material.kind,
             title=self._copy_title(material.title, folder_id, material.course_id),

@@ -224,5 +224,5 @@ def test_upgrade_types_the_state_and_downgrade_restores_the_documents(tmp_path: 
     command.upgrade(_cfg(db_path), "head")
     with sqlite3.connect(db_path) as connection:
         assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
-            "0074_payload_law"
+            "0075_scope_lifecycle"
         )

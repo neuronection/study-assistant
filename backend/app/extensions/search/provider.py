@@ -61,8 +61,8 @@ __all__ = [
 ]
 
 SEARCH_PROVIDERS_KEY = "search_providers"
-LEGACY_SEARCH_PROVIDER_KEY = "search_provider"
-LEGACY_SEARCH_KEYRING_REF = "search:api_key"  # pre-plan-28 single key slot
+STORED_SINGLE_PROVIDER_KEY = "search_provider"
+STORED_SINGLE_KEYRING_REF = "search:api_key"  # pre-plan-28 single key slot
 
 FETCH_MAX_CHARS = 4000
 
@@ -83,7 +83,7 @@ def _providers_raw(preferences: Mapping[str, Any] | None) -> list[Any]:
 
 
 def list_search_providers(session: Session, profile_id: str) -> list[dict[str, Any]]:
-    """Normalized provider configs, ordered; lazily migrates the legacy
+    """Normalized provider configs, ordered; lazily migrates the older
     single-provider preference (base_url/flavor + one key slot) into the
     family providers[] shape on first read."""
     profile = session.get(Profile, profile_id)
@@ -92,25 +92,25 @@ def list_search_providers(session: Session, profile_id: str) -> list[dict[str, A
         preferences = {}
     raw = _providers_raw(preferences)
 
-    legacy = preferences.get(LEGACY_SEARCH_PROVIDER_KEY)
-    if not raw and isinstance(legacy, Mapping):
-        base_url = str(legacy.get("base_url", "") or "").strip().rstrip("/")
-        flavor = str(legacy.get("flavor", "") or "").strip()
+    stored = preferences.get(STORED_SINGLE_PROVIDER_KEY)
+    if not raw and isinstance(stored, Mapping):
+        base_url = str(stored.get("base_url", "") or "").strip().rstrip("/")
+        flavor = str(stored.get("flavor", "") or "").strip()
         if base_url and flavor in ("tavily", "searxng"):
             entry = {
-                "id": "legacy",
+                "id": "migrated",
                 "name": "Tavily" if flavor == "tavily" else "SearXNG",
                 "type": flavor,
                 "enabled": True,
                 "base_url": base_url,
             }
-            legacy_key = get_secret(LEGACY_SEARCH_KEYRING_REF)
-            if legacy_key:
-                set_secret(provider_key_ref("legacy"), legacy_key)
-                delete_secret(LEGACY_SEARCH_KEYRING_REF)
+            stored_key = get_secret(STORED_SINGLE_KEYRING_REF)
+            if stored_key:
+                set_secret(provider_key_ref("migrated"), stored_key)
+                delete_secret(STORED_SINGLE_KEYRING_REF)
             migrated = dict(preferences)
             migrated[SEARCH_PROVIDERS_KEY] = [entry]
-            migrated.pop(LEGACY_SEARCH_PROVIDER_KEY, None)
+            migrated.pop(STORED_SINGLE_PROVIDER_KEY, None)
             if profile is not None:
                 profile.preferences = migrated
                 session.commit()
@@ -131,7 +131,7 @@ def _write_providers(session: Session, profile_id: str, providers: list[dict[str
         raise SearchError("bad_request", "profile not found")
     preferences = dict(profile.preferences or {})
     preferences[SEARCH_PROVIDERS_KEY] = providers
-    preferences.pop(LEGACY_SEARCH_PROVIDER_KEY, None)
+    preferences.pop(STORED_SINGLE_PROVIDER_KEY, None)
     profile.preferences = preferences
 
 

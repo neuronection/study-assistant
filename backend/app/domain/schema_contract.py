@@ -46,7 +46,6 @@ LIST = "list"
 CATALOGUE = "catalogue"
 INSTANCE = "instance"
 IDENTITY = "identity"
-OPERATIONAL = "operational"
 
 CLOSED_SETS: dict[str, type[StrVocab]] = {
     "attempts.mode": AttemptMode,
@@ -155,7 +154,7 @@ JSON_SPECIES: dict[str, str] = {
 
 PROFILE_SCOPE: dict[str, str] = {
     "activities": "profile_id",
-    "ai_interactions": OPERATIONAL,
+    "ai_interactions": "operational (instance AI telemetry, no user-content record)",
     "answers": "attempt_id → attempts → activities.profile_id",
     "attempts": "activity_id → activities.profile_id",
     "audit_events": IDENTITY,
@@ -189,11 +188,10 @@ PROFILE_SCOPE: dict[str, str] = {
     "fsrs_states": "card_id → exercises.profile_id",
     "instance_settings": IDENTITY,
     "item_stats": "question_id → questions → activities.profile_id",
-    "jobs": OPERATIONAL,
+    "jobs": "operational (queue state; instance-level by design, no user-content record)",
     "material_drawings": "material_id → materials.profile_id",
     "material_folder_links": "course_id → courses.profile_id",
     "material_folders": "profile_id",
-    "material_groups": "profile_id",
     "material_images": "material_id → materials.profile_id",
     "material_index_cards": "material_id → materials.profile_id",
     "material_links": "course_id → courses.profile_id",
@@ -214,7 +212,9 @@ PROFILE_SCOPE: dict[str, str] = {
     "quiz_help_events": "attempt_id → attempts → activities.profile_id",
     "quizme_answers": "profile_id",
     "review_log": "card_id → exercises.profile_id",
-    "skill_versions": CATALOGUE,
+    "skill_versions": (
+        "catalogue; course/course_type overrides via scope_ref → courses.id/course_types.id"
+    ),
     "skills": CATALOGUE,
     "step_attempts": "session_id → exercise_sessions → exercises.profile_id",
     "study_goals": "profile_id",

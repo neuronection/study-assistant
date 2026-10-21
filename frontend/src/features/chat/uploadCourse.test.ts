@@ -67,7 +67,7 @@ describe('chat upload folder naming', () => {
     expect(chatUploadFolderPattern('9').test(name)).toBe(false)
   })
 
-  test('the pattern matches legacy folders regardless of older titles', () => {
+  test('the pattern matches older folders regardless of titles', () => {
     expect(chatUploadFolderPattern('7').test('Older title (#7)')).toBe(true)
     expect(chatUploadFolderPattern('7').test('Older title (#17)')).toBe(false)
   })

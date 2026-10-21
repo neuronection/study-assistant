@@ -34,7 +34,7 @@ RESULT_TYPE: dict[str, type | tuple[type, ...]] = {
     "draft_count": int,
     "created": int,
     "deduped": bool,
-    "old_chunk_ids": (list,),  # gate-allow: (?<![A-Za-z0-9_])old_[a-z]
+    "replaced_chunk_ids": (list,),
     "tags": (list,),
     "open_dialog": (dict,),
 }

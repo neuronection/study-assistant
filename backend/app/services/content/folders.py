@@ -160,12 +160,12 @@ class FoldersService:
         new_path = f"{parent_path}{name}" if parent_path else name
         if new_path != folder.path and self._path_exists(profile_id, folder.course_id, new_path):
             raise FolderError("a folder with this name already exists here")
-        old_path = folder.path
+        previous_path = folder.path
         folder.name = name
         folder.path = new_path
         for other in self.list(profile_id=profile_id, course_id=folder.course_id):
-            if other.id != folder.id and other.path.startswith(f"{old_path}/"):
-                other.path = f"{new_path}{other.path[len(old_path) :]}"
+            if other.id != folder.id and other.path.startswith(f"{previous_path}/"):
+                other.path = f"{new_path}{other.path[len(previous_path) :]}"
         self._session.flush()
         return folder
 
@@ -185,17 +185,17 @@ class FoldersService:
             if parent.path.startswith(f"{folder.path}/") or parent.path == folder.path:
                 raise FolderError("cannot move a folder into its own subtree")
             parent_path = parent.path
-        old_path = folder.path
+        previous_path = folder.path
         new_path = f"{parent_path}/{folder.name}" if parent_path else folder.name
-        if new_path == old_path:
+        if new_path == previous_path:
             return folder
         if self._path_exists(profile_id, folder.course_id, new_path):
             raise FolderError("a folder with this name already exists there")
         folder.parent_id = new_parent_id
         folder.path = new_path
         for other in self.list(profile_id=profile_id, course_id=folder.course_id):
-            if other.id != folder.id and other.path.startswith(f"{old_path}/"):
-                other.path = f"{new_path}{other.path[len(old_path) :]}"
+            if other.id != folder.id and other.path.startswith(f"{previous_path}/"):
+                other.path = f"{new_path}{other.path[len(previous_path) :]}"
         self._session.flush()
         return folder
 

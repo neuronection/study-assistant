@@ -259,7 +259,7 @@ class QuizgenService:
                 continue
             indexed = list(enumerate(question.options))
             rng.shuffle(indexed)
-            remap = [old_index for old_index, _ in indexed]
+            remap = [prior_index for prior_index, _ in indexed]
             question.options = [option for _, option in indexed]
             answer = dict(question.answer or {})
             if question.type == "single":

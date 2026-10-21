@@ -17,6 +17,8 @@ from ...domain.models import (
     ChatSession,
     Concept,
     ConceptLink,
+    ConceptSkillRating,
+    ConceptSkillStat,
     Course,
     CourseDefaultTaskAssignment,
     CourseTaskAssignment,
@@ -26,7 +28,6 @@ from ...domain.models import (
     Material,
     MaterialFolder,
     MaterialFolderLink,
-    MaterialGroup,
     MaterialIndexCard,
     MaterialLink,
     MaterialSource,
@@ -1011,6 +1012,22 @@ def purge_course(session: Session, course: Course) -> None:
             NodeConcept.node_id.in_(select(TreeNode.id).where(TreeNode.course_id == course.id))
         )
     )
+    concept_names = list(
+        session.scalars(select(Concept.name).where(Concept.course_id == course.id))
+    )
+    if concept_names:
+        session.execute(
+            delete(ConceptSkillRating).where(
+                ConceptSkillRating.profile_id == course.profile_id,
+                ConceptSkillRating.concept.in_(concept_names),
+            )
+        )
+        session.execute(
+            delete(ConceptSkillStat).where(
+                ConceptSkillStat.profile_id == course.profile_id,
+                ConceptSkillStat.concept.in_(concept_names),
+            )
+        )
     session.execute(delete(ConceptLink).where(ConceptLink.course_id == course.id))
     session.execute(delete(Concept).where(Concept.course_id == course.id))
     max_depth = session.scalars(
@@ -1023,7 +1040,6 @@ def purge_course(session: Session, course: Course) -> None:
         session.execute(
             delete(TreeNode).where(TreeNode.course_id == course.id, TreeNode.depth == depth)
         )
-    session.execute(delete(MaterialGroup).where(MaterialGroup.course_id == course.id))
     session.execute(delete(CourseTaskAssignment).where(CourseTaskAssignment.course_id == course.id))
     session.execute(
         delete(CourseDefaultTaskAssignment).where(

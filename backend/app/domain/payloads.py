@@ -214,7 +214,7 @@ class ProposalResult(TypedDict, total=False):
     draft_count: int
     created: int
     deduped: bool
-    old_chunk_ids: list[str]  # gate-allow: (?<![A-Za-z0-9_])old_[a-z]
+    replaced_chunk_ids: list[str]
     tags: list[str]
     open_dialog: ProposalPayload
 
@@ -372,7 +372,7 @@ class JobPayload(TypedDict, total=False):
     material_id: str
     blob_sha: str | None
     mode: str
-    old_chunk_ids: list[str]  # gate-allow: (?<![A-Za-z0-9_])old_[a-z]
+    replaced_chunk_ids: list[str]
     extraction_id: str
     chat_session_id: str
     user_message_id: str

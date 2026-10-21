@@ -311,9 +311,6 @@ class Material(Base):
     course_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    group_id: Mapped[str | None] = mapped_column(
-        _UUID, ForeignKey("material_groups.id", ondelete="CASCADE"), index=True
-    )
     folder_id: Mapped[str | None] = mapped_column(
         _UUID, ForeignKey("material_folders.id", ondelete="CASCADE"), index=True
     )

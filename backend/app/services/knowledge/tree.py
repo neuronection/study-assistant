@@ -264,7 +264,7 @@ class TreeService:
         subtree_depth = self._subtree_depth(node)
         if parent.depth + subtree_depth > MAX_DEPTH:
             raise TreeError(f"nodes may nest at most {MAX_DEPTH} levels")
-        old_parent_id = node.parent_id
+        previous_parent_id = node.parent_id
         node.parent_id = parent_id
         node.depth = parent.depth + 1
         siblings = list(
@@ -282,10 +282,10 @@ class TreeService:
         self._session.flush()
         self._rewrite_child_sorts(parent)
         self._apply_depths(node, node.depth)
-        if old_parent_id is not None and old_parent_id != parent_id:
-            old_parent = self._session.get(TreeNode, old_parent_id)
-            if old_parent is not None:
-                self._rewrite_child_sorts(old_parent)
+        if previous_parent_id is not None and previous_parent_id != parent_id:
+            previous_parent = self._session.get(TreeNode, previous_parent_id)
+            if previous_parent is not None:
+                self._rewrite_child_sorts(previous_parent)
         return node
 
     def _subtree_depth(self, node: TreeNode) -> int:

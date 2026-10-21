@@ -152,7 +152,7 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   exported, import re-creates rows with fresh cursors).
 - **blobs**: sha256 PK, rel_path, size, mime — content-addressed originals
 - **materials**: id, profile_id, course_id (**required** — every material is owned
-  by exactly one course; no global library, ADR-036), group_id?, folder_id?, kind
+  by exactly one course; no global library, ADR-036), folder_id?, kind
   (pdf/image/md/txt/doc), title, blob_sha, filename, mime, pages, language, status
   (pending/processing/ready/failed), content_hash, phash?, source/external fields
   (for future linked folders) — index (course_id, status); upload dedup is
@@ -404,6 +404,28 @@ staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
 signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
+
+- **0075 (plan 81 E, ADR-201)**: scope & lifecycle law. `material_groups` and
+  `materials.group_id` are **deleted** — the table shipped as a P0 plan row
+  (01 A4) with no CRUD/UI; grouping is served by node placement
+  (`material_links`) + material folders, and a future group feature arrives
+  with its own plan. `skill_versions.scope_ref` is retyped `Integer` →
+  `Uuid(as_uuid=False)` (its values are `courses.id`/`course_types.id`; C
+  retyped every reader but missed the column, which would reject UUID text on
+  PostgreSQL). Nullable-unique law: `skill_versions` gains a partial unique
+  index `(skill_id, scope_type, version) WHERE scope_ref IS NULL`, the SQLite
+  equivalent of PG `UNIQUE NULLS NOT DISTINCT`, so global-scope versions cannot
+  duplicate. Lifecycle classes are declared per table in
+  `contracts/data-model.lifecycle.txt` (`record | operational | transient`,
+  D6-gated); `deleted_items` is the single tombstone (`operational`), no table
+  carries other soft-delete columns, and hard delete is purge-only/cascade-
+  complete (`tests/test_purge_cascade.py`). The revision is guarded for the
+  0073 rebuild interaction (a fresh chain already lands the new shape) and its
+  `downgrade()` restores the empty `material_groups` shape, `materials.group_id`
+  + FK/index, and the integer `scope_ref` shape (round-trip in
+  `tests/test_scope_lifecycle_migration.py`). `PROFILE_SCOPE` documents every
+  table's scope path or non-user class; cross-profile reads are proven closed
+  by `tests/test_profile_isolation.py`.
 
 - **0074 (plan 81 D, ADR-200)**: payload contract law. Known-shape state
   leaves JSON: `chat_proposals` gains `target_kind`/`target_name`/

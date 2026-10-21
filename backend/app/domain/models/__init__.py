@@ -95,7 +95,6 @@ from .core import ForeignKeyConstraint as ForeignKeyConstraint
 from .core import Index as Index
 from .core import Integer as Integer
 from .core import Mapped as Mapped
-from .core import MaterialGroup as MaterialGroup
 from .core import Profile as Profile
 from .core import String as String
 from .core import Text as Text

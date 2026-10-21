@@ -65,7 +65,6 @@ function material(id: string, title: string, folderId: string | null) {
     mime: 'application/pdf',
     pages: 3,
     course_id: '1',
-    group_id: null,
     folder_id: folderId,
     blob_sha: null,
     created_at: '2026-08-01T00:00:00Z',

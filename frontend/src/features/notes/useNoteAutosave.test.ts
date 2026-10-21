@@ -21,7 +21,7 @@ function note(body: NoteDetailInfo['body']): NoteDetailInfo {
 }
 
 describe('noteBodyMd', () => {
-  test('legacy stripped blocks rejoin with paragraph breaks', () => {
+  test('older stripped blocks rejoin with paragraph breaks', () => {
     const md = noteBodyMd(
       note([
         { type: 'text', md: 'before' },

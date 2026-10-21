@@ -5898,17 +5898,6 @@
             ],
             "title": "Folder Id"
           },
-          "group_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Group Id"
-          },
           "has_extraction": {
             "default": false,
             "title": "Has Extraction",
@@ -6009,7 +5998,6 @@
           "mime",
           "pages",
           "course_id",
-          "group_id",
           "folder_id",
           "blob_sha",
           "created_at",

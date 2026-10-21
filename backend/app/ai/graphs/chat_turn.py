@@ -1,5 +1,5 @@
 """Chat-turn graph (plan 10 Phase 5, ADR-0008; the only chat engine since
-plan 72-A removed the legacy loop).
+plan 72-A removed the earlier loop).
 
 Implements the chat turn as a checkpointed StateGraph:
 

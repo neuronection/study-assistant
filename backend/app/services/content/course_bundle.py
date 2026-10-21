@@ -1224,7 +1224,7 @@ def import_course_bundle(
             drawing_sha = drawing.get("png_sha")
             if drawing_sha is not None:
                 blob_store.put(bundle.blobs[drawing_sha], mime="image/png", session=session)
-            old_id = str(drawing.get("id") or "")
+            previous_id = str(drawing.get("id") or "")
             material_drawing_row = MaterialDrawing(
                 id=_import_id(session, MaterialDrawing, drawing.get("id"), taken),
                 material_id=material.id,
@@ -1237,8 +1237,8 @@ def import_course_bundle(
             apply_drawing_view(material_drawing_row, _bundle_view(drawing))
             session.add(material_drawing_row)
             session.flush()
-            if old_id:
-                drawing_map[old_id] = material_drawing_row.id
+            if previous_id:
+                drawing_map[previous_id] = material_drawing_row.id
         drawing_ocr = "\n".join(
             d["ocr_markdown"] for d in entry.get("drawings", []) if d.get("ocr_markdown")
         )

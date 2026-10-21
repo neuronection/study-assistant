@@ -531,7 +531,7 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('Web search providers')).not.toBeInTheDocument()
   })
 
-  test('legacy ?tab=search deep links land on tools → Search & OCR', async () => {
+  test('older ?tab=search deep links land on tools → Search & OCR', async () => {
     await renderSettings('/settings?tab=search')
     expect(await screen.findByText(/semantic search/i)).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Search & OCR' })).toHaveAttribute(
@@ -556,7 +556,7 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('legacy AI-section deep links for skills and mcp land in the tools tab', async () => {
+  test('older AI-section deep links for skills and mcp land in the tools tab', async () => {
     await renderSettings('/settings?tab=ai&section=skills')
     expect(await screen.findByText(/named behaviors per task/i)).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Skills' })).toHaveAttribute(
@@ -565,7 +565,7 @@ describe('SettingsPage', () => {
     )
   })
 
-  test('legacy ?tab=ai&section=mcp deep link lands on tools → Integrations', async () => {
+  test('older ?tab=ai&section=mcp deep link lands on tools → Integrations', async () => {
     await renderSettings('/settings?tab=ai&section=mcp')
     expect((await screen.findAllByText(/mcp resource server/i)).length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Integrations' })).toHaveAttribute(

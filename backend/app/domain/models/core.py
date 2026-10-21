@@ -128,22 +128,6 @@ class Course(Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
-class MaterialGroup(Base):
-    __tablename__ = "material_groups"
-
-    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
-    profile_id: Mapped[str] = mapped_column(
-        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
-    )
-    course_id: Mapped[str | None] = mapped_column(
-        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
-    )
-    title: Mapped[str] = mapped_column(String(300))
-    kind: Mapped[str] = mapped_column(String(30), default="image-set")
-    order_idx: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
-
 class TreeNode(Base):
     __tablename__ = "tree_nodes"
     __table_args__ = (

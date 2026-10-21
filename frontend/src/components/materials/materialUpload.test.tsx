@@ -49,7 +49,6 @@ function RESULT(id: string, title: string): UploadResult {
       mime: 'application/pdf',
       pages: 1,
       course_id: '1',
-      group_id: null,
       folder_id: null,
       blob_sha: null,
       created_at: '2026-08-21T00:00:00Z',

@@ -16,7 +16,7 @@ the gate every later round builds on. ADRs 196–218 reserved.
 
 **Plan 81 — schema baseline & hardening (in progress, 2026-10-21):**
 
-**Status: A, B, C and D landed; E–F remain.**
+**Status: A, B, C, D and E landed; F remains.**
 
 - **A — schema audit & inventory (ADR-199):** `docs/dev/schema-contract.md` is
   now the guarantee page — the hand-written law (identity, closed sets,
@@ -82,6 +82,24 @@ the gate every later round builds on. ADRs 196–218 reserved.
   Python before dropping the old columns and its `downgrade()` restores both
   the columns and their documents (`tests/test_payload_law_migration.py`); it
   guards every DDL step because 0073 rebuilds from current model metadata.
+- **E — dead schema removal + scope & lifecycle law (ADR-201, 2026-10-21):**
+  `material_groups` + `materials.group_id` are deleted end to end (model, FK,
+  purge cascade, upload/copy service parameters, `MaterialOut.group_id` DTO);
+  plan 01 row A4 is retired — grouping is served by node placement + material
+  folders. `skill_versions.scope_ref` is retyped to UUID (the one column the
+  identity cut missed) and gains the nullable-unique partial index for global
+  versions (constitution §9). `contracts/data-model.lifecycle.txt` classifies
+  every mapped table `record | operational | transient` (D6-gated); the wall
+  also proves `deleted_items` is the single tombstone and no other table has
+  soft-delete columns. `PROFILE_SCOPE` documents every table's scope path or
+  non-user class, and `tests/test_profile_isolation.py` proves a second
+  profile cannot read the first's courses/notes/materials/exercises/plan/chat/
+  trash. `tests/test_purge_cascade.py` seeds one row in every course-scoped
+  table and asserts all tables return to baseline after purge. Naming hygiene:
+  `old_chunk_ids` → `replaced_chunk_ids`, `old_index` → `prior_index` (no
+  pragmas). Migration `0075_scope_lifecycle` is guarded for the 0073 rebuild
+  and its `downgrade()` restores the empty group shape + integer scope_ref
+  (`tests/test_scope_lifecycle_migration.py`). Head assertion bumped.
 
 **Plan 34 wave 8 — per-extension documentation lands in study
 (2026-10-19):** the three bundled connectors (`external-sources`,
@@ -3093,6 +3111,17 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 81 E: dead schema removal + scope & lifecycle law
+  (ADR-201).** `material_groups` and `materials.group_id` are gone (plan 01
+  A4 retired: grouping = node placement + material folders);
+  `skill_versions.scope_ref` is a UUID and global-scope versions are protected
+  by a partial unique index (the SQLite equivalent of `NULLS NOT DISTINCT`);
+  `contracts/data-model.lifecycle.txt` classifies every table and makes
+  `deleted_items` the single tombstone; `PROFILE_SCOPE` + cross-profile read
+  tests and a full purge-cascade sweep close the scope law; the `old_*`
+  naming debt is renamed away. Migration `0075_scope_lifecycle` with a
+  shape-restoring downgrade. Backend gate green (ruff, format, mypy strict,
+  pytest); frontend types regenerated for the removed DTO field. F remains.
 - 2026-10-21 — **plan 81 D: payload contract law (ADR-200).** Known-shape JSON
   state became typed columns/tables (proposal target/snapshot + anchors,
   `chat_quiz_pendings`, drawing view bbox), canonical content documents gained

@@ -412,13 +412,15 @@ def _execute_edit_material(
     )
     _ensure_extraction_unmodified(latest, payload)
     try:
-        extraction, old_chunk_ids = service.edit_extraction(material, str(payload["new_markdown"]))
+        extraction, replaced_chunk_ids = service.edit_extraction(
+            material, str(payload["new_markdown"])
+        )
     except ValueError as error:
         raise ProposalActionError(str(error)) from None
     return "executed", {
         "material_id": material.id,
         "extraction_id": extraction.id,
-        "old_chunk_ids": old_chunk_ids,
+        "replaced_chunk_ids": replaced_chunk_ids,
     }
 
 
@@ -438,13 +440,13 @@ def _execute_append_material(
         addition = f"## {heading}\n\n{addition}"
     merged = f"{latest.markdown.rstrip()}\n\n{addition}"
     try:
-        extraction, old_chunk_ids = service.edit_extraction(material, merged)
+        extraction, replaced_chunk_ids = service.edit_extraction(material, merged)
     except ValueError as error:
         raise ProposalActionError(str(error)) from None
     return "executed", {
         "material_id": material.id,
         "extraction_id": extraction.id,
-        "old_chunk_ids": old_chunk_ids,
+        "replaced_chunk_ids": replaced_chunk_ids,
     }
 
 

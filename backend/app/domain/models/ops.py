@@ -73,6 +73,9 @@ from .core import (
     relationship as relationship,
 )
 from .core import (
+    text as text,
+)
+from .core import (
     utcnow as utcnow,
 )
 
@@ -325,12 +328,21 @@ class SkillVersion(Base):
             "version",
             unique=True,
         ),
+        Index(
+            "uq_skill_versions_global",
+            "skill_id",
+            "scope_type",
+            "version",
+            unique=True,
+            sqlite_where=text("scope_ref IS NULL"),
+            postgresql_where=text("scope_ref IS NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     skill_id: Mapped[str] = mapped_column(_UUID, ForeignKey("skills.id", ondelete="CASCADE"))
     scope_type: Mapped[str] = mapped_column(String(20))
-    scope_ref: Mapped[int | None] = mapped_column(Integer)
+    scope_ref: Mapped[str | None] = mapped_column(_UUID)
     version: Mapped[int] = mapped_column(Integer)
     system_template: Mapped[str] = mapped_column(Text)
     user_template: Mapped[str] = mapped_column(Text)

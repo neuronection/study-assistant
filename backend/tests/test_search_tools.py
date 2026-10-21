@@ -226,7 +226,7 @@ def test_search_provider_test_endpoint_probes(
         assert probe.json()["result_count"] == 2
 
 
-def test_legacy_single_provider_preference_migrates(
+def test_stored_single_provider_preference_migrates(
     client: tuple[TestClient, ScriptedGateway, FastAPI],
 ) -> None:
     test_client, _gateway, app = client
@@ -241,7 +241,7 @@ def test_legacy_single_provider_preference_migrates(
         assert test_client.get("/api/v1/search-providers").json() == {"providers": []}
 
         # seed the pre-plan-28 shape directly: one {base_url, flavor}
-        # preference + the single legacy key slot
+        # preference + the single stored key slot
         factory = sessionmaker(bind=app.state.engine)
         with factory() as db:
             profile = db.scalars(select(Profile)).first()
@@ -253,20 +253,20 @@ def test_legacy_single_provider_preference_migrates(
                 }
             }
             db.commit()
-        set_secret("search:api_key", "legacy-secret")
+        set_secret("search:api_key", "migrated-secret")
 
         migrated = test_client.get("/api/v1/search-providers").json()["providers"]
         assert len(migrated) == 1
         provider = migrated[0]
-        assert provider["id"] == "legacy"
+        assert provider["id"] == "migrated"
         assert provider["type"] == "searxng"
         assert provider["base_url"] == "https://searx.example.org"
         assert provider["enabled"] is True
         assert provider["key_set"] is True
-        assert get_secret(provider_key_ref("legacy")) == "legacy-secret"
+        assert get_secret(provider_key_ref("migrated")) == "migrated-secret"
         assert get_secret("search:api_key") in (None, "")
 
-        # the legacy preference key is gone — migration is one-shot
+        # the stored preference key is gone — migration is one-shot
         factory = sessionmaker(bind=app.state.engine)
         with factory() as db:
             profile = db.scalars(select(Profile)).first()

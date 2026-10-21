@@ -224,7 +224,6 @@ class MaterialOut(BaseModel):
     mime: str | None
     pages: int | None
     course_id: str
-    group_id: str | None
     folder_id: str | None
     blob_sha: str | None
     provenance: dict[str, Any] | None = None

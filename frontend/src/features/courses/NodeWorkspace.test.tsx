@@ -677,7 +677,7 @@ describe('NodeWorkspace', () => {
     window.localStorage.removeItem('sa-recent-nodes.default')
   })
 
-  test('tree sidebar renders permanently and ignores the legacy closed flag', async () => {
+  test('tree sidebar renders permanently and ignores the older closed flag', async () => {
     window.localStorage.setItem('sa-tree-sidebar-open', '0')
     primeDefaults()
     renderWorkspace('/courses/3')
@@ -877,7 +877,6 @@ describe('NodeWorkspace', () => {
         mime: 'text/markdown',
         pages: null,
         course_id: '3',
-        group_id: null,
         folder_id: null,
         blob_sha: null,
         created_at: '2026-08-23T00:00:00Z',
@@ -1395,7 +1394,6 @@ describe('NodeWorkspace', () => {
           mime: 'application/pdf',
           pages: 4,
           course_id: '3',
-          group_id: null,
           folder_id: null,
           blob_sha: 'b'.repeat(64),
           created_at: '2026-09-01T00:00:00Z',

@@ -10,7 +10,7 @@ import {
 /**
  * A family-vocabulary event as it arrives on the `chat:<id>` WS topic
  * (guidelines ai-features §5 payload table; plan 24 V2 — the backend emits
- * these natively, no legacy names on the wire).
+ * these natively, no older names on the wire).
  */
 export interface StudyWsEvent {
   type: string

@@ -14,8 +14,8 @@ Phase-7 wall pinned through the dev canonical + sync ledger — its 9-kind
 error enum is part of that family wire contract (desktop's TS adapters
 implement the same cases), so it is NOT renamed here. The D4 mapping lives
 app-side instead, as :func:`to_extension_error` — the one-time
-re-authoring note, implemented exactly as
-``extension-charter.json errors.legacyMappingNote`` records it:
+re-authoring note, implemented exactly as the `errors` mapping note in
+`extension-charter.json` records it:
 
 ======================  =====================
 SearchError.kind        charter code

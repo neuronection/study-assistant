@@ -9,7 +9,7 @@ class IngestPayload(TypedDict, total=False):
 
 class PostprocessPayload(TypedDict, total=False):
     material_id: Required[str]
-    old_chunk_ids: list[str]
+    replaced_chunk_ids: list[str]
     extraction_id: str
 
 

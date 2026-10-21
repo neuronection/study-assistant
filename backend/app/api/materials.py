@@ -146,7 +146,6 @@ def _to_out(material: Material, has_extraction: bool = False, link_count: int = 
         mime=material.mime,
         pages=material.pages,
         course_id=material.course_id,
-        group_id=material.group_id,
         folder_id=material.folder_id,
         blob_sha=material.blob_sha,
         provenance=cast(dict[str, Any] | None, material.provenance),
@@ -1130,7 +1129,7 @@ def edit_extraction(
     if material is None:
         raise HTTPException(status_code=404, detail="material not found")
     try:
-        extraction, old_chunk_ids = service.edit_extraction(material, body.markdown)
+        extraction, replaced_chunk_ids = service.edit_extraction(material, body.markdown)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     JobRunner.enqueue(
@@ -1139,7 +1138,7 @@ def edit_extraction(
         {
             "material_id": material.id,
             "extraction_id": extraction.id,
-            "old_chunk_ids": old_chunk_ids,
+            "replaced_chunk_ids": replaced_chunk_ids,
         },
     )
     session.commit()

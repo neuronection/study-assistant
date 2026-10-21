@@ -16,7 +16,6 @@ export interface Material {
   mime: string | null
   pages: number | null
   course_id: string
-  group_id: string | null
   folder_id: string | null
   blob_sha: string | null
   provenance?: {

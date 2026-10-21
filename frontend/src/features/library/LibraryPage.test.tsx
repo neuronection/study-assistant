@@ -173,7 +173,6 @@ const MATERIAL = {
   mime: 'application/pdf',
   pages: 1,
   course_id: '3',
-  group_id: null,
   folder_id: null,
   blob_sha: 'a'.repeat(64),
   created_at: '2026-08-18T00:00:00Z',

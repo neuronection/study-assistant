@@ -367,9 +367,9 @@ export function ChatPanel({
       return existing.id
     }
     const pattern = chatUploadFolderPattern(sessionId)
-    const legacy = folders.find((folder) => folder.parent_id === root.id && pattern.test(folder.name))
-    if (legacy !== undefined) {
-      return (await renameFolder(legacy.id, expected)).id
+    const older = folders.find((folder) => folder.parent_id === root.id && pattern.test(folder.name))
+    if (older !== undefined) {
+      return (await renameFolder(older.id, expected)).id
     }
     return (await createFolder(expected, root.id, uploadCourseId)).id
   }, [uploadCourseId, ensureUploadSession, sessions.data, t])

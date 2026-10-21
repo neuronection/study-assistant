@@ -155,7 +155,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     expect(screen.getByText('Boolean gate')).toBeInTheDocument()
     expect(screen.getByText('Choice')).toBeInTheDocument()
     expect(screen.getByText('Score')).toBeInTheDocument()
-    // No legacy card title.
+    // No older card title.
     expect(screen.queryByText('Decision defaults')).not.toBeInTheDocument()
     expect(screen.queryByText('Decision models')).not.toBeInTheDocument()
   })

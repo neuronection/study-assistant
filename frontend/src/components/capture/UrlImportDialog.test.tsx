@@ -85,7 +85,7 @@ describe('UrlImportDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  test('import mode keeps the legacy parse behavior', async () => {
+  test('import mode keeps the older parse behavior', async () => {
     importUrlMaterial.mockResolvedValue({
       material: { id: '44', title: 'example.com - bayes' },
       job_id: '7',

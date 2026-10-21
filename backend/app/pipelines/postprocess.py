@@ -91,9 +91,11 @@ def make_postprocess_handler(embedder: Embedder, describer: Describer) -> JobHan
         material = session.get(Material, payload.get("material_id"))
         if material is None:
             raise JobError("material not found")
-        old_chunk_ids = payload.get("old_chunk_ids") or []
-        if old_chunk_ids:
-            vectors.delete_for_extraction(session, [str(chunk_id) for chunk_id in old_chunk_ids])
+        replaced_chunk_ids = payload.get("replaced_chunk_ids") or []
+        if replaced_chunk_ids:
+            vectors.delete_for_extraction(
+                session, [str(chunk_id) for chunk_id in replaced_chunk_ids]
+            )
         extraction = _latest_extraction(session, payload.get("extraction_id"), material.id)
         report(20, "embedding")
         try:

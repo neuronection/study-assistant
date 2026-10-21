@@ -9,7 +9,7 @@ it in later is a one-file change confined to this adapter):
 
 - `messages` tuples (`AIMessageChunk`, metadata) → `delta` events
   (text and reasoning deltas in exact arrival order, tool lines filtered by
-  the same line grammar as the legacy engine, 30 ms flush throttle),
+  the same line grammar as the earlier engine, 30 ms flush throttle),
 - `updates` (per-node state deltas) → round-boundary flush of the pending
   delta line, capture of the `finalize` node's persisted event payload, and
   the reserved `__interrupt__` mapping point,

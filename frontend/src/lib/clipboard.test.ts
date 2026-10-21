@@ -24,7 +24,7 @@ describe('copyText', () => {
     Object.assign(navigator, { clipboard: undefined })
     const execCommand = vi.fn(() => true)
     document.execCommand = execCommand as unknown as typeof document.execCommand
-    await expect(copyText('legacy')).resolves.toBe(true)
+    await expect(copyText('sample text')).resolves.toBe(true)
     expect(execCommand).toHaveBeenCalledWith('copy')
   })
 

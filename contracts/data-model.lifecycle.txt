@@ -1,0 +1,82 @@
+# contracts/data-model.lifecycle.txt — lifecycle classes (guidelines/data-model.md §7).
+#
+# Every mapped table declares exactly one class. The gate (D6) rejects an
+# unclassified table and a stale row; `tests/test_lifecycle_inventory.py`
+# proves coverage + the single-tombstone rule.
+#
+# record       retained with the subject/record; erased only when the subject
+#              is erased (profiles, courses, documents, catalogue config)
+# operational  bounded retention, pruned by policy (logs, telemetry, blobs,
+#              trash snapshots)
+# transient    prunable at any time (sessions, pending quiz state, jobs)
+#
+# Tombstones exist ONLY in `deleted_items` (operational): it is the single
+# trash surface (plan 77-F snapshot restore). No other table carries
+# `deleted_at`/`is_deleted` soft-delete semantics; every other delete is a
+# hard delete, purge-only and cascade-complete.
+
+activities :: record
+ai_interactions :: operational
+answers :: record
+attempts :: record
+audit_events :: operational
+auth_sessions :: transient
+blobs :: operational
+chat_messages :: record
+chat_proposal_anchors :: record
+chat_proposals :: record
+chat_quiz_pendings :: transient
+chat_sessions :: record
+chunks :: record
+concept_links :: record
+concept_skill_ratings :: record
+concept_skill_stats :: record
+concepts :: record
+course_default_task_assignments :: record
+course_task_assignments :: record
+course_types :: record
+courses :: record
+daily_rollups :: record
+default_task_assignments :: record
+deleted_items :: operational
+error_patterns :: record
+exercise_sessions :: record
+exercise_steps :: record
+exercises :: record
+external_sources :: record
+extractions :: record
+fsrs_states :: record
+instance_settings :: record
+item_stats :: record
+jobs :: transient
+material_drawings :: record
+material_folder_links :: record
+material_folders :: record
+material_images :: record
+material_index_cards :: record
+material_links :: record
+material_sources :: record
+material_study_state :: record
+material_suggestions :: record
+materials :: record
+mistakes :: record
+models :: record
+node_concepts :: record
+note_drawings :: record
+note_versions :: record
+notes :: record
+plan_items :: record
+profiles :: record
+providers :: record
+questions :: record
+quiz_help_events :: operational
+quizme_answers :: record
+review_log :: record
+skill_versions :: record
+skills :: record
+step_attempts :: record
+study_goals :: record
+study_sessions :: record
+task_assignments :: record
+tree_nodes :: record
+users :: record
