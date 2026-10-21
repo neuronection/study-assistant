@@ -11,6 +11,7 @@ extension-owned sections). They capture the fields the product reads or
 writes; unknown fields survive because the columns stay JSON.
 """
 
+from collections.abc import Mapping
 from typing import Any, TypedDict
 
 from .preferences import ProfilePreferences as ProfilePreferences
@@ -45,6 +46,16 @@ type StringList = list[str]
 type TrashPayload = dict[str, Any]
 
 
+class BundleManifestMap(TypedDict, total=False):
+    format: str
+    app_version: str
+    created_at: str
+    course_title: str
+    options: dict[str, bool]
+    counts: dict[str, int]
+    warnings: list[str]
+
+
 class BundleCourseMap(TypedDict, total=False):
     id: str
     title: str
@@ -57,6 +68,112 @@ class BundleCourseMap(TypedDict, total=False):
     exam_date: str | None
 
 
+class BundleTreeRow(TypedDict, total=False):
+    id: str
+    parent_id: str | None
+    title: str
+    summary: str | None
+    objectives: list[str] | None
+    ai_hint: str | None
+    order_idx: int
+    is_root: bool
+    depth: int
+
+
+class BundleConceptRow(TypedDict, total=False):
+    id: str
+    name: str
+    description: str | None
+    aliases: list[str] | None
+
+
+class BundleConceptLinkRow(TypedDict, total=False):
+    from_concept_id: str
+    to_concept_id: str
+    relation: str
+
+
+class BundleCoverageRow(TypedDict, total=False):
+    node_id: str
+    concept_id: str
+    weight: float | None
+
+
+class BundleMaterialDrawingRow(TypedDict, total=False):
+    id: str
+    strokes: list[StrokeDict]
+    png_sha: str | None
+    view: dict[str, float] | None
+    ocr_markdown: str | None
+    ocr_blocks: list[BlockDict] | None
+    ocr_version: int
+
+
+class BundleMaterialExtraction(TypedDict, total=False):
+    version: int
+    extractor: str
+    model: str | None
+    blocks: list[BlockDict]
+    markdown: str
+    language: str | None
+    reviewed: bool
+
+
+class BundleMaterialIndexCard(TypedDict, total=False):
+    summary: str | None
+    topics: list[str] | None
+    key_terms: list[str] | None
+    reading_minutes: int | None
+    difficulty: int | None
+
+
+class BundleMaterialLinkRow(TypedDict, total=False):
+    node_id: str
+    rationale: str | None
+    auto_assigned: bool
+    confidence: float | None
+
+
+class BundleMaterialRow(TypedDict, total=False):
+    id: str
+    kind: str
+    title: str
+    filename: str
+    mime: str | None
+    pages: int | None
+    language: str | None
+    blob_sha: str | None
+    provenance: Mapping[str, Any] | None
+    source_url: str | None
+    source_url_norm: str | None
+    tags: list[str] | None
+    starred: bool
+    drawings: list[BundleMaterialDrawingRow]
+    extraction: BundleMaterialExtraction | None
+    index_card: BundleMaterialIndexCard | None
+    folder_path: str | None
+    links: list[BundleMaterialLinkRow]
+
+
+class BundleFolderRow(TypedDict, total=False):
+    id: str
+    path: str
+    name: str
+
+
+class BundleFolderLinkRow(TypedDict, total=False):
+    node_id: str
+    folder_path: str
+    rationale: str | None
+    auto_assigned: bool
+    confidence: float | None
+
+
+class BundleFoldersMap(TypedDict, total=False):
+    folders: list[BundleFolderRow]
+    links: list[BundleFolderLinkRow]
+
+
 class BundleHistoryMap(TypedDict, total=False):
     attempts: list[dict[str, Any]]
     answers: list[dict[str, Any]]
@@ -66,9 +183,9 @@ class BundleHistoryMap(TypedDict, total=False):
 
 
 class BundleConceptsMap(TypedDict, total=False):
-    concepts: list[dict[str, Any]]
-    links: list[dict[str, Any]]
-    coverage: list[dict[str, Any]]
+    concepts: list[BundleConceptRow]
+    links: list[BundleConceptLinkRow]
+    coverage: list[BundleCoverageRow]
 
 
 class TurnFailure(TypedDict, total=False):

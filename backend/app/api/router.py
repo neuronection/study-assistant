@@ -15,10 +15,12 @@ from . import (
     flashcards,
     folders,
     fs,
+    genesis,
     health,
     instance,
     jobs,
     materials,
+    nodes,
     notes,
     notifications,
     onboarding,
@@ -48,6 +50,9 @@ api_router.include_router(extensions.charter_router)
 api_router.include_router(extensions.docs_router)
 api_router.include_router(folders.router)
 api_router.include_router(courses.router)
+api_router.include_router(genesis.router)
+api_router.include_router(nodes.router)
+api_router.include_router(plan.courses_plan_router)
 api_router.include_router(chat.router)
 api_router.include_router(quiz.router)
 api_router.include_router(review.router)
