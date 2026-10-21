@@ -104,7 +104,7 @@ def test_cancelled_summary_and_retry_refusal(client: TestClient) -> None:
 def test_running_job_cancelled_at_report_checkpoint(tmp_path: Path) -> None:
     factory, engine = make_factory(tmp_path, "cancel.db")
     session = factory()
-    job = Job(type="noop", payload={"material_id": 4242}, status="queued")
+    job = Job(type="ingest", payload={"material_id": 4242}, status="queued")
     session.add(job)
     session.commit()
     job_id = job.id
@@ -120,7 +120,7 @@ def test_running_job_cancelled_at_report_checkpoint(tmp_path: Path) -> None:
     runner = JobRunner(
         factory,
         EventBus(),
-        handlers={"noop": handler},
+        handlers={"ingest": handler},
         poll_interval=0.02,
         workers=1,
     )
@@ -147,7 +147,7 @@ def job_status_is(factory: Any, job_id: int, status: str) -> bool:
 def test_flag_set_before_start_never_runs_handler(tmp_path: Path) -> None:
     factory, engine = make_factory(tmp_path, "cancel2.db")
     session = factory()
-    job = Job(type="noop", payload={"material_id": 7}, status="queued")
+    job = Job(type="ingest", payload={"material_id": 7}, status="queued")
     session.add(job)
     session.commit()
     job_id = job.id
@@ -162,7 +162,7 @@ def test_flag_set_before_start_never_runs_handler(tmp_path: Path) -> None:
     runner = JobRunner(
         factory,
         EventBus(),
-        handlers={"noop": handler},
+        handlers={"ingest": handler},
         poll_interval=0.02,
         workers=1,
     )

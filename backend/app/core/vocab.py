@@ -31,6 +31,7 @@ class JobType(StrVocab):
     IMAGE_OCR = "image_ocr"
     GENESIS = "genesis"
     URL_IMPORT = "url_import"
+    COMPOSE = "compose"
 
 
 class ToolEntryKind(StrVocab):

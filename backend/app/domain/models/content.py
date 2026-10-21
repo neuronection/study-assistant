@@ -1,3 +1,25 @@
+from ...core.vocab import (
+    ConceptRelation as ConceptRelation,
+)
+from ...core.vocab import (
+    DiscoveryKind as DiscoveryKind,
+)
+from ...core.vocab import (
+    ExternalSourceKind as ExternalSourceKind,
+)
+from ...core.vocab import (
+    MaterialKind as MaterialKind,
+)
+from ...core.vocab import (
+    MaterialStatus as MaterialStatus,
+)
+from ...core.vocab import (
+    StudyStatus as StudyStatus,
+)
+from ...core.vocab import (
+    SuggestionStatus as SuggestionStatus,
+)
+from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
 )
@@ -92,6 +114,7 @@ class ConceptLink(Base):
             "relation",
             unique=True,
         ),
+        vocab_check("relation", ConceptRelation),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -173,7 +196,10 @@ class MaterialFolderLink(Base):
 
 class MaterialStudyState(Base):
     __tablename__ = "material_study_state"
-    __table_args__ = (Index("uq_material_study_state", "material_id", "profile_id", unique=True),)
+    __table_args__ = (
+        Index("uq_material_study_state", "material_id", "profile_id", unique=True),
+        vocab_check("status", StudyStatus),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     material_id: Mapped[int] = mapped_column(
@@ -240,6 +266,8 @@ class Material(Base):
             sqlite_where=text("kind = 'link' AND source_url_norm IS NOT NULL"),
             postgresql_where=text("kind = 'link' AND source_url_norm IS NOT NULL"),
         ),
+        vocab_check("kind", MaterialKind),
+        vocab_check("status", MaterialStatus),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -256,7 +284,7 @@ class Material(Base):
     kind: Mapped[str] = mapped_column(String(30))
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str | None] = mapped_column(Text)
-    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
     filename: Mapped[str] = mapped_column(String(500))
     mime: Mapped[str | None] = mapped_column(String(120))
     pages: Mapped[int | None] = mapped_column(Integer)
@@ -298,7 +326,7 @@ class MaterialImage(Base):
         ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
     position: Mapped[int] = mapped_column(Integer, default=0)
-    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    blob_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
     mime: Mapped[str | None] = mapped_column(String(120))
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
@@ -357,7 +385,7 @@ class MaterialDrawing(Base):
         ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
     strokes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
     view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
     ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
@@ -422,7 +450,7 @@ class NoteDrawing(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     note_id: Mapped[int] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
     strokes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256"))
+    png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
     view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
     ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
@@ -471,6 +499,7 @@ class MaterialSource(Base):
 
 class ExternalSource(Base):
     __tablename__ = "external_sources"
+    __table_args__ = (vocab_check("kind", ExternalSourceKind),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profile_id: Mapped[str] = mapped_column(
@@ -503,6 +532,8 @@ class MaterialSuggestion(Base):
             ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
+        vocab_check("kind", DiscoveryKind),
+        vocab_check("status", SuggestionStatus),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

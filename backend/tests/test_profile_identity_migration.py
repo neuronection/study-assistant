@@ -30,7 +30,7 @@ def test_migration_head_is_latest(tmp_path: Path) -> None:
     raw = sqlite3.connect(db_path)
     assert (
         raw.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0071_chat_transport"
+        == "0072_vocab_checks"
     )
     columns = {
         row[1]: (row[2], bool(row[3]))

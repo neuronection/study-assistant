@@ -12,12 +12,13 @@ closed-set column without a mirrored CHECK, or a table with no scope entry
 fails the suite.
 """
 
+from sqlalchemy import CheckConstraint
+
 from ..core.vocab import (
     AttemptMode,
     ChatProposalStatus,
     ConceptRelation,
     CourseOrigin,
-    DecisionTransport,
     DiscoveryKind,
     ExternalSourceKind,
     GoalUnit,
@@ -58,7 +59,6 @@ CLOSED_SETS: dict[str, type[StrVocab]] = {
     "material_suggestions.status": SuggestionStatus,
     "materials.kind": MaterialKind,
     "materials.status": MaterialStatus,
-    "models.decision_transport": DecisionTransport,
     "plan_items.kind": PlanItemKind,
     "plan_items.origin": PlanItemOrigin,
     "questions.flag": ItemFlag,
@@ -218,3 +218,16 @@ PROFILE_SCOPE: dict[str, str] = {
 def split_key(key: str) -> tuple[str, str]:
     table, _, column = key.partition(".")
     return table, column
+
+
+def vocab_check(column: str, enum: type[StrVocab], *, nullable: bool = False) -> CheckConstraint:
+    """A CHECK mirroring an enum's member list.
+
+    The short name (`<column>_allowed`) is what `op.drop_constraint` takes;
+    the metadata naming convention renders `ck_<table>_<column>_allowed`.
+    """
+    values = ", ".join(f"'{member.value}'" for member in enum)
+    body = f"{column} IN ({values})"
+    if nullable:
+        body = f"{column} IS NULL OR {body}"
+    return CheckConstraint(body, name=f"{column}_allowed")

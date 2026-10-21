@@ -1,3 +1,16 @@
+from ...core.vocab import (
+    GoalUnit as GoalUnit,
+)
+from ...core.vocab import (
+    ItemFlag as ItemFlag,
+)
+from ...core.vocab import (
+    JobStatus as JobStatus,
+)
+from ...core.vocab import (
+    JobType as JobType,
+)
+from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
 )
@@ -53,6 +66,10 @@ from .core import (
 
 class Job(Base):
     __tablename__ = "jobs"
+    __table_args__ = (
+        vocab_check("type", JobType),
+        vocab_check("status", JobStatus),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     type: Mapped[str] = mapped_column(String(50))
@@ -89,7 +106,9 @@ class AiModel(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    provider_id: Mapped[int] = mapped_column(ForeignKey("providers.id"), index=True)
+    provider_id: Mapped[int] = mapped_column(
+        ForeignKey("providers.id", ondelete="CASCADE"), index=True
+    )
     external_id: Mapped[str] = mapped_column(String(200))
     label: Mapped[str] = mapped_column(String(200))
     caps: Mapped[list[str]] = mapped_column(JSON)
@@ -114,8 +133,10 @@ class TaskAssignment(Base):
     __tablename__ = "task_assignments"
 
     task: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
-    fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
+    fallback_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("models.id", ondelete="SET NULL")
+    )
     params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
@@ -123,11 +144,13 @@ class DefaultTaskAssignment(Base):
     __tablename__ = "default_task_assignments"
 
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
     # ADR-0037: capability defaults (incl. `decision`) are single-slot —
     # this stays populated only on the decision kind override rows, which
     # are specialist assignments.
-    fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+    fallback_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("models.id", ondelete="SET NULL")
+    )
 
 
 class CourseTaskAssignment(Base):
@@ -137,8 +160,10 @@ class CourseTaskAssignment(Base):
         ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     task: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
-    fallback_model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
+    fallback_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("models.id", ondelete="SET NULL")
+    )
 
 
 class CourseDefaultTaskAssignment(Base):
@@ -150,7 +175,7 @@ class CourseDefaultTaskAssignment(Base):
         ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id"))
+    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
 
 
 class DeletedItem(Base):
@@ -202,7 +227,10 @@ class DailyRollup(Base):
 
 class ItemStat(Base):
     __tablename__ = "item_stats"
-    __table_args__ = (Index("uq_item_stats", "question_id", unique=True),)
+    __table_args__ = (
+        Index("uq_item_stats", "question_id", unique=True),
+        vocab_check("flag", ItemFlag),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
@@ -239,6 +267,7 @@ class ConceptSkillRating(Base):
 
 class StudyGoal(Base):
     __tablename__ = "study_goals"
+    __table_args__ = (vocab_check("unit", GoalUnit),)
 
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
@@ -278,7 +307,7 @@ class SkillVersion(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"))
+    skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"))
     scope_type: Mapped[str] = mapped_column(String(20))
     scope_ref: Mapped[int | None] = mapped_column(Integer)
     version: Mapped[int] = mapped_column(Integer)

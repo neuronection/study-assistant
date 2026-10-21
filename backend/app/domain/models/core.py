@@ -53,7 +53,9 @@ from sqlalchemy.orm import Mapped as Mapped
 from sqlalchemy.orm import mapped_column as mapped_column
 from sqlalchemy.orm import relationship as relationship
 
+from ...core.vocab import CourseOrigin as CourseOrigin
 from ...storage.db import Base as Base
+from ..schema_contract import vocab_check as vocab_check
 
 
 def utcnow() -> datetime:
@@ -93,6 +95,7 @@ class Course(Base):
             sqlite_where=text("origin = 'scratch'"),
             postgresql_where=text("origin = 'scratch'"),
         ),
+        vocab_check("origin", CourseOrigin),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -107,7 +110,9 @@ class Course(Base):
     tags: Mapped[list[str] | None] = mapped_column(JSON)
     color: Mapped[str | None] = mapped_column(String(16))
     exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    course_type_id: Mapped[int | None] = mapped_column(ForeignKey("course_types.id"))
+    course_type_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_types.id", ondelete="SET NULL")
+    )
     origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
     hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -151,7 +156,7 @@ class TreeNode(Base):
             ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
-        CheckConstraint("depth >= 0 AND depth <= 4", name="ck_tree_nodes_depth"),
+        CheckConstraint("depth >= 0 AND depth <= 4", name="depth"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

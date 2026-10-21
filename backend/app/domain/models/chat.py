@@ -1,4 +1,5 @@
 from ...core.vocab import ChatProposalStatus
+from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
 )
@@ -104,6 +105,7 @@ class ChatMessage(Base):
 
 class ChatProposal(Base):
     __tablename__ = "chat_proposals"
+    __table_args__ = (vocab_check("status", ChatProposalStatus),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     message_id: Mapped[int] = mapped_column(

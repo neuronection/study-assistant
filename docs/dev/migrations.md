@@ -32,6 +32,25 @@ generate the migration. Services and routers import models from
 Every migration implements `downgrade()`. New tables are dropped; new columns
 are dropped; data migrations reverse best-effort. Downgrades are tested.
 
+## Closed sets are database contracts
+
+A `StrEnum` in `backend/app/core/vocab.py` used as a column value has a CHECK
+twin on the model (`schema_contract.vocab_check("<column>", Enum)`) and a row
+in `schema_contract.CLOSED_SETS`. Adding a member means changing the enum, the
+CHECK, and adding a migration **in the same commit** — otherwise inserts of the
+new value fail at runtime while the Python code happily produces them
+(family-migration §5b). The metadata `naming_convention` renders
+`ck_<table>_<column>_allowed`; `op.drop_constraint` takes the short
+`"<column>_allowed"` form.
+
+## Named constraints
+
+`Base.metadata` carries an `ix_/uq_/ck_/fk_/pk_` naming convention, so every
+constraint created from the models is named and can be dropped by name. When
+writing a migration by hand against an *older* database, remember constraints
+created before the convention are still unnamed on SQLite — that is why FK
+swaps rebuild the table (below).
+
 ## Data migrations
 
 When a revision transforms existing rows (rewrites a vocabulary, backfills a

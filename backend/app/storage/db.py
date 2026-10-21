@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 import sqlite_vec
-from sqlalchemy import create_engine, event
+from sqlalchemy import MetaData, create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -21,7 +21,15 @@ _WAL_SWITCH_LOCK = threading.Lock()
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(
+        naming_convention={
+            "ix": "ix_%(table_name)s_%(column_0_N_name)s",
+            "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_N_name)s",
+            "pk": "pk_%(table_name)s",
+        }
+    )
 
 
 def make_engine(db_path: Path | str) -> Engine:

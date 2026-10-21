@@ -347,6 +347,26 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0072 (plan 81 B, ADR-197)**: DB-enforced closed sets. Nineteen
+  StrEnum-backed columns (`courses.origin`, `materials.kind/status`,
+  `jobs.type/status`, `chat_proposals.status`, `plan_items.kind/origin`,
+  `study_sessions.kind/source`, `questions.flag`, `item_stats.flag`,
+  `attempts.mode`, `material_study_state.status`,
+  `material_suggestions.kind/status`, `external_sources.kind`,
+  `concept_links.relation`, `study_goals.unit`) gain `CHECK` twins (`ck_<table>_<column>_allowed`) mirroring their StrEnum
+  member lists; `Base.metadata` gains an `ix_/uq_/ck_/fk_/pk_` naming
+  convention so every future constraint is named (short-name drops per
+  family-migration §5b). `JobType.COMPOSE` was missing from the enum while the
+  job registry already ran it — widened in the same commit so the new
+  `jobs.type` CHECK cannot reject a real job. Explicit `ON DELETE` is declared
+  on the FKs that silently relied on NO ACTION (`SET NULL` for catalogue/model
+  references, `CASCADE` for provider→models and skill→versions, `RESTRICT` for
+  the immortal blob store); SQLite cannot swap an unnamed FK, so the physical
+  rewrite rides the 0073 table rebuilds (no deployed database exists).
+  Downgrade drops every CHECK and is round-trip tested, including row
+  preservation across the batch rebuilds
+  (`tests/test_vocab_checks_migration.py`).
+
 - **0069 (plan 26 Phase 3, ADR-0032)**: decision models — `models` gains
   nullable `decision_transport` (VARCHAR(20), the transport seam,
   `systemone` today), and the four `decision:*` slot rows are seeded into

@@ -1,3 +1,22 @@
+from ...core.vocab import (
+    AttemptMode as AttemptMode,
+)
+from ...core.vocab import (
+    ItemFlag as ItemFlag,
+)
+from ...core.vocab import (
+    PlanItemKind as PlanItemKind,
+)
+from ...core.vocab import (
+    PlanItemOrigin as PlanItemOrigin,
+)
+from ...core.vocab import (
+    StudySessionKind as StudySessionKind,
+)
+from ...core.vocab import (
+    StudySessionSource as StudySessionSource,
+)
+from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
 )
@@ -93,6 +112,7 @@ class Activity(Base):
 
 class Question(Base):
     __tablename__ = "questions"
+    __table_args__ = (vocab_check("flag", ItemFlag),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -125,6 +145,7 @@ class Question(Base):
 
 class Attempt(Base):
     __tablename__ = "attempts"
+    __table_args__ = (vocab_check("mode", AttemptMode),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -328,7 +349,9 @@ class ErrorPattern(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     key: Mapped[str] = mapped_column(String(80))
-    course_type_id: Mapped[int | None] = mapped_column(ForeignKey("course_types.id"))
+    course_type_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_types.id", ondelete="SET NULL")
+    )
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
     example: Mapped[str | None] = mapped_column(Text)
@@ -341,7 +364,11 @@ class ErrorPattern(Base):
 
 class StudySession(Base):
     __tablename__ = "study_sessions"
-    __table_args__ = (Index("ix_study_sessions_profile_started", "profile_id", "started_at"),)
+    __table_args__ = (
+        Index("ix_study_sessions_profile_started", "profile_id", "started_at"),
+        vocab_check("kind", StudySessionKind),
+        vocab_check("source", StudySessionSource),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profile_id: Mapped[str] = mapped_column(
@@ -370,6 +397,8 @@ class PlanItem(Base):
         ),
         Index("ix_plan_items_course_due", "course_id", "due_date"),
         Index("ix_plan_items_profile_due", "profile_id", "due_date"),
+        vocab_check("kind", PlanItemKind),
+        vocab_check("origin", PlanItemOrigin),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

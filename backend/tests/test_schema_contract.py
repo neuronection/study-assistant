@@ -8,7 +8,7 @@ declare how it is profile-scoped.
 
 from pathlib import Path
 
-from sqlalchemy import JSON
+from sqlalchemy import JSON, CheckConstraint
 
 from app.domain import (
     models,  # noqa: F401
@@ -74,3 +74,45 @@ def test_closed_sets_name_real_columns() -> None:
         assert table is not None, f"CLOSED_SETS names missing table {table_name}"
         assert column_name in table.columns, f"CLOSED_SETS names missing column {key}"
         assert table.columns[column_name].type.python_type is str, f"{key} is not a string column"
+
+
+def _check_for(table_name: str, column: str) -> object:
+    table = Base.metadata.tables[table_name]
+    for constraint in table.constraints:
+        if isinstance(constraint, CheckConstraint) and constraint.name == (
+            f"ck_{table_name}_{column}_allowed"
+        ):
+            return constraint
+    raise AssertionError(f"{table_name}.{column} has no ck_{table_name}_{column}_allowed CHECK")
+
+
+def test_every_closed_set_has_its_check_twin() -> None:
+    for key, enum in schema_contract.CLOSED_SETS.items():
+        table_name, _, column = key.partition(".")
+        constraint = _check_for(table_name, column)
+        body = str(constraint.sqltext)  # type: ignore[attr-defined]
+        for member in enum:
+            assert f"'{member.value}'" in body, f"{key} CHECK is missing '{member.value}'"
+        nullable = Base.metadata.tables[table_name].columns[column].nullable
+        assert ("IS NULL" in body) is nullable, f"{key} CHECK nullability drifted"
+
+
+def test_every_constraint_is_named() -> None:
+    unnamed = [
+        f"{table.name}.{constraint.__class__.__name__}"
+        for table in Base.metadata.tables.values()
+        for constraint in table.constraints
+        if constraint.__class__.__name__ != "PrimaryKeyConstraint" and constraint.name is None
+    ]
+    assert not unnamed, f"unnamed constraints: {sorted(unnamed)}"
+
+
+def test_every_foreign_key_declares_its_delete_behaviour() -> None:
+    missing = [
+        f"{table.name}.{element.parent.name}"
+        for table in Base.metadata.tables.values()
+        for constraint in table.foreign_key_constraints
+        for element in constraint.elements
+        if constraint.ondelete is None
+    ]
+    assert not missing, f"foreign keys without explicit ON DELETE: {sorted(missing)}"

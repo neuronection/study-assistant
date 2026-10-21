@@ -63,6 +63,8 @@ from sqlalchemy import delete, func, inspect, select  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.core.vocab import StudyStatus  # noqa: E402
+
 from app.domain.models import (  # noqa: E402
     AuthSession,
     Chunk,
@@ -135,7 +137,7 @@ class MaterialSpec:
     key_terms: tuple[str, ...]
     reading_minutes: int = 12
     difficulty: int = 2
-    study_status: str = "unread"
+    study_status: str = StudyStatus.UNREAD.value
     study_progress: float = 0.0
     chapter: str = ""
 
@@ -216,7 +218,7 @@ LINEAR_ALGEBRA = CourseSpec(
             summary="Axioms, examples and the subspace test for vector spaces.",
             topics=("vector spaces", "subspaces", "axioms"),
             key_terms=("vector space", "subspace", "closure", "field"),
-            study_status="read",
+            study_status=StudyStatus.STUDIED.value,
             study_progress=1.0,
             chapter="Vector spaces",
         ),
@@ -238,7 +240,7 @@ LINEAR_ALGEBRA = CourseSpec(
             summary="Mechanics and pitfalls of matrix multiplication.",
             topics=("matrices", "transpose"),
             key_terms=("matrix product", "transpose", "non-commutative"),
-            study_status="reading",
+            study_status=StudyStatus.READING.value,
             study_progress=0.5,
             chapter="Matrix calculus",
         ),
@@ -356,7 +358,7 @@ GREEK_A2 = CourseSpec(
             summary="Aorist stems and the three irregular verbs that matter at A2.",
             topics=("past tense", "verbs"),
             key_terms=("αόριστος", "aorist", "irregular verbs"),
-            study_status="reading",
+            study_status=StudyStatus.READING.value,
             study_progress=0.3,
             chapter="Past tense",
         ),
@@ -553,7 +555,7 @@ STATISTICS = CourseSpec(
             summary="p-values, the two error types, and the phrasing that keeps marks.",
             topics=("p-value", "errors"),
             key_terms=("p-value", "Type I error", "Type II error", "H_0"),
-            study_status="read",
+            study_status=StudyStatus.STUDIED.value,
             study_progress=1.0,
             chapter="Hypothesis testing",
         ),
@@ -671,7 +673,7 @@ SPANISH_B2 = CourseSpec(
             summary="The trigger categories and three fixed phrases.",
             topics=("subjunctive",),
             key_terms=("subjuntivo", "ojalá", "para que"),
-            study_status="reading",
+            study_status=StudyStatus.READING.value,
             study_progress=0.6,
             chapter="Subjunctive",
         ),
