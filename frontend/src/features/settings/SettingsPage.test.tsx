@@ -13,9 +13,6 @@ import { describe, expect, test, vi } from 'vitest'
 
 import { SettingsPage } from './SettingsPage'
 
-vi.mock('@/features/spike/SpikePage', () => ({
-  SpikeContent: () => <div>spike-content</div>,
-}))
 
 const listProviders = vi.fn()
 const listPresets = vi.fn()
@@ -544,7 +541,6 @@ describe('SettingsPage', () => {
     await renderSettings()
     fireEvent.click(screen.getByRole('button', { name: /^data/i }))
     expect(await screen.findByText(/backup & restore/i)).toBeInTheDocument()
-    expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
   })
 
   test('the tools connectors section deep-links via ?section=', async () => {
@@ -580,11 +576,11 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('Google Gemini')).not.toBeInTheDocument()
   })
 
-  test('developer tab shows the rendering spike content only when selected', async () => {
+  test('developer tab shows build diagnostics only when selected', async () => {
     await renderSettings()
-    expect(screen.queryByText('spike-content')).not.toBeInTheDocument()
+    expect(screen.queryByText('Diagnostics for this build.')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^developer/i }))
-    expect(await screen.findByText('spike-content')).toBeInTheDocument()
+    expect(await screen.findByText('Diagnostics for this build.')).toBeInTheDocument()
   })
 
   test('edit provider dialog patches without touching the key when blank', async () => {

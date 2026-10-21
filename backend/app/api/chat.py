@@ -28,7 +28,7 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from ..domain.payloads import ChatTrace, ProposalPayload, ProposalResult
+from ..domain.payloads import ChatTrace, ProposalPayload, ProposalResult, TurnFailure
 from ..domain.proposal_contract import ProposalPayloadError, validate_proposal_payload
 from ..jobs.runner import JobError, JobHandler, JobRunner
 from ..services.knowledge.tree import TreeError, TreeService
@@ -1216,7 +1216,7 @@ def make_chat_turn_handler(
                 failure = service.add_message(
                     chat_session.id, "assistant", "", parent_id=pending.id
                 )
-                failure.state = {"turn_failed": {"code": code, "detail": detail}}
+                failure.state = {"turn_failed": TurnFailure(code=code, detail=detail)}
                 session.commit()
                 raise
             finally:

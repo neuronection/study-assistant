@@ -1,4 +1,14 @@
 {
+  "developer": {
+    "title": "Entwickler",
+    "subtitle": "Diagnose für diesen Build.",
+    "version": "App-Version",
+    "backend": "Backend",
+    "build": "Backend-Version",
+    "checking": "Prüfe…",
+    "online": "online",
+    "offline": "nicht erreichbar"
+  },
   "auth": {
     "checking": "Starting Study Assistant…",
     "signInTitle": "Sign in",
@@ -1352,19 +1362,6 @@
     "promoteCoverageNote": "Die Abdeckung der Konzepte bleibt hier zurück und kann im neuen Kurs neu erstellt werden.",
     "promoteConfirm": "Kurs erstellen",
     "promoteFailed": "Konnte nicht in einen Kurs überführt werden"
-  },
-  "spike": {
-    "title": "Rendering-Test",
-    "subtitle": "WebKitGTK Go/No-Go: Jede Karte unten muss innerhalb der pywebview-Shell korrekt gerendert werden.",
-    "katex": "KaTeX-Mathematik",
-    "katexHint": "Gleichungen und Inline-Mathematik müssen gesetzt werden, nicht als rohes LaTeX angezeigt werden.",
-    "mermaid": "Mermaid-Diagramm",
-    "mermaidHint": "Das Flussdiagramm muss mit den richtigen Formen und Pfeilen dargestellt werden.",
-    "mathlive": "MathLive-Editor",
-    "mathliveHint": "Gib etwas in das Feld ein — die Mathe-Tastatur sollte erscheinen und das LaTeX darunter muss aktualisiert werden.",
-    "mathliveValue": "LaTeX-Wert",
-    "canvas": "Zeichenfläche",
-    "canvasHint": "Zeichne mit Maus, Stift oder Finger — die Striche müssen dem Zeiger folgen und den Druck berücksichtigen."
   },
   "widgets": {
     "numberline": {

@@ -3148,6 +3148,24 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 82 D: legacy residue & typed payloads (ADR-205).** The
+  Phase-0 rendering harness is gone: the `/spike` route and
+  `features/spike/` (page + tests) are deleted, and the Settings Developer
+  tab (kept — the family settings-map contract declares it) now renders build
+  diagnostics (app/backend version + health) instead of the spike cards; the
+  `spike.*` i18n keys are removed from all three catalogs and `developer.*`
+  added. Three unused direct deps are dropped (`simple-icons`,
+  `@radix-ui/react-slot`, `type-fest` — verified unreferenced), and the
+  `pyproject.toml` comment stops citing a nonexistent in-repo script (it names
+  `scripts/check-extensions-structure.sh` + the dev-side sync/verify-wiring
+  gates). Typed payloads: the chat turn-failure marker is a `TurnFailure`
+  TypedDict and the three course-bundle adaptation maps
+  (`BundleCourseMap`/`BundleHistoryMap`/`BundleConceptsMap`) are typed;
+  `WidgetStateMap` deliberately stays an open map (widget ids are arbitrary
+  keys). Residual recorded: the broader `dict[str, Any]` sweep across the five
+  hotspots (188 occurrences) is not complete — see the plan's Deviations.
+  Backend gate green (ruff, format, mypy strict, 1,825 passed / 4 skipped);
+  frontend gate green (lint, typecheck, 1,468 tests, build, api-types).
 - 2026-10-21 — **plan 82 C: vocabulary sweep (ADR-204).** `QUESTION_TYPES` is
   the `QuestionType` StrEnum, the exercise-kind constants are `ExerciseKind`,
   the flashcard `KINDS` is `FlashcardKind`, and `jobs/registry.py` keys

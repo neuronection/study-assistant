@@ -61,3 +61,12 @@ describe('flat quiz/exercises route redirects', () => {
     expect(router.state.location.pathname).toBe('/courses')
   })
 })
+
+describe('spike route removal (plan 82 D)', () => {
+  test('/spike is not a route any more', async () => {
+    const { router } = await import('./router')
+    const routes = router.routesById as Record<string, unknown>
+    expect(routes['/spike']).toBeUndefined()
+    expect(routes['/settings']).toBeDefined()
+  })
+})

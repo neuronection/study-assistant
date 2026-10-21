@@ -159,7 +159,6 @@ describe('AppShell rail', () => {
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' })
     expect(nav).toBeInTheDocument()
     expect(screen.queryByText('Dev')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /rendering spike/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Flashcards' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Quiz' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Exercises' })).not.toBeInTheDocument()

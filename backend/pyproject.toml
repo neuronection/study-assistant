@@ -133,10 +133,12 @@ module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-# Vendored family contract runtime (dev/contracts canonical via
-# scripts/sync-extension-contract.sh, byte-identical, never edited here —
-# ADR-0031/ADR-0040): type findings belong in the dev canonical, not the
-# vendored copy; drift is gated by the sync ledger + verify-wiring.
+# Vendored family contract runtime (dev/contracts canonical, byte-identical,
+# never edited here — ADR-0031/ADR-0040): type findings belong in the dev
+# canonical, not the vendored copy. Drift is gated by this repo's
+# scripts/check-extensions-structure.sh plus the dev-side
+# dev/scripts/sync-extension-contract.sh / dev/scripts/verify-wiring.sh
+# (both live in the family dev repo, not here).
 # (career/health carry the same accommodation per pyproject.)
 module = ["app.extensions.polite_http"]
 ignore_errors = true

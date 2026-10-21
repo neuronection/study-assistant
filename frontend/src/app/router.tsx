@@ -22,7 +22,6 @@ import { QuizRunner } from '@/features/quiz/QuizRunner'
 import { ScoresPage } from '@/features/scores/ScoresPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
-import { SpikePage } from '@/features/spike/SpikePage'
 import { AboutPage } from '@/features/about/AboutPage'
 
 const rootRoute = createRootRoute({
@@ -242,12 +241,6 @@ const scoresRoute = createRoute({
   component: () => <ScoresPage />,
 })
 
-const spikeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/spike',
-  component: () => <SpikePage />,
-})
-
 const jobsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/jobs',
@@ -301,7 +294,6 @@ const routeTree = rootRoute.addChildren([
   noteEditorRedirectRoute,
   flashcardsRedirectRoute,
   scoresRoute,
-  spikeRoute,
   jobsRoute,
   settingsRoute,
   aboutRoute,

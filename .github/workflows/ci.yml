@@ -114,6 +114,7 @@ jobs:
           pnpm --filter frontend exec openapi-typescript openapi.json -o src/lib/api-schema.d.ts
           git diff --exit-code -- frontend/src/lib/api-schema.d.ts
       - run: pnpm --filter frontend lint
+      - run: pnpm --filter frontend check:api-types
       - run: pnpm --filter frontend typecheck
       - run: pnpm --filter frontend test
       - run: pnpm --filter frontend build

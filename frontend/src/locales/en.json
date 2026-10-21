@@ -1,4 +1,14 @@
 {
+  "developer": {
+    "title": "Developer",
+    "subtitle": "Diagnostics for this build.",
+    "version": "App version",
+    "backend": "Backend",
+    "build": "Backend version",
+    "checking": "Checking…",
+    "online": "online",
+    "offline": "unreachable"
+  },
   "auth": {
     "checking": "Starting Study Assistant…",
     "signInTitle": "Sign in",
@@ -1352,19 +1362,6 @@
     "useCatalog": "Pick from the catalog",
     "modelProvider": "Provider",
     "suggestedDecisionDefault": "Suggested: {{model}} ({{provider}})"
-  },
-  "spike": {
-    "title": "Rendering spike",
-    "subtitle": "WebKitGTK go/no-go: every card below must render correctly inside the pywebview shell.",
-    "katex": "KaTeX math",
-    "katexHint": "Equation and inline math must be typeset, not shown as raw LaTeX.",
-    "mermaid": "Mermaid diagram",
-    "mermaidHint": "The flowchart must draw with correct shapes and arrows.",
-    "mathlive": "MathLive editor",
-    "mathliveHint": "Type into the field — a math keyboard should appear and the LaTeX below must update.",
-    "mathliveValue": "LaTeX value",
-    "canvas": "Canvas drawing",
-    "canvasHint": "Draw with mouse, pen or finger — strokes must follow the pointer with pressure."
   },
   "blocks": {
     "unsupported": "Unsupported block",

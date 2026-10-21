@@ -43,6 +43,39 @@ type StrokeList = list[StrokeDict]
 
 type StringList = list[str]
 type TrashPayload = dict[str, Any]
+
+
+class BundleCourseMap(TypedDict, total=False):
+    id: str
+    title: str
+    description: str | None
+    subject: str | None
+    level: str | None
+    goals: list[str] | None
+    tags: list[str] | None
+    color: str | None
+    exam_date: str | None
+
+
+class BundleHistoryMap(TypedDict, total=False):
+    attempts: list[dict[str, Any]]
+    answers: list[dict[str, Any]]
+    exercise_sessions: list[dict[str, Any]]
+    step_attempts: list[dict[str, Any]]
+    quiz_help_events: list[dict[str, Any]]
+
+
+class BundleConceptsMap(TypedDict, total=False):
+    concepts: list[dict[str, Any]]
+    links: list[dict[str, Any]]
+    coverage: list[dict[str, Any]]
+
+
+class TurnFailure(TypedDict, total=False):
+    code: str
+    detail: str
+
+
 type WidgetStateMap = dict[str, Any]
 type ExternalSourceOptions = dict[str, Any]
 type ExternalSourceCursor = dict[str, Any]
@@ -562,5 +595,9 @@ PAYLOAD_TYPES: dict[str, object] = {
     "TaskParams": TaskParams,
     "ToolCallList": ToolCallList,
     "TrashPayload": TrashPayload,
+    "BundleConceptsMap": BundleConceptsMap,
+    "BundleCourseMap": BundleCourseMap,
+    "BundleHistoryMap": BundleHistoryMap,
+    "TurnFailure": TurnFailure,
     "WidgetStateMap": WidgetStateMap,
 }

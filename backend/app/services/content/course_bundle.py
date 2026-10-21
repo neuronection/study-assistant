@@ -47,6 +47,7 @@ from ...domain.models import (
     new_uuid,
     utcnow,
 )
+from ...domain.payloads import BundleConceptsMap, BundleCourseMap, BundleHistoryMap
 from ...pipelines.chunking import chunk_markdown
 from ...storage.blobs import blob_path
 from ...storage.fts import sync_material_fts
@@ -120,7 +121,7 @@ class BundleData:
     external_sources: list[dict[str, Any]] = field(default_factory=list)
 
 
-def _export_course(session: Session, course: Course) -> dict[str, Any]:
+def _export_course(session: Session, course: Course) -> BundleCourseMap:
     return {
         "id": course.id,
         "title": course.title,
@@ -234,7 +235,7 @@ def _export_note_versions(session: Session, course_id: str) -> list[dict[str, An
     ]
 
 
-def _export_history(session: Session, course_id: str) -> dict[str, Any]:
+def _export_history(session: Session, course_id: str) -> BundleHistoryMap:
     activities = list(session.scalars(select(Activity.id).where(Activity.course_id == course_id)))
     exercise_ids = list(session.scalars(select(Exercise.id).where(Exercise.course_id == course_id)))
     attempts = (
@@ -387,7 +388,7 @@ def _export_tree(session: Session, course_id: str) -> list[dict[str, Any]]:
     ]
 
 
-def _export_concepts(session: Session, course_id: str) -> dict[str, Any]:
+def _export_concepts(session: Session, course_id: str) -> BundleConceptsMap:
     concepts = list(session.scalars(select(Concept).where(Concept.course_id == course_id)))
     by_id = {concept.id: concept for concept in concepts}
     links = list(session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id)))

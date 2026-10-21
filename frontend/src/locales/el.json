@@ -1,4 +1,14 @@
 {
+  "developer": {
+    "title": "Προγραμματιστής",
+    "subtitle": "Διαγνωστικά για αυτήν τη έκδοση.",
+    "version": "Έκδοση εφαρμογής",
+    "backend": "Backend",
+    "build": "Έκδοση backend",
+    "checking": "Έλεγχος…",
+    "online": "σε σύνδεση",
+    "offline": "μη διαθέσιμο"
+  },
   "auth": {
     "checking": "Starting Study Assistant…",
     "signInTitle": "Sign in",
@@ -1352,19 +1362,6 @@
     "useCatalog": "Επιλογή από τον κατάλογο",
     "modelProvider": "Πάροχος",
     "suggestedDecisionDefault": "Πρόταση: {{model}} ({{provider}})"
-  },
-  "spike": {
-    "title": "Δοκιμή απόδοσης",
-    "subtitle": "WebKitGTK go/no-go: κάθε κάρτα παρακάτω πρέπει να αποδίδεται σωστά μέσα στο κέλυφος pywebview.",
-    "katex": "Μαθηματικά KaTeX",
-    "katexHint": "Η εξίσωση και τα ενσωματωμένα μαθηματικά πρέπει να στοιχειοθετούνται και να μην εμφανίζονται ως ακατέργαστο LaTeX.",
-    "mermaid": "Διάγραμμα Mermaid",
-    "mermaidHint": "Το διάγραμμα ροής πρέπει να σχεδιάζεται με σωστά σχήματα και βέλη.",
-    "mathlive": "Επεξεργαστής MathLive",
-    "mathliveHint": "Πληκτρολογήστε στο πεδίο — θα πρέπει να εμφανιστεί ένα μαθηματικό πληκτρολόγιο και να ενημερωθεί το παρακάτω LaTeX.",
-    "mathliveValue": "Τιμή LaTeX",
-    "canvas": "Σχεδίαση σε καμβά",
-    "canvasHint": "Σχεδιάστε με ποντίκι, γραφίδα ή δάχτυλο — οι γραμμές πρέπει να ακολουθούν τον δείκτη και την πίεσή του."
   },
   "blocks": {
     "unsupported": "Μη υποστηριζόμενο μπλοκ",

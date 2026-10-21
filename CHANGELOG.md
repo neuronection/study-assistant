@@ -11,6 +11,15 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Removed (legacy residue — plan 82 D / ADR-205)
+- **The Phase-0 rendering harness is gone.** The `/spike` route and
+  `features/spike/` are deleted; the Settings → Developer tab now shows build
+  diagnostics (app/backend version + health). Three unused direct dependencies
+  (`simple-icons`, `@radix-ui/react-slot`, `type-fest`) are removed.
+- Hot-path payload typing: the chat turn-failure marker and the course-bundle
+  adaptation maps are TypedDicts (service layer only; the DB shape is
+  unchanged).
+
 ### Changed (vocabulary sweep — closed sets at every boundary, plan 82 C / ADR-204)
 - **Question types, exercise kinds, flashcard kinds and job handler keys are
   StrEnums.** The API DTOs carry them, so the OpenAPI schema emits closed
