@@ -16,6 +16,9 @@ the gate every later round builds on. ADRs 196–218 reserved.
 
 **Plan 81 — schema baseline & hardening (in progress, 2026-10-21):**
 
+**Status: A and B landed; C–F remain** (C — the UUID identity cut — is the
+blocking slice; F, the baseline squash, cannot land before it).
+
 - **A — schema audit & inventory (ADR-199):** `docs/dev/schema-contract.md` is
   now the guarantee page — the hand-written law (identity, closed sets,
   temporal, payload, scope/lifecycle) plus a per-table inventory **generated
