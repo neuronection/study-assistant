@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { SnapIntoNote } from './SnapIntoNote'
@@ -63,7 +63,9 @@ function renderFlow() {
 }
 
 async function captureShot() {
-  useCaptureStore.getState().openSnap()
+  act(() => {
+    useCaptureStore.getState().openSnap()
+  })
   fireEvent.click(await screen.findByRole('button', { name: 'region-crop-capture' }))
   await screen.findByRole('dialog', { name: 'Review capture' })
 }
@@ -71,9 +73,11 @@ async function captureShot() {
 describe('SnapIntoNote', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useCaptureStore.getState().closeSnap()
-    useCaptureStore.getState().setSnapTarget(null)
-    useWorkspaceStore.getState().setCourse(null)
+    act(() => {
+      useCaptureStore.getState().closeSnap()
+      useCaptureStore.getState().setSnapTarget(null)
+      useWorkspaceStore.getState().setCourse(null)
+    })
     getScratchpad.mockResolvedValue({
       course: { id: '77', title: 'Scratchpad' },
       content_count: 0,

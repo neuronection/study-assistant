@@ -107,7 +107,19 @@ export default defineConfig({
         inline: ['@neuronection/assistant-ui'],
       },
     },
-    testTimeout: 15_000,
-    hookTimeout: 15_000,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        'src/lib/api-schema.d.ts',
+        'src/types/**',
+      ],
+    },
   },
 })

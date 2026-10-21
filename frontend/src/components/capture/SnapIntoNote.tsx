@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Camera, Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { RegionCrop } from '@/components/capture/RegionCrop'
@@ -38,6 +38,15 @@ export function SnapIntoNote() {
   const [shot, setShot] = useState<{ pngBase64: string; previewUrl: string } | null>(null)
   const [saved, setSaved] = useState<InsertOutcome | null>(null)
   const [failed, setFailed] = useState(false)
+  const [wasOpen, setWasOpen] = useState(open)
+
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setShot(null)
+      setFailed(false)
+    }
+  }
 
   const scratchpad = useQuery({
     queryKey: ['scratchpad'],
@@ -45,12 +54,8 @@ export function SnapIntoNote() {
     enabled: open,
   })
 
-  useEffect(() => {
-    if (open) {
-      setShot(null)
-      setFailed(false)
-    }
-  }, [open])
+  const latest = useRef({ shot, courseId, scratchpadCourse: scratchpad.data?.course, saved })
+  latest.current = { shot, courseId, scratchpadCourse: scratchpad.data?.course, saved }
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['notes'] })
@@ -64,12 +69,13 @@ export function SnapIntoNote() {
 
   const insert = useMutation({
     mutationFn: async (): Promise<InsertOutcome> => {
-      if (shot === null) {
+      const current = latest.current
+      if (current.shot === null) {
         throw new Error('no capture')
       }
       const target = useCaptureStore.getState().snapTarget
       if (target !== null) {
-        const drawingId = await target.insert(shot.pngBase64)
+        const drawingId = await target.insert(current.shot.pngBase64)
         if (drawingId === null) {
           throw new Error('insert failed')
         }
@@ -80,7 +86,8 @@ export function SnapIntoNote() {
           remove: target.remove,
         }
       }
-      const course = courseId !== null ? { id: courseId } : scratchpad.data?.course
+      const course =
+        current.courseId !== null ? { id: current.courseId } : current.scratchpadCourse
       if (!course) {
         throw new Error('scratchpad unavailable')
       }
@@ -89,7 +96,7 @@ export function SnapIntoNote() {
         body_md: '',
         course_id: course.id,
       })
-      const updated = await addDrawing(note.id, [], shot.pngBase64, false, null)
+      const updated = await addDrawing(note.id, [], current.shot.pngBase64, false, null)
       const drawingId = updated.drawings[0]?.id
       if (drawingId === undefined) {
         throw new Error('insert failed')
@@ -117,10 +124,11 @@ export function SnapIntoNote() {
 
   const undo = useMutation({
     mutationFn: async () => {
-      if (saved === null) {
+      const outcome = latest.current.saved
+      if (outcome === null) {
         return
       }
-      await saved.remove(saved.drawingId)
+      await outcome.remove(outcome.drawingId)
     },
     onSuccess: () => {
       setSaved(null)

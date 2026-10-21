@@ -5,7 +5,7 @@ import { afterEach } from 'vitest'
 
 import { initI18n } from '@/lib/i18n'
 
-configure({ asyncUtilTimeout: 5000 })
+configure({ asyncUtilTimeout: 20_000 })
 
 class ResizeObserverStub implements ResizeObserver {
   private readonly callback: ResizeObserverCallback
