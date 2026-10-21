@@ -39,7 +39,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
+    files: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', 'src/test/**'],
     languageOptions: {
       globals: {
         ...globals.browser,
