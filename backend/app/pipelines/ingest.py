@@ -26,7 +26,7 @@ from .convert import (
     epub_to_markdown,
     pptx_to_markdown,
 )
-from .pdf_pages import plan_pages
+from .pdf_pages import assemble_hybrid_markdown, plan_pages
 
 OCR_RASTER_DPI = 150
 
@@ -295,13 +295,7 @@ def make_ingest_handler(
                                 pages=pages,
                             )
                         else:
-                            assembled = [
-                                ocr_parts.get(ordinal, text.strip())
-                                if not decision.use_text
-                                else text.strip()
-                                for ordinal, (decision, text) in enumerate(planned)
-                            ]
-                            markdown = "\n\n".join(part for part in assembled if part)
+                            markdown = assemble_hybrid_markdown(planned, ocr_parts)
                             _store_extraction(
                                 session,
                                 material,

@@ -63,3 +63,13 @@ def plan_pages(doc: fitz.Document) -> list[tuple[PageDecision, str]]:
         decision = score_page(text, page_image_coverage(page), ordinal)
         planned.append((decision, text))
     return planned
+
+
+def assemble_hybrid_markdown(
+    planned: list[tuple[PageDecision, str]], ocr_parts: dict[int, str]
+) -> str:
+    assembled = [
+        ocr_parts.get(ordinal, text.strip()) if not decision.use_text else text.strip()
+        for ordinal, (decision, text) in enumerate(planned)
+    ]
+    return "\n\n".join(part for part in assembled if part)

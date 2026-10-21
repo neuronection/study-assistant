@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "conventions": {
+    "deterministic_subset": "The default gate (CI) runs only deterministic stages: PDF page routing (plan_pages/score_page), native text extraction (extract_pdf_text) and hybrid assembly (assemble_hybrid_markdown). The vision/OCR half is opt-in via SA_EVAL_LIVE=1 and never runs in the default suite (family test-isolation rules).",
+    "metrics": {
+      "block_structure": "difflib similarity over per-line structural signatures (heading / fence / math / table / list / paragraph), blank lines ignored.",
+      "math_fence": "fraction of math spans ($...$ and $$...$$) in the expected markdown present verbatim in the extraction.",
+      "numeric_fidelity": "fraction of numeric tokens in the expected markdown present in the extraction."
+    },
+    "fixture_slots": {
+      "pages": "tests/fixtures/golden/pages/scan-<nn>-<desc>.{pdf,png,jpg}",
+      "handwriting": "tests/fixtures/golden/handwriting/hw-<nn>-<desc>.jpg",
+      "expected": "tests/fixtures/golden/expected/<same-stem>.md"
+    }
+  },
+  "fixtures": [
+    {
+      "name": "synthetic-native-clean",
+      "kind": "native-pdf",
+      "slot": "pages/scan-01-native-clean.pdf",
+      "expected_decision": "text-ok",
+      "thresholds": {
+        "block_structure": 0.99,
+        "math_fence": 1.0,
+        "numeric_fidelity": 1.0
+      }
+    },
+    {
+      "name": "synthetic-scanned-garbage",
+      "kind": "scanned-pdf",
+      "slot": "pages/scan-02-scanned-garbage.pdf",
+      "expected_decision": "garbage-glyphs",
+      "thresholds": {
+        "block_structure": 0.99,
+        "math_fence": 1.0,
+        "numeric_fidelity": 1.0
+      }
+    },
+    {
+      "name": "synthetic-figure-dominant",
+      "kind": "scanned-pdf",
+      "slot": "pages/scan-03-figure-dominant.pdf",
+      "expected_decision": "figure-dominant",
+      "thresholds": {
+        "block_structure": 0.99,
+        "math_fence": 1.0,
+        "numeric_fidelity": 1.0
+      }
+    }
+  ]
+}

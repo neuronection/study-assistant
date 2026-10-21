@@ -52,8 +52,15 @@ These are load-bearing — do not weaken them:
 courses, materials, grading, migrations, packaging assets, …), plus:
 
 - `tests/evals/` — the golden quiz-generation eval (`test_quizgen_golden.py`
-  with fixtures under `golden/`). These pin generator output shape and quality
-  signals; run them when touching `pipelines/quizgen`.
+  with fixtures under `golden/`) **and the golden OCR/extraction gate**
+  (`test_ocr_golden.py` + `ocr_thresholds.json`, plan 84 C / ADR-210). The OCR
+  eval scores per-page routing, native PDF extraction and hybrid assembly
+  against recorded thresholds (block structure, math-fence integrity, numeric
+  fidelity). The default run is deterministic and offline; the vision half is
+  opt-in (`SA_EVAL_LIVE=1`). Until the owner's real scans land in
+  `tests/fixtures/golden/`, three generated synthetic fixtures prove the gate
+  mechanics. Run these when touching `pipelines/ingest`, `pipelines/pdf_pages`
+  or `ocr/`.
 - `tests/fixtures/` — sample documents and binaries used by ingestion tests.
 
 Migration changes come with a round-trip test (upgrade → downgrade) — see
@@ -83,12 +90,37 @@ real backend booted by the suite:
   the app; `mock_provider.py` stands in for an AI provider so no external call
   is made; `state.ts` holds shared helpers.
 - Specs are numbered by flow (`01-boot`, `02-chat`, `03-material`, `04-quiz`,
-  `05-ask`, `06-tree-sidebar`). They exist to catch real-browser regressions
-  that jsdom cannot see — for example the unlayered-CSS bug where a sidebar had
-  zero computed size in a real build while unit tests stayed green.
+  `05-ask`, `06-tree-sidebar`, `07-discovery`, `08-extensions`). They exist to
+  catch real-browser regressions that jsdom cannot see — for example the
+  unlayered-CSS bug where a sidebar had zero computed size in a real build
+  while unit tests stayed green. The MCP spec registers an inert HTTP
+  connector and tolerates the honest 502 refresh, so it never needs a live
+  MCP handshake; the discovery spec asserts the link-material → Discover
+  dialog surface (web search needs a provider, not the mock LLM).
 
 Add a spec when a bug can only be reproduced in a real browser (layout, CSS
 cascade, real WebSocket streaming).
+
+## Coverage
+
+Coverage is **measured report-only** (plan 84 D, ADR-210): CI uploads
+`pytest --cov=app` and vitest v8 coverage artifacts on every PR, and no floor
+fails the build until a month of numbers exists (a floor on an invented number
+is noise). Run locally:
+
+```
+cd backend && uv run python -m pytest --cov=app --cov-report=term-missing
+cd frontend && pnpm coverage
+```
+
+## Load-immune deadlines
+
+The suite runs on saturated machines (16 cores; concurrent agent sessions add
+more load). Wait deadlines are sized for load, never to mask a race
+(`testing-library` `asyncUtilTimeout` 20 s, vitest `testTimeout`/`hookTimeout`
+30 s). A test that needs a longer window passes one explicitly; a test that
+fails under load is diagnosed (`pytest --durations`, the vitest failure DOM),
+not retried.
 
 ## What to mock
 
