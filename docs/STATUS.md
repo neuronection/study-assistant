@@ -16,7 +16,10 @@ the gate every later round builds on. ADRs 196–218 reserved.
 
 **Plan 81 — schema baseline & hardening (2026-10-21):**
 
-**Status: A, B, C, D, E and F landed — the plan is COMPLETE, pending review.**
+**Status: COMPLETE (independently reviewed 2026-10-21)** — A–F landed; the
+reviewer re-verified the empty-DB up/down round-trip, the zero-stale-revision
+test sweep, the strict data-model gate (self-test 28/28) and the flake
+stress (20/20). Sixteen tracked deviations live in the plan's register.
 
 - **F — migration chain squash + forward policy (ADR-196, 2026-10-21):** the
   `0001`–`0075` chain (74 revisions after the original empty baseline) is
