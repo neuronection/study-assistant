@@ -14,7 +14,8 @@ Release history from before the public launch lives in the
 ### Added (quality gates — plan 84 C/D / ADR-210)
 - **Coverage is measured report-only.** CI publishes `pytest --cov=app` and
   vitest v8 coverage artifacts on every PR; no floor is set until a month of
-  numbers exists.
+  numbers exists (baseline 2026-10-22: 88% backend statements, 77.5% frontend
+  lines).
 - **Golden OCR/extraction regression gate.** `tests/evals/test_ocr_golden.py`
   + `ocr_thresholds.json` score per-page routing, native PDF extraction and
   hybrid assembly against recorded thresholds (block structure, math-fence

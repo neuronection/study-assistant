@@ -24,7 +24,7 @@ types everywhere (ADR-203), C — vocabulary sweep (ADR-204), D — legacy resid
 **Plan 84 — structure, test gates & eval corpus (2026-10-22):**
 A — `NodeWorkspace` is a tab host (ADR-208): per-tab components under
 `features/courses/workspace/` (Materials/Overview/Notes/Coverage/Tutor +
-`tabs.ts`/`navigation.ts`/`shared.tsx`), shell down to 384 lines, colocated
+`tabs.ts`/`navigation.ts`/`shared.tsx`), shell down to 383 lines, colocated
 test block split 1:1 over one harness (95 tests, count unchanged). B — router
 & service splits (ADR-209): planner+ICS → `api/plan.py`, node/tree/placement →
 `api/nodes.py`, genesis → `api/genesis.py`, `course_bundle.py` →
@@ -3180,7 +3180,8 @@ a backend node binding) |
   (`tests/evals/test_ocr_golden.py` + `ocr_thresholds.json`) scores per-page
   routing, native extraction and hybrid assembly against recorded thresholds,
   proven with three synthetic fixtures and opt-in for the live half. Coverage
-  is measured report-only in CI, `07-discovery` + `08-extensions` Playwright
+  is measured report-only in CI (baseline: 88% backend statements, 77.5%
+  frontend lines), `07-discovery` + `08-extensions` Playwright
   specs landed, and pyodide moved behind the code-question path (entry chunk
   1,709.10 → 1,689.25 kB min / 473.36 → 465.22 kB gzip). The `SnapIntoNote`
   full-suite flake is root-caused (TanStack Query syncs mutation options in a
@@ -3188,7 +3189,9 @@ a backend node binding) |
   closure) and fixed with a latest-ref + render-phase reset; the suite's
   deadlines are load-immune (20 s testing-library / 30 s vitest). Proven with
   5/5 clean full-suite runs under concurrent-session load and 20/20 isolated
-  suspect-file runs.
+  suspect-file runs. A second load-sensitive predicate was strengthened in the
+  same pass: the regenerate poll now waits for the regenerated message itself,
+  not just the sibling count.
 - 2026-10-21 — **plan 82 D: legacy residue & typed payloads (ADR-205).** The
   Phase-0 rendering harness is gone: the `/spike` route and
   `features/spike/` (page + tests) are deleted, and the Settings Developer
