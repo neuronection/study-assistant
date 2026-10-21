@@ -52,9 +52,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped as Mapped
 from sqlalchemy.orm import mapped_column as mapped_column
 from sqlalchemy.orm import relationship as relationship
+from sqlalchemy.orm import validates as validates
 
 from ...core.vocab import CourseOrigin as CourseOrigin
 from ...storage.db import Base as Base
+from ..payloads import ProfilePreferences, StringList
 from ..schema_contract import vocab_check as vocab_check
 
 
@@ -81,7 +83,7 @@ class Profile(Base):
     name: Mapped[str] = mapped_column(String(120))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     color: Mapped[str | None] = mapped_column(String(16))
-    preferences: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    preferences: Mapped[ProfilePreferences | dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -110,8 +112,8 @@ class Course(Base):
     description: Mapped[str | None] = mapped_column(Text)
     subject: Mapped[str | None] = mapped_column(String(120))
     level: Mapped[str | None] = mapped_column(String(120))
-    goals: Mapped[list[str] | None] = mapped_column(JSON)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    goals: Mapped[StringList | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
     color: Mapped[str | None] = mapped_column(String(16))
     exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     course_type_id: Mapped[str | None] = mapped_column(
@@ -170,7 +172,7 @@ class TreeNode(Base):
     parent_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str | None] = mapped_column(Text)
-    objectives: Mapped[list[str] | None] = mapped_column(JSON)
+    objectives: Mapped[StringList | None] = mapped_column(JSON)
     ai_hint: Mapped[str | None] = mapped_column(Text)
     order_idx: Mapped[int] = mapped_column(Integer, default=0)
     depth: Mapped[int] = mapped_column(Integer, default=1)

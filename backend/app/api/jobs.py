@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any, cast
 from uuid import UUID
 
@@ -61,7 +62,7 @@ def _iso(value: Any) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def _material_label(session: Session, payload: dict[str, Any] | None) -> str | None:
+def _material_label(session: Session, payload: Mapping[str, Any] | None) -> str | None:
     material_id = _material_id(payload)
     if material_id is None:
         return None
@@ -71,7 +72,7 @@ def _material_label(session: Session, payload: dict[str, Any] | None) -> str | N
     return material.filename or f"Material #{material.id}"
 
 
-def _payload_uuid(payload: dict[str, Any] | None, key: str) -> str | None:
+def _payload_uuid(payload: Mapping[str, Any] | None, key: str) -> str | None:
     if not payload:
         return None
     value = payload.get(key)
@@ -84,15 +85,15 @@ def _payload_uuid(payload: dict[str, Any] | None, key: str) -> str | None:
     return str(value)
 
 
-def _material_id(payload: dict[str, Any] | None) -> str | None:
+def _material_id(payload: Mapping[str, Any] | None) -> str | None:
     return _payload_uuid(payload, "material_id")
 
 
-def _chat_session_id(payload: dict[str, Any] | None) -> str | None:
+def _chat_session_id(payload: Mapping[str, Any] | None) -> str | None:
     return _payload_uuid(payload, "chat_session_id")
 
 
-def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
+def _note_label(session: Session, payload: Mapping[str, Any] | None) -> str | None:
     if not payload:
         return None
     note_id = _payload_uuid(payload, "note_id")
@@ -104,7 +105,7 @@ def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
     return note.title
 
 
-def _note_id(payload: dict[str, Any] | None) -> str | None:
+def _note_id(payload: Mapping[str, Any] | None) -> str | None:
     return _payload_uuid(payload, "note_id")
 
 

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 import sympy
@@ -73,7 +74,7 @@ def validate_relation(relation: str, part_index: int, parts: list[dict[str, Any]
     return problems
 
 
-def validate_composite_answer(answer: dict[str, Any]) -> list[str]:
+def validate_composite_answer(answer: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     parts = answer.get("parts")
     if not isinstance(parts, list) or not 2 <= len(parts) <= MAX_PARTS:
@@ -113,7 +114,7 @@ def validate_composite_answer(answer: dict[str, Any]) -> list[str]:
     return problems
 
 
-def composite_public_input(answer: dict[str, Any]) -> dict[str, Any] | None:
+def composite_public_input(answer: Mapping[str, Any]) -> dict[str, Any] | None:
     parts = answer.get("parts")
     if not isinstance(parts, list):
         return None
@@ -168,7 +169,7 @@ def _recompute(relation: str, prior_responses: list[str]) -> str | None:
         return None
 
 
-def grade_composite(answer: dict[str, Any], response: Any) -> dict[str, Any]:
+def grade_composite(answer: Mapping[str, Any], response: Any) -> dict[str, Any]:
     """Per-part deterministic grading with follow-through credit.
 
     Returns correct/partial_credit/feedback/flags where flags marks the

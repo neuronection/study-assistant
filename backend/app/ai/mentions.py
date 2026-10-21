@@ -1,4 +1,5 @@
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -138,7 +139,7 @@ class MentionRegistry:
         return [entry.as_dict() for entry in self.entries()]
 
 
-def registry_from_json(entries: list[dict[str, Any]] | None) -> MentionRegistry:
+def registry_from_json(entries: Sequence[Mapping[str, Any]] | None) -> MentionRegistry:
     registry = MentionRegistry()
     if not entries:
         return registry

@@ -5,6 +5,12 @@ from .chat import (
     ChatProposal as ChatProposal,
 )
 from .chat import (
+    ChatProposalAnchor as ChatProposalAnchor,
+)
+from .chat import (
+    ChatQuizPending as ChatQuizPending,
+)
+from .chat import (
     ChatSession as ChatSession,
 )
 from .chat import (

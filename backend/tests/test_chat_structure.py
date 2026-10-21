@@ -36,7 +36,7 @@ def make_session(
         ChatMessage(
             session_id=session_row.id,
             role="user",
-            blocks=[{"type": "md", "md": "hello"}],
+            blocks=[{"type": "text", "md": "hello"}],
         )
     )
     db_session.commit()

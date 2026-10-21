@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..core.vocab import DiscoveryKind
+from ..domain.preferences import PreferencesError, validate_preferences
 from ..extensions.search.discovery import DEFAULT_ENABLED
 from ..ocr.imaging import ALLOWED_IMAGE_MAX_EDGE, DEFAULT_IMAGE_MAX_EDGE
 from ..services.platform.profiles import (
@@ -174,6 +175,10 @@ def update_preferences(
         section: dict[str, Any] = dict(existing) if isinstance(existing, dict) else {}
         section.update(_validated_discovery(body.discovery))
         prefs["discovery"] = section
+    try:
+        validate_preferences(prefs)
+    except PreferencesError as error:
+        raise HTTPException(status_code=422, detail=f"invalid preferences: {error}") from error
     profile.preferences = prefs
     session.commit()
     return _preferences(profile)

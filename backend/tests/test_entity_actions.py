@@ -61,7 +61,12 @@ def make_chat_with_messages(
     db = app.state.session_factory()
     message = db.query(ChatMessage).filter(ChatMessage.role == "assistant").first()
     db.add(
-        ChatProposal(message_id=message.id, action="create_note", payload={}, status="dismissed")
+        ChatProposal(
+            message_id=message.id,
+            action="create_note",
+            payload={"title": "Old note", "body_md": "body"},
+            status="dismissed",
+        )
     )
     db.commit()
     db.close()

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 import sympy
@@ -18,7 +19,7 @@ def _as_float(value: Any) -> float | None:
     return float(value) if _is_number(value) else None
 
 
-def graph_domain(answer: dict[str, Any]) -> tuple[float, float, int]:
+def graph_domain(answer: Mapping[str, Any]) -> tuple[float, float, int]:
     x_min = _as_float(answer.get("x_min")) or -10.0
     x_max = _as_float(answer.get("x_max")) or 10.0
     samples = answer.get("samples", DEFAULT_SAMPLES)
@@ -75,7 +76,7 @@ def nearest_index(xs: list[float], point_x: float) -> int:
     return min(range(len(xs)), key=lambda index: abs(xs[index] - point_x))
 
 
-def materialize_graph_answer(answer: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def materialize_graph_answer(answer: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """Compute every graded number deterministically from the expression.
 
     The model authors only the expression, the domain and the target x; the
@@ -84,10 +85,10 @@ def materialize_graph_answer(answer: dict[str, Any]) -> tuple[dict[str, Any], li
     problems: list[str] = []
     expression = answer.get("expression")
     if not isinstance(expression, str) or not expression.strip():
-        return answer, ["expression required"]
+        return dict(answer), ["expression required"]
     mode = answer.get("mode")
     if mode not in MODES:
-        return answer, ["mode must be value or point"]
+        return dict(answer), ["mode must be value or point"]
     try:
         x_min, x_max, samples = graph_domain(answer)
         if _as_float(answer.get("x_min")) is None or _as_float(answer.get("x_max")) is None:
@@ -95,18 +96,18 @@ def materialize_graph_answer(answer: dict[str, Any]) -> tuple[dict[str, Any], li
         if x_min >= x_max:
             raise ValueError
     except (TypeError, ValueError):
-        return answer, ["domain needs numeric x_min < x_max"]
+        return dict(answer), ["domain needs numeric x_min < x_max"]
     raw_point_x = _as_float(answer.get("point_x"))
     if raw_point_x is None or not x_min <= raw_point_x <= x_max:
-        return answer, ["point_x must be a number inside the domain"]
+        return dict(answer), ["point_x must be a number inside the domain"]
     try:
         build_graph_data(expression, x_min, x_max, samples)
     except Exception:
-        return answer, ["expression is not finite over the whole domain"]
+        return dict(answer), ["expression is not finite over the whole domain"]
     try:
         exact = _evaluate_at(expression, raw_point_x)
     except Exception:
-        return answer, ["expression does not evaluate at point_x"]
+        return dict(answer), ["expression does not evaluate at point_x"]
 
     materialized = dict(answer)
     if mode == "value":
@@ -127,7 +128,7 @@ def materialize_graph_answer(answer: dict[str, Any]) -> tuple[dict[str, Any], li
     return materialized, problems
 
 
-def validate_graph_answer(answer: dict[str, Any]) -> list[str]:
+def validate_graph_answer(answer: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     expression = answer.get("expression")
     if not isinstance(expression, str) or not expression.strip():
@@ -184,7 +185,7 @@ def validate_graph_answer(answer: dict[str, Any]) -> list[str]:
     return problems
 
 
-def grade_graph_read(answer: dict[str, Any], response: Any) -> dict[str, Any]:
+def grade_graph_read(answer: Mapping[str, Any], response: Any) -> dict[str, Any]:
     mode = answer.get("mode")
     if not isinstance(response, dict):
         return {

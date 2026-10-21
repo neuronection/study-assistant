@@ -1,9 +1,11 @@
 import re
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from ...domain.models import Job
+from ...domain.payloads import BlockDict
 from ...jobs.payloads import DrawingOcrPayload
 from ...jobs.runner import JobRunner
 
@@ -12,8 +14,8 @@ IMAGE_MD = re.compile(r"!\[[^\]]*\]\(sa-image://([0-9A-Za-z-]+)\)")
 EMBEDDED_MD = re.compile(r"!\[[^\]]*\]\((?:sa-drawing|sa-image)://([0-9A-Za-z-]+)\)")
 
 
-def md_to_blocks(md: str) -> list[dict[str, Any]]:
-    blocks: list[dict[str, Any]] = []
+def md_to_blocks(md: str) -> list[BlockDict]:
+    blocks: list[BlockDict] = []
     position = 0
     for match in EMBEDDED_MD.finditer(md):
         before = md[position : match.start()]
@@ -61,7 +63,32 @@ def remap_image_refs(md: str, mapping: dict[str, str]) -> str:
     return IMAGE_MD.sub(_replace, md)
 
 
-def blocks_md(blocks: list[dict[str, Any]] | None) -> str:
+def drawing_view(drawing: Any) -> dict[str, float] | None:
+    """The bounding box as the wire shape (typed columns since plan 81 D)."""
+    if drawing.view_x is None:
+        return None
+    return {
+        "x": float(drawing.view_x),
+        "y": float(drawing.view_y or 0.0),
+        "width": float(drawing.view_width or 0.0),
+        "height": float(drawing.view_height or 0.0),
+    }
+
+
+def apply_drawing_view(drawing: Any, view: dict[str, float] | None) -> None:
+    if view is None:
+        drawing.view_x = None
+        drawing.view_y = None
+        drawing.view_width = None
+        drawing.view_height = None
+        return
+    drawing.view_x = float(view["x"])
+    drawing.view_y = float(view["y"])
+    drawing.view_width = float(view["width"])
+    drawing.view_height = float(view["height"])
+
+
+def blocks_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
     if not blocks:
         return ""
     result = ""

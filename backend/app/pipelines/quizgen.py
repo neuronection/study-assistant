@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from ..ai.skills import QUIZGEN_SYSTEM
 from ..ai.structured import QuizgenOut
 from ..core.vocab import QUESTION_TYPES
 from ..domain.models import Activity, Question
+from ..domain.payloads import QuestionAnswer
 from ..math.code import validate_code_answer
 from ..math.composite import validate_composite_answer
 from ..math.graphs import (
@@ -273,7 +274,7 @@ class QuizgenService:
                         for old in indices
                         if isinstance(old, int) and 0 <= old < len(remap)
                     ]
-            question.answer = answer
+            question.answer = cast(QuestionAnswer, answer)
             misconceptions = question.distractor_misconceptions or {}
             if misconceptions:
                 question.distractor_misconceptions = {

@@ -6,18 +6,23 @@ species, every closed set must name a real column, and every table must
 declare how it is profile-scoped.
 """
 
+import types
 from pathlib import Path
+from typing import get_args, get_type_hints
 
-from sqlalchemy import JSON, CheckConstraint
+from sqlalchemy import JSON, CheckConstraint, Integer
 
 from app.domain import (
+    documents,
     models,  # noqa: F401
+    payloads,
     schema_contract,
 )
 from app.domain.schema_inventory import render
 from app.storage.db import Base
 
 DOC = Path(__file__).resolve().parents[2] / "docs" / "dev" / "schema-contract.md"
+INVENTORY = Path(__file__).resolve().parents[2] / "contracts" / "data-model.jsonb-inventory.txt"
 START = "<!-- schema-inventory:start -->"
 END = "<!-- schema-inventory:end -->"
 
@@ -65,6 +70,81 @@ def test_every_json_column_has_a_species() -> None:
         schema_contract.STATE,
         schema_contract.LIST,
     }
+
+
+def _json_inventory() -> dict[str, str]:
+    rows: dict[str, str] = {}
+    for raw in INVENTORY.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, rest = line.partition("::")
+        assert rest, f"malformed JSONB inventory row: {line}"
+        rows[key.strip()] = rest.strip().split()[0]
+    return rows
+
+
+def test_jsonb_inventory_classifies_every_json_column() -> None:
+    inventory = _json_inventory()
+    json_columns = {
+        f"{table.name}.{column.name}"
+        for table in Base.metadata.tables.values()
+        for column in table.columns
+        if isinstance(column.type, JSON)
+    }
+    keep_open = {key for key, verdict in inventory.items() if verdict == "keep-open"}
+    typed_out = {key for key, verdict in inventory.items() if verdict == "typed-out"}
+    assert keep_open == json_columns, (
+        "contracts/data-model.jsonb-inventory.txt is stale — missing: "
+        f"{sorted(json_columns - keep_open)}, stale: {sorted(keep_open - json_columns)}"
+    )
+    assert not typed_out & json_columns, (
+        f"typed-out rows still name live JSON columns: {sorted(typed_out & json_columns)}"
+    )
+    assert set(inventory.values()) <= {"keep-open", "typed-out"}
+    stale_tables = {
+        key.partition(".")[0]
+        for key in inventory
+        if key.partition(".")[0] not in Base.metadata.tables
+    }
+    assert not stale_tables, f"inventory names missing tables: {sorted(stale_tables)}"
+
+
+def test_versioned_documents_have_their_version_sibling() -> None:
+    assert set(documents.DOCUMENT_KINDS) == set(documents.VERSION_SIBLINGS)
+    assert set(documents.DOCUMENT_KINDS) <= set(schema_contract.JSON_SPECIES)
+    for key, sibling in documents.VERSION_SIBLINGS.items():
+        table_name, _, column = key.partition(".")
+        table = Base.metadata.tables[table_name]
+        assert column in table.columns, f"versioned document {key} is missing"
+        assert sibling in table.columns, f"{key} has no {sibling} sibling"
+        column_type = table.columns[sibling].type
+        assert isinstance(column_type, Integer), f"{key}.{sibling} is not an integer"
+        assert table.columns[sibling].nullable is False, f"{key}.{sibling} is nullable"
+
+
+def test_every_json_column_has_a_named_payload_type() -> None:
+    names = payloads.PAYLOAD_TYPE_NAMES
+    assert set(names) == set(schema_contract.JSON_SPECIES), (
+        "PAYLOAD_TYPE_NAMES must cover exactly the JSON columns — missing: "
+        f"{sorted(set(schema_contract.JSON_SPECIES) - set(names))}, stale: "
+        f"{sorted(set(names) - set(schema_contract.JSON_SPECIES))}"
+    )
+    classes = {mapper.class_.__tablename__: mapper.class_ for mapper in Base.registry.mappers}
+    for key, name in names.items():
+        assert hasattr(payloads, name), f"{key} names a missing payload type {name}"
+        registered = getattr(payloads, name)
+        table_name, _, column = key.partition(".")
+        model_class = classes[table_name]
+        annotation = get_type_hints(model_class).get(column)
+        assert annotation is not None, f"{key} has no model annotation"
+        inner = get_args(annotation)[0]
+        candidates = [inner]
+        if isinstance(inner, types.UnionType):
+            candidates = list(get_args(inner))
+        assert any(candidate == registered for candidate in candidates), (
+            f"{key} must be annotated with {name}, got {annotation}"
+        )
 
 
 def test_closed_sets_name_real_columns() -> None:

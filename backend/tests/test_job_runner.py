@@ -186,7 +186,8 @@ def test_runner_grouped_jobs_run_in_enqueue_order(tmp_path: Path) -> None:
         events.append(f"end:{job.id}")
 
     def group(job: Job) -> str | None:
-        key = (job.payload or {}).get("k")
+        payload = cast(dict[str, Any], job.payload or {})
+        key = payload.get("k")
         return str(key) if key is not None else None
 
     runner, _bus = make_runner(tmp_path, handler, workers=3, group_key=group)

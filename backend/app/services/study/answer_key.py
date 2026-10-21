@@ -85,9 +85,9 @@ def answer_key_text(question: Question) -> str:
             rendered_rows.append(" | ".join(cells))
         return "; ".join(rendered_rows) if rendered_rows else "?"
     if qtype == "composite":
-        parts = answer.get("parts", [])
+        composite_parts = answer.get("parts", [])
         rendered_parts: list[str] = []
-        for index, part in enumerate(parts, start=1):
+        for index, part in enumerate(composite_parts, start=1):
             if not isinstance(part, dict):
                 continue
             rendered_parts.append(f"({index}) {_part_key(part)}")

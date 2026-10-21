@@ -21,6 +21,7 @@ from ...domain.models import (
     MaterialStudyState,
     TreeNode,
 )
+from ...domain.payloads import BlockDict
 from ...jobs.cancellation import cancel_jobs_for_material
 from ...jobs.payloads import IngestPayload
 from ...jobs.runner import JobRunner
@@ -29,7 +30,14 @@ from ...storage import vectors
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
 from .discovery import revert_suggestions_for_material
-from .drawings import drawing_ref_ids, md_to_blocks, remap_drawing_refs, remap_image_refs
+from .drawings import (
+    apply_drawing_view,
+    drawing_ref_ids,
+    drawing_view,
+    md_to_blocks,
+    remap_drawing_refs,
+    remap_image_refs,
+)
 from .notes import normalize_tags
 
 KIND_BY_SUFFIX: dict[str, str] = {
@@ -508,11 +516,11 @@ class MaterialsService:
                     material_id=derived.id,
                     strokes=source_drawing.strokes,
                     png_sha=source_drawing.png_sha,
-                    view=source_drawing.view,
                     ocr_version=source_drawing.ocr_version,
                     ocr_blocks=source_drawing.ocr_blocks,
                     ocr_markdown=source_drawing.ocr_markdown,
                 )
+                apply_drawing_view(new_drawing, drawing_view(source_drawing))
                 self._session.add(new_drawing)
                 self._session.flush()
                 mapping[source_drawing.id] = new_drawing.id
@@ -755,8 +763,8 @@ def _split_top_level(markdown: str) -> list[str]:
     return ["\n".join(segment).strip() for segment in segments]
 
 
-def extraction_to_blocks(markdown: str) -> list[dict[str, Any]]:
-    blocks: list[dict[str, Any]] = []
+def extraction_to_blocks(markdown: str) -> list[BlockDict]:
+    blocks: list[BlockDict] = []
     for part in _split_top_level(markdown):
         if not part:
             continue

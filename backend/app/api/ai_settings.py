@@ -49,6 +49,7 @@ from ..domain.models import (
     Provider,
     TaskAssignment,
 )
+from ..domain.payloads import TaskParams
 from ..extensions.search import (
     SearchError,
     delete_search_provider,
@@ -240,7 +241,7 @@ def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
         is_local=provider.is_local,
         country=provider.country,
         masked_key=service.masked_key(provider),
-        status=provider.status,
+        status=cast(dict[str, Any] | None, provider.status),
         created_at=provider.created_at,
     )
 
@@ -871,7 +872,7 @@ def put_task_budget(task: str, body: BudgetIn, session: Session = Depends(get_se
         params.pop("monthly_cap_usd", None)
     else:
         params["monthly_cap_usd"] = body.monthly_cap_usd
-    assignment.params = params
+    assignment.params = cast(TaskParams, params)
     session.commit()
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     task_def = next((entry for entry in TASK_DEFS if entry.task == task), None)
@@ -883,7 +884,7 @@ def put_task_budget(task: str, body: BudgetIn, session: Session = Depends(get_se
         assignment,
         default,
         labels,
-        monthly_cap=params.get("monthly_cap_usd"),
+        monthly_cap=cast(float | None, params.get("monthly_cap_usd")),
     )
 
 

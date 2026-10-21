@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 from sqlalchemy import select
@@ -11,6 +11,8 @@ from ...ai.proposals import PROPOSAL_ACTIONS
 from ...core.vocab import ChatProposalStatus
 from ...domain.models import (
     Activity,
+    ChatProposal,
+    ChatProposalAnchor,
     Concept,
     Course,
     Exercise,
@@ -24,6 +26,8 @@ from ...domain.models import (
     TreeNode,
     utcnow,
 )
+from ...domain.payloads import ProposalPayload
+from ...domain.proposal_contract import normalize_anchors
 from ...jobs.runner import JobRunner
 from ...storage.blobs import BlobStore
 from ..content.drawings import blocks_md
@@ -57,7 +61,8 @@ def _node_in_course(session: Session, node_id: str, course_id: str) -> TreeNode:
 
 def capture_proposal_snapshot(
     session: Session, *, action: str, payload: dict[str, Any], course_id: str
-) -> dict[str, Any] | None:
+) -> str | None:
+    """The target's current markdown, captured server-side at proposal creation."""
     spec = PROPOSAL_ACTIONS.get(action)
     if spec is None or spec.snapshot is None:
         return None
@@ -68,7 +73,7 @@ def capture_proposal_snapshot(
         note = session.get(Note, str(note_id))
         if note is None or note.course_id != course_id:
             return None
-        return {"original_md": blocks_md(note.body or [])}
+        return blocks_md(note.body or [])
     if spec.snapshot == "extraction_md":
         material_id = payload.get("material_id")
         if material_id is None:
@@ -84,8 +89,77 @@ def capture_proposal_snapshot(
         ).first()
         if latest is None:
             return None
-        return {"original_md": latest.markdown}
+        return latest.markdown
     return None
+
+
+def proposal_full_payload(proposal: ChatProposal) -> dict[str, Any]:
+    """Recompose the card document from typed columns + the action document.
+
+    The API/wire shape is unchanged (plan 81 D is a storage change): the
+    target snapshot, the ordered anchors and the resolved target metadata are
+    columns now, but every reader still sees one `payload` object.
+    """
+    payload = dict(proposal.payload or {})
+    if proposal.original_md is not None:
+        payload["original_md"] = proposal.original_md
+    if proposal.anchors:
+        payload["text_edits"] = [
+            {"op": anchor.op, "find": anchor.find_text, "text": anchor.text}
+            for anchor in proposal.anchors
+        ]
+    if proposal.target_kind is not None:
+        payload["target_kind"] = proposal.target_kind
+    if proposal.target_name is not None:
+        payload["target_name"] = proposal.target_name
+    if proposal.target_node_id is not None:
+        payload["target_node_id"] = proposal.target_node_id
+    if proposal.target_node_path is not None:
+        payload["target_node_path"] = list(proposal.target_node_path)
+    return payload
+
+
+def proposal_payload_anchors(payload: dict[str, Any]) -> list[ChatProposalAnchor]:
+    anchors: list[ChatProposalAnchor] = []
+    for position, anchor in enumerate(normalize_anchors(payload.get("text_edits"))):
+        anchors.append(
+            ChatProposalAnchor(
+                position=position,
+                op=anchor["op"],
+                find_text=anchor["find"],
+                text=anchor["text"],
+            )
+        )
+    return anchors
+
+
+def store_proposal_state(
+    proposal: ChatProposal,
+    *,
+    payload: dict[str, Any],
+    original_md: str | None,
+    target: dict[str, Any] | None,
+) -> None:
+    """Write the typed state out of a proposal document (ADR-200)."""
+    document = dict(payload)
+    anchors = proposal_payload_anchors(document)
+    for key in (
+        "text_edits",
+        "original_md",
+        "target_kind",
+        "target_name",
+        "target_node_id",
+        "target_node_path",
+    ):
+        document.pop(key, None)
+    proposal.payload = cast(ProposalPayload, document)
+    proposal.original_md = original_md
+    proposal.anchors = anchors
+    if target:
+        proposal.target_kind = target.get("target_kind")
+        proposal.target_name = target.get("target_name")
+        proposal.target_node_id = target.get("target_node_id")
+        proposal.target_node_path = target.get("target_node_path")
 
 
 _TARGET_KINDS = {

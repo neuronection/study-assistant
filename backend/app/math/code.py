@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from typing import Any
 
 MAX_TESTS = 10
@@ -6,7 +7,7 @@ DEFAULT_TIMEOUT_MS = 5000
 FLOAT_TOLERANCE = 1e-6
 
 
-def validate_code_answer(answer: dict[str, Any]) -> list[str]:
+def validate_code_answer(answer: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     tests = answer.get("tests")
     if not isinstance(tests, list) or not 1 <= len(tests) <= MAX_TESTS:
@@ -38,7 +39,7 @@ def validate_code_answer(answer: dict[str, Any]) -> list[str]:
     return problems
 
 
-def code_public_input(answer: dict[str, Any]) -> dict[str, Any] | None:
+def code_public_input(answer: Mapping[str, Any]) -> dict[str, Any] | None:
     tests = answer.get("tests")
     if not isinstance(tests, list):
         return None
@@ -99,7 +100,7 @@ def _parse_output(output: Any) -> Any:
     return output
 
 
-def grade_code(answer: dict[str, Any], response: Any) -> dict[str, Any]:
+def grade_code(answer: Mapping[str, Any], response: Any) -> dict[str, Any]:
     """Verify the in-page run's per-case outcomes against the stored tests.
 
     The code itself never reaches the backend — the payload carries one result

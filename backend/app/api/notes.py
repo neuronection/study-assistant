@@ -1,6 +1,6 @@
 import base64
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -18,9 +18,12 @@ from ..domain.models import (
     NoteVersion,
     utcnow,
 )
+from ..domain.payloads import StrokeList
 from ..services.content.diffs import unified_text_diff
 from ..services.content.drawings import (
+    apply_drawing_view,
     blocks_md,
+    drawing_view,
     enqueue_drawing_ocr,
     md_to_blocks,
     note_search_text,
@@ -158,13 +161,13 @@ def _note_out(note: Note) -> NoteOut:
 def _note_detail(session: Session, note: Note) -> NoteDetail:
     return NoteDetail(
         **_note_out(note).model_dump(),
-        body=note.body,
+        body=cast(list[dict[str, Any]], note.body),
         drawings=[
             {
                 "id": drawing.id,
                 "png_sha": drawing.png_sha,
                 "strokes": drawing.strokes,
-                "view": drawing.view,
+                "view": drawing_view(drawing),
                 "ocr_version": drawing.ocr_version,
                 "ocr_markdown": drawing.ocr_markdown,
                 "ocr_job_id": pending_ocr_job_id(session, drawing),
@@ -615,8 +618,8 @@ def _store_drawing(
         note_id=note.id,
         strokes=body.strokes,
         png_sha=stored.sha256,
-        view=body.view.model_dump() if body.view is not None else None,
     )
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     session.add(drawing)
     session.flush()
     if run_ocr and body.strokes:
@@ -661,9 +664,9 @@ def update_drawing(
     except (ValueError, TypeError) as error:
         raise HTTPException(status_code=422, detail="invalid png_base64") from error
     stored = request.app.state.blobs.put(png, mime="image/png", session=session)
-    drawing.strokes = body.strokes
+    drawing.strokes = cast(StrokeList, body.strokes)
     drawing.png_sha = stored.sha256
-    drawing.view = body.view.model_dump() if body.view is not None else None
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     if body.ocr and body.strokes:
         drawing.ocr_job_id = enqueue_drawing_ocr(
             session, kind="note", owner_id=note.id, drawing_id=drawing.id

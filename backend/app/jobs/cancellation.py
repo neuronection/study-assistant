@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import select, update
@@ -43,7 +44,7 @@ class JobCancelled(Exception):
     pass
 
 
-def _payload_id(payload: dict[str, Any] | None, key: str) -> str | None:
+def _payload_id(payload: Mapping[str, Any] | None, key: str) -> str | None:
     if not payload:
         return None
     value = payload.get(key)

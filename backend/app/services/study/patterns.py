@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy import select
@@ -21,7 +22,7 @@ class PatternError(ValueError):
     pass
 
 
-def _detection_matches(detection: dict[str, Any] | None, response: str, expected: str) -> bool:
+def _detection_matches(detection: Mapping[str, Any] | None, response: str, expected: str) -> bool:
     if not detection or not response or not expected:
         return False
     kind = detection.get("type")

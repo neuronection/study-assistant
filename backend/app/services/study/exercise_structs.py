@@ -1,5 +1,6 @@
 import random
 import re
+from collections.abc import Mapping
 from typing import Any
 
 STRUCT_KINDS = ("matching", "ordering", "categorize", "fill_blank")
@@ -14,7 +15,7 @@ def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def validate_structural_payload(kind: str, payload: dict[str, Any]) -> list[str]:
+def validate_structural_payload(kind: str, payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))
@@ -113,7 +114,7 @@ def _index_list(response: Any, length: int) -> list[int] | None:
     return result
 
 
-def check_structural(kind: str, payload: dict[str, Any], response: Any) -> tuple[bool, str]:
+def check_structural(kind: str, payload: Mapping[str, Any], response: Any) -> tuple[bool, str]:
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))
         picks = _index_list(response, len(pairs))
@@ -171,7 +172,7 @@ def check_structural(kind: str, payload: dict[str, Any], response: Any) -> tuple
     return False, f"unknown structural kind: {kind}"
 
 
-def public_input(kind: str, payload: dict[str, Any], seed: str) -> dict[str, Any]:
+def public_input(kind: str, payload: Mapping[str, Any], seed: str) -> dict[str, Any]:
     rnd = random.Random(_seed_value(seed))
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))

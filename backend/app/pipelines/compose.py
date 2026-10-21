@@ -18,6 +18,7 @@ from ..domain.models import (
     Note,
     TreeNode,
 )
+from ..domain.payloads import MaterialProvenance
 from ..jobs.cancellation import JobCancelled, is_cancel_requested
 from ..jobs.payloads import ComposePayload, IngestPayload
 from ..jobs.runner import JobError, JobHandler, JobRunner, ProgressReporter
@@ -536,7 +537,7 @@ class ComposeService:
                 updated["needs_review"] = True
             else:
                 updated.pop("needs_review", None)
-            existing.provenance = updated
+            existing.provenance = cast(MaterialProvenance, updated)
             self._session.flush()
             return existing
         material, _duplicate = services.create_text(
@@ -556,7 +557,7 @@ class ComposeService:
             provenance["practice_items"] = practice_items
         if needs_review:
             provenance["needs_review"] = True
-        material.provenance = provenance
+        material.provenance = cast(MaterialProvenance, provenance)
         if target_node_id is not None:
             link = self._session.scalars(
                 select(MaterialLink).where(
@@ -601,11 +602,10 @@ class ComposeService:
             filename=f"{title}.md",
             content=f"# {title}\n\n{markdown}",
         )
-        material.provenance = {
-            "source": ProvenanceKind.AI_COMPOSED,
-            "kind": kind,
-            "model": model_label,
-        }
+        material.provenance = cast(
+            MaterialProvenance,
+            {"source": ProvenanceKind.AI_COMPOSED, "kind": kind, "model": model_label},
+        )
         existing = self._session.scalars(
             select(MaterialLink).where(
                 MaterialLink.course_id == course_id,

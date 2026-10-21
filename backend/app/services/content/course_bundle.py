@@ -51,7 +51,7 @@ from ...pipelines.chunking import chunk_markdown
 from ...storage.blobs import blob_path
 from ...storage.fts import sync_material_fts
 from ..study.exercise_kinds import is_card_kind
-from .drawings import remap_drawing_refs
+from .drawings import apply_drawing_view, drawing_view, remap_drawing_refs
 from .external_sources import validate_source as validate_external_source
 from .folders import FoldersService
 from .materials import extraction_to_blocks
@@ -464,7 +464,7 @@ def _export_materials(session: Session, course_id: str) -> tuple[list[dict[str, 
                     "id": drawing.id,
                     "strokes": drawing.strokes,
                     "png_sha": drawing.png_sha,
-                    "view": drawing.view,
+                    "view": drawing_view(drawing),
                     "ocr_markdown": drawing.ocr_markdown,
                     "ocr_blocks": drawing.ocr_blocks,
                     "ocr_version": drawing.ocr_version,
@@ -586,7 +586,7 @@ def _export_notes(session: Session, course_id: str) -> tuple[list[dict[str, Any]
                 {
                     "strokes": drawing.strokes,
                     "png_sha": drawing.png_sha,
-                    "view": drawing.view,
+                    "view": drawing_view(drawing),
                     "ocr_markdown": drawing.ocr_markdown,
                     "ocr_blocks": drawing.ocr_blocks,
                     "ocr_version": drawing.ocr_version,
@@ -1009,6 +1009,21 @@ def _validate_bundle(bundle: BundleData) -> None:
             raise BundleError("note version references an unknown note")
 
 
+def _bundle_view(drawing: dict[str, Any]) -> dict[str, float] | None:
+    view = drawing.get("view")
+    if not isinstance(view, dict):
+        return None
+    try:
+        return {
+            "x": float(view["x"]),
+            "y": float(view["y"]),
+            "width": float(view["width"]),
+            "height": float(view["height"]),
+        }
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _parse_datetime(value: Any) -> datetime | None:
     if not value:
         return None
@@ -1215,11 +1230,11 @@ def import_course_bundle(
                 material_id=material.id,
                 strokes=drawing.get("strokes") or [],
                 png_sha=drawing_sha,
-                view=drawing.get("view"),
                 ocr_version=int(drawing.get("ocr_version") or 0),
                 ocr_blocks=drawing.get("ocr_blocks"),
                 ocr_markdown=drawing.get("ocr_markdown"),
             )
+            apply_drawing_view(material_drawing_row, _bundle_view(drawing))
             session.add(material_drawing_row)
             session.flush()
             if old_id:
@@ -1311,11 +1326,11 @@ def import_course_bundle(
                 note_id=note.id,
                 strokes=drawing.get("strokes") or [],
                 png_sha=sha,
-                view=drawing.get("view"),
                 ocr_version=int(drawing.get("ocr_version") or 0),
                 ocr_blocks=drawing.get("ocr_blocks"),
                 ocr_markdown=drawing.get("ocr_markdown"),
             )
+            apply_drawing_view(drawing_row, _bundle_view(drawing))
             session.add(drawing_row)
             if drawing.get("ocr_markdown"):
                 note.search_text = f"{note.search_text}\n{drawing['ocr_markdown']}"

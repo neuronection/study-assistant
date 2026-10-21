@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from sqlalchemy import select
@@ -17,6 +17,7 @@ from ...domain.models import (
     TaskAssignment,
     utcnow,
 )
+from ...domain.payloads import ProviderStatus
 from ..decide.types import (
     DECISION_DEFAULT_SLOT,
     DECISION_SLOT_PREFIX,
@@ -321,12 +322,15 @@ class ProvidersService:
     def record_status(
         self, provider: Provider, *, ok: bool, error: str | None, model_count: int | None = None
     ) -> None:
-        provider.status = {
-            "last_tested_at": utcnow().isoformat(),
-            "ok": ok,
-            "error": error,
-            "model_count": model_count,
-        }
+        provider.status = cast(
+            ProviderStatus,
+            {
+                "last_tested_at": utcnow().isoformat(),
+                "ok": ok,
+                "error": error,
+                "model_count": model_count,
+            },
+        )
         self._session.flush()
 
     def discover(

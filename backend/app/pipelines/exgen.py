@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -108,7 +109,7 @@ def _is_number_str(value: Any) -> bool:
         return False
 
 
-def _seed_directive(detection: dict[str, Any] | None) -> str:
+def _seed_directive(detection: Mapping[str, Any] | None) -> str:
     if not isinstance(detection, dict):
         return ""
     kind = detection.get("type")
@@ -129,7 +130,7 @@ def _seed_directive(detection: dict[str, Any] | None) -> str:
     return ""
 
 
-def _seed_problems(detection: dict[str, Any] | None, payload: dict[str, Any]) -> list[str]:
+def _seed_problems(detection: Mapping[str, Any] | None, payload: dict[str, Any]) -> list[str]:
     if not isinstance(detection, dict):
         return []
     flaw_index = payload.get("flaw_index")
@@ -501,7 +502,7 @@ class ExgenService:
         pattern_description: str,
         pattern_example: str | None,
         subject: str | None,
-        detection: dict[str, Any] | None = None,
+        detection: Mapping[str, Any] | None = None,
     ) -> Exercise:
         seed_directive = _seed_directive(detection)
         sections = [

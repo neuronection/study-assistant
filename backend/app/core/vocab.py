@@ -62,6 +62,24 @@ class ChatProposalStatus(StrVocab):
         return (cls.APPROVED, cls.DISMISSED, cls.EXECUTED, cls.STALE, cls.CONFLICT)
 
 
+class ProposalTargetKind(StrVocab):
+    NOTE = "note"
+    MATERIAL = "material"
+    CONCEPT = "concept"
+    LINK = "link"
+
+
+class ProposalAnchorOp(StrVocab):
+    REPLACE = "replace"
+    APPEND = "append"
+    PREPEND = "prepend"
+
+
+class QuizVerdict(StrVocab):
+    CORRECT = "correct"
+    INCORRECT = "incorrect"
+
+
 class DiscoveryKind(StrVocab):
     VIDEO = "video"
     COURSE = "course"

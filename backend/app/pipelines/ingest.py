@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import LLMGateway, TaskUnassigned
 from ..core.vocab import ExtractionMode, MaterialKind, MaterialStatus, ProvenanceKind
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
+from ..domain.payloads import MaterialProvenance
 from ..jobs.cancellation import (
     JobCancelled,
     ensure_target_exists,
@@ -374,10 +375,10 @@ def make_ingest_handler(
                     header_lines.append(f"({_format_duration(material.duration_sec)})")
                 header_lines.append(f"— transcribed by {result.model}.*")
                 markdown = " ".join(header_lines) + f"\n\n{result.text}"
-                material.provenance = {
-                    "source": ProvenanceKind.TRANSCRIBED,
-                    "model": result.model,
-                }
+                material.provenance = cast(
+                    MaterialProvenance,
+                    {"source": ProvenanceKind.TRANSCRIBED, "model": result.model},
+                )
                 _store_extraction(
                     session, material, extractor="transcribe", markdown=markdown, pages=None
                 )
@@ -388,7 +389,10 @@ def make_ingest_handler(
             raise
 
         if converted_kind is not None and store is not None:
-            material.provenance = {"source": ProvenanceKind.CONVERTED, "converter": converted_kind}
+            material.provenance = cast(
+                MaterialProvenance,
+                {"source": ProvenanceKind.CONVERTED, "converter": converted_kind},
+            )
             store.enqueue_ocr_jobs(session)
 
         report(80, "indexing")

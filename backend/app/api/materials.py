@@ -2,7 +2,7 @@ import base64
 import mimetypes
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile
 from pydantic import BaseModel, Field
@@ -29,10 +29,13 @@ from ..domain.models import (
     Profile,
     utcnow,
 )
+from ..domain.payloads import StrokeList
 from ..jobs.payloads import UrlImportPayload
 from ..jobs.runner import JobRunner
 from ..services.content.diffs import unified_text_diff
 from ..services.content.drawings import (
+    apply_drawing_view,
+    drawing_view,
     enqueue_drawing_ocr,
     pending_ocr_job_id,
     strip_drawing_refs,
@@ -146,7 +149,7 @@ def _to_out(material: Material, has_extraction: bool = False, link_count: int = 
         group_id=material.group_id,
         folder_id=material.folder_id,
         blob_sha=material.blob_sha,
-        provenance=material.provenance,
+        provenance=cast(dict[str, Any] | None, material.provenance),
         created_at=material.created_at,
         source_url=material.source_url,
         has_extraction=has_extraction,
@@ -161,8 +164,8 @@ def _drawings_out(session: Session, material: Material) -> list[DrawingOut]:
         DrawingOut(
             id=drawing.id,
             png_sha=drawing.png_sha,
-            strokes=drawing.strokes,
-            view=ViewBox(**drawing.view) if drawing.view else None,
+            strokes=cast(list[dict[str, Any]], drawing.strokes),
+            view=ViewBox(**resolved) if (resolved := drawing_view(drawing)) else None,
             ocr_version=drawing.ocr_version,
             ocr_markdown=drawing.ocr_markdown,
             ocr_job_id=pending_ocr_job_id(session, drawing),
@@ -186,7 +189,7 @@ def _material_detail(
                 version=extraction.version,
                 extractor=extraction.extractor,
                 markdown=extraction.markdown,
-                blocks=extraction.blocks,
+                blocks=cast(list[dict[str, Any]], extraction.blocks),
             )
             if extraction is not None
             else None
@@ -1169,8 +1172,8 @@ def _store_material_drawing(
         material_id=material.id,
         strokes=body.strokes,
         png_sha=stored.sha256,
-        view=body.view.model_dump() if body.view is not None else None,
     )
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     session.add(drawing)
     session.flush()
     if run_ocr:
@@ -1221,9 +1224,9 @@ def update_material_drawing(
     except (ValueError, TypeError) as error:
         raise HTTPException(status_code=422, detail="invalid png_base64") from error
     stored = request.app.state.blobs.put(png, mime="image/png", session=session)
-    drawing.strokes = body.strokes
+    drawing.strokes = cast(StrokeList, body.strokes)
     drawing.png_sha = stored.sha256
-    drawing.view = body.view.model_dump() if body.view is not None else None
+    apply_drawing_view(drawing, body.view.model_dump() if body.view is not None else None)
     if body.ocr:
         drawing.ocr_job_id = enqueue_drawing_ocr(
             session, kind="material", owner_id=material.id, drawing_id=drawing.id

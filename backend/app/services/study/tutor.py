@@ -1,4 +1,5 @@
 import time
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import select
@@ -42,7 +43,7 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def _blocks_md(blocks: list[dict[str, Any]] | None) -> str:
+def _blocks_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
     if not blocks:
         return ""
     parts = []

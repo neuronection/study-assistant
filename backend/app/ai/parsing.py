@@ -1,5 +1,6 @@
 import json
 import re
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -27,7 +28,7 @@ def extract_json_object(text: str, error: type[ValueError]) -> dict[str, Any]:
     return parsed
 
 
-def blocks_to_md(blocks: list[dict[str, Any]] | None) -> str:
+def blocks_to_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
     if not blocks:
         return ""
     parts: list[str] = []

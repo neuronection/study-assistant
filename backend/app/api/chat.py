@@ -3,7 +3,7 @@ import json
 import threading
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -28,6 +28,8 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
+from ..domain.payloads import ProposalPayload, ProposalResult
+from ..domain.proposal_contract import ProposalPayloadError, validate_proposal_payload
 from ..jobs.runner import JobError, JobHandler, JobRunner
 from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.chat import ChatError, ChatService, proposal_out
@@ -38,6 +40,13 @@ from ..services.platform.proposal_actions import (
     ProposalContext,
     execute_proposal,
     mark_stale,
+    proposal_full_payload,
+)
+from ..services.platform.quizme import (
+    clear_pending,
+    pending_state,
+    quiz_public_state,
+    store_pending,
 )
 from .deps import get_session
 
@@ -57,6 +66,16 @@ class SessionUpdate(BaseModel):
     quizme: bool | None = None
 
 
+class QuizPendingOut(BaseModel):
+    question: str | None = None
+    choices: list[str] | None = None
+    answered: bool = False
+    verdict: str | None = None
+    verdict_detail: str | None = None
+    student_answer: str | None = None
+    expected_display: str | None = None
+
+
 class SessionOut(BaseModel):
     id: str
     public_id: str
@@ -65,7 +84,7 @@ class SessionOut(BaseModel):
     title: str
     use_embeddings: bool | None
     quizme: bool = False
-    quiz_pending: dict[str, Any] | None = None
+    quiz_pending: QuizPendingOut | None = None
     created_at: datetime
 
 
@@ -182,9 +201,14 @@ def _session_out(chat_session: Any) -> SessionOut:
         title=chat_session.title,
         use_embeddings=chat_session.use_embeddings,
         quizme=bool(chat_session.quizme),
-        quiz_pending=chat_session.quiz_pending,
+        quiz_pending=_quiz_pending_out(chat_session),
         created_at=chat_session.created_at,
     )
+
+
+def _quiz_pending_out(chat_session: Any) -> QuizPendingOut | None:
+    public = quiz_public_state(pending_state(chat_session.quiz_pending_row))
+    return QuizPendingOut(**public) if public else None
 
 
 def _proposal_row_out(proposal: Any) -> ProposalOut:
@@ -397,7 +421,7 @@ def update_session(
     if body.quizme is not None:
         chat_session.quizme = body.quizme
         if not body.quizme:
-            chat_session.quiz_pending = None
+            clear_pending(session, chat_session)
     session.commit()
     return _session_out(chat_session)
 
@@ -541,31 +565,39 @@ def _conflict_refresh(
     payload = dict(proposal.payload or {})
     from ..services.platform.proposal_actions import capture_proposal_snapshot
 
-    snapshot = capture_proposal_snapshot(
+    current = capture_proposal_snapshot(
         session,
         action=proposal.action,
         payload=payload,
         course_id=chat_session.course_id or "",
     )
-    if not snapshot:
+    if current is None:
         return False
-    current = str(snapshot.get("original_md") or "")
-    if current == str(payload.get("original_md") or ""):
+    if current == str(proposal.original_md or ""):
         return False
-    if payload.get("text_edits"):
+    if proposal.anchors:
         resolved = resolve_text_edits(
-            current, [TextEditOp.model_validate(op) for op in payload["text_edits"]]
+            current,
+            [
+                TextEditOp.model_validate(
+                    {"op": anchor.op, "find": anchor.find_text, "text": anchor.text}
+                )
+                for anchor in proposal.anchors
+            ],
         )
         payload[("new_body_md" if proposal.action == "edit_note" else "new_markdown")] = resolved
-    payload["original_md"] = current
-    proposal.payload = payload
+    proposal.payload = cast(ProposalPayload, payload)
+    proposal.original_md = current
     proposal.status = ChatProposalStatus.CONFLICT.value
-    proposal.result = {
-        "conflict": (
-            "target changed since this proposal was made — "
-            "the diff was refreshed; review and approve again"
-        )
-    }
+    proposal.result = cast(
+        ProposalResult,
+        {
+            "conflict": (
+                "target changed since this proposal was made — "
+                "the diff was refreshed; review and approve again"
+            )
+        },
+    )
     return True
 
 
@@ -577,6 +609,10 @@ def approve_proposal(
 ) -> ProposalOut:
     profile = ensure_default_profile(session)
     proposal, chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
+    try:
+        validate_proposal_payload(proposal.action, proposal.payload or {})
+    except ProposalPayloadError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     if proposal.status not in ChatProposalStatus.resolvable():
         raise HTTPException(status_code=409, detail=f"proposal already {proposal.status}")
     if proposal.action in GENERATE_ACTIONS:
@@ -610,7 +646,7 @@ def approve_proposal(
             status, result = execute_proposal(
                 session,
                 action=proposal.action,
-                payload=proposal.payload or {},
+                payload=proposal_full_payload(proposal),
                 course_id=chat_session.course_id,
                 context=ProposalContext(
                     blobs=request.app.state.blobs,
@@ -627,7 +663,7 @@ def approve_proposal(
         if proposal.action in POSTPROCESS_ACTIONS:
             request.app.state.jobs.wake()
     proposal.status = ChatProposalStatus.EXECUTED.value
-    proposal.result = result
+    proposal.result = cast(ProposalResult, result)
     proposal.executed_at = utcnow()
     session.add(
         AiInteraction(
@@ -915,7 +951,7 @@ def answer_quiz_question(
     chat_session = service.get_session(session_id, profile.id)
     if chat_session is None:
         raise HTTPException(status_code=404, detail="chat session not found")
-    pending = chat_session.quiz_pending
+    pending = pending_state(chat_session.quiz_pending_row)
     if not isinstance(pending, dict) or not pending.get("question"):
         raise HTTPException(status_code=409, detail="no quiz question is pending")
     if pending.get("verdict") is not None:
@@ -925,10 +961,8 @@ def answer_quiz_question(
     pending["verdict_detail"] = detail
     pending["student_answer"] = str(body.answer)
     pending["awaiting_answer"] = False
+    store_pending(session, chat_session, pending)
     session.add(QuizmeAnswer(profile_id=profile.id, session_id=session_id, correct=correct))
-    from sqlalchemy.orm.attributes import flag_modified
-
-    flag_modified(chat_session, "quiz_pending")
 
     expected_display: str | None = None
     if pending.get("choices") is not None and isinstance(pending.get("expected_index"), int):

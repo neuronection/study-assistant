@@ -16,6 +16,28 @@ from ...core.vocab import (
 from ...core.vocab import (
     StudySessionSource as StudySessionSource,
 )
+from ..payloads import (
+    ActivityConfig,
+    ActivityGeneratedFrom,
+    AnswerResponse,
+    AttemptMeta,
+    BlockList,
+    DetectionSpec,
+    DistractorMisconceptions,
+    ExerciseContextList,
+    ExerciseCreatedFrom,
+    ExpectedAnswer,
+    FeedbackList,
+    HelpEventList,
+    QuestionAnswer,
+    QuestionProvenance,
+    QuestionStats,
+    RubricDocument,
+    StepResponse,
+    StepState,
+    StringList,
+    SympyCheck,
+)
 from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
@@ -103,8 +125,8 @@ class Activity(Base):
     type: Mapped[str] = mapped_column(String(20), default="quiz")
     title: Mapped[str] = mapped_column(String(300))
     time_limit_sec: Mapped[int | None] = mapped_column(Integer)
-    config: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    generated_from: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    config: Mapped[ActivityConfig | None] = mapped_column(JSON)
+    generated_from: Mapped[ActivityGeneratedFrom | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     questions: Mapped[list["Question"]] = relationship(
@@ -127,24 +149,24 @@ class Question(Base):
         _UUID, ForeignKey("questions.id", ondelete="CASCADE")
     )
     type: Mapped[str] = mapped_column(String(20))
-    stem: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    options: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    answer: Mapped[dict[str, Any]] = mapped_column(JSON)
-    explanation: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    stem: Mapped[BlockList] = mapped_column(JSON)
+    options: Mapped[BlockList | None] = mapped_column(JSON)
+    answer: Mapped[QuestionAnswer] = mapped_column(JSON)
+    explanation: Mapped[BlockList | None] = mapped_column(JSON)
     difficulty: Mapped[float | None] = mapped_column(Float)
     bloom: Mapped[str | None] = mapped_column(String(20))
     skill: Mapped[str | None] = mapped_column(String(20))
-    concept_ids: Mapped[list[str] | None] = mapped_column(JSON)
+    concept_ids: Mapped[StringList | None] = mapped_column(JSON)
     expected_time_sec: Mapped[int | None] = mapped_column(Integer)
     curriculum_code: Mapped[str | None] = mapped_column(String(120))
-    source_refs: Mapped[list[str] | None] = mapped_column(JSON)
-    distractor_misconceptions: Mapped[dict[str, str] | None] = mapped_column(JSON)
-    sympy_check: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    input_modes: Mapped[list[str] | None] = mapped_column(JSON)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
-    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    source_refs: Mapped[StringList | None] = mapped_column(JSON)
+    distractor_misconceptions: Mapped[DistractorMisconceptions | None] = mapped_column(JSON)
+    sympy_check: Mapped[SympyCheck | None] = mapped_column(JSON)
+    input_modes: Mapped[StringList | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
+    provenance: Mapped[QuestionProvenance | None] = mapped_column(JSON)
     flag: Mapped[str] = mapped_column(String(10), default="ok")
-    stats: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    stats: Mapped[QuestionStats | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     activity: Mapped[Activity] = relationship(back_populates="questions")
@@ -163,7 +185,7 @@ class Attempt(Base):
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     score: Mapped[float | None] = mapped_column(Float)
-    meta: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    meta: Mapped[AttemptMeta | None] = mapped_column(JSON)
 
     activity: Mapped[Activity] = relationship(back_populates="attempts")
     answers: Mapped[list["Answer"]] = relationship(
@@ -181,16 +203,16 @@ class Answer(Base):
     question_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("questions.id", ondelete="CASCADE"), index=True
     )
-    response: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    response: Mapped[AnswerResponse | None] = mapped_column(JSON)
     input_mode: Mapped[str | None] = mapped_column(String(10))
     correct: Mapped[bool | None] = mapped_column(Boolean)
     partial_credit: Mapped[float | None] = mapped_column(Float)
-    feedback: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    feedback: Mapped[FeedbackList | None] = mapped_column(JSON)
     graded_by: Mapped[str | None] = mapped_column(String(10))
     time_ms: Mapped[int | None] = mapped_column(Integer)
     retries: Mapped[int] = mapped_column(Integer, default=0)
-    error_tags: Mapped[list[str] | None] = mapped_column(JSON)
-    help_events: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    error_tags: Mapped[StringList | None] = mapped_column(JSON)
+    help_events: Mapped[HelpEventList | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     attempt: Mapped[Attempt] = relationship(back_populates="answers")
@@ -206,8 +228,8 @@ class Mistake(Base):
     question_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("questions.id", ondelete="CASCADE"), index=True
     )
-    concept_ids: Mapped[list[str] | None] = mapped_column(JSON)
-    error_tags: Mapped[list[str] | None] = mapped_column(JSON)
+    concept_ids: Mapped[StringList | None] = mapped_column(JSON)
+    error_tags: Mapped[StringList | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -233,9 +255,9 @@ class Exercise(Base):
     title: Mapped[str] = mapped_column(String(300))
     kind: Mapped[str] = mapped_column(String(30), default="multi_step")
     deck_ref: Mapped[str | None] = mapped_column(String(200))
-    context: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    context: Mapped[ExerciseContextList | None] = mapped_column(JSON)
     difficulty: Mapped[float | None] = mapped_column(Float)
-    created_from: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_from: Mapped[ExerciseCreatedFrom | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     steps: Mapped[list["ExerciseStep"]] = relationship(
@@ -260,10 +282,10 @@ class ExerciseStep(Base):
         _UUID, ForeignKey("exercises.id", ondelete="CASCADE"), index=True
     )
     order_idx: Mapped[int] = mapped_column(Integer)
-    prompt: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    expected: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    hints_pregenerated: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    rubric: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    prompt: Mapped[BlockList] = mapped_column(JSON)
+    expected: Mapped[ExpectedAnswer | None] = mapped_column(JSON)
+    hints_pregenerated: Mapped[BlockList | None] = mapped_column(JSON)
+    rubric: Mapped[RubricDocument | None] = mapped_column(JSON)
 
     exercise: Mapped[Exercise] = relationship(back_populates="steps")
 
@@ -296,12 +318,12 @@ class StepAttempt(Base):
         _UUID, ForeignKey("exercise_sessions.id", ondelete="CASCADE"), index=True
     )
     step_idx: Mapped[int] = mapped_column(Integer)
-    response: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    response: Mapped[StepResponse | None] = mapped_column(JSON)
     correct: Mapped[bool | None] = mapped_column(Boolean)
     hint_level_used: Mapped[int | None] = mapped_column(Integer)
     error_class: Mapped[str | None] = mapped_column(String(30))
-    feedback: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    state: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    feedback: Mapped[FeedbackList | None] = mapped_column(JSON)
+    state: Mapped[StepState | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     session: Mapped[ExerciseSession] = relationship(back_populates="attempts")
@@ -366,7 +388,7 @@ class ErrorPattern(Base):
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
     example: Mapped[str | None] = mapped_column(Text)
-    detection: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    detection: Mapped[DetectionSpec | None] = mapped_column(JSON)
     is_system: Mapped[bool] = mapped_column(Boolean, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     order_idx: Mapped[int] = mapped_column(Integer, default=0)

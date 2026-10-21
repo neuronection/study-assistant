@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -22,7 +23,7 @@ class RubricError(ValueError):
     pass
 
 
-def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
+def _error_spot_problems(payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     lines = payload.get("lines")
     if not isinstance(lines, list) or not 2 <= len(lines) <= 12:
@@ -74,7 +75,7 @@ def _error_spot_problems(payload: dict[str, Any]) -> list[str]:
     return problems
 
 
-def validate_rubric_payload(kind: str, payload: dict[str, Any]) -> list[str]:
+def validate_rubric_payload(kind: str, payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     rows = payload.get("rubric")
     if not isinstance(rows, list) or not 1 <= len(rows) <= 8:
@@ -136,7 +137,7 @@ class RubricGrader:
     def grade(
         self,
         step: ExerciseStep,
-        payload: dict[str, Any],
+        payload: Mapping[str, Any],
         response: str,
         course_id: str | None = None,
     ) -> dict[str, Any]:
@@ -177,7 +178,7 @@ class RubricGrader:
         }
 
 
-def rubric_public_input(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+def rubric_public_input(kind: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     widget = "essay" if kind == "explain" else "lines" if kind == "error_spot" else "math"
     result: dict[str, Any] = {"widget": widget, "kind": kind}
     if kind == "error_spot":
@@ -210,7 +211,7 @@ def _spot_response(response: str) -> dict[str, Any] | None:
     return None
 
 
-def _spot_correct_answer(payload: dict[str, Any]) -> str | None:
+def _spot_correct_answer(payload: Mapping[str, Any]) -> str | None:
     flaw_index = payload.get("flaw_index")
     answers = payload.get("answers_correct")
     if isinstance(flaw_index, int) and isinstance(answers, list) and 0 <= flaw_index < len(answers):
@@ -224,7 +225,7 @@ def _spot_correct_answer(payload: dict[str, Any]) -> str | None:
 
 
 def rubric_deterministic_check(
-    kind: str, payload: dict[str, Any], response: str
+    kind: str, payload: Mapping[str, Any], response: str
 ) -> tuple[bool, str] | None:
     if kind == "error_spot":
         spot = _spot_response(response)

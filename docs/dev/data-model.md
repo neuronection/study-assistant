@@ -79,7 +79,10 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   1:N per user), name, **is_default** (exactly one per user), color,
   **preferences JSON?** (0039 — user preferences, e.g.
   `use_embeddings`), **last_used_at?** (§6 last-used profile), created_at,
-  updated_at. Every `profile_id` column is a UUID with ON DELETE CASCADE;
+  updated_at. `preferences` keeps its pass-through JSON (extension-owned `mcp` /
+  `search_providers` sections) behind the `ProfilePreferences` TypedDict and the
+  pydantic validation at the preferences API edge (ADR-200). Every `profile_id`
+  column is a UUID with ON DELETE CASCADE;
   user creation auto-provisions Default in the same transaction and
   deleting the last profile re-provisions it.
 - **providers**: id, name, type (google | openai_compatible | anthropic), base_url,
@@ -163,8 +166,9 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   material PATCH (whitespace-only normalizes to NULL); shown on the material
   page's Description tab
 - **extractions**: id, material_id, version (append-only; latest = current),
-  extractor (pymupdf | ocr | native | manual), model, blocks JSON, markdown,
-  confidence, tokens/cost, reviewed, edited_by_user
+  extractor (pymupdf | ocr | native | manual), model, blocks JSON
+  (+ `blocks_schema_version`, ADR-200), markdown, confidence, tokens/cost,
+  reviewed, edited_by_user
 - **chunks**: id, extraction_id, ordinal, text, token_count
 - **material_images** (0048, ADR-103): id, material_id (FK, cascade), position
   (document order), blob_sha (FK→blobs, content-addressed), mime, ocr_version,
@@ -174,9 +178,11 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   `image_ocr` job (plan-46 async pattern), OCR text joins FTS/AI context like
   drawing OCR
 - **material_drawings** (0032, ADR-064): id, material_id (FK, cascade), strokes
-  JSON (replayable vector strokes — the source of truth), png_sha (FK→blobs,
-  content-addressed PNG render), view JSON (0046, ADR-098 — exported region,
-  mirrors `note_drawings.view`), ocr_version, ocr_blocks JSON, ocr_markdown,
+  JSON (+ `strokes_schema_version`, ADR-200; replayable vector strokes — the
+  source of truth), png_sha (FK→blobs, content-addressed PNG render),
+  **view_x/view_y/view_width/view_height** (0046/0074 — the exported region as
+  typed columns, mirrors `note_drawings`), ocr_version, ocr_blocks JSON
+  (+ `ocr_blocks_schema_version`), ocr_markdown,
   ocr_job_id (0047, ADR-102, mirrors `note_drawings.ocr_job_id`),
   created_at — mirrors `note_drawings`; drawings are referenced from the
   extraction markdown via `![drawing](sa-drawing://{id})`, and their OCR joins the
@@ -272,19 +278,24 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **notes**: id, profile_id, course_id (required, ADR-040), **node_id?** (placement — any depth; root
   ⇔ course level), owner_type (standalone/material/exercise_session/chat_message)
   + owner_id? (**attachment** to non-node things only), title, body JSON blocks
-  (text blocks + `{"type":"drawing","drawing_id"}` inline blocks, plan 22 E —
-  serialized as `![drawing](sa-drawing://N)` markdown; unknown ids rejected 422),
-  search_text (title + body + drawings' OCR markdown — powers note search incl.
-  handwriting), tags JSON, pinned, timestamps
-- **note_drawings**: id, note_id, strokes JSON (replayable vector strokes — the
-  source of truth), png_sha → blobs (content-addressed render), view JSON
-  (0046, ADR-098 — the exported region `{x, y, width, height}` in stroke
+  (+ `body_schema_version`, ADR-200; text blocks +
+  `{"type":"drawing","drawing_id"}` inline blocks, plan 22 E — serialized as
+  `![drawing](sa-drawing://N)` markdown; unknown ids rejected 422; every write
+  is validated by `app/domain/documents.py`), search_text (title + body +
+  drawings' OCR markdown — powers note search incl. handwriting), tags JSON,
+  pinned, timestamps
+- **note_drawings**: id, note_id, strokes JSON (+ `strokes_schema_version`,
+  ADR-200; replayable vector strokes — the source of truth), png_sha → blobs
+  (content-addressed render), **view_x/view_y/view_width/view_height** (0046,
+  ADR-098; typed columns since 0074 — the exported region in stroke
   coordinates, 1 PNG px = 1 logical px; lets re-editing restore 100% scale),
-  ocr_version, ocr_blocks/ocr_markdown (notes_ocr result, re-runnable),
-  ocr_job_id (0047, ADR-102 — the in-flight background `drawing_ocr` job, or
-  null; serialized only while that job is queued/running)
+  ocr_version, ocr_blocks JSON (+ `ocr_blocks_schema_version`)/ocr_markdown
+  (notes_ocr result, re-runnable), ocr_job_id (0047, ADR-102 — the in-flight
+  background `drawing_ocr` job, or null; serialized only while that job is
+  queued/running)
 - **note_versions**: id, note_id (FK CASCADE), profile_id, title, tags, body
-  JSON, cause (autosave-coalesced | manual | restore), created_at — pre-write
+  JSON (+ `body_schema_version`), cause (autosave-coalesced | manual |
+  restore), created_at — pre-write
   snapshots taken coalesced (≥10 min apart or `force_version`; plan 22 B),
   capped 50/note; restore writes the old body and force-snapshots (undoable)
 - **deleted_items**: id, profile_id, entity_type (note | quiz | exercise |
@@ -326,11 +337,33 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 
 ### Chat & audit
 - **chat_sessions**: id, profile_id, course_id?, **node_id?** (scope binding —
-  retrieval narrows to the subtree), title, context JSON (quiz-attempt binding
-  for P5b "ask about this question"), **use_embeddings?** (0039 — per-chat query-
-  embedding override; null = follow the profile preference), **active_root_id?**
-  (0044 — which root-level message starts the visible branch path), created_at
-- **chat_messages**: id, session_id, role, blocks, citations JSON
+  retrieval narrows to the subtree), title, context JSON (typed
+  `ChatSessionContext`: quiz-attempt / exercise binding, pending answer,
+  reported proposal ids), mention_registry JSON (typed `MentionRegistryList`),
+  **use_embeddings?** (0039 — per-chat query-embedding override; null = follow
+  the profile preference), **active_root_id?** (0044 — which root-level message
+  starts the visible branch path), **quizme**, created_at. The one pending
+  quiz card lives in `chat_quiz_pendings` (0074, ADR-200), not in a JSON column.
+- **chat_quiz_pendings**: session_id PK (FK chat_sessions ON DELETE CASCADE),
+  question, choices JSON (list[str]), expected_index?, expected_latex?,
+  expected_text?, accept JSON (list[str]), awaiting_answer, verdict
+  (correct | incorrect), verdict_detail, student_answer, created_at — at most
+  one row per session; the expected-answer fields never leave the server (the
+  session API exposes the public state only)
+- **chat_proposals**: id, message_id (FK CASCADE), action, payload JSON (the
+  per-action instruction document behind `payload_schema_version`, validated by
+  the action's pydantic model at every write), **target_kind** (note | material
+  | concept | link), **target_name**, **target_node_id?** (FK tree_nodes ON
+  DELETE SET NULL), **target_node_path JSON?** (display breadcrumb),
+  **original_md?** (server-captured content snapshot for edit/append cards),
+  result JSON (polymorphic outcome document behind `result_schema_version`),
+  status (proposed | approved | dismissed | executed | stale | conflict),
+  created_at, executed_at
+- **chat_proposal_anchors**: proposal_id + position PK (FK CASCADE), op (replace
+  | append | prepend), find_text?, text — ordered anchored text edits
+  (0074, ADR-200); the API recomposes them into `payload.text_edits`
+- **chat_messages**: id, session_id, role, blocks JSON (+
+  `blocks_schema_version`, ADR-200), citations JSON
   ([{index, chunk_id, material_id, title, quote}]), grounded bool?,
   **state JSON** (per-widget state document keyed by widget id, plan 34D),
   **tool_calls JSON** ([{name, argument, phase, result?, title?}] — the tools the
@@ -371,6 +404,29 @@ staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
 signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
+
+- **0074 (plan 81 D, ADR-200)**: payload contract law. Known-shape state
+  leaves JSON: `chat_proposals` gains `target_kind`/`target_name`/
+  `target_node_id`/`target_node_path`/`original_md` columns and the ordered
+  `chat_proposal_anchors` table for anchored edits (the per-action instruction
+  document stays JSON as `payload` with `payload_schema_version`; the outcome
+  map stays JSON with `result_schema_version`); `chat_sessions.quiz_pending`
+  becomes the one-row `chat_quiz_pendings` table; drawing `view` JSON becomes
+  `view_x`/`view_y`/`view_width`/`view_height`. Canonical content documents
+  keep their JSON shape and gain a version sibling validated at the write
+  boundary — `notes.body`/`note_versions.body` (`body_schema_version`),
+  `chat_messages.blocks`/`extractions.blocks` (`blocks_schema_version`),
+  drawing `strokes`/`ocr_blocks` (`strokes_schema_version`/
+  `ocr_blocks_schema_version`). Data moves run in Python before the old columns
+  drop; `downgrade()` restores the columns and their documents (round-trip in
+  `tests/test_payload_law_migration.py`). New closed sets: `target_kind`,
+  anchor `op`, quiz `verdict` (CHECK twins). The empty-autogenerate model⇄DB
+  drift gate is `tests/test_model_db_drift.py`; the JSONB verdict inventory is
+  `contracts/data-model.jsonb-inventory.txt`. Note the chain interaction: 0073
+  rebuilds the identity domain from current model metadata, so a fresh upgrade
+  already lands the 0074 shape and the revision guards every add/create/drop
+  (the data moves only run on a database that still carries the old columns);
+  0068's text rewrite likewise skips columns the current model no longer has.
 
 - **0073 (plan 81 C, ADR-198)**: UUID identity for every user-data entity.
   Every surrogate integer primary key becomes `Uuid(as_uuid=False)` — the

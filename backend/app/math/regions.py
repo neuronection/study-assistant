@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -46,7 +47,7 @@ def _normalize_interval(raw: Any, index: int, problems: list[str]) -> None:
             problems.append(f"interval {index}: {key} must be a boolean")
 
 
-def _payload_problems(payload: dict[str, Any]) -> list[str]:
+def _payload_problems(payload: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     points = payload.get("points", [])
     intervals = payload.get("intervals", [])
@@ -69,7 +70,7 @@ def _payload_problems(payload: dict[str, Any]) -> list[str]:
     return problems
 
 
-def validate_region_answer(answer: dict[str, Any]) -> list[str]:
+def validate_region_answer(answer: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     domain = answer.get("domain")
     if not isinstance(domain, dict):
@@ -135,7 +136,7 @@ def _parse_response(
     return points, intervals
 
 
-def _expected_parts(answer: dict[str, Any]) -> tuple[list[float], list[Interval]]:
+def _expected_parts(answer: Mapping[str, Any]) -> tuple[list[float], list[Interval]]:
     points: list[float] = []
     for point in answer.get("points", []):
         value = _as_float(point.get("value") if isinstance(point, dict) else point)
@@ -190,7 +191,7 @@ def _format_interval(lo: float, hi: float, lo_closed: bool, hi_closed: bool) -> 
     return f"{left}{_clean_number(lo)}, {_clean_number(hi)}{right}"
 
 
-def region_tolerance(answer: dict[str, Any]) -> float:
+def region_tolerance(answer: Mapping[str, Any]) -> float:
     tolerance = _as_float(answer.get("tolerance"))
     if tolerance is not None and tolerance >= 0:
         return tolerance
@@ -203,7 +204,7 @@ def region_tolerance(answer: dict[str, Any]) -> float:
     return 1e-6
 
 
-def grade_regions(expected: dict[str, Any], response: Any) -> RegionGrade:
+def grade_regions(expected: Mapping[str, Any], response: Any) -> RegionGrade:
     tolerance = region_tolerance(expected)
     parsed = _parse_response(response)
     if parsed is None:

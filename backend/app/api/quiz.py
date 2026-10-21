@@ -1,8 +1,9 @@
 import base64
 import json
 import time
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
@@ -219,8 +220,8 @@ def _question_out(question: Question) -> QuestionOut:
     return QuestionOut(
         id=question.id,
         type=question.type,
-        stem=question.stem,
-        options=question.options,
+        stem=cast(list[dict[str, Any]], question.stem),
+        options=cast(list[dict[str, Any]], question.options),
         difficulty=question.difficulty,
         bloom=question.bloom,
         skill=question.skill,
@@ -380,7 +381,7 @@ def list_mistakes(
     ]
 
 
-def _blocks_to_md(blocks: list[dict[str, Any]] | None) -> str:
+def _blocks_to_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
     if not blocks:
         return ""
     parts: list[str] = []
@@ -392,7 +393,7 @@ def _blocks_to_md(blocks: list[dict[str, Any]] | None) -> str:
     return "\n\n".join(parts)
 
 
-def _answer_to_caq(qtype: str, answer: dict[str, Any]) -> Any:
+def _answer_to_caq(qtype: str, answer: Mapping[str, Any]) -> Any:
     if qtype == "single":
         return answer.get("index")
     if qtype == "multi":
@@ -961,7 +962,7 @@ def submit_answer(
         graded_by=result.graded_by,
         feedback=result.feedback,
         error_tags=error_tags,
-        explanation=question.explanation or [],
+        explanation=cast(list[dict[str, Any]], question.explanation or []),
     )
 
 

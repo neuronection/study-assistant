@@ -11,6 +11,25 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (schema — payload contract law, plan 81 D / ADR-200)
+- **Known-shape JSON state is typed; canonical content documents are
+  versioned.** `chat_proposals` stores the card's target/snapshot as columns
+  (`target_kind`, `target_name`, `target_node_id`, `target_node_path`,
+  `original_md`) and its anchored edits in `chat_proposal_anchors`; the
+  per-action instruction document stays JSON behind `payload_schema_version`
+  and is validated by the action's payload model at every write.
+  `chat_sessions.quiz_pending` moved to the one-row `chat_quiz_pendings` table
+  (the session API exposes the public card state only — expected answers never
+  leave the server), and drawing `view` JSON became
+  `view_x`/`view_y`/`view_width`/`view_height`. `notes.body`/`note_versions.body`,
+  `chat_messages.blocks`, `extractions.blocks` and drawing
+  `strokes`/`ocr_blocks` keep their shape with `<column>_schema_version`
+  siblings and write-boundary validation; `profiles.preferences` is validated
+  at the preferences API edge. Every remaining JSON column has a named payload
+  type and a `keep-open | typed-out` verdict in
+  `contracts/data-model.jsonb-inventory.txt`; a model⇄DB drift gate asserts an
+  empty autogenerate diff. Migration `0074_payload_law` (real downgrade).
+
 ### Fixed (extensions — bundled manifest provenance)
 - **The three bundled connectors declared the wrong license.** The
   envelope manifests of `external-sources`, `discovery` and `mcp`

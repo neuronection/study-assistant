@@ -6,7 +6,7 @@ material, or dismissed. One row per (profile, normalized URL).
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from sqlalchemy import and_, or_, select, update
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from ...core.urls import normalize_url
 from ...core.vocab import DiscoveryKind, SuggestionStatus
 from ...domain.models import Course, Material, MaterialSuggestion
+from ...domain.payloads import SuggestionMeta
 
 MAX_TITLE = 300
 MAX_SNIPPET = 2000
@@ -91,7 +92,7 @@ def save_suggestion(
         existing.title = display_title[:MAX_TITLE]
         existing.snippet = (snippet or "").strip()[:MAX_SNIPPET] or None
         existing.kind = kind_value
-        existing.meta = meta if isinstance(meta, dict) else existing.meta
+        existing.meta = cast(SuggestionMeta, meta) if isinstance(meta, dict) else existing.meta
         if existing.course_id is None:
             existing.course_id = course_id
             existing.node_id = node_id
@@ -249,7 +250,7 @@ def record_scan_suggestion(
         existing.title = display_title[:MAX_TITLE]
         existing.snippet = (snippet or "").strip()[:MAX_SNIPPET] or None
         existing.kind = kind_value
-        existing.meta = meta if isinstance(meta, dict) else existing.meta
+        existing.meta = cast(SuggestionMeta, meta) if isinstance(meta, dict) else existing.meta
         if existing.course_id is None and course_id is not None:
             existing.course_id = course_id
         session.flush()

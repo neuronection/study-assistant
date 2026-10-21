@@ -70,7 +70,7 @@ def test_chat_turn_commits_pre_stream_writes_before_streaming(
         ChatMessage(
             session_id=session_row.id,
             role="user",
-            blocks=[{"type": "md", "md": "test"}],
+            blocks=[{"type": "text", "md": "test"}],
         )
     )
     db_session.commit()

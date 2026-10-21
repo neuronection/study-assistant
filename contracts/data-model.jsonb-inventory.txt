@@ -1,0 +1,95 @@
+# JSONB inventory — the payload-contract verdict per JSON/JSONB column
+# (family data-model constitution §5; study plan 81 D, ADR-200).
+#
+# Format: `table.column :: verdict [comment]`
+#   keep-open  remains JSON: a canonical content document behind a
+#              `<column>_schema_version` sibling, a boundary-validated typed
+#              state document, or a genuinely open payload (extension-owned,
+#              LLM block payload, list of scalars). Every keep-open column has
+#              a named payload type in `backend/app/domain/payloads.py`.
+#   typed-out  known-shape state migrated to typed columns/table(s); the
+#              column no longer exists. The row records where it went.
+#
+# The schema wall (`backend/tests/test_schema_contract.py`) asserts this file
+# covers exactly the JSON columns the models declare, with no stale keep-open
+# rows. D5 in `scripts/check-data-model.sh` consumes the same format.
+activities.config :: keep-open activity generator settings
+activities.generated_from :: keep-open import provenance
+answers.error_tags :: keep-open tag list
+answers.feedback :: keep-open feedback document list
+answers.help_events :: keep-open help audit trail
+answers.response :: keep-open graded response document
+attempts.meta :: keep-open attempt metadata
+chat_messages.blocks :: keep-open rendering blocks behind blocks_schema_version
+chat_messages.citations :: keep-open citation list
+chat_messages.mentions :: keep-open mention list
+chat_messages.reads :: keep-open read audit list
+chat_messages.state :: keep-open widget state keyed by widget id
+chat_messages.tool_calls :: keep-open tool-call audit list
+chat_messages.trace :: keep-open turn trace
+chat_messages.warnings :: keep-open warning strings
+chat_proposals.payload :: keep-open action-instruction document behind payload_schema_version (target, snapshot and anchors typed out)
+chat_proposals.result :: keep-open polymorphic outcome document behind result_schema_version
+chat_proposals.target_node_path :: keep-open display breadcrumb (list[str])
+chat_quiz_pendings.accept :: keep-open accepted answer variants (list[str])
+chat_quiz_pendings.choices :: keep-open choice labels (list[str])
+chat_sessions.context :: keep-open turn binding state
+chat_sessions.mention_registry :: keep-open mention registry snapshot
+chat_sessions.quiz_pending :: typed-out chat_quiz_pendings (one row per session)
+concepts.aliases :: keep-open alias list
+courses.goals :: keep-open goal list
+courses.tags :: keep-open tag list
+deleted_items.payload :: keep-open trash snapshot (plan 77 F)
+error_patterns.detection :: keep-open deterministic detector spec
+exercise_steps.expected :: keep-open expected answer document
+exercise_steps.hints_pregenerated :: keep-open hint document list
+exercise_steps.prompt :: keep-open prompt document list
+exercise_steps.rubric :: keep-open rubric document
+exercises.context :: keep-open generation context document list
+exercises.created_from :: keep-open creation provenance
+external_sources.cursor :: keep-open extension-owned scan cursor
+external_sources.options :: keep-open extension-owned source options
+extractions.blocks :: keep-open content blocks behind blocks_schema_version
+extractions.confidence :: keep-open extractor confidence scores
+item_stats.distractor_selection :: keep-open distractor choice counts
+jobs.payload :: keep-open job-type payload union
+material_drawings.ocr_blocks :: keep-open OCR blocks behind ocr_blocks_schema_version
+material_drawings.strokes :: keep-open ink strokes behind strokes_schema_version
+material_drawings.view :: typed-out view_x / view_y / view_width / view_height
+material_index_cards.key_terms :: keep-open key-term list
+material_index_cards.topics :: keep-open topic list
+material_sources.include_globs :: keep-open glob list
+material_suggestions.meta :: keep-open discovery metadata
+materials.provenance :: keep-open provenance document
+materials.tags :: keep-open tag list
+mistakes.concept_ids :: keep-open concept id list
+mistakes.error_tags :: keep-open tag list
+models.caps :: keep-open capability list
+note_drawings.ocr_blocks :: keep-open OCR blocks behind ocr_blocks_schema_version
+note_drawings.strokes :: keep-open ink strokes behind strokes_schema_version
+note_drawings.view :: typed-out view_x / view_y / view_width / view_height
+note_versions.body :: keep-open content blocks behind body_schema_version
+note_versions.tags :: keep-open tag list
+notes.body :: keep-open content blocks behind body_schema_version
+notes.tags :: keep-open tag list
+profiles.preferences :: keep-open extension-owned sections + typed known keys
+providers.status :: keep-open provider health snapshot
+questions.answer :: keep-open answer document
+questions.concept_ids :: keep-open concept id list
+questions.distractor_misconceptions :: keep-open distractor misconception map
+questions.explanation :: keep-open explanation document list
+questions.input_modes :: keep-open input-mode list
+questions.options :: keep-open option document list
+questions.provenance :: keep-open generation provenance
+questions.source_refs :: keep-open source reference list
+questions.stats :: keep-open item statistics document
+questions.stem :: keep-open prompt document list
+questions.sympy_check :: keep-open symbolic verification document
+questions.tags :: keep-open tag list
+skill_versions.contract :: keep-open skill contract knobs
+skill_versions.params :: keep-open skill parameter knobs
+step_attempts.feedback :: keep-open feedback document list
+step_attempts.response :: keep-open step response document
+step_attempts.state :: keep-open step state document
+task_assignments.params :: keep-open task parameter knobs
+tree_nodes.objectives :: keep-open objective list

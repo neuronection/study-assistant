@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 from .equivalence import equivalent, parse_math
@@ -36,7 +37,7 @@ def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", lowered)
 
 
-def validate_table_answer(answer: dict[str, Any]) -> list[str]:
+def validate_table_answer(answer: Mapping[str, Any]) -> list[str]:
     problems: list[str] = []
     headers = answer.get("headers")
     rows = answer.get("rows")
@@ -105,7 +106,7 @@ def validate_table_answer(answer: dict[str, Any]) -> list[str]:
     return problems
 
 
-def table_public_input(answer: dict[str, Any]) -> dict[str, Any] | None:
+def table_public_input(answer: Mapping[str, Any]) -> dict[str, Any] | None:
     headers = answer.get("headers")
     rows = answer.get("rows")
     if not isinstance(headers, list) or not isinstance(rows, list):
@@ -163,7 +164,7 @@ def _grade_cell(cell: dict[str, Any], response_value: str) -> bool:
     return False
 
 
-def grade_table_fill(answer: dict[str, Any], response: Any) -> dict[str, Any]:
+def grade_table_fill(answer: Mapping[str, Any], response: Any) -> dict[str, Any]:
     """Per-cell deterministic grading. Returns correct/partial/feedback/tags."""
     rows = answer.get("rows", [])
     if not isinstance(response, list) or len(response) != len(rows):

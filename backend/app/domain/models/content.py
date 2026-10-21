@@ -19,6 +19,22 @@ from ...core.vocab import (
 from ...core.vocab import (
     SuggestionStatus as SuggestionStatus,
 )
+from ..documents import (
+    DOCUMENT_SCHEMA_VERSION as DOCUMENT_SCHEMA_VERSION,
+)
+from ..documents import (
+    validate_document as validate_document,
+)
+from ..payloads import (
+    BlockList,
+    ExternalSourceCursorDocument,
+    ExternalSourceOptions,
+    ExtractionConfidence,
+    MaterialProvenance,
+    StringList,
+    StrokeList,
+    SuggestionMeta,
+)
 from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
@@ -80,6 +96,9 @@ from .core import (
 from .core import (
     utcnow as utcnow,
 )
+from .core import (
+    validates as validates,
+)
 
 
 class Blob(Base):
@@ -102,7 +121,7 @@ class Concept(Base):
     )
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
-    aliases: Mapped[list[str] | None] = mapped_column(JSON)
+    aliases: Mapped[StringList | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -309,8 +328,8 @@ class Material(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     phash: Mapped[str | None] = mapped_column(String(24))
-    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    provenance: Mapped[MaterialProvenance | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
     starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     source_url: Mapped[str | None] = mapped_column(String(2048))
@@ -363,9 +382,10 @@ class Extraction(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     extractor: Mapped[str] = mapped_column(String(50))
     model: Mapped[str | None] = mapped_column(String(120))
-    blocks: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    blocks: Mapped[BlockList] = mapped_column(JSON)
+    blocks_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     markdown: Mapped[str] = mapped_column(Text)
-    confidence: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    confidence: Mapped[ExtractionConfidence | None] = mapped_column(JSON)
     language: Mapped[str | None] = mapped_column(String(10))
     token_in: Mapped[int | None] = mapped_column(Integer)
     token_out: Mapped[int | None] = mapped_column(Integer)
@@ -378,6 +398,11 @@ class Extraction(Base):
     chunks: Mapped[list["Chunk"]] = relationship(
         back_populates="extraction", order_by="Chunk.ordinal"
     )
+
+    @validates("blocks")
+    def _validate_blocks(self, key: str, value: Any) -> Any:
+        self.blocks_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("extractions.blocks", value)
 
 
 class Chunk(Base):
@@ -401,16 +426,37 @@ class MaterialDrawing(Base):
     material_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("materials.id", ondelete="CASCADE"), index=True
     )
-    strokes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    strokes: Mapped[StrokeList] = mapped_column(JSON)
+    strokes_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
     png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
-    view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    view_x: Mapped[float | None] = mapped_column(Float)
+    view_y: Mapped[float | None] = mapped_column(Float)
+    view_width: Mapped[float | None] = mapped_column(Float)
+    view_height: Mapped[float | None] = mapped_column(Float)
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
-    ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    ocr_blocks: Mapped[BlockList | None] = mapped_column(JSON)
+    ocr_blocks_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
     ocr_job_id: Mapped[str | None] = mapped_column(_UUID)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     material: Mapped[Material] = relationship(back_populates="drawings")
+
+    @validates("strokes")
+    def _validate_strokes(self, key: str, value: Any) -> Any:
+        self.strokes_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("material_drawings.strokes", value)
+
+    @validates("ocr_blocks")
+    def _validate_ocr_blocks(self, key: str, value: Any) -> Any:
+        self.ocr_blocks_schema_version = DOCUMENT_SCHEMA_VERSION
+        if value is None:
+            return None
+        return validate_document("material_drawings.ocr_blocks", value)
 
 
 class MaterialIndexCard(Base):
@@ -420,8 +466,8 @@ class MaterialIndexCard(Base):
         _UUID, ForeignKey("materials.id", ondelete="CASCADE"), primary_key=True
     )
     summary: Mapped[str | None] = mapped_column(Text)
-    topics: Mapped[list[str] | None] = mapped_column(JSON)
-    key_terms: Mapped[list[str] | None] = mapped_column(JSON)
+    topics: Mapped[StringList | None] = mapped_column(JSON)
+    key_terms: Mapped[StringList | None] = mapped_column(JSON)
     reading_minutes: Mapped[int | None] = mapped_column(Integer)
     difficulty: Mapped[int | None] = mapped_column(Integer)
 
@@ -447,9 +493,10 @@ class Note(Base):
     owner_type: Mapped[str] = mapped_column(String(30), default="standalone")
     owner_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
-    body: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    body: Mapped[BlockList] = mapped_column(JSON)
+    body_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     search_text: Mapped[str] = mapped_column(Text, default="")
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -460,6 +507,11 @@ class Note(Base):
         back_populates="note", cascade="all, delete-orphan"
     )
 
+    @validates("body")
+    def _validate_body(self, key: str, value: Any) -> Any:
+        self.body_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("notes.body", value)
+
 
 class NoteDrawing(Base):
     __tablename__ = "note_drawings"
@@ -468,16 +520,37 @@ class NoteDrawing(Base):
     note_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("notes.id", ondelete="CASCADE"), index=True
     )
-    strokes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    strokes: Mapped[StrokeList] = mapped_column(JSON)
+    strokes_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
     png_sha: Mapped[str | None] = mapped_column(ForeignKey("blobs.sha256", ondelete="RESTRICT"))
-    view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    view_x: Mapped[float | None] = mapped_column(Float)
+    view_y: Mapped[float | None] = mapped_column(Float)
+    view_width: Mapped[float | None] = mapped_column(Float)
+    view_height: Mapped[float | None] = mapped_column(Float)
     ocr_version: Mapped[int] = mapped_column(Integer, default=0)
-    ocr_blocks: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    ocr_blocks: Mapped[BlockList | None] = mapped_column(JSON)
+    ocr_blocks_schema_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1")
+    )
     ocr_markdown: Mapped[str | None] = mapped_column(Text)
     ocr_job_id: Mapped[str | None] = mapped_column(_UUID)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     note: Mapped[Note] = relationship(back_populates="drawings")
+
+    @validates("strokes")
+    def _validate_strokes(self, key: str, value: Any) -> Any:
+        self.strokes_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("note_drawings.strokes", value)
+
+    @validates("ocr_blocks")
+    def _validate_ocr_blocks(self, key: str, value: Any) -> Any:
+        self.ocr_blocks_schema_version = DOCUMENT_SCHEMA_VERSION
+        if value is None:
+            return None
+        return validate_document("note_drawings.ocr_blocks", value)
 
 
 class NoteVersion(Base):
@@ -492,10 +565,16 @@ class NoteVersion(Base):
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(300))
-    tags: Mapped[list[str] | None] = mapped_column(JSON)
-    body: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    tags: Mapped[StringList | None] = mapped_column(JSON)
+    body: Mapped[BlockList] = mapped_column(JSON)
+    body_schema_version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
     cause: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    @validates("body")
+    def _validate_body(self, key: str, value: Any) -> Any:
+        self.body_schema_version = DOCUMENT_SCHEMA_VERSION
+        return validate_document("note_versions.body", value)
 
 
 class MaterialSource(Base):
@@ -508,7 +587,7 @@ class MaterialSource(Base):
     label: Mapped[str] = mapped_column(String(200))
     path: Mapped[str] = mapped_column(String(1000))
     recursive: Mapped[bool] = mapped_column(Boolean, default=True)
-    include_globs: Mapped[list[str] | None] = mapped_column(JSON)
+    include_globs: Mapped[StringList | None] = mapped_column(JSON)
     course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     mirror_subdirs: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
@@ -532,12 +611,12 @@ class ExternalSource(Base):
     kind: Mapped[str] = mapped_column(String(30))
     url: Mapped[str] = mapped_column(String(2048))
     label: Mapped[str | None] = mapped_column(String(200))
-    options: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    options: Mapped[ExternalSourceOptions | None] = mapped_column(JSON)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    cursor: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    cursor: Mapped[ExternalSourceCursorDocument | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -573,7 +652,7 @@ class MaterialSuggestion(Base):
     title: Mapped[str] = mapped_column(String(300))
     snippet: Mapped[str | None] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(30), default="article")
-    meta: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    meta: Mapped[SuggestionMeta | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="suggested")
     material_id: Mapped[str | None] = mapped_column(
         _UUID, ForeignKey("materials.id", ondelete="CASCADE")

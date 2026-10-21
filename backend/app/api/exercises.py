@@ -1,5 +1,6 @@
 import re
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -18,6 +19,7 @@ from ..domain.models import (
     ReviewLog,
     StepAttempt,
 )
+from ..domain.payloads import ChatSessionContext
 from ..math.regions import grade_regions
 from ..pipelines.exgen import ExgenError, ExgenService
 from ..services.knowledge.context import ContextBundle, ContextError, ContextParams, ContextResolver
@@ -686,7 +688,7 @@ def get_exercise(exercise_id: str, session: Session = Depends(get_session)) -> E
     return _exercise_out(exercise, count)
 
 
-def _numberline_input(spec: dict[str, Any]) -> dict[str, Any] | None:
+def _numberline_input(spec: Mapping[str, Any]) -> dict[str, Any] | None:
     value = spec.get("value")
     domain = value.get("domain") if isinstance(value, dict) else None
     if not isinstance(domain, dict):
@@ -721,7 +723,7 @@ def exercise_steps(exercise_id: str, session: Session = Depends(get_session)) ->
             StepOut(
                 id=step.id,
                 order_idx=step.order_idx,
-                prompt=step.prompt,
+                prompt=cast(list[dict[str, Any]], step.prompt),
                 has_expected=step.expected is not None,
                 kind=kind if isinstance(kind, str) else None,
                 input=widget,
@@ -961,7 +963,7 @@ def ask_about_session(
         None,
     )
     if existing is not None:
-        context = dict(existing.context or {})
+        context = cast(ChatSessionContext, dict(existing.context or {}))
         context["pending_answer"] = pending
         existing.context = context
         session.commit()

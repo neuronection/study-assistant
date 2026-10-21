@@ -10,6 +10,16 @@ from ...core.vocab import (
 from ...core.vocab import (
     JobType as JobType,
 )
+from ..payloads import (
+    DistractorSelection,
+    JobPayload,
+    ProviderStatus,
+    SkillContract,
+    SkillParams,
+    StringList,
+    TaskParams,
+    TrashPayload,
+)
 from ..schema_contract import vocab_check as vocab_check
 from .core import (
     _UUID as _UUID,
@@ -76,7 +86,7 @@ class Job(Base):
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     type: Mapped[str] = mapped_column(String(50))
-    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    payload: Mapped[JobPayload | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="queued")
     progress: Mapped[int] = mapped_column(Integer, default=0)
     stage: Mapped[str | None] = mapped_column(String(120))
@@ -98,7 +108,7 @@ class Provider(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     is_local: Mapped[bool | None] = mapped_column(Boolean)
     country: Mapped[str | None] = mapped_column(String(80))
-    status: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    status: Mapped[ProviderStatus | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -114,7 +124,7 @@ class AiModel(Base):
     )
     external_id: Mapped[str] = mapped_column(String(200))
     label: Mapped[str] = mapped_column(String(200))
-    caps: Mapped[list[str]] = mapped_column(JSON)
+    caps: Mapped[StringList] = mapped_column(JSON)
     decision_transport: Mapped[str | None] = mapped_column(String(20))
     ctx_tokens: Mapped[int | None] = mapped_column(Integer)
     cost_in: Mapped[float | None] = mapped_column(Float)
@@ -142,7 +152,7 @@ class TaskAssignment(Base):
     fallback_model_id: Mapped[str | None] = mapped_column(
         _UUID, ForeignKey("models.id", ondelete="SET NULL")
     )
-    params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    params: Mapped[TaskParams | None] = mapped_column(JSON)
 
 
 class DefaultTaskAssignment(Base):
@@ -198,7 +208,7 @@ class DeletedItem(Base):
     )
     entity_type: Mapped[str] = mapped_column(String(20))
     title: Mapped[str] = mapped_column(String(300))
-    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    payload: Mapped[TrashPayload] = mapped_column(JSON)
     deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     purge_after: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -249,7 +259,7 @@ class ItemStat(Base):
     p_correct: Mapped[float] = mapped_column(Float)
     avg_time_ms: Mapped[float | None] = mapped_column(Float)
     avg_time_ratio: Mapped[float | None] = mapped_column(Float)
-    distractor_selection: Mapped[dict[str, int] | None] = mapped_column(JSON)
+    distractor_selection: Mapped[DistractorSelection | None] = mapped_column(JSON)
     flag: Mapped[str] = mapped_column(String(10), default="ok")
     rating: Mapped[float | None] = mapped_column(Float)
     rating_count: Mapped[int | None] = mapped_column(Integer)
@@ -324,8 +334,8 @@ class SkillVersion(Base):
     version: Mapped[int] = mapped_column(Integer)
     system_template: Mapped[str] = mapped_column(Text)
     user_template: Mapped[str] = mapped_column(Text)
-    params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    contract: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    params: Mapped[SkillParams | None] = mapped_column(JSON)
+    contract: Mapped[SkillContract | None] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

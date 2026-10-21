@@ -16,7 +16,7 @@ the gate every later round builds on. ADRs 196–218 reserved.
 
 **Plan 81 — schema baseline & hardening (in progress, 2026-10-21):**
 
-**Status: A, B and C landed; D–F remain.**
+**Status: A, B, C and D landed; E–F remain.**
 
 - **A — schema audit & inventory (ADR-199):** `docs/dev/schema-contract.md` is
   now the guarantee page — the hand-written law (identity, closed sets,
@@ -62,6 +62,26 @@ the gate every later round builds on. ADRs 196–218 reserved.
   string-or-number to an opaque string (TanStack JSON-parses digit-only
   values), since UUID values carry no numeric meaning. Frontend gate green:
   lint, typecheck, 1,474 tests, build.
+- **D — payload contract law (ADR-200, 2026-10-21):** known-shape state left
+  JSON — `chat_proposals` gained `target_kind`/`target_name`/`target_node_id`/
+  `target_node_path`/`original_md` columns plus the ordered
+  `chat_proposal_anchors` table, `chat_sessions.quiz_pending` became the
+  one-row `chat_quiz_pendings` table, and drawing `view` became
+  `view_x`/`view_y`/`view_width`/`view_height`. The per-action proposal
+  instruction document and the outcome map stay JSON behind
+  `payload_schema_version`/`result_schema_version`, validated at the write
+  boundary; `notes.body`/`note_versions.body`, `chat_messages.blocks`,
+  `extractions.blocks` and drawing `strokes`/`ocr_blocks` keep their canonical
+  shape with `<column>_schema_version` siblings and write-boundary validation
+  (`app/domain/documents.py`). Every remaining JSON column has a named
+  TypedDict/alias in `app/domain/payloads.py` (wall-checked), and
+  `contracts/data-model.jsonb-inventory.txt` records `keep-open | typed-out`
+  per column (wall-checked, no stale rows). The model⇄DB drift gate landed
+  too: `tests/test_model_db_drift.py` migrates an empty DB and asserts the
+  autogenerate diff is empty. Migration `0074_payload_law` moves data in
+  Python before dropping the old columns and its `downgrade()` restores both
+  the columns and their documents (`tests/test_payload_law_migration.py`); it
+  guards every DDL step because 0073 rebuilds from current model metadata.
 
 **Plan 34 wave 8 — per-extension documentation lands in study
 (2026-10-19):** the three bundled connectors (`external-sources`,
@@ -3073,6 +3093,18 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 81 D: payload contract law (ADR-200).** Known-shape JSON
+  state became typed columns/tables (proposal target/snapshot + anchors,
+  `chat_quiz_pendings`, drawing view bbox), canonical content documents gained
+  `<column>_schema_version` siblings validated at the write boundary, every
+  JSON column got a named type in `app/domain/payloads.py` and a
+  `keep-open | typed-out` verdict in `contracts/data-model.jsonb-inventory.txt`
+  (both wall-checked), and `tests/test_model_db_drift.py` enforces the
+  empty-autogenerate model⇄DB diff. Migration `0074_payload_law` with a
+  data-restoring downgrade; `profiles.preferences` validated at the API edge.
+  Backend gate green (ruff, format, mypy strict, 1,789 passed / 4 skipped);
+  frontend gate unchanged (no schema wire change beyond the typed quiz-pending
+  response). E–F remain.
 - 2026-10-21 — **plan 81 C frontend: generated OpenAPI types are the wire
   truth for ids.** `pnpm api:types` regenerated `frontend/openapi.json` (276
   paths / 407 schemas) and `frontend/src/lib/api-schema.d.ts` against the UUID

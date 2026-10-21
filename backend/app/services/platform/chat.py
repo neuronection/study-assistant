@@ -4,7 +4,7 @@ import time
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 import structlog
@@ -74,6 +74,7 @@ from ...domain.models import (
     StepAttempt,
     TreeNode,
 )
+from ...domain.payloads import ChatSessionContext, MentionRegistryList
 from ...extensions.search.provider import (
     SearchError,
     perform_fetch,
@@ -83,8 +84,13 @@ from ..knowledge.context import ContextResolver, ContextScope, ContextSpec
 from ..search import hybrid_search, retrieve_chunks_hybrid
 from ..study.tutor import quiz_guard_context
 from .profiles import ensure_default_profile
-from .proposal_actions import capture_proposal_snapshot, resolve_proposal_target
-from .quizme import QUIZME_SYSTEM, validate_quiz_args
+from .proposal_actions import (
+    capture_proposal_snapshot,
+    proposal_full_payload,
+    resolve_proposal_target,
+    store_proposal_state,
+)
+from .quizme import QUIZME_SYSTEM, pending_state, store_pending, validate_quiz_args
 from .skills import SkillService
 
 logger = structlog.get_logger(__name__)
@@ -645,7 +651,7 @@ class ChatService:
             )
         for note in notes:
             registry.add("note", note.id, note.title, note.course_id)
-        chat_session.mention_registry = registry.to_json()
+        chat_session.mention_registry = cast(MentionRegistryList, registry.to_json())
         self._session.commit()
         return registry
 
@@ -819,7 +825,7 @@ class ChatService:
                 raise ChatError(f"unknown attachment kind: {kind}")
             stored.append(entry.as_dict())
         if stored:
-            chat_session.mention_registry = registry.to_json()
+            chat_session.mention_registry = cast(MentionRegistryList, registry.to_json())
             self._session.flush()
         return stored
 
@@ -840,7 +846,7 @@ class ChatService:
         """Structured outcome block for cards resolved since the model's
         last turn (plan 78-D): the model must learn what happened to its
         proposals and not re-propose the same change unprompted."""
-        context = dict(chat_session.context or {})
+        context = cast(ChatSessionContext, dict(chat_session.context or {}))
         reported: list[str] = [
             str(value)
             for value in (context.get("proposal_feedback_ids") or [])
@@ -865,8 +871,7 @@ class ChatService:
             return None
         lines = []
         for row in fresh:
-            payload = row.payload or {}
-            target = str(payload.get("target_name") or "").strip()
+            target = str(row.target_name or "").strip()
             label = f"{row.action} → {row.status}"
             if target:
                 label = f"{label} ({target})"
@@ -1182,7 +1187,7 @@ class ChatService:
             emit(tool_call_event(entry))
             return result, entry
         pending["awaiting_answer"] = True
-        chat_session.quiz_pending = pending
+        store_pending(self._session, chat_session, pending)
         self._session.flush()
         result = (
             "question presented to the student as an interactive card — end "
@@ -1280,7 +1285,7 @@ class ChatService:
             system = f"{system_base}\n\n{CHAT_TOOL_DOC}\n\n{CHAT_WIDGET_DOC}\n\n{resource_doc}"
         if chat_session is not None and chat_session.quizme:
             system = f"{system}\n\n{QUIZME_SYSTEM}"
-            pending = chat_session.quiz_pending
+            pending = pending_state(chat_session.quiz_pending_row)
             if isinstance(pending, dict):
                 if pending.get("verdict") is not None:
                     system = (
@@ -1517,14 +1522,14 @@ class ChatService:
         prepared_proposals: list[tuple[str, dict[str, Any]]] = []
         for action, payload in proposals[:MAX_PROPOSALS_PER_TURN]:
             stored_payload = dict(payload)
-            snapshot = capture_proposal_snapshot(
+            original_md = capture_proposal_snapshot(
                 self._session,
                 action=action,
                 payload=stored_payload,
                 course_id=chat_session.course_id or "",
             )
-            if snapshot:
-                stored_payload.update(snapshot)
+            if original_md is not None:
+                stored_payload["original_md"] = original_md
             if stored_payload.get("text_edits"):
                 base = stored_payload.get("original_md")
                 drop: str | None = None
@@ -1577,16 +1582,18 @@ class ChatService:
                 payload=stored_payload,
                 course_id=chat_session.course_id or "",
             )
-            if target:
-                stored_payload.update(target)
-            self._session.add(
-                ChatProposal(
-                    message_id=message.id,
-                    action=action,
-                    payload=stored_payload,
-                    status="proposed",
-                )
+            proposal = ChatProposal(
+                message_id=message.id,
+                action=action,
+                status="proposed",
             )
+            store_proposal_state(
+                proposal,
+                payload=stored_payload,
+                original_md=original_md,
+                target=target,
+            )
+            self._session.add(proposal)
         self._session.flush()
         self._session.commit()
         logger.info(
@@ -1613,7 +1620,7 @@ def proposal_out(proposal: ChatProposal | None) -> dict[str, Any]:
     return {
         "id": proposal.id,
         "action": proposal.action,
-        "payload": proposal.payload,
+        "payload": proposal_full_payload(proposal),
         "status": proposal.status,
         "result": proposal.result,
     }

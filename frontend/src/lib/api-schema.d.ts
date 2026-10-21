@@ -8060,6 +8060,26 @@ export interface components {
             /** Node Id */
             node_id?: string | null;
         };
+        /** QuizPendingOut */
+        QuizPendingOut: {
+            /**
+             * Answered
+             * @default false
+             */
+            answered: boolean;
+            /** Choices */
+            choices?: string[] | null;
+            /** Expected Display */
+            expected_display?: string | null;
+            /** Question */
+            question?: string | null;
+            /** Student Answer */
+            student_answer?: string | null;
+            /** Verdict */
+            verdict?: string | null;
+            /** Verdict Detail */
+            verdict_detail?: string | null;
+        };
         /** QuizRename */
         QuizRename: {
             /** Title */
@@ -9631,10 +9651,7 @@ export interface components {
             node_id: string | null;
             /** Public Id */
             public_id: string;
-            /** Quiz Pending */
-            quiz_pending?: {
-                [key: string]: unknown;
-            } | null;
+            quiz_pending?: components["schemas"]["QuizPendingOut"] | null;
             /**
              * Quizme
              * @default false

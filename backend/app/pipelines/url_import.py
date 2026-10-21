@@ -5,6 +5,7 @@ from typing import Any, cast
 from sqlalchemy.orm import Session
 
 from ..domain.models import Material
+from ..domain.payloads import MaterialProvenance
 from ..jobs.cancellation import JobCancelled, is_cancel_requested
 from ..jobs.payloads import IngestPayload, UrlImportPayload
 from ..jobs.runner import JobError, JobHandler, JobRunner, ProgressReporter
@@ -70,7 +71,7 @@ def make_url_import_handler(
             if parsed.metadata.get("parse_note"):
                 provenance = dict(material.provenance or {})
                 provenance.update(parsed.metadata)
-                material.provenance = provenance
+                material.provenance = cast(MaterialProvenance, provenance)
                 if parsed.title:
                     material.title = parsed.title[:300] or material.title
                 session.commit()
@@ -79,7 +80,7 @@ def make_url_import_handler(
             raise JobError(f"parser returned no content for {source_url}")
         provenance = dict(material.provenance or {})
         provenance.update(parsed.metadata)
-        material.provenance = provenance
+        material.provenance = cast(MaterialProvenance, provenance)
         if parsed.title:
             material.title = parsed.title[:300] or material.title
         service = MaterialsService(session, blobs)

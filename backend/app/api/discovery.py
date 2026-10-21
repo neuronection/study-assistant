@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -80,7 +81,7 @@ def _suggestion_out(row: MaterialSuggestion) -> SuggestionOut:
         title=row.title,
         snippet=row.snippet or "",
         kind=row.kind,
-        meta=row.meta or {},
+        meta=cast(dict[str, object], row.meta or {}),
         status=row.status,
         material_id=row.material_id,
         created_at=row.created_at,
@@ -163,7 +164,7 @@ def discovery_search(
                         url=row.url,
                         kind=row.kind,
                         description=row.description[:800],
-                        meta=row.meta,
+                        meta=cast(dict[str, object], row.meta or {}),
                     )
                 )
     finally:

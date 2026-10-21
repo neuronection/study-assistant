@@ -262,7 +262,10 @@ def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
                 material_id=material.id,
                 strokes=[{"points": [[0, 0]], "width": 2}],
                 png_sha=png.sha256,
-                view={"x": 10.0, "y": 20.0, "width": 400.0, "height": 200.0},
+                view_x=10.0,
+                view_y=20.0,
+                view_width=400.0,
+                view_height=200.0,
                 ocr_markdown="handwritten limits",
                 ocr_version=1,
             )

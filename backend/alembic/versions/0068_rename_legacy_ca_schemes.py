@@ -129,6 +129,9 @@ CARD_KIND_REWRITES: Sequence[tuple[str, str]] = (
 
 
 def _rewrite(table: str, column: str, kind: str, pairs: Sequence[tuple[str, str]]) -> None:
+    existing = {str(item["name"]) for item in sa.inspect(op.get_bind()).get_columns(table)}
+    if column not in existing:
+        return
     # SQLite coerces every column to text for replace(); PostgreSQL needs
     # the json columns cast to text and back (replace() has no json form).
     cast_in = f'CAST("{column}" AS TEXT)' if kind == "json" else f'"{column}"'
