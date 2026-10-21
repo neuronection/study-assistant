@@ -39,10 +39,10 @@ SOURCES = ("note", "material", "mistakes")
 
 class GenerateIn(ContextParams):
     source: str = "note"
-    note_id: int | None = None
-    material_id: int | None = None
-    course_id: int
-    node_id: int | None = None
+    note_id: str | None = None
+    material_id: str | None = None
+    course_id: str
+    node_id: str | None = None
     count: int = Field(default=8, ge=1, le=30)
 
 
@@ -50,18 +50,18 @@ class CardIn(BaseModel):
     kind: str = "card_basic"
     front_md: str = Field(min_length=1, max_length=2000)
     back_md: str = Field(min_length=1, max_length=2000)
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
 
 
 class CardOut(BaseModel):
-    id: int
+    id: str
     kind: str
     front: list[dict[str, Any]]
     back: list[dict[str, Any]]
     source: str
     source_ref: str | None
-    node_id: int | None
+    node_id: str | None
     due_at: str | None
     state: str | None
 
@@ -98,7 +98,7 @@ def card_out(card: Exercise, state: FsrsState | None) -> CardOut:
     )
 
 
-def _load_card(db: Session, card_id: int, profile_id: str) -> Exercise:
+def _load_card(db: Session, card_id: str, profile_id: str) -> Exercise:
     card = db.scalar(
         select(Exercise)
         .options(selectinload(Exercise.steps), selectinload(Exercise.fsrs_state))
@@ -144,7 +144,7 @@ def _source_content(session: Session, profile_id: str, body: GenerateIn) -> str:
         select(Question.stem, Question.explanation, Mistake.error_tags)
         .join(Question, Mistake.question_id == Question.id)
         .where(Mistake.profile_id == profile_id)
-        .order_by(Mistake.id.desc())
+        .order_by(Mistake.created_at.desc(), Mistake.id.desc())
         .limit(20)
     ).all()
     lines = []
@@ -240,8 +240,8 @@ def create_card(body: CardIn, session: Session = Depends(get_session)) -> CardOu
 
 @router.get("", response_model=list[CardOut])
 def list_cards(
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     include_children: bool = True,
     session: Session = Depends(get_session),
 ) -> list[CardOut]:
@@ -255,7 +255,9 @@ def list_cards(
     elif course_id is not None:
         statement = statement.where(Exercise.course_id == course_id)
     statement = (
-        statement.options(selectinload(Exercise.steps)).order_by(Exercise.id.desc()).limit(200)
+        statement.options(selectinload(Exercise.steps))
+        .order_by(Exercise.created_at.desc(), Exercise.id.desc())
+        .limit(200)
     )
     return [card_out(card, state) for card, state in session.execute(statement).all()]
 
@@ -263,8 +265,8 @@ def list_cards(
 @router.get("/due", response_model=list[CardOut])
 def due_cards(
     limit: int = 20,
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     include_children: bool = True,
     session: Session = Depends(get_session),
 ) -> list[CardOut]:
@@ -290,7 +292,7 @@ def due_cards(
 
 @router.post("/{card_id}/review", response_model=ReviewOut)
 def review_card(
-    card_id: int,
+    card_id: str,
     body: ReviewIn,
     session: Session = Depends(get_session),
 ) -> ReviewOut:
@@ -339,7 +341,7 @@ def review_card(
 
 
 @router.delete("/{card_id}", status_code=204)
-def delete_card(card_id: int, session: Session = Depends(get_session)) -> None:
+def delete_card(card_id: str, session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
     card = _load_card(session, card_id, profile.id)
     session.execute(delete(ReviewLog).where(ReviewLog.card_id == card.id))
@@ -356,7 +358,7 @@ class AnkiImportOut(BaseModel):
 @router.post("/import-anki", response_model=AnkiImportOut, status_code=201)
 async def import_anki(
     file: UploadFile,
-    course_id: int,
+    course_id: str,
     session: Session = Depends(get_session),
 ) -> AnkiImportOut:
     profile = ensure_default_profile(session)
@@ -375,7 +377,7 @@ async def import_anki(
 
 @router.get("/export-anki")
 def export_anki(
-    course_id: int | None = None,
+    course_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> Response:
     profile = ensure_default_profile(session)
@@ -387,7 +389,7 @@ def export_anki(
     if course_id is not None:
         statement = statement.where(Exercise.course_id == course_id)
     statement = statement.options(selectinload(Exercise.steps))
-    rows = session.execute(statement.order_by(Exercise.id)).all()
+    rows = session.execute(statement.order_by(Exercise.created_at, Exercise.id)).all()
     package = export_apkg([(card, state) for card, state in rows], "Study Assistant")
     return Response(
         content=package,

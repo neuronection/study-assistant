@@ -5,10 +5,11 @@ found (status `suggested` by future scans), saved for later, attached to a
 material, or dismissed. One row per (profile, normalized URL).
 """
 
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session
 
 from ...core.urls import normalize_url
@@ -41,9 +42,9 @@ def _validated_kind(kind: str | None) -> str:
 def _validated_placement(
     session: Session,
     profile_id: str,
-    course_id: int | None,
-    node_id: int | None,
-) -> tuple[int | None, int | None]:
+    course_id: str | None,
+    node_id: str | None,
+) -> tuple[str | None, str | None]:
     if node_id is not None and course_id is None:
         raise SuggestionError("node placement requires a course")
     if course_id is not None:
@@ -70,8 +71,8 @@ def save_suggestion(
     snippet: str | None = None,
     kind: str | None = None,
     meta: dict[str, Any] | None = None,
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
 ) -> tuple[MaterialSuggestion, bool]:
     raw_url, url_norm = _validated_url(url)
     kind_value = _validated_kind(kind)
@@ -118,13 +119,13 @@ def list_suggestions(
     session: Session,
     profile_id: str,
     *,
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     status: str | None = None,
     kind: str | None = None,
     limit: int = 50,
-    cursor: int | None = None,
-) -> tuple[list[MaterialSuggestion], int | None]:
+    cursor: str | None = None,
+) -> tuple[list[MaterialSuggestion], str | None]:
     stmt = select(MaterialSuggestion).where(MaterialSuggestion.profile_id == profile_id)
     if course_id is not None:
         stmt = stmt.where(MaterialSuggestion.course_id == course_id)
@@ -135,18 +136,28 @@ def list_suggestions(
     if kind is not None:
         stmt = stmt.where(MaterialSuggestion.kind == kind)
     if cursor is not None:
-        stmt = stmt.where(MaterialSuggestion.id < cursor)
-    stmt = stmt.order_by(MaterialSuggestion.id.desc())
+        created_raw, _sep, cursor_id = cursor.partition("|")
+        created_at = datetime.fromisoformat(created_raw)
+        stmt = stmt.where(
+            or_(
+                MaterialSuggestion.created_at < created_at,
+                and_(
+                    MaterialSuggestion.created_at == created_at,
+                    MaterialSuggestion.id < cursor_id,
+                ),
+            )
+        )
+    stmt = stmt.order_by(MaterialSuggestion.created_at.desc(), MaterialSuggestion.id.desc())
     rows = list(session.scalars(stmt.limit(limit + 1)))
-    next_cursor: int | None = None
+    next_cursor: str | None = None
     if len(rows) > limit:
         rows = rows[:limit]
-        next_cursor = rows[-1].id
+        next_cursor = f"{rows[-1].created_at.isoformat()}|{rows[-1].id}"
     return rows, next_cursor
 
 
 def get_suggestion(
-    session: Session, profile_id: str, suggestion_id: int
+    session: Session, profile_id: str, suggestion_id: str
 ) -> MaterialSuggestion | None:
     row = session.get(MaterialSuggestion, suggestion_id)
     if row is None or row.profile_id != profile_id:
@@ -154,7 +165,7 @@ def get_suggestion(
     return row
 
 
-def forget_suggestion(session: Session, profile_id: str, suggestion_id: int) -> None:
+def forget_suggestion(session: Session, profile_id: str, suggestion_id: str) -> None:
     row = get_suggestion(session, profile_id, suggestion_id)
     if row is None:
         raise SuggestionError("suggestion not found")
@@ -165,11 +176,11 @@ def forget_suggestion(session: Session, profile_id: str, suggestion_id: int) -> 
 def update_suggestion(
     session: Session,
     profile_id: str,
-    suggestion_id: int,
+    suggestion_id: str,
     *,
     status: str | None = None,
-    material_id: int | None = None,
-    node_id: int | None = None,
+    material_id: str | None = None,
+    node_id: str | None = None,
 ) -> MaterialSuggestion:
     row = get_suggestion(session, profile_id, suggestion_id)
     if row is None:
@@ -194,7 +205,7 @@ def update_suggestion(
     return row
 
 
-def revert_suggestions_for_material(session: Session, material_id: int) -> None:
+def revert_suggestions_for_material(session: Session, material_id: str) -> None:
     session.execute(
         update(MaterialSuggestion)
         .where(MaterialSuggestion.material_id == material_id)
@@ -212,7 +223,7 @@ def record_scan_suggestion(
     snippet: str | None = None,
     kind: str | None = None,
     meta: dict[str, Any] | None = None,
-    course_id: int | None = None,
+    course_id: str | None = None,
 ) -> str:
     """Scan-path upsert (plan 73-E): land an item as a `suggested` pointer.
 

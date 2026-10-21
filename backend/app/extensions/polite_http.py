@@ -101,9 +101,21 @@ __all__ = [
 ]
 
 ERROR_CODES: tuple[str, ...] = (
-    "not-ready", "needs-secret", "invalid", "unsupported", "io", "not-found",
-    "path-denied", "net-denied", "auth", "rate-limited", "unreachable",
-    "protocol", "provider", "budget", "canceled",
+    "not-ready",
+    "needs-secret",
+    "invalid",
+    "unsupported",
+    "io",
+    "not-found",
+    "path-denied",
+    "net-denied",
+    "auth",
+    "rate-limited",
+    "unreachable",
+    "protocol",
+    "provider",
+    "budget",
+    "canceled",
 )
 RETRYABLE_VOCABULARY: tuple[str, ...] = ("yes", "no", "after-delay", "after-config-change")
 DEFAULT_RETRYABLE: dict[str, str] = {
@@ -332,9 +344,7 @@ def check_url(
             continue
         resolved.append(str(ip))
         if is_blocked_ip(ip) and not bypass:
-            raise PoliteHttpError(
-                "net-denied", f"host {host} resolves to blocked address {addr}"
-            )
+            raise PoliteHttpError("net-denied", f"host {host} resolves to blocked address {addr}")
     return resolved
 
 
@@ -371,7 +381,9 @@ def parse_retry_after(header_value: str | None) -> float | None:
     return max(0.0, (dt - datetime.now(timezone.utc)).total_seconds())
 
 
-def backoff_delay(attempt: int, base: float = 1.0, *, rng: Callable[[float], float] | None = None) -> float:
+def backoff_delay(
+    attempt: int, base: float = 1.0, *, rng: Callable[[float], float] | None = None
+) -> float:
     """Full-jitter exponential backoff: uniform in ``[0, base * 2**attempt]``
     capped at 60 s (the AWS full-jitter scheme — independent random waits
     break retry lockstep). ``rng`` maps the cap to the chosen delay so
@@ -429,7 +441,9 @@ class HostRateLimiter:
     reserved, so concurrent callers queue fairly. Injectable ``clock``
     keeps tests off the wall clock."""
 
-    def __init__(self, *, requests_per_minute: int = 30, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self, *, requests_per_minute: int = 30, clock: Callable[[], float] = time.monotonic
+    ) -> None:
         self.capacity = max(1, requests_per_minute)
         self.rate = requests_per_minute / 60.0
         self._clock = clock
@@ -584,7 +598,9 @@ class PoliteHttpConfig:
     read_timeout: float = 15.0
     max_retries: int = 3
     max_redirects: int = 5
-    user_agent: str = "Mozilla/5.0 (compatible; NeuronectionPoliteRuntime/1.0; +https://neuronection.dev)"
+    user_agent: str = (
+        "Mozilla/5.0 (compatible; NeuronectionPoliteRuntime/1.0; +https://neuronection.dev)"
+    )
     respect_robots: bool = True
     pin_resolved_address: bool = True
 
@@ -618,7 +634,9 @@ async def _read_capped(response, max_bytes: int) -> tuple[str, bool]:
     return raw.decode(encoding, errors="replace"), truncated
 
 
-def pinned_request_parts(url: str, resolved: list[str]) -> tuple[str, dict[str, str], dict[str, object]]:
+def pinned_request_parts(
+    url: str, resolved: list[str]
+) -> tuple[str, dict[str, str], dict[str, object]]:
     """Pin the connect target to the guard-checked address (DNS-rebinding
     TOCTOU mitigation): URL host → checked IP, ``Host`` header keeps the
     original name (virtual-host CDNs), ``sni_hostname`` extension keeps
@@ -800,7 +818,9 @@ async def polite_get(
                             "rate-limited",
                             f"rate limited by {host} after {cfg.max_retries} attempts",
                             retry_after_ms=(
-                                int(last_retry_after * 1000) if last_retry_after is not None else None
+                                int(last_retry_after * 1000)
+                                if last_retry_after is not None
+                                else None
                             ),
                             status=status,
                         )
@@ -816,9 +836,7 @@ async def polite_get(
                     raise PoliteHttpError("provider", f"redirect without location from {host}")
                 hop += 1
                 if hop > cfg.max_redirects:
-                    raise PoliteHttpError(
-                        "provider", f"too many redirects (>{cfg.max_redirects})"
-                    )
+                    raise PoliteHttpError("provider", f"too many redirects (>{cfg.max_redirects})")
                 current = urljoin(current, location)
                 break
 

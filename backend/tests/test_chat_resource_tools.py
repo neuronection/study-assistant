@@ -13,7 +13,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -41,14 +41,14 @@ def client(
         yield test_client, gateway, app
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_courses_tool_lists_courses(client: tuple[TestClient, ScriptedGateway, FastAPI]) -> None:
@@ -183,7 +183,7 @@ def test_node_flashcards_resource_via_chat(
     with test_client:
         course_id = make_course(test_client, "Cards course")
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        node_id = int(tree[0]["id"])
+        node_id = str(tree[0]["id"])
         card = test_client.post(
             "/api/v1/flashcards",
             json={
@@ -263,7 +263,7 @@ def test_read_node_enriches_children_and_materials(
     with test_client:
         course_id = make_course(test_client, "Drill course")
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         chapter_id = make_node(test_client, course_id, "Chapter 1")
         child_id = make_node(test_client, course_id, "Section 1.1")
         material_id = add_material(test_client, "intro.md", "Chapter introduction text.", course_id)

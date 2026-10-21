@@ -22,10 +22,10 @@ class NativeGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake-native",
@@ -39,7 +39,7 @@ class NativeGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         from app.ai.gateway import StreamChunk
 
@@ -80,15 +80,15 @@ def make_native_app(tmp_path: Path, gateway: NativeGateway) -> Any:
     return TestClient(app)
 
 
-def _course(client: Any) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "N"}).json()["id"])
+def _course(client: Any) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "N"}).json()["id"])
 
 
-def _session(client: Any) -> int:
-    return int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+def _session(client: Any) -> str:
+    return str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
 
 
-def wait_for_assistant(client: Any, session_id: int, timeout: float = 5.0) -> list[dict[str, Any]]:
+def wait_for_assistant(client: Any, session_id: str, timeout: float = 5.0) -> list[dict[str, Any]]:
     import time
 
     deadline = time.monotonic() + timeout
@@ -277,7 +277,7 @@ def test_gateway_streams_native_tool_call_chunk() -> None:
 
     gateway = LLMGateway(None, transport=httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -353,7 +353,7 @@ class DegradingGateway(NativeGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         native = not any(
             isinstance(m.content, str) and "Emit EXACTLY one tool line" in m.content
@@ -404,7 +404,7 @@ class FailingGateway(NativeGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         from app.ai.gateway import ProviderError
 

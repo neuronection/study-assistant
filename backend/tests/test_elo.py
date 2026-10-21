@@ -72,10 +72,10 @@ class EloGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="elo-model",
@@ -89,7 +89,7 @@ class EloGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return SINGLE_QUESTION
 
@@ -102,7 +102,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -122,7 +122,7 @@ def make_client() -> TestClient:
 
 
 def answer_question(client: TestClient, mode: str) -> None:
-    course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+    course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
     activity = client.post(
         "/api/v1/quiz/generate", json={"count": 1, "course_id": course_id}
     ).json()

@@ -32,7 +32,7 @@ class Message:
 
 @dataclass(frozen=True)
 class ResolvedModel:
-    provider_id: int
+    provider_id: str
     provider_type: str
     base_url: str
     external_id: str

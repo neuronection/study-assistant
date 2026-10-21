@@ -138,7 +138,7 @@ class RubricGrader:
         step: ExerciseStep,
         payload: dict[str, Any],
         response: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any]:
         rubric_rows = payload.get("rubric", [])
         prompt = (

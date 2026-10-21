@@ -52,17 +52,17 @@ class AnswerRow:
     correct: bool
     partial_credit: float
     concept: str
-    concept_id: int | None
+    concept_id: str | None
     skill: str
     time_ms: int | None
     expected_time_sec: int | None
     error_tags: list[str]
     response: dict[str, Any] | None
-    question_id: int
+    question_id: str
     created_at: datetime
 
 
-def answer_rows(session: Session, profile_id: str, course_id: int | None = None) -> list[AnswerRow]:
+def answer_rows(session: Session, profile_id: str, course_id: str | None = None) -> list[AnswerRow]:
     statement = (
         select(Answer, Question, Activity)
         .join(Question, Answer.question_id == Question.id)
@@ -76,10 +76,10 @@ def answer_rows(session: Session, profile_id: str, course_id: int | None = None)
         statement = statement.join(Course, Activity.course_id == Course.id).where(
             Course.origin != CourseOrigin.SCRATCH.value
         )
-    rows = session.execute(statement.order_by(Answer.id)).all()
-    concept_ids_by_course: dict[int, dict[str, int]] = {}
+    rows = session.execute(statement.order_by(Answer.created_at, Answer.id)).all()
+    concept_ids_by_course: dict[str, dict[str, str]] = {}
 
-    def concept_id_for(course_key: int, name: str) -> int | None:
+    def concept_id_for(course_key: str, name: str) -> str | None:
         if course_key not in concept_ids_by_course:
             concept_ids_by_course[course_key] = {
                 concept.name: concept.id
@@ -163,7 +163,7 @@ def _weakness(accuracy: float, n: int, last_seen: datetime) -> float:
 
 
 def error_profile(
-    session: Session, profile_id: str, course_id: int | None = None
+    session: Session, profile_id: str, course_id: str | None = None
 ) -> list[dict[str, Any]]:
     now = utcnow()
     week_ago = now - timedelta(days=7)
@@ -176,7 +176,7 @@ def error_profile(
     )
     if course_id is not None:
         statement = statement.where(Activity.course_id == course_id)
-    rows = session.execute(statement.order_by(Answer.id)).all()
+    rows = session.execute(statement.order_by(Answer.created_at, Answer.id)).all()
     totals: dict[str, int] = {}
     recent: dict[str, int] = {}
     previous: dict[str, int] = {}
@@ -260,9 +260,9 @@ def item_analysis(session: Session, profile_id: str) -> list[dict[str, Any]]:
         .join(Attempt, Answer.attempt_id == Attempt.id)
         .join(Activity, Attempt.activity_id == Activity.id)
         .where(Activity.profile_id == profile_id)
-        .order_by(Answer.id)
+        .order_by(Answer.created_at, Answer.id)
     ).all()
-    grouped: dict[int, list[tuple[Answer, Question]]] = {}
+    grouped: dict[str, list[tuple[Answer, Question]]] = {}
     for answer, question in rows:
         grouped.setdefault(question.id, []).append((answer, question))
     stats: list[dict[str, Any]] = []
@@ -315,7 +315,7 @@ def daily_history(session: Session, profile_id: str) -> list[dict[str, Any]]:
         .join(Attempt, Answer.attempt_id == Attempt.id)
         .join(Activity, Attempt.activity_id == Activity.id)
         .where(Activity.profile_id == profile_id)
-        .order_by(Answer.id)
+        .order_by(Answer.created_at, Answer.id)
     ).all()
     cards = session.execute(
         select(ReviewLog.reviewed_at)
@@ -325,12 +325,12 @@ def daily_history(session: Session, profile_id: str) -> list[dict[str, Any]]:
     quizme = session.execute(
         select(QuizmeAnswer.correct, QuizmeAnswer.created_at)
         .where(QuizmeAnswer.profile_id == profile_id)
-        .order_by(QuizmeAnswer.id)
+        .order_by(QuizmeAnswer.created_at, QuizmeAnswer.id)
     ).all()
     study = session.execute(
         select(StudySession.started_at, StudySession.duration_sec)
         .where(StudySession.profile_id == profile_id)
-        .order_by(StudySession.id)
+        .order_by(StudySession.started_at, StudySession.id)
     ).all()
     days: dict[str, dict[str, Any]] = {}
     for time_ms, correct, created_at in rows:
@@ -433,7 +433,7 @@ def streak(history: list[dict[str, Any]]) -> int:
     return current
 
 
-def due_cards_count(session: Session, profile_id: str, course_id: int | None = None) -> int:
+def due_cards_count(session: Session, profile_id: str, course_id: str | None = None) -> int:
     now = utcnow()
     due_statement = (
         select(FsrsState.card_id)
@@ -519,7 +519,7 @@ TREND_SCORES = {"improving": 1.0, "flat": 0.6, "declining": 0.2}
 def course_readiness(
     session: Session,
     profile_id: str,
-    course_id: int,
+    course_id: str,
     *,
     total_nodes: int,
     engaged_nodes: int,
@@ -686,7 +686,7 @@ def overview(session: Session, profile_id: str) -> dict[str, Any]:
 
 
 def recommendations(
-    session: Session, profile_id: str, course_id: int | None = None
+    session: Session, profile_id: str, course_id: str | None = None
 ) -> list[dict[str, Any]]:
     rows = answer_rows(session, profile_id, course_id)
     matrix = weakness_matrix(rows)

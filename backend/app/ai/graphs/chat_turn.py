@@ -93,7 +93,7 @@ READISH_TOOLS = frozenset(
 
 
 class ChatTurnState(TypedDict, total=False):
-    session_id: int
+    session_id: str
     attempt: int
     round_index: int
     run_id: str
@@ -126,7 +126,7 @@ class ChatTurnState(TypedDict, total=False):
     validation_ok: bool
     final_tool_calls: list[dict[str, Any]]
     final_events: list[dict[str, Any]]
-    message_id: int
+    message_id: str
     finalized: bool
 
 

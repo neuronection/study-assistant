@@ -7,9 +7,9 @@ from ...domain.models import Job
 from ...jobs.payloads import DrawingOcrPayload
 from ...jobs.runner import JobRunner
 
-DRAWING_MD = re.compile(r"!\[[^\]]*\]\(sa-drawing://(\d+)\)")
-IMAGE_MD = re.compile(r"!\[[^\]]*\]\(sa-image://(\d+)\)")
-EMBEDDED_MD = re.compile(r"!\[[^\]]*\]\((?:sa-drawing|sa-image)://(\d+)\)")
+DRAWING_MD = re.compile(r"!\[[^\]]*\]\(sa-drawing://([0-9A-Za-z-]+)\)")
+IMAGE_MD = re.compile(r"!\[[^\]]*\]\(sa-image://([0-9A-Za-z-]+)\)")
+EMBEDDED_MD = re.compile(r"!\[[^\]]*\]\((?:sa-drawing|sa-image)://([0-9A-Za-z-]+)\)")
 
 
 def md_to_blocks(md: str) -> list[dict[str, Any]]:
@@ -21,9 +21,9 @@ def md_to_blocks(md: str) -> list[dict[str, Any]]:
             blocks.append({"type": "text", "md": before})
         ref = match.group(0)
         if "sa-drawing://" in ref:
-            blocks.append({"type": "drawing", "drawing_id": int(match.group(1))})
+            blocks.append({"type": "drawing", "drawing_id": str(match.group(1))})
         else:
-            blocks.append({"type": "image_ref", "image_id": int(match.group(1))})
+            blocks.append({"type": "image_ref", "image_id": str(match.group(1))})
         position = match.end()
     rest = md[position:]
     if rest:
@@ -31,19 +31,19 @@ def md_to_blocks(md: str) -> list[dict[str, Any]]:
     return blocks
 
 
-def drawing_ref_ids(md: str) -> set[int]:
-    return {int(value) for value in DRAWING_MD.findall(md)}
+def drawing_ref_ids(md: str) -> set[str]:
+    return {str(value) for value in DRAWING_MD.findall(md)}
 
 
-def strip_drawing_refs(md: str, drawing_id: int) -> str:
+def strip_drawing_refs(md: str, drawing_id: str) -> str:
     return DRAWING_MD.sub(
-        lambda match: "" if int(match.group(1)) == drawing_id else match.group(0), md
+        lambda match: "" if str(match.group(1)) == drawing_id else match.group(0), md
     )
 
 
-def remap_drawing_refs(md: str, mapping: dict[int, int]) -> str:
+def remap_drawing_refs(md: str, mapping: dict[str, str]) -> str:
     def _replace(match: re.Match[str]) -> str:
-        old = int(match.group(1))
+        old = str(match.group(1))
         new = mapping.get(old, old)
         alt = match.group(0).split("](", 1)[0][2:]
         return f"![{alt}](sa-drawing://{new})"
@@ -51,9 +51,9 @@ def remap_drawing_refs(md: str, mapping: dict[int, int]) -> str:
     return DRAWING_MD.sub(_replace, md)
 
 
-def remap_image_refs(md: str, mapping: dict[int, int]) -> str:
+def remap_image_refs(md: str, mapping: dict[str, str]) -> str:
     def _replace(match: re.Match[str]) -> str:
-        old = int(match.group(1))
+        old = str(match.group(1))
         new = mapping.get(old, old)
         alt = match.group(0).split("](", 1)[0][2:]
         return f"![{alt}](sa-image://{new})"
@@ -91,7 +91,7 @@ def note_search_text(note: Any) -> str:
     return "\n".join(parts)
 
 
-def enqueue_drawing_ocr(session: Session, *, kind: str, owner_id: int, drawing_id: int) -> int:
+def enqueue_drawing_ocr(session: Session, *, kind: str, owner_id: str, drawing_id: str) -> str:
     payload: DrawingOcrPayload = {"kind": kind, "drawing_id": drawing_id}
     if kind == "note":
         payload["note_id"] = owner_id
@@ -101,11 +101,11 @@ def enqueue_drawing_ocr(session: Session, *, kind: str, owner_id: int, drawing_i
     return job.id
 
 
-def pending_ocr_job_id(session: Session, drawing: Any) -> int | None:
+def pending_ocr_job_id(session: Session, drawing: Any) -> str | None:
     job_id = drawing.ocr_job_id
     if job_id is None:
         return None
-    job = session.get(Job, int(job_id))
+    job = session.get(Job, job_id)
     if job is not None and job.status in {"queued", "running"}:
-        return int(job_id)
+        return str(job_id)
     return None

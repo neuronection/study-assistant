@@ -384,9 +384,7 @@ def run_scan(
     cadence and scheduling stay host policy (D24 rule 4).
     """
     if not extension_registry.has_capability("external-sources", "sync"):
-        raise ExtensionError(
-            "not-ready", "the external-sources bundle does not declare 'sync'"
-        )
+        raise ExtensionError("not-ready", "the external-sources bundle does not declare 'sync'")
     if not source.enabled:
         raise ExtensionError("not-ready", "source is disabled")
     normalized = normalize_url(source.url)

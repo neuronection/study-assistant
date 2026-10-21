@@ -22,7 +22,7 @@ def make_url_import_handler(
         raw_material_id = payload.get("material_id")
         if raw_material_id is None:
             raise JobError("url_import payload missing material_id")
-        material = session.get(Material, int(raw_material_id))
+        material = session.get(Material, str(raw_material_id))
         if material is None:
             raise JobError(f"material {raw_material_id} not found")
         if material.source_url is None:

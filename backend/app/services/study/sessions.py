@@ -30,8 +30,8 @@ def start_session(
     *,
     kind: StudySessionKind,
     source: StudySessionSource,
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     entity_ref: str | None = None,
 ) -> StudySession:
     now = utcnow()
@@ -46,7 +46,7 @@ def start_session(
                 StudySession.ended_at.is_not(None),
                 StudySession.ended_at >= now - timedelta(seconds=RESUME_WINDOW_SEC),
             )
-            .order_by(StudySession.id.desc())
+            .order_by(StudySession.started_at.desc(), StudySession.id.desc())
             .limit(1)
         )
         if resumable is not None:

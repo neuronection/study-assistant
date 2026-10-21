@@ -39,7 +39,7 @@ class QuizGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -48,7 +48,7 @@ class QuizGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -61,7 +61,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -80,11 +80,11 @@ def quiz_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient, title: str) -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str) -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
-def commit_concepts(client: TestClient, course_id: int) -> int:
+def commit_concepts(client: TestClient, course_id: str) -> str:
     committed = client.post(
         f"/api/v1/courses/{course_id}/concepts/commit",
         json={
@@ -96,7 +96,7 @@ def commit_concepts(client: TestClient, course_id: int) -> int:
     assert committed.status_code == 200, committed.text
     graph = client.get(f"/api/v1/courses/{course_id}/concepts").json()
     concept_row = graph["concepts"][0]
-    return int(concept_row["id"])
+    return str(concept_row["id"])
 
 
 def test_materialize_writes_concept_id(client: TestClient) -> None:
@@ -175,13 +175,13 @@ def test_quiz_generate_by_concept(quiz_client: TestClient) -> None:
 
     missing = quiz_client.post(
         "/api/v1/quiz/generate",
-        json={"course_id": course_id, "concept_id": 99999, "count": 1},
+        json={"course_id": course_id, "concept_id": "99999", "count": 1},
     )
     assert missing.status_code == 404
 
     mismatch = quiz_client.post(
         "/api/v1/quiz/generate",
-        json={"course_id": course_id + 100, "concept_id": concept_id, "count": 1},
+        json={"course_id": f"{course_id}-other", "concept_id": concept_id, "count": 1},
     )
     assert mismatch.status_code in (404, 422)
 

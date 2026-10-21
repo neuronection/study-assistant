@@ -41,10 +41,10 @@ class CompositeGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="composite-model",
@@ -58,7 +58,7 @@ class CompositeGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -71,7 +71,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -93,8 +93,8 @@ def composite_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Algebra"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Algebra"}).json()["id"])
 
 
 def generate_composite_quiz(client: TestClient) -> Any:
@@ -110,7 +110,7 @@ def generate_composite_quiz(client: TestClient) -> Any:
     return created.json()
 
 
-def submit(client: TestClient, attempt_id: int, question_id: int, response: Any) -> Any:
+def submit(client: TestClient, attempt_id: str, question_id: str, response: Any) -> Any:
     result = client.post(
         f"/api/v1/quiz/attempts/{attempt_id}/answers",
         json={"question_id": question_id, "response": response},
@@ -119,8 +119,8 @@ def submit(client: TestClient, attempt_id: int, question_id: int, response: Any)
     return result.json()
 
 
-def attempt_id_for(client: TestClient, activity_id: int) -> int:
-    return int(client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"])
+def attempt_id_for(client: TestClient, activity_id: str) -> str:
+    return str(client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()["id"])
 
 
 def test_generate_and_public_input(composite_client: TestClient) -> None:

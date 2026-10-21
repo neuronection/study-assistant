@@ -14,7 +14,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -46,17 +46,17 @@ def client(
         yield test_client, gateway, app
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def link_material(client: TestClient, node_id: int, material_id: int) -> None:
+def link_material(client: TestClient, node_id: str, material_id: str) -> None:
     response = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert response.status_code < 400, response.text
 

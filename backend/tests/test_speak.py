@@ -30,10 +30,10 @@ class SpeechGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="tts-1",
@@ -49,7 +49,7 @@ class SpeechGateway(LLMGateway):
         voice: str | None = None,
         task: str = "tts",
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         del voice, task, model, course_id
         if self.error is not None:
@@ -118,7 +118,7 @@ def test_speak_maps_budget_and_provider_errors(
 
 def test_speak_with_openai_compatible() -> None:
     resolved = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="tts-1",
@@ -145,7 +145,7 @@ def test_speak_with_google_pcm_wrapped_as_wav() -> None:
     import base64
 
     resolved = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="google",
         base_url="http://localhost",
         external_id="gemini-2.5-flash-preview-tts",
@@ -192,7 +192,7 @@ def test_speak_with_google_pcm_wrapped_as_wav() -> None:
 
 def test_speak_with_anthropic_unsupported() -> None:
     resolved = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="anthropic",
         base_url="http://localhost",
         external_id="claude-sonnet",

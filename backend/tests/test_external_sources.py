@@ -50,9 +50,9 @@ class FakeResponse:
 
 
 @pytest.fixture()
-def course_id(client: TestClient) -> int:
+def course_id(client: TestClient) -> str:
     with client:
-        return int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        return str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
 
 
 def _create_source(client: TestClient, **overrides: object) -> dict[str, Any]:
@@ -69,7 +69,7 @@ def _create_source(client: TestClient, **overrides: object) -> dict[str, Any]:
     return data
 
 
-def test_external_source_crud_and_validation(client: TestClient, course_id: int) -> None:
+def test_external_source_crud_and_validation(client: TestClient, course_id: str) -> None:
     with client:
         created = _create_source(client, course_id=course_id)
         assert created["kind"] == "rss"
@@ -132,7 +132,7 @@ def test_external_source_crud_and_validation(client: TestClient, course_id: int)
 def test_rss_scan_lands_sanitized_suggestions(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
@@ -168,7 +168,7 @@ def test_rss_scan_lands_sanitized_suggestions(
 def test_rss_cursor_prevents_resurfacing(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seen_feeds = iter([RSS_FEED, RSS_FEED])
@@ -185,7 +185,7 @@ def test_rss_cursor_prevents_resurfacing(
         assert again["new"] == 0
         assert again["updated"] == 0
 
-    row = db_session.get(ExternalSource, int(source["id"]))
+    row = db_session.get(ExternalSource, str(source["id"]))
     assert row is not None
     assert isinstance(row.cursor, dict)
     assert "chain-1" in row.cursor["seen"]
@@ -193,7 +193,7 @@ def test_rss_cursor_prevents_resurfacing(
 
 
 def test_rss_304_short_circuits(
-    client: TestClient, course_id: int, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, course_id: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls: list[str] = []
 
@@ -213,7 +213,7 @@ def test_rss_304_short_circuits(
 def test_youtube_scan_records_video_suggestions(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_entries(url: str) -> list[dict[str, object]]:
@@ -249,7 +249,7 @@ def test_youtube_scan_records_video_suggestions(
     assert (one.meta or {}).get("channel") == "Math Academy"
     assert one.provider == "youtube:Calc playlist"
 
-    row = db_session.get(ExternalSource, int(source["id"]))
+    row = db_session.get(ExternalSource, str(source["id"]))
     assert row is not None
     assert row.cursor == {"seen": ["vid1", "vid2"]}
 
@@ -257,7 +257,7 @@ def test_youtube_scan_records_video_suggestions(
 def test_saved_suggestion_is_never_resurfaced(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
@@ -326,7 +326,7 @@ def test_site_search_scan_uses_provider_and_site_filter(
 
     source = ExternalSource(
         profile_id=str(profile.id),
-        course_id=int(course.id),
+        course_id=str(course.id),
         kind="site_search",
         url="https://khanacademy.org",
         label="Khan",
@@ -349,7 +349,7 @@ def test_site_search_scan_uses_provider_and_site_filter(
 def test_scan_failure_is_isolated_and_recorded(
     db_session: Session,
     client: TestClient,
-    course_id: int,
+    course_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def failing_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
@@ -362,7 +362,7 @@ def test_scan_failure_is_isolated_and_recorded(
         assert response.status_code == 502
         assert "network unreachable" in response.json()["detail"]
 
-    row = db_session.get(ExternalSource, int(source["id"]))
+    row = db_session.get(ExternalSource, str(source["id"]))
     assert row is not None
     assert "network unreachable" in (row.last_scan_error or "")
     assert row.enabled is True
@@ -370,7 +370,7 @@ def test_scan_failure_is_isolated_and_recorded(
 
 def test_course_purge_cascades_external_sources(client: TestClient) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(client, course_id=course_id)
         deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": "true"})
         assert deleted.status_code == 200
@@ -379,7 +379,7 @@ def test_course_purge_cascades_external_sources(client: TestClient) -> None:
 
 def test_external_sources_ride_course_bundles(client: TestClient) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(
             client,
             course_id=course_id,
@@ -414,7 +414,7 @@ def test_bundle_import_recreates_sources_with_fresh_cursors(
     client: TestClient,
 ) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _create_source(client, course_id=course_id)
         export_response = client.get(f"/api/v1/courses/{course_id}/export")
         assert export_response.status_code == 200
@@ -489,14 +489,14 @@ def test_scheduler_due_logic_overlap_guard_and_error_isolation(
         session.flush()
         source = ExternalSource(
             profile_id=str(profile.id),
-            course_id=int(course.id),
+            course_id=str(course.id),
             kind="rss",
             url="https://broken.example/feed",
             label="Broken",
         )
         session.add(source)
         session.commit()
-        source_id = int(source.id)
+        source_id = str(source.id)
 
     def failing_fetch(url: str, headers: dict[str, str] | None = None) -> FakeResponse:
         raise OSError("network unreachable")

@@ -7,36 +7,36 @@ from sqlalchemy import select
 from app.domain.models import PlanItem
 
 
-def make_course(client: TestClient, title: str = "Planner course") -> int:
+def make_course(client: TestClient, title: str = "Planner course") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def set_exam(client: TestClient, course_id: int, days_out: int) -> None:
+def set_exam(client: TestClient, course_id: str, days_out: int) -> None:
     exam = (date.today() + timedelta(days=days_out)).isoformat()
     patched = client.patch(f"/api/v1/courses/{course_id}", json={"exam_date": exam})
     assert patched.status_code == 200, patched.text
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
-def make_nodes(client: TestClient, course_id: int, parent: int, titles: list[str]) -> list[int]:
-    ids = []
+def make_nodes(client: TestClient, course_id: str, parent: str, titles: list[str]) -> list[str]:
+    ids: list[str] = []
     for title in titles:
         created = client.post(
             f"/api/v1/courses/{course_id}/nodes",
             json={"course_id": course_id, "parent_id": parent, "title": title},
         )
         assert created.status_code == 201, created.text
-        ids.append(int(created.json()["id"]))
+        ids.append(str(created.json()["id"]))
     return ids
 
 
-def plan_items(client: TestClient, course_id: int) -> list[dict[str, Any]]:
+def plan_items(client: TestClient, course_id: str) -> list[dict[str, Any]]:
     response = client.get(f"/api/v1/courses/{course_id}/plan")
     assert response.status_code == 200
     return list(response.json())
@@ -107,7 +107,7 @@ def test_generate_paces_untouched_nodes_and_respects_done_manual(
         f"/api/v1/courses/{course_id}/plan",
         json={"title": "manual item", "due_date": manual_due},
     )
-    manual_id = int(manual.json()["id"])
+    manual_id = str(manual.json()["id"])
 
     first = client.post(f"/api/v1/courses/{course_id}/plan/generate")
     assert first.status_code == 200, first.text
@@ -135,7 +135,7 @@ def test_generate_paces_untouched_nodes_and_respects_done_manual(
     second = client.post(f"/api/v1/courses/{course_id}/plan/generate")
     assert second.status_code == 200
     after = plan_items(client, course_id)
-    kept = [item for item in after if int(item["id"]) == study_items[0]["id"]]
+    kept = [item for item in after if str(item["id"]) == study_items[0]["id"]]
     assert kept and kept[0]["done_at"] is not None
     assert any(item["id"] == manual_id and item["origin"] == "manual" for item in after)
 
@@ -252,7 +252,7 @@ def test_course_purge_removes_plan_items(client: TestClient) -> None:
         db.close()
 
 
-def _seed_answers(client: TestClient, course_id: int, profile_id: str, results: list[bool]) -> None:
+def _seed_answers(client: TestClient, course_id: str, profile_id: str, results: list[bool]) -> None:
     from app.domain.models import Activity, Answer, Attempt, Question
 
     db_factory = client.app.state.session_factory  # type: ignore[attr-defined]

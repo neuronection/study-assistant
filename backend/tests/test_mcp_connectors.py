@@ -336,7 +336,7 @@ def test_parse_contract_lands_in_url_import(
 
     seed_servers(db_session, SERVER)
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         linked = client.post(
             "/api/v1/materials/link",
             json={
@@ -345,7 +345,7 @@ def test_parse_contract_lands_in_url_import(
             },
         )
         assert linked.status_code == 200, linked.text
-        material_id = int(linked.json()["material"]["id"])
+        material_id = str(linked.json()["material"]["id"])
 
         def fake_call(
             config: object,
@@ -364,7 +364,7 @@ def test_parse_contract_lands_in_url_import(
 
         queued = client.post(f"/api/v1/materials/{material_id}/parse")
         assert queued.status_code == 200, queued.text
-        job_id = int(queued.json()["job_id"])
+        job_id = str(queued.json()["job_id"])
 
         deadline = time_module.monotonic() + 30
         while time_module.monotonic() < deadline:
@@ -552,9 +552,7 @@ def test_real_stdio_spawn_feeds_discovery_end_to_end(
             f"/api/v1/mcp/servers/{server_id}",
             json={
                 "enabled": True,
-                "tools": [
-                    {"name": "search_courses", "enabled": True, "contract": "discovery"}
-                ],
+                "tools": [{"name": "search_courses", "enabled": True, "contract": "discovery"}],
             },
         )
         assert enabled.status_code == 200, enabled.text

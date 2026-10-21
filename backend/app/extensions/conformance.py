@@ -114,9 +114,7 @@ class ConnectorConformanceTests:
         import asyncio
 
         again = asyncio.run(
-            self.connector.fetch(
-                dict(self.config), {}, transport=self.transport_200(), secrets={}
-            )
+            self.connector.fetch(dict(self.config), {}, transport=self.transport_200(), secrets={})
         )
         assert [getattr(p, "external_id", None) for p in getattr(again, "items", [])] == [
             getattr(p, "external_id", None) for p in getattr(first_result, "items", [])
@@ -124,9 +122,7 @@ class ConnectorConformanceTests:
 
     def test_fetch_is_stateless_and_idempotent(self, first_result: Any) -> None:
         ids = {getattr(p, "external_id", None) for p in getattr(first_result, "items", [])}
-        assert ids == {
-            getattr(p, "external_id", None) for p in getattr(first_result, "items", [])
-        }
+        assert ids == {getattr(p, "external_id", None) for p in getattr(first_result, "items", [])}
         assert not getattr(self.connector, "key", "") == ""
 
     def test_capability_honesty_incremental(self) -> None:
@@ -159,6 +155,8 @@ class ConnectorConformanceTests:
             seen.update(headers)
             return FakeTransportResponse(200, self.body, self.etag)
 
-        asyncio.run(self.connector.fetch(dict(self.config), {"etag": '"abc"'}, transport=_spy, secrets={}))
+        asyncio.run(
+            self.connector.fetch(dict(self.config), {"etag": '"abc"'}, transport=_spy, secrets={})
+        )
         if seen:
             assert seen.get("If-None-Match") == '"abc"'

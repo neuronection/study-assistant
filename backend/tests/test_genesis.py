@@ -91,7 +91,7 @@ class GenesisGateway(ScriptedGateway):
         task: str,
         messages: Any,
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(list(messages))
         prompt = "\n".join(str(message.content) for message in messages)
@@ -122,7 +122,7 @@ def genesis_client(
         yield test_client, genesis_gateway, app
 
 
-def wait_job(client: TestClient, job_id: int, status: str) -> dict[str, Any]:
+def wait_job(client: TestClient, job_id: str, status: str) -> dict[str, Any]:
     deadline = time.monotonic() + 30.0
     last: dict[str, Any] | None = None
     while time.monotonic() < deadline:
@@ -196,7 +196,7 @@ def test_genesis_commit_creates_course_nodes_and_job(
 
         stored = app.state.session_factory()
         try:
-            job = stored.get(Job, int(body["job_id"]))
+            job = stored.get(Job, str(body["job_id"]))
             assert job is not None
             assert job.type == "genesis"
             assert job.payload["course_id"] == course["id"]
@@ -256,8 +256,8 @@ def test_genesis_job_generates_lessons_and_isolates_failures(
         )
         assert response.status_code == 201, response.text
         body = response.json()
-        course_id = int(body["course"]["id"])
-        job_id = int(body["job_id"])
+        course_id = str(body["course"]["id"])
+        job_id = str(body["job_id"])
 
         final = wait_job(test_client, job_id, "done")
         assert final["status"] == "done"

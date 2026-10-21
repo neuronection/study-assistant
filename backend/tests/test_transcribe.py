@@ -33,7 +33,7 @@ def resolved(provider_type: str, external_id: str = "whisper-1") -> Any:
     from app.ai.gateway import ResolvedModel
 
     return ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type=provider_type,
         base_url="https://provider.test/v1"
         if provider_type == "openai_compatible"
@@ -211,7 +211,7 @@ class TranscribeGateway(ScriptedGateway):
         instruction: str | None = None,
         task: str = "transcribe",
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         if self.error is not None:
             raise self.error
@@ -229,7 +229,7 @@ class UnassignedTranscribeGateway(TranscribeGateway):
         instruction: str | None = None,
         task: str = "transcribe",
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         raise TaskUnassigned(task)
 

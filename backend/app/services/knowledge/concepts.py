@@ -157,7 +157,7 @@ def _validate(draft: Any, materials: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def commit_concepts(session: Session, course_id: int, draft: dict[str, Any]) -> dict[str, int]:
+def commit_concepts(session: Session, course_id: str, draft: dict[str, Any]) -> dict[str, int]:
     nodes = list(
         session.scalars(
             select(TreeNode).where(TreeNode.course_id == course_id, TreeNode.is_root.is_(False))
@@ -235,7 +235,7 @@ def commit_concepts(session: Session, course_id: int, draft: dict[str, Any]) -> 
 
 
 def concept_mastery(
-    session: Session, course_id: int, profile_id: str, names: list[str]
+    session: Session, course_id: str, profile_id: str, names: list[str]
 ) -> dict[str, str | None]:
     stats = session.execute(
         select(ConceptSkillStat).where(
@@ -277,7 +277,7 @@ def concept_mastery(
 
 
 def concept_graph(
-    session: Session, course_id: int, profile_id: str | None = None
+    session: Session, course_id: str, profile_id: str | None = None
 ) -> dict[str, Any]:
     concepts = list(
         session.scalars(
@@ -296,7 +296,7 @@ def concept_graph(
         .join(TreeNode, TreeNode.id == NodeConcept.node_id)
         .where(TreeNode.course_id == course_id)
     ).all()
-    coverage: dict[int, list[dict[str, Any]]] = {}
+    coverage: dict[str, list[dict[str, Any]]] = {}
     for row in node_rows:
         node_concept, node = row
         coverage.setdefault(node_concept.concept_id, []).append(

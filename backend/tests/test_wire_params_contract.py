@@ -25,7 +25,7 @@ FIXTURES = json.loads(
 
 def _temperature_model(row: Any) -> Any:
     resolved = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost:8080/v1",
         external_id=FIXTURES["temperatureModelId"],

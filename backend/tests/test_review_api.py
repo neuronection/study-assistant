@@ -1,16 +1,16 @@
 from fastapi.testclient import TestClient
 
 
-def make_course(client: TestClient, title: str) -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str) -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
 def make_card(
     client: TestClient,
-    course_id: int,
+    course_id: str,
     front: str,
-    node_id: int | None = None,
-) -> int:
+    node_id: str | None = None,
+) -> str:
     response = client.post(
         "/api/v1/flashcards",
         json={
@@ -22,7 +22,7 @@ def make_card(
         },
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
 def test_review_due_groups_by_course(client: TestClient) -> None:

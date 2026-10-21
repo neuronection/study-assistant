@@ -84,10 +84,7 @@ FETCH_MAX_BYTES = 2 * 1024 * 1024
 FETCH_MAX_REDIRECTS = 5
 FETCH_MAX_RETRIES = 2
 FETCH_REQUESTS_PER_MINUTE = 30
-FETCH_USER_AGENT = (
-    "Mozilla/5.0 (compatible; NeuronectionStudyFetch/1.0; "
-    "+https://neuronection.dev)"
-)
+FETCH_USER_AGENT = "Mozilla/5.0 (compatible; NeuronectionStudyFetch/1.0; +https://neuronection.dev)"
 
 Sleep = Callable[[float], Awaitable[None]]
 
@@ -281,9 +278,7 @@ async def _fetch(
             # urlparse/httpx reject an invalid IPv6 literal or a port
             # outside 0-65535 before a request exists; a user-supplied URL
             # must become a typed refusal, never a raw traceback (F22).
-            raise PoliteHttpError(
-                "net-denied", "malformed URL (invalid host or port)"
-            ) from exc
+            raise PoliteHttpError("net-denied", "malformed URL (invalid host or port)") from exc
 
     headers = {key.lower(): value for key, value in response.headers.items()}
     return FetchResult(

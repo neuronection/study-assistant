@@ -245,7 +245,7 @@ class QuizgenService:
                 )
             )
         if shuffle:
-            self._shuffle_questions(questions, activity.id)
+            self._shuffle_questions(questions, int(activity.id.replace("-", "")[:16], 16))
         self._session.add_all(questions)
         self._session.flush()
         return questions, problems

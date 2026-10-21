@@ -67,7 +67,7 @@ def client(
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 30.0
+    client: TestClient, session_id: str, timeout: float = 30.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -122,7 +122,7 @@ def test_discover_here_builds_query_from_node_context(
 
         course_id = make_course(test_client)
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         node = test_client.post(
             f"/api/v1/courses/{course_id}/nodes",
             json={
@@ -137,7 +137,7 @@ def test_discover_here_builds_query_from_node_context(
         gateway.responses.append("Here is what I found.")
         session = test_client.post(
             "/api/v1/chat/sessions",
-            json={"course_id": course_id, "node_id": int(node["id"])},
+            json={"course_id": course_id, "node_id": str(node["id"])},
         ).json()
         test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
@@ -300,7 +300,7 @@ def test_attach_link_executes_creates_link_material(
         assert body["result"]["deduped"] is False
 
         stored = app.state.session_factory()
-        material = stored.get(Material, int(body["result"]["material_id"]))
+        material = stored.get(Material, str(body["result"]["material_id"]))
         assert material is not None
         assert material.kind == "link"
         assert material.course_id == course_id
@@ -380,17 +380,17 @@ def test_attach_link_second_attach_dedupes(
         assert second["result"]["deduped"] is True
 
 
-def make_node(test_client: TestClient, course_id: int, title: str) -> int:
+def make_node(test_client: TestClient, course_id: str, title: str) -> str:
     tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = test_client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def get_proposal(test_client: TestClient, session_id: int) -> dict[str, Any]:
+def get_proposal(test_client: TestClient, session_id: str) -> dict[str, Any]:
     messages = wait_for_assistant(test_client, session_id)
     proposals: list[dict[str, Any]] = messages[-1]["proposals"]
     assert proposals

@@ -25,9 +25,9 @@ TEACH_BACK_SKILL = "explanation"
 def teach_back_subject(
     session: Session,
     *,
-    node_id: int | None,
+    node_id: str | None,
     concept: str | None,
-    concept_id: int | None,
+    concept_id: str | None,
 ) -> str | None:
     if concept_id is not None:
         found = session.get(Concept, concept_id)
@@ -46,10 +46,10 @@ def create_teach_back(
     session: Session,
     *,
     profile_id: str,
-    course_id: int,
-    node_id: int | None = None,
+    course_id: str,
+    node_id: str | None = None,
     concept: str | None = None,
-    concept_id: int | None = None,
+    concept_id: str | None = None,
 ) -> Exercise:
     subject = teach_back_subject(session, node_id=node_id, concept=concept, concept_id=concept_id)
     if subject is None:

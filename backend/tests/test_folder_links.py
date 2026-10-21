@@ -18,13 +18,13 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     root_id = tree[0]["id"]
     created = client.post(
@@ -32,21 +32,21 @@ def make_node(client: TestClient, course_id: int, title: str) -> int:
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def make_folder(client: TestClient, course_id: int, name: str, parent_id: int | None = None) -> int:
+def make_folder(client: TestClient, course_id: str, name: str, parent_id: str | None = None) -> str:
     created = client.post(
         "/api/v1/folders",
         json={"name": name, "course_id": course_id, "parent_id": parent_id},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def add_material(
-    client: TestClient, filename: str, course_id: int, folder_id: int | None = None
-) -> int:
+    client: TestClient, filename: str, course_id: str, folder_id: str | None = None
+) -> str:
     body = f"calculus notes {filename} about limits and continuity".encode()
     params: dict[str, Any] = {"course_id": course_id}
     if folder_id is not None:
@@ -57,7 +57,7 @@ def add_material(
         files={"file": (filename, body, "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id: int = upload.json()["material"]["id"]
+    material_id: str = upload.json()["material"]["id"]
     wait_until(
         lambda: (
             client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
@@ -66,7 +66,7 @@ def add_material(
     return material_id
 
 
-def workspace_of(client: TestClient, node_id: int) -> dict[str, Any]:
+def workspace_of(client: TestClient, node_id: str) -> dict[str, Any]:
     response = client.get(f"/api/v1/nodes/{node_id}/workspace")
     assert response.status_code == 200, response.text
     payload: dict[str, Any] = response.json()
@@ -347,7 +347,7 @@ def test_linked_source_folder_assignment(client: TestClient, tmp_path: Path) -> 
         json={"label": "Lectures", "path": str(target), "course_id": course_id},
     )
     assert source.status_code == 201, source.text
-    source_id = int(source.json()["id"])
+    source_id = str(source.json()["id"])
     scanned = client.post(f"/api/v1/sources/{source_id}/scan")
     assert scanned.status_code == 200
     folders = client.get("/api/v1/folders", params={"course_id": course_id}).json()
@@ -481,7 +481,7 @@ def test_course_export_import_round_trips_folders(client: TestClient) -> None:
     assert exported.status_code == 200
     imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
     assert imported.status_code == 200, imported.text
-    new_course_id = int(imported.json()["imported"]["course_id"])
+    new_course_id = str(imported.json()["imported"]["course_id"])
 
     folders = client.get("/api/v1/folders", params={"course_id": new_course_id}).json()
     by_name = {folder["name"]: folder for folder in folders}

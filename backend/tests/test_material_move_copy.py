@@ -18,24 +18,24 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str = "Movers") -> int:
+def make_course(client: TestClient, title: str = "Movers") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def create_folder(
-    client: TestClient, name: str, course_id: int, parent_id: int | None = None
-) -> int:
+    client: TestClient, name: str, course_id: str, parent_id: str | None = None
+) -> str:
     response = client.post(
         "/api/v1/folders",
         json={"name": name, "course_id": course_id, "parent_id": parent_id},
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
-def upload_text(client: TestClient, content: str, filename: str, course_id: int) -> dict[str, Any]:
+def upload_text(client: TestClient, content: str, filename: str, course_id: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials/text",
         json={
@@ -55,15 +55,15 @@ def upload_text(client: TestClient, content: str, filename: str, course_id: int)
     return body
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     response = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
 def session_factory(client: TestClient) -> Any:
@@ -110,7 +110,7 @@ def test_move_material_rejects_linked_folder(client: TestClient, tmp_path: Path)
         json={"label": "link", "path": str(target), "course_id": course_id},
     )
     assert source.status_code == 201
-    folder_id = int(client.get("/api/v1/folders", params={"course_id": course_id}).json()[0]["id"])
+    folder_id = str(client.get("/api/v1/folders", params={"course_id": course_id}).json()[0]["id"])
 
     response = client.patch(f"/api/v1/materials/{material_id}/move", json={"folder_id": folder_id})
     assert response.status_code == 422
@@ -120,7 +120,7 @@ def test_move_material_rejects_linked_folder(client: TestClient, tmp_path: Path)
 def test_move_material_rejects_unknown_folder(client: TestClient) -> None:
     course_id = make_course(client)
     material_id = upload_text(client, "content", "a.txt", course_id)["material"]["id"]
-    response = client.patch(f"/api/v1/materials/{material_id}/move", json={"folder_id": 99999})
+    response = client.patch(f"/api/v1/materials/{material_id}/move", json={"folder_id": "99999"})
     assert response.status_code == 422
     assert response.json()["detail"] == "folder not found"
 
@@ -212,14 +212,14 @@ def test_move_note_between_nodes(client: TestClient) -> None:
         json={"title": "Movable", "course_id": course_id, "node_id": first_node},
     )
     assert created.status_code == 201
-    note_id = int(created.json()["id"])
+    note_id = str(created.json()["id"])
 
     moved = client.patch(f"/api/v1/notes/{note_id}/move", json={"node_id": second_node})
     assert moved.status_code == 200
     assert moved.json()["node_id"] == second_node
 
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     to_root = client.patch(f"/api/v1/notes/{note_id}/move", json={"node_id": None})
     assert to_root.status_code == 200
     assert to_root.json()["node_id"] == root_id
@@ -230,14 +230,14 @@ def test_move_note_rejects_foreign_node(client: TestClient) -> None:
     second = make_course(client, "Two")
     foreign_node = make_node(client, second, "Foreign")
     created = client.post("/api/v1/notes", json={"title": "Note", "course_id": first})
-    note_id = int(created.json()["id"])
+    note_id = str(created.json()["id"])
 
     response = client.patch(f"/api/v1/notes/{note_id}/move", json={"node_id": foreign_node})
     assert response.status_code == 422
     assert "different course" in response.json()["detail"]
 
 
-def _make_activity(client: TestClient, course_id: int, title: str) -> int:
+def _make_activity(client: TestClient, course_id: str, title: str) -> str:
     from app.domain.models import Activity, Profile
 
     factory = session_factory(client)
@@ -252,7 +252,7 @@ def _make_activity(client: TestClient, course_id: int, title: str) -> int:
         )
         session.add(activity)
         session.commit()
-        return int(activity.id)
+        return str(activity.id)
 
 
 def test_move_quiz_between_nodes(client: TestClient) -> None:
@@ -290,7 +290,7 @@ def test_move_exercise_between_nodes(client: TestClient) -> None:
         },
     )
     assert created.status_code == 201, created.text
-    exercise_id = int(created.json()["id"])
+    exercise_id = str(created.json()["id"])
 
     moved = client.patch(f"/api/v1/exercises/{exercise_id}/move", json={"node_id": node})
     assert moved.status_code == 200

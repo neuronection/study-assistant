@@ -97,7 +97,7 @@ class CourseCreate(BaseModel):
     level: str | None = None
     description: str | None = None
     color: str | None = None
-    course_type_id: int | None = None
+    course_type_id: str | None = None
 
 
 class CourseUpdate(BaseModel):
@@ -106,19 +106,19 @@ class CourseUpdate(BaseModel):
     level: str | None = None
     description: str | None = None
     color: str | None = None
-    course_type_id: int | None = None
+    course_type_id: str | None = None
     archived: bool | None = None
     exam_date: date | None = None
 
 
 class CourseOut(BaseModel):
-    id: int
+    id: str
     title: str
     subject: str | None
     level: str | None
     description: str | None
     color: str | None
-    course_type_id: int | None = None
+    course_type_id: str | None = None
     archived_at: datetime | None
     exam_date: date | None = None
     material_count: int
@@ -175,14 +175,14 @@ class GenesisCommitIn(BaseModel):
 
 class GenesisCommitOut(BaseModel):
     course: CourseOut
-    job_id: int | None
+    job_id: str | None
     estimated_tasks: int
     task_cap: int
 
 
 class NodeCreate(BaseModel):
-    course_id: int
-    parent_id: int
+    course_id: str
+    parent_id: str
     title: str = Field(min_length=1, max_length=300)
     summary: str | None = None
     objectives: list[str] | None = None
@@ -196,7 +196,7 @@ class NodeUpdate(BaseModel):
 
 
 class NodeMove(BaseModel):
-    parent_id: int
+    parent_id: str
     position: int
 
 
@@ -205,17 +205,17 @@ class NodeRestore(BaseModel):
 
 
 class AllocationIn(BaseModel):
-    material_id: int
+    material_id: str
     rationale: str | None = None
 
 
 class FolderAllocationIn(BaseModel):
-    folder_id: int
+    folder_id: str
     rationale: str | None = None
 
 
 class MirrorFolderIn(BaseModel):
-    folder_id: int
+    folder_id: str
     recursive: bool = True
     rationale: str | None = None
 
@@ -237,7 +237,7 @@ class StudyStateIn(BaseModel):
 
 
 class NodeConceptIn(BaseModel):
-    concept_id: int
+    concept_id: str
 
 
 class ConceptsCommit(BaseModel):
@@ -276,7 +276,7 @@ def _tree(session: Session) -> TreeService:
     return TreeService(session)
 
 
-def _load_course(session: Session, course_id: int) -> Course:
+def _load_course(session: Session, course_id: str) -> Course:
     profile = ensure_default_profile(session)
     course = session.get(Course, course_id)
     if course is None or course.profile_id != profile.id:
@@ -284,7 +284,7 @@ def _load_course(session: Session, course_id: int) -> Course:
     return course
 
 
-def _load_node(session: Session, node_id: int) -> TreeNode:
+def _load_node(session: Session, node_id: str) -> TreeNode:
     try:
         node = _tree(session).get(node_id)
     except TreeError as error:
@@ -324,7 +324,7 @@ def _item_out(item: PlanItem) -> PlanItemOut:
 
 
 @router.get("/courses/{course_id}/plan.ics")
-def export_course_plan_ics(course_id: int, session: Session = Depends(get_session)) -> Response:
+def export_course_plan_ics(course_id: str, session: Session = Depends(get_session)) -> Response:
     profile = ensure_default_profile(session)
     course = session.get(Course, course_id)
     if course is None or course.profile_id != profile.id:
@@ -338,7 +338,7 @@ def export_course_plan_ics(course_id: int, session: Session = Depends(get_sessio
 
 
 @router.get("/courses/{course_id}/plan", response_model=list[PlanItemOut])
-def list_course_plan(course_id: int, session: Session = Depends(get_session)) -> list[PlanItemOut]:
+def list_course_plan(course_id: str, session: Session = Depends(get_session)) -> list[PlanItemOut]:
     profile = ensure_default_profile(session)
     items = session.scalars(
         select(PlanItem)
@@ -350,7 +350,7 @@ def list_course_plan(course_id: int, session: Session = Depends(get_session)) ->
 
 @router.post("/courses/{course_id}/plan", response_model=PlanItemOut, status_code=201)
 def create_plan_item(
-    course_id: int, body: PlanItemCreateIn, session: Session = Depends(get_session)
+    course_id: str, body: PlanItemCreateIn, session: Session = Depends(get_session)
 ) -> PlanItemOut:
     profile = ensure_default_profile(session)
     if body.node_id is not None:
@@ -378,8 +378,8 @@ def create_plan_item(
 
 @router.patch("/courses/{course_id}/plan/{item_id}", response_model=PlanItemOut)
 def update_plan_item(
-    course_id: int,
-    item_id: int,
+    course_id: str,
+    item_id: str,
     body: PlanItemUpdateIn,
     session: Session = Depends(get_session),
 ) -> PlanItemOut:
@@ -403,7 +403,7 @@ def update_plan_item(
 
 
 @router.delete("/courses/{course_id}/plan/{item_id}", status_code=204)
-def delete_plan_item(course_id: int, item_id: int, session: Session = Depends(get_session)) -> None:
+def delete_plan_item(course_id: str, item_id: str, session: Session = Depends(get_session)) -> None:
     profile = ensure_default_profile(session)
     item = session.get(PlanItem, item_id)
     if item is None or item.course_id != course_id or item.profile_id != profile.id:
@@ -414,7 +414,7 @@ def delete_plan_item(course_id: int, item_id: int, session: Session = Depends(ge
 
 @router.post("/courses/{course_id}/plan/generate", response_model=PlanGenerateOut)
 def generate_course_plan(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> PlanGenerateOut:
     from ..domain.models import Course
 
@@ -443,7 +443,7 @@ def get_scratchpad(session: Session = Depends(get_session)) -> ScratchpadOut:
 
 
 @router.get("/courses/{course_id}", response_model=CourseOut)
-def get_course(course_id: int, session: Session = Depends(get_session)) -> CourseOut:
+def get_course(course_id: str, session: Session = Depends(get_session)) -> CourseOut:
     return _course_out(session, _load_course(session, course_id))
 
 
@@ -514,7 +514,7 @@ def genesis_commit(
     except CourseError as error:
         session.rollback()
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if estimate > 0:
         job = request.app.state.jobs.enqueue(
             session,
@@ -538,8 +538,8 @@ def genesis_commit(
 
 @router.post("/courses/{course_id}/nodes/{node_id}/promote", response_model=CourseOut)
 def promote_node(
-    course_id: int,
-    node_id: int,
+    course_id: str,
+    node_id: str,
     body: PromoteIn,
     session: Session = Depends(get_session),
 ) -> CourseOut:
@@ -592,7 +592,7 @@ def create_course(body: CourseCreate, session: Session = Depends(get_session)) -
 
 @router.patch("/courses/{course_id}", response_model=CourseOut)
 def update_course(
-    course_id: int, body: CourseUpdate, session: Session = Depends(get_session)
+    course_id: str, body: CourseUpdate, session: Session = Depends(get_session)
 ) -> CourseOut:
     profile = ensure_default_profile(session)
     course = session.get(Course, course_id)
@@ -629,7 +629,7 @@ def update_course(
 
 @router.get("/courses/{course_id}/export")
 def export_course(
-    course_id: int,
+    course_id: str,
     request: Request,
     include_history: bool = False,
     include_note_versions: bool = False,
@@ -704,7 +704,7 @@ async def import_course(
 
 @router.delete("/courses/{course_id}", response_model=CourseDeletedOut)
 def delete_course(
-    course_id: int,
+    course_id: str,
     request: Request,
     session: Session = Depends(get_session),
     confirmed_backup: bool = False,
@@ -728,7 +728,7 @@ def delete_course(
 
 
 @router.get("/courses/{course_id}/tree", response_model=list[TreeNodeOut])
-def course_tree(course_id: int, session: Session = Depends(get_session)) -> list[dict[str, Any]]:
+def course_tree(course_id: str, session: Session = Depends(get_session)) -> list[dict[str, Any]]:
     _load_course(session, course_id)
     profile = ensure_default_profile(session)
     return _tree(session).tree(course_id, profile.id)
@@ -736,7 +736,7 @@ def course_tree(course_id: int, session: Session = Depends(get_session)) -> list
 
 @router.post("/courses/{course_id}/nodes", status_code=201, response_model=NodeCreatedOut)
 def add_node(
-    course_id: int, body: NodeCreate, session: Session = Depends(get_session)
+    course_id: str, body: NodeCreate, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     try:
@@ -754,7 +754,7 @@ def add_node(
 
 
 @router.get("/nodes/{node_id}", response_model=NodeDetailOut)
-def get_node(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def get_node(node_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     node = _load_node(session, node_id)
     return {
         "id": node.id,
@@ -772,7 +772,7 @@ def get_node(node_id: int, session: Session = Depends(get_session)) -> dict[str,
 
 @router.patch("/nodes/{node_id}", response_model=NodeUpdatedOut)
 def patch_node(
-    node_id: int, body: NodeUpdate, session: Session = Depends(get_session)
+    node_id: str, body: NodeUpdate, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_node(session, node_id)
     try:
@@ -791,7 +791,7 @@ def patch_node(
 
 @router.patch("/nodes/{node_id}/move", response_model=NodeMovedOut)
 def move_node(
-    node_id: int, body: NodeMove, session: Session = Depends(get_session)
+    node_id: str, body: NodeMove, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_node(session, node_id)
     try:
@@ -803,7 +803,7 @@ def move_node(
 
 
 @router.delete("/nodes/{node_id}", response_model=NodeDeletedOut)
-def delete_node(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def delete_node(node_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     _load_node(session, node_id)
     profile = ensure_default_profile(session)
     try:
@@ -826,7 +826,7 @@ def restore_node(body: NodeRestore, session: Session = Depends(get_session)) -> 
 
 @router.post("/nodes/{node_id}/concepts", status_code=201, response_model=NodeConceptLinkedOut)
 def add_node_concept(
-    node_id: int, body: NodeConceptIn, session: Session = Depends(get_session)
+    node_id: str, body: NodeConceptIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     node = _load_node(session, node_id)
     concept = session.get(Concept, body.concept_id)
@@ -846,7 +846,7 @@ def add_node_concept(
 
 @router.delete("/nodes/{node_id}/concepts/{concept_id}", status_code=204)
 def remove_node_concept(
-    node_id: int, concept_id: int, session: Session = Depends(get_session)
+    node_id: str, concept_id: str, session: Session = Depends(get_session)
 ) -> None:
     _load_node(session, node_id)
     existing = session.scalars(
@@ -861,13 +861,13 @@ def remove_node_concept(
 
 
 @router.get("/nodes/{node_id}/workspace", response_model=NodeWorkspaceOut)
-def node_workspace(node_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def node_workspace(node_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     _load_node(session, node_id)
     return _tree(session).workspace(node_id, profile.id)
 
 
-def _assign(session: Session, node_id: int, body: AllocationIn) -> dict[str, Any]:
+def _assign(session: Session, node_id: str, body: AllocationIn) -> dict[str, Any]:
     try:
         link = _structure(session).assign(
             node_id,
@@ -885,7 +885,7 @@ def _assign(session: Session, node_id: int, body: AllocationIn) -> dict[str, Any
 
 @router.post("/nodes/{node_id}/materials", status_code=201, response_model=MaterialAssignedOut)
 def assign_material(
-    node_id: int, body: AllocationIn, session: Session = Depends(get_session)
+    node_id: str, body: AllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_node(session, node_id)
     result = _assign(session, node_id, body)
@@ -895,7 +895,7 @@ def assign_material(
 
 @router.delete("/nodes/{node_id}/materials/{material_id}", status_code=204)
 def unassign_material(
-    node_id: int, material_id: int, session: Session = Depends(get_session)
+    node_id: str, material_id: str, session: Session = Depends(get_session)
 ) -> None:
     _load_node(session, node_id)
     try:
@@ -907,7 +907,7 @@ def unassign_material(
 
 @router.post("/nodes/{node_id}/folder-materials", status_code=201, response_model=FolderAssignedOut)
 def assign_folder_materials(
-    node_id: int, body: FolderAllocationIn, session: Session = Depends(get_session)
+    node_id: str, body: FolderAllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_node(session, node_id)
     try:
@@ -920,7 +920,7 @@ def assign_folder_materials(
 
 @router.delete("/nodes/{node_id}/folder-materials/{folder_id}", status_code=204)
 def unassign_folder_materials(
-    node_id: int, folder_id: int, session: Session = Depends(get_session)
+    node_id: str, folder_id: str, session: Session = Depends(get_session)
 ) -> None:
     _load_node(session, node_id)
     _structure(session).unassign_folder(node_id, folder_id)
@@ -933,7 +933,7 @@ def unassign_folder_materials(
     response_model=MirrorFolderOut,
 )
 def mirror_folder(
-    node_id: int, body: MirrorFolderIn, session: Session = Depends(get_session)
+    node_id: str, body: MirrorFolderIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_node(session, node_id)
     try:
@@ -948,14 +948,14 @@ def mirror_folder(
 
 @router.get("/courses/{course_id}/materials", response_model=list[CourseMaterialsEntryOut])
 def course_materials(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
     _load_course(session, course_id)
     return _structure(session).course_materials(course_id)
 
 
 class UnassignedMaterialOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
@@ -965,11 +965,11 @@ class UnassignedOut(BaseModel):
 
 
 class PlacementSuggestionsIn(BaseModel):
-    material_ids: list[int] = Field(max_length=40)
+    material_ids: list[str] = Field(max_length=40)
 
 
 class PlacementCandidateOut(BaseModel):
-    node_id: int
+    node_id: str
     node_title: str
     breadcrumb: list[dict[str, Any]]
     score: float
@@ -981,7 +981,7 @@ class PlacementSuggestionsOut(BaseModel):
 
 
 class PlacementSuggestionOut(BaseModel):
-    material_id: int
+    material_id: str
     candidates: list[PlacementCandidateOut]
 
 
@@ -990,7 +990,7 @@ PlacementSuggestionsOut.model_rebuild()
 
 @router.get("/courses/{course_id}/materials/unassigned", response_model=UnassignedOut)
 def unassigned_course_materials(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     return unassigned_payload(session, course_id)
@@ -1001,7 +1001,7 @@ def unassigned_course_materials(
     response_model=PlacementSuggestionsOut,
 )
 def placement_suggestions(
-    course_id: int, body: PlacementSuggestionsIn, session: Session = Depends(get_session)
+    course_id: str, body: PlacementSuggestionsIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     return {"suggestions": suggest_placements(session, course_id, body.material_ids)}
@@ -1013,7 +1013,7 @@ def placement_suggestions(
     response_model=MaterialAssignedOut,
 )
 def assign_course_material(
-    course_id: int, body: AllocationIn, session: Session = Depends(get_session)
+    course_id: str, body: AllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     root = _tree(session).ensure_root(course_id)
@@ -1024,7 +1024,7 @@ def assign_course_material(
 
 @router.delete("/courses/{course_id}/materials/{material_id}", status_code=204)
 def unassign_course_material(
-    course_id: int, material_id: int, session: Session = Depends(get_session)
+    course_id: str, material_id: str, session: Session = Depends(get_session)
 ) -> None:
     _load_course(session, course_id)
     root = _tree(session).ensure_root(course_id)
@@ -1041,7 +1041,7 @@ def unassign_course_material(
     response_model=FolderAssignedOut,
 )
 def assign_course_folder_materials(
-    course_id: int, body: FolderAllocationIn, session: Session = Depends(get_session)
+    course_id: str, body: FolderAllocationIn, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     root = _tree(session).ensure_root(course_id)
@@ -1055,7 +1055,7 @@ def assign_course_folder_materials(
 
 @router.delete("/courses/{course_id}/folder-materials/{folder_id}", status_code=204)
 def unassign_course_folder_materials(
-    course_id: int, folder_id: int, session: Session = Depends(get_session)
+    course_id: str, folder_id: str, session: Session = Depends(get_session)
 ) -> None:
     _load_course(session, course_id)
     root = _tree(session).ensure_root(course_id)
@@ -1065,7 +1065,7 @@ def unassign_course_folder_materials(
 
 @router.post("/courses/{course_id}/outline/draft", response_model=OutlineDraftOut)
 def outline_draft(
-    course_id: int, request: Request, session: Session = Depends(get_session)
+    course_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     course = _load_course(session, course_id)
     materials = list(
@@ -1091,7 +1091,7 @@ def outline_draft(
 
 @router.post("/courses/{course_id}/outline/commit", response_model=OutlineCommitOut)
 def outline_commit(
-    course_id: int, body: OutlineCommit, session: Session = Depends(get_session)
+    course_id: str, body: OutlineCommit, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     _load_course(session, course_id)
     try:
@@ -1104,7 +1104,7 @@ def outline_commit(
 
 @router.post("/courses/{course_id}/concepts/extract", response_model=ConceptDraftOut)
 def extract_course_concepts(
-    course_id: int,
+    course_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -1125,7 +1125,7 @@ def extract_course_concepts(
         )
     }
     tree = _tree(session).tree(course_id)
-    node_by_material: dict[int, str] = {}
+    node_by_material: dict[str, str] = {}
 
     def walk(entry: dict[str, Any]) -> None:
         for allocation in entry["materials"]:
@@ -1168,7 +1168,7 @@ def extract_course_concepts(
 
 @router.post("/courses/{course_id}/concepts/commit", response_model=ConceptsCommitOut)
 def commit_course_concepts(
-    course_id: int,
+    course_id: str,
     body: ConceptsCommit,
     session: Session = Depends(get_session),
 ) -> dict[str, int]:
@@ -1187,7 +1187,7 @@ def commit_course_concepts(
 
 
 @router.get("/courses/{course_id}/concepts", response_model=ConceptGraphOut)
-def course_concept_graph(course_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def course_concept_graph(course_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     _load_course(session, course_id)
     profile = ensure_default_profile(session)
     return concept_graph(session, course_id, profile.id)
@@ -1195,7 +1195,7 @@ def course_concept_graph(course_id: int, session: Session = Depends(get_session)
 
 @router.post("/nodes/{node_id}/review", response_model=NodeReviewOut)
 def review_node_endpoint(
-    node_id: int,
+    node_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -1251,7 +1251,7 @@ def review_node_endpoint(
 
 @router.post("/nodes/{node_id}/draft-note", response_model=DraftNoteOut)
 def draft_node_note(
-    node_id: int,
+    node_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -1264,7 +1264,7 @@ def draft_node_note(
             Note.course_id == node.course_id,
             Note.tags.like('%"ai-draft"%'),
         )
-        .order_by(Note.id.desc())
+        .order_by(Note.created_at.desc(), Note.id.desc())
         .limit(1)
     ).first()
     if existing is not None:
@@ -1309,7 +1309,7 @@ def draft_node_note(
 
 @router.get("/nodes/{node_id}/artifacts", response_model=NodeArtifactsOut)
 def node_artifacts(
-    node_id: int,
+    node_id: str,
     kind: str | None = None,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -1322,7 +1322,7 @@ def node_artifacts(
             MaterialLink.node_id == node_id,
             Material.provenance.is_not(None),
         )
-        .order_by(Material.id.desc())
+        .order_by(Material.created_at.desc(), Material.id.desc())
     ).scalars()
     cheat_sheet: dict[str, Any] | None = None
     reviews: list[dict[str, Any]] = []
@@ -1346,7 +1346,7 @@ def node_artifacts(
 
 @router.put("/materials/{material_id}/study-state", response_model=StudyStateOut)
 def set_study_state(
-    material_id: int,
+    material_id: str,
     body: StudyStateIn,
     request: Request,
     session: Session = Depends(get_session),

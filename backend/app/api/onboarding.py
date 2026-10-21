@@ -119,7 +119,7 @@ def get_onboarding_state(session: Session = Depends(get_session)) -> dict[str, A
 
 
 class SampleCourseOut(BaseModel):
-    course_id: int
+    course_id: str
     materials: int
     created: bool
     flashcards: int = 0

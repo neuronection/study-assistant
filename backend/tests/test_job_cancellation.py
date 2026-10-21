@@ -43,13 +43,13 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient) -> int:
+def make_course(client: TestClient) -> str:
     created = client.post("/api/v1/courses", json={"title": "Cancel tests"})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload_md(client: TestClient, course_id: int) -> dict[str, Any]:
+def upload_md(client: TestClient, course_id: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
@@ -64,7 +64,7 @@ def test_purge_cancels_queued_ingest_job(client: TestClient) -> None:
     client.app.state.jobs.stop()  # type: ignore[attr-defined]
     course_id = make_course(client)
     upload = upload_md(client, course_id)
-    material_id = int(upload["material"]["id"])
+    material_id = str(upload["material"]["id"])
 
     jobs = client.get("/api/v1/jobs", params={"status": "queued"}).json()
     assert any(entry["material_id"] == material_id and entry["type"] == "ingest" for entry in jobs)
@@ -84,7 +84,7 @@ def test_cancelled_summary_and_retry_refusal(client: TestClient) -> None:
     client.app.state.jobs.stop()  # type: ignore[attr-defined]
     course_id = make_course(client)
     upload = upload_md(client, course_id)
-    material_id = int(upload["material"]["id"])
+    material_id = str(upload["material"]["id"])
     client.delete(f"/api/v1/materials/{material_id}")
 
     summary = client.get("/api/v1/jobs/summary").json()
@@ -127,7 +127,7 @@ def test_running_job_cancelled_at_report_checkpoint(tmp_path: Path) -> None:
     runner.start()
     try:
         assert entered.wait(5), "handler never started"
-        cancel_jobs_for(session, material_ids=[4242])
+        cancel_jobs_for(session, material_ids=["4242"])
         assert is_cancel_requested(job_id), "running job should get a cancel flag"
         release.set()
         wait_until(lambda: job_status_is(factory, job_id, "cancelled"))
@@ -138,7 +138,7 @@ def test_running_job_cancelled_at_report_checkpoint(tmp_path: Path) -> None:
         clear_cancel(job_id)
 
 
-def job_status_is(factory: Any, job_id: int, status: str) -> bool:
+def job_status_is(factory: Any, job_id: str, status: str) -> bool:
     with factory() as session:
         job = session.get(Job, job_id)
         return job is not None and job.status == status
@@ -158,7 +158,7 @@ def test_flag_set_before_start_never_runs_handler(tmp_path: Path) -> None:
         ran.set()
         report(10, "started")
 
-    cancel_jobs_for(session, material_ids=[7])
+    cancel_jobs_for(session, material_ids=["7"])
     runner = JobRunner(
         factory,
         EventBus(),
@@ -212,12 +212,12 @@ def test_cancel_matches_note_and_chat_payloads(db_session: Session) -> None:
         status="queued",
     )
     chat_job = Job(type="chat_turn", payload={"chat_session_id": 88}, status="queued")
-    unrelated = Job(type="ingest", payload={"material_id": 31}, status="queued")
+    unrelated = Job(type="ingest", payload={"material_id": "31"}, status="queued")
     for entry in (note_job, chat_job, unrelated):
         db_session.add(entry)
     db_session.commit()
 
-    assert cancel_jobs_for(db_session, note_ids=[31], chat_session_ids=[88]) == 2
+    assert cancel_jobs_for(db_session, note_ids=["31"], chat_session_ids=["88"]) == 2
 
     db_session.expire_all()
     refreshed = {

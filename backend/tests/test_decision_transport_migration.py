@@ -40,7 +40,7 @@ def test_migration_0069_adds_decision_transport_and_seeds_slots(tmp_path: Path) 
     raw.commit()
     raw.close()
 
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, "0072_vocab_checks")
 
     raw = sqlite3.connect(db_path)
     columns = {row[1] for row in raw.execute("PRAGMA table_info(models)").fetchall()}

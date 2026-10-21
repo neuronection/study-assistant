@@ -18,20 +18,20 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload_txt(client: TestClient, filename: str, course_id: int) -> int:
+def upload_txt(client: TestClient, filename: str, course_id: str) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, f"content of {filename}".encode(), "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     wait_until(
         lambda: (
             client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
@@ -143,19 +143,19 @@ def test_migration_moves_legacy_data_to_unsorted(tmp_path: Path) -> None:
     raw.close()
 
 
-def make_node(client: TestClient, course_id: int, parent_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, parent_id: str, title: str) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": parent_id, "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     assert tree and tree[0]["is_root"] is True
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
 def test_assign_material_at_all_scopes(client: TestClient) -> None:

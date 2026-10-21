@@ -142,7 +142,7 @@ def make_ingest_handler(
         raw_id = payload.get("material_id")
         if raw_id is None:
             raise JobError("ingest payload missing material_id")
-        material_id = int(raw_id)
+        material_id = str(raw_id)
         material = session.get(Material, material_id)
         if material is None:
             raise JobError(f"material {material_id} not found")
@@ -393,7 +393,7 @@ def make_ingest_handler(
 
         report(80, "indexing")
         _sync_fts(session, material, markdown)
-        ensure_target_exists(session, Material, int(material_id), "material")
+        ensure_target_exists(session, Material, str(material_id), "material")
         material.status = MaterialStatus.READY
         from ..jobs.runner import JobRunner
 

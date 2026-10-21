@@ -171,7 +171,8 @@ def test_search_providers_crud_roundtrip(
 
         # ordered list: move up swaps, delete removes
         second = test_client.post(
-            "/api/v1/search-providers", json={"type": "searxng", "base_url": "https://searx.example.org"}
+            "/api/v1/search-providers",
+            json={"type": "searxng", "base_url": "https://searx.example.org"},
         )
         assert second.status_code == 201, second.text
         second_id = second.json()["id"]
@@ -180,9 +181,7 @@ def test_search_providers_crud_roundtrip(
         )
         assert [entry["id"] for entry in moved.json()["providers"]] == [second_id, provider["id"]]
 
-        assert (
-            test_client.delete(f"/api/v1/search-providers/{second_id}").status_code == 204
-        )
+        assert test_client.delete(f"/api/v1/search-providers/{second_id}").status_code == 204
         remaining = test_client.get("/api/v1/search-providers").json()["providers"]
         assert [entry["id"] for entry in remaining] == [provider["id"]]
 
@@ -206,9 +205,7 @@ def test_search_provider_settings_reject_bad_input(
             json={"type": "tavily", "base_url": "api.tavily.com"},
         )
         assert bad_url.status_code == 422
-        unknown = test_client.put(
-            "/api/v1/search-providers/nope", json={"name": "x"}
-        )
+        unknown = test_client.put("/api/v1/search-providers/nope", json={"name": "x"})
         assert unknown.status_code == 404
 
 
@@ -279,7 +276,7 @@ def test_legacy_single_provider_preference_migrates(
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

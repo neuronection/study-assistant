@@ -103,7 +103,7 @@ def wire_catalog(model_ids: list[str]) -> list[RemoteModel]:
     return [RemoteModel(external_id=m, caps=tuple(infer_caps(m))) for m in model_ids]
 
 
-def models_of(session: Session, provider_id: int | None = None) -> list[AiModel]:
+def models_of(session: Session, provider_id: str | None = None) -> list[AiModel]:
     query = select(AiModel).order_by(AiModel.external_id)
     if provider_id is not None:
         query = query.where(AiModel.provider_id == provider_id)
@@ -134,7 +134,7 @@ def seed_manual_provider(
     return provider
 
 
-def add_model(session: Session, provider_id: int, external_id: str, caps: list[str]) -> AiModel:
+def add_model(session: Session, provider_id: str, external_id: str, caps: list[str]) -> AiModel:
     model = AiModel(
         provider_id=provider_id,
         external_id=external_id,
@@ -181,9 +181,7 @@ def test_preset_metadata_uniformity() -> None:
 def test_case_1_happy_path_openai_binds_chat_vision_and_stt(
     db_session: Session, monkeypatch: pytest.MonkeyPatch, fake_keyring: FakeKeyring
 ) -> None:
-    calls = install_catalog(
-        monkeypatch, wire_catalog(["gpt-6.1-sol", "gpt-6-luna", "whisper-1"])
-    )
+    calls = install_catalog(monkeypatch, wire_catalog(["gpt-6.1-sol", "gpt-6-luna", "whisper-1"]))
     outcome = byok_setup.setup_provider_from_preset(db_session, "openai", "  sk-live-key  ")
 
     assert outcome.catalog_count == 3
@@ -315,10 +313,12 @@ def test_case_5_dead_id_assignments_rebind(
     connection = db_session.connection()
     connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
     connection.exec_driver_sql(
-        "UPDATE default_task_assignments SET model_id = 99999 WHERE requires = 'text'"
+        "UPDATE default_task_assignments SET model_id = "
+        "'ffffffffffffffffffffffffffffffff' WHERE requires = 'text'"
     )
     connection.exec_driver_sql(
-        "UPDATE default_task_assignments SET model_id = 99999 WHERE requires = 'vision'"
+        "UPDATE default_task_assignments SET model_id = "
+        "'ffffffffffffffffffffffffffffffff' WHERE requires = 'vision'"
     )
     connection.commit()
     connection.exec_driver_sql("PRAGMA foreign_keys=ON")

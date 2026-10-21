@@ -27,10 +27,10 @@ def client(
         yield test_client, app
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def fake_transport(html: str) -> httpx.BaseTransport:

@@ -22,7 +22,7 @@ class TreeNodeCounts(BaseModel):
 
 
 class TreeNodeMaterialLink(BaseModel):
-    material_id: int
+    material_id: str
     title: str
     rationale: str | None
     auto_assigned: bool
@@ -30,13 +30,13 @@ class TreeNodeMaterialLink(BaseModel):
 
 
 class TreeNodeFolderLink(BaseModel):
-    folder_id: int
+    folder_id: str
     name: str
-    source_id: int | None
+    source_id: str | None
 
 
 class TreeNodeOut(BaseModel):
-    id: int
+    id: str
     title: str
     summary: str | None
     objectives: list[str]
@@ -54,16 +54,16 @@ TreeNodeOut.model_rebuild()
 
 
 class NodeCreatedOut(BaseModel):
-    id: int
+    id: str
     title: str
     order_idx: int
     depth: int
 
 
 class NodeDetailOut(BaseModel):
-    id: int
-    course_id: int
-    parent_id: int | None
+    id: str
+    course_id: str
+    parent_id: str | None
     title: str
     summary: str | None
     objectives: list[str]
@@ -74,28 +74,28 @@ class NodeDetailOut(BaseModel):
 
 
 class NodeUpdatedOut(BaseModel):
-    id: int
+    id: str
     title: str
     ai_hint: str | None
 
 
 class NodeMovedOut(BaseModel):
-    id: int
-    parent_id: int | None
+    id: str
+    parent_id: str | None
     order_idx: int
 
 
 class NodeDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 class NodeRestoredOut(BaseModel):
-    id: int
+    id: str
 
 
 class FolderAssignedOut(BaseModel):
-    node_id: int
-    folder_id: int
+    node_id: str
+    folder_id: str
 
 
 class StudyStateOut(BaseModel):
@@ -105,25 +105,25 @@ class StudyStateOut(BaseModel):
 
 
 class NodeConceptLinkedOut(BaseModel):
-    node_id: int
-    concept_id: int
+    node_id: str
+    concept_id: str
 
 
 class MaterialAssignedOut(BaseModel):
-    node_id: int
-    material_id: int
+    node_id: str
+    material_id: str
 
 
 class ViaFolderOut(BaseModel):
-    id: int
+    id: str
     name: str
 
 
 class CourseMaterialsEntryOut(BaseModel):
-    node_id: int
+    node_id: str
     node_title: str
     node_is_root: bool
-    material_id: int
+    material_id: str
     title: str
     rationale: str | None
     auto_assigned: bool
@@ -133,7 +133,7 @@ class CourseMaterialsEntryOut(BaseModel):
 
 class CourseDeletedOut(BaseModel):
     status: str
-    course_id: int
+    course_id: str
 
 
 class BundlePreviewOut(BaseModel):
@@ -143,10 +143,10 @@ class BundlePreviewOut(BaseModel):
 
 
 class ImportedCourseOut(BaseModel):
-    course_id: int
+    course_id: str
     title: str
     imported_at: str
-    postprocess_job_ids: list[int] = []
+    postprocess_job_ids: list[str] = []
 
 
 class CourseImportOut(BaseModel):
@@ -158,7 +158,7 @@ class CourseImportOut(BaseModel):
 class OutlineSectionOut(BaseModel):
     title: str
     objectives: list[str]
-    material_ids: list[int]
+    material_ids: list[str]
     rationale: str | None
     confidence: float
 
@@ -210,12 +210,12 @@ class ConceptsCommitOut(BaseModel):
 
 
 class ConceptCoverageOut(BaseModel):
-    node_id: int
+    node_id: str
     node_title: str
 
 
 class ConceptGraphConceptOut(BaseModel):
-    id: int
+    id: str
     name: str
     description: str | None
     aliases: list[str]
@@ -235,14 +235,14 @@ class ConceptGraphOut(BaseModel):
 
 
 class BreadcrumbEntryOut(BaseModel):
-    id: int
+    id: str
     title: str
     depth: int
 
 
 class WorkspaceNodeOut(BaseModel):
-    id: int
-    course_id: int
+    id: str
+    course_id: str
     course_title: str | None
     title: str
     summary: str | None
@@ -250,12 +250,12 @@ class WorkspaceNodeOut(BaseModel):
     ai_hint: str | None
     depth: int
     is_root: bool
-    parent_id: int | None
+    parent_id: str | None
     breadcrumb: list[BreadcrumbEntryOut]
 
 
 class WorkspaceChildOut(BaseModel):
-    id: int
+    id: str
     title: str
     depth: int
     order_idx: int
@@ -264,16 +264,16 @@ class WorkspaceChildOut(BaseModel):
 
 
 class WorkspaceFolderOut(BaseModel):
-    folder_id: int
+    folder_id: str
     name: str
-    source_id: int | None
+    source_id: str | None
     member_count: int
     rationale: str | None
     auto_assigned: bool
 
 
 class WorkspaceMaterialOut(BaseModel):
-    material_id: int
+    material_id: str
     title: str
     kind: MaterialKind
     status: MaterialStatus
@@ -284,16 +284,16 @@ class WorkspaceMaterialOut(BaseModel):
     confidence: float | None
     provenance: dict[str, Any] | None
     has_extraction: bool
-    via_folder_id: int | None
+    via_folder_id: str | None
     via_folder_name: str | None
 
 
 class WorkspaceNoteOut(BaseModel):
-    id: int
+    id: str
     title: str
-    node_id: int | None
+    node_id: str | None
     owner_type: str | None
-    owner_id: int | None
+    owner_id: str | None
     pinned: bool
     updated_at: str | None
 
@@ -312,10 +312,10 @@ class WorkspaceCountsOut(BaseModel):
 
 
 class WorkspaceConceptOut(BaseModel):
-    id: int
+    id: str
     name: str
     direct: bool
-    node_ids: list[int]
+    node_ids: list[str]
 
 
 class NodeWorkspaceOut(BaseModel):
@@ -323,7 +323,7 @@ class NodeWorkspaceOut(BaseModel):
     children: list[WorkspaceChildOut]
     folders: list[WorkspaceFolderOut]
     materials: list[WorkspaceMaterialOut]
-    folder_material_ids: list[int]
+    folder_material_ids: list[str]
     child_materials: dict[str, list[WorkspaceMaterialOut]]
     notes: list[WorkspaceNoteOut]
     counts: WorkspaceCountsOut
@@ -338,20 +338,20 @@ class ReviewFindingOut(BaseModel):
 
 
 class NodeReviewOut(BaseModel):
-    node_id: int
+    node_id: str
     node_title: str
     findings: list[ReviewFindingOut]
-    material_id: int
+    material_id: str
 
 
 class DraftNoteOut(BaseModel):
-    note_id: int
+    note_id: str
     markdown: str
     existing: bool
 
 
 class ArtifactRefOut(BaseModel):
-    material_id: int
+    material_id: str
     title: str
 
 

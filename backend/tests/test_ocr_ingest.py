@@ -24,7 +24,7 @@ class FakeGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         raise TaskUnassigned(task)
 
@@ -33,7 +33,7 @@ class FakeGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         if self.error is not None:
@@ -59,10 +59,10 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient) -> int:
+def make_course(client: TestClient) -> str:
     created = client.post("/api/v1/courses", json={"title": "OCR"})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def blank_pdf(pages: int = 2) -> bytes:

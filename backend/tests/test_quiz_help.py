@@ -1,5 +1,6 @@
 import json
 import time
+import uuid
 from typing import Any
 
 from fastapi import FastAPI
@@ -20,10 +21,10 @@ class QuizHelpGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="help-model",
@@ -37,7 +38,7 @@ class QuizHelpGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -47,7 +48,7 @@ class QuizHelpGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         text = self.generate(task, messages, model)
         for i in range(0, len(text), 8):
@@ -58,7 +59,7 @@ class QuizHelpGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         from app.ai.gateway import StreamChunk
 
@@ -74,7 +75,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -127,8 +128,8 @@ def make_client(responses: list[str]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def import_quiz(client: TestClient) -> dict[str, Any]:
@@ -142,15 +143,15 @@ def import_quiz(client: TestClient) -> dict[str, Any]:
     return activity
 
 
-def open_attempt(client: TestClient, activity_id: int, mode: str = "practice") -> int:
+def open_attempt(client: TestClient, activity_id: str, mode: str = "practice") -> str:
     started = client.post(f"/api/v1/quiz/activities/{activity_id}/attempts?mode={mode}")
     assert started.status_code == 201, started.text
-    return int(started.json()["id"])
+    return str(started.json()["id"])
 
 
-def question_ids(client: TestClient, activity_id: int) -> list[int]:
+def question_ids(client: TestClient, activity_id: str) -> list[str]:
     questions = client.get(f"/api/v1/quiz/activities/{activity_id}/questions").json()
-    return [int(question["id"]) for question in questions]
+    return [str(question["id"]) for question in questions]
 
 
 def test_forbidden_texts_contract() -> None:
@@ -257,7 +258,7 @@ def test_level5_unlocks_after_submit_and_help_events_land_on_answer() -> None:
 
             row = db.execute(
                 text("SELECT help_events FROM answers WHERE attempt_id = :a"),
-                {"a": attempt_id},
+                {"a": uuid.UUID(attempt_id).hex},
             ).one()
         events = json.loads(row[0]) if isinstance(row[0], str) else row[0]
         assert events and events[0]["type"] == "hint" and events[0]["level"] == 1

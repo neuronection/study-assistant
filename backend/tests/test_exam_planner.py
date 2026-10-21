@@ -19,10 +19,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -36,7 +36,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls = messages
         return self.responses.pop(0)
@@ -50,7 +50,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -67,7 +67,7 @@ def make_client(responses: list[str], tmp: Any) -> TestClient:
     return TestClient(app)
 
 
-def seed_tree(client: TestClient, course_id: int) -> dict[int, int]:
+def seed_tree(client: TestClient, course_id: str) -> dict[int, int]:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
     root_id = tree[0]["id"]
     nodes: dict[int, int] = {}

@@ -51,7 +51,7 @@ def test_note_version_diff_current_alias_and_errors() -> None:
 
         missing = client.get(
             f"/api/v1/notes/{note_id}/versions/diff",
-            params={"from": 99999, "to": "current"},
+            params={"from": "00000000000000000000000000099999", "to": "current"},
         )
         assert missing.status_code == 404
 

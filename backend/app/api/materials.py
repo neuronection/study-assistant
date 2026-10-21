@@ -70,12 +70,12 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class MaterialDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 class TextFileIn(BaseModel):
-    course_id: int
-    folder_id: int | None = None
+    course_id: str
+    folder_id: str | None = None
     filename: str = Field(min_length=1, max_length=300)
     content: str = Field(default="", max_length=2_000_000)
     description: str | None = Field(default=None, max_length=2_000)
@@ -89,27 +89,27 @@ class MaterialPatch(BaseModel):
 
 
 class MaterialMove(BaseModel):
-    folder_id: int | None = None
+    folder_id: str | None = None
 
 
 class MaterialCopyIn(BaseModel):
-    folder_id: int | None = None
+    folder_id: str | None = None
 
 
 class MaterialDeriveIn(BaseModel):
-    folder_id: int | None = None
-    node_id: int | None = None
+    folder_id: str | None = None
+    node_id: str | None = None
 
 
 class MaterialBatchDeriveIn(BaseModel):
-    material_ids: list[int] = Field(min_length=1, max_length=200)
+    material_ids: list[str] = Field(min_length=1, max_length=200)
 
 
 class DeriveResultOut(BaseModel):
-    material_id: int
+    material_id: str
     outcome: DeriveOutcome
     material: MaterialOut | None = None
-    job_id: int | None = None
+    job_id: str | None = None
 
 
 class MaterialBatchDeriveOut(BaseModel):
@@ -223,9 +223,9 @@ def _material_detail(
 async def upload_material(
     request: Request,
     file: UploadFile,
-    course_id: int,
-    folder_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str,
+    folder_id: str | None = None,
+    node_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
     data = await file.read()
@@ -260,7 +260,7 @@ async def upload_material(
             )
         except CourseError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
@@ -288,17 +288,17 @@ def accepted_types() -> AcceptedTypesOut:
 
 
 class ComposeIn(BaseModel):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     kind: str = "study_guide"
     title: str | None = Field(default=None, max_length=300)
     instructions: str | None = Field(default=None, max_length=4000)
     extra_md: str | None = Field(default=None, max_length=20000)
     scope: str = "subtree"
-    include_material_ids: list[int] = Field(default_factory=list)
-    exclude_material_ids: list[int] = Field(default_factory=list)
-    note_ids: list[int] = Field(default_factory=list)
-    concept_ids: list[int] = Field(default_factory=list)
+    include_material_ids: list[str] = Field(default_factory=list)
+    exclude_material_ids: list[str] = Field(default_factory=list)
+    note_ids: list[str] = Field(default_factory=list)
+    concept_ids: list[str] = Field(default_factory=list)
     context_hint: str | None = Field(default=None, max_length=2000)
     regenerate: bool = False
     include_unassigned: bool = False
@@ -390,7 +390,7 @@ def compose_material(
 
 
 class ComposeQueuedOut(BaseModel):
-    job_id: int
+    job_id: str
 
 
 @router.post("/compose/async", response_model=ComposeQueuedOut)
@@ -495,7 +495,7 @@ class ExtractionVersionOut(BaseModel):
 
 @router.get("/{material_id}/extractions", response_model=list[ExtractionVersionOut])
 def list_extraction_versions(
-    material_id: int,
+    material_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> list[ExtractionVersionOut]:
@@ -547,7 +547,7 @@ def _resolve_extraction_ref(rows_by_version: dict[int, Extraction], ref: str) ->
 
 @router.get("/{material_id}/extractions/diff", response_model=ExtractionDiffOut)
 def diff_extraction_versions(
-    material_id: int,
+    material_id: str,
     request: Request,
     from_ref: str = Query(alias="from"),
     to_ref: str = Query(alias="to"),
@@ -580,7 +580,7 @@ def diff_extraction_versions(
 
 @router.get("/{material_id}/extractions/{version}", response_model=ExtractionOut)
 def get_extraction_version(
-    material_id: int,
+    material_id: str,
     version: int,
     request: Request,
     session: Session = Depends(get_session),
@@ -605,7 +605,7 @@ def get_extraction_version(
 
 @router.post("/{material_id}/mindmap-edit", response_model=MindmapEditOut)
 def mindmap_edit(
-    material_id: int,
+    material_id: str,
     body: MindmapEditIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -650,8 +650,8 @@ def mindmap_edit(
 @router.get("", response_model=list[MaterialOut])
 def list_materials(
     request: Request,
-    course_id: int | None = None,
-    folder_id: int | None = None,
+    course_id: str | None = None,
+    folder_id: str | None = None,
     unfiled: bool = False,
     tag: str | None = None,
     starred: bool = False,
@@ -667,7 +667,7 @@ def list_materials(
         tag=tag,
         starred=starred,
     )
-    extraction_ids: set[int] = set()
+    extraction_ids: set[str] = set()
     if materials:
         extraction_ids = set(
             session.scalars(
@@ -676,7 +676,7 @@ def list_materials(
                 )
             )
         )
-    link_counts: dict[int, int] = {}
+    link_counts: dict[str, int] = {}
     if materials:
         for material_id, count in session.execute(
             select(MaterialLink.material_id, func.count())
@@ -695,16 +695,16 @@ def list_materials(
 
 
 class LinkBreadcrumbOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class MaterialLinkInfoOut(BaseModel):
-    node_id: int
+    node_id: str
     owner_title: str
     breadcrumb: list[LinkBreadcrumbOut]
     is_course_level: bool
-    course_id: int
+    course_id: str
     course_title: str
     auto_assigned: bool
     rationale: str | None
@@ -714,7 +714,7 @@ class MaterialLinkInfoOut(BaseModel):
 @router.get("/{material_id}/links", response_model=list[MaterialLinkInfoOut])
 def material_links(
     request: Request,
-    material_id: int,
+    material_id: str,
     session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
@@ -728,17 +728,17 @@ _URL_IMPORTS_IN_FLIGHT: set[str] = set()
 
 
 class UrlImportIn(BaseModel):
-    course_id: int
+    course_id: str
     url: str = Field(min_length=8, max_length=2_000)
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 class LinkIn(BaseModel):
-    course_id: int
+    course_id: str
     url: str = Field(min_length=8, max_length=2_048)
     title: str | None = Field(default=None, max_length=300)
-    node_id: int | None = None
-    folder_id: int | None = None
+    node_id: str | None = None
+    folder_id: str | None = None
 
 
 @router.post("/link", response_model=MaterialUploadOut)
@@ -765,7 +765,7 @@ def create_link_material(
 
 @router.post("/{material_id}/parse", response_model=MaterialJobOut)
 def parse_link_material(
-    material_id: int,
+    material_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialJobOut:
@@ -799,7 +799,7 @@ def parse_link_material(
 
 @router.post("/{material_id}/transcribe-audio", response_model=MaterialJobOut)
 def transcribe_link_audio(
-    material_id: int,
+    material_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialJobOut:
@@ -877,7 +877,7 @@ def import_url_material(
                 )
             )
             session.flush()
-        job_id: int | None = None
+        job_id: str | None = None
         if not deduped:
             job_id = service.queue_ingest(material, request.app.state.jobs)
         session.commit()
@@ -905,7 +905,7 @@ def create_text_file(
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
@@ -915,7 +915,7 @@ def create_text_file(
 @router.patch("/{material_id}", response_model=MaterialOut)
 def update_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialPatch,
     session: Session = Depends(get_session),
 ) -> MaterialOut:
@@ -944,7 +944,7 @@ def update_material(
 @router.post("/{material_id}/reingest", response_model=MaterialUploadOut)
 def reingest_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     options: ReingestOptionsIn | None = None,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
@@ -984,7 +984,7 @@ def reingest_material(
 @router.patch("/{material_id}/move", response_model=MaterialOut)
 def move_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialMove,
     session: Session = Depends(get_session),
 ) -> MaterialOut:
@@ -1004,7 +1004,7 @@ def move_material(
 @router.post("/{material_id}/copy", response_model=MaterialOut, status_code=201)
 def copy_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialCopyIn,
     session: Session = Depends(get_session),
 ) -> MaterialOut:
@@ -1050,7 +1050,7 @@ def derive_materials_batch(
 @router.post("/{material_id}/derive", response_model=MaterialUploadOut, status_code=201)
 def derive_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: MaterialDeriveIn,
     session: Session = Depends(get_session),
 ) -> MaterialUploadOut:
@@ -1063,7 +1063,7 @@ def derive_material(
         derived, deduped = service.derive(material, body.folder_id, body.node_id)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job_id = service.queue_ingest(derived, request.app.state.jobs)
     session.commit()
@@ -1073,7 +1073,7 @@ def derive_material(
 @router.delete("/{material_id}", response_model=MaterialDeletedOut)
 def delete_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     service = _service(request, session)
@@ -1092,7 +1092,7 @@ def delete_material(
 @router.get("/{material_id}", response_model=MaterialDetailOut)
 def get_material(
     request: Request,
-    material_id: int,
+    material_id: str,
     session: Session = Depends(get_session),
 ) -> MaterialDetailOut:
     service = _service(request, session)
@@ -1117,7 +1117,7 @@ def _extraction_to_out(extraction: Any) -> ExtractionOut:
 @router.patch("/{material_id}/extraction", response_model=ExtractionOut)
 def edit_extraction(
     request: Request,
-    material_id: int,
+    material_id: str,
     body: ExtractionEdit,
     session: Session = Depends(get_session),
 ) -> ExtractionOut:
@@ -1185,7 +1185,7 @@ def _store_material_drawing(
 
 @router.post("/{material_id}/drawings", response_model=MaterialDetailOut, status_code=201)
 def add_material_drawing(
-    material_id: int,
+    material_id: str,
     body: DrawingIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1202,8 +1202,8 @@ def add_material_drawing(
 
 @router.put("/{material_id}/drawings/{drawing_id}", response_model=MaterialDetailOut)
 def update_material_drawing(
-    material_id: int,
-    drawing_id: int,
+    material_id: str,
+    drawing_id: str,
     body: DrawingIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1240,8 +1240,8 @@ def update_material_drawing(
 
 @router.post("/{material_id}/drawings/{drawing_id}/reocr", response_model=MaterialDetailOut)
 def reocr_material_drawing(
-    material_id: int,
-    drawing_id: int,
+    material_id: str,
+    drawing_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialDetailOut:
@@ -1266,8 +1266,8 @@ def reocr_material_drawing(
 
 @router.delete("/{material_id}/drawings/{drawing_id}", response_model=MaterialDetailOut)
 def delete_material_drawing(
-    material_id: int,
-    drawing_id: int,
+    material_id: str,
+    drawing_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> MaterialDetailOut:

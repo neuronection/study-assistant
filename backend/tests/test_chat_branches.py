@@ -16,7 +16,7 @@ from app.services.platform.profiles import ensure_default_profile
 
 
 class Harness:
-    def __init__(self, client: TestClient, gateway: ScriptedGateway, session_id: int) -> None:
+    def __init__(self, client: TestClient, gateway: ScriptedGateway, session_id: str) -> None:
         self.client = client
         self.gateway = gateway
         self.session_id = session_id
@@ -32,7 +32,7 @@ def harness(tmp_path: Path, responses: list[str]) -> Iterator[Harness]:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         yield Harness(client, gateway, session_id)
 
 
@@ -70,8 +70,8 @@ def send(harness: Harness, content: str) -> None:
     assert response.status_code == 200
 
 
-def first_user_id(messages: list[dict[str, Any]]) -> int:
-    return int(next(m["id"] for m in messages if m["role"] == "user"))
+def first_user_id(messages: list[dict[str, Any]]) -> str:
+    return str(next(m["id"] for m in messages if m["role"] == "user"))
 
 
 def test_send_chains_messages_to_active_tip(tmp_path: Path) -> None:

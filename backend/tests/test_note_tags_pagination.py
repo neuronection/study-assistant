@@ -9,7 +9,7 @@ def create_note(
     title: str,
     *,
     tags: list[str] | None = None,
-    course_id: int,
+    course_id: str,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {"title": title, "body_md": "body", "course_id": course_id}
     if tags is not None:
@@ -20,8 +20,8 @@ def create_note(
     return detail
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def test_tags_normalized_and_roundtrip(client: TestClient) -> None:

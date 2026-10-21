@@ -49,7 +49,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -61,10 +61,10 @@ class StaticGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="static",
@@ -78,7 +78,7 @@ class StaticGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -97,12 +97,12 @@ def make_client() -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 def seed_answers(
-    client: TestClient, course_id: int, plan: list[tuple[int, Any, int]]
+    client: TestClient, course_id: str, plan: list[tuple[int, Any, int]]
 ) -> dict[str, Any]:
     imported = client.post(
         "/api/v1/quiz/import",
@@ -112,7 +112,7 @@ def seed_answers(
     assert imported.status_code == 200, imported.text
     activity = imported.json()["activity"]
     questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
-    attempt_id = int(client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"])
+    attempt_id = str(client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"])
     for question_index, response, time_ms in plan:
         answered = client.post(
             f"/api/v1/quiz/attempts/{attempt_id}/answers",
@@ -269,14 +269,14 @@ def test_exam_answers_excluded_from_mastery() -> None:
         )
         activity = imported.json()["activity"]
         questions = client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()
-        practice = int(
+        practice = str(
             client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
         )
         client.post(
             f"/api/v1/quiz/attempts/{practice}/answers",
             json={"question_id": questions[0]["id"], "response": 0, "time_ms": 9000},
         )
-        exam = int(
+        exam = str(
             client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts?mode=exam").json()["id"]
         )
         client.post(

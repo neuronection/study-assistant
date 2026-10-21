@@ -30,7 +30,7 @@ def _insert_goal(db_path: Path, unit: str) -> None:
 
 def test_vocab_checks_upgrade_downgrade_round_trip(tmp_path: Path) -> None:
     db_path = tmp_path / "checks.db"
-    command.upgrade(_cfg(db_path), "head")
+    command.upgrade(_cfg(db_path), "0072_vocab_checks")
 
     with pytest.raises(sqlite3.IntegrityError):
         _insert_goal(db_path, "nope")
@@ -46,7 +46,7 @@ def test_vocab_checks_upgrade_downgrade_round_trip(tmp_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         connection.execute("DELETE FROM study_goals WHERE unit = 'nope'")
 
-    command.upgrade(_cfg(db_path), "head")
+    command.upgrade(_cfg(db_path), "0072_vocab_checks")
     with sqlite3.connect(db_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM study_goals").fetchone()[0] == 1
     with pytest.raises(sqlite3.IntegrityError):

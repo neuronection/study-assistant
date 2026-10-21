@@ -98,6 +98,7 @@ from .core import UniqueConstraint as UniqueConstraint
 from .core import date as date
 from .core import datetime as datetime
 from .core import mapped_column as mapped_column
+from .core import new_uuid as new_uuid
 from .core import relationship as relationship
 from .core import text as text
 from .core import utcnow as utcnow

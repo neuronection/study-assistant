@@ -54,7 +54,7 @@ class UnavailableResolution:
     kind = "unavailable"
     reason: str
     code: str | None = None
-    provider_id: int | None = None
+    provider_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -73,7 +73,7 @@ DecisionResolution = (
 
 @dataclass(frozen=True)
 class AuditMeta:
-    provider_id: int | None
+    provider_id: str | None
     model: str
 
 
@@ -175,7 +175,7 @@ def _slot_candidates(session: Session, slot: str) -> list[dict[str, object]]:
     candidates: list[dict[str, object]] = []
     for field_name in ("model_id", "fallback_model_id"):
         model_id = getattr(row, field_name)
-        if isinstance(model_id, int):
+        if isinstance(model_id, str) and model_id:
             candidates.append({"model_id": model_id, "field": field_name})
     return candidates
 
@@ -245,8 +245,7 @@ def _resolve_candidates(
     rejections: list[str] = []
     last_index = len(candidates) - 1
     for index, candidate in enumerate(candidates):
-        model_id = candidate["model_id"]
-        assert isinstance(model_id, int)
+        model_id = str(candidate["model_id"])
         model = session.get(AiModel, model_id)
         if model is None:
             rejections.append(f"Model '{model_id}' is not registered.")

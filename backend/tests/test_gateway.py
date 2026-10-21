@@ -65,7 +65,7 @@ def test_google_adapter_request_shape_and_parse() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="google",
         base_url="https://generativelanguage.googleapis.com",
         external_id="gemini-2.5-flash",
@@ -111,7 +111,7 @@ def test_openai_adapter_request_shape_and_parse() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="openai_compatible",
         base_url="http://localhost:11434/v1",
         external_id="qwen2.5vl",
@@ -137,7 +137,7 @@ def test_anthropic_adapter_request_shape_and_parse() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="anthropic",
         base_url="https://api.anthropic.com",
         external_id="claude-sonnet-4",
@@ -295,7 +295,7 @@ def test_provider_http_error_wrapped_with_friendly_message() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="https://api.openai.com/v1",
         external_id="gpt-test",
@@ -321,7 +321,7 @@ def test_provider_transport_error_wrapped() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="https://api.openai.com/v1",
         external_id="gpt-test",
@@ -350,7 +350,7 @@ def test_transient_5xx_is_retried_then_succeeds() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -372,7 +372,7 @@ def test_non_transient_401_is_not_retried() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -451,7 +451,7 @@ def test_mid_stream_failure_keeps_prefix_without_replay() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -483,7 +483,7 @@ def test_anthropic_chat_stream_sends_cache_control() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="anthropic",
         base_url="https://api.anthropic.com",
         external_id="claude",
@@ -515,7 +515,7 @@ def test_openai_reasoning_effort_sent_when_set() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="openai_compatible",
         # A compatible endpoint — the completions wire (ADR-0039 auto
         # routing keeps api.openai.com on /responses, a different body).
@@ -538,7 +538,7 @@ def test_history_assistant_message_without_tool_calls_streams() -> None:
 
     gateway = make_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -570,7 +570,7 @@ def test_no_telemetry_env_is_ever_set() -> None:
     before = dict(os.environ)
     build_chat_model(
         ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -604,7 +604,7 @@ def test_google_reasoning_effort_forwarded_when_in_google_set() -> None:
         Any,
         build_chat_model(
             ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="google",
                 base_url="https://generativelanguage.googleapis.com",
                 external_id="gemini-2.5-pro",
@@ -627,7 +627,7 @@ def test_google_reasoning_effort_out_of_set_is_dropped() -> None:
         Any,
         build_chat_model(
             ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="google",
                 base_url="https://generativelanguage.googleapis.com",
                 external_id="gemini-2.5-pro",
@@ -650,7 +650,7 @@ def test_anthropic_reasoning_effort_forwarded_when_in_anthropic_set() -> None:
         Any,
         build_chat_model(
             ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="anthropic",
                 base_url="https://api.anthropic.com",
                 external_id="claude-sonnet-4-6",
@@ -673,7 +673,7 @@ def test_anthropic_reasoning_effort_out_of_set_is_dropped() -> None:
         Any,
         build_chat_model(
             ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="anthropic",
                 base_url="https://api.anthropic.com",
                 external_id="claude-sonnet-4-6",
@@ -736,7 +736,7 @@ def test_gateway_structured_skips_profile_unsupported_without_request(
         "_resolve_chain",
         lambda task, model, course_id=None: [
             ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="openai_compatible",
                 base_url="http://localhost/v1",
                 external_id="m",
@@ -844,7 +844,7 @@ def test_structured_generation_parsed_none_degrades(monkeypatch: pytest.MonkeyPa
         "_resolve_chain",
         lambda task, model, course_id=None: [
             ResolvedModel(
-                provider_id=1,
+                provider_id="1",
                 provider_type="openai_compatible",
                 base_url="http://localhost/v1",
                 external_id="m",

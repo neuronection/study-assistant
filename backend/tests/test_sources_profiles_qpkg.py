@@ -39,7 +39,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -51,10 +51,10 @@ class QuietGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="quiet",
@@ -68,7 +68,7 @@ class QuietGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -164,10 +164,10 @@ def test_course_delete_purges_linked_source_folder(tmp_path: Path) -> None:
         assert client.get("/api/v1/materials").json() == []
 
 
-def make_course(client: TestClient, headers: dict[str, str] | None = None) -> int:
+def make_course(client: TestClient, headers: dict[str, str] | None = None) -> str:
     created = client.post("/api/v1/courses", json={"title": "Test course"}, headers=headers)
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_profiles_create_and_header_scoping() -> None:

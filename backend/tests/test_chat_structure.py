@@ -22,7 +22,7 @@ def build_course(db_session: Session, owner: Any, title: str = "Calculus I") -> 
 
 
 def make_session(
-    db_session: Session, profile: Any, course: Course, node_id: int | None
+    db_session: Session, profile: Any, course: Course, node_id: str | None
 ) -> ChatSession:
     session_row = ChatSession(
         profile_id=profile.id,
@@ -127,10 +127,10 @@ def test_leaf_node_omits_children_group(db_session: Session, owner: Any) -> None
 
 def test_registry_add_enriches_missing_summary() -> None:
     registry = MentionRegistry()
-    registry.add("node", 5, "Chapter", 1)
-    enriched = registry.add("node", 5, "Chapter", 1, "Techniques")
+    registry.add("node", "5", "Chapter", "1")
+    enriched = registry.add("node", "5", "Chapter", "1", "Techniques")
     assert enriched.summary == "Techniques"
-    again = registry.add("node", 5, "Chapter", 1)
+    again = registry.add("node", "5", "Chapter", "1")
     assert again.summary == "Techniques"
 
 
@@ -150,7 +150,7 @@ def test_prepared_sources_block_starts_with_structure(db_session: Session, owner
     prep = service.prepare_turn_context(session_row, user_message)
     assert prep.sources_block.startswith("Course structure")
     assert "Location: Calculus I > Derivatives" in prep.sources_block
-    assert "T2 = Derivatives — Rates of change" in prep.sources_block
+    assert f"T{chapter.id} = Derivatives — Rates of change" in prep.sources_block
 
 
 class NoGateway(LLMGateway):
@@ -159,7 +159,7 @@ class NoGateway(LLMGateway):
     def __init__(self) -> None:
         super().__init__(session_factory=None)
 
-    def resolve(self, task: str, course_id: int | None = None) -> Any:
+    def resolve(self, task: str, course_id: str | None = None) -> Any:
         raise AssertionError("gateway must not be used while building structure context")
 
 

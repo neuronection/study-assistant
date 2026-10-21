@@ -85,7 +85,7 @@ def test_tool_call_event_projects_the_persisted_entry() -> None:
 
 
 def test_terminal_events_carry_the_frozen_fields() -> None:
-    assert flow_finished_event("run-2", 7, model="mock", total_ms=120, tool_count=1) == {
+    assert flow_finished_event("run-2", "7", model="mock", total_ms=120, tool_count=1) == {
         "type": "flow_finished",
         "run_id": "run-2",
         "result_ref": "7",
@@ -93,7 +93,7 @@ def test_terminal_events_carry_the_frozen_fields() -> None:
         "total_ms": 120,
         "tool_count": 1,
     }
-    assert flow_finished_event("run-3", 9) == {
+    assert flow_finished_event("run-3", "9") == {
         "type": "flow_finished",
         "run_id": "run-3",
         "result_ref": "9",
@@ -112,7 +112,7 @@ def test_terminal_events_carry_the_frozen_fields() -> None:
 
 
 @contextmanager
-def chat_harness(tmp_path: Path) -> Iterator[tuple[TestClient, int]]:
+def chat_harness(tmp_path: Path) -> Iterator[tuple[TestClient, str]]:
     from app.core.config import Settings
 
     app = create_app(
@@ -127,7 +127,7 @@ def chat_harness(tmp_path: Path) -> Iterator[tuple[TestClient, int]]:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         yield client, session_id
 
 

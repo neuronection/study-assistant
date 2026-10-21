@@ -27,6 +27,7 @@ from ...domain.models import (
     Note,
     PlanItem,
     TreeNode,
+    new_uuid,
     utcnow,
 )
 from ..content.folders import folder_links_by_node, folder_member_ids
@@ -55,7 +56,7 @@ def _prune_snapshots() -> None:
         del _SNAPSHOTS[oldest]
 
 
-def subtree_material_ids(session: Session, node: TreeNode) -> list[int]:
+def subtree_material_ids(session: Session, node: TreeNode) -> list[str]:
     subtree = list(
         session.scalars(
             select(TreeNode.id).where(
@@ -66,7 +67,7 @@ def subtree_material_ids(session: Session, node: TreeNode) -> list[int]:
     )
     if not subtree:
         return []
-    ids: set[int] = set(
+    ids: set[str] = set(
         session.scalars(
             select(MaterialLink.material_id).where(
                 MaterialLink.course_id == node.course_id,
@@ -104,7 +105,7 @@ class TreeService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def ensure_root(self, course_id: int) -> TreeNode:
+    def ensure_root(self, course_id: str, node_id: str | None = None) -> TreeNode:
         root = self._session.scalars(
             select(TreeNode).where(TreeNode.course_id == course_id, TreeNode.is_root.is_(True))
         ).first()
@@ -114,6 +115,7 @@ class TreeService:
         if course is None:
             raise TreeError("course not found")
         root = TreeNode(
+            id=node_id or new_uuid(),
             course_id=course_id,
             parent_id=None,
             title=course.title,
@@ -130,13 +132,13 @@ class TreeService:
         self._session.flush()
         return root
 
-    def get(self, node_id: int) -> TreeNode:
+    def get(self, node_id: str) -> TreeNode:
         node = self._session.get(TreeNode, node_id)
         if node is None:
             raise TreeError("node not found")
         return node
 
-    def placement_node(self, course_id: int | None, node_id: int | None) -> int | None:
+    def placement_node(self, course_id: str | None, node_id: str | None) -> str | None:
         if node_id is not None:
             node = self.get(node_id)
             if course_id is not None and node.course_id != course_id:
@@ -163,7 +165,7 @@ class TreeService:
         for child in children:
             self._refresh_subtree_paths(child, node.path, node.sort_path)
 
-    def _next_order(self, parent_id: int) -> int:
+    def _next_order(self, parent_id: str) -> int:
         sibling_max = self._session.scalars(
             select(TreeNode.order_idx)
             .where(TreeNode.parent_id == parent_id)
@@ -174,12 +176,13 @@ class TreeService:
 
     def create_node(
         self,
-        course_id: int,
-        parent_id: int,
+        course_id: str,
+        parent_id: str,
         title: str,
         summary: str | None = None,
         objectives: list[str] | None = None,
         ai_hint: str | None = None,
+        node_id: str | None = None,
     ) -> TreeNode:
         title = title.strip()
         if not title:
@@ -190,6 +193,7 @@ class TreeService:
         if parent.depth >= MAX_DEPTH:
             raise TreeError(f"nodes may nest at most {MAX_DEPTH} levels")
         node = TreeNode(
+            id=node_id or new_uuid(),
             course_id=course_id,
             parent_id=parent_id,
             title=title[:300],
@@ -208,7 +212,7 @@ class TreeService:
 
     def update_node(
         self,
-        node_id: int,
+        node_id: str,
         title: str | None = None,
         summary: str | None = None,
         objectives: list[str] | None = None,
@@ -231,7 +235,7 @@ class TreeService:
         self._session.flush()
         return node
 
-    def _renumber_siblings(self, parent_id: int) -> list[TreeNode]:
+    def _renumber_siblings(self, parent_id: str) -> list[TreeNode]:
         siblings = list(
             self._session.scalars(
                 select(TreeNode)
@@ -248,7 +252,7 @@ class TreeService:
         for child in self._renumber_siblings(parent.id):
             self._refresh_subtree_paths(child, parent.path, parent.sort_path)
 
-    def move_node(self, node_id: int, parent_id: int, position: int) -> TreeNode:
+    def move_node(self, node_id: str, parent_id: str, position: int) -> TreeNode:
         node = self.get(node_id)
         if node.is_root:
             raise TreeError("the course root cannot be moved")
@@ -292,7 +296,7 @@ class TreeService:
             return 1
         return 1 + max(self._subtree_depth(child) for child in children)
 
-    def move_subtree_to_course(self, node_id: int, target_course: Course) -> TreeNode:
+    def move_subtree_to_course(self, node_id: str, target_course: Course) -> TreeNode:
         node = self.get(node_id)
         if node.is_root:
             raise TreeError("the course root cannot be promoted")
@@ -328,7 +332,7 @@ class TreeService:
         return node
 
     def _move_exclusive_content(
-        self, source_course_id: int, moved_node_ids: list[int], target_course_id: int
+        self, source_course_id: str, moved_node_ids: list[str], target_course_id: str
     ) -> None:
         moved_material_ids = set(
             self._session.scalars(
@@ -381,7 +385,7 @@ class TreeService:
             self._apply_depths(child, child.depth)
         self._session.flush()
 
-    def delete_node(self, node_id: int, snapshot: bool = False) -> str | None:
+    def delete_node(self, node_id: str, snapshot: bool = False) -> str | None:
         node = self.get(node_id)
         if node.is_root:
             raise TreeError("the course root cannot be deleted")
@@ -499,7 +503,7 @@ class TreeService:
         _prune_snapshots()
         return token
 
-    def restore_node(self, token: str) -> int:
+    def restore_node(self, token: str) -> str:
         _prune_snapshots()
         entry = _SNAPSHOTS.pop(token, None)
         if entry is None:
@@ -607,7 +611,7 @@ class TreeService:
         self._session.flush()
         return node.id
 
-    def subtree_ids(self, node: TreeNode, include_children: bool = True) -> list[int]:
+    def subtree_ids(self, node: TreeNode, include_children: bool = True) -> list[str]:
         if not include_children:
             return [node.id]
         prefix = node.path
@@ -619,7 +623,7 @@ class TreeService:
         )
         return list(rows)
 
-    def scoped_node_ids(self, node_id: int, include_children: bool = True) -> list[int]:
+    def scoped_node_ids(self, node_id: str, include_children: bool = True) -> list[str]:
         node = self.get(node_id)
         return self.subtree_ids(node, include_children)
 
@@ -640,8 +644,8 @@ class TreeService:
         return chain
 
     def _direct_counts(
-        self, node_ids: list[int], profile_id: str | None = None
-    ) -> dict[int, dict[str, int]]:
+        self, node_ids: list[str], profile_id: str | None = None
+    ) -> dict[str, dict[str, int]]:
         empty = {
             "materials": 0,
             "notes": 0,
@@ -693,7 +697,7 @@ class TreeService:
         folder_link_nodes = [node_id for node_id, links in folder_map.items() if links]
         if folder_link_nodes:
             resolved_materials = self._resolved_material_ids(folder_link_nodes)
-            studied_ids: set[int] | None = None
+            studied_ids: set[str] | None = None
             if profile_id is not None:
                 studied_ids = set(
                     self._session.scalars(
@@ -726,8 +730,8 @@ class TreeService:
             result[node_id]["cards_due"] = int(count)
         return result
 
-    def _resolved_material_ids(self, node_ids: list[int]) -> dict[int, set[int]]:
-        result: dict[int, set[int]] = {node_id: set() for node_id in node_ids}
+    def _resolved_material_ids(self, node_ids: list[str]) -> dict[str, set[str]]:
+        result: dict[str, set[str]] = {node_id: set() for node_id in node_ids}
         rows = self._session.execute(
             select(MaterialLink.node_id, MaterialLink.material_id).where(
                 MaterialLink.node_id.in_(node_ids)
@@ -742,7 +746,7 @@ class TreeService:
                     result[node_id] |= folder_member_ids(self._session, folder)
         return result
 
-    def tree(self, course_id: int, profile_id: str | None = None) -> list[dict[str, Any]]:
+    def tree(self, course_id: str, profile_id: str | None = None) -> list[dict[str, Any]]:
         root = self.ensure_root(course_id)
         nodes = list(
             self._session.scalars(
@@ -763,12 +767,12 @@ class TreeService:
                 select(Material).where(Material.id.in_([link.material_id for link in links]))
             )
         }
-        by_parent: dict[int, list[TreeNode]] = {}
+        by_parent: dict[str, list[TreeNode]] = {}
         for node in nodes:
             parent_id = node.parent_id
             if parent_id is not None:
                 by_parent.setdefault(parent_id, []).append(node)
-        link_by_node: dict[int, list[MaterialLink]] = {}
+        link_by_node: dict[str, list[MaterialLink]] = {}
         for link in links:
             link_by_node.setdefault(link.node_id, []).append(link)
         folder_links = list(
@@ -788,7 +792,7 @@ class TreeService:
             if folder_links
             else {}
         )
-        folder_link_by_node: dict[int, list[dict[str, Any]]] = {}
+        folder_link_by_node: dict[str, list[dict[str, Any]]] = {}
         for folder_link in folder_links:
             folder = folders.get(folder_link.folder_id)
             if folder is None:
@@ -855,7 +859,7 @@ class TreeService:
             )
         return result
 
-    def workspace(self, node_id: int, profile_id: str) -> dict[str, Any]:
+    def workspace(self, node_id: str, profile_id: str) -> dict[str, Any]:
         node = self.get(node_id)
         course = self._session.get(Course, node.course_id)
         scope_ids = self.subtree_ids(node)
@@ -883,8 +887,8 @@ class TreeService:
             if all_folder_ids
             else {}
         )
-        via_by_node: dict[int, dict[int, MaterialFolder]] = {}
-        member_ids: set[int] = set()
+        via_by_node: dict[str, dict[str, MaterialFolder]] = {}
+        member_ids: set[str] = set()
         for scope_node_id, folder_links in folder_links_map.items():
             via = via_by_node.setdefault(scope_node_id, {})
             for folder_link in folder_links:
@@ -910,7 +914,7 @@ class TreeService:
                 )
             )
         }
-        extraction_ids: set[int] = set()
+        extraction_ids: set[str] = set()
         if relevant_material_ids:
             extraction_ids = set(
                 self._session.scalars(
@@ -924,7 +928,7 @@ class TreeService:
         node_folder_ids = [link.folder_id for link in node_folder_links]
 
         def material_entry(
-            material_id: int,
+            material_id: str,
             link: MaterialLink | None = None,
             via: MaterialFolder | None = None,
         ) -> dict[str, Any]:
@@ -954,7 +958,7 @@ class TreeService:
                 "via_folder_name": via.name if via is not None else None,
             }
 
-        def node_material_entries(node_id: int) -> list[dict[str, Any]]:
+        def node_material_entries(node_id: str) -> list[dict[str, Any]]:
             direct = [link for link in links if link.node_id == node_id]
             direct_ids = {link.material_id for link in direct}
             entries = [material_entry(link.material_id, link=link) for link in direct]
@@ -965,7 +969,7 @@ class TreeService:
                 entries.append(material_entry(material_id, via=via[material_id]))
             return entries
 
-        def folder_entry(folder_id: int) -> dict[str, Any]:
+        def folder_entry(folder_id: str) -> dict[str, Any]:
             folder = folders.get(folder_id)
             link = next(
                 (candidate for candidate in node_folder_links if candidate.folder_id == folder_id),
@@ -1033,7 +1037,7 @@ class TreeService:
             }
             for node_concept, concept in concepts
         ]
-        merged: dict[int, dict[str, Any]] = {}
+        merged: dict[str, dict[str, Any]] = {}
         for entry in concept_entries:
             existing = merged.get(entry["id"])
             if existing is None:
@@ -1083,7 +1087,7 @@ class TreeService:
         }
 
     def _scoped_counts(
-        self, course_id: int, scope_ids: list[int], own_node_id: int
+        self, course_id: str, scope_ids: list[str], own_node_id: str
     ) -> dict[str, Any]:
         child_ids = [node_id for node_id in scope_ids if node_id != own_node_id]
 
@@ -1105,7 +1109,7 @@ class TreeService:
             "child_nodes": len(child_ids),
         }
 
-    def delete_node_to_trash(self, node_id: int, profile_id: str) -> int:
+    def delete_node_to_trash(self, node_id: str, profile_id: str) -> str:
         node = self.get(node_id)
         if node.is_root:
             raise TreeError("the course root cannot be deleted")
@@ -1135,9 +1139,9 @@ class TreeService:
         self._rewrite_child_sorts(parent)
         return item_id
 
-    def snapshot_subtree_to_trash(self, node_id: int, profile_id: str) -> int:
+    def snapshot_subtree_to_trash(self, node_id: str, profile_id: str) -> str:
         node = self.get(node_id)
-        keys: dict[int, int] = {}
+        keys: dict[str, int] = {}
         node_entries: list[dict[str, Any]] = []
         links: list[dict[str, Any]] = []
         folder_links: list[dict[str, Any]] = []
@@ -1236,7 +1240,7 @@ class TreeService:
             raise TreeError("no surviving ancestor for this subtree")
 
         skipped_deep = 0
-        id_map: dict[int, int] = {}
+        id_map: dict[int, str] = {}
         last_created: TreeNode | None = None
         for entry in sorted(payload["nodes"], key=lambda e: e["key"]):
             parent_key = entry["parent_key"]

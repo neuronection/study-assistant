@@ -131,7 +131,7 @@ def _no_embed(query: str) -> tuple[str, list[list[float]]] | None:
     return None
 
 
-def _seed_corpus(session: Session) -> dict[str, int]:
+def _seed_corpus(session: Session) -> dict[str, str]:
     """Seed the fixed parity corpus; returns {title: material_id} in order."""
     user = User(id=str(uuid.uuid4()), email="parity@test.local", password_hash=None)
     session.add(user)
@@ -142,7 +142,7 @@ def _seed_corpus(session: Session) -> dict[str, int]:
     course = Course(profile_id=profile.id, title="Parity")
     session.add(course)
     session.flush()
-    ids: dict[str, int] = {}
+    ids: dict[str, str] = {}
     for title, markdown in CORPUS:
         material = Material(
             profile_id=profile.id,
@@ -155,27 +155,28 @@ def _seed_corpus(session: Session) -> dict[str, int]:
         session.add(material)
         session.flush()
         sync_material_fts(session, material, markdown)
-        ids[title] = int(material.id)
+        ids[title] = str(material.id)
     session.flush()
     return ids
 
 
-def _hit_ids(session: Session, query: str) -> list[int]:
+def _hit_ids(session: Session, query: str) -> list[str]:
     hits = hybrid_search(session, query, LIMIT, _no_embed)
-    return [int(hit["material_id"]) for hit in hits[:LIMIT]]
+    return [str(hit["material_id"]) for hit in hits[:LIMIT]]
 
 
 def test_search_parity_benchmark(db_session: Session, pg_session: Session) -> None:
     sqlite_ids = _seed_corpus(db_session)
     pg_ids = _seed_corpus(pg_session)
-    assert list(sqlite_ids.values()) == list(pg_ids.values()), (
-        "id spaces must be aligned on fresh databases for the id comparison"
-    )
 
-    rows: list[tuple[str, str, list[int], list[int], list[int]]] = []
+    def titles_for(ids: dict[str, str], hits: list[str]) -> list[str]:
+        by_id = {material_id: title for title, material_id in ids.items()}
+        return [by_id[hit] for hit in hits if hit in by_id]
+
+    rows: list[tuple[str, str, list[str], list[str], list[str]]] = []
     for kind, query in QUERIES:
-        sqlite_hits = _hit_ids(db_session, query)
-        pg_hits = _hit_ids(pg_session, query)
+        sqlite_hits = titles_for(sqlite_ids, _hit_ids(db_session, query))
+        pg_hits = titles_for(pg_ids, _hit_ids(pg_session, query))
         overlap = sorted(set(sqlite_hits) & set(pg_hits))
         rows.append((kind, query, sqlite_hits, pg_hits, overlap))
 

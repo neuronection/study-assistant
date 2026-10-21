@@ -17,7 +17,7 @@ router = APIRouter(prefix="/external-sources", tags=["external-sources"])
 
 
 class ExternalSourceIn(BaseModel):
-    course_id: int
+    course_id: str
     kind: str = Field(min_length=1, max_length=30)
     url: str = Field(min_length=1, max_length=2048)
     label: str | None = Field(default=None, max_length=200)
@@ -34,8 +34,8 @@ class ExternalSourcePatch(BaseModel):
 
 
 class ExternalSourceOut(BaseModel):
-    id: int
-    course_id: int
+    id: str
+    course_id: str
     kind: str
     url: str
     label: str | None
@@ -61,7 +61,7 @@ def _out(source: ExternalSource) -> ExternalSourceOut:
     )
 
 
-def _owned_source(session: Session, profile_id: str, source_id: int) -> ExternalSource:
+def _owned_source(session: Session, profile_id: str, source_id: str) -> ExternalSource:
     source = session.get(ExternalSource, source_id)
     if source is None or source.profile_id != profile_id:
         raise HTTPException(status_code=404, detail="source not found")
@@ -70,14 +70,14 @@ def _owned_source(session: Session, profile_id: str, source_id: int) -> External
 
 @router.get("", response_model=list[ExternalSourceOut])
 def list_sources(
-    course_id: int | None = None,
+    course_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> list[ExternalSourceOut]:
     profile = ensure_default_profile(session)
     stmt = select(ExternalSource).where(ExternalSource.profile_id == profile.id)
     if course_id is not None:
         stmt = stmt.where(ExternalSource.course_id == course_id)
-    sources = list(session.scalars(stmt.order_by(ExternalSource.id)))
+    sources = list(session.scalars(stmt.order_by(ExternalSource.created_at, ExternalSource.id)))
     return [_out(source) for source in sources]
 
 
@@ -111,7 +111,7 @@ def create_source(
 
 @router.patch("/{source_id}", response_model=ExternalSourceOut)
 def patch_source(
-    source_id: int,
+    source_id: str,
     body: ExternalSourcePatch,
     session: Session = Depends(get_session),
 ) -> ExternalSourceOut:
@@ -135,7 +135,7 @@ def patch_source(
 
 @router.delete("/{source_id}", status_code=204)
 def delete_source(
-    source_id: int,
+    source_id: str,
     session: Session = Depends(get_session),
 ) -> None:
     profile = ensure_default_profile(session)
@@ -146,7 +146,7 @@ def delete_source(
 
 @router.post("/{source_id}/scan", response_model=dict[str, int])
 def scan_source(
-    source_id: int,
+    source_id: str,
     session: Session = Depends(get_session),
 ) -> dict[str, int]:
     profile = ensure_default_profile(session)

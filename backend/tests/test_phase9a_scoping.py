@@ -38,22 +38,22 @@ def client() -> Iterator[TestClient]:
         yield test_client
 
 
-def make_node(client: TestClient, course_id: int, parent_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, parent_id: str, title: str) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": parent_id, "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
-def make_course(client: TestClient, title: str) -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str) -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
 def test_scoped_lists_roll_up_children(client: TestClient) -> None:
@@ -68,7 +68,7 @@ def test_scoped_lists_roll_up_children(client: TestClient) -> None:
         json=CAQ,
     )
     assert quiz.status_code == 200, quiz.text
-    section_quiz_id = int(quiz.json()["activity"]["id"])
+    section_quiz_id = str(quiz.json()["activity"]["id"])
 
     exercise = client.post(
         "/api/v1/exercises",
@@ -173,7 +173,7 @@ def test_delete_node_trashes_subtree_and_merges_content(client: TestClient) -> N
         params={"dry_run": "false", "course_id": course_id},
         json=CAQ,
     )
-    quiz_id = int(quiz.json()["activity"]["id"])
+    quiz_id = str(quiz.json()["activity"]["id"])
     note = client.post(
         "/api/v1/notes", json={"title": "n", "course_id": course_id, "node_id": section}
     ).json()
@@ -245,7 +245,7 @@ def test_tree_carries_direct_counts(client: TestClient) -> None:
         files={"file": ("counts.txt", b"counting", "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     linked = client.post(f"/api/v1/nodes/{child}/materials", json={"material_id": material_id})
     assert linked.status_code == 201, linked.text
 
@@ -334,7 +334,7 @@ def test_delete_restore_round_trip(client: TestClient) -> None:
         params={"course_id": course_id},
         files={"file": ("undo.txt", b"undo me", "text/plain")},
     )
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     assert (
         client.post(
             f"/api/v1/nodes/{child_a}/materials", json={"material_id": material_id}
@@ -345,7 +345,7 @@ def test_delete_restore_round_trip(client: TestClient) -> None:
         "/api/v1/notes", json={"title": "n", "course_id": course_id, "node_id": child_a}
     )
     assert note.status_code == 201
-    note_id = int(note.json()["id"])
+    note_id = str(note.json()["id"])
 
     deleted = client.delete(f"/api/v1/nodes/{child_a}")
     assert deleted.status_code == 200, deleted.text
@@ -357,7 +357,7 @@ def test_delete_restore_round_trip(client: TestClient) -> None:
 
     restored = client.post(f"/api/v1/deleted-items/{item_id}/restore")
     assert restored.status_code == 200, restored.text
-    new_id = int(restored.json()["node_id"])
+    new_id = str(restored.json()["node_id"])
     assert new_id != child_a
 
     node = client.get(f"/api/v1/nodes/{new_id}").json()

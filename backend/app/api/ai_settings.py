@@ -375,7 +375,7 @@ class SetDefaultIn(BaseModel):
 
 @router.put("/providers/{provider_id}/set-default", response_model=TaskOut)
 def set_provider_default(
-    provider_id: int,
+    provider_id: str,
     body: SetDefaultIn,
     session: Session = Depends(get_session),
 ) -> TaskOut:
@@ -420,7 +420,7 @@ def list_providers(session: Session = Depends(get_session)) -> list[ProviderOut]
     service = ProvidersService(session)
     return [
         _provider_out(service, provider)
-        for provider in session.scalars(select(Provider).order_by(Provider.id))
+        for provider in session.scalars(select(Provider).order_by(Provider.created_at, Provider.id))
     ]
 
 
@@ -453,7 +453,7 @@ def create_provider(body: ProviderCreate, session: Session = Depends(get_session
 
 @router.patch("/providers/{provider_id}", response_model=ProviderOut)
 def update_provider(
-    provider_id: int, body: ProviderUpdate, session: Session = Depends(get_session)
+    provider_id: str, body: ProviderUpdate, session: Session = Depends(get_session)
 ) -> ProviderOut:
     service = ProvidersService(session)
     try:
@@ -478,14 +478,14 @@ def update_provider(
 
 
 @router.delete("/providers/{provider_id}", status_code=204)
-def delete_provider(provider_id: int, session: Session = Depends(get_session)) -> None:
+def delete_provider(provider_id: str, session: Session = Depends(get_session)) -> None:
     if not ProvidersService(session).delete(provider_id):
         raise HTTPException(status_code=404, detail="provider not found")
     session.commit()
 
 
 @router.post("/providers/{provider_id}/test", response_model=ProviderOut)
-def test_provider(provider_id: int, session: Session = Depends(get_session)) -> ProviderOut:
+def test_provider(provider_id: str, session: Session = Depends(get_session)) -> ProviderOut:
     service = ProvidersService(session)
     provider = session.get(Provider, provider_id)
     if provider is None:
@@ -511,7 +511,9 @@ def test_provider(provider_id: int, session: Session = Depends(get_session)) -> 
 def _probe_provider(session: Session, provider: Provider) -> DecisionProbeResult:
     api_key = ProvidersService(session).api_key(provider)
     model = session.scalars(
-        select(AiModel).where(AiModel.provider_id == provider.id).order_by(AiModel.id)
+        select(AiModel)
+        .where(AiModel.provider_id == provider.id)
+        .order_by(AiModel.discovered_at, AiModel.id)
     ).first()
     if model is None:
         # §15 single-source: a key-only probe derives its model id from the
@@ -552,7 +554,7 @@ def _remote_error_detail(service: ProvidersService, provider: Provider, error: E
 
 
 @router.post("/providers/{provider_id}/models", response_model=list[ModelOut])
-def discover_models(provider_id: int, session: Session = Depends(get_session)) -> list[ModelOut]:
+def discover_models(provider_id: str, session: Session = Depends(get_session)) -> list[ModelOut]:
     service = ProvidersService(session)
     provider = session.get(Provider, provider_id)
     if provider is None:
@@ -570,7 +572,7 @@ def discover_models(provider_id: int, session: Session = Depends(get_session)) -
 
 @router.get("/providers/{provider_id}/remote-models", response_model=list[RemoteModelOut])
 def remote_models(
-    provider_id: int, session: Session = Depends(get_session)
+    provider_id: str, session: Session = Depends(get_session)
 ) -> list[RemoteModelOut]:
     service = ProvidersService(session)
     provider = session.get(Provider, provider_id)
@@ -603,7 +605,7 @@ def _model_out(model: AiModel) -> ModelOut:
 
 @router.get("/models", response_model=list[ModelOut])
 def list_models(
-    provider_id: int | None = None, session: Session = Depends(get_session)
+    provider_id: str | None = None, session: Session = Depends(get_session)
 ) -> list[ModelOut]:
     query = select(AiModel).order_by(AiModel.provider_id, AiModel.external_id)
     if provider_id is not None:
@@ -676,7 +678,7 @@ def create_model(
 
 
 @router.delete("/models/{model_id}", status_code=204)
-def delete_model(model_id: int, session: Session = Depends(get_session)) -> None:
+def delete_model(model_id: str, session: Session = Depends(get_session)) -> None:
     model = session.get(AiModel, model_id)
     if model is None:
         raise HTTPException(status_code=404, detail="model not found")
@@ -706,7 +708,7 @@ def delete_model(model_id: int, session: Session = Depends(get_session)) -> None
 
 @router.patch("/models/{model_id}", response_model=ModelOut)
 def update_model(
-    model_id: int, body: ModelUpdate, session: Session = Depends(get_session)
+    model_id: str, body: ModelUpdate, session: Session = Depends(get_session)
 ) -> ModelOut:
     model = session.get(AiModel, model_id)
     if model is None:
@@ -742,7 +744,7 @@ def _task_out(
     task_def: TaskDef,
     assignment: TaskAssignment | None,
     default: DefaultTaskAssignment | None,
-    labels: dict[int, str],
+    labels: dict[str, str],
     monthly_cap: float | None = None,
 ) -> TaskOut:
     model_id = assignment.model_id if assignment else None
@@ -899,7 +901,7 @@ def put_task(task: str, body: TaskAssignmentIn, session: Session = Depends(get_s
 
 
 def _course_inherited_labels(
-    session: Session, task_def: TaskDef, course_id: int
+    session: Session, task_def: TaskDef, course_id: str
 ) -> tuple[str | None, str | None]:
     """What a task uses when the course sets no per-task override.
 
@@ -913,10 +915,10 @@ def _course_inherited_labels(
     )
 
     def slot(
-        task_value: int | None,
-        default_value: int | None,
-        course_default_value: int | None,
-    ) -> int | None:
+        task_value: str | None,
+        default_value: str | None,
+        course_default_value: str | None,
+    ) -> str | None:
         value = default_value
         if assignment is not None and task_value is not None:
             value = task_value
@@ -966,7 +968,7 @@ def _course_task_out(
     session: Session,
     task_def: TaskDef,
     override: CourseTaskAssignment | None,
-    course_id: int,
+    course_id: str,
 ) -> CourseTaskOut:
     labels = {model.id: model.label for model in session.scalars(select(AiModel))}
     inherited_model_label, inherited_fallback_label = _course_inherited_labels(
@@ -1006,7 +1008,7 @@ def _course_default_out(
     )
 
 
-def _get_course_or_404(course_id: int, session: Session) -> Course:
+def _get_course_or_404(course_id: str, session: Session) -> Course:
     course = session.get(Course, course_id)
     if course is None:
         raise HTTPException(status_code=404, detail="course not found")
@@ -1015,7 +1017,7 @@ def _get_course_or_404(course_id: int, session: Session) -> Course:
 
 @router.get("/courses/{course_id}/tasks", response_model=list[CourseTaskOut])
 def list_course_tasks(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> list[CourseTaskOut]:
     _get_course_or_404(course_id, session)
     overrides = list_course_assignments(session, course_id)
@@ -1030,7 +1032,7 @@ def list_course_tasks(
     response_model=list[CourseDefaultTaskOut],
 )
 def list_course_task_defaults(
-    course_id: int, session: Session = Depends(get_session)
+    course_id: str, session: Session = Depends(get_session)
 ) -> list[CourseDefaultTaskOut]:
     _get_course_or_404(course_id, session)
     rows = list_course_default_assignments(session, course_id)
@@ -1044,7 +1046,7 @@ def list_course_task_defaults(
     response_model=CourseDefaultTaskOut,
 )
 def put_course_task_default(
-    course_id: int,
+    course_id: str,
     requires: str,
     body: TaskAssignmentIn,
     session: Session = Depends(get_session),
@@ -1070,7 +1072,7 @@ def put_course_task_default(
 
 @router.put("/courses/{course_id}/tasks/{task}", response_model=CourseTaskOut)
 def put_course_task(
-    course_id: int, task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
+    course_id: str, task: str, body: TaskAssignmentIn, session: Session = Depends(get_session)
 ) -> CourseTaskOut:
     _get_course_or_404(course_id, session)
     try:

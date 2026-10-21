@@ -19,7 +19,7 @@ class BrokenGateway(ScriptedGateway):
         task: str,
         messages: Any,
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         raise RuntimeError("provider offline")

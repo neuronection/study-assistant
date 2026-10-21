@@ -97,7 +97,7 @@ def test_beat_missing_session_404(client: TestClient) -> None:
 
 def test_course_purge_removes_sessions(client: TestClient) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Purge me"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Purge me"}).json()["id"])
         started = client.post(
             "/api/v1/study-sessions",
             json={"kind": "quiz", "source": "auto", "course_id": course_id},

@@ -14,7 +14,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -46,14 +46,14 @@ def client(
         yield test_client, gateway, app
 
 
-def make_session(client: TestClient, course_id: int) -> dict[str, Any]:
+def make_session(client: TestClient, course_id: str) -> dict[str, Any]:
     created: dict[str, Any] = client.post(
         "/api/v1/chat/sessions", json={"course_id": course_id}
     ).json()
     return created
 
 
-def insert_quiz(app: FastAPI, course_id: int) -> int:
+def insert_quiz(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     activity = Activity(
@@ -82,7 +82,7 @@ def insert_quiz(app: FastAPI, course_id: int) -> int:
     return activity_id
 
 
-def insert_exercise(app: FastAPI, course_id: int) -> int:
+def insert_exercise(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     exercise = Exercise(
@@ -107,7 +107,7 @@ def insert_exercise(app: FastAPI, course_id: int) -> int:
     return exercise_id
 
 
-def insert_pending_material(app: FastAPI, course_id: int) -> int:
+def insert_pending_material(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     material = Material(
@@ -278,11 +278,11 @@ def test_attach_unknown_id_returns_404_and_unknown_kind_422(
         session = make_session(test_client, course_id)
         missing = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
-            json={"content": "hi", "attachments": [{"kind": "material", "id": 999}]},
+            json={"content": "hi", "attachments": [{"kind": "material", "id": "999"}]},
         )
         assert missing.status_code == 404
         bad_kind = test_client.post(
             f"/api/v1/chat/sessions/{session['id']}/messages",
-            json={"content": "hi", "attachments": [{"kind": "dragon", "id": 1}]},
+            json={"content": "hi", "attachments": [{"kind": "dragon", "id": "1"}]},
         )
         assert bad_kind.status_code == 422

@@ -21,27 +21,27 @@ def make_text_pdf(lines: list[str]) -> bytes:
     return data
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node_id(client: TestClient, course_id: int) -> int:
+def root_node_id(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
-def add_node(client: TestClient, course_id: int, title: str) -> int:
+def add_node(client: TestClient, course_id: str, title: str) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"title": title, "course_id": course_id, "parent_id": root_node_id(client, course_id)},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: int) -> int:
+def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: str) -> str:
     content = [*lines, FILLER]
     response = client.post(
         "/api/v1/materials",
@@ -49,7 +49,7 @@ def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: i
         files={"file": (filename, make_text_pdf(content), "application/pdf")},
     )
     assert response.status_code == 200, response.text
-    material_id = int(response.json()["material"]["id"])
+    material_id = str(response.json()["material"]["id"])
     deadline_hits = 0
     while deadline_hits < 600:
         status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
@@ -59,12 +59,12 @@ def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: i
     raise AssertionError(f"material {material_id} never became ready")
 
 
-def assign(client: TestClient, node_id: int, material_id: int) -> None:
+def assign(client: TestClient, node_id: str, material_id: str) -> None:
     response = client.post(f"/api/v1/nodes/{node_id}/materials", json={"material_id": material_id})
     assert response.status_code == 201, response.text
 
 
-def first_hit(client: TestClient, q: str, course_id: int) -> dict[str, Any]:
+def first_hit(client: TestClient, q: str, course_id: str) -> dict[str, Any]:
     search = client.get("/api/v1/search", params={"q": q, "course_id": course_id}).json()
     assert search["hits"], f"no hits for {q!r}"
     hit: dict[str, Any] = search["hits"][0]

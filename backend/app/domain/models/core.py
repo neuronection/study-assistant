@@ -62,6 +62,10 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def new_uuid() -> str:
+    return str(uuid4())
+
+
 _UUID = Uuid(as_uuid=False)
 
 
@@ -98,7 +102,7 @@ class Course(Base):
         vocab_check("origin", CourseOrigin),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
@@ -110,8 +114,8 @@ class Course(Base):
     tags: Mapped[list[str] | None] = mapped_column(JSON)
     color: Mapped[str | None] = mapped_column(String(16))
     exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    course_type_id: Mapped[int | None] = mapped_column(
-        ForeignKey("course_types.id", ondelete="SET NULL")
+    course_type_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("course_types.id", ondelete="SET NULL")
     )
     origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
     hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
@@ -125,12 +129,12 @@ class Course(Base):
 class MaterialGroup(Base):
     __tablename__ = "material_groups"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int | None] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    course_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(300))
     kind: Mapped[str] = mapped_column(String(30), default="image-set")
@@ -159,9 +163,11 @@ class TreeNode(Base):
         CheckConstraint("depth >= 0 AND depth <= 4", name="depth"),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
-    parent_id: Mapped[int | None] = mapped_column(Integer)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    parent_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str | None] = mapped_column(Text)
     objectives: Mapped[list[str] | None] = mapped_column(JSON)
@@ -178,7 +184,7 @@ class CourseType(Base):
     __tablename__ = "course_types"
     __table_args__ = (Index("uq_course_types_key", "key", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     key: Mapped[str] = mapped_column(String(60))
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)

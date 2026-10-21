@@ -25,7 +25,7 @@ def snapshot_note(session: Session, note: Note, cause: str, force: bool = False)
         session.execute(
             select(NoteVersion)
             .where(NoteVersion.note_id == note.id)
-            .order_by(NoteVersion.id.desc())
+            .order_by(NoteVersion.created_at.desc(), NoteVersion.id.desc())
             .limit(1)
         )
         .scalars()
@@ -52,7 +52,7 @@ def snapshot_note(session: Session, note: Note, cause: str, force: bool = False)
         session.execute(
             select(NoteVersion.id)
             .where(NoteVersion.note_id == note.id)
-            .order_by(NoteVersion.id.desc())
+            .order_by(NoteVersion.created_at.desc(), NoteVersion.id.desc())
             .offset(NOTE_VERSION_CAP)
         )
         .scalars()
@@ -74,7 +74,7 @@ def normalize_tags(tags: list[str] | None) -> list[str]:
 
 
 def validate_note_drawing_blocks(session: Session, note: Note) -> None:
-    ids = {int(block["drawing_id"]) for block in note.body or [] if block.get("type") == "drawing"}
+    ids = {str(block["drawing_id"]) for block in note.body or [] if block.get("type") == "drawing"}
     if not ids:
         return
     valid = set(

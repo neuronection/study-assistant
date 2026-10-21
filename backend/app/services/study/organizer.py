@@ -101,7 +101,7 @@ def review_node(
 
 
 def node_context(
-    session: Session, node_id: int
+    session: Session, node_id: str
 ) -> tuple[TreeNode, list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     tree = TreeService(session)
     node = tree.get(node_id)
@@ -114,9 +114,9 @@ def node_context(
             )
         )
     )
-    folder_member_map: dict[int, set[int]] = {}
+    folder_member_map: dict[str, set[str]] = {}
     for scope_node_id, folder_links in folder_links_by_node(session, scope_ids).items():
-        members: set[int] = set()
+        members: set[str] = set()
         for folder_link in folder_links:
             folder = session.get(MaterialFolder, folder_link.folder_id)
             if folder is not None:
@@ -131,7 +131,7 @@ def node_context(
         for material in session.scalars(select(Material).where(Material.id.in_(all_material_ids)))
     }
     children = tree.node_with_children(node)
-    assigned_ids: set[int] = set()
+    assigned_ids: set[str] = set()
     children_payload: list[dict[str, Any]] = []
     for child in children:
         child_direct = {link.material_id for link in links if link.node_id == child["id"]}

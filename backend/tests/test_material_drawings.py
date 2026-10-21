@@ -20,10 +20,10 @@ class MaterialDrawingGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -37,7 +37,7 @@ class MaterialDrawingGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -50,7 +50,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -69,7 +69,7 @@ def make_client(responses: list[str] | None = None, tmp: Any = None) -> TestClie
     return TestClient(app)
 
 
-def wait_ready(client: TestClient, material_id: int) -> None:
+def wait_ready(client: TestClient, material_id: str) -> None:
     import time
 
     deadline = time.monotonic() + 8.0
@@ -81,19 +81,19 @@ def wait_ready(client: TestClient, material_id: int) -> None:
     raise AssertionError("material did not reach ready")
 
 
-def create_text_material(client: TestClient, course_id: int) -> int:
+def create_text_material(client: TestClient, course_id: str) -> str:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": ("notes.txt", b"Integration by parts and limits.", "text/plain")},
     )
     assert response.status_code == 200, response.text
-    material_id = int(response.json()["material"]["id"])
+    material_id = str(response.json()["material"]["id"])
     wait_ready(client, material_id)
     return material_id
 
 
-def make_drawing(client: TestClient, material_id: int, ocr: bool = True) -> int:
+def make_drawing(client: TestClient, material_id: str, ocr: bool = True) -> str:
     response = client.post(
         f"/api/v1/materials/{material_id}/drawings",
         json={
@@ -103,11 +103,11 @@ def make_drawing(client: TestClient, material_id: int, ocr: bool = True) -> int:
         },
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["drawings"][-1]["id"])
+    return str(response.json()["drawings"][-1]["id"])
 
 
 def wait_drawing_ocr(
-    client: TestClient, material_id: int, drawing_id: int, min_version: int = 1
+    client: TestClient, material_id: str, drawing_id: str, min_version: int = 1
 ) -> dict[str, Any]:
     deadline = time.monotonic() + 8.0
     while time.monotonic() < deadline:
@@ -130,7 +130,7 @@ def test_material_drawing_created_with_ocr_and_searchable() -> None:
         course_id = client.post("/api/v1/courses", json={"title": "C"}).json()["id"]
         material_id = create_text_material(client, course_id)
         drawing_id = make_drawing(client, material_id)
-        assert drawing_id > 0
+        assert drawing_id
 
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         drawing = detail["drawings"][0]

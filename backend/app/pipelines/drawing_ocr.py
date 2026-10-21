@@ -26,9 +26,9 @@ def make_drawing_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandle
         report(20, "loading drawing")
         loaded: NoteDrawing | MaterialDrawing | None
         if kind == "note":
-            loaded = session.get(NoteDrawing, int(drawing_id))
+            loaded = session.get(NoteDrawing, str(drawing_id))
         else:
-            loaded = session.get(MaterialDrawing, int(drawing_id))
+            loaded = session.get(MaterialDrawing, str(drawing_id))
         if loaded is None:
             raise JobError(f"drawing {drawing_id} not found")
         drawing = loaded
@@ -46,20 +46,20 @@ def make_drawing_ocr_handler(gateway: LLMGateway, blobs: BlobStore) -> JobHandle
             raise JobError(str(error)) from error
 
         model = NoteDrawing if kind == "note" else MaterialDrawing
-        ensure_target_exists(session, model, int(drawing_id), "drawing")
+        ensure_target_exists(session, model, str(drawing_id), "drawing")
         drawing.ocr_version += 1
         drawing.ocr_blocks = [{"type": "text", "md": markdown}]
         drawing.ocr_markdown = markdown
         drawing.ocr_job_id = None
 
         if kind == "note":
-            note = session.get(Note, int(owner_id))
+            note = session.get(Note, str(owner_id))
             if note is None:
                 raise JobError(f"note {owner_id} not found")
             note.search_text = note_search_text(note)
             note.updated_at = utcnow()
         else:
-            material = session.get(Material, int(owner_id))
+            material = session.get(Material, str(owner_id))
             if material is None:
                 raise JobError(f"material {owner_id} not found")
             service = MaterialsService(session, blobs)

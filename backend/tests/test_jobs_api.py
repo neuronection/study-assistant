@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from app.domain.models import Blob, Course, Job, Material
@@ -18,7 +18,7 @@ def _make_session(client: TestClient, tmp_path: Path) -> tuple[Session, Engine]:
 def _insert_job(session: Session, **overrides: Any) -> Job:
     fields = {
         "type": "ingest",
-        "payload": {"material_id": 999999},
+        "payload": {"material_id": "00000000000000000000000000000999"},
         "status": "failed",
         "progress": 30,
         "stage": "ocr",
@@ -36,7 +36,7 @@ def test_jobs_list_filters_and_labels(client: TestClient, tmp_path: Path) -> Non
     session, engine = _make_session(client, tmp_path)
     try:
         failed = _insert_job(session)
-        _insert_job(
+        other = _insert_job(
             session,
             type="postprocess",
             status="done",
@@ -48,7 +48,7 @@ def test_jobs_list_filters_and_labels(client: TestClient, tmp_path: Path) -> Non
         response = client.get("/api/v1/jobs")
         assert response.status_code == 200
         all_jobs = response.json()
-        assert {entry["id"] for entry in all_jobs} == {failed.id, failed.id + 1}
+        assert {entry["id"] for entry in all_jobs} == {failed.id, other.id}
         done_entry = next(entry for entry in all_jobs if entry["status"] == "done")
         assert done_entry["type"] == "postprocess"
         assert done_entry["label"] == "postprocess"
@@ -57,7 +57,7 @@ def test_jobs_list_filters_and_labels(client: TestClient, tmp_path: Path) -> Non
         failed_entry = next(entry for entry in all_jobs if entry["status"] == "failed")
         assert failed_entry["retriable"] is True
         assert failed_entry["error"] == "boom"
-        assert failed_entry["material_id"] == 999999
+        assert failed_entry["material_id"] == "00000000000000000000000000000999"
 
         by_status = client.get("/api/v1/jobs", params={"status": "failed"})
         assert [entry["id"] for entry in by_status.json()] == [failed.id]
@@ -147,8 +147,11 @@ def test_reingest_material_requeues(client: TestClient, tmp_path: Path, profile_
     try:
         blobs = BlobStore(tmp_path / "blobs")
         stored = blobs.put(b"pdf-bytes", session=session)
-        if session.get(Course, 1) is None:
-            session.add(Course(id=1, profile_id=profile_id, title="Calculus I"))
+        course = session.scalars(select(Course)).first()
+        if course is None:
+            course = Course(profile_id=profile_id, title="Calculus I")
+            session.add(course)
+            session.flush()
         if session.get(Blob, stored.sha256) is None:
             session.add(
                 Blob(
@@ -161,7 +164,7 @@ def test_reingest_material_requeues(client: TestClient, tmp_path: Path, profile_
         sha = stored.sha256
         material = Material(
             profile_id=profile_id,
-            course_id=1,
+            course_id=course.id,
             kind="pdf",
             title="Lecture",
             filename="Lecture.pdf",
@@ -186,7 +189,7 @@ def test_reingest_material_requeues(client: TestClient, tmp_path: Path, profile_
         ok = client.post(f"/api/v1/materials/{material.id}/reingest")
         assert ok.status_code == 200
 
-        missing = client.post("/api/v1/materials/424242/reingest")
+        missing = client.post("/api/v1/materials/00000000000000000000000000424242/reingest")
         assert missing.status_code == 404
     finally:
         engine.dispose()
@@ -199,13 +202,16 @@ def _insert_material(
 
     blobs = BlobStore(tmp_path / "blobs")
     stored = blobs.put(b"pdf-bytes", session=session)
-    if session.get(Course, 1) is None:
-        session.add(Course(id=1, profile_id=profile_id, title="Calculus I"))
+    course = session.scalars(select(Course)).first()
+    if course is None:
+        course = Course(profile_id=profile_id, title="Calculus I")
+        session.add(course)
+        session.flush()
     if session.get(Blob, stored.sha256) is None:
         session.add(Blob(sha256=stored.sha256, rel_path=str(stored.rel_path), size=stored.size))
     material = Material(
         profile_id=profile_id,
-        course_id=1,
+        course_id=course.id,
         kind="pdf",
         title=title,
         filename=f"{title}.pdf",
@@ -299,7 +305,7 @@ def test_stale_flag_marks_missing_material_and_session(
         chat_gone = _insert_job(
             session,
             type="chat_turn",
-            payload={"chat_session_id": 555},
+            payload={"chat_session_id": "00000000000000000000000000000555"},
             error="chat session not found",
         )
         alive_id, gone_id, chat_gone_id = alive.id, gone.id, chat_gone.id

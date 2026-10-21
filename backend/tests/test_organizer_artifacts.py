@@ -68,10 +68,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -85,7 +85,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.captured.append(messages)
         return self.responses.pop(0)
@@ -99,7 +99,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -152,7 +152,7 @@ def seed_node_with_material(client: TestClient) -> tuple[int, int]:
     return course_id, node_id
 
 
-def extraction_versions(client: TestClient, material_id: int) -> list[dict[str, Any]]:
+def extraction_versions(client: TestClient, material_id: str) -> list[dict[str, Any]]:
     raw = client.get(f"/api/v1/materials/{material_id}/extractions").json()
     return [dict(entry) for entry in raw]
 

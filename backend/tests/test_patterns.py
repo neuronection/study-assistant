@@ -78,10 +78,10 @@ class PatternGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="pattern-model",
@@ -95,7 +95,7 @@ class PatternGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls[task].append(messages)
         return self.responses[task].pop(0)
@@ -109,7 +109,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -128,17 +128,17 @@ def make_client(responses: dict[str, list[str]]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient, course_type: str | None = None) -> int:
+def make_course(client: TestClient, course_type: str | None = None) -> str:
     types = {
         entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
     payload: dict[str, Any] = {"title": f"{course_type or 'generic'} course"}
     if course_type is not None:
         payload["course_type_id"] = types.get(course_type)
-    return int(client.post("/api/v1/courses", json=payload).json()["id"])
+    return str(client.post("/api/v1/courses", json=payload).json()["id"])
 
 
-def _wrong_equation(client: TestClient, course_id: int, response: str) -> dict[str, Any]:
+def _wrong_equation(client: TestClient, course_id: str, response: str) -> dict[str, Any]:
     activity = client.post(
         "/api/v1/quiz/generate", json={"count": 1, "course_id": course_id}
     ).json()

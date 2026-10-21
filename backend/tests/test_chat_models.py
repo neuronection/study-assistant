@@ -31,7 +31,7 @@ def _resolved(
     chat_transport: str | None = None,
 ) -> ResolvedModel:
     return ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type=provider_type,
         base_url=base_url,
         external_id="gpt-5-chat-latest",

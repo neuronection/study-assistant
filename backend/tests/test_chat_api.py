@@ -22,10 +22,10 @@ class ScriptedGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake-chat",
@@ -39,7 +39,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -49,7 +49,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         text = self.generate(task, messages, model)
         for i in range(0, len(text), 8):
@@ -60,7 +60,7 @@ class ScriptedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         from app.ai.gateway import StreamChunk
 
@@ -78,7 +78,7 @@ class NoDescriber:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -99,7 +99,7 @@ def make_chat_client(tmp_path: object) -> Callable[..., TestClient]:
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -111,17 +111,17 @@ def wait_for_assistant(
     raise AssertionError("assistant never replied")
 
 
-def make_course(client: TestClient, title: str = "Chat course") -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str = "Chat course") -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
-def add_material(client: TestClient, filename: str, content: str, course_id: int) -> int:
+def add_material(client: TestClient, filename: str, content: str, course_id: str) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, content.encode(), "text/plain")},
     )
-    material_id: int = upload.json()["material"]["id"]
+    material_id: str = upload.json()["material"]["id"]
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         if client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready":

@@ -88,7 +88,7 @@ RETRIEVAL_EXCLUDED_KINDS = {"node_review"}
 
 
 def find_live_artifact(
-    session: Session, course_id: int, node_id: int, kind: str
+    session: Session, course_id: str, node_id: str, kind: str
 ) -> Material | None:
     rows = session.execute(
         select(Material)
@@ -98,7 +98,7 @@ def find_live_artifact(
             MaterialLink.node_id == node_id,
             Material.provenance.is_not(None),
         )
-        .order_by(Material.id.desc())
+        .order_by(Material.created_at.desc(), Material.id.desc())
     ).scalars()
     for material in rows:
         provenance = material.provenance
@@ -114,7 +114,7 @@ def _normalize_formula(latex: str) -> str:
     return re.sub(r"\s+", "", latex.strip())
 
 
-def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
+def collect_formulas(session: Session, course_id: str) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
             select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
@@ -122,8 +122,8 @@ def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
     )
     title_by_node = {node.id: node.title for node in nodes}
 
-    def collect_from_texts(node_id: int | None, texts: list[str]) -> list[tuple[str, int | None]]:
-        found: list[tuple[str, int | None]] = []
+    def collect_from_texts(node_id: str | None, texts: list[str]) -> list[tuple[str, str | None]]:
+        found: list[tuple[str, str | None]] = []
         for text in texts:
             for match in LATEX_SPAN_RE.finditer(text):
                 latex = (match.group(1) or match.group(2) or "").strip()
@@ -134,19 +134,19 @@ def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
                 found.append((latex, node_id))
         return found
 
-    pairs: list[tuple[str, int | None]] = []
+    pairs: list[tuple[str, str | None]] = []
     notes = list(session.scalars(select(Note).where(Note.course_id == course_id)))
     for note in notes:
         texts = [str(block.get("md") or "") for block in note.body or []]
         texts += [drawing.ocr_markdown for drawing in note.drawings if drawing.ocr_markdown]
         pairs.extend(collect_from_texts(note.node_id, texts))
-    link_node: dict[int, int] = {}
+    link_node: dict[str, str] = {}
     for material_id, node_id in session.execute(
         select(MaterialLink.material_id, MaterialLink.node_id).where(
             MaterialLink.course_id == course_id
         )
     ):
-        link_node[int(material_id)] = int(node_id)
+        link_node[str(material_id)] = str(node_id)
     rows = list(
         session.execute(
             select(Extraction.material_id, Extraction.markdown)
@@ -155,13 +155,13 @@ def collect_formulas(session: Session, course_id: int) -> list[dict[str, Any]]:
             .order_by(Extraction.material_id, Extraction.version.desc())
         )
     )
-    seen_materials: set[int] = set()
+    seen_materials: set[str] = set()
     for material_id, markdown in rows:
         if material_id in seen_materials:
             continue
         seen_materials.add(material_id)
-        pairs.extend(collect_from_texts(link_node.get(material_id), [markdown]))
-    by_node: dict[int | None, dict[str, str]] = {}
+        pairs.extend(collect_from_texts(link_node.get(str(material_id)), [markdown]))
+    by_node: dict[str | None, dict[str, str]] = {}
     for latex, node_id in pairs:
         key = _normalize_formula(latex)
         bucket = by_node.setdefault(node_id, {})
@@ -389,8 +389,8 @@ class ComposeService:
         self,
         *,
         profile_id: str,
-        course_id: int,
-        node_id: int | None,
+        course_id: str,
+        node_id: str | None,
         kind: str,
         title: str | None,
         instructions: str | None = None,
@@ -581,8 +581,8 @@ class ComposeService:
         self,
         *,
         profile_id: str,
-        course_id: int,
-        node_id: int,
+        course_id: str,
+        node_id: str,
         kind: str,
         title: str,
         markdown: str,
@@ -632,12 +632,12 @@ def make_compose_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> J
         raw_course_id = payload.get("course_id")
         if raw_course_id is None:
             raise JobError("compose payload missing course_id")
-        course = session.get(Course, int(raw_course_id))
+        course = session.get(Course, str(raw_course_id))
         if course is None:
             raise JobError(f"course {raw_course_id} not found")
         if is_cancel_requested(job.id):
             raise JobCancelled()
-        course_id = int(raw_course_id)
+        course_id = str(raw_course_id)
         node_id = payload.get("node_id")
         kind = str(payload.get("kind") or "study_guide")
         report(10, "context")
@@ -646,16 +646,16 @@ def make_compose_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> J
             bundle = resolver.resolve(
                 ContextSpec(
                     course_id=course_id,
-                    node_id=int(node_id) if node_id is not None else None,
+                    node_id=str(node_id) if node_id is not None else None,
                     scope=ContextScope(str(payload.get("scope") or "subtree")),
                     include_material_ids=[
-                        int(value) for value in (payload.get("include_material_ids") or [])
+                        str(value) for value in (payload.get("include_material_ids") or [])
                     ],
                     exclude_material_ids=[
-                        int(value) for value in (payload.get("exclude_material_ids") or [])
+                        str(value) for value in (payload.get("exclude_material_ids") or [])
                     ],
-                    note_ids=[int(value) for value in (payload.get("note_ids") or [])],
-                    concept_ids=[int(value) for value in (payload.get("concept_ids") or [])],
+                    note_ids=[str(value) for value in (payload.get("note_ids") or [])],
+                    concept_ids=[str(value) for value in (payload.get("concept_ids") or [])],
                     hint=payload.get("context_hint"),
                     query=str(
                         payload.get("title") or payload.get("instructions") or "study material"
@@ -670,7 +670,7 @@ def make_compose_handler(gateway: LLMGateway, blobs: BlobStore, embed: Any) -> J
         if placement_node_id is None:
             placement_node_id = TreeService(session).ensure_root(course_id).id
         regenerate = bool(payload.get("regenerate", False))
-        live = find_live_artifact(session, course_id, int(placement_node_id), kind)
+        live = find_live_artifact(session, course_id, str(placement_node_id), kind)
         if live is not None and not regenerate:
             raise JobError(
                 f"a {kind.replace('_', ' ')} already exists at this node (material {live.id})"

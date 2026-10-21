@@ -14,7 +14,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -42,7 +42,7 @@ def client(
         yield test_client, gateway, app
 
 
-def insert_assistant_message(app: FastAPI, session_id: int, state: dict[str, Any] | None) -> int:
+def insert_assistant_message(app: FastAPI, session_id: str, state: dict[str, Any] | None) -> str:
     db = app.state.session_factory()
     try:
         message = ChatMessage(

@@ -29,7 +29,7 @@ class UnassignedGateway(ScriptedGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         raise TaskUnassigned(task)
 
@@ -63,7 +63,7 @@ def transform_payload(**overrides: Any) -> dict[str, Any]:
     return payload
 
 
-def wait_for_job(client: TestClient, job_id: int, timeout: float = 5.0) -> dict[str, Any]:
+def wait_for_job(client: TestClient, job_id: str, timeout: float = 5.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         body: dict[str, Any] = client.get(f"/api/v1/ai/editor/jobs/{job_id}").json()
@@ -102,7 +102,7 @@ def test_transform_runs_and_audits(
         gateway.responses.append("A very compact version of the sentence.")
         response = test_client.post("/api/v1/ai/editor/transform", json=transform_payload())
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "done", body
         assert body["result_md"] == "A very compact version of the sentence."
@@ -133,7 +133,7 @@ def test_include_context_appears_in_prompt(
             ),
         )
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "done", body
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
@@ -176,7 +176,7 @@ def test_write_mode_allows_empty_text(
             json={"text": "", "instruction": "Write a definition of a limit", "mode": "write"},
         )
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "done", body
         assert "Fresh content" in body["result_md"]
@@ -205,7 +205,7 @@ def test_unassigned_task_fails_the_job(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         response = test_client.post("/api/v1/ai/editor/transform", json=transform_payload())
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "error"
         # Family-uniform TaskUnassigned wording (career-matched).
@@ -222,7 +222,7 @@ def test_contract_failure_after_repair_fails_the_job(
         gateway.responses.append("Sure, still a preamble.")
         response = test_client.post("/api/v1/ai/editor/transform", json=transform_payload())
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "error"
         assert "preamble" in (body["error"] or "")
@@ -252,7 +252,7 @@ def test_ground_in_material_injects_the_course_manifest(
             json=transform_payload(ground_in_material=True, course_id=course_id),
         )
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "done", body
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
@@ -292,7 +292,7 @@ def test_fix_mermaid_preset_runs_and_reports_diagnostic(
             ),
         )
         assert response.status_code == 200, response.text
-        job_id = int(response.json()["job_id"])
+        job_id = str(response.json()["job_id"])
         body = wait_for_job(test_client, job_id)
         assert body["status"] == "done", body
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
@@ -317,7 +317,7 @@ def test_fix_mermaid_output_with_fences_is_repaired(
             ),
         )
         assert response.status_code == 200, response.text
-        body = wait_for_job(test_client, int(response.json()["job_id"]), timeout=10.0)
+        body = wait_for_job(test_client, str(response.json()["job_id"]), timeout=10.0)
         assert body["status"] == "done", body
         assert body["result_md"] == "flowchart LR\n    A --> B"
         assert body["rounds"] >= 1
@@ -345,7 +345,7 @@ def test_diagnostic_reaches_prompt_via_write_mode(
             ),
         )
         assert response.status_code == 200, response.text
-        body = wait_for_job(test_client, int(response.json()["job_id"]))
+        body = wait_for_job(test_client, str(response.json()["job_id"]))
         assert body["status"] == "done", body
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
         assert "KaTeX parseError" in prompt
@@ -367,7 +367,7 @@ def test_fix_presets_combine_user_instruction_with_base_directive(
             ),
         )
         assert response.status_code == 200, response.text
-        body = wait_for_job(test_client, int(response.json()["job_id"]))
+        body = wait_for_job(test_client, str(response.json()["job_id"]))
         assert body["status"] == "done", body
         prompt = "\n".join(str(message.content) for message in gateway.calls[0])
         assert "Repair this mermaid diagram source" in prompt

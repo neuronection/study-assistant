@@ -41,8 +41,8 @@ CHAT_RESOURCE_SCOPE = (
 
 
 class PreviewIn(ContextParams):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     query: str | None = Field(default=None, max_length=500)
     max_chunks: int = Field(default=12, ge=0, le=32)
     chunk_chars: int = Field(default=1000, ge=200, le=4000)
@@ -61,13 +61,13 @@ class EditorTransformIn(BaseModel):
     include_context: bool = False
     context_document: str = Field(default="", max_length=MAX_CONTEXT_CHARS)
     ground_in_material: bool = False
-    course_id: int | None = None
-    node_id: int | None = None
+    course_id: str | None = None
+    node_id: str | None = None
     diagnostic: str = Field(default="", max_length=MAX_DIAGNOSTIC_CHARS)
 
 
 class EditorTransformJobOut(BaseModel):
-    job_id: int
+    job_id: str
 
 
 class EditorTransformStatusOut(BaseModel):
@@ -85,7 +85,7 @@ def _caller_user_id(request: Request) -> str | None:
     return str(principal.user_id) if principal is not None else None
 
 
-def _owned_editor_job(request: Request, job_id: int) -> Any:
+def _owned_editor_job(request: Request, job_id: str) -> Any:
     """The job when the caller owns it (or is admin) — 404 otherwise,
     so foreign job ids are indistinguishable from missing ones."""
     service: EditorTransformService = request.app.state.editor_ai
@@ -117,7 +117,7 @@ def editor_transform(
         try:
             bundle = ContextResolver(session, request.app.state.embedder.embed).resolve(
                 ContextSpec(
-                    course_id=body.course_id or 0,
+                    course_id=body.course_id or "",
                     node_id=body.node_id,
                     query=body.text[:500] or None,
                     max_chunks=8,
@@ -144,7 +144,7 @@ def editor_transform(
 
 
 @router.get("/editor/jobs/{job_id}", response_model=EditorTransformStatusOut)
-def editor_transform_job(job_id: int, request: Request) -> EditorTransformStatusOut:
+def editor_transform_job(job_id: str, request: Request) -> EditorTransformStatusOut:
     job = _owned_editor_job(request, job_id)
     return EditorTransformStatusOut(
         status=job.status,
@@ -160,7 +160,7 @@ class EditorCancelOut(BaseModel):
 
 
 @router.post("/editor/jobs/{job_id}/cancel", response_model=EditorCancelOut)
-def editor_transform_cancel(job_id: int, request: Request) -> dict[str, bool]:
+def editor_transform_cancel(job_id: str, request: Request) -> dict[str, bool]:
     _owned_editor_job(request, job_id)
     cancelled = request.app.state.editor_ai.cancel_job(job_id)
     if not cancelled:

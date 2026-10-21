@@ -35,10 +35,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -52,7 +52,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return "ok"
 
@@ -65,7 +65,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -82,7 +82,7 @@ def make_client(tmp: Any) -> TestClient:
     return TestClient(app)
 
 
-def seed_course(client: TestClient) -> int:
+def seed_course(client: TestClient) -> str:
     created = client.post(
         "/api/v1/courses",
         json={"title": "Calculus I", "description": "Single-variable calculus"},
@@ -231,13 +231,13 @@ def seed_course(client: TestClient) -> int:
             {"type": "drawing", "drawing_id": drawing.id},
         ]
         db.commit()
-    return int(course_id)
+    return str(course_id)
 
 
 def test_material_drawings_bundle_round_trip(tmp_path: Any) -> None:
     client = make_client(tmp_path)
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "C"}).json()["id"])
         app = client.app
         assert isinstance(app, FastAPI)
         from conftest import mint_session
@@ -331,12 +331,12 @@ def test_material_drawings_remap_helpers() -> None:
     )
 
     md = "a\n\n![drawing](sa-drawing://3)\n\n![sketch](sa-drawing://7) b"
-    assert drawing_ref_ids(md) == {3, 7}
+    assert drawing_ref_ids(md) == {"3", "7"}
     blocks = md_to_blocks(md)
     assert [b["type"] for b in blocks] == ["text", "drawing", "text", "drawing", "text"]
-    assert strip_drawing_refs(md, 3) == "a\n\n\n\n![sketch](sa-drawing://7) b"
+    assert strip_drawing_refs(md, "3") == "a\n\n\n\n![sketch](sa-drawing://7) b"
     assert (
-        remap_drawing_refs(md, {3: 9})
+        remap_drawing_refs(md, {"3": "9"})
         == "a\n\n![drawing](sa-drawing://9)\n\n![sketch](sa-drawing://7) b"
     )
 
@@ -792,3 +792,44 @@ def test_v2_reexport_is_deterministic(tmp_path: Any) -> None:
         return out
 
     assert members(second) == members(third)
+
+
+def test_export_wipe_import_preserves_identity(tmp_path: Any) -> None:
+    """Plan 81 C Accept: a bundle re-imported into an empty database keeps
+    every id, so links, placements and versions resolve to the same rows."""
+    client = make_client(tmp_path)
+    with client:
+        course_id = seed_course(client)
+        tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
+        root_id = tree[0]["id"]
+        node_id = tree[0]["children"][0]["id"]
+        materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
+        material_id = materials[0]["id"]
+        notes = client.get("/api/v1/notes", params={"course_id": course_id}).json()["items"]
+        note_id = notes[0]["id"]
+        quizzes = client.get("/api/v1/quiz/activities", params={"course_id": course_id}).json()
+        activity_id = quizzes[0]["id"]
+
+        exported = client.get(f"/api/v1/courses/{course_id}/export")
+        assert exported.status_code == 200, exported.text
+
+        deleted = client.delete(f"/api/v1/courses/{course_id}", params={"confirmed_backup": True})
+        assert deleted.status_code == 200, deleted.text
+
+        imported = client.post("/api/v1/courses/import?dry_run=false", content=exported.content)
+        assert imported.status_code == 200, imported.text
+        assert imported.json()["imported"]["course_id"] == course_id
+
+        restored_tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
+        assert restored_tree[0]["id"] == root_id
+        assert restored_tree[0]["children"][0]["id"] == node_id
+        restored_materials = client.get("/api/v1/materials", params={"course_id": course_id}).json()
+        assert [entry["id"] for entry in restored_materials] == [material_id]
+        restored_notes = client.get("/api/v1/notes", params={"course_id": course_id}).json()
+        assert [entry["id"] for entry in restored_notes["items"]] == [note_id]
+        restored_quizzes = client.get(
+            "/api/v1/quiz/activities", params={"course_id": course_id}
+        ).json()
+        assert [entry["id"] for entry in restored_quizzes] == [activity_id]
+        detail = client.get(f"/api/v1/materials/{material_id}").json()
+        assert detail["material"]["id"] == material_id

@@ -22,9 +22,9 @@ class SelfStoppingGateway(LLMGateway):
         super().__init__(session_factory=None)
         self.stop = threading.Event()
 
-    def resolve(self, task: str, course_id: int | None = None) -> ResolvedModel:
+    def resolve(self, task: str, course_id: str | None = None) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="fake",
@@ -38,7 +38,7 @@ class SelfStoppingGateway(LLMGateway):
         task: str,
         messages: list[Any],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         yield StreamChunk("text", "prefix ")
         self.stop.set()

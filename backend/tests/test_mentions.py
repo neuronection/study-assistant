@@ -16,7 +16,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -84,27 +84,27 @@ EXERCISE_JSON = json.dumps(
 
 def test_registry_parse_dedup_and_order() -> None:
     registry = MentionRegistry()
-    registry.add("material", 12, "Lecture 3")
-    registry.add("note", 3, "My note")
-    registry.add("concept", 7, "chain rule")
+    registry.add("material", "12", "Lecture 3")
+    registry.add("note", "3", "My note")
+    registry.add("concept", "7", "chain rule")
     used = registry.parse("start [M12] mid [C7] again [M12] end [N3]")
     assert [entry.ref for entry in used] == ["M12", "C7", "N3"]
     assert used[0].title == "Lecture 3"
     assert used[0].kind == "material"
-    assert used[0].id == 12
+    assert used[0].id == "12"
 
 
 def test_registry_unknown_handles_left_out() -> None:
     registry = MentionRegistry()
-    registry.add("material", 12, "Lecture 3")
+    registry.add("material", "12", "Lecture 3")
     assert registry.parse("see [M999] and [X12]") == []
     assert registry.out_of_range("see [M999] [M12]") == ["M999"]
 
 
 def test_registry_stable_titles_and_roundtrip() -> None:
     registry = MentionRegistry()
-    registry.add("material", 12, "Lecture 3")
-    registry.add("material", 12, "Renamed later")
+    registry.add("material", "12", "Lecture 3")
+    registry.add("material", "12", "Renamed later")
     first = registry.get("M12")
     assert first is not None and first.title == "Lecture 3"
     restored = registry_from_json(registry.to_json())
@@ -117,7 +117,7 @@ def test_registry_stable_titles_and_roundtrip() -> None:
 
 def test_registry_prompt_section_teaches_handles() -> None:
     registry = MentionRegistry()
-    registry.add("material", 12, "Lecture 3")
+    registry.add("material", "12", "Lecture 3")
     section = registry.prompt_section()
     assert "M12 = Lecture 3" in section
     assert "clickable" in section
@@ -232,7 +232,7 @@ def test_quizgen_explanation_carries_mentions(
         from app.domain.models import Question
 
         rows = stored.scalars(
-            select(Question).where(Question.activity_id == int(generated.json()["id"]))
+            select(Question).where(Question.activity_id == str(generated.json()["id"]))
         ).all()
         stored.close()
         assert rows
@@ -259,7 +259,7 @@ def test_exgen_steps_carry_mentions(
             json={"course_id": course_id, "steps": 1},
         )
         assert generated.status_code == 201, generated.text
-        exercise_id = int(generated.json()["id"])
+        exercise_id = str(generated.json()["id"])
         steps = test_client.get(f"/api/v1/exercises/{exercise_id}/steps").json()
         prompt_block = steps[0]["prompt"][0]
         assert prompt_block.get("mentions")

@@ -20,20 +20,20 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload_txt(client: TestClient, filename: str, course_id: int) -> int:
+def upload_txt(client: TestClient, filename: str, course_id: str) -> str:
     upload = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, f"content of {filename}".encode(), "text/plain")},
     )
     assert upload.status_code == 200, upload.text
-    material_id = int(upload.json()["material"]["id"])
+    material_id = str(upload.json()["material"]["id"])
     wait_until(
         lambda: (
             client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"

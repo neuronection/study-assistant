@@ -22,20 +22,20 @@ def create_provider(client: TestClient) -> dict[str, Any]:
     return result
 
 
-def add_model(client: TestClient, provider_id: int, external_id: str) -> int:
+def add_model(client: TestClient, provider_id: str, external_id: str) -> str:
     created = client.post(
         "/api/v1/models",
         json={"provider_id": provider_id, "external_id": external_id, "caps": ["text"]},
     )
     assert created.status_code == 201, created.text
-    model_id: int = created.json()["id"]
+    model_id: str = created.json()["id"]
     return model_id
 
 
-def create_course(client: TestClient) -> int:
+def create_course(client: TestClient) -> str:
     created = client.post("/api/v1/courses", json={"title": "Analysis I"})
     assert created.status_code == 201, created.text
-    course_id: int = created.json()["id"]
+    course_id: str = created.json()["id"]
     return course_id
 
 

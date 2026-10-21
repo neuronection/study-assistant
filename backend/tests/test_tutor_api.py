@@ -19,10 +19,10 @@ class TutorGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="tutor-model",
@@ -36,7 +36,7 @@ class TutorGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         return self.responses.pop(0)
@@ -50,7 +50,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -71,11 +71,11 @@ def make_client(responses: list[str]) -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
-def create_exercise(client: TestClient) -> int:
+def create_exercise(client: TestClient) -> str:
     created = client.post(
         "/api/v1/exercises",
         json={
@@ -94,7 +94,7 @@ def create_exercise(client: TestClient) -> int:
         },
     )
     assert created.status_code == 201, created.text
-    exercise_id: int = created.json()["id"]
+    exercise_id: str = created.json()["id"]
     return exercise_id
 
 

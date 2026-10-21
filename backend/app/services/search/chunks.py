@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
+from ...core.ids import hex_id, uuid_str
 from ...storage import vectors
 from .fusion import RRF_K
 from .matching import Match, or_terms_match, trigram_match
@@ -44,21 +45,21 @@ def _is_postgres(session: Session) -> bool:
 
 def _chunk_rows(
     session: Session,
-    chunk_ids: list[int],
+    chunk_ids: list[str],
     *,
-    course_id: int | None = None,
-    material_ids: list[int] | None = None,
-) -> dict[int, dict[str, Any]]:
+    course_id: str | None = None,
+    material_ids: list[str] | None = None,
+) -> dict[str, dict[str, Any]]:
     if not chunk_ids:
         return {}
-    placeholders = ",".join(str(int(chunk_id)) for chunk_id in chunk_ids)
+    placeholders = ",".join(f"'{hex_id(chunk_id)}'" for chunk_id in chunk_ids)
     filters = [f"chunks.id IN ({placeholders})"]
     if course_id is not None:
         filters.append("materials.course_id = :course_id")
     if material_ids is not None:
         if not material_ids:
             return {}
-        ids = ",".join(str(int(mid)) for mid in material_ids)
+        ids = ",".join(f"'{hex_id(mid)}'" for mid in material_ids)
         filters.append(f"materials.id IN ({ids})")
     rows = session.execute(
         text(
@@ -68,12 +69,12 @@ def _chunk_rows(
             "JOIN materials ON materials.id = extractions.material_id "
             f"WHERE {' AND '.join(filters)}"
         ),
-        {"course_id": course_id},
+        {"course_id": hex_id(course_id) if course_id is not None else None},
     ).mappings()
     return {
-        int(row["chunk_id"]): {
-            "chunk_id": int(row["chunk_id"]),
-            "material_id": int(row["material_id"]),
+        uuid_str(str(row["chunk_id"])): {
+            "chunk_id": uuid_str(str(row["chunk_id"])),
+            "material_id": uuid_str(str(row["material_id"])),
             "title": row["title"],
             "text": row["chunk_text"],
         }
@@ -87,8 +88,8 @@ def _vector_chunk_ranking(
     query: str,
     limit: int,
     *,
-    course_id: int | None = None,
-    material_ids: list[int] | None = None,
+    course_id: str | None = None,
+    material_ids: list[str] | None = None,
 ) -> tuple[list[dict[str, Any]], str | None]:
     try:
         embedded = embed_query(query)
@@ -115,21 +116,24 @@ def _fts_chunk_rows(
     match: Match,
     limit: int,
     *,
-    course_id: int | None = None,
-    material_ids: list[int] | None = None,
+    course_id: str | None = None,
+    material_ids: list[str] | None = None,
     table: str = "material_fts",
     verify_query: str | None = None,
 ) -> list[dict[str, Any]]:
     if match.is_empty:
         return []
     course_filter = "AND materials.course_id = :course_id" if course_id is not None else ""
-    params: dict[str, Any] = {"limit": limit, "course_id": course_id}
+    params: dict[str, Any] = {
+        "limit": limit,
+        "course_id": hex_id(course_id) if course_id is not None else None,
+    }
     extra = ""
     if material_ids is not None:
         if not material_ids:
             return []
         extra = " AND materials.id IN :material_ids"
-        params["material_ids"] = material_ids
+        params["material_ids"] = [hex_id(material_id) for material_id in material_ids]
     if _is_postgres(session):
         params.update(match.pg.params)
         if match.pg.kind == "trigram":
@@ -155,19 +159,20 @@ def _fts_chunk_rows(
     except Exception:
         return []
     rows: list[dict[str, Any]] = []
-    seen: set[int] = set()
+    seen: set[str] = set()
     for row in fts_rows:
-        if row["chunk_id"] in seen:
+        chunk_id = uuid_str(str(row["chunk_id"]))
+        if chunk_id in seen:
             continue
-        seen.add(int(row["chunk_id"]))
+        seen.add(chunk_id)
         if verify_query is not None and not fuzzy_text_match(
             verify_query, f"{row['title']}\n{row['markdown']}"
         ):
             continue
         rows.append(
             {
-                "chunk_id": int(row["chunk_id"]),
-                "material_id": int(row["material_id"]),
+                "chunk_id": chunk_id,
+                "material_id": uuid_str(str(row["material_id"])),
                 "title": row["title"],
                 "text": row["chunk_text"],
             }
@@ -180,8 +185,8 @@ def retrieve_chunks_hybrid(
     query: str,
     embed_query: EmbedQuery,
     *,
-    course_id: int | None = None,
-    material_ids: list[int] | None = None,
+    course_id: str | None = None,
+    material_ids: list[str] | None = None,
     limit: int = 8,
     use_embeddings: bool = True,
     embedding_warning: Callable[[str], None] | None = None,
@@ -208,8 +213,8 @@ def retrieve_chunks_hybrid(
         embedding_warning(warning)
     if not vector_rows:
         return fts_rows[:limit]
-    scores: dict[int, float] = {}
-    entries: dict[int, dict[str, Any]] = {}
+    scores: dict[str, float] = {}
+    entries: dict[str, dict[str, Any]] = {}
     for ranking in (fts_rows, vector_rows):
         for rank, row in enumerate(ranking):
             chunk_id = row["chunk_id"]
@@ -224,8 +229,8 @@ def retrieve_chunks(
     query: str,
     embed_query: EmbedQuery,
     *,
-    course_id: int | None = None,
-    material_ids: list[int] | None = None,
+    course_id: str | None = None,
+    material_ids: list[str] | None = None,
     limit: int = 8,
 ) -> list[dict[str, Any]]:
     rows = _fts_chunk_rows(

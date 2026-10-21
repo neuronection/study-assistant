@@ -137,7 +137,7 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def _resolve_model(session: Session, model_id: int) -> tuple[AiModel, Provider]:
+def _resolve_model(session: Session, model_id: str) -> tuple[AiModel, Provider]:
     model = session.get(AiModel, model_id)
     if model is None:
         raise TaskUnassigned("model-missing")
@@ -242,7 +242,7 @@ class LLMGateway:
             )
 
     def _resolve_chain(
-        self, task: str, model: ResolvedModel | None, course_id: int | None = None
+        self, task: str, model: ResolvedModel | None, course_id: str | None = None
     ) -> list[ResolvedModel]:
         if model is not None:
             return [model]
@@ -267,7 +267,7 @@ class LLMGateway:
             # default and course-default layers contribute a primary only;
             # the fallback position belongs to specialist assignments.
             global_model_id = default.model_id if default is not None else None
-            global_fallback_id: int | None = None
+            global_fallback_id: str | None = None
             if assignment is not None:
                 if assignment.model_id is not None:
                     global_model_id = assignment.model_id
@@ -324,7 +324,7 @@ class LLMGateway:
                 return chain
         raise TaskUnassigned(task)
 
-    def resolve(self, task: str, course_id: int | None = None) -> ResolvedModel:
+    def resolve(self, task: str, course_id: str | None = None) -> ResolvedModel:
         return self._resolve_chain(task, None, course_id)[0]
 
     def record_usage(
@@ -358,7 +358,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)
@@ -387,7 +387,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         schema: type[Any],
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
 
         self._check_budget(task)
@@ -447,7 +447,7 @@ class LLMGateway:
         instruction: str | None = None,
         task: str = "transcribe",
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> TranscriptionResult:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)
@@ -500,7 +500,7 @@ class LLMGateway:
         voice: str | None = None,
         task: str = "tts",
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> SpeechResult:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)
@@ -547,7 +547,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[str]:
         for chunk in self.stream_events(task, messages, model, course_id):
             if chunk.kind == "text":
@@ -606,7 +606,7 @@ class LLMGateway:
         task: str,
         messages: list[Message],
         model: ResolvedModel | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         self._check_budget(task)
         chain = self._resolve_chain(task, model, course_id)

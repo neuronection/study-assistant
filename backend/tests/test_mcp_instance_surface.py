@@ -76,9 +76,7 @@ def test_status_failing_after_two_consecutive_failures() -> None:
 def test_needs_config_conditions_per_transport() -> None:
     surface = instance_status_surface(_server(command=""), now=NOW)
     assert surface["conditions"] == ["needs-config"]
-    remote = instance_status_surface(
-        _server(transport="http", command="", url=""), now=NOW
-    )
+    remote = instance_status_surface(_server(transport="http", command="", url=""), now=NOW)
     assert remote["conditions"] == ["needs-config"]
     remote_ok = instance_status_surface(
         _server(transport="http", command="", url="http://host/mcp"), now=NOW

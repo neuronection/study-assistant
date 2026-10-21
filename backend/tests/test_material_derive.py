@@ -9,15 +9,15 @@ from sqlalchemy import select
 from app.domain.models import Extraction, Material, MaterialFolder, MaterialLink
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     response = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
 def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
@@ -29,13 +29,13 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str = "Derived") -> int:
+def make_course(client: TestClient, title: str = "Derived") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload_text(client: TestClient, content: str, filename: str, course_id: int) -> dict[str, Any]:
+def upload_text(client: TestClient, content: str, filename: str, course_id: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials/text",
         json={
@@ -55,13 +55,13 @@ def upload_text(client: TestClient, content: str, filename: str, course_id: int)
     return body
 
 
-def create_folder(client: TestClient, name: str, course_id: int) -> int:
+def create_folder(client: TestClient, name: str, course_id: str) -> str:
     response = client.post(
         "/api/v1/folders",
         json={"name": name, "course_id": course_id},
     )
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
 def session_factory(client: TestClient) -> Any:
@@ -281,12 +281,15 @@ def test_derive_links_the_requested_node_without_duplicating_copied_links(
         )
         assert same_node_links == [linked_node]
         merged_links = sorted(
-            link.node_id
-            for link in session.scalars(
-                select(MaterialLink).where(MaterialLink.material_id == merged_id)
-            )
+            (
+                link.node_id
+                for link in session.scalars(
+                    select(MaterialLink).where(MaterialLink.material_id == merged_id)
+                )
+            ),
+            key=str,
         )
-        assert merged_links == [linked_node, other_node]
+        assert merged_links == sorted([linked_node, other_node], key=str)
 
 
 def test_derive_rejects_foreign_node(client: TestClient) -> None:
@@ -311,7 +314,7 @@ def test_derive_rejects_unknown_node(client: TestClient) -> None:
 
     response = client.post(
         f"/api/v1/materials/{source_id}/derive",
-        json={"node_id": 99999},
+        json={"node_id": "99999"},
     )
     assert response.status_code == 422
     assert response.json()["detail"] == "node not found"
@@ -523,7 +526,7 @@ def test_workspace_materials_report_has_extraction(client: TestClient) -> None:
     source = upload_text(client, "workspace content", "workspace.txt", course_id)
     source_id = source["material"]["id"]
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     assigned = client.post(f"/api/v1/nodes/{root_id}/materials", json={"material_id": source_id})
     assert assigned.status_code == 201
 

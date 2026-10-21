@@ -188,7 +188,7 @@ class EditorTransformResult:
 
 @dataclass
 class EditorTransformJob:
-    id: int
+    id: str
     user_id: str | None = None
     status: str = JobStatus.QUEUED.value
     result_md: str = ""
@@ -207,11 +207,11 @@ class EditorTransformService:
     ) -> None:
         self._session_factory = session_factory
         self._gateway = gateway
-        self._jobs: dict[int, EditorTransformJob] = {}
+        self._jobs: dict[str, EditorTransformJob] = {}
         self._jobs_lock = threading.Lock()
         self._next_job_id = 1
 
-    def _publish(self, bus: EventBus | None, job_id: int, payload: dict[str, Any]) -> None:
+    def _publish(self, bus: EventBus | None, job_id: str, payload: dict[str, Any]) -> None:
         if bus is not None:
             bus.publish_threadsafe(JOB_TOPIC.format(job_id), payload)
 
@@ -224,7 +224,7 @@ class EditorTransformService:
         mode: str,
         context_document: str | None = None,
         context_material: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         diagnostic: str | None = None,
     ) -> EditorTransformResult:
         prompt = build_prompt(
@@ -265,13 +265,13 @@ class EditorTransformService:
         mode: str,
         context_document: str | None = None,
         context_material: str | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         bus: EventBus | None = None,
         diagnostic: str | None = None,
         user_id: str | None = None,
     ) -> EditorTransformJob:
         with self._jobs_lock:
-            job = EditorTransformJob(id=self._next_job_id, user_id=user_id)
+            job = EditorTransformJob(id=str(self._next_job_id), user_id=user_id)
             self._next_job_id += 1
             self._jobs[job.id] = job
         thread = threading.Thread(
@@ -303,7 +303,7 @@ class EditorTransformService:
         mode: str,
         context_document: str | None,
         context_material: str | None,
-        course_id: int | None,
+        course_id: str | None,
         bus: EventBus | None,
         diagnostic: str | None = None,
     ) -> None:
@@ -397,11 +397,11 @@ class EditorTransformService:
                 bus, job.id, {"type": "editor_done", "job_id": job.id, "result_md": job.result_md}
             )
 
-    def get_job(self, job_id: int) -> EditorTransformJob | None:
+    def get_job(self, job_id: str) -> EditorTransformJob | None:
         with self._jobs_lock:
             return self._jobs.get(job_id)
 
-    def cancel_job(self, job_id: int) -> bool:
+    def cancel_job(self, job_id: str) -> bool:
         with self._jobs_lock:
             job = self._jobs.get(job_id)
             if job is None:

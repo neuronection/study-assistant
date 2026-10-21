@@ -238,9 +238,7 @@ def test_production_fetch_caps_the_response_body() -> None:
     error instead of converting an oversize body."""
     oversize = "x" * (FETCH_MAX_BYTES + 64)
     host = HostAdapter(
-        lambda request: httpx.Response(
-            200, text=oversize, headers={"content-type": "text/plain"}
-        )
+        lambda request: httpx.Response(200, text=oversize, headers={"content-type": "text/plain"})
     )
     with pytest.raises(SearchError) as raised:
         host.fetch("https://example.edu/huge")

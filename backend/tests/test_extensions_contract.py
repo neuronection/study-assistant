@@ -48,9 +48,7 @@ SOURCES_SCHEMA = json.loads(
 
 def test_structural_fixture_wall() -> None:
     """One canonical runner: schema + semantics + the reject channel."""
-    failures = contract.run_manifest_fixtures(
-        MANIFEST_FIXTURES, MANIFEST_SCHEMA, SOURCES_SCHEMA
-    )
+    failures = contract.run_manifest_fixtures(MANIFEST_FIXTURES, MANIFEST_SCHEMA, SOURCES_SCHEMA)
     assert failures == [], "\n".join(failures)
 
 
@@ -215,9 +213,9 @@ def _run_case(case: dict[str, Any], step_slept: list[float], transport: _Transpo
                     if "etag" in expected_response:
                         assert response.etag == expected_response["etag"], case["name"]
                     if "lastModified" in expected_response:
-                        assert (
-                            response.last_modified == expected_response["lastModified"]
-                        ), case["name"]
+                        assert response.last_modified == expected_response["lastModified"], case[
+                            "name"
+                        ]
                     if "truncated" in expected_response:
                         assert response.truncated == expected_response["truncated"], case["name"]
                     if "url" in expected_response:

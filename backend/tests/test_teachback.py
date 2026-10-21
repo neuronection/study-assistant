@@ -32,15 +32,15 @@ def client(
         yield test_client, gateway, app
 
 
-def make_course(client: TestClient, title: str = "Teach-back course") -> int:
+def make_course(client: TestClient, title: str = "Teach-back course") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def root_node(client: TestClient, course_id: int) -> int:
+def root_node(client: TestClient, course_id: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    return int(tree[0]["id"])
+    return str(tree[0]["id"])
 
 
 def test_teach_back_creates_explain_exercise(
@@ -78,7 +78,7 @@ def test_teach_back_from_node_uses_node_title(
         ).json()
         response = test_client.post(
             "/api/v1/exercises/teach-back",
-            json={"course_id": course_id, "node_id": int(node["id"])},
+            json={"course_id": course_id, "node_id": str(node["id"])},
         )
         assert response.status_code == 201, response.text
         assert response.json()["title"] == "Teach-back: Eigenvectors"
@@ -121,7 +121,7 @@ def test_teach_back_result_lands_in_diagnostics(
                 )
             )
             db.commit()
-            exercise_id = int(exercise.id)
+            exercise_id = str(exercise.id)
         finally:
             db.close()
 
@@ -136,7 +136,7 @@ def test_teach_back_result_lands_in_diagnostics(
         )
         started = test_client.post(f"/api/v1/exercises/{exercise_id}/sessions")
         assert started.status_code in (200, 201), started.text
-        session_id = int(started.json()["id"])
+        session_id = str(started.json()["id"])
         answered = test_client.post(
             f"/api/v1/exercises/sessions/{session_id}/answer",
             json={

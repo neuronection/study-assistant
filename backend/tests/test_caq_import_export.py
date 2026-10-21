@@ -17,7 +17,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -86,8 +86,8 @@ def caq_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 class UnassignedGateway(LLMGateway):
@@ -97,7 +97,7 @@ class UnassignedGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         raise TaskUnassigned(task)
 
@@ -106,12 +106,12 @@ class UnassignedGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         raise TaskUnassigned(task)
 
 
-def import_caq(client: TestClient, course_id: int, dry_run: str, document: dict[str, Any]) -> Any:
+def import_caq(client: TestClient, course_id: str, dry_run: str, document: dict[str, Any]) -> Any:
     return client.post(
         "/api/v1/quiz/import",
         params={"dry_run": dry_run, "course_id": course_id},

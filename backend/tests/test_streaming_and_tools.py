@@ -24,7 +24,7 @@ def test_openai_streaming_yields_deltas() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -52,7 +52,7 @@ def test_anthropic_streaming_yields_deltas() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="anthropic",
         base_url="https://api.anthropic.com",
         external_id="claude",
@@ -76,7 +76,7 @@ def test_google_streaming_yields_deltas() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="google",
         base_url="https://generativelanguage.googleapis.com",
         external_id="gemini-2.5-flash",
@@ -101,7 +101,7 @@ def test_stream_events_yields_reasoning_and_stream_drops_it() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -134,7 +134,7 @@ def test_anthropic_stream_events_yield_reasoning() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=2,
+        provider_id="2",
         provider_type="anthropic",
         base_url="https://api.anthropic.com",
         external_id="claude",
@@ -159,7 +159,7 @@ def test_google_stream_events_yield_reasoning() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=3,
+        provider_id="3",
         provider_type="google",
         base_url="https://generativelanguage.googleapis.com",
         external_id="gemini-2.5-flash",
@@ -309,7 +309,7 @@ def test_stream_http_error_reports_status_not_response_not_read() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",
@@ -335,7 +335,7 @@ def test_stream_http_error_without_readable_body_still_reports_status() -> None:
 
     gateway = make_stream_gateway(httpx.MockTransport(handler))
     model = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="m",

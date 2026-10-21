@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def wait_for_ingest(client: TestClient, material_id: int, timeout: float = 10.0) -> None:
+def wait_for_ingest(client: TestClient, material_id: str, timeout: float = 10.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         status = client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
@@ -25,14 +25,14 @@ def wait_for_queue_drain(client: TestClient, timeout: float = 15.0) -> None:
     raise AssertionError("job queue never drained")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def create_folder(
-    client: TestClient, name: str, course_id: int, parent_id: int | None = None
+    client: TestClient, name: str, course_id: str, parent_id: str | None = None
 ) -> dict[str, Any]:
     response = client.post(
         "/api/v1/folders",
@@ -43,14 +43,14 @@ def create_folder(
     return body
 
 
-def upload(client: TestClient, data: bytes, filename: str, course_id: int) -> int:
+def upload(client: TestClient, data: bytes, filename: str, course_id: str) -> str:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
         files={"file": (filename, data, "application/pdf")},
     )
     assert response.status_code == 200, response.text
-    return int(response.json()["material"]["id"])
+    return str(response.json()["material"]["id"])
 
 
 def test_create_nested_folders_and_list(client: TestClient) -> None:
@@ -123,7 +123,7 @@ def test_delete_cascades_subtree(client: TestClient, text_pdf: bytes) -> None:
         files={"file": ("notes.pdf", text_pdf, "application/pdf")},
     )
     assert upload_response.status_code == 200
-    material_id = int(upload_response.json()["material"]["id"])
+    material_id = str(upload_response.json()["material"]["id"])
     wait_for_ingest(client, material_id)
     wait_for_queue_drain(client)
 

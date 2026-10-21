@@ -75,19 +75,13 @@ def instance_status_surface(
 
     if last_error:
         consecutive_failures = max(1, stored_failures)
-        status = (
-            STATUS_FAILING
-            if consecutive_failures >= 2
-            else STATUS_DEGRADED
-        )
+        status = STATUS_FAILING if consecutive_failures >= 2 else STATUS_DEGRADED
     elif last_success_at is None:
         consecutive_failures = 0
         status = STATUS_OK
     else:
         consecutive_failures = 0
-        status = (
-            STATUS_STALE if (now - last_success_at) > STALENESS_WINDOW else STATUS_OK
-        )
+        status = STATUS_STALE if (now - last_success_at) > STALENESS_WINDOW else STATUS_OK
 
     surface: dict[str, Any] = {
         "status": status,

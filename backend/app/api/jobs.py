@@ -1,4 +1,5 @@
 from typing import Any, cast
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -17,14 +18,14 @@ JOB_STATUSES = frozenset(status.value for status in JobStatus)
 
 
 class JobOut(BaseModel):
-    id: int
+    id: str
     type: str
     status: JobStatus
     progress: int
     stage: str | None
     error: str | None
     label: str
-    material_id: int | None
+    material_id: str | None
     retriable: bool
     stale: bool = False
     created_at: str | None
@@ -70,39 +71,32 @@ def _material_label(session: Session, payload: dict[str, Any] | None) -> str | N
     return material.filename or f"Material #{material.id}"
 
 
-def _material_id(payload: dict[str, Any] | None) -> int | None:
+def _payload_uuid(payload: dict[str, Any] | None, key: str) -> str | None:
     if not payload:
         return None
-    material_id = payload.get("material_id")
-    if material_id is None:
-        return None
-    try:
-        return int(material_id)
-    except (TypeError, ValueError):
-        return None
-
-
-def _chat_session_id(payload: dict[str, Any] | None) -> int | None:
-    if not payload:
-        return None
-    value = payload.get("chat_session_id")
+    value = payload.get(key)
     if value is None:
         return None
     try:
-        return int(value)
+        UUID(str(value))
     except (TypeError, ValueError):
         return None
+    return str(value)
+
+
+def _material_id(payload: dict[str, Any] | None) -> str | None:
+    return _payload_uuid(payload, "material_id")
+
+
+def _chat_session_id(payload: dict[str, Any] | None) -> str | None:
+    return _payload_uuid(payload, "chat_session_id")
 
 
 def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
     if not payload:
         return None
-    value = payload.get("note_id")
-    if value is None:
-        return None
-    try:
-        note_id = int(value)
-    except (TypeError, ValueError):
+    note_id = _payload_uuid(payload, "note_id")
+    if note_id is None:
         return None
     note = session.get(Note, note_id)
     if note is None:
@@ -110,22 +104,14 @@ def _note_label(session: Session, payload: dict[str, Any] | None) -> str | None:
     return note.title
 
 
-def _note_id(payload: dict[str, Any] | None) -> int | None:
-    if not payload:
-        return None
-    value = payload.get("note_id")
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
+def _note_id(payload: dict[str, Any] | None) -> str | None:
+    return _payload_uuid(payload, "note_id")
 
 
-def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[int]:
-    material_ids: set[int] = set()
-    chat_ids: set[int] = set()
-    note_ids: set[int] = set()
+def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[str]:
+    material_ids: set[str] = set()
+    chat_ids: set[str] = set()
+    note_ids: set[str] = set()
     for job in jobs:
         material_id = _material_id(job.payload)
         if material_id is not None:
@@ -136,7 +122,7 @@ def _stale_job_ids(session: Session, jobs: list[Job] | tuple[Job, ...]) -> set[i
         note_id = _note_id(job.payload)
         if note_id is not None:
             note_ids.add(note_id)
-    stale: set[int] = set()
+    stale: set[str] = set()
     if material_ids:
         found = set(session.scalars(select(Material.id).where(Material.id.in_(material_ids))))
         stale.update(
@@ -165,7 +151,7 @@ def _to_out(
     session: Session,
     job: Job,
     retriable_types: frozenset[str] | set[str],
-    stale_ids: set[int] | None = None,
+    stale_ids: set[str] | None = None,
 ) -> JobOut:
     retriable = (
         job.status == "failed"
@@ -210,7 +196,9 @@ def list_jobs(
 ) -> list[JobOut]:
     if status is not None and status not in JOB_STATUSES:
         raise HTTPException(status_code=422, detail="unknown job status")
-    query = select(Job).order_by(Job.id.desc()).limit(max(1, min(limit, 500)))
+    query = (
+        select(Job).order_by(Job.created_at.desc(), Job.id.desc()).limit(max(1, min(limit, 500)))
+    )
     if status is not None:
         query = query.where(Job.status == status)
     if type is not None:
@@ -254,7 +242,7 @@ def job_types(request: Request) -> list[JobTypeOut]:
 
 @router.get("/{job_id}")
 def get_job(
-    job_id: int,
+    job_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> JobOut:
@@ -267,7 +255,7 @@ def get_job(
 
 @router.post("/{job_id}/cancel")
 def cancel_job(
-    job_id: int,
+    job_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> JobOut:
@@ -299,7 +287,7 @@ def cancel_job(
 
 @router.post("/{job_id}/retry")
 def retry_job(
-    job_id: int,
+    job_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> JobOut:
@@ -374,7 +362,7 @@ def delete_failed_jobs(
 
 @router.delete("/{job_id}", status_code=204)
 def delete_job(
-    job_id: int,
+    job_id: str,
     session: Session = Depends(get_session),
 ) -> None:
     job = session.get(Job, job_id)

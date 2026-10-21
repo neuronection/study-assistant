@@ -50,21 +50,21 @@ def wait_until(predicate: Any, timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def job_status(runner: JobRunner, job_id: int) -> str:
+def job_status(runner: JobRunner, job_id: str) -> str:
     with runner._session_factory() as session:
         job = session.get(Job, job_id)
         assert job is not None
         return job.status
 
 
-def job_error(runner: JobRunner, job_id: int) -> str | None:
+def job_error(runner: JobRunner, job_id: str) -> str | None:
     with runner._session_factory() as session:
         job = session.get(Job, job_id)
         assert job is not None
         return job.error
 
 
-def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> int:
+def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> str:
     with runner._session_factory() as session:
         job = JobRunner.enqueue(session, job_type, cast("IngestPayload", payload))
         session.commit()
@@ -72,7 +72,7 @@ def enqueue(runner: JobRunner, job_type: str, payload: dict[str, Any]) -> int:
 
 
 def test_runner_executes_handler_and_marks_done(tmp_path: Path) -> None:
-    seen: list[int] = []
+    seen: list[str] = []
 
     def handler(session: Session, job: Job, report: Any) -> None:
         seen.append(job.id)
@@ -117,7 +117,7 @@ def test_runner_unknown_type_fails(tmp_path: Path) -> None:
 
 
 def test_runner_survives_handler_crash_and_runs_next(tmp_path: Path) -> None:
-    calls: list[int] = []
+    calls: list[str] = []
 
     def handler(session: Session, job: Job, report: Any) -> None:
         calls.append(job.id)
@@ -137,7 +137,7 @@ def test_runner_survives_handler_crash_and_runs_next(tmp_path: Path) -> None:
 
 
 def test_runner_reclaims_interrupted_running_jobs_on_start(tmp_path: Path) -> None:
-    seen: list[int] = []
+    seen: list[str] = []
 
     def handler(session: Session, job: Job, report: Any) -> None:
         seen.append(job.id)

@@ -35,7 +35,7 @@ from app.main import create_app
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -376,17 +376,17 @@ GENERATE_PROPOSAL = (
 )
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def make_note(client: TestClient, course_id: int, body_md: str) -> int:
+def make_note(client: TestClient, course_id: str, body_md: str) -> str:
     created = client.post(
         "/api/v1/notes",
         json={
@@ -397,7 +397,7 @@ def make_note(client: TestClient, course_id: int, body_md: str) -> int:
         },
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 EDIT_NOTE_PROPOSAL = (
@@ -427,7 +427,7 @@ APPEND_NOTE_PROPOSAL = (
 )
 
 
-def get_proposal(client: TestClient, session_id: int) -> dict[str, Any]:
+def get_proposal(client: TestClient, session_id: str) -> dict[str, Any]:
     messages = wait_for_assistant(client, session_id)
     proposals: list[dict[str, Any]] = messages[-1]["proposals"]
     assert proposals
@@ -490,7 +490,7 @@ def test_revalidation_marks_stale_on_deleted_target(
         )
         proposal = get_proposal(test_client, session["id"])
         tree = test_client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         deleted = test_client.delete(
             f"/api/v1/nodes/{node_id}",
             params={"merge_into": root_id},
@@ -535,7 +535,7 @@ def test_cover_concept_executes(
         assert committed.status_code == 200, committed.text
         concepts = test_client.get(f"/api/v1/courses/{course_id}/concepts").json()["concepts"]
         assert concepts
-        concept_id = int(concepts[0]["id"])
+        concept_id = str(concepts[0]["id"])
         gateway.responses.append(
             "Cover it.\n\n"
             + COVER_PROPOSAL.replace("{cid}", str(concept_id)).replace("{nid}", str(node_id))
@@ -830,7 +830,7 @@ def test_edit_material_captures_snapshot_and_executes(
         body = approved.json()
         assert body["status"] == "executed"
         assert body["result"]["material_id"] == material_id
-        assert body["result"]["extraction_id"] > 0
+        assert body["result"]["extraction_id"]
 
         versions = test_client.get(f"/api/v1/materials/{material_id}/extractions").json()
         assert len(versions) >= 2
@@ -1033,8 +1033,8 @@ def test_generate_proposal_context_must_be_offered() -> None:
             {
                 "action": "generate_quiz",
                 "topic": "chain rule",
-                "material_ids": [5],
-                "note_ids": [2],
+                "material_ids": ["5"],
+                "note_ids": ["2"],
             }
         )
         + "\n```"
@@ -1378,19 +1378,19 @@ def test_proposal_node_id_must_exist_in_course() -> None:
                 "action": "create_material",
                 "title": "New note on limits",
                 "body_md": "Some content.",
-                "node_id": 77,
+                "node_id": "77",
             }
         )
         + "\n```"
     )
-    assert validate_proposal_context(text, ["T7"], course_node_ids={1, 7, 77}) == []
+    assert validate_proposal_context(text, ["T7"], course_node_ids={"1", "7", "77"}) == []
     assert validate_proposal_context(text, ["T7"], course_node_ids=None) == []
-    problems = validate_proposal_context(text, ["T7"], course_node_ids={1, 7})
+    problems = validate_proposal_context(text, ["T7"], course_node_ids={"1", "7"})
     assert len(problems) == 1
     assert "node 77" in problems[0]
     assert "[T#]" in problems[0]
-    null_node = text.replace('"node_id": 77', '"node_id": null')
-    assert validate_proposal_context(null_node, ["T7"], course_node_ids={1}) == []
+    null_node = text.replace('"node_id": "77"', '"node_id": null')
+    assert validate_proposal_context(null_node, ["T7"], course_node_ids={"1"}) == []
 
 
 def test_manifest_checks_cover_singular_ids() -> None:
@@ -1398,25 +1398,27 @@ def test_manifest_checks_cover_singular_ids() -> None:
 
     offered = ["N3", "M7"]
     ungrounded_edit = (
-        '```proposal\n{"action": "edit_note", "note_id": 999, "new_body_md": "x"}\n```'
+        '```proposal\n{"action": "edit_note", "note_id": "999", "new_body_md": "x"}\n```'
     )
     assert any(
         "note 999" in problem for problem in validate_proposal_context(ungrounded_edit, offered)
     )
     flashcards_none = '```proposal\n{"action": "generate_flashcards", "count": 5}\n```'
     assert validate_proposal_context(flashcards_none, offered) == []
-    flashcards_bad = '```proposal\n{"action": "generate_flashcards", "material_id": 999}\n```'
+    flashcards_bad = '```proposal\n{"action": "generate_flashcards", "material_id": "999"}\n```'
     assert any(
         "material 999" in problem for problem in validate_proposal_context(flashcards_bad, offered)
     )
     move_bad = (
-        '```proposal\n{"action": "move_to_node", "kind": "note", "id": 999, "node_id": 1}\n```'
+        '```proposal\n{"action": "move_to_node", "kind": "note", "id": "999", "node_id": "1"}\n```'
     )
     assert any(
-        "note 999" in problem for problem in validate_proposal_context(move_bad, offered, {1})
+        "note 999" in problem for problem in validate_proposal_context(move_bad, offered, {"1"})
     )
-    cover_concept = '```proposal\n{"action": "cover_concept", "concept_id": 55, "node_id": 1}\n```'
-    assert validate_proposal_context(cover_concept, offered, {1}) == []
+    cover_concept = (
+        '```proposal\n{"action": "cover_concept", "concept_id": "55", "node_id": "1"}\n```'
+    )
+    assert validate_proposal_context(cover_concept, offered, {"1"}) == []
 
 
 def test_grounding_gate_and_ungrounded_filter() -> None:
@@ -1425,7 +1427,7 @@ def test_grounding_gate_and_ungrounded_filter() -> None:
         validate_proposal_grounding,
     )
 
-    edit = '```proposal\n{"action": "edit_note", "note_id": 3, "new_body_md": "x"}\n```'
+    edit = '```proposal\n{"action": "edit_note", "note_id": "3", "new_body_md": "x"}\n```'
     problems = validate_proposal_grounding(edit, [])
     assert len(problems) == 1
     assert "unread_target" in problems[0]
@@ -1440,7 +1442,7 @@ def test_grounding_gate_and_ungrounded_filter() -> None:
     assert validate_proposal_grounding(create, []) == []
 
     proposals: list[tuple[str, dict[str, Any]]] = [
-        ("edit_note", {"note_id": 3, "new_body_md": "x"}),
+        ("edit_note", {"note_id": "3", "new_body_md": "x"}),
         ("create_note", {"title": "t", "body_md": "b"}),
     ]
     kept, drops = filter_ungrounded(proposals, ["N3"])
@@ -1504,31 +1506,31 @@ def test_text_edit_payload_shapes() -> None:
 
     with raises(ValidationError, match="replace requires"):
         EditNotePayload.model_validate(
-            {"note_id": 1, "text_edits": [{"op": "replace", "text": "x"}]}
+            {"note_id": "1", "text_edits": [{"op": "replace", "text": "x"}]}
         )
     with raises(ValidationError, match="find applies to replace only"):
         EditNotePayload.model_validate(
             {
-                "note_id": 1,
+                "note_id": "1",
                 "text_edits": [{"op": "append", "find": "a", "text": "x"}],
             }
         )
     with raises(ValidationError, match="conflicting_edit"):
         EditNotePayload.model_validate(
             {
-                "note_id": 1,
+                "note_id": "1",
                 "new_body_md": "full",
                 "text_edits": [{"op": "append", "text": "x"}],
             }
         )
     with raises(ValidationError, match="conflicting_edit"):
-        EditNotePayload.model_validate({"note_id": 1})
+        EditNotePayload.model_validate({"note_id": "1"})
     text = (
         "```proposal\n"
         + json.dumps(
             {
                 "action": "edit_note",
-                "note_id": 1,
+                "note_id": "1",
                 "new_body_md": "full",
                 "text_edits": [{"op": "append", "text": "x"}],
             }
@@ -1653,7 +1655,7 @@ def test_proposal_list_endpoint_and_notifications_aggregate(
         ]
         for row in listed["proposals"]:
             assert row["session_id"] in (session_a["id"], session_b["id"])
-            assert row["message_id"] > 0
+            assert row["message_id"]
 
         pending = test_client.get("/api/v1/chat/proposals", params={"status": "proposed"}).json()
         assert {row["id"] for row in pending["proposals"]} == {
@@ -1667,7 +1669,7 @@ def test_proposal_list_endpoint_and_notifications_aggregate(
 
         paged = test_client.get("/api/v1/chat/proposals", params={"limit": 1}).json()
         assert len(paged["proposals"]) == 1
-        assert paged["next_cursor"] == str(paged["proposals"][0]["id"])
+        assert paged["next_cursor"].split("|")[1] == str(paged["proposals"][0]["id"])
         follow_up = test_client.get(
             "/api/v1/chat/proposals",
             params={"limit": 1, "cursor": paged["next_cursor"]},

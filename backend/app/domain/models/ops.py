@@ -57,6 +57,9 @@ from .core import (
     mapped_column as mapped_column,
 )
 from .core import (
+    new_uuid as new_uuid,
+)
+from .core import (
     relationship as relationship,
 )
 from .core import (
@@ -71,7 +74,7 @@ class Job(Base):
         vocab_check("status", JobStatus),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     type: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="queued")
@@ -86,7 +89,7 @@ class Job(Base):
 class Provider(Base):
     __tablename__ = "providers"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     name: Mapped[str] = mapped_column(String(120))
     type: Mapped[str] = mapped_column(String(30))
     base_url: Mapped[str] = mapped_column(String(300))
@@ -105,9 +108,9 @@ class AiModel(Base):
         Index("uq_models_provider_external", "provider_id", "external_id", unique=True),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    provider_id: Mapped[int] = mapped_column(
-        ForeignKey("providers.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    provider_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("providers.id", ondelete="CASCADE"), index=True
     )
     external_id: Mapped[str] = mapped_column(String(200))
     label: Mapped[str] = mapped_column(String(200))
@@ -133,9 +136,11 @@ class TaskAssignment(Base):
     __tablename__ = "task_assignments"
 
     task: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
-    fallback_model_id: Mapped[int | None] = mapped_column(
-        ForeignKey("models.id", ondelete="SET NULL")
+    model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
+    )
+    fallback_model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
     )
     params: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
@@ -144,25 +149,29 @@ class DefaultTaskAssignment(Base):
     __tablename__ = "default_task_assignments"
 
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
+    model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
+    )
     # ADR-0037: capability defaults (incl. `decision`) are single-slot —
     # this stays populated only on the decision kind override rows, which
     # are specialist assignments.
-    fallback_model_id: Mapped[int | None] = mapped_column(
-        ForeignKey("models.id", ondelete="SET NULL")
+    fallback_model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
     )
 
 
 class CourseTaskAssignment(Base):
     __tablename__ = "course_task_assignments"
 
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     task: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
-    fallback_model_id: Mapped[int | None] = mapped_column(
-        ForeignKey("models.id", ondelete="SET NULL")
+    model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
+    )
+    fallback_model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
     )
 
 
@@ -171,17 +180,19 @@ class CourseDefaultTaskAssignment(Base):
 
     # ADR-0037: capability defaults (global and per-course) are
     # single-slot — no fallback. Only specialist assignments carry one.
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True
     )
     requires: Mapped[str] = mapped_column(String(40), primary_key=True)
-    model_id: Mapped[int | None] = mapped_column(ForeignKey("models.id", ondelete="SET NULL"))
+    model_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("models.id", ondelete="SET NULL")
+    )
 
 
 class DeletedItem(Base):
     __tablename__ = "deleted_items"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
@@ -198,10 +209,10 @@ class ConceptSkillStat(Base):
         Index("uq_concept_skill_stats", "profile_id", "concept", "skill", unique=True),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(_UUID, ForeignKey("profiles.id", ondelete="CASCADE"))
     concept: Mapped[str] = mapped_column(String(200))
-    concept_id: Mapped[int | None] = mapped_column(Integer)
+    concept_id: Mapped[str | None] = mapped_column(_UUID)
     skill: Mapped[str] = mapped_column(String(20))
     n: Mapped[int] = mapped_column(Integer)
     accuracy: Mapped[float] = mapped_column(Float)
@@ -214,7 +225,7 @@ class DailyRollup(Base):
     __tablename__ = "daily_rollups"
     __table_args__ = (Index("uq_daily_rollups", "profile_id", "day", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(_UUID, ForeignKey("profiles.id", ondelete="CASCADE"))
     day: Mapped[str] = mapped_column(String(10))
     answers_n: Mapped[int] = mapped_column(Integer)
@@ -232,8 +243,8 @@ class ItemStat(Base):
         vocab_check("flag", ItemFlag),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    question_id: Mapped[str] = mapped_column(_UUID, ForeignKey("questions.id", ondelete="CASCADE"))
     n_attempts: Mapped[int] = mapped_column(Integer)
     p_correct: Mapped[float] = mapped_column(Float)
     avg_time_ms: Mapped[float | None] = mapped_column(Float)
@@ -257,7 +268,7 @@ class ConceptSkillRating(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(_UUID, ForeignKey("profiles.id", ondelete="CASCADE"))
     concept: Mapped[str] = mapped_column(String(200))
     skill: Mapped[str] = mapped_column(String(20))
@@ -281,7 +292,7 @@ class Skill(Base):
     __tablename__ = "skills"
     __table_args__ = (Index("uq_skills_key", "key", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     task: Mapped[str] = mapped_column(String(40))
     key: Mapped[str] = mapped_column(String(80))
     name: Mapped[str] = mapped_column(String(200))
@@ -306,8 +317,8 @@ class SkillVersion(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"))
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    skill_id: Mapped[str] = mapped_column(_UUID, ForeignKey("skills.id", ondelete="CASCADE"))
     scope_type: Mapped[str] = mapped_column(String(20))
     scope_ref: Mapped[int | None] = mapped_column(Integer)
     version: Mapped[int] = mapped_column(Integer)
@@ -328,13 +339,13 @@ class AiInteraction(Base):
         Index("ix_ai_interactions_task", "task"),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     context_type: Mapped[str] = mapped_column(String(30))
-    context_id: Mapped[int | None] = mapped_column(Integer)
+    context_id: Mapped[str | None] = mapped_column(_UUID)
     direction: Mapped[str | None] = mapped_column(Text)
     task: Mapped[str | None] = mapped_column(String(40))
     model: Mapped[str | None] = mapped_column(String(200))
-    skill_version_id: Mapped[int | None] = mapped_column(Integer)
+    skill_version_id: Mapped[str | None] = mapped_column(_UUID)
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     cached_input_tokens: Mapped[int | None] = mapped_column(Integer)

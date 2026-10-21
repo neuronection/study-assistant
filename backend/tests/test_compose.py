@@ -27,7 +27,7 @@ LONG_DOC = (
 )
 
 
-def wait_ready(client: TestClient, material_id: int, timeout: float = 5.0) -> None:
+def wait_ready(client: TestClient, material_id: str, timeout: float = 5.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         material = client.get(f"/api/v1/materials/{material_id}").json()
@@ -56,14 +56,14 @@ def client(
         yield test_client, gateway, app
 
 
-def make_node(client: TestClient, course_id: int, title: str) -> int:
+def make_node(client: TestClient, course_id: str, title: str) -> str:
     tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-    root_id = int(tree[0]["id"])
+    root_id = str(tree[0]["id"])
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root_id, "title": title},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_compose_creates_indexed_assigned_material(

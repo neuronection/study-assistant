@@ -39,7 +39,7 @@ class BlockedFakeGateway(LLMGateway):
         self.entered.clear()
         self.release.clear()
 
-    def resolve(self, task: str, course_id: int | None = None) -> Any:
+    def resolve(self, task: str, course_id: str | None = None) -> Any:
         raise TaskUnassigned(task)
 
     def generate(
@@ -47,7 +47,7 @@ class BlockedFakeGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         if self._armed:
@@ -84,15 +84,15 @@ def text_pdf(text: str = "Differentiation rules and the chain rule explained.") 
     return bytes(doc.tobytes())
 
 
-def make_course(client: TestClient) -> int:
+def make_course(client: TestClient) -> str:
     created = client.post("/api/v1/courses", json={"title": "Modes"})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def upload_pdf(
     client: TestClient,
-    course_id: int,
+    course_id: str,
     data: bytes,
     name: str = "notes.pdf",
 ) -> dict[str, Any]:
@@ -106,7 +106,7 @@ def upload_pdf(
     return result
 
 
-def wait_status(client: TestClient, material_id: int) -> str:
+def wait_status(client: TestClient, material_id: str) -> str:
     def settled() -> bool:
         detail = client.get(f"/api/v1/materials/{material_id}")
         return detail.json()["material"]["status"] in ("ready", "failed")
@@ -289,16 +289,16 @@ def test_forced_ocr_cancels_between_pages() -> None:
 
         from app.jobs.cancellation import clear_cancel, request_cancel
 
-        request_cancel(int(job_id))
+        request_cancel(str(job_id))
         gateway.release.set()
 
         def job_status() -> str:
             jobs = client.get("/api/v1/jobs").json()
-            entry = next(job for job in jobs if job["id"] == int(job_id))
+            entry = next(job for job in jobs if job["id"] == job_id)
             return str(entry["status"])
 
         wait_until(lambda: job_status() == "cancelled")
-        clear_cancel(int(job_id))
+        clear_cancel(str(job_id))
         detail = client.get(f"/api/v1/materials/{material_id}").json()
         assert detail["material"]["status"] != "failed"
 

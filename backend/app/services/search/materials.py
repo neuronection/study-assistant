@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from ...core.ids import hex_id, uuid_str
 from ...domain.models import MaterialLink, TreeNode
 from ...storage import vectors
 from .fusion import (
@@ -34,7 +35,7 @@ def _fts_ranking(
     session: Session,
     match: Match,
     limit: int,
-    course_id: int | None = None,
+    course_id: str | None = None,
     *,
     table: str = "material_fts",
 ) -> list[dict[str, Any]]:
@@ -53,7 +54,11 @@ def _fts_ranking(
                     f"WHERE {table}.tsv @@ ({expr}) {course_filter} "
                     f"ORDER BY ts_rank({table}.tsv, ({expr})) DESC LIMIT :limit"
                 ),
-                {"limit": limit, "course_id": course_id, **match.pg.params},
+                {
+                    "limit": limit,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                    **match.pg.params,
+                },
             ).mappings()
         else:
             rows = session.execute(
@@ -64,18 +69,22 @@ def _fts_ranking(
                     f"WHERE {table} MATCH :match {course_filter} "
                     "ORDER BY rank LIMIT :limit"
                 ),
-                {"match": match.fts5, "limit": limit, "course_id": course_id},
+                {
+                    "match": match.fts5,
+                    "limit": limit,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                },
             ).mappings()
     except Exception:
         return []
-    return [dict(row) for row in rows]
+    return [{**dict(row), "material_id": uuid_str(str(row["material_id"]))} for row in rows]
 
 
 def _trigram_ranking(
     session: Session,
     query: str,
     limit: int,
-    course_id: int | None = None,
+    course_id: str | None = None,
 ) -> list[dict[str, Any]]:
     match = trigram_match(query)
     if match.is_empty:
@@ -94,7 +103,11 @@ def _trigram_ranking(
                     f"WHERE {match.pg.sql} {course_filter} "
                     f"ORDER BY {_PG_TRIGRAM_ORDER} LIMIT :limit"
                 ),
-                {"limit": limit * 3, "course_id": course_id, **match.pg.params},
+                {
+                    "limit": limit * 3,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                    **match.pg.params,
+                },
             ).mappings()
         else:
             rows = session.execute(
@@ -108,7 +121,11 @@ def _trigram_ranking(
                     f"WHERE material_fts_trigram MATCH :match {course_filter} "
                     "ORDER BY rank LIMIT :limit"
                 ),
-                {"match": match.fts5, "limit": limit * 3, "course_id": course_id},
+                {
+                    "match": match.fts5,
+                    "limit": limit * 3,
+                    "course_id": hex_id(course_id) if course_id is not None else None,
+                },
             ).mappings()
     except Exception:
         return []
@@ -118,7 +135,7 @@ def _trigram_ranking(
             continue
         hits.append(
             {
-                "material_id": row["material_id"],
+                "material_id": uuid_str(str(row["material_id"])),
                 "title": row["title"],
                 "snippet": row["snippet"],
             }
@@ -133,7 +150,7 @@ def _vector_ranking(
     embed_query: EmbedQuery,
     query: str,
     limit: int,
-    course_id: int | None = None,
+    course_id: str | None = None,
 ) -> list[dict[str, Any]]:
     try:
         embedded = embed_query(query)
@@ -147,7 +164,7 @@ def _vector_ranking(
     if not hits:
         return []
     chunk_ids = [chunk_id for chunk_id, _distance in hits]
-    placeholders = ",".join(str(int(chunk_id)) for chunk_id in chunk_ids)
+    placeholders = ",".join(f"'{hex_id(chunk_id)}'" for chunk_id in chunk_ids)
     course_filter = _COURSE_FILTER if course_id is not None else ""
     rows = session.execute(
         text(
@@ -157,9 +174,9 @@ def _vector_ranking(
             "JOIN materials ON materials.id = extractions.material_id "
             f"WHERE chunks.id IN ({placeholders}) {course_filter}"
         ),
-        {"course_id": course_id},
+        {"course_id": hex_id(course_id) if course_id is not None else None},
     ).mappings()
-    by_chunk = {row["chunk_id"]: row for row in rows}
+    by_chunk = {uuid_str(str(row["chunk_id"])): row for row in rows}
     results: list[dict[str, Any]] = []
     for chunk_id, _distance in hits:
         row = by_chunk.get(chunk_id)
@@ -168,7 +185,7 @@ def _vector_ranking(
         excerpt = row["chunk_text"][:180].replace("\n", " ")
         results.append(
             {
-                "material_id": row["material_id"],
+                "material_id": uuid_str(str(row["material_id"])),
                 "title": row["title"],
                 "snippet": f"…{excerpt}…",
             }
@@ -178,10 +195,10 @@ def _vector_ranking(
 
 def node_placements_for_materials(
     session: Session,
-    material_ids: Sequence[int],
+    material_ids: Sequence[str],
     cap: int = 5,
-) -> dict[int, list[dict[str, Any]]]:
-    ids = [int(material_id) for material_id in material_ids]
+) -> dict[str, list[dict[str, Any]]]:
+    ids = [str(material_id) for material_id in material_ids]
     if not ids:
         return {}
     statement = (
@@ -195,15 +212,15 @@ def node_placements_for_materials(
         .where(MaterialLink.material_id.in_(ids))
         .order_by(TreeNode.sort_path, MaterialLink.id)
     )
-    placements: dict[int, list[dict[str, Any]]] = {}
+    placements: dict[str, list[dict[str, Any]]] = {}
     for row in session.execute(statement):
-        rows = placements.setdefault(int(row.material_id), [])
+        rows = placements.setdefault(uuid_str(str(row.material_id)), [])
         if len(rows) >= cap:
             continue
         rows.append(
             {
-                "course_id": int(row.course_id),
-                "node_id": int(row.node_id),
+                "course_id": str(row.course_id),
+                "node_id": str(row.node_id),
                 "node_title": str(row.title),
             }
         )
@@ -215,7 +232,7 @@ def hybrid_search(
     query: str,
     limit: int,
     embed_query: EmbedQuery,
-    course_id: int | None = None,
+    course_id: str | None = None,
 ) -> list[dict[str, Any]]:
     exact_hits = _fts_ranking(session, phrase_match(query), limit, course_id)
     rankings: list[tuple[list[dict[str, Any]], float]] = [(exact_hits, TIER_WEIGHT_EXACT)]

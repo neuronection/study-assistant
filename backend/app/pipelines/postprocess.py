@@ -15,12 +15,12 @@ from ..storage import vectors
 logger = structlog.get_logger(__name__)
 
 Embedder = Callable[[list[str]], tuple[str, list[list[float]]] | None]
-Describer = Callable[[str, str, int | None], dict[str, Any] | None]
+Describer = Callable[[str, str, str | None], dict[str, Any] | None]
 
 EMBED_BATCH = 32
 
 
-def _latest_extraction(session: Session, extraction_id: int | None, material_id: int) -> Extraction:
+def _latest_extraction(session: Session, extraction_id: str | None, material_id: str) -> Extraction:
     if extraction_id is not None:
         extraction = session.get(Extraction, extraction_id)
         if extraction is not None:
@@ -93,7 +93,7 @@ def make_postprocess_handler(embedder: Embedder, describer: Describer) -> JobHan
             raise JobError("material not found")
         old_chunk_ids = payload.get("old_chunk_ids") or []
         if old_chunk_ids:
-            vectors.delete_for_extraction(session, [int(chunk_id) for chunk_id in old_chunk_ids])
+            vectors.delete_for_extraction(session, [str(chunk_id) for chunk_id in old_chunk_ids])
         extraction = _latest_extraction(session, payload.get("extraction_id"), material.id)
         report(20, "embedding")
         try:

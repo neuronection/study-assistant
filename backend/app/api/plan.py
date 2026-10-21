@@ -18,9 +18,9 @@ upcoming_router = APIRouter(tags=["plan"])
 
 
 class PlanItemOut(BaseModel):
-    id: int
-    course_id: int
-    node_id: int | None
+    id: str
+    course_id: str
+    node_id: str | None
     title: str
     detail: str | None
     kind: PlanItemKind
@@ -34,7 +34,7 @@ class PlanItemCreateIn(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     kind: PlanItemKind = PlanItemKind.STUDY
     due_date: date
-    node_id: int | None = None
+    node_id: str | None = None
     detail: str | None = Field(default=None, max_length=500)
 
 
@@ -51,10 +51,10 @@ class PlanGenerateOut(BaseModel):
 
 
 class UpcomingItemOut(BaseModel):
-    id: int
-    course_id: int
+    id: str
+    course_id: str
     course_title: str
-    node_id: int | None
+    node_id: str | None
     title: str
     detail: str | None
     kind: PlanItemKind

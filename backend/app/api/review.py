@@ -16,7 +16,7 @@ router = APIRouter(prefix="/review", tags=["review"])
 
 
 class DueCourseGroupOut(BaseModel):
-    course_id: int
+    course_id: str
     course_title: str
     course_color: str | None
     due_count: int
@@ -46,10 +46,10 @@ def review_due(
             Course.origin != CourseOrigin.SCRATCH.value,
         )
         .options(selectinload(Exercise.steps))
-        .order_by(Exercise.id)
+        .order_by(Exercise.created_at, Exercise.id)
     )
     rows = session.execute(statement).all()
-    grouped: dict[int, dict[str, Any]] = {}
+    grouped: dict[str, dict[str, Any]] = {}
     for card, state, course in rows:
         entry = grouped.setdefault(
             course.id,

@@ -59,14 +59,39 @@ DOCS_POINTER = "docs/docs-tree.json"
 #: `message` is the ONE diagnostic slot (logs/typed machine surfaces) —
 #: product UI copy is keyed by `code` and may interpolate the data keys.
 ERROR_DETAIL_KEYS = (
-    "message", "path", "field", "id", "packId", "runId", "slot", "host",
-    "hop", "method", "op", "stage", "engine", "expected", "actual",
-    "limit", "used",
+    "message",
+    "path",
+    "field",
+    "id",
+    "packId",
+    "runId",
+    "slot",
+    "host",
+    "hop",
+    "method",
+    "op",
+    "stage",
+    "engine",
+    "expected",
+    "actual",
+    "limit",
+    "used",
 )
 _ERROR_DETAIL_CAPS = {
-    "message": 400, "path": 256, "field": 64, "id": 128, "packId": 128,
-    "runId": 128, "slot": 128, "host": 253, "method": 128, "op": 64,
-    "stage": 64, "engine": 64, "expected": 128, "actual": 128,
+    "message": 400,
+    "path": 256,
+    "field": 64,
+    "id": 128,
+    "packId": 128,
+    "runId": 128,
+    "slot": 128,
+    "host": 253,
+    "method": 128,
+    "op": 64,
+    "stage": 64,
+    "engine": 64,
+    "expected": 128,
+    "actual": 128,
 }
 _ERROR_DETAIL_INTS = ("hop", "limit", "used")
 #: Serialized cap — `limits.errorDetailMaxChars` in the charter.
@@ -131,13 +156,36 @@ def cap_error_detail(detail: Any, *, total_max: int = ERROR_DETAIL_MAX_CHARS) ->
             break
     return out
 
+
 _SUPPORTED_KEYWORDS = frozenset(
     {
-        "type", "enum", "const", "properties", "propertyNames", "additionalProperties",
-        "required", "items", "minItems", "maxItems", "uniqueItems", "contains",
-        "minLength", "maxLength", "pattern", "minimum", "maximum",
-        "maxProperties", "minProperties", "allOf", "anyOf", "oneOf", "not",
-        "if", "then", "else", "$ref",
+        "type",
+        "enum",
+        "const",
+        "properties",
+        "propertyNames",
+        "additionalProperties",
+        "required",
+        "items",
+        "minItems",
+        "maxItems",
+        "uniqueItems",
+        "contains",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "minimum",
+        "maximum",
+        "maxProperties",
+        "minProperties",
+        "allOf",
+        "anyOf",
+        "oneOf",
+        "not",
+        "if",
+        "then",
+        "else",
+        "$ref",
     }
 )
 
@@ -270,7 +318,10 @@ def validate(schema: Any, inst: Any, root: Any | None = None, path: str = "$") -
                 if err:
                     return err
         if "contains" in schema:
-            if not any(validate(schema["contains"], item, root, f"{path}[contains]") is None for item in inst):
+            if not any(
+                validate(schema["contains"], item, root, f"{path}[contains]") is None
+                for item in inst
+            ):
                 return f"{path}: no item matches 'contains' {schema['contains']!r}"
 
     for sub in schema.get("allOf", []):
@@ -371,10 +422,7 @@ def is_timeout_safe_pattern(source: str) -> str | None:
         if counted:
             frame["product"] *= min(max_repeat, MAX_REPETITION_PRODUCT)
             if frame["product"] > MAX_REPETITION_PRODUCT:
-                return (
-                    f"nested counted repetitions exceed the "
-                    f"{MAX_REPETITION_PRODUCT} product cap"
-                )
+                return f"nested counted repetitions exceed the {MAX_REPETITION_PRODUCT} product cap"
         return None
 
     while index < length:
@@ -475,9 +523,7 @@ def is_timeout_safe_pattern(source: str) -> str | None:
                         max_text += source[cursor]
                         cursor += 1
                 if cursor < length and source[cursor] == "}":
-                    max_repeat = (
-                        float("inf") if max_text == "" else int(max_text)
-                    )
+                    max_repeat = float("inf") if max_text == "" else int(max_text)
                     reason = quantify(max_repeat, int(min_text), True)
                     if reason:
                         return reason
@@ -540,9 +586,7 @@ def validate_registration(
     pointer = document.get("docs")
     if pointer is not None:
         if pointer != DOCS_POINTER:
-            problems.append(
-                f"$.docs: must be {DOCS_POINTER!r}, got {pointer!r}"
-            )
+            problems.append(f"$.docs: must be {DOCS_POINTER!r}, got {pointer!r}")
         elif docs_root is None:
             problems.append("$.docs: the bundle root is required to resolve the docs tree")
         else:
@@ -580,9 +624,7 @@ def validate_registration(
             f"claims tier {tier!r} — tier is provenance, never caller-claimed"
         )
     if mcp is not None and not isinstance(entry, str):
-        problems.append(
-            "$.mcp: an MCP declaration requires the 'entry' path it describes (T3)"
-        )
+        problems.append("$.mcp: an MCP declaration requires the 'entry' path it describes (T3)")
     if not bundled and kind == "connector" and not isinstance(entry, str):
         problems.append(
             "$.entry: an imported connector must declare its entry path "
@@ -590,9 +632,7 @@ def validate_registration(
         )
     if isinstance(entry, str):
         if docs_root is None:
-            problems.append(
-                "$.entry: a bundle root is required to validate the entry path"
-            )
+            problems.append("$.entry: a bundle root is required to validate the entry path")
         else:
             bundle_root = Path(docs_root).resolve()
             candidate = bundle_root / entry
@@ -616,12 +656,8 @@ def validate_registration(
                     problems.append(f"$.entry: {entry!r} escapes the bundle root")
                 else:
                     if not resolved.is_file():
-                        problems.append(
-                            f"$.entry: {entry!r} is not a regular file in the bundle"
-                        )
-            allowed_ext = (
-                profile.get("entryExtensions") if isinstance(profile, Mapping) else None
-            )
+                        problems.append(f"$.entry: {entry!r} is not a regular file in the bundle")
+            allowed_ext = profile.get("entryExtensions") if isinstance(profile, Mapping) else None
             if isinstance(allowed_ext, list) and allowed_ext:
                 suffix = Path(entry).suffix.lstrip(".")
                 allowed = {str(item).lstrip(".") for item in allowed_ext}
@@ -665,7 +701,12 @@ def validate_registration(
     domains = document.get("domains") or []
     if "net" in capabilities and not domains:
         problems.append("$.domains: the net capability requires declared domains")
-    if not bundled and effective_tier == "T2" and "net" in capabilities and "secrets" in capabilities:
+    if (
+        not bundled
+        and effective_tier == "T2"
+        and "net" in capabilities
+        and "secrets" in capabilities
+    ):
         secrets = document.get("secrets") or []
         for slot in secrets:
             if not isinstance(slot, dict) or not slot.get("domains"):
@@ -730,8 +771,7 @@ def validate_registration(
             unhonored = sorted(c for c in capabilities if c not in honors)
             if unhonored:
                 problems.append(
-                    "capabilities not honored by this host profile: "
-                    + ", ".join(unhonored)
+                    "capabilities not honored by this host profile: " + ", ".join(unhonored)
                 )
 
     if kind_validator is not None:
@@ -771,9 +811,7 @@ def run_manifest_fixtures(
             if group in ("manifest", "bundled"):
                 sem = manifest_i18n_semantics(case.get("doc") or {})
                 if sem:
-                    failures.append(
-                        f"{group}:{name}: valid case rejected by semantics: {sem[0]}"
-                    )
+                    failures.append(f"{group}:{name}: valid case rejected by semantics: {sem[0]}")
         for case in cases.get("invalid", []):
             name = case.get("name")
             target, root = _fixture_target(group, case, schema, sources_schema)
@@ -781,9 +819,7 @@ def run_manifest_fixtures(
             channel = case.get("reject", "schema")
             if channel == "semantics":
                 if group not in ("manifest", "bundled"):
-                    failures.append(
-                        f"{group}:{name}: semantics channel outside a manifest group"
-                    )
+                    failures.append(f"{group}:{name}: semantics channel outside a manifest group")
                 elif err is not None:
                     failures.append(
                         f"{group}:{name}: semantics channel but the schema rejected it: {err}"
@@ -874,7 +910,8 @@ def secret_fields(config_schema: Mapping[str, Any] | None) -> list[str]:
     return fields
 
 
-def docs_tree_semantics(    tree: Any,
+def docs_tree_semantics(
+    tree: Any,
     exists: Any = None,
 ) -> list[str]:
     """Wall-equivalent semantics for a docs-tree document beyond its
@@ -929,9 +966,15 @@ def docs_tree_semantics(    tree: Any,
                 if item.get("index"):
                     index_claims.append(str(item.get("id")))
                 if exists is not None and item.get("file") and not exists(item["file"]):
-                    problems.append(f"item {item.get('id')!r}: file {item['file']!r} does not resolve")
+                    problems.append(
+                        f"item {item.get('id')!r}: file {item['file']!r} does not resolve"
+                    )
                 # §10.9 (plan 35 wave B): a noted locale needs its sibling
-                if exists is not None and isinstance(item.get("locales"), list) and isinstance(item.get("file"), str):
+                if (
+                    exists is not None
+                    and isinstance(item.get("locales"), list)
+                    and isinstance(item.get("file"), str)
+                ):
                     base = item["file"][:-3] if item["file"].endswith(".md") else item["file"]
                     for locale in item["locales"]:
                         sibling = f"{base}.{locale}.md"
@@ -943,8 +986,7 @@ def docs_tree_semantics(    tree: Any,
         dup_slugs = sorted({s for s in slugs if slugs.count(s) > 1})
         if dup_slugs:
             problems.append(
-                f"duplicate category slugs {dup_slugs} "
-                "(each closed category appears at most once)"
+                f"duplicate category slugs {dup_slugs} (each closed category appears at most once)"
             )
         if len(index_claims) > 1:
             problems.append(

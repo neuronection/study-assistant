@@ -101,11 +101,11 @@ class SkillService:
             raise SkillsError(f"unknown skill '{key}'")
         return skill
 
-    def resolve(self, key: str, course_id: int | None = None) -> SkillVersion | None:
+    def resolve(self, key: str, course_id: str | None = None) -> SkillVersion | None:
         skill = self._session.scalars(select(Skill).where(Skill.key == key)).first()
         if skill is None:
             return None
-        course_type_id: int | None = None
+        course_type_id: str | None = None
         if course_id is not None:
             course = self._session.get(Course, course_id)
             if course is not None:
@@ -140,12 +140,12 @@ class SkillService:
                 return version
         return None
 
-    def resolution_chain(self, key: str, course_id: int | None = None) -> dict[str, str]:
+    def resolution_chain(self, key: str, course_id: str | None = None) -> dict[str, str]:
         skill = self._session.scalars(select(Skill).where(Skill.key == key)).first()
         chain: dict[str, str] = {}
         if skill is None:
             return chain
-        course_type_id: int | None = None
+        course_type_id: str | None = None
         if course_id is not None:
             course = self._session.get(Course, course_id)
             if course is not None:
@@ -160,7 +160,7 @@ class SkillService:
         chain["system"] = f"v{active.version}" if active else "—"
         return chain
 
-    def _active(self, skill_id: int, scope_type: str, scope_ref: int | None) -> SkillVersion | None:
+    def _active(self, skill_id: str, scope_type: str, scope_ref: str | None) -> SkillVersion | None:
         return self._session.scalars(
             select(SkillVersion)
             .where(
@@ -213,7 +213,7 @@ class SkillService:
         key: str,
         *,
         scope_type: str,
-        scope_ref: int | None,
+        scope_ref: str | None,
         system_template: str,
         user_template: str = "",
         params: dict[str, Any] | None = None,
@@ -258,7 +258,7 @@ class SkillService:
         self._session.flush()
         return version
 
-    def activate(self, version_id: int) -> SkillVersion:
+    def activate(self, version_id: str) -> SkillVersion:
         version = self._session.get(SkillVersion, version_id)
         if version is None:
             raise SkillsError("version not found")

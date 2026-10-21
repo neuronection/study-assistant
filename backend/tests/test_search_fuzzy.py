@@ -33,10 +33,10 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str = "Calculus") -> int:
+def make_course(client: TestClient, title: str = "Calculus") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 FILLER = (
@@ -45,7 +45,7 @@ FILLER = (
 )
 
 
-def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: int) -> int:
+def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: str) -> str:
     content = [*lines, FILLER]
     response = client.post(
         "/api/v1/materials",
@@ -53,7 +53,7 @@ def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: i
         files={"file": (filename, make_text_pdf(content), "application/pdf")},
     )
     assert response.status_code == 200, response.text
-    material_id = int(response.json()["material"]["id"])
+    material_id = str(response.json()["material"]["id"])
     wait_until(
         lambda: (
             client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"] == "ready"
@@ -62,12 +62,12 @@ def upload_pdf(client: TestClient, lines: list[str], filename: str, course_id: i
     return material_id
 
 
-def hit_ids(client: TestClient, q: str, course_id: int | None = None) -> list[int]:
+def hit_ids(client: TestClient, q: str, course_id: str | None = None) -> list[str]:
     params: dict[str, int | str] = {"q": q}
     if course_id is not None:
         params["course_id"] = course_id
     search = client.get("/api/v1/search", params=params).json()
-    return [int(hit["material_id"]) for hit in search["hits"]]
+    return [str(hit["material_id"]) for hit in search["hits"]]
 
 
 def test_search_finds_misspelled_title(client: TestClient) -> None:

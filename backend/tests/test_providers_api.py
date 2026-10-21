@@ -143,15 +143,14 @@ def test_task_assignment_requires_vision_for_ocr(
     app = client.app
     assert isinstance(app, FastAPI)
     with app.state.session_factory() as session:
-        session.add(
-            AiModel(
-                provider_id=provider["id"],
-                external_id="text-only-model",
-                label="text-only-model",
-                caps=["text"],
-                enabled=True,
-            )
+        text_model = AiModel(
+            provider_id=provider["id"],
+            external_id="text-only-model",
+            label="text-only-model",
+            caps=["text"],
+            enabled=True,
         )
+        session.add(text_model)
         vision_model = AiModel(
             provider_id=provider["id"],
             external_id="vision-model",
@@ -162,9 +161,10 @@ def test_task_assignment_requires_vision_for_ocr(
         session.add(vision_model)
         session.commit()
         vision_model_id = vision_model.id
+        text_model_id = text_model.id
 
     rejected = client.put(
-        "/api/v1/tasks/ocr", json={"model_id": vision_model_id - 1, "fallback_model_id": None}
+        "/api/v1/tasks/ocr", json={"model_id": text_model_id, "fallback_model_id": None}
     )
     assert rejected.status_code == 422
     assert "vision" in rejected.json()["detail"]
@@ -245,7 +245,7 @@ def test_manual_model_add_infers_caps_and_is_idempotent(
     assert again.json()["id"] == body["id"]
     assert again.json()["caps"] == ["text"]
 
-    missing = client.post("/api/v1/models", json={"provider_id": 999, "external_id": "x"})
+    missing = client.post("/api/v1/models", json={"provider_id": "999", "external_id": "x"})
     assert missing.status_code == 404
 
 
@@ -573,7 +573,7 @@ def test_delete_provider_unassigns_task_defaults(
     assert text_default["model_id"] is None
 
 
-def _assign_text_default(client: TestClient, fake_keyring: FakeKeyring) -> int:
+def _assign_text_default(client: TestClient, fake_keyring: FakeKeyring) -> str:
     provider = create_provider(client, type="openai_compatible", base_url="http://localhost:1/v1")
     model = client.post(
         "/api/v1/models",
@@ -581,7 +581,7 @@ def _assign_text_default(client: TestClient, fake_keyring: FakeKeyring) -> int:
     ).json()
     response = client.put("/api/v1/tasks/defaults/text", json={"model_id": model["id"]})
     assert response.status_code == 200, response.text
-    model_id: int = model["id"]
+    model_id: str = model["id"]
     return model_id
 
 

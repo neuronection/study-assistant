@@ -47,7 +47,7 @@ class DecisionUnavailableStatus:
     status = "unavailable"
     reason: str
     code: str | None = None
-    provider_id: int | None = None
+    provider_id: str | None = None
 
 
 @dataclass(frozen=True)

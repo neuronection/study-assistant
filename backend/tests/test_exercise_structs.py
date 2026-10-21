@@ -87,10 +87,10 @@ class StructsGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="exgen-model",
@@ -104,7 +104,7 @@ class StructsGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -117,7 +117,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -133,8 +133,8 @@ def make_client(responses: list[str]) -> TestClient:
     return TestClient(app)
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Test course"}).json()["id"])
 
 
 DRAFTS = {
@@ -205,7 +205,7 @@ def test_check_structural_grading() -> None:
 
 
 def test_public_input_hides_answers() -> None:
-    spec = public_input("matching", json.loads(MATCHING_DRAFT)["payload"], seed=7)
+    spec = public_input("matching", json.loads(MATCHING_DRAFT)["payload"], seed="7")
     assert spec["widget"] == "matching"
     assert [entry["label"] for entry in spec["rights"]] != [
         "$2x$",
@@ -215,11 +215,11 @@ def test_public_input_hides_answers() -> None:
     ]
     assert sorted(entry["index"] for entry in spec["rights"]) == [0, 1, 2, 3]
 
-    spec = public_input("ordering", json.loads(ORDERING_DRAFT)["payload"], seed=7)
+    spec = public_input("ordering", json.loads(ORDERING_DRAFT)["payload"], seed="7")
     assert [entry["id"] for entry in spec["items"]] != [0, 1, 2, 3, 4]
     assert sorted(entry["id"] for entry in spec["items"]) == [0, 1, 2, 3, 4]
 
-    spec = public_input("fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], seed=7)
+    spec = public_input("fill_blank", json.loads(FILL_BLANK_DRAFT)["payload"], seed="7")
     assert spec["blank_count"] == 2
     assert "answers" not in spec
 

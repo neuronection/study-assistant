@@ -15,22 +15,22 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
     raise AssertionError("condition not met before timeout")
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def add_source(client: TestClient, course_id: int, root: Path, label: str) -> int:
+def add_source(client: TestClient, course_id: str, root: Path, label: str) -> str:
     created = client.post(
         "/api/v1/sources",
         json={"label": label, "path": str(root), "course_id": course_id},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def folders_in(client: TestClient, course_id: int) -> list[dict[str, Any]]:
+def folders_in(client: TestClient, course_id: str) -> list[dict[str, Any]]:
     listing: list[dict[str, Any]] = client.get(
         "/api/v1/folders", params={"course_id": course_id}
     ).json()

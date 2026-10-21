@@ -29,7 +29,7 @@ def make_client(responses: list[str]) -> Iterator[tuple[TestClient, FastAPI, Scr
 
 
 def wait_for_assistant(
-    client: TestClient, session_id: int, timeout: float = 5.0
+    client: TestClient, session_id: str, timeout: float = 5.0
 ) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -42,7 +42,7 @@ def wait_for_assistant(
     raise AssertionError("assistant never replied")
 
 
-def make_exercise(app: FastAPI, course_id: int) -> int:
+def make_exercise(app: FastAPI, course_id: str) -> str:
     db = app.state.session_factory()
     profile_id = db.query(Profile).first().id
     exercise = Exercise(
@@ -67,8 +67,8 @@ def make_exercise(app: FastAPI, course_id: int) -> int:
     return exercise_id
 
 
-def start_session(client: TestClient, exercise_id: int) -> int:
-    return int(client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()["id"])
+def start_session(client: TestClient, exercise_id: str) -> str:
+    return str(client.post(f"/api/v1/exercises/{exercise_id}/sessions").json()["id"])
 
 
 def test_ask_creates_bound_chat_with_pending_answer_and_guard() -> None:

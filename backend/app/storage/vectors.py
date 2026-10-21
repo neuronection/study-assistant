@@ -1,12 +1,37 @@
+import hashlib
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..ai.embeddings import serialize_vector
+from ..core.ids import hex_id, uuid_str
 
 VEC_TABLE = "chunk_vecs"
 VEC_META = "vec_meta"
+VEC_IDS = "chunk_vec_ids"
+
+_ROWID_MASK = 0x7FFF_FFFF_FFFF_FFFF
+
+
+def rowid_for(chunk_id: str) -> int:
+    """Stable 63-bit rowid for a UUID chunk id.
+
+    `vec0`/pgvector both key vectors by an integer rowid; the chunk identity
+    moved to a UUID string in plan 81 C, so the rowid is derived from the id
+    and the `chunk_vec_ids` side table keeps the reverse mapping.
+    """
+    digest = hashlib.blake2b(hex_id(chunk_id).encode(), digest_size=8).digest()
+    return int.from_bytes(digest, "big") & _ROWID_MASK
+
+
+def _ensure_ids_table(session: Session) -> None:
+    session.execute(
+        text(
+            f"CREATE TABLE IF NOT EXISTS {VEC_IDS} "
+            "(rowid BIGINT PRIMARY KEY, chunk_id TEXT NOT NULL UNIQUE)"
+        )
+    )
 
 
 def _is_postgres(session: Session) -> bool:
@@ -68,10 +93,19 @@ def ensure_table(session: Session, dim: int, model: str) -> bool:
     return True
 
 
-def store(session: Session, chunk_ids: list[int], vectors: list[list[float]], model: str) -> None:
+def store(session: Session, chunk_ids: list[str], vectors: list[list[float]], model: str) -> None:
     dim = len(vectors[0])
     ensure_table(session, dim, model)
+    _ensure_ids_table(session)
     for chunk_id, vector in zip(chunk_ids, vectors, strict=True):
+        rowid = rowid_for(chunk_id)
+        session.execute(
+            text(
+                f"INSERT INTO {VEC_IDS} (rowid, chunk_id) VALUES (:rowid, :chunk_id) "
+                "ON CONFLICT (rowid) DO UPDATE SET chunk_id = excluded.chunk_id"
+            ),
+            {"rowid": rowid, "chunk_id": hex_id(chunk_id)},
+        )
         if _is_postgres(session):
             # serialize_vector emits JSON text, which pgvector parses as input.
             session.execute(
@@ -81,7 +115,7 @@ def store(session: Session, chunk_ids: list[int], vectors: list[list[float]], mo
                     "ON CONFLICT (rowid) DO UPDATE "
                     "SET chunk_embedding = excluded.chunk_embedding"
                 ),
-                {"rowid": chunk_id, "vec": serialize_vector(vector)},
+                {"rowid": rowid, "vec": serialize_vector(vector)},
             )
         else:
             session.execute(
@@ -89,11 +123,11 @@ def store(session: Session, chunk_ids: list[int], vectors: list[list[float]], mo
                     f"INSERT OR REPLACE INTO {VEC_TABLE} (rowid, chunk_embedding) "
                     "VALUES (:rowid, :vec)"
                 ),
-                {"rowid": chunk_id, "vec": serialize_vector(vector)},
+                {"rowid": rowid, "vec": serialize_vector(vector)},
             )
 
 
-def delete_for_extraction(session: Session, chunk_ids: list[int]) -> None:
+def delete_for_extraction(session: Session, chunk_ids: list[str]) -> None:
     if not chunk_ids:
         return
     if _is_postgres(session):
@@ -105,11 +139,14 @@ def delete_for_extraction(session: Session, chunk_ids: list[int]) -> None:
         ).first()
     if exists is None:
         return
-    placeholders = ",".join(str(int(chunk_id)) for chunk_id in chunk_ids)
+    rowids = [rowid_for(chunk_id) for chunk_id in chunk_ids]
+    placeholders = ",".join(str(rowid) for rowid in rowids)
     session.execute(text(f"DELETE FROM {VEC_TABLE} WHERE rowid IN ({placeholders})"))
+    _ensure_ids_table(session)
+    session.execute(text(f"DELETE FROM {VEC_IDS} WHERE rowid IN ({placeholders})"))
 
 
-def search(session: Session, query_vector: list[float], limit: int = 24) -> list[tuple[int, float]]:
+def search(session: Session, query_vector: list[float], limit: int = 24) -> list[tuple[str, float]]:
     meta = _load_meta(session)
     if meta.get("dim") != str(len(query_vector)):
         return []
@@ -131,7 +168,22 @@ def search(session: Session, query_vector: list[float], limit: int = 24) -> list
             ),
             {"query": serialize_vector(query_vector), "k": limit},
         ).mappings()
-    return [(int(row["rowid"]), float(row["distance"])) for row in rows]
+    distances = {int(row["rowid"]): float(row["distance"]) for row in rows}
+    if not distances:
+        return []
+    _ensure_ids_table(session)
+    placeholders = ",".join(str(rowid) for rowid in distances)
+    names = {
+        int(row["rowid"]): str(row["chunk_id"])
+        for row in session.execute(
+            text(f"SELECT rowid, chunk_id FROM {VEC_IDS} WHERE rowid IN ({placeholders})")
+        ).mappings()
+    }
+    return [
+        (uuid_str(names[rowid]), distance)
+        for rowid, distance in distances.items()
+        if rowid in names
+    ]
 
 
 def vector_count(session: Session) -> int:

@@ -35,7 +35,7 @@ class BlockingGateway(ScriptedGateway):
         task: str,
         messages: list[Any],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         self.calls.append(messages)
         self.entered.set()
@@ -53,10 +53,10 @@ def _make_app(tmp_path: Path, gateway: ScriptedGateway) -> Any:
 
 
 @contextmanager
-def harness(tmp_path: Path) -> Iterator[tuple[TestClient, BlockingGateway, int]]:
+def harness(tmp_path: Path) -> Iterator[tuple[TestClient, BlockingGateway, str]]:
     gateway = BlockingGateway(["final answer"])
     with TestClient(_make_app(tmp_path, gateway)) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         yield client, gateway, session_id
 
 
@@ -122,7 +122,7 @@ def test_turn_does_not_hold_the_write_lock_during_prepare(tmp_path: Path) -> Non
     gateway = BlockingGateway(["final answer"])
     try:
         with TestClient(_make_app(tmp_path, gateway)) as client:
-            session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+            session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
             sent = client.post(
                 f"/api/v1/chat/sessions/{session_id}/messages", json={"content": "hello"}
             )
@@ -144,7 +144,7 @@ def test_turn_does_not_hold_the_write_lock_while_retries_run(tmp_path: Path) -> 
             task: str,
             messages: list[Any],
             model: Any = None,
-            course_id: int | None = None,
+            course_id: str | None = None,
         ) -> str:
             self.calls.append(messages)
             self.entered.set()
@@ -153,7 +153,7 @@ def test_turn_does_not_hold_the_write_lock_while_retries_run(tmp_path: Path) -> 
 
     gateway = FailingGateway([])
     with TestClient(_make_app(tmp_path, gateway)) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         sent = client.post(
             f"/api/v1/chat/sessions/{session_id}/messages", json={"content": "hello"}
         )

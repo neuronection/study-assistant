@@ -104,6 +104,11 @@ def _fresh_atrest_key_material() -> Iterator[None]:
     app_secrets.reset_secret_caches()
 
 
+def uid(n: int) -> str:
+    """Deterministic UUID-shaped id for synthetic fixtures: `uid(1)`."""
+    return f"{n:032x}"
+
+
 def _block_network() -> None:
     def _deny(*args: object, **kwargs: object) -> None:
         raise AssertionError("network access during tests is forbidden — inject an httpx transport")

@@ -21,7 +21,7 @@ class PlannerError(ValueError):
 
 @dataclass(frozen=True)
 class PlannedNode:
-    node_id: int
+    node_id: str
     title: str
 
 
@@ -46,7 +46,7 @@ def _inner_nodes(tree: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return inner
 
 
-def _weak_concepts(session: Session, profile_id: str, course_id: int) -> list[str]:
+def _weak_concepts(session: Session, profile_id: str, course_id: str) -> list[str]:
     rows = answer_rows(session, profile_id, course_id=course_id)
     cells = [
         cell
@@ -90,7 +90,7 @@ def generate_plan(session: Session, course: Course, profile_id: str) -> list[Pla
     tree = TreeService(session).tree(course.id, profile_id)
     inner_entries = _inner_nodes(tree)
     remaining = [
-        PlannedNode(node_id=int(entry["id"]), title=str(entry["title"]))
+        PlannedNode(node_id=str(entry["id"]), title=str(entry["title"]))
         for entry in inner_entries
         if not _engaged(entry)
     ]
@@ -229,7 +229,7 @@ def upcoming_items(session: Session, profile_id: str, days: int = 7) -> list[dic
     ]
 
 
-def node_title(session: Session, node_id: int | None) -> str | None:
+def node_title(session: Session, node_id: str | None) -> str | None:
     if node_id is None:
         return None
     node = session.get(TreeNode, node_id)

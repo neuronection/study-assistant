@@ -98,6 +98,10 @@ def validate_structural_payload(kind: str, payload: dict[str, Any]) -> list[str]
     return problems
 
 
+def _seed_value(seed: str) -> int:
+    return int(seed.replace("-", "")[:16], 16)
+
+
 def _index_list(response: Any, length: int) -> list[int] | None:
     if not isinstance(response, list) or len(response) != length:
         return None
@@ -167,8 +171,8 @@ def check_structural(kind: str, payload: dict[str, Any], response: Any) -> tuple
     return False, f"unknown structural kind: {kind}"
 
 
-def public_input(kind: str, payload: dict[str, Any], seed: int) -> dict[str, Any]:
-    rnd = random.Random(seed)
+def public_input(kind: str, payload: dict[str, Any], seed: str) -> dict[str, Any]:
+    rnd = random.Random(_seed_value(seed))
     if kind == "matching":
         pairs = _as_list(payload.get("pairs"))
         rights = list(range(len(pairs)))

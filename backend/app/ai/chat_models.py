@@ -43,7 +43,7 @@ GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com"
 _KEYLESS_API_KEY = "EMPTY"
 _ANTHROPIC_REASONING_EFFORT_LEVELS = frozenset({"max", "xhigh", "high", "medium", "low"})
 _GOOGLE_REASONING_EFFORT_LEVELS = frozenset({"minimal", "low", "medium", "high"})
-_NATIVE_TOOLS_DEGRADED: set[tuple[int, str]] = set()
+_NATIVE_TOOLS_DEGRADED: set[tuple[str, str]] = set()
 
 
 def degrade_native_tools(resolved: ResolvedModel) -> None:

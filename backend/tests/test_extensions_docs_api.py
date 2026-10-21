@@ -114,9 +114,7 @@ def test_manifest_without_pointer_registers_without_a_tree() -> None:
     registers fine (the other bundles' pointers still resolve)."""
     manifests = {
         ext_id: json.loads(
-            (extension_registry.base_dir(ext_id) / "manifest.json").read_text(
-                encoding="utf-8"
-            )
+            (extension_registry.base_dir(ext_id) / "manifest.json").read_text(encoding="utf-8")
         )
         for ext_id in BUNDLED_IDS
     }
@@ -218,9 +216,7 @@ def test_documentation_opens_on_the_landing_page(client: TestClient) -> None:
     assert body["markdown"].startswith("# Overview")
     landing = ext_docs.landing_file(body["tree"])
     assert landing is not None
-    page = (
-        BUILTIN_ROOT / "mcp" / "docs" / landing
-    ).read_text(encoding="utf-8")
+    page = (BUILTIN_ROOT / "mcp" / "docs" / landing).read_text(encoding="utf-8")
     assert body["markdown"] == ext_docs.strip_raw_html(page)
 
 
@@ -254,9 +250,7 @@ def test_documentation_honest_absence_without_a_pointer(
 ) -> None:
     manifests = {
         ext_id: json.loads(
-            (extension_registry.base_dir(ext_id) / "manifest.json").read_text(
-                encoding="utf-8"
-            )
+            (extension_registry.base_dir(ext_id) / "manifest.json").read_text(encoding="utf-8")
         )
         for ext_id in BUNDLED_IDS
     }

@@ -76,6 +76,7 @@ def provider_key_ref(provider_id: str) -> str:
 # Persistence (Profile.preferences.search_providers[]) + lazy migration
 # ---------------------------------------------------------------------------
 
+
 def _providers_raw(preferences: Mapping[str, Any] | None) -> list[Any]:
     raw = preferences.get(SEARCH_PROVIDERS_KEY) if isinstance(preferences, Mapping) else None
     return [entry for entry in raw if isinstance(entry, Mapping)] if isinstance(raw, list) else []
@@ -170,9 +171,7 @@ def upsert_search_provider(
         providers.append({})  # placeholder replaced by the normalized entry below
         replace_index = len(providers) - 1
     else:
-        found = next(
-            (i for i, entry in enumerate(providers) if entry["id"] == provider_id), None
-        )
+        found = next((i for i, entry in enumerate(providers) if entry["id"] == provider_id), None)
         if found is None:
             raise SearchError("bad_request", f"provider '{provider_id}' not found")
         replace_index = found
@@ -233,6 +232,7 @@ def move_search_provider(
 # Ordered fallback across enabled providers
 # ---------------------------------------------------------------------------
 
+
 def search_with_fallback_configs(
     providers: Sequence[Mapping[str, Any]],
     keys: Mapping[str, str],
@@ -275,8 +275,7 @@ def search_with_fallback(
 ) -> list[dict[str, str]] | None:
     providers = list_search_providers(session, profile_id)
     keys = {
-        provider["id"]: get_secret(provider_key_ref(provider["id"])) or ""
-        for provider in providers
+        provider["id"]: get_secret(provider_key_ref(provider["id"])) or "" for provider in providers
     }
     return search_with_fallback_configs(providers, keys, query, transport=transport, limit=limit)
 
@@ -353,13 +352,9 @@ def perform_fetch(
     except PoliteHttpError as error:
         raise _fetch_search_error(error, url) from error
     if result.not_modified:
-        raise SearchError(
-            "protocol", "fetch returned 304 (not modified)", http_status=304
-        )
+        raise SearchError("protocol", "fetch returned 304 (not modified)", http_status=304)
     if result.status != 200:
-        raise SearchError(
-            "protocol", f"fetch returned {result.status}", http_status=result.status
-        )
+        raise SearchError("protocol", f"fetch returned {result.status}", http_status=result.status)
     if result.truncated:
         raise SearchError(
             "protocol",

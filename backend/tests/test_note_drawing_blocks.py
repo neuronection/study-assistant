@@ -19,10 +19,10 @@ class Scripted(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="m",
@@ -36,7 +36,7 @@ class Scripted(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -49,7 +49,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -68,7 +68,7 @@ def make_client(responses: list[str] | None = None, tmp: Any = None) -> TestClie
     return TestClient(app)
 
 
-def add_drawing(client: TestClient, note_id: int) -> int:
+def add_drawing(client: TestClient, note_id: str) -> str:
     added = client.post(
         f"/api/v1/notes/{note_id}/drawings",
         json={
@@ -78,10 +78,10 @@ def add_drawing(client: TestClient, note_id: int) -> int:
         },
     )
     assert added.status_code == 201, added.text
-    return int(added.json()["drawings"][-1]["id"])
+    return str(added.json()["drawings"][-1]["id"])
 
 
-def set_drawing_ocr(client: TestClient, note_id: int, drawing_id: int, markdown: str) -> None:
+def set_drawing_ocr(client: TestClient, note_id: str, drawing_id: str, markdown: str) -> None:
     app = client.app
     assert isinstance(app, FastAPI)
     with app.state.session_factory() as session:

@@ -111,7 +111,7 @@ def decision_provider(
     return provider, model
 
 
-def assign_slot(session: Session, slot: str, model_id: int | None) -> None:
+def assign_slot(session: Session, slot: str, model_id: str | None) -> None:
     row = session.get(DefaultTaskAssignment, slot)
     if row is None:
         row = DefaultTaskAssignment(requires=slot, model_id=model_id, fallback_model_id=None)
@@ -132,7 +132,7 @@ def probe_provider_row() -> Provider:
     )
 
 
-def probe_model_row(provider_id: int = 1) -> AiModel:
+def probe_model_row(provider_id: str = "1") -> AiModel:
     return AiModel(
         provider_id=provider_id,
         external_id="jev-latest",
@@ -587,7 +587,7 @@ def test_resolution_cache_tracks_the_decision_default(db_session: Session) -> No
     """The `decision` default row participates in the cache revision: flipping
     it re-resolves every inheriting kind."""
     _provider, model = decision_provider(db_session)
-    key_calls: list[int] = []
+    key_calls: list[str] = []
 
     def counting_key(provider: Provider) -> str:
         key_calls.append(provider.id)
@@ -623,7 +623,7 @@ def test_funnel_decides_through_the_default(db_session: Session) -> None:
 def test_resolution_caches_per_revision(db_session: Session) -> None:
     _provider, model = decision_provider(db_session)
     assign_slot(db_session, "decision:tool-dispatch", model.id)
-    key_calls: list[int] = []
+    key_calls: list[str] = []
 
     def counting_key(provider: Provider) -> str:
         key_calls.append(provider.id)

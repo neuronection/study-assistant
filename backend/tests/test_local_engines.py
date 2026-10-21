@@ -179,7 +179,7 @@ def test_create_local_provider_without_api_key_needs_no_keyring(
 
 def test_blank_key_resolves_to_keyless_chat_model() -> None:
     resolved = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost:8080/v1",
         external_id="qwen3-32b",

@@ -154,7 +154,7 @@ class TurnPrep:
     question: str
     system_base: str = ""
     contract: list[Constraint] = field(default_factory=list)
-    skill_version_id: int | None = None
+    skill_version_id: str | None = None
     turn_warning: str | None = None
     proposal_feedback: str | None = None
 
@@ -239,8 +239,8 @@ class ChatService:
     def create_session(
         self,
         profile_id: str,
-        course_id: int | None = None,
-        node_id: int | None = None,
+        course_id: str | None = None,
+        node_id: str | None = None,
         title: str = "New chat",
         context: dict[str, Any] | None = None,
         use_embeddings: bool | None = None,
@@ -257,33 +257,37 @@ class ChatService:
         self._session.flush()
         return chat_session
 
-    def list_sessions(self, profile_id: str, node_id: int | None = None) -> list[ChatSession]:
+    def list_sessions(self, profile_id: str, node_id: str | None = None) -> list[ChatSession]:
         statement = select(ChatSession).where(ChatSession.profile_id == profile_id)
         if node_id is not None:
             statement = statement.where(ChatSession.node_id == node_id)
-        return list(self._session.scalars(statement.order_by(ChatSession.id.desc())))
+        return list(
+            self._session.scalars(
+                statement.order_by(ChatSession.created_at.desc(), ChatSession.id.desc())
+            )
+        )
 
-    def get_session(self, session_id: int, profile_id: str) -> ChatSession | None:
+    def get_session(self, session_id: str, profile_id: str) -> ChatSession | None:
         chat_session = self._session.get(ChatSession, session_id)
         if chat_session is None or chat_session.profile_id != profile_id:
             return None
         return chat_session
 
-    def all_messages(self, chat_session_id: int) -> list[ChatMessage]:
+    def all_messages(self, chat_session_id: str) -> list[ChatMessage]:
         return list(
             self._session.scalars(
                 select(ChatMessage)
                 .where(ChatMessage.session_id == chat_session_id)
-                .order_by(ChatMessage.id)
+                .order_by(ChatMessage.created_at, ChatMessage.id)
             )
         )
 
-    def messages(self, chat_session_id: int) -> list[ChatMessage]:
+    def messages(self, chat_session_id: str) -> list[ChatMessage]:
         rows = self.all_messages(chat_session_id)
         if not rows:
             return []
         by_id = {row.id: row for row in rows}
-        children: dict[int | None, list[ChatMessage]] = {}
+        children: dict[str | None, list[ChatMessage]] = {}
         for row in rows:
             children.setdefault(row.parent_id, []).append(row)
         chat_session = self._session.get(ChatSession, chat_session_id)
@@ -296,7 +300,7 @@ class ChatService:
         ):
             current = by_id[chat_session.active_root_id]
         elif children.get(None):
-            current = max(children[None], key=lambda row: row.id)
+            current = max(children[None], key=lambda row: (row.created_at, row.id))
         path: list[ChatMessage] = []
         while current is not None:
             path.append(current)
@@ -306,25 +310,23 @@ class ChatService:
             else:
                 siblings = [row for row in rows if row.parent_id == current.id]
                 if siblings:
-                    nxt = max(siblings, key=lambda row: row.id)
+                    nxt = max(siblings, key=lambda row: (row.created_at, row.id))
             current = nxt
         return path
 
-    def child_index(self, chat_session_id: int) -> dict[int | None, list[int]]:
-        groups: dict[int | None, list[int]] = {}
+    def child_index(self, chat_session_id: str) -> dict[str | None, list[str]]:
+        groups: dict[str | None, list[str]] = {}
         for row in self.all_messages(chat_session_id):
             groups.setdefault(row.parent_id, []).append(row.id)
-        for ids in groups.values():
-            ids.sort()
         return groups
 
-    def active_tip(self, chat_session_id: int) -> int | None:
+    def active_tip(self, chat_session_id: str) -> str | None:
         path = self.messages(chat_session_id)
         return path[-1].id if path else None
 
     def add_message(
         self,
-        chat_session_id: int,
+        chat_session_id: str,
         role: str,
         markdown: str,
         citations: list[dict[str, Any]] | None = None,
@@ -335,7 +337,7 @@ class ChatService:
         blocks: list[dict[str, Any]] | None = None,
         trace: dict[str, Any] | None = None,
         warnings: list[str] | None = None,
-        parent_id: int | None = None,
+        parent_id: str | None = None,
     ) -> ChatMessage:
         message = ChatMessage(
             session_id=chat_session_id,
@@ -391,17 +393,21 @@ class ChatService:
         if parent is None or parent.active_child_id is None:
             return
         active = self._session.get(ChatMessage, parent.active_child_id)
-        if active is not None and active.role == "assistant" and active.id > pending.id:
+        if (
+            active is not None
+            and active.role == "assistant"
+            and active.created_at > pending.created_at
+        ):
             pending.parent_id = active.id
 
     def _log_interaction(
         self,
-        chat_session_id: int,
+        chat_session_id: str,
         model: str | None,
         prompt: str,
         output: str,
         latency_ms: int,
-        skill_version_id: int | None = None,
+        skill_version_id: str | None = None,
     ) -> None:
         input_tokens = _estimate_tokens(prompt)
         output_tokens = _estimate_tokens(output)
@@ -425,20 +431,20 @@ class ChatService:
         question_id = binding.get("question_id")
         if not attempt_id or not question_id:
             return None
-        attempt = self._session.get(Attempt, int(attempt_id))
+        attempt = self._session.get(Attempt, str(attempt_id))
         if attempt is None or attempt.finished_at is not None:
             return None
         answered = (
             self._session.scalars(
                 select(Answer.id).where(
-                    Answer.attempt_id == attempt.id, Answer.question_id == int(question_id)
+                    Answer.attempt_id == attempt.id, Answer.question_id == str(question_id)
                 )
             ).first()
             is not None
         )
         if answered:
             return None
-        question = self._session.get(Question, int(question_id))
+        question = self._session.get(Question, str(question_id))
         if question is None:
             return None
         return quiz_guard_context(question)
@@ -450,7 +456,7 @@ class ChatService:
         exercise_session_id = binding.get("exercise_session_id")
         if not exercise_session_id:
             return None
-        exercise_session = self._session.get(ExerciseSession, int(exercise_session_id))
+        exercise_session = self._session.get(ExerciseSession, str(exercise_session_id))
         if exercise_session is None or exercise_session.status != "active":
             return None
         step = self._session.scalars(
@@ -482,7 +488,7 @@ class ChatService:
                     StepAttempt.session_id == exercise_session.id,
                     StepAttempt.step_idx == exercise_session.current_step_idx,
                 )
-                .order_by(StepAttempt.id)
+                .order_by(StepAttempt.created_at, StepAttempt.id)
             )
         )
         lines = [
@@ -632,7 +638,7 @@ class ChatService:
         for entry in materials:
             registry.add(
                 "material",
-                int(entry["id"]),
+                str(entry["id"]),
                 str(entry["title"]),
                 chat_session.course_id,
                 str(entry["summary"]) if entry.get("summary") else None,
@@ -643,12 +649,12 @@ class ChatService:
         self._session.commit()
         return registry
 
-    def _root_node(self, course_id: int) -> TreeNode | None:
+    def _root_node(self, course_id: str) -> TreeNode | None:
         return self._session.scalars(
             select(TreeNode).where(TreeNode.course_id == course_id, TreeNode.is_root.is_(True))
         ).first()
 
-    def _child_nodes(self, parent_id: int) -> list[TreeNode]:
+    def _child_nodes(self, parent_id: str) -> list[TreeNode]:
         return list(
             self._session.scalars(
                 select(TreeNode).where(TreeNode.parent_id == parent_id).order_by(TreeNode.order_idx)
@@ -749,7 +755,7 @@ class ChatService:
         stored: list[dict[str, Any]] = []
         for attachment in attachments:
             kind = str(attachment.get("kind"))
-            item_id = int(attachment.get("id", 0))
+            item_id = str(attachment.get("id", ""))
             if kind == "material":
                 material = self._session.get(Material, item_id)
                 if material is None:
@@ -835,10 +841,10 @@ class ChatService:
         last turn (plan 78-D): the model must learn what happened to its
         proposals and not re-propose the same change unprompted."""
         context = dict(chat_session.context or {})
-        reported: list[int] = [
-            int(value)
+        reported: list[str] = [
+            str(value)
             for value in (context.get("proposal_feedback_ids") or [])
-            if isinstance(value, (int, str)) and str(value).isdigit()
+            if isinstance(value, str)
         ]
         rows = (
             self._session.execute(
@@ -848,7 +854,7 @@ class ChatService:
                     ChatMessage.session_id == chat_session.id,
                     ChatProposal.status != ChatProposalStatus.PROPOSED.value,
                 )
-                .order_by(ChatProposal.id.desc())
+                .order_by(ChatProposal.created_at.desc(), ChatProposal.id.desc())
                 .limit(self.PROPOSAL_FEEDBACK_TRACK_CAP)
             )
             .scalars()
@@ -894,7 +900,7 @@ class ChatService:
         except Exception:
             hits = []
         for hit in hits[:FIND_RESULT_LIMIT]:
-            material = self._session.get(Material, int(hit["material_id"]))
+            material = self._session.get(Material, str(hit["material_id"]))
             if material is None or material.course_id != course_id:
                 continue
             entry = registry.add("material", material.id, material.title, material.course_id)
@@ -1204,7 +1210,7 @@ class ChatService:
         argument: str,
         chat_session: ChatSession,
         registry: MentionRegistry,
-    ) -> int | None:
+    ) -> str | None:
         arg = (argument or "").strip()
         if arg in {"", "here", "current"}:
             return chat_session.node_id
@@ -1244,7 +1250,7 @@ class ChatService:
             for entry in (result.get("direct") or [])[:NODE_MATERIALS_REG_CAP]:
                 registry.add(
                     "material",
-                    int(entry["material_id"]),
+                    str(entry["material_id"]),
                     str(entry["title"]),
                     chat_session.course_id,
                 )
@@ -1330,7 +1336,7 @@ class ChatService:
         messages.append(Message(role="user", content=current))
         return messages
 
-    def native_tools_enabled(self, course_id: int | None = None) -> bool:
+    def native_tools_enabled(self, course_id: str | None = None) -> bool:
         try:
             from ...ai.chat_models import use_native_tools
 
@@ -1419,7 +1425,7 @@ class ChatService:
         )
 
     def prepare_turn_contract(self, chat_session: ChatSession, prep: TurnPrep) -> None:
-        skill_version_id: int | None = None
+        skill_version_id: str | None = None
         skills = SkillService(self._session)
         version = skills.resolve(CHAT_SKILL, course_id=chat_session.course_id)
         if version is not None:
@@ -1515,7 +1521,7 @@ class ChatService:
                 self._session,
                 action=action,
                 payload=stored_payload,
-                course_id=int(chat_session.course_id or 0),
+                course_id=chat_session.course_id or "",
             )
             if snapshot:
                 stored_payload.update(snapshot)
@@ -1569,7 +1575,7 @@ class ChatService:
                 self._session,
                 action=action,
                 payload=stored_payload,
-                course_id=int(chat_session.course_id or 0),
+                course_id=chat_session.course_id or "",
             )
             if target:
                 stored_payload.update(target)

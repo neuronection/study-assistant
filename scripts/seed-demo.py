@@ -1017,7 +1017,7 @@ def _ensure_course(
 
 
 def _ensure_chapter(
-    session: Session, tree: TreeService, course: Course, root_id: int, title: str
+    session: Session, tree: TreeService, course: Course, root_id: str, title: str
 ) -> tuple[TreeNode, bool]:
     row = session.scalar(
         select(TreeNode).where(

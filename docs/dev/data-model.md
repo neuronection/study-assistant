@@ -34,6 +34,31 @@ providers ─── models ─── task_assignments        (machine-global, no
 jobs · ai_interactions                          (durable queue · AI audit log)
 ```
 
+## Identity (ADR-198, migration 0073)
+
+Every user-data entity is keyed by a UUID string — `Uuid(as_uuid=False)`, the
+same convention `users`/`profiles` carry from the family identity schema. On
+SQLite that is `CHAR(32)` hex; on PostgreSQL it is the native `uuid` type (the
+dialect twin). Integer surrogate keys are retired; natural keys are unchanged
+(`blobs.sha256`, the task-assignment tables' composite keys,
+`instance_settings.key`).
+
+- **Why:** course bundles, import/export and any future sync/sharing/merge need
+  identity that survives a re-home. A bundle import honours the incoming ids and
+  remaps only on collision (`course_bundle._import_id`), so export → wipe →
+  import preserves every reference.
+- **Ordering:** UUID order is *not* insertion order. Any list that used to mean
+  "oldest/newest first" orders by `created_at, id` (or the row's own timestamp:
+  `attempts.started_at`, `review_log.reviewed_at`, `deleted_items.deleted_at`);
+  `question` order inside a quiz is `questions.created_at, id`. The discovery
+  suggestion cursor is the opaque `"<created_at iso>|<id>"` keyset pair.
+- **Polymorphic refs** (`notes.owner_id`, `chat_messages.parent_id`,
+  `skill_versions.scope_ref`, `ai_interactions.context_id`, JSON id arrays) are
+  UUID strings with no FK — the same shapes as before, wider type only.
+- **Vectors:** `chunk_vecs.rowid` stays a 63-bit integer (vec0/pgvector need
+  it); `storage/vectors.py` derives it from the chunk id and keeps the reverse
+  mapping in `chunk_vec_ids`.
+
 ## Scoping model (ADR-039, migration 0019)
 
 Every course has exactly one **root node** (`is_root`, depth 0) — the course level
@@ -346,6 +371,29 @@ staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
 signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
+
+- **0073 (plan 81 C, ADR-198)**: UUID identity for every user-data entity.
+  Every surrogate integer primary key becomes `Uuid(as_uuid=False)` — the
+  convention `users`/`profiles` already used (CHAR(32) hex on SQLite, native
+  `uuid` on PostgreSQL) — and every FK that pointed at one follows, including
+  the polymorphic loose references (`notes.owner_id`, `chat_messages.parent_id`/
+  `active_child_id`, `chat_sessions.active_root_id`, `skill_versions.scope_ref`,
+  `ai_interactions.context_id`/`skill_version_id`, `questions.concept_ids`,
+  `source_refs`, `*_drawings.ocr_job_id`, `materials.source_id`,
+  `concept_skill_stats.concept_id`). Natural/composite keys are unchanged
+  (`blobs.sha256`, `users`/`profiles` identity, the task-assignment tables).
+  **The revision is destructive**: SQLite cannot convert an `INTEGER` primary
+  key into the UUID storage shape in place, so the whole identity domain is
+  dropped and rebuilt child-first from the model metadata (the 0066 pattern) —
+  no rows are carried over (dev databases are rebuilt, ADR-196). `users`,
+  `profiles`, `auth_sessions`, `audit_events` and `blobs` survive. The
+  PostgreSQL FTS twins are rebuilt with `material_id TEXT`; FTS rows and the
+  vec tables are cleared (reindex after upgrading). `downgrade()` restores the
+  empty integer shape by rebuilding the same domain with identity columns
+  typed back to `Integer` (shape only, no data). Consequence for callers:
+  id order is no longer insertion order — list endpoints order by
+  `created_at, id` and the suggestion cursor is `"<created_at>|<id>"`
+  (`tests/test_uuid_identity_migration.py`, `tests/test_course_bundle.py`).
 
 - **0072 (plan 81 B, ADR-197)**: DB-enforced closed sets. Nineteen
   StrEnum-backed columns (`courses.origin`, `materials.kind/status`,

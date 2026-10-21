@@ -5,23 +5,23 @@ from fastapi.testclient import TestClient
 from app.domain.models import PlanItem, utcnow
 
 
-def make_course(client: TestClient, title: str) -> int:
-    return int(client.post("/api/v1/courses", json={"title": title}).json()["id"])
+def make_course(client: TestClient, title: str) -> str:
+    return str(client.post("/api/v1/courses", json={"title": title}).json()["id"])
 
 
 def make_item(
     client: TestClient,
-    course_id: int,
+    course_id: str,
     title: str,
     due_date: str,
     detail: str | None = None,
-) -> int:
+) -> str:
     created = client.post(
         f"/api/v1/courses/{course_id}/plan",
         json={"title": title, "due_date": due_date, **({"detail": detail} if detail else {})},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_ics_round_trip_crlf_uids_and_exam(client: TestClient) -> None:
@@ -42,16 +42,16 @@ def test_ics_round_trip_crlf_uids_and_exam(client: TestClient) -> None:
         assert lines[-2] == "END:VCALENDAR"
         assert "VERSION:2.0" in lines
         assert "X-WR-CALNAME:Calculus I" in lines
-        assert "UID:planitem-1@studyassistant.local" in lines
+        assert f"UID:planitem-{item_id}@studyassistant.local" in lines
         assert "DTSTART;VALUE=DATE:20260916" in lines
         assert "DTEND;VALUE=DATE:20260917" in lines
         assert "STATUS:CONFIRMED" in lines
         assert "SUMMARY:Practice: chain rule" in lines
-        assert "UID:exam-1@studyassistant.local" in lines
+        assert f"UID:exam-{course_id}@studyassistant.local" in lines
         assert "DTSTART;VALUE=DATE:20260930" in lines
         assert "SUMMARY:Exam: Calculus I" in lines
         assert len([line for line in lines if line == "BEGIN:VEVENT"]) == 2
-        assert item_id > 0
+        assert item_id
 
 
 def test_ics_escapes_specials_and_folds_long_lines(client: TestClient) -> None:

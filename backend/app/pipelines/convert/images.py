@@ -9,14 +9,14 @@ class ImageStore:
     rows and records their ids so the caller can enqueue `image_ocr` jobs
     after the extraction is committed."""
 
-    def __init__(self, session: Session, blobs: BlobStore, material_id: int) -> None:
+    def __init__(self, session: Session, blobs: BlobStore, material_id: str) -> None:
         self._session = session
         self._blobs = blobs
         self._material_id = material_id
         self._position = 0
-        self.image_ids: list[int] = []
+        self.image_ids: list[str] = []
 
-    def store(self, data: bytes, mime: str | None = None) -> int:
+    def store(self, data: bytes, mime: str | None = None) -> str:
         resolved_mime = mime or "image/png"
         stored = self._blobs.put(data, mime=resolved_mime, session=self._session)
         image = MaterialImage(

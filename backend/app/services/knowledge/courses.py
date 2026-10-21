@@ -107,7 +107,7 @@ OUTLINE_SYSTEM_PROMPT = (
     "        {\n"
     '          "title": str,\n'
     '          "objectives": [str],\n'
-    '          "material_ids": [int],\n'
+    '          "material_ids": [str],  // the id= value shown on each material line\n'
     '          "rationale": str,\n'
     '          "confidence": float (0-1)\n'
     "        }\n"
@@ -180,7 +180,7 @@ class OutlineService:
         self,
         course: Course,
         materials: list[Material],
-        cards: dict[int, MaterialIndexCard],
+        cards: dict[str, MaterialIndexCard],
     ) -> dict[str, Any]:
         if not materials:
             raise CourseError("course has no materials to outline")
@@ -397,7 +397,7 @@ def _validate_draft(draft: Any, materials: list[Material]) -> dict[str, Any]:
     if not isinstance(draft, dict) or not isinstance(draft.get("chapters"), list):
         raise CourseError("outline draft missing 'chapters' list")
     known_ids = {material.id for material in materials}
-    used_ids: set[int] = set()
+    used_ids: set[str] = set()
     chapters_out: list[dict[str, Any]] = []
     for chapter in draft["chapters"][:MAX_CHAPTERS]:
         if not isinstance(chapter, dict):
@@ -412,10 +412,10 @@ def _validate_draft(draft: Any, materials: list[Material]) -> dict[str, Any]:
             section_title = str(section.get("title", "")).strip()
             if not section_title:
                 continue
-            material_ids: list[int] = []
+            material_ids: list[str] = []
             for raw_id in section.get("material_ids") or []:
                 try:
-                    material_id = int(raw_id)
+                    material_id = str(raw_id)
                 except (TypeError, ValueError):
                     continue
                 if material_id in known_ids and material_id not in used_ids:
@@ -459,8 +459,8 @@ class StructureService:
 
     def assign(
         self,
-        node_id: int,
-        material_id: int,
+        node_id: str,
+        material_id: str,
         rationale: str | None = None,
         auto_assigned: bool = False,
         confidence: float | None = None,
@@ -497,7 +497,7 @@ class StructureService:
         self._session.flush()
         return link
 
-    def unassign(self, node_id: int, material_id: int) -> bool:
+    def unassign(self, node_id: str, material_id: str) -> bool:
         existing = self._session.scalars(
             select(MaterialLink).where(
                 MaterialLink.node_id == node_id,
@@ -521,8 +521,8 @@ class StructureService:
 
     def assign_folder(
         self,
-        node_id: int,
-        folder_id: int,
+        node_id: str,
+        folder_id: str,
         rationale: str | None = None,
         auto_assigned: bool = False,
         confidence: float | None = None,
@@ -561,8 +561,8 @@ class StructureService:
 
     def mirror_folder(
         self,
-        node_id: int,
-        folder_id: int,
+        node_id: str,
+        folder_id: str,
         *,
         recursive: bool = True,
         rationale: str | None = None,
@@ -578,7 +578,7 @@ class StructureService:
         folder_links = 0
         skipped: list[str] = []
 
-        def child_folders(parent_id: int) -> list[MaterialFolder]:
+        def child_folders(parent_id: str) -> list[MaterialFolder]:
             return list(
                 self._session.scalars(
                     select(MaterialFolder)
@@ -587,15 +587,15 @@ class StructureService:
                 )
             )
 
-        def existing_child_titles(parent_node_id: int) -> dict[str, int]:
-            titles: dict[str, int] = {}
+        def existing_child_titles(parent_node_id: str) -> dict[str, str]:
+            titles: dict[str, str] = {}
             for child in self._session.scalars(
                 select(TreeNode).where(TreeNode.parent_id == parent_node_id)
             ):
                 titles.setdefault(child.title.casefold(), child.id)
             return titles
 
-        def mirror(parent_folder_id: int, parent_node_id: int) -> None:
+        def mirror(parent_folder_id: str, parent_node_id: str) -> None:
             nonlocal created, reused, folder_links
             for child in child_folders(parent_folder_id):
                 if node_depth(parent_node_id) >= MAX_DEPTH:
@@ -619,7 +619,7 @@ class StructureService:
                 if recursive:
                     mirror(child.id, child_node_id)
 
-        def node_depth(n: int) -> int:
+        def node_depth(n: str) -> int:
             found = self._session.get(TreeNode, n)
             assert found is not None
             return found.depth
@@ -636,7 +636,7 @@ class StructureService:
             "skipped_folders": skipped[:20],
         }
 
-    def unassign_folder(self, node_id: int, folder_id: int) -> bool:
+    def unassign_folder(self, node_id: str, folder_id: str) -> bool:
         existing = self._session.scalars(
             select(MaterialFolderLink).where(
                 MaterialFolderLink.node_id == node_id,
@@ -649,7 +649,7 @@ class StructureService:
         self._session.flush()
         return True
 
-    def course_materials(self, course_id: int) -> list[dict[str, Any]]:
+    def course_materials(self, course_id: str) -> list[dict[str, Any]]:
         rows = self._session.execute(
             select(MaterialLink, Material, TreeNode)
             .join(Material, MaterialLink.material_id == Material.id)
@@ -659,7 +659,7 @@ class StructureService:
         ).all()
         entries: list[dict[str, Any]] = []
         sort_keys: list[tuple[str, int]] = []
-        seen: set[tuple[int, int]] = set()
+        seen: set[tuple[str, str]] = set()
         for index, (link, material, node) in enumerate(rows):
             seen.add((link.node_id, material.id))
             entries.append(
@@ -723,7 +723,7 @@ class StructureService:
         ]
         return ordered
 
-    def material_links(self, material_id: int) -> list[dict[str, Any]]:
+    def material_links(self, material_id: str) -> list[dict[str, Any]]:
         rows = self._session.execute(
             select(MaterialLink, TreeNode, Course)
             .join(TreeNode, MaterialLink.node_id == TreeNode.id)
@@ -731,7 +731,7 @@ class StructureService:
             .where(MaterialLink.material_id == material_id)
             .order_by(TreeNode.sort_path)
         ).all()
-        breadcrumb_tail: dict[int, list[dict[str, Any]]] = {}
+        breadcrumb_tail: dict[str, list[dict[str, Any]]] = {}
         for _link, node, _course in rows:
             breadcrumb_tail[node.id] = [
                 {"id": entry["id"], "title": entry["title"]}
@@ -779,7 +779,7 @@ class StructureService:
             )
         return entries
 
-    def folder_links(self, folder_id: int) -> list[dict[str, Any]]:
+    def folder_links(self, folder_id: str) -> list[dict[str, Any]]:
         rows = self._session.execute(
             select(MaterialFolderLink, TreeNode, Course)
             .join(TreeNode, MaterialFolderLink.node_id == TreeNode.id)
@@ -804,7 +804,7 @@ class StructureService:
             for link, node, course in rows
         ]
 
-    def folder_delete_info(self, folder_id: int) -> dict[str, Any]:
+    def folder_delete_info(self, folder_id: str) -> dict[str, Any]:
         folder = self._session.get(MaterialFolder, folder_id)
         if folder is None:
             raise CourseError("folder not found")
@@ -819,7 +819,7 @@ class StructureService:
                         select(Material.id).where(Material.source_id == sub_folder.source_id)
                     )
                 )
-        node_map: dict[int, dict[str, Any]] = {}
+        node_map: dict[str, dict[str, Any]] = {}
         for _link, node, course in self._session.execute(
             select(MaterialFolderLink, TreeNode, Course)
             .join(TreeNode, MaterialFolderLink.node_id == TreeNode.id)
@@ -863,8 +863,8 @@ class StructureService:
             "material_count": 0,
         }
 
-    def commit_outline(self, course_id: int, draft: dict[str, Any]) -> dict[str, Any]:
-        material_ids: set[int] = set()
+    def commit_outline(self, course_id: str, draft: dict[str, Any]) -> dict[str, Any]:
+        material_ids: set[str] = set()
         for chapter in draft.get("chapters", []):
             for section in chapter.get("sections", []):
                 material_ids.update(section.get("material_ids", []))
@@ -914,7 +914,7 @@ class StructureService:
         }
 
     def set_study_state(
-        self, material_id: int, profile_id: str, status: str, progress: float | None = None
+        self, material_id: str, profile_id: str, status: str, progress: float | None = None
     ) -> MaterialStudyState:
         try:
             status_value = StudyStatus.parse(status)
@@ -943,7 +943,7 @@ class StructureService:
         self._session.flush()
         return state
 
-    def study_states(self, profile_id: str) -> dict[int, dict[str, Any]]:
+    def study_states(self, profile_id: str) -> dict[str, dict[str, Any]]:
         rows = self._session.scalars(
             select(MaterialStudyState).where(MaterialStudyState.profile_id == profile_id)
         )

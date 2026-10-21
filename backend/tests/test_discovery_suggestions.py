@@ -79,7 +79,7 @@ def test_save_validates_url_kind_and_placement(client: TestClient) -> None:
 
 def test_list_filters_and_cursor_pagination(client: TestClient) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _save(client, "https://a.example/1")
         _save(client, "https://b.example/2", kind="video")
         _save(
@@ -116,7 +116,7 @@ def test_list_filters_and_cursor_pagination(client: TestClient) -> None:
 
 def test_patch_status_transitions_and_attach_material(client: TestClient) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         saved = _save(client, "https://x.example/video", course_id=course_id)
         sid = saved["suggestion"]["id"]
 
@@ -136,7 +136,7 @@ def test_patch_status_transitions_and_attach_material(client: TestClient) -> Non
             json={"course_id": course_id, "url": "https://x.example/video"},
         )
         assert linked.status_code == 200, linked.text
-        material_id = int(linked.json()["material"]["id"])
+        material_id = str(linked.json()["material"]["id"])
 
         attached = client.patch(
             f"/api/v1/discovery/suggestions/{sid}",
@@ -147,12 +147,12 @@ def test_patch_status_transitions_and_attach_material(client: TestClient) -> Non
         assert body["status"] == "saved"
         assert body["material_id"] == material_id
 
-        other_course = int(client.post("/api/v1/courses", json={"title": "Algebra"}).json()["id"])
+        other_course = str(client.post("/api/v1/courses", json={"title": "Algebra"}).json()["id"])
         foreign = client.post(
             "/api/v1/materials/link",
             json={"course_id": other_course, "url": "https://y.example/other"},
         )
-        foreign_id = int(foreign.json()["material"]["id"])
+        foreign_id = str(foreign.json()["material"]["id"])
         mismatch = client.patch(
             f"/api/v1/discovery/suggestions/{sid}",
             json={"material_id": foreign_id},
@@ -160,13 +160,13 @@ def test_patch_status_transitions_and_attach_material(client: TestClient) -> Non
         assert mismatch.status_code == 422
 
         tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         node = client.post(
             f"/api/v1/courses/{course_id}/nodes",
             json={"course_id": course_id, "parent_id": root_id, "title": "Derivatives"},
         )
         assert node.status_code == 201, node.text
-        node_id = int(node.json()["id"])
+        node_id = str(node.json()["id"])
         repointed = client.patch(f"/api/v1/discovery/suggestions/{sid}", json={"node_id": node_id})
         assert repointed.status_code == 200, repointed.text
         assert repointed.json()["node_id"] == node_id
@@ -192,12 +192,12 @@ def test_forget_then_rediscover_creates_fresh(client: TestClient) -> None:
 
 def test_material_purge_reverts_saved_suggestion(client: TestClient, db_session: Session) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         linked = client.post(
             "/api/v1/materials/link",
             json={"course_id": course_id, "url": "https://x.example/1"},
         )
-        material_id = int(linked.json()["material"]["id"])
+        material_id = str(linked.json()["material"]["id"])
         saved = _save(client, "https://x.example/1", course_id=course_id)
         sid = saved["suggestion"]["id"]
         attached = client.patch(
@@ -219,7 +219,7 @@ def test_course_purge_cascades_but_scratchpad_survives(
     client: TestClient, db_session: Session
 ) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         _save(client, "https://x.example/course-owned", course_id=course_id)
         scratch_saved = _save(client, "https://x.example/scratch")
         scratch_id = scratch_saved["suggestion"]["id"]
@@ -236,15 +236,15 @@ def test_node_deletion_repoints_suggestion_to_parent(
     client: TestClient, db_session: Session
 ) -> None:
     with client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
         tree = client.get(f"/api/v1/courses/{course_id}/tree").json()
-        root_id = int(tree[0]["id"])
+        root_id = str(tree[0]["id"])
         node = client.post(
             f"/api/v1/courses/{course_id}/nodes",
             json={"course_id": course_id, "parent_id": root_id, "title": "Chapter"},
         )
         assert node.status_code == 201, node.text
-        node_id = int(node.json()["id"])
+        node_id = str(node.json()["id"])
 
         saved = _save(client, "https://x.example/1", course_id=course_id, node_id=node_id)
         sid = saved["suggestion"]["id"]

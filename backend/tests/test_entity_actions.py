@@ -38,7 +38,7 @@ def client(tmp_path: Path) -> Iterator[tuple[TestClient, FastAPI, ScriptedGatewa
         yield test_client, app, gateway
 
 
-def wait_for_assistant(client: TestClient, session_id: int, timeout: float = 30.0) -> None:
+def wait_for_assistant(client: TestClient, session_id: str, timeout: float = 30.0) -> None:
     deadline = time.monotonic() + timeout
     messages: list[dict[str, Any]] = []
     while time.monotonic() < deadline:
@@ -51,8 +51,8 @@ def wait_for_assistant(client: TestClient, session_id: int, timeout: float = 30.
 
 
 def make_chat_with_messages(
-    client: TestClient, app: FastAPI, gateway: ScriptedGateway, course_id: int
-) -> int:
+    client: TestClient, app: FastAPI, gateway: ScriptedGateway, course_id: str
+) -> str:
     session = client.post(
         "/api/v1/chat/sessions", json={"course_id": course_id, "title": "Old title"}
     ).json()
@@ -65,10 +65,10 @@ def make_chat_with_messages(
     )
     db.commit()
     db.close()
-    return int(session["id"])
+    return str(session["id"])
 
 
-def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
+def make_quiz_with_history(app: FastAPI, course_id: str) -> str:
     from conftest import mint_session
 
     _, _, profile_id = mint_session(app)
@@ -99,7 +99,7 @@ def make_quiz_with_history(app: FastAPI, course_id: int) -> int:
     return activity_id
 
 
-def make_exercise_with_reviews(app: FastAPI, course_id: int) -> int:
+def make_exercise_with_reviews(app: FastAPI, course_id: str) -> str:
     from conftest import mint_session
 
     _, _, profile_id = mint_session(app)
@@ -159,7 +159,7 @@ def test_chat_session_rename_and_delete_cascades(
         assert table_count(app, ChatProposal) == 1
         deleted = test_client.delete(f"/api/v1/chat/sessions/{session_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["deleted_item_id"] > 0
+        assert deleted.json()["deleted_item_id"]
         assert table_count(app, ChatMessage, session_id=session_id) == 0
         assert table_count(app, ChatProposal) == 0
         assert test_client.delete(f"/api/v1/chat/sessions/{session_id}").status_code == 404
@@ -187,7 +187,7 @@ def test_quiz_rename_and_delete_cleans_history(
         assert table_count(app, ItemStat) == 1
         deleted = test_client.delete(f"/api/v1/quiz/activities/{activity_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["deleted_item_id"] > 0
+        assert deleted.json()["deleted_item_id"]
         assert table_count(app, Question, activity_id=activity_id) == 0
         assert table_count(app, Attempt, activity_id=activity_id) == 0
         assert table_count(app, Mistake) == 0
@@ -213,7 +213,7 @@ def test_exercise_rename_and_delete_cleans_reviews(
         assert table_count(app, ReviewLog, card_id=exercise_id) == 1
         deleted = test_client.delete(f"/api/v1/exercises/{exercise_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["deleted_item_id"] > 0
+        assert deleted.json()["deleted_item_id"]
         assert table_count(app, ExerciseStep, exercise_id=exercise_id) == 0
         assert table_count(app, ReviewLog, card_id=exercise_id) == 0
         assert test_client.delete(f"/api/v1/exercises/{exercise_id}").status_code == 404

@@ -15,7 +15,7 @@ from app.main import create_app
 from app.services.platform.quizme import grade_answer, validate_quiz_args
 
 
-def wait_for_assistant(client: TestClient, session_id: int, timeout: float = 5.0) -> dict[str, Any]:
+def wait_for_assistant(client: TestClient, session_id: str, timeout: float = 5.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         messages: list[dict[str, Any]] = client.get(
@@ -123,7 +123,7 @@ def test_quiz_tool_flow_non_leak_and_verdict(tmp_path: Path) -> None:
         test_client, gateway = test_client, gateway
         course_id = make_course(test_client)
         session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
-        session_id = int(session["id"])
+        session_id = str(session["id"])
         test_client.patch(f"/api/v1/chat/sessions/{session_id}", json={"quizme": True})
 
         gateway.responses.append(
@@ -200,7 +200,7 @@ def test_quiz_prompt_block_present_when_quizme_on(
     with test_client:
         course_id = make_course(test_client)
         session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
-        session_id = int(session["id"])
+        session_id = str(session["id"])
         test_client.patch(f"/api/v1/chat/sessions/{session_id}", json={"quizme": True})
         gateway.responses.append("plain answer")
         test_client.post(
@@ -224,7 +224,7 @@ def test_quizme_answer_credits_daily_history(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         course_id = make_course(test_client)
         session = test_client.post("/api/v1/chat/sessions", json={"course_id": course_id}).json()
-        session_id = int(session["id"])
+        session_id = str(session["id"])
         test_client.patch(f"/api/v1/chat/sessions/{session_id}", json={"quizme": True})
 
         gateway.responses.append(

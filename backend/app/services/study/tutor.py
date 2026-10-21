@@ -136,7 +136,7 @@ class TutorService:
                         StepAttempt.session_id == exercise_session.id,
                         StepAttempt.step_idx == exercise_session.current_step_idx,
                     )
-                    .order_by(StepAttempt.id.desc())
+                    .order_by(StepAttempt.created_at.desc(), StepAttempt.id.desc())
                 )
             )
             highest_used = max((attempt.hint_level_used or 0 for attempt in previous), default=0)

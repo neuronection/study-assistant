@@ -38,13 +38,13 @@ def text_pdf() -> bytes:
     )
 
 
-def make_course(client: TestClient, title: str = "Materials") -> int:
+def make_course(client: TestClient, title: str = "Materials") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def upload(client: TestClient, data: bytes, filename: str, course_id: int) -> dict[str, Any]:
+def upload(client: TestClient, data: bytes, filename: str, course_id: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/materials",
         params={"course_id": course_id},
@@ -143,14 +143,14 @@ def test_same_file_two_courses_two_materials(client: TestClient, text_pdf: bytes
     assert second["deduped"] is False
 
 
-def _add_child_node(client: TestClient, course_id: int, title: str = "Chapter 1") -> int:
+def _add_child_node(client: TestClient, course_id: str, title: str = "Chapter 1") -> str:
     root = client.get(f"/api/v1/courses/{course_id}/tree").json()[0]
     created = client.post(
         f"/api/v1/courses/{course_id}/nodes",
         json={"course_id": course_id, "parent_id": root["id"], "title": title},
     )
     assert created.status_code == 201, created.text
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def test_upload_with_node_id_assigns(client: TestClient, text_pdf: bytes) -> None:

@@ -158,7 +158,7 @@ def _write_versions(session: Session, skill: Skill, entry: dict[str, Any]) -> No
         .limit(1)
     ).first()
     next_version = latest.version if latest is not None else 0
-    activate_id: int | None = None
+    activate_id: str | None = None
     for version in incoming:
         next_version += 1
         row = SkillVersion(

@@ -258,7 +258,7 @@ class ProvidersService:
 
     def update(
         self,
-        provider_id: int,
+        provider_id: str,
         *,
         name: str | None = None,
         base_url: str | None = None,
@@ -282,7 +282,7 @@ class ProvidersService:
         self._session.flush()
         return provider
 
-    def delete(self, provider_id: int) -> bool:
+    def delete(self, provider_id: str) -> bool:
         provider = self._session.get(Provider, provider_id)
         if provider is None:
             return False
@@ -377,7 +377,7 @@ class ProvidersService:
 
 def _check_capability(
     session: Session,
-    model_id: int | None,
+    model_id: str | None,
     requires: str,
     field: str,
 ) -> None:
@@ -416,8 +416,8 @@ def _check_capability(
 def assign_task(
     session: Session,
     task: str,
-    model_id: int | None,
-    fallback_model_id: int | None,
+    model_id: str | None,
+    fallback_model_id: str | None,
 ) -> TaskAssignment:
     from ..tasks import TASKS_BY_NAME
 
@@ -443,8 +443,8 @@ def assign_task(
 def assign_default_task(
     session: Session,
     requires: str,
-    model_id: int | None,
-    fallback_model_id: int | None = None,
+    model_id: str | None,
+    fallback_model_id: str | None = None,
 ) -> DefaultTaskAssignment:
     if requires not in DEFAULT_REQUIRES:
         raise ProviderError(f"unknown capability '{requires}'")
@@ -473,10 +473,10 @@ def assign_default_task(
 
 def assign_course_task(
     session: Session,
-    course_id: int,
+    course_id: str,
     task: str,
-    model_id: int | None,
-    fallback_model_id: int | None,
+    model_id: str | None,
+    fallback_model_id: str | None,
 ) -> CourseTaskAssignment:
     from ...domain.models import Course
     from ..tasks import TASKS_BY_NAME
@@ -507,9 +507,9 @@ def assign_course_task(
 
 def assign_course_default_task(
     session: Session,
-    course_id: int,
+    course_id: str,
     requires: str,
-    model_id: int | None,
+    model_id: str | None,
 ) -> CourseDefaultTaskAssignment:
     from ...domain.models import Course
 
@@ -534,7 +534,7 @@ def assign_course_default_task(
     return assignment
 
 
-def list_course_assignments(session: Session, course_id: int) -> dict[str, CourseTaskAssignment]:
+def list_course_assignments(session: Session, course_id: str) -> dict[str, CourseTaskAssignment]:
     return {
         assignment.task: assignment
         for assignment in session.scalars(
@@ -544,7 +544,7 @@ def list_course_assignments(session: Session, course_id: int) -> dict[str, Cours
 
 
 def list_course_default_assignments(
-    session: Session, course_id: int
+    session: Session, course_id: str
 ) -> dict[str, CourseDefaultTaskAssignment]:
     return {
         assignment.requires: assignment

@@ -54,9 +54,9 @@ router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 
 class GenerateIn(ContextParams):
-    course_id: int
-    node_id: int | None = None
-    concept_id: int | None = None
+    course_id: str
+    node_id: str | None = None
+    concept_id: str | None = None
     count: int = Field(default=8, ge=1, le=30)
     difficulty: int | None = Field(default=None, ge=1, le=5)
     topic: str | None = Field(default=None, max_length=300)
@@ -67,7 +67,7 @@ class GenerateIn(ContextParams):
 
 
 class QuestionOut(BaseModel):
-    id: int
+    id: str
     type: str
     stem: list[dict[str, Any]]
     options: list[dict[str, Any]] | None
@@ -80,17 +80,17 @@ class QuestionOut(BaseModel):
 
 
 class ActivityOut(BaseModel):
-    id: int
+    id: str
     title: str
     type: str
-    course_id: int | None
-    node_id: int | None
+    course_id: str | None
+    node_id: str | None
     question_count: int
     time_limit_sec: int | None = None
 
 
 class AnswerIn(BaseModel):
-    question_id: int
+    question_id: str
     response: Any
     time_ms: int | None = None
     input_mode: str | None = None
@@ -107,8 +107,8 @@ class FeedbackOut(BaseModel):
 
 
 class AttemptOut(BaseModel):
-    id: int
-    activity_id: int
+    id: str
+    activity_id: str
     mode: str
     started_at: str
     deadline_at: str | None
@@ -117,8 +117,8 @@ class AttemptOut(BaseModel):
 
 
 class AttemptListItemOut(BaseModel):
-    id: int
-    activity_id: int
+    id: str
+    activity_id: str
     title: str
     mode: AttemptMode
     started_at: str
@@ -127,9 +127,9 @@ class AttemptListItemOut(BaseModel):
 
 
 class MistakeListItemOut(BaseModel):
-    id: int
-    question_id: int
-    activity_id: int
+    id: str
+    question_id: str
+    activity_id: str
     activity_title: str
     stem_excerpt: str
     error_tags: list[str]
@@ -151,7 +151,7 @@ class CaqImportOut(BaseModel):
 
 
 class QuizDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 class QuizHelpEntryOut(BaseModel):
@@ -161,7 +161,7 @@ class QuizHelpEntryOut(BaseModel):
 
 
 class ReportAnswerOut(BaseModel):
-    question_id: int
+    question_id: str
     correct: bool | None
     partial_credit: float | None
     error_tags: list[str]
@@ -323,7 +323,7 @@ def generate_quiz(
 
 @router.get("/attempts", response_model=list[AttemptListItemOut])
 def list_attempts(
-    course_id: int | None = None, session: Session = Depends(get_session)
+    course_id: str | None = None, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
     statement = (
@@ -333,7 +333,9 @@ def list_attempts(
     )
     if course_id is not None:
         statement = statement.where(Activity.course_id == course_id)
-    rows = session.execute(statement.order_by(Attempt.id.desc()).limit(50)).all()
+    rows = session.execute(
+        statement.order_by(Attempt.started_at.desc(), Attempt.id.desc()).limit(50)
+    ).all()
     return [
         {
             "id": attempt.id,
@@ -350,7 +352,7 @@ def list_attempts(
 
 @router.get("/mistakes", response_model=list[MistakeListItemOut])
 def list_mistakes(
-    course_id: int | None = None, session: Session = Depends(get_session)
+    course_id: str | None = None, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
     statement = (
@@ -361,7 +363,9 @@ def list_mistakes(
     )
     if course_id is not None:
         statement = statement.where(Activity.course_id == course_id)
-    rows = session.execute(statement.order_by(Mistake.id.desc()).limit(100)).all()
+    rows = session.execute(
+        statement.order_by(Mistake.created_at.desc(), Mistake.id.desc()).limit(100)
+    ).all()
     return [
         {
             "id": mistake.id,
@@ -440,14 +444,16 @@ def _caq_document(activity: Activity, questions: list[Question]) -> dict[str, An
 
 
 @router.get("/activities/{activity_id}/export")
-def export_caq(activity_id: int, session: Session = Depends(get_session)) -> Response:
+def export_caq(activity_id: str, session: Session = Depends(get_session)) -> Response:
     profile = ensure_default_profile(session)
     activity = session.get(Activity, activity_id)
     if activity is None or activity.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="quiz not found")
     questions = list(
         session.scalars(
-            select(Question).where(Question.activity_id == activity_id).order_by(Question.id)
+            select(Question)
+            .where(Question.activity_id == activity_id)
+            .order_by(Question.created_at, Question.id)
         )
     )
     document = _caq_document(activity, questions)
@@ -459,14 +465,16 @@ def export_caq(activity_id: int, session: Session = Depends(get_session)) -> Res
 
 
 @router.get("/activities/{activity_id}/export-qpkg")
-def export_qpkg(activity_id: int, session: Session = Depends(get_session)) -> Response:
+def export_qpkg(activity_id: str, session: Session = Depends(get_session)) -> Response:
     profile = ensure_default_profile(session)
     activity = session.get(Activity, activity_id)
     if activity is None or activity.profile_id != profile.id:
         raise HTTPException(status_code=404, detail="quiz not found")
     questions = list(
         session.scalars(
-            select(Question).where(Question.activity_id == activity_id).order_by(Question.id)
+            select(Question)
+            .where(Question.activity_id == activity_id)
+            .order_by(Question.created_at, Question.id)
         )
     )
     package = build_qpkg(_caq_document(activity, questions), f"Study Assistant {__version__}")
@@ -480,7 +488,7 @@ def export_qpkg(activity_id: int, session: Session = Depends(get_session)) -> Re
 @router.post("/import-qpkg", status_code=200, response_model=CaqImportOut)
 async def import_qpkg(
     file: UploadFile,
-    course_id: int,
+    course_id: str,
     dry_run: bool = False,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -529,7 +537,7 @@ def _normalize_caq_question(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def _question_from_draft(
-    activity_id: int, draft: dict[str, Any], provenance: dict[str, Any], ok: bool
+    activity_id: str, draft: dict[str, Any], provenance: dict[str, Any], ok: bool
 ) -> Question:
     return Question(
         activity_id=activity_id,
@@ -559,7 +567,7 @@ def _question_from_draft(
 @router.post("/import", response_model=CaqImportOut)
 def import_caq(
     body: CaqDocument,
-    course_id: int,
+    course_id: str,
     dry_run: bool = True,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -602,8 +610,8 @@ def import_caq(
 
 @router.get("/activities", response_model=list[ActivityOut])
 def list_quizzes(
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     include_children: bool = True,
     session: Session = Depends(get_session),
 ) -> list[ActivityOut]:
@@ -614,7 +622,9 @@ def list_quizzes(
         statement = statement.where(Activity.node_id.in_(scope_ids))
     elif course_id is not None:
         statement = statement.where(Activity.course_id == course_id)
-    activities = session.scalars(statement.order_by(Activity.id.desc()).limit(50))
+    activities = session.scalars(
+        statement.order_by(Activity.created_at.desc(), Activity.id.desc()).limit(50)
+    )
     result = []
     for activity in activities:
         count = len(
@@ -625,7 +635,7 @@ def list_quizzes(
 
 
 @router.get("/activities/{activity_id}", response_model=ActivityOut)
-def get_quiz(activity_id: int, session: Session = Depends(get_session)) -> ActivityOut:
+def get_quiz(activity_id: str, session: Session = Depends(get_session)) -> ActivityOut:
     profile = ensure_default_profile(session)
     activity = session.scalar(
         select(Activity).where(Activity.id == activity_id, Activity.profile_id == profile.id)
@@ -644,7 +654,7 @@ class QuizRename(BaseModel):
 
 @router.patch("/activities/{activity_id}", response_model=ActivityOut)
 def rename_quiz(
-    activity_id: int, body: QuizRename, session: Session = Depends(get_session)
+    activity_id: str, body: QuizRename, session: Session = Depends(get_session)
 ) -> ActivityOut:
     profile = ensure_default_profile(session)
     activity = session.scalar(
@@ -661,12 +671,12 @@ def rename_quiz(
 
 
 class QuizMove(BaseModel):
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 @router.patch("/activities/{activity_id}/move", response_model=ActivityOut)
 def move_quiz(
-    activity_id: int, body: QuizMove, session: Session = Depends(get_session)
+    activity_id: str, body: QuizMove, session: Session = Depends(get_session)
 ) -> ActivityOut:
     profile = ensure_default_profile(session)
     activity = session.scalar(
@@ -691,7 +701,7 @@ class QuizTimeLimit(BaseModel):
 
 @router.patch("/activities/{activity_id}/time-limit", response_model=ActivityOut)
 def set_quiz_time_limit(
-    activity_id: int, body: QuizTimeLimit, session: Session = Depends(get_session)
+    activity_id: str, body: QuizTimeLimit, session: Session = Depends(get_session)
 ) -> ActivityOut:
     profile = ensure_default_profile(session)
     activity = session.scalar(
@@ -708,7 +718,7 @@ def set_quiz_time_limit(
 
 
 @router.delete("/activities/{activity_id}", response_model=QuizDeletedOut)
-def delete_quiz(activity_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def delete_quiz(activity_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     activity = session.scalar(
         select(Activity).where(Activity.id == activity_id, Activity.profile_id == profile.id)
@@ -738,15 +748,17 @@ def delete_quiz(activity_id: int, session: Session = Depends(get_session)) -> di
 
 
 @router.get("/activities/{activity_id}/questions", response_model=list[QuestionOut])
-def quiz_questions(activity_id: int, session: Session = Depends(get_session)) -> list[QuestionOut]:
+def quiz_questions(activity_id: str, session: Session = Depends(get_session)) -> list[QuestionOut]:
     questions = session.scalars(
-        select(Question).where(Question.activity_id == activity_id).order_by(Question.id)
+        select(Question)
+        .where(Question.activity_id == activity_id)
+        .order_by(Question.created_at, Question.id)
     )
     return [_question_out(question) for question in questions]
 
 
 class AnswerKeyEntryOut(BaseModel):
-    question_id: int
+    question_id: str
     type: str
     key: str
 
@@ -756,12 +768,14 @@ class AnswerKeyEntryOut(BaseModel):
     response_model=list[AnswerKeyEntryOut],
 )
 def quiz_answer_key(
-    activity_id: int, session: Session = Depends(get_session)
+    activity_id: str, session: Session = Depends(get_session)
 ) -> list[AnswerKeyEntryOut]:
     from ..services.study.answer_key import answer_key_text
 
     questions = session.scalars(
-        select(Question).where(Question.activity_id == activity_id).order_by(Question.id)
+        select(Question)
+        .where(Question.activity_id == activity_id)
+        .order_by(Question.created_at, Question.id)
     )
     return [
         AnswerKeyEntryOut(
@@ -775,7 +789,7 @@ def quiz_answer_key(
 
 @router.post("/activities/{activity_id}/attempts", response_model=AttemptOut, status_code=201)
 def start_attempt(
-    activity_id: int,
+    activity_id: str,
     mode: str = AttemptMode.PRACTICE,
     session: Session = Depends(get_session),
 ) -> AttemptOut:
@@ -844,7 +858,7 @@ def _attempt_out(attempt: Attempt) -> AttemptOut:
 
 @router.post("/attempts/{attempt_id}/answers", response_model=FeedbackOut)
 def submit_answer(
-    attempt_id: int,
+    attempt_id: str,
     body: AnswerIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -911,7 +925,7 @@ def submit_answer(
                 QuizHelpEvent.attempt_id == attempt.id,
                 QuizHelpEvent.question_id == question.id,
             )
-            .order_by(QuizHelpEvent.id)
+            .order_by(QuizHelpEvent.created_at, QuizHelpEvent.id)
         )
     )
     if help_rows:
@@ -952,7 +966,7 @@ def submit_answer(
 
 
 def _load_attempt_question(
-    db: Session, attempt_id: int, profile_id: str, question_id: int
+    db: Session, attempt_id: str, profile_id: str, question_id: str
 ) -> tuple[Attempt, Activity, Question]:
     attempt = db.get(Attempt, attempt_id)
     if attempt is None:
@@ -979,8 +993,8 @@ class QuizHintOut(BaseModel):
 
 @router.post("/attempts/{attempt_id}/questions/{question_id}/hint", response_model=QuizHintOut)
 def request_quiz_hint(
-    attempt_id: int,
-    question_id: int,
+    attempt_id: str,
+    question_id: str,
     body: QuizHintIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1050,8 +1064,8 @@ def request_quiz_hint(
     response_model=list[QuizHelpEntryOut],
 )
 def list_quiz_help(
-    attempt_id: int,
-    question_id: int,
+    attempt_id: str,
+    question_id: str,
     session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
@@ -1065,7 +1079,7 @@ def list_quiz_help(
                 QuizHelpEvent.attempt_id == attempt.id,
                 QuizHelpEvent.question_id == question_id,
             )
-            .order_by(QuizHelpEvent.id)
+            .order_by(QuizHelpEvent.created_at, QuizHelpEvent.id)
         )
     )
     return [
@@ -1079,7 +1093,7 @@ def list_quiz_help(
 
 
 class AskOut(BaseModel):
-    chat_session_id: int
+    chat_session_id: str
     public_id: str
 
 
@@ -1131,8 +1145,8 @@ def recognize_handwriting(
     status_code=201,
 )
 def ask_about_question(
-    attempt_id: int,
-    question_id: int,
+    attempt_id: str,
+    question_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> AskOut:
@@ -1163,7 +1177,7 @@ def ask_about_question(
 
 
 @router.post("/attempts/{attempt_id}/finish", response_model=AttemptOut)
-def finish_attempt(attempt_id: int, session: Session = Depends(get_session)) -> AttemptOut:
+def finish_attempt(attempt_id: str, session: Session = Depends(get_session)) -> AttemptOut:
     profile = ensure_default_profile(session)
     attempt = session.get(Attempt, attempt_id)
     if attempt is None:
@@ -1180,7 +1194,7 @@ def finish_attempt(attempt_id: int, session: Session = Depends(get_session)) -> 
 
 
 @router.get("/attempts/{attempt_id}/report", response_model=AttemptReportOut)
-def attempt_report(attempt_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def attempt_report(attempt_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     attempt = session.get(Attempt, attempt_id)
     if attempt is None:
@@ -1191,7 +1205,11 @@ def attempt_report(attempt_id: int, session: Session = Depends(get_session)) -> 
     if _auto_submit_if_expired(session, attempt, activity):
         session.commit()
     answers = list(
-        session.scalars(select(Answer).where(Answer.attempt_id == attempt.id).order_by(Answer.id))
+        session.scalars(
+            select(Answer)
+            .where(Answer.attempt_id == attempt.id)
+            .order_by(Answer.created_at, Answer.id)
+        )
     )
     rows = []
     for answer in answers:
@@ -1257,9 +1275,9 @@ def inbox_import(
     filename: str,
     request: Request,
     session: Session = Depends(get_session),
-    course_id: int = 0,
+    course_id: str = "",
 ) -> dict[str, Any]:
-    if course_id <= 0:
+    if not course_id:
         raise HTTPException(status_code=422, detail="course_id is required")
     service = _inbox(request)
     try:

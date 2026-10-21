@@ -30,24 +30,24 @@ MAX_EXAMS = 3
 
 
 class DueReviewEntryOut(BaseModel):
-    card_id: int
+    card_id: str
     kind: str
-    course_id: int
+    course_id: str
     course_title: str
 
 
 class PlanEntryOut(BaseModel):
-    item_id: int
+    item_id: str
     title: str
     kind: PlanItemKind
-    course_id: int
+    course_id: str
     course_title: str
     due_date: str
     overdue: bool
 
 
 class ExamEntryOut(BaseModel):
-    course_id: int
+    course_id: str
     course_title: str
     exam_date: str
     days_left: int

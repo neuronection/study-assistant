@@ -75,8 +75,8 @@ def _tokens(text: str) -> set[str]:
 CAP = 40
 
 
-def assigned_material_ids(session: Session, course_id: int) -> set[int]:
-    assigned: set[int] = set(
+def assigned_material_ids(session: Session, course_id: str) -> set[str]:
+    assigned: set[str] = set(
         session.scalars(select(MaterialLink.material_id).where(MaterialLink.course_id == course_id))
     )
     folder_ids = list(
@@ -92,11 +92,13 @@ def assigned_material_ids(session: Session, course_id: int) -> set[int]:
     return assigned
 
 
-def unassigned_materials(session: Session, course_id: int) -> list[Material]:
+def unassigned_materials(session: Session, course_id: str) -> list[Material]:
     assigned = assigned_material_ids(session, course_id)
     materials = list(
         session.scalars(
-            select(Material).where(Material.course_id == course_id).order_by(Material.id)
+            select(Material)
+            .where(Material.course_id == course_id)
+            .order_by(Material.created_at, Material.id)
         )
     )
     ready = [material for material in materials if material.status == MaterialStatus.READY]
@@ -104,7 +106,7 @@ def unassigned_materials(session: Session, course_id: int) -> list[Material]:
     return unassigned[:CAP]
 
 
-def unassigned_payload(session: Session, course_id: int) -> dict[str, Any]:
+def unassigned_payload(session: Session, course_id: str) -> dict[str, Any]:
     materials = unassigned_materials(session, course_id)
     return {
         "count": len(materials),
@@ -129,7 +131,7 @@ def _material_tokens(session: Session, material: Material) -> tuple[set[str], se
     return title_tokens, card_tokens
 
 
-def _node_infos(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _node_infos(session: Session, course_id: str) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
             select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
@@ -138,14 +140,14 @@ def _node_infos(session: Session, course_id: int) -> list[dict[str, Any]]:
     live = [node for node in nodes if not node.is_root]
     if not live:
         return []
-    concept_map: dict[int, set[str]] = {}
+    concept_map: dict[str, set[str]] = {}
     rows = session.execute(
         select(NodeConcept.node_id, Concept.name).where(
             NodeConcept.node_id.in_([node.id for node in live])
         )
     ).all()
     for node_id, name in rows:
-        concept_map.setdefault(int(node_id), set()).add(name)
+        concept_map.setdefault(str(node_id), set()).add(name)
     infos: list[dict[str, Any]] = []
     for node in live:
         title_tokens = _tokens(node.title)
@@ -166,11 +168,11 @@ def _node_infos(session: Session, course_id: int) -> list[dict[str, Any]]:
 
 def _node_breadcrumbs(
     session: Session, infos: list[dict[str, Any]]
-) -> dict[int, list[dict[str, Any]]]:
+) -> dict[str, list[dict[str, Any]]]:
     from .tree import TreeService
 
     tree = TreeService(session)
-    breadcrumbs: dict[int, list[dict[str, Any]]] = {}
+    breadcrumbs: dict[str, list[dict[str, Any]]] = {}
     for info in infos:
         node = info["node"]
         breadcrumbs[node.id] = [
@@ -180,7 +182,7 @@ def _node_breadcrumbs(
 
 
 def suggest_placements(
-    session: Session, course_id: int, material_ids: list[int]
+    session: Session, course_id: str, material_ids: list[str]
 ) -> list[dict[str, Any]]:
     if not material_ids:
         return []
@@ -204,7 +206,7 @@ def suggest_placements(
             continue
         title_tokens, card_tokens = _material_tokens(session, material)
         material_tokens = title_tokens | card_tokens
-        ranked: list[tuple[float, int, int, list[str]]] = []
+        ranked: list[tuple[float, int, str, list[str]]] = []
         for info in node_infos:
             overlap = material_tokens & set(info["all"])
             if not overlap:

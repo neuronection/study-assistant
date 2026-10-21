@@ -3,15 +3,15 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 
-def make_course(client: TestClient, title: str = "Descriptions") -> int:
+def make_course(client: TestClient, title: str = "Descriptions") -> str:
     created = client.post("/api/v1/courses", json={"title": title})
     assert created.status_code == 201
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
 def create_text(
     client: TestClient,
-    course_id: int,
+    course_id: str,
     *,
     description: str | None = None,
 ) -> dict[str, Any]:

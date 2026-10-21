@@ -51,52 +51,52 @@ def _spec(entity_type: str) -> dict[str, Any] | None:
     specs = {
         "note": {
             "tables": [
-                (Note.__table__, "id"),
-                (NoteDrawing.__table__, "note_id"),
-                (NoteVersion.__table__, "note_id"),
+                (Note.__table__, "id", None),
+                (NoteDrawing.__table__, "note_id", None),
+                (NoteVersion.__table__, "note_id", None),
             ],
             "root": Note.__table__,
         },
         "quiz": {
             "tables": [
-                (Activity.__table__, "id"),
-                (Question.__table__, "activity_id"),
-                (Attempt.__table__, "activity_id"),
-                (Answer.__table__, "attempt_id"),
-                (QuizHelpEvent.__table__, "attempt_id"),
-                (Mistake.__table__, "question_id"),
-                (ItemStat.__table__, "question_id"),
+                (Activity.__table__, "id", None),
+                (Question.__table__, "activity_id", None),
+                (Attempt.__table__, "activity_id", None),
+                (Answer.__table__, "attempt_id", "attempts"),
+                (QuizHelpEvent.__table__, "attempt_id", "attempts"),
+                (Mistake.__table__, "question_id", "questions"),
+                (ItemStat.__table__, "question_id", "questions"),
             ],
             "root": Activity.__table__,
         },
         "exercise": {
             "tables": [
-                (Exercise.__table__, "id"),
-                (ExerciseStep.__table__, "exercise_id"),
-                (ExerciseSession.__table__, "exercise_id"),
-                (StepAttempt.__table__, "session_id"),
-                (FsrsState.__table__, "card_id"),
-                (ReviewLog.__table__, "card_id"),
+                (Exercise.__table__, "id", None),
+                (ExerciseStep.__table__, "exercise_id", None),
+                (ExerciseSession.__table__, "exercise_id", None),
+                (StepAttempt.__table__, "session_id", "exercise_sessions"),
+                (FsrsState.__table__, "card_id", None),
+                (ReviewLog.__table__, "card_id", None),
             ],
             "root": Exercise.__table__,
         },
         "chat": {
             "tables": [
-                (ChatSession.__table__, "id"),
-                (ChatMessage.__table__, "session_id"),
-                (ChatProposal.__table__, "message_id"),
+                (ChatSession.__table__, "id", None),
+                (ChatMessage.__table__, "session_id", None),
+                (ChatProposal.__table__, "message_id", "chat_messages"),
             ],
             "root": ChatSession.__table__,
         },
         "material": {
             "tables": [
-                (Material.__table__, "id"),
-                (Extraction.__table__, "material_id"),
-                (MaterialLink.__table__, "material_id"),
-                (MaterialStudyState.__table__, "material_id"),
-                (MaterialImage.__table__, "material_id"),
-                (MaterialDrawing.__table__, "material_id"),
-                (MaterialIndexCard.__table__, "material_id"),
+                (Material.__table__, "id", None),
+                (Extraction.__table__, "material_id", None),
+                (MaterialLink.__table__, "material_id", None),
+                (MaterialStudyState.__table__, "material_id", None),
+                (MaterialImage.__table__, "material_id", None),
+                (MaterialDrawing.__table__, "material_id", None),
+                (MaterialIndexCard.__table__, "material_id", None),
             ],
             "root": Material.__table__,
         },
@@ -113,13 +113,18 @@ def _jsonify(value: Any) -> Any:
     return value
 
 
-def _serialize(session: Session, entity_type: str, root_id: int) -> dict[str, Any]:
+def _serialize(session: Session, entity_type: str, root_id: str) -> dict[str, Any]:
     spec = _spec(entity_type)
     if spec is None:
         raise TrashError(f"unknown entity type {entity_type}")
     payload: dict[str, Any] = {"tables": {}, "blobs": {}}
-    for table, column in spec["tables"]:
-        rows = list(session.execute(select(table).where(table.c[column] == root_id)).mappings())
+    for table, column, parent in spec["tables"]:
+        if parent is None:
+            statement = select(table).where(table.c[column] == root_id)
+        else:
+            parent_ids = [row["id"] for row in payload["tables"].get(parent, [])]
+            statement = select(table).where(table.c[column].in_(parent_ids))
+        rows = list(session.execute(statement).mappings())
         payload["tables"][table.name] = [
             {key: _jsonify(value) for key, value in row.items()} for row in rows
         ]
@@ -142,7 +147,7 @@ def persist(
     title: str,
     profile_id: str,
     payload: dict[str, Any],
-) -> int:
+) -> str:
     item = DeletedItem(
         profile_id=profile_id,
         entity_type=entity_type,
@@ -159,11 +164,11 @@ def persist(
 def snapshot(
     session: Session,
     entity_type: str,
-    root_id: int,
+    root_id: str,
     title: str,
     profile_id: str,
     blobs_store: Any = None,
-) -> int:
+) -> str:
     payload = _serialize(session, entity_type, root_id)
     if blobs_store is not None and entity_type == "note":
         _collect_note_blobs(session, payload, blobs_store)
@@ -177,8 +182,8 @@ def _parse_value(table: Any, column_name: str, value: Any) -> Any:
     return value
 
 
-def _restore_rows(session: Session, payload: dict[str, Any]) -> dict[str, dict[int, int]]:
-    remapped: dict[str, dict[int, int]] = {}
+def _restore_rows(session: Session, payload: dict[str, Any]) -> dict[str, dict[str, int]]:
+    remapped: dict[str, dict[str, int]] = {}
     for table_name, rows in payload["tables"].items():
         model = _model_for(table_name)
         table = model.__table__
@@ -240,7 +245,7 @@ def _model_for(table_name: str) -> Any:
     return model
 
 
-def restore_material(session: Session, item: DeletedItem) -> tuple[str, int | None]:
+def restore_material(session: Session, item: DeletedItem) -> tuple[str, str | None]:
     payload = item.payload
     material_rows = payload["tables"].get("materials", [])
     if not material_rows:
@@ -350,7 +355,7 @@ def list_items(session: Session, profile_id: str) -> list[dict[str, Any]]:
         session.scalars(
             select(DeletedItem)
             .where(DeletedItem.profile_id == profile_id)
-            .order_by(DeletedItem.id.desc())
+            .order_by(DeletedItem.deleted_at.desc(), DeletedItem.id.desc())
             .limit(200)
         )
     )

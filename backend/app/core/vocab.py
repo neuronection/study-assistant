@@ -282,27 +282,27 @@ class PlanItemOrigin(StrVocab):
 
 class WsTopic:
     @staticmethod
-    def jobs(job_id: int) -> str:
+    def jobs(job_id: str) -> str:
         return f"jobs:{job_id}"
 
     @staticmethod
-    def chat(session_id: int) -> str:
+    def chat(session_id: str) -> str:
         return f"chat:{session_id}"
 
     @staticmethod
-    def source(source_id: int) -> str:
+    def source(source_id: str) -> str:
         return f"source:{source_id}"
 
     @staticmethod
-    def externalsource(source_id: int) -> str:
+    def externalsource(source_id: str) -> str:
         return f"externalsource:{source_id}"
 
     @staticmethod
-    def note(note_id: int) -> str:
+    def note(note_id: str) -> str:
         return f"note:{note_id}"
 
     @staticmethod
-    def material(material_id: int) -> str:
+    def material(material_id: str) -> str:
         return f"material:{material_id}"
 
 

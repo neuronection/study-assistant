@@ -39,7 +39,7 @@ class Harness:
         self,
         client: TestClient,
         gateway: Any,
-        session_id: int,
+        session_id: str,
     ) -> None:
         self.client = client
         self.gateway = gateway
@@ -56,7 +56,7 @@ def turn_harness(tmp_path: Path, responses: list[str]) -> Iterator[Harness]:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         yield Harness(client, gateway, session_id)
 
 
@@ -121,14 +121,14 @@ def sse_harness(
     )
     try:
         with TestClient(app) as client:
-            session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+            session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
             yield Harness(client, gateway, session_id)
     finally:
         sql_engine.dispose()
 
 
 @contextmanager
-def subscribe(client: TestClient, session_id: int) -> Iterator[Any]:
+def subscribe(client: TestClient, session_id: str) -> Iterator[Any]:
     with client.websocket_connect("/ws") as ws:
         ws.send_json({"type": "subscribe", "topic": f"chat:{session_id}"})
         assert ws.receive_json() == {
@@ -369,7 +369,7 @@ class StoppableSlowGateway(ScriptedGateway):
         task: str,
         messages: list[Any],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Any:
         index = 0
         while not self.stop.is_set() and index < 400:
@@ -387,7 +387,7 @@ def test_graph_stop_mid_stream_persists_prefix(tmp_path: Path) -> None:
         describer=NoDescriber(),  # type: ignore[arg-type]
     )
     with TestClient(app) as client:
-        session_id = int(client.post("/api/v1/chat/sessions", json={}).json()["id"])
+        session_id = str(client.post("/api/v1/chat/sessions", json={}).json()["id"])
         with subscribe(client, session_id) as ws:
             response = client.post(
                 f"/api/v1/chat/sessions/{session_id}/messages",

@@ -156,8 +156,7 @@ def process_spawn_options(
     network or filesystem at the kernel and the disclosure must say so.
     """
     clean_env = {
-        key: (env or {}).get(key, os.environ.get(key, ""))
-        for key in PROCESS_ENV_ALLOWLIST
+        key: (env or {}).get(key, os.environ.get(key, "")) for key in PROCESS_ENV_ALLOWLIST
     }
     clean_env.setdefault("PATH", "/usr/local/bin:/usr/bin:/bin")
 

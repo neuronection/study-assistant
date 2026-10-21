@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -47,7 +47,7 @@ class SetupOptions:
 
 @dataclass(frozen=True)
 class SetupOutcome:
-    provider_id: int
+    provider_id: str
     catalog_count: int
     curated_missed: bool
     assigned_chat_model: str | None = None
@@ -61,14 +61,16 @@ class SetupOutcome:
 class _PersistedModel:
     external_id: str
     caps: list[str]
-    model_id: int = field(default=0)
+    model_id: str = ""
 
 
 def _resolve_target_row(
     session: Session, preset_key: str, preset: dict[str, Any]
 ) -> Provider | None:
     existing = session.scalars(
-        select(Provider).where(Provider.preset_key == preset_key).order_by(Provider.id)
+        select(Provider)
+        .where(Provider.preset_key == preset_key)
+        .order_by(Provider.created_at, Provider.id)
     ).first()
     if existing is not None:
         return existing
@@ -79,7 +81,7 @@ def _resolve_target_row(
             Provider.type == preset["type"],
             Provider.base_url == preset["base_url"],
         )
-        .order_by(Provider.id)
+        .order_by(Provider.created_at, Provider.id)
     ).first()
 
 
@@ -417,7 +419,7 @@ def setup_provider_from_preset(
 
 def set_default_model(
     session: Session,
-    provider_id: int,
+    provider_id: str,
     model_name: str,
     task: str = "chat",
 ) -> AiModel:

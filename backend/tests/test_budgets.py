@@ -7,12 +7,12 @@ from sqlalchemy import text
 
 from app.ai.gateway import BudgetExceeded, LLMGateway, Message, ResolvedModel
 from app.core.config import Settings
-from app.domain.models import TaskAssignment
+from app.domain.models import AiInteraction, TaskAssignment
 from app.main import create_app
 from app.storage.db import make_engine, make_session_factory
 
 MODEL = ResolvedModel(
-    provider_id=1,
+    provider_id="1",
     provider_type="openai_compatible",
     base_url="http://localhost/v1",
     external_id="costy",
@@ -143,12 +143,14 @@ def test_budget_exceeded_blocks_call(session_factory: Any) -> None:
     gateway = LLMGateway(session_factory, transport=ok_transport(calls))
     seed_assignment(session_factory, "chat", 0.01)
     with session_factory() as session:
-        session.execute(
-            text(
-                "INSERT INTO ai_interactions "
-                "(context_type, task, model, input_tokens, output_tokens, cost_usd, "
-                "created_at) VALUES ('gateway', 'chat', 'costy', 1, 1, 5.0, "
-                "CURRENT_TIMESTAMP)"
+        session.add(
+            AiInteraction(
+                context_type="gateway",
+                task="chat",
+                model="costy",
+                input_tokens=1,
+                output_tokens=1,
+                cost_usd=5.0,
             )
         )
         session.commit()
@@ -166,7 +168,7 @@ def test_budget_ignored_without_cap_or_with_none_cost(session_factory: Any) -> N
     assert len(calls) == 1
 
     cheap = ResolvedModel(
-        provider_id=1,
+        provider_id="1",
         provider_type="openai_compatible",
         base_url="http://localhost/v1",
         external_id="free-local",

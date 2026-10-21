@@ -170,9 +170,7 @@ def get_extension_documentation(extension_id: str, file: str | None = None) -> E
     tree = ext_docs.load_tree(docs_dir)
     if tree is None:
         return ExtensionDocsOut(
-            markdown=(
-                f"# {extension_id}\n\nNo documentation provided for this extension."
-            )
+            markdown=(f"# {extension_id}\n\nNo documentation provided for this extension.")
         )
 
     target_file = file or ext_docs.landing_file(tree)
@@ -181,13 +179,9 @@ def get_extension_documentation(extension_id: str, file: str | None = None) -> E
         target_file = os.path.basename(target_file)
         target_file_path = docs_dir / target_file
         if target_file_path.is_file():
-            markdown_content = ext_docs.strip_raw_html(
-                target_file_path.read_text(encoding="utf-8")
-            )
+            markdown_content = ext_docs.strip_raw_html(target_file_path.read_text(encoding="utf-8"))
         else:
-            markdown_content = (
-                f"# Error\n\nCould not find file {target_file} in docs folder."
-            )
+            markdown_content = f"# Error\n\nCould not find file {target_file} in docs folder."
     return ExtensionDocsOut(markdown=markdown_content, tree=tree)
 
 

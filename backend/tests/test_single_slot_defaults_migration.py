@@ -59,7 +59,7 @@ def test_migration_0070_retores_capability_defaults_keeps_kinds(
     raw.commit()
     raw.close()
 
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, "0072_vocab_checks")
 
     raw = sqlite3.connect(db_path)
     rows = {

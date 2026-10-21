@@ -52,10 +52,10 @@ class TableGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="table-model",
@@ -69,7 +69,7 @@ class TableGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -82,7 +82,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -104,8 +104,8 @@ def table_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_course(client: TestClient) -> int:
-    return int(client.post("/api/v1/courses", json={"title": "Logic"}).json()["id"])
+def make_course(client: TestClient) -> str:
+    return str(client.post("/api/v1/courses", json={"title": "Logic"}).json()["id"])
 
 
 def generate_table_quiz(client: TestClient) -> Any:
@@ -117,7 +117,7 @@ def generate_table_quiz(client: TestClient) -> Any:
     return created.json()
 
 
-def submit(client: TestClient, attempt_id: int, question_id: int, response: Any) -> Any:
+def submit(client: TestClient, attempt_id: str, question_id: str, response: Any) -> Any:
     result = client.post(
         f"/api/v1/quiz/attempts/{attempt_id}/answers",
         json={"question_id": question_id, "response": response},
@@ -142,14 +142,14 @@ def test_generate_and_public_input(table_client: TestClient) -> None:
 def test_per_cell_grading_flow(table_client: TestClient) -> None:
     activity = generate_table_quiz(table_client)
     question = table_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
-    attempt_id = int(
+    attempt_id = str(
         table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
     exact = submit(table_client, attempt_id, question["id"], [["", "", "true"], ["", "", "false"]])
     assert exact["correct"] is True
     assert exact["partial_credit"] == 1.0
 
-    attempt2 = int(
+    attempt2 = str(
         table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
     partial = submit(table_client, attempt2, question["id"], [["", "", "true"], ["", "", ""]])
@@ -157,7 +157,7 @@ def test_per_cell_grading_flow(table_client: TestClient) -> None:
     assert partial["partial_credit"] == 0.5
     assert "wrong_cell" in partial["error_tags"]
 
-    attempt3 = int(
+    attempt3 = str(
         table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
     garbage = submit(table_client, attempt3, question["id"], "nope")
@@ -168,7 +168,7 @@ def test_per_cell_grading_flow(table_client: TestClient) -> None:
 def test_report_carries_table_response(table_client: TestClient) -> None:
     activity = generate_table_quiz(table_client)
     question = table_client.get(f"/api/v1/quiz/activities/{activity['id']}/questions").json()[0]
-    attempt_id = int(
+    attempt_id = str(
         table_client.post(f"/api/v1/quiz/activities/{activity['id']}/attempts").json()["id"]
     )
     payload = [["", "", "true"], ["", "", "false"]]

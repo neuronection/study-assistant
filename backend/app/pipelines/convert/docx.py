@@ -6,7 +6,7 @@ import mammoth
 
 from .html import html_to_markdown
 
-StoreImage = Callable[[bytes, str | None], int]
+StoreImage = Callable[[bytes, str | None], str]
 
 
 def docx_to_markdown(data: bytes, store_image: StoreImage) -> str:

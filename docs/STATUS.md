@@ -16,8 +16,7 @@ the gate every later round builds on. ADRs 196–218 reserved.
 
 **Plan 81 — schema baseline & hardening (in progress, 2026-10-21):**
 
-**Status: A and B landed; C–F remain** (C — the UUID identity cut — is the
-blocking slice; F, the baseline squash, cannot land before it).
+**Status: A, B and C landed; D–F remain.**
 
 - **A — schema audit & inventory (ADR-199):** `docs/dev/schema-contract.md` is
   now the guarantee page — the hand-written law (identity, closed sets,
@@ -35,6 +34,26 @@ blocking slice; F, the baseline squash, cannot land before it).
   (`tests/test_schema_checks.py`, 104 probes). `JobType.COMPOSE` added (the
   registry already ran it); FKs that relied on NO ACTION now declare
   `SET NULL`/`CASCADE`/`RESTRICT`; migration 0072 + tested downgrade.
+- **C — UUID identity (ADR-198):** every user-data primary key and the FKs
+  that reference it use the identity convention `users`/`profiles` already
+  carried (`Uuid(as_uuid=False)` — CHAR(32) on SQLite, native `uuid` on
+  PostgreSQL); integer surrogate keys are retired and the polymorphic refs
+  (`owner_id`, `parent_id`, `active_root_id`, `scope_ref`, `context_id`,
+  JSON id arrays) are UUID strings. Migration 0073 is **destructive** (SQLite
+  cannot convert an integer PK in place — identity domain dropped and rebuilt
+  child-first from the metadata; dev DBs are rebuilt, ADR-196) with a
+  shape-restoring `downgrade()`, and the PostgreSQL FTS twins move to
+  `material_id TEXT`. Ordering that used to ride integer ids is now explicit
+  (`created_at, id`; quiz questions by creation; the discovery cursor is a
+  `"<created_at>|<id>"` keyset). Course bundle import honours incoming ids and
+  remaps only on collision, so export → wipe → import preserves every
+  reference (`tests/test_course_bundle.py`).
+  **Frontend half pending:** `pnpm api:types` + the hand-written client types
+  (`frontend/src/lib/api/*.ts` and the components that still declare
+  `courseId: number` etc.) must move to strings in one pass — until then
+  `frontend/openapi.json` / `api-schema.d.ts` are intentionally **not**
+  regenerated (the two CI drift guards will flag the stale pair). No frontend
+  runtime behaviour changed: the client passes ids through opaquely.
 
 **Plan 34 wave 8 — per-extension documentation lands in study
 (2026-10-19):** the three bundled connectors (`external-sources`,

@@ -27,11 +27,11 @@ def test_job_status_active_pair() -> None:
 
 
 def test_ws_topic_factories() -> None:
-    assert WsTopic.jobs(3) == "jobs:3"
-    assert WsTopic.chat(9) == "chat:9"
-    assert WsTopic.source(1) == "source:1"
-    assert WsTopic.note(2) == "note:2"
-    assert WsTopic.material(4) == "material:4"
+    assert WsTopic.jobs("3") == "jobs:3"
+    assert WsTopic.chat("9") == "chat:9"
+    assert WsTopic.source("1") == "source:1"
+    assert WsTopic.note("2") == "note:2"
+    assert WsTopic.material("4") == "material:4"
 
 
 def test_vocabularies_are_disjoint_where_required() -> None:

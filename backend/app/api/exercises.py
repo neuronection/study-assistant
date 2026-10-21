@@ -47,18 +47,18 @@ class StepIn(BaseModel):
 
 class ExerciseCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     context_md: str | None = None
     difficulty: float | None = None
     steps: list[StepIn] = Field(min_length=1, max_length=20)
 
 
 class ExerciseOut(BaseModel):
-    id: int
+    id: str
     title: str
-    course_id: int | None
-    node_id: int | None
+    course_id: str | None
+    node_id: str | None
     kind: str = "multi_step"
     deck_ref: str | None = None
     difficulty: float | None
@@ -66,7 +66,7 @@ class ExerciseOut(BaseModel):
 
 
 class StepOut(BaseModel):
-    id: int
+    id: str
     order_idx: int
     prompt: list[dict[str, Any]]
     has_expected: bool
@@ -75,8 +75,8 @@ class StepOut(BaseModel):
 
 
 class SessionOut(BaseModel):
-    id: int
-    exercise_id: int
+    id: str
+    exercise_id: str
     current_step_idx: int
     status: str
     socratic: bool
@@ -107,13 +107,13 @@ class AskIn(BaseModel):
 
 
 class AskOut(BaseModel):
-    chat_session_id: int
+    chat_session_id: str
     public_id: str
 
 
 class GenerateIn(ContextParams):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     topic: str | None = Field(default=None, max_length=500)
     difficulty: float | None = Field(default=None, ge=1, le=5)
     step_count: int = Field(default=4, ge=1, le=8)
@@ -122,7 +122,7 @@ class GenerateIn(ContextParams):
 
 class DrillIn(BaseModel):
     pattern: str = Field(min_length=1, max_length=60)
-    course_id: int
+    course_id: str
 
 
 class PatternOut(BaseModel):
@@ -143,11 +143,11 @@ class PatternProposalOut(BaseModel):
 
 
 class PatternProposeIn(BaseModel):
-    course_id: int
+    course_id: str
 
 
 class PatternCreateIn(BaseModel):
-    course_id: int
+    course_id: str
     key: str = Field(min_length=3, max_length=60, pattern=r"^[a-z][a-z0-9_]*$")
     name: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1, max_length=2000)
@@ -170,8 +170,8 @@ def _run_exgen(
     session: Session,
     profile_id: str,
     *,
-    course_id: int | None,
-    node_id: int | None,
+    course_id: str | None,
+    node_id: str | None,
     topic: str | None,
     difficulty: float | None,
     step_count: int,
@@ -210,7 +210,7 @@ def _run_exgen(
 
 
 def _recent_wrong_answers(
-    session: Session, course_id: int, profile_id: str, limit: int = 30
+    session: Session, course_id: str, profile_id: str, limit: int = 30
 ) -> list[dict[str, Any]]:
     from ..domain.models import Answer
     from ..domain.models import Question as _Question
@@ -249,7 +249,7 @@ def _recent_wrong_answers(
 def _run_pattern_discover(
     request: Request,
     session: Session,
-    course_id: int,
+    course_id: str,
     entries: list[dict[str, Any]],
     existing: list[Any],
 ) -> list[PatternProposalOut]:
@@ -362,7 +362,7 @@ def generate_exercise(
 
 @router.post("/{exercise_id}/similar", response_model=ExerciseOut, status_code=201)
 def similar_exercise(
-    exercise_id: int,
+    exercise_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ExerciseOut:
@@ -384,7 +384,7 @@ def similar_exercise(
 
 
 @router.get("/drills/patterns", response_model=list[PatternOut])
-def drill_patterns(course_id: int, session: Session = Depends(get_session)) -> list[PatternOut]:
+def drill_patterns(course_id: str, session: Session = Depends(get_session)) -> list[PatternOut]:
     ensure_default_profile(session)
     service = ErrorPatternService(session)
     patterns = service.resolve(course_id)
@@ -514,10 +514,10 @@ def _session_out(session_row: ExerciseSession) -> SessionOut:
 
 
 class TeachBackIn(BaseModel):
-    course_id: int
-    node_id: int | None = None
+    course_id: str
+    node_id: str | None = None
     concept: str | None = Field(default=None, max_length=200)
-    concept_id: int | None = None
+    concept_id: str | None = None
 
 
 @router.post("/teach-back", response_model=ExerciseOut, status_code=201)
@@ -579,7 +579,7 @@ class ExerciseRename(BaseModel):
 
 @router.patch("/{exercise_id}", response_model=ExerciseOut)
 def rename_exercise(
-    exercise_id: int, body: ExerciseRename, session: Session = Depends(get_session)
+    exercise_id: str, body: ExerciseRename, session: Session = Depends(get_session)
 ) -> ExerciseOut:
     exercise = session.get(Exercise, exercise_id)
     if exercise is None:
@@ -595,12 +595,12 @@ def rename_exercise(
 
 
 class ExerciseMove(BaseModel):
-    node_id: int | None = None
+    node_id: str | None = None
 
 
 @router.patch("/{exercise_id}/move", response_model=ExerciseOut)
 def move_exercise(
-    exercise_id: int, body: ExerciseMove, session: Session = Depends(get_session)
+    exercise_id: str, body: ExerciseMove, session: Session = Depends(get_session)
 ) -> ExerciseOut:
     exercise = session.get(Exercise, exercise_id)
     if exercise is None:
@@ -619,16 +619,16 @@ def move_exercise(
 
 
 class SummaryNoteOut(BaseModel):
-    note_id: int
+    note_id: str
     node_title: str | None
 
 
 class ExerciseDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 @router.delete("/{exercise_id}", response_model=ExerciseDeletedOut)
-def delete_exercise(exercise_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
+def delete_exercise(exercise_id: str, session: Session = Depends(get_session)) -> dict[str, Any]:
     exercise = session.get(Exercise, exercise_id)
     if exercise is None:
         raise HTTPException(status_code=404, detail="exercise not found")
@@ -645,8 +645,8 @@ def delete_exercise(exercise_id: int, session: Session = Depends(get_session)) -
 
 @router.get("", response_model=list[ExerciseOut])
 def list_exercises(
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     include_children: bool = True,
     session: Session = Depends(get_session),
 ) -> list[ExerciseOut]:
@@ -659,7 +659,9 @@ def list_exercises(
         statement = statement.where(Exercise.node_id.in_(scope_ids))
     elif course_id is not None:
         statement = statement.where(Exercise.course_id == course_id)
-    exercises = session.scalars(statement.order_by(Exercise.id.desc()).limit(50))
+    exercises = session.scalars(
+        statement.order_by(Exercise.created_at.desc(), Exercise.id.desc()).limit(50)
+    )
     result = []
     for exercise in exercises:
         count = len(
@@ -672,7 +674,7 @@ def list_exercises(
 
 
 @router.get("/{exercise_id}", response_model=ExerciseOut)
-def get_exercise(exercise_id: int, session: Session = Depends(get_session)) -> ExerciseOut:
+def get_exercise(exercise_id: str, session: Session = Depends(get_session)) -> ExerciseOut:
     exercise = session.get(Exercise, exercise_id)
     if exercise is None:
         raise HTTPException(status_code=404, detail="exercise not found")
@@ -697,7 +699,7 @@ def _numberline_input(spec: dict[str, Any]) -> dict[str, Any] | None:
 
 
 @router.get("/{exercise_id}/steps", response_model=list[StepOut])
-def exercise_steps(exercise_id: int, session: Session = Depends(get_session)) -> list[StepOut]:
+def exercise_steps(exercise_id: str, session: Session = Depends(get_session)) -> list[StepOut]:
     steps = session.scalars(
         select(ExerciseStep)
         .where(ExerciseStep.exercise_id == exercise_id)
@@ -730,7 +732,7 @@ def exercise_steps(exercise_id: int, session: Session = Depends(get_session)) ->
 
 @router.post("/{exercise_id}/sessions", response_model=SessionOut, status_code=201)
 def start_session(
-    exercise_id: int,
+    exercise_id: str,
     socratic: bool = False,
     session: Session = Depends(get_session),
 ) -> SessionOut:
@@ -745,7 +747,7 @@ def start_session(
 
 
 def _load_session(
-    db: Session, session_id: int, profile_id: str
+    db: Session, session_id: str, profile_id: str
 ) -> tuple[ExerciseSession, Exercise]:
     exercise_session = db.get(ExerciseSession, session_id)
     if exercise_session is None:
@@ -763,7 +765,7 @@ class AnswerIn(BaseModel):
 
 @router.post("/sessions/{session_id}/answer", response_model=CheckOut)
 def submit_step_answer(
-    session_id: int,
+    session_id: str,
     body: AnswerIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -891,7 +893,7 @@ def submit_step_answer(
 
 @router.post("/sessions/{session_id}/hint", response_model=HintOut)
 def request_hint(
-    session_id: int,
+    session_id: str,
     body: HintIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -929,7 +931,7 @@ def request_hint(
 
 @router.post("/sessions/{session_id}/ask", response_model=AskOut, status_code=201)
 def ask_about_session(
-    session_id: int,
+    session_id: str,
     body: AskIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -990,7 +992,7 @@ def ask_about_session(
 
 @router.get("/sessions/{session_id}/transcript", response_model=list[TranscriptEntry])
 def session_transcript(
-    session_id: int, session: Session = Depends(get_session)
+    session_id: str, session: Session = Depends(get_session)
 ) -> list[TranscriptEntry]:
     profile = ensure_default_profile(session)
     exercise_session, _exercise = _load_session(session, session_id, profile.id)
@@ -999,7 +1001,7 @@ def session_transcript(
 
 @router.post("/sessions/{session_id}/summary-note", response_model=SummaryNoteOut)
 def session_summary_note(
-    session_id: int, session: Session = Depends(get_session)
+    session_id: str, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     exercise_session, exercise = _load_session(session, session_id, profile.id)
@@ -1050,7 +1052,7 @@ def _transcript_entries(session: Session, exercise_session: Any) -> list[Transcr
         session.scalars(
             select(StepAttempt)
             .where(StepAttempt.session_id == exercise_session.id)
-            .order_by(StepAttempt.id)
+            .order_by(StepAttempt.created_at, StepAttempt.id)
         )
     )
     entries = []

@@ -167,7 +167,7 @@ class ChatTurnEngine:
         pump = _DeltaPump(emit)
         deps.on_round_stream_end = pump.close_round
         final_events: list[dict[str, Any]] = []
-        message_id: int | None = None
+        message_id: str | None = None
         try:
             async for mode, payload in graph.astream(
                 {"session_id": chat_session.id},
@@ -195,7 +195,7 @@ class ChatTurnEngine:
             emit(event)
         if message_id is None:
             raise ChatError("graph turn produced no message")
-        message: ChatMessage | None = session.get(ChatMessage, int(message_id))
+        message: ChatMessage | None = session.get(ChatMessage, str(message_id))
         if message is None:
             raise ChatError("graph turn message vanished")
         return message

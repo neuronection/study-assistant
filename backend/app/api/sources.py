@@ -17,7 +17,7 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 
 
 class SourceBrowseOut(BaseModel):
-    source_id: int
+    source_id: str
     label: str
     path: str
     subdir: str
@@ -37,7 +37,7 @@ class SourceSubdirOut(BaseModel):
 
 
 class SourceMaterialOut(BaseModel):
-    id: int
+    id: str
     title: str
     kind: MaterialKind
     status: MaterialStatus
@@ -60,7 +60,7 @@ class SourceIn(BaseModel):
     path: str = Field(min_length=1, max_length=1000)
     recursive: bool = True
     include_globs: list[str] | None = None
-    course_id: int
+    course_id: str
     scan_interval_sec: int | None = Field(default=None, ge=15)
     mirror_subdirs: bool = False
 
@@ -70,12 +70,12 @@ class SetMirrorIn(BaseModel):
 
 
 class SourceOut(BaseModel):
-    id: int
+    id: str
     label: str
     path: str
     recursive: bool
     include_globs: list[str] | None
-    course_id: int
+    course_id: str
     enabled: bool
     mirror_subdirs: bool = False
     scan_interval_sec: int | None = None
@@ -148,7 +148,7 @@ def add_source(
 
 @router.delete("/{source_id}", status_code=204)
 def delete_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> None:
@@ -161,7 +161,7 @@ def delete_source(
 
 @router.get("/{source_id}/browse", response_model=SourceBrowseOut)
 def browse_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     subdir: str = "",
     session: Session = Depends(get_session),
@@ -179,14 +179,14 @@ class IngestFileIn(BaseModel):
 
 
 class IngestFileOut(BaseModel):
-    material_id: int
-    job_id: int | None
+    material_id: str
+    job_id: str | None
     deduped: bool
 
 
 @router.post("/{source_id}/ingest", status_code=201, response_model=IngestFileOut)
 def ingest_source_file(
-    source_id: int,
+    source_id: str,
     body: IngestFileIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -206,7 +206,7 @@ def ingest_source_file(
         ) from error
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    job_id: int | None = None
+    job_id: str | None = None
     if not deduped:
         job = JobRunner.enqueue(session, "ingest", {"material_id": material.id})
         job_id = job.id
@@ -221,7 +221,7 @@ class RelinkIn(BaseModel):
 
 @router.patch("/{source_id}", response_model=SourceOut)
 def relink_source(
-    source_id: int,
+    source_id: str,
     body: RelinkIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -238,7 +238,7 @@ def relink_source(
 
 @router.patch("/{source_id}/mirror", response_model=SourceOut)
 def set_source_mirror(
-    source_id: int,
+    source_id: str,
     body: SetMirrorIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -253,7 +253,7 @@ def set_source_mirror(
 
 @router.post("/{source_id}/mirror-backfill", response_model=ScanResult)
 def mirror_backfill_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ScanResult:
@@ -276,7 +276,7 @@ def mirror_backfill_source(
 
 @router.post("/{source_id}/reveal", status_code=204)
 def reveal_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> None:
@@ -288,7 +288,7 @@ def reveal_source(
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
-def _enqueue_ingests(session: Session, source_id: int) -> int:
+def _enqueue_ingests(session: Session, source_id: str) -> int:
     pending = session.scalars(
         select(Material).where(Material.source_id == source_id, Material.status == "pending")
     ).all()
@@ -317,7 +317,7 @@ def scan_all_sources(
 
 @router.post("/{source_id}/scan", response_model=ScanResult)
 def scan_source(
-    source_id: int,
+    source_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ScanResult:

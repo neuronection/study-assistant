@@ -106,13 +106,13 @@ class SourcesService:
         self._session = session
         self._blobs_root = blobs_root
 
-    def _get(self, profile_id: str, source_id: int) -> MaterialSource:
+    def _get(self, profile_id: str, source_id: str) -> MaterialSource:
         source = self._session.get(MaterialSource, source_id)
         if source is None or source.profile_id != profile_id:
             raise SourcesError("source not found")
         return source
 
-    def _link_folder(self, source_id: int) -> MaterialFolder | None:
+    def _link_folder(self, source_id: str) -> MaterialFolder | None:
         return self._session.scalars(
             select(MaterialFolder).where(MaterialFolder.source_id == source_id)
         ).first()
@@ -160,7 +160,7 @@ class SourcesService:
         path: str,
         recursive: bool = True,
         include_globs: list[str] | None = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
         scan_interval_sec: int | None = None,
         mirror_subdirs: bool = False,
     ) -> MaterialSource:
@@ -189,7 +189,7 @@ class SourcesService:
         self._create_link_node(source)
         return source
 
-    def delete_source(self, profile_id: str, source_id: int) -> bool:
+    def delete_source(self, profile_id: str, source_id: str) -> bool:
         source = self._session.get(MaterialSource, source_id)
         if source is None or source.profile_id != profile_id:
             return False
@@ -200,7 +200,7 @@ class SourcesService:
         self._session.delete(source)
         return True
 
-    def _unlink_materials(self, source_id: int) -> None:
+    def _unlink_materials(self, source_id: str) -> None:
         for material in self._session.scalars(
             select(Material).where(Material.source_id == source_id)
         ):
@@ -208,7 +208,7 @@ class SourcesService:
             material.external_path = None
             material.folder_id = None
 
-    def relink(self, profile_id: str, source_id: int, path: str) -> MaterialSource:
+    def relink(self, profile_id: str, source_id: str, path: str) -> MaterialSource:
         source = self._get(profile_id, source_id)
         resolved = Path(path).expanduser().resolve()
         if not resolved.is_dir():
@@ -218,7 +218,7 @@ class SourcesService:
         self._session.flush()
         return source
 
-    def reveal(self, profile_id: str, source_id: int) -> None:
+    def reveal(self, profile_id: str, source_id: str) -> None:
         source = self._get(profile_id, source_id)
         opener = (
             "open"
@@ -251,7 +251,7 @@ class SourcesService:
             raise SourcesError("directory not found in linked folder")
         return target
 
-    def browse(self, profile_id: str, source_id: int, subdir: str = "") -> dict[str, Any]:
+    def browse(self, profile_id: str, source_id: str, subdir: str = "") -> dict[str, Any]:
         source = self._get(profile_id, source_id)
         root = Path(source.path)
         target = self._resolve_subdir(source, subdir)
@@ -334,7 +334,7 @@ class SourcesService:
                 continue
         return result
 
-    def ingest_file(self, profile_id: str, source_id: int, relpath: str) -> tuple[Material, bool]:
+    def ingest_file(self, profile_id: str, source_id: str, relpath: str) -> tuple[Material, bool]:
         source = self._get(profile_id, source_id)
         root = Path(source.path)
         cleaned = (relpath or "").strip().strip("/")
@@ -366,7 +366,7 @@ class SourcesService:
         material = self._create_material(profile_id, source, target, stat, content_hash, kind=kind)
         return material, False
 
-    def scan(self, profile_id: str, source_id: int) -> ScanReport:
+    def scan(self, profile_id: str, source_id: str) -> ScanReport:
         source = self._session.get(MaterialSource, source_id)
         if source is None or source.profile_id != profile_id:
             raise SourcesError("source not found")
@@ -466,14 +466,14 @@ class SourcesService:
         self._session.flush()
         return ScanReport(stats=stats, skipped=skipped, new_relpaths=new_relpaths[:20])
 
-    def mirror_subdirs(self, source: MaterialSource) -> dict[str, int | None]:
+    def mirror_subdirs(self, source: MaterialSource) -> dict[str, str]:
         folder = self._link_folder(source.id)
         if folder is None:
             return {}
-        mapping: dict[str, int | None] = {}
+        mapping: dict[str, str] = {}
         root_str = str(Path(source.path))
 
-        def child_folders(parent_id: int) -> dict[str, MaterialFolder]:
+        def child_folders(parent_id: str) -> dict[str, MaterialFolder]:
             return {
                 child.name: child
                 for child in self._session.scalars(
@@ -518,7 +518,7 @@ class SourcesService:
         walk(Path(root_str.rstrip(os.sep)), folder)
         return mapping
 
-    def backfill_mirrored_folders(self, profile_id: str, source_id: int) -> dict[str, int]:
+    def backfill_mirrored_folders(self, profile_id: str, source_id: str) -> dict[str, int]:
         source = self._get(profile_id, source_id)
         root = Path(source.path)
         if not root.is_dir():
@@ -569,7 +569,7 @@ class SourcesService:
         stat: Any,
         content_hash: str,
         kind: str | None = None,
-        folder_id: int | None = None,
+        folder_id: str | None = None,
     ) -> Material:
         if kind is None:
             kind = detect_kind(path.name)

@@ -24,7 +24,7 @@ class ReasoningGateway(ScriptedGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> Iterator[StreamChunk]:
         text = self.generate(task, messages, model)
         yield StreamChunk("reasoning", "Let me think about the power rule.")

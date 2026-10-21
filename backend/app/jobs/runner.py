@@ -3,7 +3,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 import structlog
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.errors import sanitize_error_detail
@@ -93,7 +93,7 @@ class JobRunner:
     def retriable_handlers(self) -> frozenset[str]:
         return frozenset(self._handlers) - {JobType.CHAT_TURN}
 
-    def publish_progress(self, job_id: int, progress: int, stage: str, status: str) -> None:
+    def publish_progress(self, job_id: str, progress: int, stage: str, status: str) -> None:
         self._bus.publish_threadsafe(
             WsTopic.jobs(job_id), {"progress": progress, "stage": stage, "status": status}
         )
@@ -124,10 +124,13 @@ class JobRunner:
             select(Job)
             .where(
                 Job.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
-                Job.id < job.id,
+                or_(
+                    Job.created_at < job.created_at,
+                    and_(Job.created_at == job.created_at, Job.id < job.id),
+                ),
                 Job.type == job.type,
             )
-            .order_by(Job.id)
+            .order_by(Job.created_at, Job.id)
             .limit(100)
         ).all()
         return any(self._group_of(other) == group for other in earlier)
@@ -135,7 +138,10 @@ class JobRunner:
     def _claim_next(self) -> Job | None:
         with self._session_factory() as session:
             candidates = session.scalars(
-                select(Job).where(Job.status == JobStatus.QUEUED).order_by(Job.id).limit(25)
+                select(Job)
+                .where(Job.status == JobStatus.QUEUED)
+                .order_by(Job.created_at, Job.id)
+                .limit(25)
             ).all()
             for job in candidates:
                 if self._blocked_by_group(session, job):
@@ -191,7 +197,7 @@ class JobRunner:
             )
             self._mark_failed(job.id, f"timed out after {int(self._job_timeout_sec)}s")
 
-    def _run_handler(self, job_id: int, job_type: str) -> None:
+    def _run_handler(self, job_id: str, job_type: str) -> None:
         handler = self._handlers.get(job_type)
         try:
             if is_cancel_requested(job_id):
@@ -239,7 +245,7 @@ class JobRunner:
         finally:
             clear_cancel(job_id)
 
-    def _mark_cancelled(self, job_id: int, error: str) -> None:
+    def _mark_cancelled(self, job_id: str, error: str) -> None:
         with self._session_factory() as session:
             cancelled = session.get(Job, job_id)
             if cancelled is None:
@@ -260,7 +266,7 @@ class JobRunner:
             )
             logger.info("job_cancelled", job_id=job_id)
 
-    def _mark_failed(self, job_id: int, error: str) -> None:
+    def _mark_failed(self, job_id: str, error: str) -> None:
         with self._session_factory() as session:
             failed = session.get(Job, job_id)
             if failed is None:

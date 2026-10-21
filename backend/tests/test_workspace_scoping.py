@@ -24,13 +24,13 @@ CAQ_DOC = {
 }
 
 
-def make_course(client: TestClient, title: str) -> int:
+def make_course(client: TestClient, title: str) -> str:
     response = client.post("/api/v1/courses", json={"title": title})
     assert response.status_code == 201, response.text
-    return int(response.json()["id"])
+    return str(response.json()["id"])
 
 
-def import_quiz(client: TestClient, course_id: int) -> dict[str, Any]:
+def import_quiz(client: TestClient, course_id: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/quiz/import",
         params={"dry_run": "false", "course_id": course_id},
@@ -41,7 +41,7 @@ def import_quiz(client: TestClient, course_id: int) -> dict[str, Any]:
     return activity
 
 
-def answer_wrong(client: TestClient, activity_id: int) -> None:
+def answer_wrong(client: TestClient, activity_id: str) -> None:
     questions = client.get(f"/api/v1/quiz/activities/{activity_id}/questions").json()
     attempt = client.post(f"/api/v1/quiz/activities/{activity_id}/attempts").json()
     response = client.post(

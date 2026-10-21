@@ -44,6 +44,7 @@ from ...domain.models import (
     SkillVersion,
     StepAttempt,
     TreeNode,
+    new_uuid,
     utcnow,
 )
 from ...pipelines.chunking import chunk_markdown
@@ -121,6 +122,7 @@ class BundleData:
 
 def _export_course(session: Session, course: Course) -> dict[str, Any]:
     return {
+        "id": course.id,
         "title": course.title,
         "description": course.description,
         "subject": course.subject,
@@ -132,7 +134,7 @@ def _export_course(session: Session, course: Course) -> dict[str, Any]:
     }
 
 
-def _export_cards(session: Session, course_id: int, include_history: bool) -> list[dict[str, Any]]:
+def _export_cards(session: Session, course_id: str, include_history: bool) -> list[dict[str, Any]]:
     exercises = list(session.scalars(select(Exercise).where(Exercise.course_id == course_id)))
     card_ids = [exercise.id for exercise in exercises if is_card_kind(exercise.kind)]
     if not card_ids:
@@ -141,10 +143,12 @@ def _export_cards(session: Session, course_id: int, include_history: bool) -> li
         state.card_id: state
         for state in session.scalars(select(FsrsState).where(FsrsState.card_id.in_(card_ids)))
     }
-    reviews: dict[int, list[ReviewLog]] = {}
+    reviews: dict[str, list[ReviewLog]] = {}
     if include_history:
         for log in session.scalars(
-            select(ReviewLog).where(ReviewLog.card_id.in_(card_ids)).order_by(ReviewLog.id)
+            select(ReviewLog)
+            .where(ReviewLog.card_id.in_(card_ids))
+            .order_by(ReviewLog.reviewed_at, ReviewLog.id)
         ):
             reviews.setdefault(log.card_id, []).append(log)
     out: list[dict[str, Any]] = []
@@ -206,13 +210,15 @@ def _export_patterns(session: Session, course: Course) -> list[dict[str, Any]]:
     ]
 
 
-def _export_note_versions(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _export_note_versions(session: Session, course_id: str) -> list[dict[str, Any]]:
     note_ids = list(session.scalars(select(Note.id).where(Note.course_id == course_id)))
     if not note_ids:
         return []
     versions = list(
         session.scalars(
-            select(NoteVersion).where(NoteVersion.note_id.in_(note_ids)).order_by(NoteVersion.id)
+            select(NoteVersion)
+            .where(NoteVersion.note_id.in_(note_ids))
+            .order_by(NoteVersion.created_at, NoteVersion.id)
         )
     )
     return [
@@ -228,13 +234,15 @@ def _export_note_versions(session: Session, course_id: int) -> list[dict[str, An
     ]
 
 
-def _export_history(session: Session, course_id: int) -> dict[str, Any]:
+def _export_history(session: Session, course_id: str) -> dict[str, Any]:
     activities = list(session.scalars(select(Activity.id).where(Activity.course_id == course_id)))
     exercise_ids = list(session.scalars(select(Exercise.id).where(Exercise.course_id == course_id)))
     attempts = (
         list(
             session.scalars(
-                select(Attempt).where(Attempt.activity_id.in_(activities)).order_by(Attempt.id)
+                select(Attempt)
+                .where(Attempt.activity_id.in_(activities))
+                .order_by(Attempt.started_at, Attempt.id)
             )
         )
         if activities
@@ -244,7 +252,9 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
     answers = (
         list(
             session.scalars(
-                select(Answer).where(Answer.attempt_id.in_(attempt_ids)).order_by(Answer.id)
+                select(Answer)
+                .where(Answer.attempt_id.in_(attempt_ids))
+                .order_by(Answer.created_at, Answer.id)
             )
         )
         if attempt_ids
@@ -255,7 +265,7 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
             session.scalars(
                 select(ExerciseSession)
                 .where(ExerciseSession.exercise_id.in_(exercise_ids))
-                .order_by(ExerciseSession.id)
+                .order_by(ExerciseSession.started_at, ExerciseSession.id)
             )
         )
         if exercise_ids
@@ -267,7 +277,7 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
             session.scalars(
                 select(StepAttempt)
                 .where(StepAttempt.session_id.in_(session_ids))
-                .order_by(StepAttempt.id)
+                .order_by(StepAttempt.created_at, StepAttempt.id)
             )
         )
         if session_ids
@@ -278,7 +288,7 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
             session.scalars(
                 select(QuizHelpEvent)
                 .where(QuizHelpEvent.attempt_id.in_(attempt_ids))
-                .order_by(QuizHelpEvent.id)
+                .order_by(QuizHelpEvent.created_at, QuizHelpEvent.id)
             )
         )
         if attempt_ids
@@ -356,10 +366,10 @@ def _export_history(session: Session, course_id: int) -> dict[str, Any]:
     }
 
 
-def _export_tree(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _export_tree(session: Session, course_id: str) -> list[dict[str, Any]]:
     nodes = list(
         session.scalars(
-            select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.id)
+            select(TreeNode).where(TreeNode.course_id == course_id).order_by(TreeNode.sort_path)
         )
     )
     return [
@@ -377,7 +387,7 @@ def _export_tree(session: Session, course_id: int) -> list[dict[str, Any]]:
     ]
 
 
-def _export_concepts(session: Session, course_id: int) -> dict[str, Any]:
+def _export_concepts(session: Session, course_id: str) -> dict[str, Any]:
     concepts = list(session.scalars(select(Concept).where(Concept.course_id == course_id)))
     by_id = {concept.id: concept for concept in concepts}
     links = list(session.scalars(select(ConceptLink).where(ConceptLink.course_id == course_id)))
@@ -412,14 +422,16 @@ def _export_concepts(session: Session, course_id: int) -> dict[str, Any]:
     }
 
 
-def _export_materials(session: Session, course_id: int) -> tuple[list[dict[str, Any]], set[str]]:
+def _export_materials(session: Session, course_id: str) -> tuple[list[dict[str, Any]], set[str]]:
     materials = list(
         session.scalars(
-            select(Material).where(Material.course_id == course_id).order_by(Material.id)
+            select(Material)
+            .where(Material.course_id == course_id)
+            .order_by(Material.created_at, Material.id)
         )
     )
     links = list(session.scalars(select(MaterialLink).where(MaterialLink.course_id == course_id)))
-    links_by_material: dict[int, list[MaterialLink]] = {}
+    links_by_material: dict[str, list[MaterialLink]] = {}
     for link in links:
         links_by_material.setdefault(link.material_id, []).append(link)
     folder_paths = {
@@ -513,7 +525,7 @@ def _export_materials(session: Session, course_id: int) -> tuple[list[dict[str, 
     return out, shas
 
 
-def _export_folders(session: Session, course_id: int) -> tuple[dict[str, Any], list[str]]:
+def _export_folders(session: Session, course_id: str) -> tuple[dict[str, Any], list[str]]:
     folders = list(
         session.scalars(
             select(MaterialFolder).where(
@@ -557,8 +569,12 @@ def _export_folders(session: Session, course_id: int) -> tuple[dict[str, Any], l
     )
 
 
-def _export_notes(session: Session, course_id: int) -> tuple[list[dict[str, Any]], set[str]]:
-    notes = list(session.scalars(select(Note).where(Note.course_id == course_id).order_by(Note.id)))
+def _export_notes(session: Session, course_id: str) -> tuple[list[dict[str, Any]], set[str]]:
+    notes = list(
+        session.scalars(
+            select(Note).where(Note.course_id == course_id).order_by(Note.created_at, Note.id)
+        )
+    )
     shas: set[str] = set()
     out: list[dict[str, Any]] = []
     for note in notes:
@@ -590,17 +606,21 @@ def _export_notes(session: Session, course_id: int) -> tuple[list[dict[str, Any]
     return out, shas
 
 
-def _export_quizzes(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _export_quizzes(session: Session, course_id: str) -> list[dict[str, Any]]:
     activities = list(
         session.scalars(
-            select(Activity).where(Activity.course_id == course_id).order_by(Activity.id)
+            select(Activity)
+            .where(Activity.course_id == course_id)
+            .order_by(Activity.created_at, Activity.id)
         )
     )
     out: list[dict[str, Any]] = []
     for activity in activities:
         questions = list(
             session.scalars(
-                select(Question).where(Question.activity_id == activity.id).order_by(Question.id)
+                select(Question)
+                .where(Question.activity_id == activity.id)
+                .order_by(Question.created_at, Question.id)
             )
         )
         out.append(
@@ -637,10 +657,12 @@ def _export_quizzes(session: Session, course_id: int) -> list[dict[str, Any]]:
     return out
 
 
-def _export_exercises(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _export_exercises(session: Session, course_id: str) -> list[dict[str, Any]]:
     exercises = list(
         session.scalars(
-            select(Exercise).where(Exercise.course_id == course_id).order_by(Exercise.id)
+            select(Exercise)
+            .where(Exercise.course_id == course_id)
+            .order_by(Exercise.created_at, Exercise.id)
         )
     )
     out: list[dict[str, Any]] = []
@@ -677,7 +699,7 @@ def _export_exercises(session: Session, course_id: int) -> list[dict[str, Any]]:
     return out
 
 
-def _export_skills(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _export_skills(session: Session, course_id: str) -> list[dict[str, Any]]:
     versions = list(
         session.scalars(
             select(SkillVersion).where(
@@ -704,7 +726,7 @@ def _export_skills(session: Session, course_id: int) -> list[dict[str, Any]]:
     return out
 
 
-def _export_external_sources(session: Session, course_id: int) -> list[dict[str, Any]]:
+def _export_external_sources(session: Session, course_id: str) -> list[dict[str, Any]]:
     from ...core.vocab import ExternalSourceKind
 
     sources = list(
@@ -1009,6 +1031,16 @@ def bundle_preview(bundle: BundleData) -> dict[str, Any]:
     }
 
 
+def _import_id(session: Session, model: Any, incoming: Any, taken: set[str]) -> str:
+    candidate = str(incoming) if incoming is not None else ""
+    if candidate and candidate not in taken and session.get(model, candidate) is None:
+        taken.add(candidate)
+        return candidate
+    generated = new_uuid()
+    taken.add(generated)
+    return generated
+
+
 def import_course_bundle(
     session: Session,
     bundle: BundleData,
@@ -1032,7 +1064,9 @@ def import_course_bundle(
         except ValueError as error:
             raise BundleError(f"invalid exam_date: {raw_exam_date!r}") from error
 
+    taken: set[str] = set()
     course = Course(
+        id=_import_id(session, Course, bundle.course.get("id"), taken),
         profile_id=profile_id,
         title=imported_title,
         description=bundle.course.get("description"),
@@ -1047,11 +1081,15 @@ def import_course_bundle(
     session.flush()
 
     tree = TreeService(session)
-    root = tree.ensure_root(course.id)
-    node_map: dict[int, int] = {}
+    root_entry = next((entry for entry in bundle.tree if entry.get("is_root")), None)
+    root = tree.ensure_root(
+        course.id,
+        node_id=(_import_id(session, TreeNode, root_entry["id"], taken) if root_entry else None),
+    )
+    node_map: dict[str, str] = {}
     for entry in bundle.tree:
         if entry.get("is_root"):
-            node_map[entry["id"]] = root.id
+            node_map[str(entry["id"])] = root.id
             if entry.get("ai_hint"):
                 root.ai_hint = entry["ai_hint"]
             if entry.get("summary"):
@@ -1062,18 +1100,20 @@ def import_course_bundle(
     for entry in pending:
         created = tree.create_node(
             course.id,
-            node_map[entry["parent_id"]],
+            node_map[str(entry["parent_id"])],
             entry["title"],
             summary=entry.get("summary"),
             objectives=entry.get("objectives"),
             ai_hint=entry.get("ai_hint"),
+            node_id=_import_id(session, TreeNode, entry["id"], taken),
         )
-        node_map[entry["id"]] = created.id
+        node_map[str(entry["id"])] = created.id
     session.flush()
 
-    concept_map: dict[int, int] = {}
+    concept_map: dict[str, str] = {}
     for entry in bundle.concepts.get("concepts", []):
         concept = Concept(
+            id=_import_id(session, Concept, entry["id"], taken),
             course_id=course.id,
             name=str(entry["name"])[:200],
             description=entry.get("description"),
@@ -1081,27 +1121,27 @@ def import_course_bundle(
         )
         session.add(concept)
         session.flush()
-        concept_map[entry["id"]] = concept.id
+        concept_map[str(entry["id"])] = concept.id
     for link in bundle.concepts.get("links", []):
         session.add(
             ConceptLink(
                 course_id=course.id,
-                from_concept_id=concept_map[link["from_concept_id"]],
-                to_concept_id=concept_map[link["to_concept_id"]],
+                from_concept_id=concept_map[str(link["from_concept_id"])],
+                to_concept_id=concept_map[str(link["to_concept_id"])],
                 relation=link["relation"],
             )
         )
     for coverage in bundle.concepts.get("coverage", []):
         session.add(
             NodeConcept(
-                node_id=node_map[coverage["node_id"]],
-                concept_id=concept_map[coverage["concept_id"]],
+                node_id=node_map[str(coverage["node_id"])],
+                concept_id=concept_map[str(coverage["concept_id"])],
                 weight=coverage.get("weight"),
             )
         )
     session.flush()
 
-    folder_map: dict[str, int] = {}
+    folder_map: dict[str, str] = {}
     folders_service = FoldersService(session)
     for entry in sorted(bundle.folders.get("folders", []), key=lambda item: str(item.get("path"))):
         path = str(entry.get("path") or "")
@@ -1113,14 +1153,15 @@ def import_course_bundle(
             name=name,
             course_id=course.id,
             parent_id=parent_id,
+            folder_id=_import_id(session, MaterialFolder, entry.get("id"), taken),
         )
         folder_map[path] = folder.id
     for link in bundle.folders.get("links", []):
         session.add(
             MaterialFolderLink(
                 course_id=course.id,
-                node_id=node_map[link["node_id"]],
-                folder_id=folder_map[link["folder_path"]],
+                node_id=node_map[str(link["node_id"])],
+                folder_id=folder_map[str(link["folder_path"])],
                 rationale=link.get("rationale"),
                 auto_assigned=bool(link.get("auto_assigned")),
                 confidence=link.get("confidence"),
@@ -1128,8 +1169,8 @@ def import_course_bundle(
         )
     session.flush()
 
-    material_map: dict[int, int] = {}
-    postprocess_job_ids: list[int] = []
+    material_map: dict[str, str] = {}
+    postprocess_job_ids: list[str] = []
     for entry in bundle.materials:
         sha = entry.get("blob_sha")
         if sha is not None:
@@ -1137,6 +1178,7 @@ def import_course_bundle(
             blob_store.put(bundle.blobs[sha], mime=mime, session=session)
         entry_folder_path = entry.get("folder_path")
         material = Material(
+            id=_import_id(session, Material, entry["id"], taken),
             profile_id=profile_id,
             course_id=course.id,
             folder_id=(
@@ -1160,15 +1202,16 @@ def import_course_bundle(
         )
         session.add(material)
         session.flush()
-        material_map[entry["id"]] = material.id
+        material_map[str(entry["id"])] = material.id
 
-        drawing_map: dict[int, int] = {}
+        drawing_map: dict[str, str] = {}
         for drawing in entry.get("drawings", []):
             drawing_sha = drawing.get("png_sha")
             if drawing_sha is not None:
                 blob_store.put(bundle.blobs[drawing_sha], mime="image/png", session=session)
-            old_id = int(drawing.get("id") or 0)
+            old_id = str(drawing.get("id") or "")
             material_drawing_row = MaterialDrawing(
+                id=_import_id(session, MaterialDrawing, drawing.get("id"), taken),
                 material_id=material.id,
                 strokes=drawing.get("strokes") or [],
                 png_sha=drawing_sha,
@@ -1227,7 +1270,7 @@ def import_course_bundle(
             session.add(
                 MaterialLink(
                     course_id=course.id,
-                    node_id=node_map[link["node_id"]],
+                    node_id=node_map[str(link["node_id"])],
                     material_id=material.id,
                     rationale=link.get("rationale"),
                     auto_assigned=bool(link.get("auto_assigned")),
@@ -1241,12 +1284,13 @@ def import_course_bundle(
             JobRunner.enqueue(session, "postprocess", {"material_id": material.id}).id
         )
 
-    note_map: dict[int, int] = {}
+    note_map: dict[str, str] = {}
     for entry in bundle.notes:
         note = Note(
+            id=_import_id(session, Note, entry["id"], taken),
             profile_id=profile_id,
             course_id=course.id,
-            node_id=node_map[entry["node_id"]] if entry.get("node_id") is not None else None,
+            node_id=(node_map[str(entry["node_id"])] if entry.get("node_id") is not None else None),
             owner_type="standalone",
             owner_id=None,
             title=str(entry.get("title") or "Note")[:300],
@@ -1257,12 +1301,13 @@ def import_course_bundle(
         note.search_text = str(note.title)
         session.add(note)
         session.flush()
-        note_map[entry["id"]] = note.id
+        note_map[str(entry["id"])] = note.id
         for drawing in entry.get("drawings", []):
             sha = drawing.get("png_sha")
             if sha is not None:
                 blob_store.put(bundle.blobs[sha], mime="image/png", session=session)
             drawing_row = NoteDrawing(
+                id=_import_id(session, NoteDrawing, drawing.get("id"), taken),
                 note_id=note.id,
                 strokes=drawing.get("strokes") or [],
                 png_sha=sha,
@@ -1279,7 +1324,8 @@ def import_course_bundle(
     for version in bundle.note_versions:
         session.add(
             NoteVersion(
-                note_id=note_map[version["note_id"]],
+                id=_import_id(session, NoteVersion, version.get("id"), taken),
+                note_id=note_map[str(version["note_id"])],
                 profile_id=profile_id,
                 title=str(version.get("title") or "Note")[:300],
                 tags=version.get("tags"),
@@ -1290,26 +1336,28 @@ def import_course_bundle(
         )
     session.flush()
 
-    question_map: dict[int, int] = {}
-    attempt_map: dict[int, int] = {}
-    session_map: dict[int, int] = {}
-    activity_map: dict[int, int] = {}
+    question_map: dict[str, str] = {}
+    attempt_map: dict[str, str] = {}
+    session_map: dict[str, str] = {}
+    activity_map: dict[str, str] = {}
     for entry in bundle.quizzes:
         activity = Activity(
+            id=_import_id(session, Activity, entry["id"], taken),
             profile_id=profile_id,
             course_id=course.id,
-            node_id=node_map[entry["node_id"]] if entry.get("node_id") is not None else None,
+            node_id=(node_map[str(entry["node_id"])] if entry.get("node_id") is not None else None),
             type=str(entry.get("type") or "quiz"),
             title=str(entry.get("title") or "Quiz")[:300],
             config=entry.get("config"),
         )
         session.add(activity)
         session.flush()
-        activity_map[entry["id"]] = activity.id
+        activity_map[str(entry["id"])] = activity.id
         for question in entry.get("questions", []):
             concept_ids = question.get("concept_ids") or []
-            remapped = [concept_map[cid] for cid in concept_ids if cid in concept_map]
+            remapped = [concept_map[str(cid)] for cid in concept_ids if str(cid) in concept_map]
             question_row = Question(
+                id=_import_id(session, Question, question.get("id"), taken),
                 activity_id=activity.id,
                 type=str(question.get("type") or "single"),
                 stem=question.get("stem") or [{"type": "text", "md": ""}],
@@ -1331,14 +1379,15 @@ def import_course_bundle(
             session.add(question_row)
             session.flush()
             if question.get("id") is not None:
-                question_map[question["id"]] = question_row.id
+                question_map[str(question["id"])] = question_row.id
 
-    exercise_map: dict[int, int] = {}
+    exercise_map: dict[str, str] = {}
     for entry in bundle.exercises:
         exercise = Exercise(
+            id=_import_id(session, Exercise, entry["id"], taken),
             profile_id=profile_id,
             course_id=course.id,
-            node_id=node_map[entry["node_id"]] if entry.get("node_id") is not None else None,
+            node_id=(node_map[str(entry["node_id"])] if entry.get("node_id") is not None else None),
             title=str(entry.get("title") or "Exercise")[:300],
             kind=str(entry.get("kind") or "multi_step"),
             deck_ref=entry.get("deck_ref"),
@@ -1348,10 +1397,11 @@ def import_course_bundle(
         )
         session.add(exercise)
         session.flush()
-        exercise_map[entry["id"]] = exercise.id
+        exercise_map[str(entry["id"])] = exercise.id
         for step in entry.get("steps", []):
             session.add(
                 ExerciseStep(
+                    id=_import_id(session, ExerciseStep, step.get("id"), taken),
                     exercise_id=exercise.id,
                     order_idx=int(step.get("order_idx") or 0),
                     prompt=step.get("prompt") or [{"type": "text", "md": ""}],
@@ -1366,7 +1416,8 @@ def import_course_bundle(
         due_at = _parse_datetime(card.get("due_at"))
         session.add(
             FsrsState(
-                card_id=exercise_map[card["exercise_id"]],
+                id=_import_id(session, FsrsState, card.get("id"), taken),
+                card_id=exercise_map[str(card["exercise_id"])],
                 state=str(card.get("state") or "new"),
                 stability=card.get("stability"),
                 difficulty=card.get("difficulty"),
@@ -1379,7 +1430,8 @@ def import_course_bundle(
         for review in card.get("reviews", []):
             session.add(
                 ReviewLog(
-                    card_id=exercise_map[card["exercise_id"]],
+                    id=_import_id(session, ReviewLog, review.get("id"), taken),
+                    card_id=exercise_map[str(card["exercise_id"])],
                     rating=int(review.get("rating") or 0),
                     interval_days=float(review.get("interval_days") or 0),
                     elapsed_days=float(review.get("elapsed_days") or 0),
@@ -1410,7 +1462,8 @@ def import_course_bundle(
     history = bundle.history
     for attempt in history.get("attempts", []):
         attempt_row = Attempt(
-            activity_id=activity_map[attempt["activity_id"]],
+            id=_import_id(session, Attempt, attempt.get("id"), taken),
+            activity_id=activity_map[str(attempt["activity_id"])],
             mode=str(attempt.get("mode") or "practice"),
             started_at=_parse_datetime(attempt.get("started_at")) or utcnow(),
             finished_at=_parse_datetime(attempt.get("finished_at")),
@@ -1419,12 +1472,13 @@ def import_course_bundle(
         )
         session.add(attempt_row)
         session.flush()
-        attempt_map[attempt["id"]] = attempt_row.id
+        attempt_map[str(attempt["id"])] = attempt_row.id
     for answer in history.get("answers", []):
         session.add(
             Answer(
-                attempt_id=attempt_map[answer["attempt_id"]],
-                question_id=question_map[answer["question_id"]],
+                id=_import_id(session, Answer, answer.get("id"), taken),
+                attempt_id=attempt_map[str(answer["attempt_id"])],
+                question_id=question_map[str(answer["question_id"])],
                 response=answer.get("response"),
                 input_mode=answer.get("input_mode"),
                 correct=answer.get("correct"),
@@ -1440,7 +1494,8 @@ def import_course_bundle(
         )
     for row in history.get("exercise_sessions", []):
         session_row = ExerciseSession(
-            exercise_id=exercise_map[row["exercise_id"]],
+            id=_import_id(session, ExerciseSession, row.get("id"), taken),
+            exercise_id=exercise_map[str(row["exercise_id"])],
             current_step_idx=int(row.get("current_step_idx") or 0),
             status=str(row.get("status") or "active"),
             socratic=bool(row.get("socratic")),
@@ -1454,7 +1509,8 @@ def import_course_bundle(
     for row in history.get("step_attempts", []):
         session.add(
             StepAttempt(
-                session_id=session_map[row["session_id"]],
+                id=_import_id(session, StepAttempt, row.get("id"), taken),
+                session_id=session_map[str(row["session_id"])],
                 step_idx=int(row.get("step_idx") or 0),
                 response=row.get("response"),
                 correct=row.get("correct"),
@@ -1468,8 +1524,9 @@ def import_course_bundle(
     for row in history.get("quiz_help_events", []):
         session.add(
             QuizHelpEvent(
-                attempt_id=attempt_map[row["attempt_id"]],
-                question_id=question_map[row["question_id"]],
+                id=_import_id(session, QuizHelpEvent, row.get("id"), taken),
+                attempt_id=attempt_map[str(row["attempt_id"])],
+                question_id=question_map[str(row["question_id"])],
                 level=int(row.get("level") or 0),
                 markdown=str(row.get("markdown") or ""),
                 violations=row.get("violations"),

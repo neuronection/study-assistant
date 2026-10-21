@@ -59,7 +59,7 @@ def tool_call_event(entry: dict[str, Any]) -> dict[str, Any]:
 
 def flow_finished_event(
     run_id: str,
-    message_id: int,
+    message_id: str,
     model: str | None = None,
     total_ms: int | None = None,
     tool_count: int | None = None,

@@ -40,6 +40,9 @@ from .core import (
     mapped_column as mapped_column,
 )
 from .core import (
+    new_uuid as new_uuid,
+)
+from .core import (
     text as text,
 )
 from .core import (
@@ -60,14 +63,14 @@ class ChatSession(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    course_id: Mapped[int | None] = mapped_column(
-        ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    course_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
-    node_id: Mapped[int | None] = mapped_column(Integer)
+    node_id: Mapped[str | None] = mapped_column(_UUID)
     title: Mapped[str] = mapped_column(String(300), default="New chat")
     use_embeddings: Mapped[bool | None] = mapped_column(Boolean)
     public_id: Mapped[str] = mapped_column(
@@ -75,7 +78,7 @@ class ChatSession(Base):
     )
     context: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     mention_registry: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
-    active_root_id: Mapped[int | None] = mapped_column(Integer)
+    active_root_id: Mapped[str | None] = mapped_column(_UUID)
     quizme: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     quiz_pending: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -84,12 +87,12 @@ class ChatSession(Base):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    session_id: Mapped[int] = mapped_column(
-        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    session_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
     )
-    parent_id: Mapped[int | None] = mapped_column(Integer, index=True)
-    active_child_id: Mapped[int | None] = mapped_column(Integer)
+    parent_id: Mapped[str | None] = mapped_column(_UUID, index=True)
+    active_child_id: Mapped[str | None] = mapped_column(_UUID)
     role: Mapped[str] = mapped_column(String(20))
     blocks: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     citations: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
@@ -107,9 +110,9 @@ class ChatProposal(Base):
     __tablename__ = "chat_proposals"
     __table_args__ = (vocab_check("status", ChatProposalStatus),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    message_id: Mapped[int] = mapped_column(
-        ForeignKey("chat_messages.id", ondelete="CASCADE"), index=True
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    message_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("chat_messages.id", ondelete="CASCADE"), index=True
     )
     action: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
@@ -122,12 +125,12 @@ class ChatProposal(Base):
 class QuizmeAnswer(Base):
     __tablename__ = "quizme_answers"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
         _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
     )
-    session_id: Mapped[int] = mapped_column(
-        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
+    session_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
     )
     correct: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -42,12 +42,12 @@ class OverviewOut(BaseModel):
 
 
 class MostBehindNodeOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class ExamStatusOut(BaseModel):
-    course_id: int
+    course_id: str
     course_title: str
     exam_date: str
     days_left: int
@@ -66,7 +66,7 @@ class ExamStatusOut(BaseModel):
 
 class WeaknessCellOut(BaseModel):
     concept: str
-    concept_id: int | None
+    concept_id: str | None
     skill: str
     n: int
     accuracy: float
@@ -111,7 +111,7 @@ class RecommendationOut(BaseModel):
 
 
 class ItemStatOut(BaseModel):
-    question_id: int
+    question_id: str
     n_attempts: int
     p_correct: float
     avg_time_ms: int | None
@@ -163,7 +163,7 @@ def exams(session: Session = Depends(get_session)) -> list[dict[str, Any]]:
 
 @router.get("/diagnostics", response_model=DiagnosticsOut)
 def diagnostics(
-    course_id: int | None = None, session: Session = Depends(get_session)
+    course_id: str | None = None, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     from ..services.study.teachback import teach_back_cells
 
@@ -184,7 +184,7 @@ def diagnostics(
 
 @router.get("/recommendations", response_model=list[RecommendationOut])
 def recommendations(
-    course_id: int | None = None, session: Session = Depends(get_session)
+    course_id: str | None = None, session: Session = Depends(get_session)
 ) -> list[dict[str, Any]]:
     profile = ensure_default_profile(session)
     return metrics.recommendations(session, profile.id, course_id)

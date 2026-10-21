@@ -123,9 +123,7 @@ class ExtensionRegistry:
                 schema=schema,
                 bundled=True,
                 profile=profile,
-                docs_root=_base_path() / dir_of(ext_id)
-                if ext_id in _BUNDLED_DIRS
-                else None,
+                docs_root=_base_path() / dir_of(ext_id) if ext_id in _BUNDLED_DIRS else None,
                 docs_schema=docs_schema,
                 charter=charter,
             )

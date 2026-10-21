@@ -42,8 +42,8 @@ def create_card_exercise(
     session: Session,
     *,
     profile_id: str,
-    course_id: int,
-    node_id: int | None,
+    course_id: str,
+    node_id: str | None,
     kind: str,
     front: list[dict[str, Any]],
     back: list[dict[str, Any]],
@@ -74,7 +74,7 @@ def create_card_exercise(
     return exercise
 
 
-def load_card_steps(session: Session, exercise_ids: list[int]) -> dict[int, dict[str, Any]]:
+def load_card_steps(session: Session, exercise_ids: list[str]) -> dict[str, dict[str, Any]]:
     if not exercise_ids:
         return {}
     rows = session.execute(
@@ -82,7 +82,7 @@ def load_card_steps(session: Session, exercise_ids: list[int]) -> dict[int, dict
         .where(ExerciseStep.order_idx == 0, ExerciseStep.exercise_id.in_(exercise_ids))
         .order_by(ExerciseStep.order_idx)
     ).scalars()
-    result: dict[int, dict[str, Any]] = {}
+    result: dict[str, dict[str, Any]] = {}
     for step in rows:
         if step.exercise_id not in result:
             expected = step.expected or {}

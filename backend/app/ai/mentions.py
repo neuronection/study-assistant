@@ -6,7 +6,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-MENTION_RE = re.compile(r"\[([MNCTQE])(\d+)\]")
+MENTION_RE = re.compile(r"\[([MNCTQE])([0-9a-fA-F][0-9a-fA-F-]{0,39})\]")
 
 KIND_BY_LETTER: dict[str, str] = {
     "M": "material",
@@ -32,9 +32,9 @@ MENTION_TEACH = (
 class MentionRef:
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     summary: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
@@ -48,9 +48,9 @@ class MentionRegistry:
     def add(
         self,
         kind: str,
-        item_id: int,
+        item_id: str,
         title: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
         summary: str | None = None,
     ) -> MentionRef:
         letter = LETTER_BY_KIND.get(kind)
@@ -146,9 +146,9 @@ def registry_from_json(entries: list[dict[str, Any]] | None) -> MentionRegistry:
         try:
             registry.add(
                 str(entry["kind"]),
-                int(entry["id"]),
+                str(entry["id"]),
                 str(entry["title"]),
-                int(entry["course_id"]) if entry.get("course_id") is not None else None,
+                str(entry["course_id"]) if entry.get("course_id") is not None else None,
                 str(entry["summary"]) if entry.get("summary") else None,
             )
         except (KeyError, ValueError, TypeError):

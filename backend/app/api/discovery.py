@@ -27,9 +27,9 @@ class DiscoverySearchIn(BaseModel):
 
 
 class SuggestionStateOut(BaseModel):
-    id: int
+    id: str
     status: str
-    material_id: int | None = None
+    material_id: str | None = None
 
 
 class DiscoveryResultOut(BaseModel):
@@ -53,9 +53,9 @@ class DiscoverySearchOut(BaseModel):
 
 
 class SuggestionOut(BaseModel):
-    id: int
-    course_id: int | None
-    node_id: int | None
+    id: str
+    course_id: str | None
+    node_id: str | None
     provider: str
     url: str
     url_norm: str
@@ -64,7 +64,7 @@ class SuggestionOut(BaseModel):
     kind: str
     meta: dict[str, object] = Field(default_factory=dict)
     status: str
-    material_id: int | None
+    material_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -95,8 +95,8 @@ class SuggestionSaveIn(BaseModel):
     snippet: str | None = Field(default=None, max_length=2000)
     kind: str | None = None
     meta: dict[str, object] | None = None
-    course_id: int | None = None
-    node_id: int | None = None
+    course_id: str | None = None
+    node_id: str | None = None
 
 
 class SuggestionSaveOut(BaseModel):
@@ -106,13 +106,13 @@ class SuggestionSaveOut(BaseModel):
 
 class SuggestionPatchIn(BaseModel):
     status: str | None = None
-    material_id: int | None = None
-    node_id: int | None = None
+    material_id: str | None = None
+    node_id: str | None = None
 
 
 class SuggestionListOut(BaseModel):
     items: list[SuggestionOut]
-    next_cursor: int | None = None
+    next_cursor: str | None = None
 
 
 @router.get("/kinds", response_model=list[str])
@@ -191,12 +191,12 @@ def discovery_search(
 
 @router.get("/suggestions", response_model=SuggestionListOut)
 def list_suggestions(
-    course_id: int | None = None,
-    node_id: int | None = None,
+    course_id: str | None = None,
+    node_id: str | None = None,
     status: str | None = None,
     kind: str | None = None,
     limit: int = Query(default=50, ge=1, le=100),
-    cursor: int | None = Query(default=None),
+    cursor: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> SuggestionListOut:
     profile = ensure_default_profile(session)
@@ -246,7 +246,7 @@ def save_suggestion(
 
 @router.patch("/suggestions/{suggestion_id}", response_model=SuggestionOut)
 def patch_suggestion(
-    suggestion_id: int,
+    suggestion_id: str,
     body: SuggestionPatchIn,
     session: Session = Depends(get_session),
 ) -> SuggestionOut:
@@ -269,7 +269,7 @@ def patch_suggestion(
 
 @router.delete("/suggestions/{suggestion_id}", status_code=204)
 def delete_suggestion(
-    suggestion_id: int,
+    suggestion_id: str,
     session: Session = Depends(get_session),
 ) -> None:
     profile = ensure_default_profile(session)

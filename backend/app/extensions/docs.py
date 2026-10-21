@@ -35,16 +35,12 @@ _AUTOLINK = re.compile(r"^<[a-zA-Z][a-zA-Z0-9+.\-]*(:|@)[^>\n]*>$")
 _COMMENT_LINE = re.compile(r"^\s*<!--.*-->\s*$")
 _FENCE = re.compile(r"^[\t ]*(`{3,}|~{3,})")
 
-_DOCS_TREE_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[3] / "contracts" / "docs-tree.schema.json"
-)
+_DOCS_TREE_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "contracts" / "docs-tree.schema.json"
 
 
 def _docs_tree_schema() -> dict[str, Any]:
     try:
-        return cast(
-            dict[str, Any], json.loads(_DOCS_TREE_SCHEMA_PATH.read_text(encoding="utf-8"))
-        )
+        return cast(dict[str, Any], json.loads(_DOCS_TREE_SCHEMA_PATH.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(
             f"docs-tree schema unavailable at {_DOCS_TREE_SCHEMA_PATH}: {exc} — "
@@ -62,9 +58,7 @@ def validate_tree(tree: Any, docs_dir: Path) -> str | None:
     err = contract.validate(schema, tree, schema)
     if err is not None:
         return err
-    problems = contract.docs_tree_semantics(
-        tree, exists=lambda ref: (docs_dir / ref).is_file()
-    )
+    problems = contract.docs_tree_semantics(tree, exists=lambda ref: (docs_dir / ref).is_file())
     if problems:
         return "; ".join(problems)
     return None

@@ -69,10 +69,10 @@ class DrillGateway(LLMGateway):
     def resolve(
         self,
         task: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> ResolvedModel:
         return ResolvedModel(
-            provider_id=1,
+            provider_id="1",
             provider_type="openai_compatible",
             base_url="http://localhost/v1",
             external_id="drill-model",
@@ -86,7 +86,7 @@ class DrillGateway(LLMGateway):
         task: str,
         messages: list[Message],
         model: Any = None,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> str:
         return self.responses.pop(0)
 
@@ -99,7 +99,7 @@ class NoAI:
         self,
         title: str,
         markdown: str,
-        course_id: int | None = None,
+        course_id: str | None = None,
     ) -> dict[str, Any] | None:
         return None
 
@@ -121,7 +121,7 @@ def drill_client() -> Iterator[TestClient]:
         yield client
 
 
-def make_math_course(client: TestClient) -> int:
+def make_math_course(client: TestClient) -> str:
     types = {
         entry["key"]: entry["id"] for entry in client.get("/api/v1/skills/course-types").json()
     }
@@ -129,10 +129,10 @@ def make_math_course(client: TestClient) -> int:
         "/api/v1/courses",
         json={"title": "Calculus", "course_type_id": types.get("math")},
     )
-    return int(created.json()["id"])
+    return str(created.json()["id"])
 
 
-def run_drill(client: TestClient, course_id: int) -> Any:
+def run_drill(client: TestClient, course_id: str) -> Any:
     created = client.post(
         "/api/v1/exercises/drills",
         json={"pattern": "sign_slip", "course_id": course_id},
@@ -141,7 +141,7 @@ def run_drill(client: TestClient, course_id: int) -> Any:
     return created.json()
 
 
-def answer(client: TestClient, session_id: int, response: Any) -> Any:
+def answer(client: TestClient, session_id: str, response: Any) -> Any:
     payload = response if isinstance(response, str) else json.dumps(response)
     result = client.post(
         f"/api/v1/exercises/sessions/{session_id}/answer", json={"response": payload}

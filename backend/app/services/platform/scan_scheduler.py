@@ -57,14 +57,14 @@ class ScanScheduler:
     def wake(self) -> None:
         self._cycle.set()
 
-    def scan_all(self, *, force: bool = False) -> dict[int, dict[str, int]]:
-        results: dict[int, dict[str, int]] = {}
+    def scan_all(self, *, force: bool = False) -> dict[str, dict[str, int]]:
+        results: dict[str, dict[str, int]] = {}
         now = datetime.now(UTC)
         with self._session_factory() as session:
             sources = list(
                 session.scalars(select(MaterialSource).where(MaterialSource.enabled.is_(True)))
             )
-            due: list[tuple[str, int]] = []
+            due: list[tuple[str, str]] = []
             for source in sources:
                 if force or source.last_scanned_at is None:
                     due.append((source.profile_id, source.id))
@@ -78,7 +78,7 @@ class ScanScheduler:
                 results[source_id] = stats
         return results
 
-    def _scan_one(self, profile_id: str, source_id: int) -> dict[str, int] | None:
+    def _scan_one(self, profile_id: str, source_id: str) -> dict[str, int] | None:
         try:
             with self._session_factory() as session:
                 service = SourcesService(session, self._blobs_dir)

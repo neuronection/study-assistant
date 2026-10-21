@@ -48,9 +48,7 @@ def _transport_for(case: dict[str, Any]) -> httpx.MockTransport | None:
         if "auth_bearer" in request_spec:
             assert request.headers.get("Authorization") == (
                 f"Bearer {request_spec['auth_bearer']}"
-            ), (
-                f"{case['id']}: bearer"
-            )
+            ), f"{case['id']}: bearer"
         raw_headers = (
             request_spec.get("header", "").split(";") if request_spec.get("header") else []
         )

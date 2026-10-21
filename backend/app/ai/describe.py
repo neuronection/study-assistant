@@ -19,7 +19,7 @@ class GatewayDescriber:
         self._gateway = gateway
 
     def describe(
-        self, title: str, markdown: str, course_id: int | None = None
+        self, title: str, markdown: str, course_id: str | None = None
     ) -> dict[str, Any] | None:
         try:
             resolved = self._gateway.resolve(DESCRIPTION_TASK, course_id)

@@ -51,9 +51,9 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> None:
 def seeded(tmp_path: Path) -> dict[str, Any]:
     app = create_app(Settings(data_dir=tmp_path, log_level="WARNING"))
     with TestClient(app) as client:
-        course_id = int(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
-        root = int(client.get(f"/api/v1/courses/{course_id}/tree").json()[0]["id"])
-        chapter = int(
+        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+        root = str(client.get(f"/api/v1/courses/{course_id}/tree").json()[0]["id"])
+        chapter = str(
             client.post(
                 f"/api/v1/courses/{course_id}/nodes",
                 json={"course_id": course_id, "parent_id": root, "title": "Limits"},
@@ -64,7 +64,7 @@ def seeded(tmp_path: Path) -> dict[str, Any]:
             params={"course_id": course_id},
             files={"file": ("m.txt", b"limit content", "text/plain")},
         )
-        material_id = int(upload.json()["material"]["id"])
+        material_id = str(upload.json()["material"]["id"])
         wait_until(
             lambda: (
                 client.get(f"/api/v1/materials/{material_id}").json()["material"]["status"]
@@ -90,7 +90,7 @@ def seeded(tmp_path: Path) -> dict[str, Any]:
             },
         )
         graph = client.get(f"/api/v1/courses/{course_id}/concepts").json()
-        concept_id = int(graph["concepts"][0]["id"])
+        concept_id = str(graph["concepts"][0]["id"])
         client.post(f"/api/v1/nodes/{chapter}/concepts", json={"concept_id": concept_id})
     return {
         "tmp": tmp_path,
@@ -192,7 +192,9 @@ def test_mcp_server_lists_courses_and_scoped_resources(seeded: dict[str, Any]) -
             )["exercises"]
             assert exercises == []
 
-            missing = _structured(await session.call_tool("get_node_overview", {"node_id": 99999}))
+            missing = _structured(
+                await session.call_tool("get_node_overview", {"node_id": "99999"})
+            )
             assert missing == {"error": "node not found"}
 
             context = _structured(

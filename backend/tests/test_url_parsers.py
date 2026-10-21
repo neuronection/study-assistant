@@ -31,7 +31,7 @@ def client(
         yield test_client, app
 
 
-def wait_job(client: TestClient, job_id: int, timeout: float = 30.0) -> dict[str, Any]:
+def wait_job(client: TestClient, job_id: str, timeout: float = 30.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     last: dict[str, Any] = {}
     while time.monotonic() < deadline:

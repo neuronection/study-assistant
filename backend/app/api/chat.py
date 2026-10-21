@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from ..ai.flow_events_chat import flow_failed_event
@@ -45,8 +45,8 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 class SessionCreate(BaseModel):
-    course_id: int | None = None
-    node_id: int | None = None
+    course_id: str | None = None
+    node_id: str | None = None
     title: str = "New chat"
     use_embeddings: bool | None = None
 
@@ -58,10 +58,10 @@ class SessionUpdate(BaseModel):
 
 
 class SessionOut(BaseModel):
-    id: int
+    id: str
     public_id: str
-    course_id: int | None
-    node_id: int | None
+    course_id: str | None
+    node_id: str | None
     title: str
     use_embeddings: bool | None
     quizme: bool = False
@@ -71,8 +71,8 @@ class SessionOut(BaseModel):
 
 class CitationOut(BaseModel):
     index: int
-    chunk_id: int
-    material_id: int
+    chunk_id: str
+    material_id: str
     title: str
     quote: str
 
@@ -80,18 +80,18 @@ class CitationOut(BaseModel):
 class MentionOut(BaseModel):
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     summary: str | None = None
 
 
 class ReadOut(BaseModel):
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     chars: int
 
 
@@ -108,13 +108,13 @@ class ToolCallOut(BaseModel):
 
 
 class ProposalOut(BaseModel):
-    id: int
+    id: str
     action: str
     payload: dict[str, Any]
     status: str
     result: dict[str, Any] | None
-    message_id: int | None = None
-    session_id: int | None = None
+    message_id: str | None = None
+    session_id: str | None = None
 
 
 class ProposalListOut(BaseModel):
@@ -123,7 +123,7 @@ class ProposalListOut(BaseModel):
 
 
 class MessageOut(BaseModel):
-    id: int
+    id: str
     role: str
     markdown: str
     blocks: list[dict[str, Any]]
@@ -135,11 +135,11 @@ class MessageOut(BaseModel):
     grounded: bool | None
     trace: dict[str, Any] | None = None
     warnings: list[str] = Field(default_factory=list)
-    parent_id: int | None = None
+    parent_id: str | None = None
     state: dict[str, Any] | None = None
     variant_index: int = 1
     variant_count: int = 1
-    sibling_ids: list[int] = Field(default_factory=list)
+    sibling_ids: list[str] = Field(default_factory=list)
 
 
 AttachKind = Literal["material", "note", "quiz", "exercise", "node", "course"]
@@ -147,7 +147,7 @@ AttachKind = Literal["material", "note", "quiz", "exercise", "node", "course"]
 
 class AttachmentIn(BaseModel):
     kind: AttachKind
-    id: int
+    id: str
 
 
 class MessageIn(BaseModel):
@@ -157,11 +157,11 @@ class MessageIn(BaseModel):
 
 class TurnQueued(BaseModel):
     user_message: MessageOut
-    job_id: int
+    job_id: str
 
 
 class SessionDeletedOut(BaseModel):
-    deleted_item_id: int
+    deleted_item_id: str
 
 
 def _chat_service(request: Request, session: Session) -> ChatService:
@@ -213,23 +213,33 @@ def list_proposals(
             ) from error
         filters.append(ChatProposal.status == status_value)
     if cursor is not None:
+        created_raw, _sep, before_id = cursor.partition("|")
         try:
-            before_id = int(cursor)
+            before_created = datetime.fromisoformat(created_raw)
         except ValueError as error:
             raise HTTPException(status_code=422, detail="invalid cursor") from error
-        filters.append(ChatProposal.id < before_id)
+        filters.append(
+            or_(
+                ChatProposal.created_at < before_created,
+                and_(
+                    ChatProposal.created_at == before_created,
+                    ChatProposal.id < before_id,
+                ),
+            )
+        )
     rows = session.execute(
         select(ChatProposal, ChatMessage.session_id)
         .join(ChatMessage, ChatProposal.message_id == ChatMessage.id)
         .join(ChatSession, ChatMessage.session_id == ChatSession.id)
         .where(*filters)
-        .order_by(ChatProposal.id.desc())
+        .order_by(ChatProposal.created_at.desc(), ChatProposal.id.desc())
         .limit(limit + 1)
     ).all()
     next_cursor: str | None = None
     if len(rows) > limit:
         rows = rows[:limit]
-        next_cursor = str(rows[-1][0].id)
+        last = rows[-1][0]
+        next_cursor = f"{last.created_at.isoformat()}|{last.id}"
     proposals = [
         ProposalOut(
             **proposal_out(proposal),
@@ -241,13 +251,13 @@ def list_proposals(
     return {"proposals": proposals, "next_cursor": next_cursor}
 
 
-def _load_proposals(session: Session, message_ids: list[int]) -> dict[int, list[Any]]:
+def _load_proposals(session: Session, message_ids: list[str]) -> dict[str, list[Any]]:
     from ..domain.models import ChatProposal
 
     if not message_ids:
         return {}
     rows = session.scalars(select(ChatProposal).where(ChatProposal.message_id.in_(message_ids)))
-    grouped: dict[int, list[Any]] = {}
+    grouped: dict[str, list[Any]] = {}
     for row in rows:
         grouped.setdefault(row.message_id, []).append(row)
     return grouped
@@ -258,7 +268,7 @@ def _message_out(
     proposals: list[Any] | None = None,
     variant_index: int = 1,
     variant_count: int = 1,
-    sibling_ids: list[int] | None = None,
+    sibling_ids: list[str] | None = None,
 ) -> MessageOut:
     blocks: list[dict[str, Any]] = []
     for block in message.blocks or []:
@@ -339,7 +349,7 @@ def _message_out(
 @router.get("/sessions", response_model=list[SessionOut])
 def list_sessions(
     request: Request,
-    node_id: int | None = None,
+    node_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> list[SessionOut]:
     profile = ensure_default_profile(session)
@@ -371,7 +381,7 @@ def create_session(
 
 @router.patch("/sessions/{session_id}", response_model=SessionOut)
 def update_session(
-    session_id: int,
+    session_id: str,
     body: SessionUpdate,
     request: Request,
     session: Session = Depends(get_session),
@@ -394,7 +404,7 @@ def update_session(
 
 @router.delete("/sessions/{session_id}", response_model=SessionDeletedOut)
 def delete_session(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     chat_session = _chat_service(request, session).get_session(session_id, profile.id)
@@ -418,7 +428,7 @@ def delete_session(
 
 @router.get("/sessions/{session_id}/messages", response_model=list[MessageOut])
 def list_messages(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> list[MessageOut]:
     profile = ensure_default_profile(session)
     service = _chat_service(request, session)
@@ -457,7 +467,7 @@ class MessageStateOut(BaseModel):
 
 @router.patch("/messages/{message_id}/state", response_model=MessageStateOut)
 def patch_message_state(
-    message_id: int,
+    message_id: str,
     body: StatePatchIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -494,7 +504,7 @@ def patch_message_state(
 
 
 def _load_proposal_for_profile(
-    session: Session, proposal_id: int, profile_id: str
+    session: Session, proposal_id: str, profile_id: str
 ) -> tuple[ChatProposal, ChatSession]:
     proposal = session.get(ChatProposal, proposal_id)
     if proposal is None:
@@ -535,7 +545,7 @@ def _conflict_refresh(
         session,
         action=proposal.action,
         payload=payload,
-        course_id=int(chat_session.course_id or 0),
+        course_id=chat_session.course_id or "",
     )
     if not snapshot:
         return False
@@ -561,7 +571,7 @@ def _conflict_refresh(
 
 @router.post("/proposals/{proposal_id}/approve", response_model=ProposalOut)
 def approve_proposal(
-    proposal_id: int,
+    proposal_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> ProposalOut:
@@ -713,7 +723,7 @@ def _execute_create_note(
 
 
 @router.post("/proposals/{proposal_id}/dismiss", response_model=ProposalOut)
-def dismiss_proposal(proposal_id: int, session: Session = Depends(get_session)) -> ProposalOut:
+def dismiss_proposal(proposal_id: str, session: Session = Depends(get_session)) -> ProposalOut:
     profile = ensure_default_profile(session)
     proposal, _chat_session = _load_proposal_for_profile(session, proposal_id, profile.id)
     if proposal.status != "proposed":
@@ -724,27 +734,27 @@ def dismiss_proposal(proposal_id: int, session: Session = Depends(get_session)) 
 
 
 class ContextNodeOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class MentionRefOut(BaseModel):
     ref: str
     kind: str
-    id: int
+    id: str
     title: str
-    course_id: int | None = None
+    course_id: str | None = None
     summary: str | None = None
 
 
 class NotePreviewOut(BaseModel):
-    id: int
+    id: str
     title: str
 
 
 class SessionContextOut(BaseModel):
-    session_id: int
-    course_id: int | None
+    session_id: str
+    course_id: str | None
     node: ContextNodeOut | None
     registry: list[MentionRefOut]
     latest_notes: list[NotePreviewOut]
@@ -752,7 +762,7 @@ class SessionContextOut(BaseModel):
 
 @router.get("/sessions/{session_id}/context", response_model=SessionContextOut)
 def session_context(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     service = _chat_service(request, session)
@@ -778,22 +788,22 @@ def session_context(
 
 
 class BranchNodeOut(BaseModel):
-    id: int
+    id: str
     role: str
     excerpt: str
-    parent_id: int | None
-    children: list[int]
-    active_child_id: int | None
+    parent_id: str | None
+    children: list[str]
+    active_child_id: str | None
 
 
 class BranchTreeOut(BaseModel):
-    active_root_id: int | None
+    active_root_id: str | None
     nodes: list[BranchNodeOut]
 
 
 @router.get("/sessions/{session_id}/tree", response_model=BranchTreeOut)
 def session_branch_tree(
-    session_id: int, request: Request, session: Session = Depends(get_session)
+    session_id: str, request: Request, session: Session = Depends(get_session)
 ) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     service = _chat_service(request, session)
@@ -801,11 +811,9 @@ def session_branch_tree(
     if chat_session is None:
         raise HTTPException(status_code=404, detail="chat session not found")
     rows = service.all_messages(session_id)
-    children: dict[int | None, list[int]] = {}
+    children: dict[str | None, list[str]] = {}
     for row in rows:
         children.setdefault(row.parent_id, []).append(row.id)
-    for ids in children.values():
-        ids.sort()
 
     def excerpt(row: ChatMessage) -> str:
         for block in row.blocks or []:
@@ -833,7 +841,7 @@ def session_branch_tree(
 
 @router.post("/sessions/{session_id}/messages", response_model=TurnQueued)
 def send_message(
-    session_id: int,
+    session_id: str,
     body: MessageIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -870,7 +878,7 @@ def send_message(
 
 
 def _load_message_for_profile(
-    session: Session, message_id: int, profile_id: str
+    session: Session, message_id: str, profile_id: str
 ) -> tuple[ChatMessage, ChatSession]:
     message = session.get(ChatMessage, message_id)
     if message is None:
@@ -889,13 +897,13 @@ class QuizAnswerOut(BaseModel):
     correct: bool
     verdict_detail: str
     expected_display: str | None = None
-    user_message_id: int
-    job_id: int | None
+    user_message_id: str
+    job_id: str | None
 
 
 @router.post("/sessions/{session_id}/quiz-answer", response_model=QuizAnswerOut)
 def answer_quiz_question(
-    session_id: int,
+    session_id: str,
     body: QuizAnswerIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -955,7 +963,7 @@ def answer_quiz_question(
 
 def _mark_quiz_entry_answered(
     session: Session,
-    session_id: int,
+    session_id: str,
     pending: dict[str, Any],
     correct: bool,
     expected_display: str | None,
@@ -967,7 +975,7 @@ def _mark_quiz_entry_answered(
                 ChatMessage.session_id == session_id,
                 ChatMessage.role == "assistant",
             )
-            .order_by(ChatMessage.id.desc())
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
             .limit(10)
         )
     )
@@ -993,7 +1001,7 @@ class EditIn(BaseModel):
 
 @router.post("/messages/{message_id}/edit", response_model=TurnQueued)
 def edit_message(
-    message_id: int,
+    message_id: str,
     body: EditIn,
     request: Request,
     session: Session = Depends(get_session),
@@ -1017,7 +1025,7 @@ def edit_message(
 
 @router.post("/messages/{message_id}/regenerate", response_model=TurnQueued)
 def regenerate_message(
-    message_id: int,
+    message_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> TurnQueued:
@@ -1040,7 +1048,7 @@ def regenerate_message(
 
 @router.post("/messages/{message_id}/select", response_model=list[MessageOut])
 def select_message(
-    message_id: int,
+    message_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> list[MessageOut]:
@@ -1063,9 +1071,9 @@ class SessionTurnLocks:
 
     def __init__(self) -> None:
         self._guard = threading.Lock()
-        self._locks: dict[int, threading.Lock] = {}
+        self._locks: dict[str, threading.Lock] = {}
 
-    def get(self, session_id: int) -> threading.Lock:
+    def get(self, session_id: str) -> threading.Lock:
         with self._guard:
             lock = self._locks.get(session_id)
             if lock is None:
@@ -1074,18 +1082,18 @@ class SessionTurnLocks:
             return lock
 
 
-_STOP_EVENTS: dict[int, threading.Event] = {}
+_STOP_EVENTS: dict[str, threading.Event] = {}
 _TURN_LOCKS_GUARD = threading.Lock()
 
 
-def _register_stop_event(session_id: int) -> threading.Event:
+def _register_stop_event(session_id: str) -> threading.Event:
     with _TURN_LOCKS_GUARD:
         event = threading.Event()
         _STOP_EVENTS[session_id] = event
         return event
 
 
-def _release_stop_event(session_id: int, event: threading.Event) -> None:
+def _release_stop_event(session_id: str, event: threading.Event) -> None:
     with _TURN_LOCKS_GUARD:
         if _STOP_EVENTS.get(session_id) is event:
             del _STOP_EVENTS[session_id]
@@ -1097,7 +1105,7 @@ class StopOut(BaseModel):
 
 @router.post("/sessions/{session_id}/stop", response_model=StopOut)
 def stop_session_turn(
-    session_id: int,
+    session_id: str,
     request: Request,
     session: Session = Depends(get_session),
 ) -> dict[str, bool]:
@@ -1141,7 +1149,7 @@ def make_chat_turn_handler(
             messages = service.messages(chat_session.id)
             target_id = payload.get("user_message_id")
             if target_id is not None:
-                pending = session.get(ChatMessage, int(target_id))
+                pending = session.get(ChatMessage, str(target_id))
                 if (
                     pending is None
                     or pending.session_id != chat_session.id
