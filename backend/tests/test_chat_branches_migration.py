@@ -1,3 +1,11 @@
+"""Chat branch columns at the squashed baseline (plan 81 F rework).
+
+The legacy-first-message backfill that 0044 performed has no analogue in
+a fresh baseline (there are no pre-branch rows), so this pins the final
+shape and the baseline round-trip instead.
+"""
+
+import sqlite3
 from pathlib import Path
 
 from alembic.config import Config
@@ -5,71 +13,40 @@ from alembic.config import Config
 from alembic import command
 
 
-def _run_migrations(db_path: Path, target: str | None = None) -> None:
+def _cfg(db_path: Path) -> Config:
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(config, target or "head")
+    return config
 
 
-def test_migration_links_legacy_messages_into_a_branch_chain(
-    tmp_path: Path,
-) -> None:
-    db_path = tmp_path / "legacy.db"
-    _run_migrations(db_path, "0043_course_default_task_assignments")
-
-    import sqlite3
-
+def _columns(db_path: Path, table: str) -> set[str]:
     raw = sqlite3.connect(db_path)
-    now = "2026-08-27 09:00:00+00:00"
-    raw.execute("INSERT INTO profiles (id, name, created_at) VALUES (1, 'p', ?)", (now,))
-    raw.execute(
-        "INSERT INTO chat_sessions (id, profile_id, public_id, title, created_at) "
-        "VALUES (5, 1, 'legacy-5', 'legacy', ?)",
-        (now,),
-    )
-    for index, role in enumerate(["user", "assistant", "user", "assistant"]):
-        raw.execute(
-            "INSERT INTO chat_messages (id, session_id, role, blocks, created_at) "
-            f'VALUES ({10 + index}, 5, \'{role}\', \'[{{"type":"text","md":"m{index}"}}]\', ?)',
-            (now,),
-        )
-    raw.commit()
-    raw.close()
-
-    _run_migrations(db_path, "0065_identity_core")
-
-    check = sqlite3.connect(db_path)
     try:
-        parents = {
-            row[0]: row[1]
-            for row in check.execute("SELECT id, parent_id FROM chat_messages").fetchall()
-        }
-        children = {
-            row[0]: row[1]
-            for row in check.execute("SELECT id, active_child_id FROM chat_messages").fetchall()
-        }
-        root = check.execute("SELECT active_root_id FROM chat_sessions WHERE id = 5").fetchone()[0]
+        return {row[1] for row in raw.execute(f"PRAGMA table_info({table})").fetchall()}
     finally:
-        check.close()
-
-    assert parents == {10: None, 11: 10, 12: 11, 13: 12}
-    assert children == {10: 11, 11: 12, 12: 13, 13: None}
-    assert root == 10
+        raw.close()
 
 
 def test_branch_columns_exist(tmp_path: Path) -> None:
     db_path = tmp_path / "head.db"
-    _run_migrations(db_path, "0065_identity_core")
+    command.upgrade(_cfg(db_path), "head")
 
-    import sqlite3
+    assert {"parent_id", "active_child_id"} <= _columns(db_path, "chat_messages")
+    assert "active_root_id" in _columns(db_path, "chat_sessions")
+
+
+def test_baseline_round_trip_drops_and_rebuilds_the_branch_shape(tmp_path: Path) -> None:
+    db_path = tmp_path / "round_trip.db"
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
+    command.downgrade(config, "base")
 
     raw = sqlite3.connect(db_path)
-    try:
-        columns = {row[1] for row in raw.execute("PRAGMA table_info(chat_messages)").fetchall()}
-        session_columns = {
-            row[1] for row in raw.execute("PRAGMA table_info(chat_sessions)").fetchall()
-        }
-    finally:
-        raw.close()
-    assert {"parent_id", "active_child_id"} <= columns
-    assert "active_root_id" in session_columns
+    tables = {row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    raw.close()
+    assert "chat_messages" not in tables
+    assert "chat_sessions" not in tables
+
+    command.upgrade(config, "head")
+    assert {"parent_id", "active_child_id"} <= _columns(db_path, "chat_messages")
+    assert "active_root_id" in _columns(db_path, "chat_sessions")

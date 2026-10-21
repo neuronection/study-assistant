@@ -1,18 +1,16 @@
-"""Migration 0066_profile_identity — the aligned `profiles` schema
-(identity-auth §5) and the family head assertion.
+"""The squashed baseline: head assertion and empty-schema round-trip (plan 81 F).
 
-0066 is the destructive greenfield baseline (no backwards
-compatibility): the profile domain is rebuilt from the model metadata
-and downgrade is irreversible. Legacy-chain data tests stop at
-0065_identity_core; this module pins the head (moved to
-0067_auth_session_created_at when `auth_sessions.created_at` landed).
+The chain is one revision generated from the post-A-E models (ADR-196).
+This module owns the head assertion and the `downgrade base` → `upgrade
+head` proof; every other migration test imports the shared
+`HEAD_REVISION` from `tests/migration_head.py`.
 """
 
 import sqlite3
 from pathlib import Path
 
-import pytest
 from alembic.config import Config
+from migration_head import HEAD_REVISION
 
 from alembic import command
 
@@ -28,10 +26,7 @@ def test_migration_head_is_latest(tmp_path: Path) -> None:
     command.upgrade(_cfg(db_path), "head")
 
     raw = sqlite3.connect(db_path)
-    assert (
-        raw.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-        == "0075_scope_lifecycle"
-    )
+    assert raw.execute("SELECT version_num FROM alembic_version").fetchone()[0] == HEAD_REVISION
     columns = {
         row[1]: (row[2], bool(row[3]))
         for row in raw.execute("PRAGMA table_info(profiles)").fetchall()
@@ -59,9 +54,23 @@ def test_migration_head_is_latest(tmp_path: Path) -> None:
     raw.close()
 
 
-def test_migration_downgrade_is_irreversible(tmp_path: Path) -> None:
-    db_path = tmp_path / "irreversible.db"
+def test_downgrade_base_drops_the_schema_and_upgrade_rebuilds(tmp_path: Path) -> None:
+    db_path = tmp_path / "round_trip.db"
     config = _cfg(db_path)
     command.upgrade(config, "head")
-    with pytest.raises(NotImplementedError):
-        command.downgrade(config, "0065_identity_core")
+
+    command.downgrade(config, "base")
+    raw = sqlite3.connect(db_path)
+    tables = {row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert tables == {"alembic_version"}, tables
+    assert raw.execute("SELECT COUNT(*) FROM alembic_version").fetchone()[0] == 0
+    raw.close()
+
+    command.upgrade(config, "head")
+    raw = sqlite3.connect(db_path)
+    assert raw.execute("SELECT version_num FROM alembic_version").fetchone()[0] == HEAD_REVISION
+    course_id_type = next(
+        row[2] for row in raw.execute("PRAGMA table_info(courses)").fetchall() if row[1] == "id"
+    )
+    assert course_id_type == "CHAR(32)"
+    raw.close()

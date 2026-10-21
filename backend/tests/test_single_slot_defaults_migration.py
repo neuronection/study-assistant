@@ -1,10 +1,9 @@
-"""ADR-0037 migration 0070 — capability defaults go single-slot.
+"""Single-slot capability defaults at the squashed baseline (plan 81 F).
 
-No-backwards-compatibility (owner directive): the fallback values on
-capability rows are retired outright; decision kind override rows keep
-theirs verbatim (the column stays — it is theirs). The course-default
-table's fallback corner is dropped, guardedly: fresh rebuilds under the
-new ORM never create it.
+ADR-0037's transform (retire capability fallbacks, keep decision-kind
+overrides) is folded into the baseline: the course-default table simply
+never has the fallback corner, and the decision slots are seeded. Pins
+the final shape and the baseline round-trip.
 """
 
 import sqlite3
@@ -21,84 +20,28 @@ def _cfg(db_path: Path) -> Config:
     return alembic_cfg
 
 
-def test_migration_0070_retores_capability_defaults_keeps_kinds(
-    tmp_path: Path,
-) -> None:
+def test_baseline_single_slot_defaults_shape(tmp_path: Path) -> None:
     db_path = tmp_path / "defaults.db"
-    cfg = _cfg(db_path)
-    # Pre-0037 wire schema: 0069 with the course fallback column present.
-    command.upgrade(cfg, "0069_decision_transport")
-    raw = sqlite3.connect(db_path)
-    # Simulate the historical 0069 state for the course table (its corner
-    # is metadata-driven on rebuilds; the column predates 0037).
-    raw.execute("ALTER TABLE course_default_task_assignments ADD COLUMN fallback_model_id INTEGER")
-    now = "2026-09-01 10:00:00+00:00"
-    raw.execute(
-        "INSERT INTO providers (id, name, type, base_url, keyring_ref, enabled, created_at) "
-        "VALUES (1, 'P', 'openai_compatible', 'https://x/v1', 'provider:1', 1, ?)",
-        (now,),
-    )
-    raw.execute(
-        "INSERT INTO models (id, provider_id, external_id, label, caps, enabled, missing, "
-        "discovered_at, last_seen_at) VALUES (10, 1, 'm-a', 'A', '[\"text\"]', 1, 0, ?, ?)",
-        (now, now),
-    )
-    raw.execute(
-        "INSERT INTO models (id, provider_id, external_id, label, caps, enabled, missing, "
-        "discovered_at, last_seen_at) VALUES (11, 1, 'm-b', 'B', '[\"text\"]', 1, 0, ?, ?)",
-        (now, now),
-    )
-    raw.execute(
-        "INSERT INTO default_task_assignments (requires, model_id, fallback_model_id) "
-        "VALUES ('text', 10, 11)"  # capability default → fallback retired
-    )
-    raw.execute(
-        "UPDATE default_task_assignments SET model_id = 11, fallback_model_id = 10 "
-        "WHERE requires = 'decision:score'"  # kind override keeps it verbatim
-    )
-    raw.commit()
-    raw.close()
-
-    command.upgrade(cfg, "0072_vocab_checks")
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
 
     raw = sqlite3.connect(db_path)
-    rows = {
-        requires: (model_id, fallback_id)
-        for requires, model_id, fallback_id in raw.execute(
-            "SELECT requires, model_id, fallback_model_id FROM default_task_assignments"
-        ).fetchall()
-    }
-    assert rows["text"] == (10, None), "capability default fallback retired"
-    assert rows["decision:score"] == (11, 10), "kind override fallback kept verbatim"
     course_columns = {
         row[1]
         for row in raw.execute("PRAGMA table_info(course_default_task_assignments)").fetchall()
     }
     assert "fallback_model_id" not in course_columns
-    raw.close()
-
-
-def test_migration_0070_is_fresh_rebuild_safe(tmp_path: Path) -> None:
-    """A full rebuild under the new ORM re-creates 0066's course table
-    without the fallback corner (metadata-driven); 0070 must not crash on
-    a corner it never created."""
-    db_path = tmp_path / "fresh.db"
-    cfg = _cfg(db_path)
-    command.upgrade(cfg, "head")
-    raw = sqlite3.connect(db_path)
-    columns = {
-        row[1]
-        for row in raw.execute("PRAGMA table_info(course_default_task_assignments)").fetchall()
+    default_columns = {
+        row[1] for row in raw.execute("PRAGMA table_info(default_task_assignments)").fetchall()
     }
-    assert "fallback_model_id" not in columns
+    assert "fallback_model_id" in default_columns
     rows = {
         requires: (model_id, fallback_id)
         for requires, model_id, fallback_id in raw.execute(
             "SELECT requires, model_id, fallback_model_id FROM default_task_assignments"
         ).fetchall()
     }
-    # Only the kind slots are migration-seeded; capability rows seed at
-    # boot (seed_default_task_assignments).
+    # The migration-seeded rows are the four decision slots, all empty.
     assert set(rows) == {
         "decision:tool-dispatch",
         "decision:boolean-gate",
@@ -106,4 +49,15 @@ def test_migration_0070_is_fresh_rebuild_safe(tmp_path: Path) -> None:
         "decision:score",
     }
     assert all(value == (None, None) for value in rows.values())
+    raw.close()
+
+    command.downgrade(config, "base")
+    raw = sqlite3.connect(db_path)
+    tables = {row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    raw.close()
+    assert "default_task_assignments" not in tables
+
+    command.upgrade(config, "head")
+    raw = sqlite3.connect(db_path)
+    assert len(raw.execute("SELECT * FROM default_task_assignments").fetchall()) == 4
     raw.close()

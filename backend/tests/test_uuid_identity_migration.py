@@ -1,9 +1,8 @@
-"""Migration 0073 cuts identity over to UUID primary keys (ADR-198).
+"""UUID identity at the squashed baseline (ADR-198, plan 81 F).
 
-The revision is destructive by design: SQLite cannot convert an integer
-primary key into the UUID storage shape in place, so the identity domain is
-rebuilt. These tests pin the shape in both directions — UUID keys at head,
-integer keys after the downgrade — plus the round-trip back to head.
+The identity cut is folded into the single baseline revision: these tests
+pin the UUID shape and the empty-schema round-trip (`downgrade base` drops
+everything; `upgrade head` rebuilds the UUID shape).
 """
 
 import sqlite3
@@ -84,31 +83,25 @@ def test_upgrade_builds_uuid_identity_and_cascades(tmp_path: Path) -> None:
         connection.commit()
 
 
-def test_downgrade_restores_the_empty_integer_shape(tmp_path: Path) -> None:
+def test_downgrade_base_drops_identity_and_upgrade_restores_uuid(tmp_path: Path) -> None:
     db_path = tmp_path / "identity_down.db"
-    command.upgrade(_cfg(db_path), "head")
-    command.downgrade(_cfg(db_path), "0072_vocab_checks")
-
-    assert _declared_type(db_path, "courses", "id") == "INTEGER"
-    assert _declared_type(db_path, "tree_nodes", "course_id") == "INTEGER"
-    assert _declared_type(db_path, "notes", "owner_id") == "INTEGER"
-    assert _declared_type(db_path, "users", "id") == "CHAR(32)"
-    with sqlite3.connect(db_path) as connection:
-        assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
-            "0072_vocab_checks"
-        )
-        assert connection.execute("SELECT COUNT(*) FROM courses").fetchone()[0] == 0
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
+    command.downgrade(config, "base")
 
     with sqlite3.connect(db_path) as connection:
-        connection.execute(
-            "INSERT INTO courses (id, profile_id, title, origin, hidden, created_at, "
-            "updated_at) VALUES (1, 'p', 'legacy', 'manual', 0, "
-            "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-        )
-        assert connection.execute("SELECT id FROM courses").fetchone()[0] == 1
-        connection.execute("DELETE FROM courses")
+        tables = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "courses" not in tables
+        assert "users" not in tables
+        assert connection.execute("SELECT COUNT(*) FROM alembic_version").fetchone()[0] == 0
 
-    command.upgrade(_cfg(db_path), "head")
+    command.upgrade(config, "head")
     assert _declared_type(db_path, "courses", "id") == "CHAR(32)"
+    assert _declared_type(db_path, "tree_nodes", "course_id") == "CHAR(32)"
+    assert _declared_type(db_path, "notes", "owner_id") == "CHAR(32)"
+    assert _declared_type(db_path, "users", "id") == "CHAR(32)"
     with sqlite3.connect(db_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM courses").fetchone()[0] == 0

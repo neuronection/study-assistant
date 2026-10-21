@@ -168,27 +168,25 @@ def test_retrieve_chunks_fuzzy_fallback(db_session: Session, owner: Any) -> None
     assert retrieve_chunks(db_session, "xylophone", embed, limit=5) == []
 
 
-def _run_migrations(db_path: Path, target: str | None = None) -> None:
-    config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(config, target or "head")
-
-
-def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
+def test_baseline_has_the_trigram_index(tmp_path: Path) -> None:
     import sqlite3
 
-    db_path = tmp_path / "legacy.db"
-    _run_migrations(db_path, "0044_chat_branches")
+    db_path = tmp_path / "baseline.db"
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+    command.upgrade(config, "head")
 
     raw = sqlite3.connect(db_path)
     raw.execute(
         "INSERT INTO material_fts (title, markdown, description, topics, material_id) "
-        "VALUES ('Thermodynamics', 'entropy and energy', '', '', 1)"
+        "VALUES ('Thermodynamics', 'entropy and energy', '', '', '1')"
+    )
+    raw.execute(
+        "INSERT INTO material_fts_trigram (title, markdown, description, topics, material_id) "
+        "SELECT title, markdown, description, topics, material_id FROM material_fts"
     )
     raw.commit()
     raw.close()
-
-    _run_migrations(db_path, "0065_identity_core")
 
     check = sqlite3.connect(db_path)
     try:
@@ -198,11 +196,9 @@ def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
         ).fetchall()
     finally:
         check.close()
-    assert rows == [(1,)]
+    assert rows == [("1",)]
 
-    config = Config("alembic.ini")
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.downgrade(config, "0044_chat_branches")
+    command.downgrade(config, "base")
     check = sqlite3.connect(db_path)
     try:
         tables = {
@@ -212,3 +208,15 @@ def test_migration_backfills_trigram_index(tmp_path: Path) -> None:
     finally:
         check.close()
     assert "material_fts_trigram" not in tables
+    assert "material_fts" not in tables
+
+    command.upgrade(config, "head")
+    check = sqlite3.connect(db_path)
+    try:
+        tables = {
+            row[0]
+            for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+    finally:
+        check.close()
+    assert "material_fts_trigram" in tables

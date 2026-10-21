@@ -1,10 +1,12 @@
-"""Migration 0072 adds DB-level vocabulary checks; downgrade removes them.
+"""DB-level vocabulary checks at the squashed baseline (plan 81 F rework).
 
-Also proves the batch table rebuilds preserve rows (the CHECK adds rebuild
-each affected SQLite table).
+0072's CHECK twins are part of the baseline now. The round-trip proves the
+constraint survives `downgrade base` → `upgrade head`; the pre-0072
+"no CHECK" half no longer exists.
 """
 
 import sqlite3
+import uuid
 from pathlib import Path
 
 import pytest
@@ -24,30 +26,31 @@ def _insert_goal(db_path: Path, unit: str) -> None:
         connection.execute(
             "INSERT INTO study_goals (profile_id, unit, answers_per_day, minutes_per_day) "
             "VALUES (?, ?, 20, 30)",
-            (f"profile-{unit}", unit),
+            (uuid.uuid4().hex, unit),
         )
 
 
-def test_vocab_checks_upgrade_downgrade_round_trip(tmp_path: Path) -> None:
+def test_vocab_checks_round_trip_on_the_baseline(tmp_path: Path) -> None:
     db_path = tmp_path / "checks.db"
-    command.upgrade(_cfg(db_path), "0072_vocab_checks")
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
 
     with pytest.raises(sqlite3.IntegrityError):
         _insert_goal(db_path, "nope")
     _insert_goal(db_path, "answers")
-
-    command.downgrade(_cfg(db_path), "0071_chat_transport")
-    with sqlite3.connect(db_path) as connection:
-        assert connection.execute("SELECT version_num FROM alembic_version").fetchone()[0] == (
-            "0071_chat_transport"
-        )
-        assert connection.execute("SELECT COUNT(*) FROM study_goals").fetchone()[0] == 1
-    _insert_goal(db_path, "nope")
-    with sqlite3.connect(db_path) as connection:
-        connection.execute("DELETE FROM study_goals WHERE unit = 'nope'")
-
-    command.upgrade(_cfg(db_path), "0072_vocab_checks")
     with sqlite3.connect(db_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM study_goals").fetchone()[0] == 1
+
+    command.downgrade(config, "base")
+    with sqlite3.connect(db_path) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "study_goals" not in tables
+
+    command.upgrade(config, "head")
     with pytest.raises(sqlite3.IntegrityError):
         _insert_goal(db_path, "still-nope")
+    with sqlite3.connect(db_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM study_goals").fetchone()[0] == 0

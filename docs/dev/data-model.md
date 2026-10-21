@@ -1,8 +1,9 @@
 # Data model (as built)
 
-SQLite, WAL mode, foreign keys on, busy-timeout 5 s. Managed by Alembic migrations
-`0001`–`0019`; the app runs migrations on startup. All user-content tables are
-`profile_id`-scoped (no-auth profiles; a default profile is seeded on first run).
+SQLite, WAL mode, foreign keys on, busy-timeout 5 s. Managed by Alembic —
+one squashed baseline revision, `0001_baseline` (plan 81 F, ADR-196); the app
+runs migrations on startup. All user-content tables are `profile_id`-scoped
+(no-auth profiles; a default profile is seeded on first run).
 
 The **contract** layer — per-table identity, closed sets and their CHECK twins,
 foreign keys and delete behaviour, JSON species, profile-scope derivation path —
@@ -34,7 +35,7 @@ providers ─── models ─── task_assignments        (machine-global, no
 jobs · ai_interactions                          (durable queue · AI audit log)
 ```
 
-## Identity (ADR-198, migration 0073)
+## Identity (ADR-198; folded into `0001_baseline`)
 
 Every user-data entity is keyed by a UUID string — `Uuid(as_uuid=False)`, the
 same convention `users`/`profiles` carry from the family identity schema. On
@@ -404,6 +405,25 @@ staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
 signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
+
+- **0001_baseline (plan 81 F, ADR-196)**: the chain squashed. The former
+  `0001`–`0075` history is deleted and `0001_baseline` is regenerated from
+  the post-A–E models (65 tables, all named constraints/CHECK twins, UUID
+  identity, payload law, scope/lifecycle law). `alembic upgrade head` on an
+  empty database builds the entire schema in this one revision — including
+  the SQLite FTS5 virtual tables / PostgreSQL tsvector+pg_trgm twins and the
+  four seeded `decision:*` `default_task_assignments` rows — and
+  `alembic downgrade base` drops it cleanly (a baseline-squash downgrade,
+  family-migration §3). **Pre-baseline databases are rebuilt, not migrated**:
+  delete the SQLite file and reseed demo data (`scripts/seed-demo.py`); no
+  data-migration path exists by design. Every revision-pinned test was
+  reworked to baseline round-trips/shape tests and all head assertions read
+  the single `tests/migration_head.py::HEAD_REVISION` constant; the test
+  template cache is keyed on a schema hash so a stale
+  `migrated_template.db` cannot survive a schema change. Forward policy
+  (model-first, one migration per change, batched per round, no compat
+  columns/aliases/deprecation windows) is recorded in
+  [migrations.md](migrations.md).
 
 - **0075 (plan 81 E, ADR-201)**: scope & lifecycle law. `material_groups` and
   `materials.group_id` are **deleted** — the table shipped as a P0 plan row

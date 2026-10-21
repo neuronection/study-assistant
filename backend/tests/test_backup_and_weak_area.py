@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -75,11 +76,8 @@ class NoAI:
         return None
 
 
-def make_client(responses: list[str]) -> TestClient:
-    import tempfile
-    from pathlib import Path
-
-    tmp = Path(tempfile.mkdtemp(prefix="sa-p7s2-"))
+def make_client(responses: list[str], data_dir: Path | None = None) -> TestClient:
+    tmp = data_dir or Path(tempfile.mkdtemp(prefix="sa-p7s2-"))
     app = create_app(
         Settings(data_dir=tmp, log_level="WARNING"),
         gateway=ScriptedGateway(responses),
@@ -129,13 +127,15 @@ def test_weak_area_quiz_generation_focuses_topic() -> None:
         assert "conceptual" in prompt
 
 
-def test_backup_export_restore_round_trip() -> None:
+def test_backup_export_restore_round_trip(tmp_path: Path) -> None:
     import io
     import sqlite3
-    import tempfile
     import zipfile
 
-    source = make_client([])
+    # Both apps own data dirs under pytest's tmp_path (not mkdtemp): the
+    # round trip swaps a database file, so per-test isolation and cleanup
+    # are part of the contract (flake-watch, plan 81 F).
+    source = make_client([], data_dir=tmp_path / "source")
     with source:
         note = source.post(
             "/api/v1/notes",
@@ -162,6 +162,14 @@ def test_backup_export_restore_round_trip() -> None:
             connection.close()
             snapshot_path.unlink(missing_ok=True)
 
+    def file_titles(db_path: Path) -> list[str]:
+        # Read the live database (includes its WAL), not the bare main file.
+        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            return [row[0] for row in connection.execute("SELECT title FROM notes").fetchall()]
+        finally:
+            connection.close()
+
     with zipfile.ZipFile(io.BytesIO(package)) as archive:
         names = archive.namelist()
         exported_db = archive.read(DB_NAME)
@@ -170,7 +178,7 @@ def test_backup_export_restore_round_trip() -> None:
     assert "database.dump" not in names
     assert "Survivor note" in db_titles(exported_db), "export snapshot lacks the note"
 
-    target_dir = Path(tempfile.mkdtemp(prefix="sa-p7s2-t-"))
+    target_dir = tmp_path / "target"
     target_app = create_app(
         Settings(data_dir=target_dir, log_level="WARNING"),
         gateway=ScriptedGateway([]),
@@ -198,7 +206,7 @@ def test_backup_export_restore_round_trip() -> None:
             raise AssertionError(
                 "restored target lost the note: "
                 f"api_titles={titles!r} "
-                f"restored_file_titles={db_titles(target_db.read_bytes())!r} "
+                f"restored_file_titles={file_titles(target_db)!r} "
                 f"export_titles={db_titles(exported_db)!r} "
                 f"restore_response={restored.json()!r}"
             )
@@ -232,8 +240,9 @@ def test_restore_migrates_the_restored_db(tmp_path: Path) -> None:
             break
     assert root is not None
 
-    # An "older release" database: schema stamped at the chain's root
-    # revision — healthy per the restore validator, far from head.
+    # A database at the chain root — with the squashed baseline (plan 81 F)
+    # that is also head, so this exercises the restore validator and the
+    # to-head stamp rather than an old-shape migration.
     old_db = tmp_path / "old-release.sqlite3"
     engine = create_engine(f"sqlite:///{old_db}")
     with engine.begin() as connection:

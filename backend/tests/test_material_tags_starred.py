@@ -42,30 +42,41 @@ def upload_txt(client: TestClient, filename: str, course_id: str) -> str:
     return material_id
 
 
-def test_migration_0057_adds_and_drops_tags_starred(tmp_path: Path) -> None:
+def test_baseline_has_tags_starred_and_their_indexes(tmp_path: Path) -> None:
     db_path = tmp_path / "mig.db"
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(alembic_cfg, "0057_material_tags_starred")
+    command.upgrade(alembic_cfg, "head")
 
     import sqlite3
 
-    raw = sqlite3.connect(db_path)
-    columns = {row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()}
-    indexes = {row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()}
-    raw.close()
-    assert "tags" in columns
-    assert "starred" in columns
+    def shape() -> tuple[set[str], set[str]]:
+        raw = sqlite3.connect(db_path)
+        try:
+            columns = {row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()}
+            indexes = {row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()}
+        finally:
+            raw.close()
+        return columns, indexes
+
+    columns, indexes = shape()
+    assert {"tags", "starred"} <= columns
     assert "ix_materials_starred" in indexes
 
-    command.downgrade(alembic_cfg, "0056_quizme_answers")
+    command.downgrade(alembic_cfg, "base")
     raw = sqlite3.connect(db_path)
-    columns = {row[1] for row in raw.execute("PRAGMA table_info(materials)").fetchall()}
-    indexes = {row[1] for row in raw.execute("PRAGMA index_list(materials)").fetchall()}
-    raw.close()
-    assert "tags" not in columns
-    assert "starred" not in columns
-    assert "ix_materials_starred" not in indexes
+    try:
+        tables = {
+            row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    finally:
+        raw.close()
+    assert "materials" not in tables
+
+    command.upgrade(alembic_cfg, "head")
+    columns, indexes = shape()
+    assert {"tags", "starred"} <= columns
+    assert "ix_materials_starred" in indexes
 
 
 @pytest.fixture

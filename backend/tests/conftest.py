@@ -1,3 +1,4 @@
+import hashlib
 import os
 import socket
 import sqlite3
@@ -138,9 +139,34 @@ def _hermetic_fetch_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(polite_fetch, "system_resolver", lambda host: ["93.184.216.34"])
 
 
+def _schema_fingerprint() -> str:
+    """Content hash of everything that decides the migrated schema.
+
+    The template cache is keyed on this hash, so a schema change can never
+    be silently tested against an old template (the pre-squash "delete
+    /tmp/pytest-of-*/migrated_template.db" ritual). Revisions decide the
+    built shape; the models and the shared metadata/vocab declarations
+    decide whether a revision is still model-first.
+    """
+    backend = Path(__file__).resolve().parents[1]
+    paths = [
+        *sorted((backend / "alembic" / "versions").glob("*.py")),
+        *sorted((backend / "app" / "domain" / "models").glob("*.py")),
+        backend / "app" / "domain" / "schema_contract.py",
+        backend / "app" / "storage" / "db.py",
+    ]
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:16]
+
+
 @pytest.fixture(scope="session")
 def migrated_db_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    template = tmp_path_factory.getbasetemp().parent / "migrated_template.db"
+    template = (
+        tmp_path_factory.getbasetemp().parent / f"migrated_template_{_schema_fingerprint()}.db"
+    )
     with FileLock(f"{template}.lock"):
         if not template.exists():
             # Build on a staging path and publish atomically: a reader must
