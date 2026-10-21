@@ -21,6 +21,23 @@ Changeset; study's `ProposalCard` swap waits on the release. B — generated
 types everywhere (ADR-203), C — vocabulary sweep (ADR-204), D — legacy residue
 & typed payloads (ADR-205) follow in order.
 
+**Plan 84 — structure, test gates & eval corpus (2026-10-22):**
+A — `NodeWorkspace` is a tab host (ADR-208): per-tab components under
+`features/courses/workspace/` (Materials/Overview/Notes/Coverage/Tutor +
+`tabs.ts`/`navigation.ts`/`shared.tsx`), shell down to 384 lines, colocated
+test block split 1:1 over one harness (95 tests, count unchanged). B — router
+& service splits (ADR-209): planner+ICS → `api/plan.py`, node/tree/placement →
+`api/nodes.py`, genesis → `api/genesis.py`, `course_bundle.py` →
+`course_export/import/validate`, zero route-shape change (empty `openapi.json`
+diff), and the `ca-course/v2` rows are TypedDicts (plan 82-D residual 5).
+C — golden OCR/extraction eval gate (ADR-210) with a threshold manifest and
+three synthetic fixtures (real scans drop into `tests/fixtures/golden/`).
+D — coverage is measured report-only in CI, `07-discovery` + `08-extensions`
+e2e specs landed, pyodide moved behind the code-question path, and the
+`SnapIntoNote` full-suite flake is root-caused and fixed (latest-ref + a
+render-phase reset; load-immune deadlines). The temporary `course_bundle.py`
+facade is deleted in the round's final commit.
+
 **Plan 81 — schema baseline & hardening (2026-10-21):**
 
 **Status: COMPLETE (independently reviewed 2026-10-21)** — A–F landed; the
@@ -3148,6 +3165,30 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-22 — **plan 84: structure, test gates & eval corpus (ADR-208/209/210).**
+  `NodeWorkspace` (3,395 lines) is now a tab host: per-tab components live in
+  `features/courses/workspace/` and the shell keeps routing/query wiring
+  (384 lines); the colocated test block is split 1:1 into
+  `workspace/__tests__/*` over one shared harness (95 tests, suite count
+  unchanged at 1,468). Backend domain routers split with **zero route-shape
+  change** — planner+ICS → `api/plan.py`, node/tree/placement → `api/nodes.py`,
+  genesis → `api/genesis.py`, and `course_bundle.py` → `course_export.py` /
+  `course_import.py` / `course_validate.py` (the temporary facade is deleted);
+  regenerating `openapi.json` is an empty diff, and the `ca-course/v2`
+  manifest/course/tree/concepts/materials/folders rows are TypedDicts
+  (plan 82-D residual 5). The golden OCR/extraction gate
+  (`tests/evals/test_ocr_golden.py` + `ocr_thresholds.json`) scores per-page
+  routing, native extraction and hybrid assembly against recorded thresholds,
+  proven with three synthetic fixtures and opt-in for the live half. Coverage
+  is measured report-only in CI, `07-discovery` + `08-extensions` Playwright
+  specs landed, and pyodide moved behind the code-question path (entry chunk
+  1,709.10 → 1,689.25 kB min / 473.36 → 465.22 kB gzip). The `SnapIntoNote`
+  full-suite flake is root-caused (TanStack Query syncs mutation options in a
+  passive effect, so a loaded click could hit a stale `shot === null`
+  closure) and fixed with a latest-ref + render-phase reset; the suite's
+  deadlines are load-immune (20 s testing-library / 30 s vitest). Proven with
+  5/5 clean full-suite runs under concurrent-session load and 20/20 isolated
+  suspect-file runs.
 - 2026-10-21 — **plan 82 D: legacy residue & typed payloads (ADR-205).** The
   Phase-0 rendering harness is gone: the `/spike` route and
   `features/spike/` (page + tests) are deleted, and the Settings Developer
@@ -9508,8 +9549,11 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   now write `ai_interactions` ledger rows (they had bypassed the ledger).
 - **Golden fixtures need real material (user action)**: drop ~20 scanned math pages +
   ~10 worst handwriting photos into `backend/tests/fixtures/golden/{pages,handwriting}/`
-  per its README (ADR-019: real scans, not synthetic). OCR golden evals (plan 04
-  thresholds) are the last open Phase-1 item once fixtures land.
+  per its README (ADR-019: real scans, not synthetic). The regression gate now
+  exists (plan 84 C, ADR-210): `tests/evals/test_ocr_golden.py` +
+  `ocr_thresholds.json` measure per-page routing, native extraction and hybrid
+  assembly, and `expected/<stem>.md` is the recorded expectation per fixture;
+  three synthetic fixtures prove the mechanics until the real scans land.
 - **Flaky tests under parallel workers (observed 2026-08-28, twice) — RESOLVED
   (2026-09-01, see changelog "load-immune poll deadlines")**: both chat-area
   races were deadline blows, not product races — `test_chat_branches.py` poll

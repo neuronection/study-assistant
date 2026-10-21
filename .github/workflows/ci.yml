@@ -49,9 +49,17 @@ jobs:
       - run: uv run --directory backend mypy .
       - name: Schema inventory drift gate (plan 81 A)
         run: uv run --directory backend python ../scripts/schema_inventory.py --check
-      - run: uv run --directory backend pytest
+      - name: Test suite (coverage is report-only — no floor until a month of numbers exists, plan 84 D)
+        run: uv run --directory backend pytest --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml
         env:
           SA_DATA_DIR: ${{ runner.temp }}/sa-data
+      - name: Upload backend coverage (report-only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: ignore
       - name: Contract drift gate (identity-auth §18)
         run: uv run --directory backend pytest -m contract
         env:
@@ -116,7 +124,15 @@ jobs:
       - run: pnpm --filter frontend lint
       - run: pnpm --filter frontend check:api-types
       - run: pnpm --filter frontend typecheck
-      - run: pnpm --filter frontend test
+      - name: Frontend test suite (coverage is report-only — plan 84 D)
+        run: pnpm --filter frontend coverage
+      - name: Upload frontend coverage (report-only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          if-no-files-found: ignore
       - run: pnpm --filter frontend build
 
   e2e:

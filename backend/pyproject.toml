@@ -58,6 +58,7 @@ dev = [
     "mypy>=1.14",
     "pyinstaller>=6.0",
     "pytest>=8.3",
+    "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "ruff>=0.9",
 ]
@@ -151,3 +152,11 @@ markers = [
     # test kit (CI runs `pytest -m contract` as an explicit step).
     "contract: implements an identity-auth §18 contract case (family drift gate)",
 ]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/migrations/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

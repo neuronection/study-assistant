@@ -11,6 +11,46 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (quality gates — plan 84 C/D / ADR-210)
+- **Coverage is measured report-only.** CI publishes `pytest --cov=app` and
+  vitest v8 coverage artifacts on every PR; no floor is set until a month of
+  numbers exists.
+- **Golden OCR/extraction regression gate.** `tests/evals/test_ocr_golden.py`
+  + `ocr_thresholds.json` score per-page routing, native PDF extraction and
+  hybrid assembly against recorded thresholds (block structure, math-fence
+  integrity, numeric fidelity). The deterministic subset runs in CI; the live
+  vision half is opt-in (`SA_EVAL_LIVE=1`). Proven with three synthetic
+  fixtures; the owner's real scans drop into the documented `golden/` slots.
+- **Two e2e smoke specs:** `07-discovery` (link material → Discover dialog)
+  and `08-extensions` (MCP connector → refresh → instance status → docs).
+
+### Changed (structure — plan 84 A/B / ADR-208/209)
+- **`NodeWorkspace` is a tab host (3,395 → under 400 lines).** Per-tab
+  components live under `features/courses/workspace/` (`MaterialsTab`,
+  `OverviewTab`, `NotesTab`, `CoverageTab`, `TutorTab`, plus `tabs.ts`,
+  `navigation.ts`, `shared.tsx`); the shell keeps routing, query wiring and
+  the shared header. The colocated test block was split 1:1 into
+  `workspace/__tests__/` with a shared harness (95 tests, count unchanged).
+- **Backend router domains split (zero route-shape change):** planner + ICS
+  → `api/plan.py`, node/tree/placement/outline/concepts → `api/nodes.py`,
+  genesis → `api/genesis.py`; `course_bundle.py` → `course_export.py` /
+  `course_import.py` / `course_validate.py`. Regenerating `openapi.json`
+  produces an empty diff (the proof).
+- **`ca-course/v2` rows are TypedDicts:** manifest, course, tree, concepts
+  (rows + links + coverage), materials (drawings/extraction/index card/links)
+  and folders (rows + links) are declared wire types (plan 82-D residual 5).
+- **Pyodide is lazy:** the code-question runner is dynamically imported, so
+  the 9.6 MB runtime is no longer reachable from the initial route chunk
+  (entry 1,709.10 kB → 1,689.25 kB min / 473.36 → 465.22 kB gzip).
+
+### Fixed (frontend flake — plan 84 D)
+- **`SnapIntoNote`'s insert no longer races the mutation options.** The
+  capture flow reads current state through a latest-ref (and the reset moved
+  from a passive effect to the render-phase transition), so a click cannot
+  land on a stale `shot === null` closure. Suite deadlines are load-immune
+  (testing-library 20 s, vitest 30 s); proven with 5/5 clean full-suite runs
+  under concurrent-session load and 20/20 isolated suspect-file runs.
+
 ### Removed (legacy residue — plan 82 D / ADR-205)
 - **The Phase-0 rendering harness is gone.** The `/spike` route and
   `features/spike/` are deleted; the Settings → Developer tab now shows build

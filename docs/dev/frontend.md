@@ -122,6 +122,9 @@ frontend/src/
 ├── features/     home, library, courses, chat, quiz, practice, exercises,
 │                 review, scores, planner, settings, onboarding, jobs,
 │                 discovery, study-session, ai, about
+│   └── courses/workspace/   NodeWorkspace tab components (MaterialsTab,
+│                            OverviewTab, NotesTab, CoverageTab, TutorTab,
+│                            tabs.ts, navigation.ts, shared.tsx)
 ├── components/   block renderers, widgets, editor, canvas, materials,
 │                 layout (AppShell, FileDock), ui shims
 └── lib/          api client, stores, i18n, constants, formatting
@@ -131,6 +134,28 @@ Feature folders own their components and hooks; `components/` holds renderers
 and primitives shared across features. The block renderers (text+KaTeX, math,
 mermaid, table, code, drawing, chart, geo) render the one structured content
 format described in [architecture.md](architecture.md).
+
+## Lazy loading
+
+Heavy renderers never sit in the initial route chunk. The rule (plan 84 D,
+ADR-210) is **the component wrapper may be static; the heavy library must be
+dynamically imported at the point of use**:
+
+- **Plotly** (`plotly.js-dist-min`), **JSXGraph**, **mermaid** (via the library
+  `MermaidDiagram`), **markmap** and **MathLive** already load through
+  `import(...)` inside their renderer components.
+- **Pyodide** (the 9.6 MB Python runtime behind code questions) is imported
+  only when a code answer runs (`CodeAnswer` → `import('@/lib/pyodideRunner')`).
+  Note: a type-only import written as `import { type X } from '…'` is still a
+  static import to the bundler and defeats the split — use `import type { X }`
+  (`vite build` warns `INEFFECTIVE_DYNAMIC_IMPORT` when this regresses).
+- Add `manualChunks`/`codeSplitting.groups` only when a lazy seam leaves a
+  bloated vendor chunk; the current groups are `react-vendor`,
+  `framer-motion` and `katex`.
+
+**Test suite split:** `NodeWorkspace`'s colocated block is split 1:1 into
+`features/courses/workspace/__tests__/*` over one shared `harness.tsx`; each
+file runs in its own vitest worker (`pnpm vitest workspace/__tests__/MaterialsTab`).
 
 ## i18n
 
