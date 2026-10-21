@@ -38,6 +38,8 @@ const COURSE: Course = {
   color: '#3366cc',
   archived_at: null,
   material_count: 1,
+  hidden: false,
+  origin: 'manual',
 }
 
 function renderTab(course: Course = COURSE) {

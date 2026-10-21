@@ -1,56 +1,21 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
+import type { ExerciseStepInput } from './hand-types'
 
-export interface ExerciseInfo {
-  id: string
-  title: string
-  course_id: string | null
-  node_id: string | null
-  difficulty: number | null
-  step_count: number
-}
+type Schemas = components['schemas']
 
-export interface ExerciseStepInput {
-  widget:
-    | 'matching'
-    | 'ordering'
-    | 'categorize'
-    | 'fill_blank'
-    | 'math'
-    | 'essay'
-    | 'lines'
-    | 'numberline'
-  kind?: string
-  lefts?: string[]
-  rights?: { index: number; label: string }[]
-  items?: unknown[]
-  categories?: string[]
-  prompt_md?: string
-  blank_count?: number
-  lines?: string[]
-  requires_fix?: boolean
-  min?: number
-  max?: number
+export type { ExerciseStepInput } from './hand-types'
+export type ExerciseInfo = Schemas['ExerciseOut']
+export type ExerciseStepInfo = Omit<Schemas['StepOut'], 'input'> & {
+  input?: ExerciseStepInput | null
 }
-
-export interface ExerciseStepInfo {
-  id: string
-  order_idx: number
-  prompt: BlockDto[]
-  has_expected: boolean
-  kind: string | null
-  input: ExerciseStepInput | null
-}
-
-export interface ExerciseSessionInfo {
-  id: string
-  exercise_id: string
-  current_step_idx: number
-  status: string
-  socratic: boolean
-  independence_score: number | null
-}
+export type ExerciseSessionInfo = Schemas['app__api__exercises__SessionOut']
+export type StepCheck = Schemas['CheckOut']
+export type HintResult = Schemas['HintOut']
+export type DrillPattern = Schemas['PatternOut']
+export type PatternProposal = Schemas['PatternProposalOut']
 
 export async function listExercises(
   courseId?: string,
@@ -150,14 +115,6 @@ export async function startExerciseSession(
   return json<ExerciseSessionInfo>(response)
 }
 
-export interface StepCheck {
-  correct: boolean
-  stage: string
-  error_class: string
-  advanced: boolean
-  session: ExerciseSessionInfo
-}
-
 export async function submitStepAnswer(
   sessionId: string,
   response: unknown,
@@ -169,12 +126,6 @@ export async function submitStepAnswer(
     body: JSON.stringify({ response, state }),
   })
   return json<StepCheck>(apiResponse)
-}
-
-export interface HintResult {
-  level: number
-  markdown: string
-  violations: string | null
 }
 
 export async function requestHint(
@@ -209,23 +160,6 @@ export async function generateExercise(body: {
 export async function similarExercise(exerciseId: string): Promise<ExerciseInfo> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}/similar`, { method: 'POST' })
   return json<ExerciseInfo>(response)
-}
-
-export interface DrillPattern {
-  pattern: string
-  name: string
-  description: string
-  example?: string | null
-  source: 'seeded' | 'discovered'
-  occurrences: number
-  spotted?: number
-}
-
-export interface PatternProposal {
-  key: string
-  name: string
-  description: string
-  example?: string | null
 }
 
 export async function drillPatterns(courseId: string): Promise<DrillPattern[]> {

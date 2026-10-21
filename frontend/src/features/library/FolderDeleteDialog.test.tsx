@@ -12,6 +12,7 @@ const FOLDER: Folder = {
   parent_id: null,
   source_id: null,
   created_at: '2026-08-22T00:00:00Z',
+  node_link_count: 0,
 }
 
 const INFO: FolderDeleteInfo = {

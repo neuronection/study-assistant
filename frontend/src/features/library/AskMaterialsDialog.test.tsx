@@ -27,6 +27,11 @@ function material(id: string, title: string): Material {
     folder_id: null,
     blob_sha: null,
     created_at: '2026-09-07T00:00:00Z',
+    has_extraction: false,
+    tags: [],
+    starred: false,
+    link_count: 0,
+    reextract_modes: [],
   }
 }
 

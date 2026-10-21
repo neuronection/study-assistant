@@ -115,6 +115,22 @@ treat them as opaque: no parsing, validation or numeric coercion. The generated
 schema is the wire truth — hand-written client types may narrow optionality but
 must not redeclare entity ids as numbers.
 
+**Generated-types-only rule (plan 82 B, ADR-203).** Every module in
+`frontend/src/lib/api/` imports `@/lib/api-schema`; a wire shape is a
+`components['schemas'][…]` alias, never a hand-redeclared interface. Where a
+DTO is genuinely open (block documents, widget input maps, `provenance`
+metadata, the per-action proposal payload) the generated open map is the wire
+type and the app narrows it once at the read boundary. The narrowed views and
+the few shapes the schema cannot express (the `nx_auth` kit's admin/me/sessions
+routes publish no response models; the desktop-only folder routes are not in
+the web export) live in `frontend/src/lib/api/hand-types.ts`, whose
+`HAND_TYPE_REGISTER` is the exhaustive exception list. `pnpm check:api-types`
+(CI) fails any hand declaration that is not registered, any register entry with
+no declaration, and any `lib/api` module that stops importing the schema.
+Service-layer payload types (`app/domain/payloads.py` TypedDicts) are now the
+wire shape too where the map is closed: the chat `trace`, `provider.status`,
+and the proposal `result` document are typed objects in the generated schema.
+
 ## Adding an endpoint
 
 1. Add the handler to the right area router and the DTOs beside it.

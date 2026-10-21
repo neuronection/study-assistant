@@ -1,38 +1,25 @@
 import type { components } from '@/lib/api-schema'
 import { json, apiFetch, ApiError } from './client'
+import type { ProviderSetupErrorDetail } from './hand-types'
+
+type Schemas = components['schemas']
 
 export type LocalEngineHit = components['schemas']['LocalEngineHitOut']
 
-export interface Provider {
-  id: string
-  name: string
-  type: string
-  base_url: string
-  preset_key: string | null
-  enabled: boolean
-  is_local: boolean | null
-  country: string | null
-  masked_key: string | null
-  status: { last_tested_at?: string; ok?: boolean; error?: string | null; model_count?: number | null } | null
-  created_at: string
-}
-
-export interface ProviderPreset {
-  name: string
-  type: string
-  base_url: string
-  fixed_base: boolean
-  local: boolean
-  key_url: string | null
-  preferred_model: { id: string; name: string; caps: string[] } | null
-  curated_models: string[] | null
-  stt_model: string | null
-  decision_models: { id: string; name: string; transport: string; caps: string[]; provisional?: boolean }[] | null
-  decision_default: string | null
-  provisional: boolean | null
-  steps: string[] | null
-  free_tier_note: string | null
-}
+export type Provider = Schemas['ProviderOut']
+export type ProviderPreset = Schemas['PresetOut']
+export type ProviderSetupOptions = Schemas['SetupOptionsIn']
+export type ProviderSetupResult = Schemas['SetupOut']
+export type AiModel = Schemas['ModelOut']
+export type RemoteModelInfo = Schemas['RemoteModelOut']
+export type TaskInfo = Schemas['TaskOut']
+export type DefaultTaskInfo = Schemas['DefaultTaskOut']
+export type BackupSettingsInfo = Schemas['BackupSettingsInfoOut']
+export type BackupEntryInfo = Schemas['BackupEntryOut']
+export type BackupRecoveryInfo = Schemas['BackupRecoveryInfoOut']
+export type BackupStatus = Schemas['BackupStatusOut']
+export type SkillInfo = Schemas['SkillOut']
+export type SkillVersionInfo = Schemas['VersionOut']
 
 export async function listProviders(): Promise<Provider[]> {
   const response = await apiFetch('/api/v1/providers')
@@ -44,32 +31,7 @@ export async function listPresets(): Promise<Record<string, ProviderPreset>> {
   return json<Record<string, ProviderPreset>>(response)
 }
 
-export interface ProviderSetupOptions {
-  curated_ids?: string[] | null
-  bind_chat?: boolean
-  bind_vision?: boolean
-  bind_stt?: boolean
-  bind_embeddings?: boolean
-  bind_decision?: boolean
-}
-
-export interface ProviderSetupResult {
-  ok: boolean
-  provider: Provider & { preset_key: string | null }
-  catalog_count: number
-  curated_missed: boolean
-  assigned_chat_model: string | null
-  assigned_vision_model: string | null
-  assigned_stt_model: string | null
-  assigned_embeddings_model: string | null
-  assigned_decision_slots: Record<string, string> | null
-}
-
-export interface ProviderSetupErrorDetail {
-  code: string
-  suspected_vendor: string | null
-  detail: string
-}
+export type { ProviderSetupErrorDetail } from './hand-types'
 
 export async function setupProviderPreset(
   presetKey: string,
@@ -167,18 +129,6 @@ export async function deleteProvider(id: string): Promise<void> {
   }
 }
 
-export interface AiModel {
-  id: string
-  provider_id: string
-  external_id: string
-  label: string
-  caps: string[]
-  decision_transport: string | null
-  enabled: boolean
-  missing: boolean
-  reasoning_effort: string | null
-}
-
 export async function listModels(): Promise<AiModel[]> {
   const response = await apiFetch('/api/v1/models')
   return json<AiModel[]>(response)
@@ -187,11 +137,6 @@ export async function listModels(): Promise<AiModel[]> {
 export async function discoverModels(providerId: string): Promise<AiModel[]> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/models`, { method: 'POST' })
   return json<AiModel[]>(response)
-}
-
-export interface RemoteModelInfo {
-  external_id: string
-  caps: string[]
 }
 
 export async function listRemoteModels(providerId: string): Promise<RemoteModelInfo[]> {
@@ -245,30 +190,6 @@ export async function deleteModel(id: string): Promise<void> {
   }
 }
 
-export interface TaskInfo {
-  task: string
-  description: string
-  requires: string
-  model_id: string | null
-  fallback_model_id: string | null
-  model_label: string | null
-  fallback_model_label: string | null
-  inherits_default: boolean
-  default_model_label: string | null
-  monthly_cap_usd?: number | null
-}
-
-export interface DefaultTaskInfo {
-  requires: string
-  model_id: string | null
-  fallback_model_id: string | null
-  model_label: string | null
-  fallback_model_label: string | null
-  /** ADR-0036: the model a decision:<kind> row inherits when its picker's
-   * labeled null option is chosen (the `decision` default resolution). */
-  resolved_inherit_label?: string | null
-}
-
 export async function listTasks(): Promise<TaskInfo[]> {
   const response = await apiFetch('/api/v1/tasks')
   return json<TaskInfo[]>(response)
@@ -307,32 +228,6 @@ export async function assignTaskDefault(
 
 export function backupExportUrl(): string {
   return '/api/v1/backup/export'
-}
-
-export interface BackupSettingsInfo {
-  auto: boolean
-  interval_hours: number
-  keep_daily: number
-  keep_weekly: number
-  sync_dir: string | null
-}
-
-export interface BackupEntryInfo {
-  name: string
-  size: number
-  created_at: string
-}
-
-export interface BackupRecoveryInfo {
-  at: string
-  from_backup: string | null
-  quarantined?: string
-}
-
-export interface BackupStatus {
-  settings: BackupSettingsInfo
-  backups: BackupEntryInfo[]
-  last_recovery: BackupRecoveryInfo | null
 }
 
 export async function getBackupStatus(): Promise<BackupStatus> {
@@ -390,27 +285,6 @@ export async function setTaskBudget(
     body: JSON.stringify({ monthly_cap_usd: monthlyCapUsd }),
   })
   return json<TaskInfo>(response)
-}
-
-export interface SkillInfo {
-  key: string
-  task: string
-  name: string
-  description: string | null
-  is_system: boolean
-}
-
-export interface SkillVersionInfo {
-  id: string
-  scope_type: string
-  scope_ref: string | null
-  version: number
-  system_template: string
-  user_template: string
-  params: Record<string, unknown> | null
-  contract: Record<string, unknown> | null
-  is_active: boolean
-  created_at: string
 }
 
 export async function listSkills(): Promise<SkillInfo[]> {

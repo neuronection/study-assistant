@@ -1,58 +1,30 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 import type { HintResult } from './exercises'
+import type { QuizQuestionInput } from './hand-types'
 
-export interface QuizQuestionCell {
-  kind: string
-  text?: string
-}
+type Schemas = components['schemas']
 
-export interface QuizQuestionPart {
-  type: string
+export type {
+  QuizQuestionCell,
+  QuizQuestionInput,
+  QuizQuestionPart,
+  QuizQuestionTest,
+} from './hand-types'
+export type QuizQuestion = Omit<Schemas['QuestionOut'], 'input'> & {
+  input?: QuizQuestionInput | null
 }
-
-export interface QuizQuestionTest {
-  call: string
-  expected?: unknown
-  expected_stdout?: string | null
-}
-
-export interface QuizQuestionInput {
-  widget: string
-  min?: number
-  max?: number
-  headers?: string[]
-  row_labels?: string[]
-  cells?: QuizQuestionCell[][]
-  parts?: QuizQuestionPart[]
-  starter_code?: string
-  tests?: QuizQuestionTest[]
-  mode?: string
-}
-
-export interface QuizQuestion {
-  id: string
-  type: string
-  stem: BlockDto[]
-  options: BlockDto[] | null
-  difficulty: number | null
-  bloom: string | null
-  skill: string | null
-  expected_time_sec: number | null
-  flag: string
-  input: QuizQuestionInput | null
-}
-
-export interface QuizActivity {
-  id: string
-  title: string
-  type: string
-  course_id: string | null
-  node_id: string | null
-  question_count: number
-  time_limit_sec: number | null
-}
+export type QuizActivity = Schemas['ActivityOut']
+export type QuizAnswerKeyEntry = Schemas['AnswerKeyEntryOut']
+export type QuizAttempt = Schemas['AttemptOut']
+export type QuizFeedback = Schemas['FeedbackOut']
+export type QuizAttemptRow = Schemas['AttemptListItemOut']
+export type MistakeRow = Schemas['MistakeListItemOut']
+export type ImportValidation = Schemas['QuestionCheckOut']
+export type ImportResult = Schemas['CaqImportOut']
+export type RecognitionResult = Schemas['RecognizeOut']
 
 export async function generateQuiz(body: {
   course_id: string
@@ -97,12 +69,6 @@ export async function quizQuestions(activityId: string): Promise<QuizQuestion[]>
   return json<QuizQuestion[]>(response)
 }
 
-export interface QuizAnswerKeyEntry {
-  question_id: string
-  type: string
-  key: string
-}
-
 export async function quizAnswerKey(activityId: string): Promise<QuizAnswerKeyEntry[]> {
   const response = await apiFetch(`/api/v1/quiz/activities/${activityId}/answer-key`)
   return json<QuizAnswerKeyEntry[]>(response)
@@ -143,16 +109,6 @@ export async function deleteQuiz(
   return json<{ deleted_item_id: string }>(response)
 }
 
-export interface QuizAttempt {
-  id: string
-  activity_id: string
-  mode: string
-  started_at: string
-  deadline_at: string | null
-  finished_at: string | null
-  score: number | null
-}
-
 export async function setQuizTimeLimit(
   activityId: string,
   timeLimitSec: number | null
@@ -174,15 +130,6 @@ export async function startQuizAttempt(activityId: string, mode = 'practice'): P
     { method: 'POST' }
   )
   return json<QuizAttempt>(response)
-}
-
-export interface QuizFeedback {
-  correct: boolean
-  partial_credit: number
-  graded_by: string | null
-  feedback: BlockDto[]
-  error_tags: string[]
-  explanation: BlockDto[]
 }
 
 export async function submitQuizAnswer(
@@ -212,30 +159,10 @@ export async function finishQuizAttempt(attemptId: string): Promise<QuizAttempt>
   return json<QuizAttempt>(response)
 }
 
-export interface QuizAttemptRow {
-  id: string
-  activity_id: string
-  title: string
-  mode: string
-  started_at: string
-  finished_at: string | null
-  score: number | null
-}
-
 export async function listQuizAttempts(courseId?: string): Promise<QuizAttemptRow[]> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/quiz/attempts${params}`)
   return json<QuizAttemptRow[]>(response)
-}
-
-export interface MistakeRow {
-  id: string
-  question_id: string
-  activity_id: string
-  activity_title: string
-  stem_excerpt: string
-  error_tags: string[]
-  created_at: string
 }
 
 export async function listMistakes(courseId?: string): Promise<MistakeRow[]> {
@@ -246,20 +173,6 @@ export async function listMistakes(courseId?: string): Promise<MistakeRow[]> {
 
 export function quizExportUrl(activityId: string): string {
   return `/api/v1/quiz/activities/${activityId}/export`
-}
-
-export interface ImportValidation {
-  index: number
-  ok: boolean
-  problems: string[]
-}
-
-export interface ImportResult {
-  dry_run: boolean
-  results: ImportValidation[]
-  valid: number
-  total: number
-  activity?: QuizActivity
 }
 
 export async function importQuiz(
@@ -291,11 +204,6 @@ export async function requestQuizHint(
     }
   )
   return json<HintResult>(response)
-}
-
-export interface RecognitionResult {
-  markdown: string
-  latex_candidates: string[]
 }
 
 export async function recognizeHandwriting(pngBase64: string): Promise<RecognitionResult> {

@@ -1,112 +1,40 @@
 import type { components } from '@/lib/api-schema'
 import { ApiError, json, expectOk, apiFetch } from './client'
+import type { BlockDto, PendingDrawing, TextFileEditState } from './hand-types'
 
 type Schemas = components['schemas']
 
 export type AcceptedTypes = Schemas['AcceptedTypesOut']
-import type { NoteDrawingInfo } from './notes'
-
-export interface Material {
-  id: string
-  title: string
-  description?: string | null
-  kind: string
-  status: string
-  filename: string
-  mime: string | null
-  pages: number | null
-  course_id: string
-  folder_id: string | null
-  blob_sha: string | null
-  provenance?: {
-    source?: string
-    kind?: string
-    model?: string | null
-    coverage?: { total: number; covered: number; missing_ids: string[] } | null
-    needs_review?: boolean
-    video_id?: string
-    channel?: string
-    duration_sec?: number
-    parse_note?: string
-  } | null
-  source_url?: string | null
-  created_at: string
-  has_extraction?: boolean
-  tags?: string[]
-  starred?: boolean
-  link_count?: number
-  reextract_modes?: string[]
+export type Material = Schemas['MaterialOut']
+export type Extraction = Omit<Schemas['ExtractionOut'], 'blocks'> & { blocks: BlockDto[] }
+export type IndexCard = Schemas['IndexCardOut']
+export type MaterialImageInfo = Schemas['MaterialImageOut']
+export type MaterialDetail = Omit<
+  Schemas['MaterialDetailOut'],
+  'drawings' | 'images'
+> & {
+  drawings: Schemas['DrawingOut'][]
+  images: Schemas['MaterialImageOut'][]
 }
+export type UploadWarning = Schemas['UploadWarningOut']
+export type UploadResult = Schemas['MaterialUploadOut']
+export type SearchHitNodeDto = Schemas['SearchHitNode']
+export type SearchHitDto = Schemas['SearchHit']
+export type MaterialLinkInfo = Schemas['MaterialLinkInfoOut']
+export type UnassignedMaterial = Schemas['UnassignedMaterialOut']
+export type UnassignedMaterials = Schemas['UnassignedOut']
+export type PlacementCandidate = Schemas['PlacementCandidateOut']
+export type PlacementSuggestion = Schemas['PlacementSuggestionOut']
+export type MindmapEditResult = Schemas['MindmapEditOut']
+export type ExtractionVersionInfo = Schemas['ExtractionVersionOut']
+export type WorkspaceConcept = Schemas['WorkspaceConceptOut']
+export type CourseMaterialLink = Schemas['CourseMaterialsEntryOut']
+export type MirrorFolderResult = Schemas['MirrorFolderOut']
+export type ComposedMaterial = Schemas['MaterialUploadOut']
+export type LinkMaterialBody = Schemas['LinkIn']
+export type ExtractionDiffInfo = Schemas['ExtractionDiffOut']
+export type { BlockDto, PendingDrawing, TextFileEditState } from './hand-types'
 
-export interface Extraction {
-  id: string
-  material_id: string
-  version: number
-  extractor: string
-  markdown: string
-  blocks: BlockDto[]
-}
-
-export interface BlockDto {
-  type: string
-  md?: string
-  [key: string]: unknown
-}
-
-export interface IndexCard {
-  reading_minutes: number | null
-  summary: string | null
-  topics: string[]
-  key_terms: string[] | null
-  difficulty: number | null
-}
-
-export interface MaterialImageInfo {
-  id: string
-  position: number
-  blob_sha: string | null
-  mime: string | null
-  ocr_version: number
-  ocr_markdown: string | null
-  ocr_job_id: string | null
-  created_at: string
-}
-
-export interface MaterialDetail {
-  material: Material
-  extraction: Extraction | null
-  index_card: IndexCard | null
-  drawings: NoteDrawingInfo[]
-  images: MaterialImageInfo[]
-}
-
-export interface UploadWarning {
-  code: string
-  limit_mb: number | null
-  file_mb: number | null
-}
-
-export interface UploadResult {
-  material: Material
-  job_id: string | null
-  deduped: boolean
-  node_id?: string | null
-  warnings?: UploadWarning[]
-}
-
-export interface SearchHitNodeDto {
-  course_id: string
-  node_id: string
-  node_title: string
-}
-
-export interface SearchHitDto {
-  material_id: string
-  title: string
-  snippet: string
-  score?: number
-  nodes: SearchHitNodeDto[]
-}
 
 export async function uploadMaterial(
   file: File,
@@ -183,49 +111,14 @@ export async function patchMaterial(
   return json<Material>(response)
 }
 
-export interface MaterialLinkInfo {
-  node_id: string
-  owner_title: string
-  breadcrumb: { id: string; title: string }[]
-  is_course_level: boolean
-  course_id: string | null
-  course_title: string | null
-  auto_assigned: boolean
-  rationale: string | null
-  via_folder: { id: string; name: string } | null
-}
-
 export async function getMaterialLinks(materialId: string): Promise<MaterialLinkInfo[]> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/links`)
   return json<MaterialLinkInfo[]>(response)
 }
 
-export interface UnassignedMaterial {
-  id: string
-  title: string
-}
-
-export interface UnassignedMaterials {
-  count: number
-  materials: UnassignedMaterial[]
-}
-
 export async function getUnassignedMaterials(courseId: string): Promise<UnassignedMaterials> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/materials/unassigned`)
   return json<UnassignedMaterials>(response)
-}
-
-export interface PlacementCandidate {
-  node_id: string
-  node_title: string
-  breadcrumb: { id: string; title: string }[]
-  score: number
-  matched_on: string[]
-}
-
-export interface PlacementSuggestion {
-  material_id: string
-  candidates: PlacementCandidate[]
 }
 
 export async function getPlacementSuggestions(
@@ -255,14 +148,6 @@ export async function createTextFile(body: {
   return json<UploadResult>(response)
 }
 
-export interface PendingDrawing {
-  ref: number | string
-  strokes: unknown[]
-  png_base64: string
-  ocr: boolean
-  view?: { x: number; y: number; width: number; height: number } | null
-}
-
 export function remapDrawingRefsInMarkdown(
   markdown: string,
   mapping: Record<number, string>
@@ -288,13 +173,6 @@ async function waitForMaterialReady(materialId: string, timeoutMs = 15000): Prom
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
   throw new ApiError('material ingest timed out', 504)
-}
-
-export interface TextFileEditState {
-  materialId: string
-  content: string
-  refToReal: Record<number, string>
-  jobId: string | null
 }
 
 export async function createTextMaterial(params: {
@@ -484,16 +362,6 @@ export async function editExtraction(
   return json<Extraction>(response)
 }
 
-export interface MindmapEditResult {
-  markdown: string
-}
-
-export interface ExtractionVersionInfo {
-  version: number
-  extractor: string
-  created_at: string
-}
-
 export async function listExtractionVersions(
   materialId: string
 ): Promise<ExtractionVersionInfo[]> {
@@ -519,24 +387,6 @@ export async function mindmapEdit(
     body: JSON.stringify(body),
   })
   return json<MindmapEditResult>(response)
-}
-
-export interface WorkspaceConcept {
-  id: string
-  name: string
-  direct: boolean
-  node_ids: string[]
-}
-
-export interface CourseMaterialLink {
-  node_id: string
-  node_title: string
-  node_is_root: boolean
-  material_id: string
-  title: string
-  rationale: string | null
-  auto_assigned: boolean
-  confidence: number | null
 }
 
 export async function listCourseMaterials(courseId: string): Promise<CourseMaterialLink[]> {
@@ -605,13 +455,6 @@ export async function allocateNodeFolder(
   await json<unknown>(response)
 }
 
-export interface MirrorFolderResult {
-  created_nodes: number
-  reused_nodes: number
-  folder_links: number
-  skipped_folders: string[]
-}
-
 export async function mirrorFolder(
   nodeId: string,
   folderId: string,
@@ -651,12 +494,6 @@ export const COMPOSE_KINDS = [
 
 export type ComposeKind = (typeof COMPOSE_KINDS)[number]
 
-export interface ComposedMaterial {
-  material: Material
-  job_id: string | null
-  deduped: boolean
-}
-
 export async function composeMaterial(body: {
   course_id: string
   node_id?: string | null
@@ -687,14 +524,6 @@ export async function composeMaterialAsync(body: Parameters<typeof composeMateri
     body: JSON.stringify(body),
   })
   return json<{ job_id: string }>(response)
-}
-
-export interface LinkMaterialBody {
-  course_id: string
-  url: string
-  title?: string | null
-  node_id?: string | null
-  folder_id?: string | null
 }
 
 export async function createLinkMaterial(
@@ -778,14 +607,6 @@ export async function deleteMaterialDrawing(
 export async function getAcceptedTypes(): Promise<AcceptedTypes> {
   const response = await apiFetch('/api/v1/materials/accepted')
   return json<AcceptedTypes>(response)
-}
-
-export interface ExtractionDiffInfo {
-  base: string
-  target: string
-  additions: number
-  deletions: number
-  diff: string
 }
 
 export async function diffExtractionVersions(

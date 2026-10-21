@@ -22,6 +22,7 @@ import { hasStructuredBlocks } from '@/features/chat/chatMessages'
 import { ReadAloudButton } from '@/components/read-aloud/ReadAloudButton'
 import { diffState } from '@/lib/state'
 import { patchChatMessageState, type ChatMessage as ChatMessageRow } from '@/lib/api'
+import { messageTurnFailure } from '@/lib/api/hand-types'
 import type { ChatMessageView } from '@/components/ui/chat-core'
 
 function MessageBlocks({ message }: { message: ChatMessageRow }) {
@@ -136,7 +137,7 @@ export function TranscriptMessage({
     setEditing(false)
   }
 
-  const turnFailed = !isUser ? (message.state?.turn_failed ?? null) : null
+  const turnFailed = !isUser ? messageTurnFailure(message.state) : null
 
   const readAloud = !isUser ? <ReadAloudButton markdown={message.markdown} /> : null
   const meta =

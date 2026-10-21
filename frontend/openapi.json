@@ -1133,6 +1133,109 @@
         "title": "CardOut",
         "type": "object"
       },
+      "ChatTrace": {
+        "properties": {
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "interruption": {
+            "title": "Interruption",
+            "type": "string"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "proposals_dropped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Proposals Dropped",
+            "type": "array"
+          },
+          "repair_rounds": {
+            "title": "Repair Rounds",
+            "type": "integer"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/ChatTraceRound"
+            },
+            "title": "Rounds",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thinking": {
+            "title": "Thinking",
+            "type": "string"
+          },
+          "turn_failed": {
+            "title": "Turn Failed",
+            "type": "boolean"
+          }
+        },
+        "title": "ChatTrace",
+        "type": "object"
+      },
+      "ChatTraceRound": {
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "streamed": {
+            "title": "Streamed",
+            "type": "boolean"
+          }
+        },
+        "title": "ChatTraceRound",
+        "type": "object"
+      },
       "CheckOut": {
         "properties": {
           "advanced": {
@@ -6820,14 +6923,12 @@
           "trace": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/ChatTrace"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Trace"
+            ]
           },
           "variant_count": {
             "default": 1,
@@ -9299,6 +9400,56 @@
         "title": "PreferencesOut",
         "type": "object"
       },
+      "PresetDecisionModel": {
+        "properties": {
+          "caps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caps",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provisional": {
+            "title": "Provisional",
+            "type": "boolean"
+          },
+          "transport": {
+            "title": "Transport",
+            "type": "string"
+          }
+        },
+        "title": "PresetDecisionModel",
+        "type": "object"
+      },
+      "PresetModelRef": {
+        "properties": {
+          "caps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caps",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "PresetModelRef",
+        "type": "object"
+      },
       "PresetOut": {
         "properties": {
           "base_url": {
@@ -9334,8 +9485,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/PresetDecisionModel"
                 },
                 "type": "array"
               },
@@ -9382,14 +9532,12 @@
           "preferred_model": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/PresetModelRef"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Preferred Model"
+            ]
           },
           "provisional": {
             "anyOf": [
@@ -9763,14 +9911,12 @@
           "result": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/ProposalResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Result"
+            ]
           },
           "session_id": {
             "anyOf": [
@@ -9796,6 +9942,307 @@
           "result"
         ],
         "title": "ProposalOut",
+        "type": "object"
+      },
+      "ProposalPayload": {
+        "properties": {
+          "add": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Add",
+            "type": "array"
+          },
+          "body_md": {
+            "title": "Body Md",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "exam_date": {
+            "title": "Exam Date",
+            "type": "string"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "string"
+          },
+          "material_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Material Ids",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "new_body_md": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Body Md"
+          },
+          "new_markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Markdown"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "note_id": {
+            "title": "Note Id",
+            "type": "string"
+          },
+          "note_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Note Ids",
+            "type": "array"
+          },
+          "question_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Question Types",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "shuffle": {
+            "title": "Shuffle",
+            "type": "boolean"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "title": "ProposalPayload",
+        "type": "object"
+      },
+      "ProposalResult": {
+        "properties": {
+          "concept_id": {
+            "title": "Concept Id",
+            "type": "string"
+          },
+          "conflict": {
+            "title": "Conflict",
+            "type": "string"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "created": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Created"
+          },
+          "deduped": {
+            "title": "Deduped",
+            "type": "boolean"
+          },
+          "draft_count": {
+            "title": "Draft Count",
+            "type": "integer"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "exam_date": {
+            "title": "Exam Date",
+            "type": "string"
+          },
+          "extraction_id": {
+            "title": "Extraction Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "note_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Id"
+          },
+          "open_dialog": {
+            "$ref": "#/components/schemas/ProposalPayload"
+          },
+          "replaced_chunk_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Replaced Chunk Ids",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "ProposalResult",
         "type": "object"
       },
       "ProviderCreate": {
@@ -9934,14 +10381,12 @@
           "status": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/ProviderStatus"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Status"
+            ]
           },
           "type": {
             "title": "Type",
@@ -9999,6 +10444,42 @@
           }
         },
         "title": "ProviderSetupIn",
+        "type": "object"
+      },
+      "ProviderStatus": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "last_tested_at": {
+            "title": "Last Tested At",
+            "type": "string"
+          },
+          "model_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Count"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "title": "ProviderStatus",
         "type": "object"
       },
       "ProviderUpdate": {
@@ -15018,6 +15499,14 @@
           "read_status": {
             "$ref": "#/components/schemas/StudyStatus"
           },
+          "reextract_modes": {
+            "items": {
+              "type": "string"
+            },
+            "readOnly": true,
+            "title": "Reextract Modes",
+            "type": "array"
+          },
           "status": {
             "$ref": "#/components/schemas/MaterialStatus"
           },
@@ -15061,7 +15550,8 @@
           "provenance",
           "has_extraction",
           "via_folder_id",
-          "via_folder_name"
+          "via_folder_name",
+          "reextract_modes"
         ],
         "title": "WorkspaceMaterialOut",
         "type": "object"

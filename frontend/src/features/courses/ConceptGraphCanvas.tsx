@@ -10,7 +10,7 @@ export interface LayoutNode {
   x: number
   y: number
   radius: number
-  mastery: 'strong' | 'shaky' | 'weak' | null
+  mastery: string | null
 }
 
 export interface LayoutEdge {
@@ -46,8 +46,8 @@ export function layoutGraph(graph: ConceptGraph, seed = 42): GraphLayout {
   const idByName = new Map(graph.concepts.map((concept) => [concept.name, concept.id]))
   const edges: LayoutEdge[] = []
   for (const link of graph.links) {
-    const from = idByName.get(link.from)
-    const to = idByName.get(link.to)
+    const from = link.from === null ? undefined : idByName.get(link.from)
+    const to = link.to === null ? undefined : idByName.get(link.to)
     if (from === undefined || to === undefined) {
       continue
     }

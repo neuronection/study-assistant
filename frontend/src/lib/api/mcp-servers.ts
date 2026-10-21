@@ -4,13 +4,7 @@ import { apiFetch, json } from './client'
 export type McpServerRow = components['schemas']['McpServerOut']
 export type McpCharter = components['schemas']['McpCharterOut']
 
-export interface McpServerToolInfo {
-  name: string
-  description: string
-  enabled: boolean
-  contract: string
-  url_pattern: string | null
-}
+export type { McpServerToolInfo } from './hand-types'
 
 export async function listMcpServers(): Promise<McpServerRow[]> {
   const response = await apiFetch('/api/v1/mcp/servers')

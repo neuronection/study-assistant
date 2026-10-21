@@ -56,13 +56,19 @@ const TILE_ORDER = [
  * decision_models → decision, keyless-local → local. Labels via i18n.
  */
 function chipsForPreset(
-  preset: { type: string; local: boolean; preferred_model: { caps: string[] } | null; stt_model: string | null; decision_models: unknown[] | null },
+  preset: {
+    type: string
+    local: boolean
+    preferred_model?: { caps?: string[] } | null
+    stt_model?: string | null
+    decision_models?: unknown[] | null
+  },
   t: (key: string) => string,
 ): ProviderSetupTileChip[] {
   const chips: ProviderSetupTileChip[] = []
   if (preset.type !== 'decision') {
     chips.push({ key: 'chat', label: t('settings.setup.chipChat') })
-    if (preset.preferred_model?.caps.includes('vision')) {
+    if (preset.preferred_model?.caps?.includes('vision')) {
       chips.push({ key: 'vision', label: t('settings.setup.chipVision') })
     }
     if (preset.stt_model) {
@@ -279,7 +285,7 @@ function SuccessDefaults({
         <ModelPicker
           key={row.requires}
           providers={catalog}
-          value={slotValue(row.requires, row.assigned)}
+          value={slotValue(row.requires, row.assigned ?? null)}
           onChange={(modelId) => {
             setError(null)
             bind.mutate({ requires: row.requires, modelId })
@@ -505,6 +511,7 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
           bind_chat: reviewOptions.bindChat,
           bind_vision: reviewOptions.bindVision,
           bind_stt: reviewOptions.bindStt,
+          bind_embeddings: true,
           bind_decision: reviewOptions.bindDecision && decisionDeclared,
         },
       })
@@ -608,8 +615,8 @@ export function ProviderSetupModal({ onClose }: { onClose: () => void }) {
             {
               id: 'decision',
               label: t('settings.decisionDefaultLabel'),
-              sub: fillsLabel(decisionCandidate.name, 'decision'),
-              candidate: decisionCandidate.name,
+              sub: fillsLabel(decisionCandidate.name ?? null, 'decision'),
+              candidate: decisionCandidate.name ?? '',
               bind: reviewOptions.bindDecision,
               set: (next: boolean) =>
                 setReviewOptions((current) => ({ ...current, bindDecision: next })),

@@ -102,7 +102,18 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
     queryFn: getProfilePreferences,
     enabled: open,
   })
-  const providers = providerOptions(preferences.data?.discovery, t)
+  const providers = providerOptions(
+    preferences.data?.discovery
+      ? {
+          enabled: preferences.data.discovery.enabled ?? [],
+          sites: (preferences.data.discovery.sites ?? []).map((entry) => ({
+            site: entry.site,
+            label: entry.label ?? null,
+          })),
+        }
+      : undefined,
+    t
+  )
 
   const suggestions = useQuery({
     queryKey: ['discovery', 'suggestions', courseId],

@@ -1,7 +1,27 @@
 import type { components } from '@/lib/api-schema'
 import { json, apiFetch } from './client'
+import type {
+  DesktopFolderListing,
+  SearchProviderCatalog,
+} from './hand-types'
+
+type Schemas = components['schemas']
 
 export type Health = components['schemas']['HealthResponse']
+
+export type FsDirEntry = Schemas['FsDir']
+export type FsDirs = Schemas['FsDirsOut']
+export type DeletedItemInfo = Schemas['DeletedItemOut']
+export type ProfileInfo = Schemas['ProfileOut']
+export type DiscoverySitePreset = Schemas['DiscoverySitePreset']
+export type DiscoveryPrefs = Schemas['DiscoveryPrefsOut']
+export type ProfilePreferences = Schemas['PreferencesOut']
+export type ProfilePreferencesUpdate = Schemas['PreferencesIn']
+export type SearchProvider = Schemas['SearchProviderOut']
+export type SearchProviderProbe = Schemas['SearchProviderProbeOut']
+export type OnboardingState = Schemas['OnboardingStateOut']
+export type WorkingDirInfo = Schemas['WorkingDirOut']
+export type WorkingDirValidation = Schemas['ValidateWorkingDirOut']
 
 export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> {
   const response = await fetchFn('/api/v1/health')
@@ -11,35 +31,19 @@ export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> 
   return (await response.json()) as Health
 }
 
-export interface FsDirEntry {
-  name: string
-  path: string
-}
-
-export interface FsDirs {
-  path: string
-  parent: string | null
-  home: string
-  dirs: FsDirEntry[]
-}
-
 export async function listFsDirs(path?: string): Promise<FsDirs> {
   const params = path !== undefined ? `?path=${encodeURIComponent(path)}` : ''
   const response = await apiFetch(`/api/v1/fs/dirs${params}`)
   return json<FsDirs>(response)
 }
 
-export interface DesktopFileEntry {
-  path: string
-  rel: string
-  size: number
-  mtime: number
-}
-
-export interface DesktopFolderListing {
-  path: string
-  files: DesktopFileEntry[]
-}
+export type {
+  DesktopFileEntry,
+  DesktopFolderListing,
+  SearchProviderCatalog,
+  SearchProviderCatalogEntry,
+  SearchProviderCatalogField,
+} from './hand-types'
 
 export async function listDesktopFolder(path: string): Promise<DesktopFolderListing> {
   const response = await apiFetch(`/api/v1/desktop/folder?path=${encodeURIComponent(path)}`)
@@ -57,14 +61,6 @@ export async function registerDesktopDrops(paths: string[]): Promise<DesktopFold
 
 export function desktopFileUrl(path: string): string {
   return `/api/v1/desktop/file?path=${encodeURIComponent(path)}`
-}
-
-export interface DeletedItemInfo {
-  id: string
-  entity_type: string
-  title: string
-  deleted_at: string
-  purge_after: string
 }
 
 export async function listDeletedItems(): Promise<DeletedItemInfo[]> {
@@ -88,13 +84,6 @@ export async function purgeDeletedItem(id: string): Promise<void> {
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
   }
-}
-
-export interface ProfileInfo {
-  id: string
-  name: string
-  color: string | null
-  is_default: boolean
 }
 
 export async function listProfiles(): Promise<ProfileInfo[]> {
@@ -130,32 +119,9 @@ export async function patchProfile(
   return json<ProfileInfo>(response)
 }
 
-export interface DiscoverySitePreset {
-  site: string
-  label: string | null
-  kind: string
-}
-
-export interface DiscoveryPrefs {
-  enabled: string[]
-  sites: DiscoverySitePreset[]
-}
-
-export interface ProfilePreferences {
-  use_embeddings: boolean
-  ocr_image_max_edge: number
-  discovery: DiscoveryPrefs
-}
-
 export async function getProfilePreferences(): Promise<ProfilePreferences> {
   const response = await apiFetch('/api/v1/profiles/preferences')
   return json<ProfilePreferences>(response)
-}
-
-export interface ProfilePreferencesUpdate {
-  use_embeddings?: boolean
-  ocr_image_max_edge?: number
-  discovery?: { enabled?: string[]; sites?: DiscoverySitePreset[] }
 }
 
 export async function updateProfilePreferences(
@@ -167,53 +133,6 @@ export async function updateProfilePreferences(
     body: JSON.stringify(preferences),
   })
   return json<ProfilePreferences>(response)
-}
-
-export interface SearchProvider {
-  id: string
-  name: string
-  type: string
-  enabled: boolean
-  base_url: string | null
-  google_cx: string | null
-  key_hint: string | null
-  timeout_ms: number
-  max_results: number
-  key_set: boolean
-}
-
-export interface SearchProviderCatalogField {
-  id: string
-  label: string
-  required: boolean
-  placeholder?: string
-}
-
-export interface SearchProviderCatalogEntry {
-  label: string
-  requiresKey: boolean
-  keyUrl: string | null
-  baseUrl: string | null
-  baseUrlRequired: boolean
-  baseUrlHint?: string
-  notes?: string | null
-  fields?: SearchProviderCatalogField[]
-}
-
-export interface SearchProviderCatalog {
-  providerOrder: string[]
-  providers: Record<string, SearchProviderCatalogEntry>
-  limits: {
-    maxResults: { default: number; min: number; max: number }
-    timeoutMs: { default: number; min: number; max: number }
-  }
-}
-
-export interface SearchProviderProbe {
-  status: string
-  latency_ms: number
-  result_count: number | null
-  error: string | null
 }
 
 // Family web-search contract (ADR-0035 / plan 28): an ordered multi-provider
@@ -291,32 +210,9 @@ export async function testSearchProvider(providerId: string): Promise<SearchProv
   return json<SearchProviderProbe>(response)
 }
 
-export interface OnboardingState {
-  has_provider: boolean
-  has_enabled_model: boolean
-  defaults_set: string[]
-  has_course: boolean
-  has_material: boolean
-}
-
 export async function getOnboardingState(): Promise<OnboardingState> {
   const response = await apiFetch('/api/v1/onboarding/state')
   return json<OnboardingState>(response)
-}
-
-export interface WorkingDirInfo {
-  path: string
-  default_path: string
-  custom: boolean
-  restart_pending: boolean
-}
-
-export interface WorkingDirValidation {
-  valid: boolean
-  reason: string | null
-  exists: boolean
-  empty: boolean
-  has_app_db: boolean
 }
 
 export async function getWorkingDir(): Promise<WorkingDirInfo> {

@@ -154,13 +154,33 @@ class ChatSessionContext(TypedDict, total=False):
     proposal_feedback_ids: list[str]
 
 
+class PresetModelRef(TypedDict, total=False):
+    id: str
+    name: str
+    caps: list[str]
+
+
+class PresetDecisionModel(PresetModelRef, total=False):
+    transport: str
+    provisional: bool
+
+
+class ChatTraceRound(TypedDict, total=False):
+    index: int
+    streamed: bool
+    start_ms: int
+    duration_ms: int
+    phase: str
+
+
 class ChatTrace(TypedDict, total=False):
-    model: str
+    run_id: str
+    model: str | None
     latency_ms: int
-    input_tokens: int
-    output_tokens: int
+    input_tokens: int | None
+    output_tokens: int | None
     repair_rounds: int
-    rounds: list[int]
+    rounds: list[ChatTraceRound]
     thinking: str
     interruption: str
     proposals_dropped: list[str]
@@ -171,8 +191,8 @@ class ProposalPayload(TypedDict, total=False):
     title: str
     body_md: str
     node_id: str | None
-    note_id: str
-    material_id: str
+    note_id: str | None
+    material_id: str | None
     new_body_md: str | None
     new_markdown: str | None
     reason: str | None
@@ -198,8 +218,8 @@ class ProposalPayload(TypedDict, total=False):
 
 
 class ProposalResult(TypedDict, total=False):
-    note_id: str
-    material_id: str
+    note_id: str | None
+    material_id: str | None
     extraction_id: str
     concept_id: str
     node_id: str
@@ -212,23 +232,37 @@ class ProposalResult(TypedDict, total=False):
     conflict: str
     note: str
     draft_count: int
-    created: int
+    created: bool | int
     deduped: bool
     replaced_chunk_ids: list[str]
     tags: list[str]
     open_dialog: ProposalPayload
 
 
+class CoverageReport(TypedDict, total=False):
+    total: int
+    covered: int
+    missing_ids: list[str]
+
+
 class MaterialProvenance(TypedDict, total=False):
     generator: str
     source: str
     url: str
+    kind: str
+    converter: str
+    model: str | None
     from_material_id: str
     from_version: int
-    coverage: dict[str, Any]
+    coverage: CoverageReport
     needs_review: bool
     practice_items: list[dict[str, Any]]
     source_ref: str | None
+    video_id: str
+    channel: str
+    duration_sec: int
+    parse_note: str
+    note: str
 
 
 class ExtractionConfidence(TypedDict, total=False):
@@ -340,10 +374,10 @@ class StepFeedbackList(TypedDict, total=False):
 
 
 class ProviderStatus(TypedDict, total=False):
+    last_tested_at: str
     ok: bool
-    checked_at: str
-    message: str
-    models: int
+    error: str | None
+    model_count: int | None
 
 
 class SkillParams(TypedDict, total=False):
@@ -487,6 +521,9 @@ PAYLOAD_TYPES: dict[str, object] = {
     "BlockList": BlockList,
     "ChatSessionContext": ChatSessionContext,
     "ChatTrace": ChatTrace,
+    "PresetDecisionModel": PresetDecisionModel,
+    "PresetModelRef": PresetModelRef,
+    "ChatTraceRound": ChatTraceRound,
     "CitationList": CitationList,
     "DetectionSpec": DetectionSpec,
     "DistractorMisconceptions": DistractorMisconceptions,
@@ -500,6 +537,7 @@ PAYLOAD_TYPES: dict[str, object] = {
     "FeedbackList": FeedbackList,
     "HelpEventList": HelpEventList,
     "JobPayload": JobPayload,
+    "CoverageReport": CoverageReport,
     "MaterialProvenance": MaterialProvenance,
     "MentionList": MentionList,
     "MentionRegistryList": MentionRegistryList,

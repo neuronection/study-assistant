@@ -37,12 +37,13 @@ export function DiscoveryCard() {
   useEffect(() => {
     const discovery = preferences.data?.discovery
     if (!discovery) return
-    setWebEnabled(discovery.enabled.includes('web'))
-    setYoutubeEnabled(discovery.enabled.includes('youtube'))
+    const enabled = discovery.enabled ?? []
+    setWebEnabled(enabled.includes('web'))
+    setYoutubeEnabled(enabled.includes('youtube'))
     setSites(
       (discovery.sites ?? []).map((entry) => ({
         ...entry,
-        enabled: discovery.enabled.includes(`site:${entry.site}`),
+        enabled: enabled.includes(`site:${entry.site}`),
       })),
     )
   }, [preferences.data])

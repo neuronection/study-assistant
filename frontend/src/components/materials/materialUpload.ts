@@ -196,7 +196,7 @@ export function useMaterialUpload({
           for (const warning of result.warnings ?? []) {
             setWarnings((current) => [
               ...current,
-              { name: item.file.name, code: warning.code, limitMb: warning.limit_mb },
+              { name: item.file.name, code: warning.code, limitMb: warning.limit_mb ?? null },
             ])
           }
           results.push(result)

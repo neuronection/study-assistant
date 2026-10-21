@@ -18,6 +18,8 @@ function course(id: string, title: string, archived = false): Course {
     color: null,
     archived_at: archived ? new Date().toISOString() : null,
     material_count: 0,
+    hidden: false,
+    origin: 'manual',
   }
 }
 

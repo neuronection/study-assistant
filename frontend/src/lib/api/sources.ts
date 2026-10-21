@@ -1,40 +1,17 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
 import type { ImportResult } from './quiz'
 
-export interface BrowseEntry {
-  name: string
-}
+type Schemas = components['schemas']
 
-export interface BrowseMaterial {
-  id: string
-  title: string
-  kind: string
-  status: string
-  filename: string
-  relpath: string
-}
-
-export interface BrowsePending {
-  name: string
-  relpath: string
-  size_bytes: number
-  mtime: number
-}
-
-export interface BrowseResult {
-  source_id: string
-  label: string
-  path: string
-  subdir: string
-  missing_target: boolean
-  enabled: boolean
-  scan_interval_sec: number | null
-  last_scan_error: string | null
-  last_scanned_at: string | null
-  subdirs: BrowseEntry[]
-  materials: BrowseMaterial[]
-  uningested: BrowsePending[]
-}
+export type BrowseEntry = Schemas['SourceSubdirOut']
+export type BrowseMaterial = Schemas['SourceMaterialOut']
+export type BrowsePending = Schemas['UningestedFileOut']
+export type BrowseResult = Schemas['SourceBrowseOut']
+export type LinkedSource = Schemas['SourceOut']
+export type ScanResult = Schemas['ScanResult']
+export type InboxEntryInfo = Schemas['InboxEntryOut']
 
 export async function browseSource(
   sourceId: string,
@@ -73,32 +50,6 @@ export async function revealSource(sourceId: string): Promise<void> {
   if (!response.ok && response.status !== 204) {
     throw new Error(`reveal failed: ${response.status}`)
   }
-}
-
-export interface LinkedSource {
-  id: string
-  label: string
-  path: string
-  recursive: boolean
-  include_globs: string[] | null
-  course_id: string
-  enabled: boolean
-  mirror_subdirs?: boolean
-  material_count: number
-  last_scanned_at: string | null
-}
-
-export interface ScanResult {
-  stats: {
-    new: number
-    updated: number
-    unchanged: number
-    missing: number
-    backfilled?: number
-    mirrored_dirs?: number
-  }
-  queued_jobs: number
-  new_relpaths?: string[]
 }
 
 export async function listSources(): Promise<LinkedSource[]> {
@@ -149,15 +100,6 @@ export async function deleteSource(sourceId: string): Promise<void> {
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
   }
-}
-
-export interface InboxEntryInfo {
-  filename: string
-  kind: string
-  title: string
-  ok: boolean
-  problems: string[]
-  question_count: number
 }
 
 export async function scanInbox(): Promise<InboxEntryInfo[]> {

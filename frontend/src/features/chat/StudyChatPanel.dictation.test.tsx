@@ -62,6 +62,7 @@ const SESSION: ChatSession = {
   course_id: '7',
   node_id: null,
   title: 'New chat',
+  quizme: false,
   use_embeddings: null,
   created_at: new Date().toISOString(),
 }

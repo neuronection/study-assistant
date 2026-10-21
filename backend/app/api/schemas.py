@@ -9,6 +9,7 @@ from ..core.vocab import (
     MaterialStatus,
     applicable_extraction_modes,
 )
+from ..domain.payloads import ProviderStatus
 
 MODEL_CAPS = ("text", "vision", "tools", "embeddings", "stt", "tts", "decision")
 
@@ -116,7 +117,7 @@ class ProviderOut(BaseModel):
     is_local: bool | None = None
     country: str | None = None
     masked_key: str | None
-    status: dict[str, Any] | None
+    status: ProviderStatus | None
     created_at: datetime
 
 

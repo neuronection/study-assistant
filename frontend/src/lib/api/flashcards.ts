@@ -1,24 +1,12 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 
-export interface FlashcardInfo {
-  id: string
-  kind: string
-  front: BlockDto[]
-  back: BlockDto[]
-  source: string
-  source_ref: string | null
-  node_id: string | null
-  due_at: string | null
-  state: string | null
-}
+type Schemas = components['schemas']
 
-export interface ReviewResult {
-  interval_days: number
-  due_at: string
-  state: string
-}
+export type FlashcardInfo = Schemas['CardOut']
+export type ReviewResult = Schemas['ReviewOut']
 
 export async function listFlashcards(
   courseId?: string,

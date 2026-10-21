@@ -1,28 +1,22 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, expectOk, apiFetch, audioFilename } from './client'
+import type { AiContextStats, GenerateContext } from './hand-types'
 
-export type GenerateScope = 'node' | 'subtree' | 'course'
+type Schemas = components['schemas']
 
-export interface GenerateContext {
-  scope?: GenerateScope
-  include_material_ids?: string[]
-  exclude_material_ids?: string[]
-  note_ids?: string[]
-  concept_ids?: string[]
-  context_hint?: string | null
-}
-
-export interface AiContextPreview {
-  stats: {
-    materials: { id: string; title: string }[]
-    chunks: { material_id: string; title: string }[]
-    notes: { id: string; title: string }[]
-    concepts: { id: string; name: string }[]
-    hints: number
-    approx_chars: number
-    retrieval_query: string | null
-  }
-  rendered: string
-}
+export type { GenerateContext, GenerateScope } from './hand-types'
+export type AiContextPreview = Omit<Schemas['PreviewOut'], 'stats'> & { stats: AiContextStats }
+export type AiToolArgument = Schemas['ToolArgumentOut']
+export type AiToolInfo = Schemas['ToolInfoOut']
+export type McpToolInfo = Schemas['McpToolOut']
+export type McpInfo = Schemas['McpInfoOut']
+export type EditorTransformMode = NonNullable<Schemas['EditorTransformIn']['mode']>
+export type EditorTransformRequest = Schemas['EditorTransformIn']
+export type EditorTransformJobOut = Schemas['EditorTransformJobOut']
+export type EditorTransformJobStatus = Schemas['EditorTransformStatusOut']['status']
+export type EditorTransformJobState = Schemas['EditorTransformStatusOut']
+export type TranscriptionResult = Schemas['TranscribeOut']
 
 export async function previewAiContext(
   courseId: string,
@@ -36,36 +30,6 @@ export async function previewAiContext(
   return json<AiContextPreview>(response)
 }
 
-export interface AiToolArgument {
-  name: string
-  type: string
-  required: boolean
-  description: string | null
-}
-
-export interface AiToolInfo {
-  name: string
-  description: string
-  example: string | null
-  arguments: AiToolArgument[]
-  response: string
-  scope: string
-  kind?: 'tool' | 'capability'
-  hitl?: boolean
-}
-
-export interface McpToolInfo {
-  name: string
-  description: string
-  arguments: AiToolArgument[]
-}
-
-export interface McpInfo {
-  command: string
-  instructions: string
-  tools: McpToolInfo[]
-}
-
 export async function listAiTools(): Promise<AiToolInfo[]> {
   const response = await apiFetch('/api/v1/ai/tools')
   const body = await json<{ tools: AiToolInfo[] }>(response)
@@ -75,40 +39,6 @@ export async function listAiTools(): Promise<AiToolInfo[]> {
 export async function listMcpInfo(): Promise<McpInfo> {
   const response = await apiFetch('/api/v1/ai/mcp')
   return json<McpInfo>(response)
-}
-
-export type EditorTransformMode = 'transform' | 'write'
-
-export interface EditorTransformRequest {
-  text: string
-  instruction?: string
-  preset?: string | null
-  mode: EditorTransformMode
-  include_context?: boolean
-  context_document?: string
-  ground_in_material?: boolean
-  course_id?: string | null
-  node_id?: string | null
-  diagnostic?: string
-}
-
-export interface EditorTransformJobOut {
-  job_id: string
-}
-
-export type EditorTransformJobStatus =
-  | 'queued'
-  | 'running'
-  | 'done'
-  | 'error'
-  | 'cancelled'
-
-export interface EditorTransformJobState {
-  status: EditorTransformJobStatus
-  result_md: string
-  error: string | null
-  problems: string[]
-  rounds: number
 }
 
 export async function startEditorTransform(
@@ -134,11 +64,6 @@ export async function cancelEditorTransformJob(jobId: string): Promise<void> {
     method: 'POST',
   })
   await expectOk(response)
-}
-
-export interface TranscriptionResult {
-  text: string
-  model: string
 }
 
 export async function transcribeAudio(

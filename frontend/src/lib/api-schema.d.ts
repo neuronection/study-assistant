@@ -5135,6 +5135,44 @@ export interface components {
             /** State */
             state: string | null;
         };
+        /** ChatTrace */
+        ChatTrace: {
+            /** Input Tokens */
+            input_tokens?: number | null;
+            /** Interruption */
+            interruption?: string;
+            /** Latency Ms */
+            latency_ms?: number;
+            /** Model */
+            model?: string | null;
+            /** Output Tokens */
+            output_tokens?: number | null;
+            /** Proposals Dropped */
+            proposals_dropped?: string[];
+            /** Repair Rounds */
+            repair_rounds?: number;
+            /** Rounds */
+            rounds?: components["schemas"]["ChatTraceRound"][];
+            /** Run Id */
+            run_id?: string;
+            /** Thinking */
+            thinking?: string;
+            /** Turn Failed */
+            turn_failed?: boolean;
+        };
+        /** ChatTraceRound */
+        ChatTraceRound: {
+            /** Duration Ms */
+            duration_ms?: number;
+            /** Index */
+            index?: number;
+            /** Phase */
+            phase?: string;
+            /** Start Ms */
+            start_ms?: number;
+            /** Streamed */
+            streamed?: boolean;
+        };
         /** CheckOut */
         CheckOut: {
             /** Advanced */
@@ -6971,10 +7009,7 @@ export interface components {
             } | null;
             /** Tool Calls */
             tool_calls: components["schemas"]["ToolCallOut"][];
-            /** Trace */
-            trace?: {
-                [key: string]: unknown;
-            } | null;
+            trace?: components["schemas"]["ChatTrace"] | null;
             /**
              * Variant Count
              * @default 1
@@ -7758,6 +7793,28 @@ export interface components {
              */
             use_embeddings: boolean;
         };
+        /** PresetDecisionModel */
+        PresetDecisionModel: {
+            /** Caps */
+            caps?: string[];
+            /** Id */
+            id?: string;
+            /** Name */
+            name?: string;
+            /** Provisional */
+            provisional?: boolean;
+            /** Transport */
+            transport?: string;
+        };
+        /** PresetModelRef */
+        PresetModelRef: {
+            /** Caps */
+            caps?: string[];
+            /** Id */
+            id?: string;
+            /** Name */
+            name?: string;
+        };
         /** PresetOut */
         PresetOut: {
             /** Base Url */
@@ -7767,9 +7824,7 @@ export interface components {
             /** Decision Default */
             decision_default?: string | null;
             /** Decision Models */
-            decision_models?: {
-                [key: string]: unknown;
-            }[] | null;
+            decision_models?: components["schemas"]["PresetDecisionModel"][] | null;
             /** Fixed Base */
             fixed_base: boolean;
             /** Free Tier Note */
@@ -7780,10 +7835,7 @@ export interface components {
             local: boolean;
             /** Name */
             name: string;
-            /** Preferred Model */
-            preferred_model?: {
-                [key: string]: unknown;
-            } | null;
+            preferred_model?: components["schemas"]["PresetModelRef"] | null;
             /** Provisional */
             provisional?: boolean | null;
             /** Steps */
@@ -7890,14 +7942,110 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
-            /** Result */
-            result: {
-                [key: string]: unknown;
-            } | null;
+            result: components["schemas"]["ProposalResult"] | null;
             /** Session Id */
             session_id?: string | null;
             /** Status */
             status: string;
+        };
+        /** ProposalPayload */
+        ProposalPayload: {
+            /** Add */
+            add?: string[];
+            /** Body Md */
+            body_md?: string;
+            /** Count */
+            count?: number;
+            /** Description */
+            description?: string | null;
+            /** Difficulty */
+            difficulty?: number | null;
+            /** Exam Date */
+            exam_date?: string;
+            /** Heading */
+            heading?: string | null;
+            /** Id */
+            id?: string;
+            /** Instructions */
+            instructions?: string | null;
+            /** Items */
+            items?: {
+                [key: string]: unknown;
+            }[];
+            /** Kind */
+            kind?: string;
+            /** Markdown */
+            markdown?: string;
+            /** Material Id */
+            material_id?: string;
+            /** Material Ids */
+            material_ids?: string[];
+            /** Name */
+            name?: string;
+            /** New Body Md */
+            new_body_md?: string | null;
+            /** New Markdown */
+            new_markdown?: string | null;
+            /** Node Id */
+            node_id?: string | null;
+            /** Note Id */
+            note_id?: string;
+            /** Note Ids */
+            note_ids?: string[];
+            /** Question Types */
+            question_types?: string[];
+            /** Reason */
+            reason?: string | null;
+            /** Shuffle */
+            shuffle?: boolean;
+            /** Steps */
+            steps?: number;
+            /** Title */
+            title?: string;
+            /** Topic */
+            topic?: string | null;
+            /** Url */
+            url?: string;
+        };
+        /** ProposalResult */
+        ProposalResult: {
+            /** Concept Id */
+            concept_id?: string;
+            /** Conflict */
+            conflict?: string;
+            /** Course Id */
+            course_id?: string;
+            /** Created */
+            created?: boolean | number;
+            /** Deduped */
+            deduped?: boolean;
+            /** Draft Count */
+            draft_count?: number;
+            /** Error */
+            error?: string;
+            /** Exam Date */
+            exam_date?: string;
+            /** Extraction Id */
+            extraction_id?: string;
+            /** Id */
+            id?: string;
+            /** Job Id */
+            job_id?: string;
+            /** Kind */
+            kind?: string;
+            /** Material Id */
+            material_id?: string | null;
+            /** Node Id */
+            node_id?: string;
+            /** Note */
+            note?: string;
+            /** Note Id */
+            note_id?: string | null;
+            open_dialog?: components["schemas"]["ProposalPayload"];
+            /** Replaced Chunk Ids */
+            replaced_chunk_ids?: string[];
+            /** Tags */
+            tags?: string[];
         };
         /** ProviderCreate */
         ProviderCreate: {
@@ -7937,10 +8085,7 @@ export interface components {
             name: string;
             /** Preset Key */
             preset_key?: string | null;
-            /** Status */
-            status: {
-                [key: string]: unknown;
-            } | null;
+            status: components["schemas"]["ProviderStatus"] | null;
             /** Type */
             type: string;
         };
@@ -7951,6 +8096,17 @@ export interface components {
             /** Name */
             name?: string | null;
             options?: components["schemas"]["SetupOptionsIn"] | null;
+        };
+        /** ProviderStatus */
+        ProviderStatus: {
+            /** Error */
+            error?: string | null;
+            /** Last Tested At */
+            last_tested_at?: string;
+            /** Model Count */
+            model_count?: number | null;
+            /** Ok */
+            ok?: boolean;
         };
         /** ProviderUpdate */
         ProviderUpdate: {
@@ -9584,6 +9740,8 @@ export interface components {
             /** Rationale */
             rationale: string | null;
             read_status: components["schemas"]["StudyStatus"];
+            /** Reextract Modes */
+            readonly reextract_modes: string[];
             status: components["schemas"]["MaterialStatus"];
             /** Title */
             title: string;

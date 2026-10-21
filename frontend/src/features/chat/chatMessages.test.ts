@@ -8,12 +8,15 @@ function message(overrides: Partial<ChatMessage> = {}): ChatMessage {
     id: '7',
     role: 'assistant',
     markdown: 'Hello',
+    blocks: [],
     citations: [],
     mentions: [],
     reads: [],
     tool_calls: [],
     proposals: [],
     grounded: null,
+    variant_index: 1,
+    variant_count: 1,
     ...overrides,
   }
 }

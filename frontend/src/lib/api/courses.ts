@@ -1,31 +1,40 @@
 import type { components } from '@/lib/api-schema'
 import { json, apiFetch } from './client'
-import type { WorkspaceConcept } from './materials'
 
 type Schemas = components['schemas']
 
+export type CourseTaskInfo = Schemas['CourseTaskOut']
+export type CourseDefaultTaskInfo = Schemas['CourseDefaultTaskOut']
+export type Course = Schemas['CourseOut']
+export type ScratchpadInfo = Schemas['ScratchpadOut']
+export type CourseBundlePreview = Schemas['BundlePreviewOut']
+export type AllocationInfo = Schemas['TreeNodeMaterialLink']
+export type NodeCounts = Schemas['TreeNodeCounts']
+export type NodeFolderLink = Schemas['TreeNodeFolderLink']
+export type NodeInfo = Schemas['TreeNodeOut']
+export type NodeDetail = Schemas['NodeDetailOut']
+export type WorkspaceMaterial = Schemas['WorkspaceMaterialOut']
+export type WorkspaceFolder = Schemas['WorkspaceFolderOut']
+export type WorkspaceChild = Schemas['WorkspaceChildOut']
+export type WorkspaceNote = Schemas['WorkspaceNoteOut']
+export type ScopeCounts = Schemas['ScopeCountsOut']
+export type NodeWorkspace = Schemas['NodeWorkspaceOut']
+export type ConceptDraftEntry = Schemas['ConceptDraftEntryOut']
+export type ConceptLinkDraft = Schemas['ConceptLinkDraftOut']
+export type ConceptNodeDraft = Schemas['ConceptNodeDraftOut']
+export type ConceptDraft = Schemas['ConceptDraftOut']
+export type ConceptNode = Schemas['ConceptGraphConceptOut']
+export type ConceptGraph = Schemas['ConceptGraphOut']
+export type OrganizerFinding = Schemas['ReviewFindingOut']
+export type NodeReview = Schemas['NodeReviewOut']
+export type NodeArtifacts = Schemas['NodeArtifactsOut']
+export type OutlineDraftSection = Schemas['OutlineSectionOut']
+export type OutlineDraftChapter = Schemas['OutlineChapterOut']
+export type OutlineDraft = Schemas['OutlineDraftOut']
+export type CourseTypeInfo = Schemas['CourseTypeOut']
+
 export type GenesisDraft = Schemas['GenesisDraftOut']
 export type GenesisCommitResult = Schemas['GenesisCommitOut']
-
-export interface CourseTaskInfo {
-  task: string
-  description: string
-  requires: string
-  model_id: string | null
-  fallback_model_id: string | null
-  model_label: string | null
-  fallback_model_label: string | null
-  global_model_label: string | null
-  global_fallback_model_label: string | null
-}
-
-export interface CourseDefaultTaskInfo {
-  // ADR-0037: course capability defaults are single-slot.
-  requires: string
-  model_id: string | null
-  model_label: string | null
-  global_model_label: string | null
-}
 
 export async function listCourseTasks(courseId: string): Promise<CourseTaskInfo[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tasks`)
@@ -68,25 +77,6 @@ export async function assignCourseTaskDefault(
     }
   )
   return json<CourseDefaultTaskInfo>(response)
-}
-
-export interface Course {
-  id: string
-  title: string
-  subject: string | null
-  level: string | null
-  description: string | null
-  color: string | null
-  archived_at: string | null
-  exam_date?: string | null
-  material_count: number
-  origin?: 'manual' | 'genesis' | 'import' | 'scratch'
-  hidden?: boolean
-}
-
-export interface ScratchpadInfo {
-  course: Course
-  content_count: number
 }
 
 export async function getScratchpad(): Promise<ScratchpadInfo> {
@@ -176,12 +166,6 @@ export function courseExportUrl(courseId: string): string {
   return `/api/v1/courses/${courseId}/export`
 }
 
-export interface CourseBundlePreview {
-  title: string | null
-  counts: Record<string, number>
-  warnings: string[]
-}
-
 export async function importCourseBundle(
   file: File,
   dryRun: boolean
@@ -196,60 +180,9 @@ export async function importCourseBundle(
   return json(response)
 }
 
-export interface AllocationInfo {
-  material_id: string
-  title: string
-  rationale: string | null
-  auto_assigned: boolean
-  confidence: number | null
-}
-
-export interface NodeCounts {
-  materials: number
-  notes: number
-  quizzes: number
-  exercises: number
-  flashcards: number
-  studied?: number
-  cards_due?: number
-}
-
-export interface NodeFolderLink {
-  folder_id: string
-  name: string
-  source_id: string | null
-}
-
-export interface NodeInfo {
-  id: string
-  title: string
-  summary: string | null
-  objectives: string[]
-  ai_hint?: string | null
-  order_idx: number
-  depth: number
-  is_root: boolean
-  children: NodeInfo[]
-  counts?: NodeCounts
-  materials: AllocationInfo[]
-  folder_links?: NodeFolderLink[]
-}
-
 export async function courseTree(courseId: string): Promise<NodeInfo[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tree`)
   return json<NodeInfo[]>(response)
-}
-
-export interface NodeDetail {
-  id: string
-  course_id: string
-  parent_id: string | null
-  title: string
-  summary: string | null
-  objectives: string[]
-  depth: number
-  is_root: boolean
-  order_idx: number
 }
 
 export async function getNode(nodeId: string): Promise<NodeDetail> {
@@ -337,86 +270,6 @@ export async function restoreNode(undoToken: string): Promise<{ id: string }> {
   return json<{ id: string }>(response)
 }
 
-export interface WorkspaceMaterial {
-  material_id: string
-  title: string
-  kind: string
-  status: string
-  read_status: string
-  progress: number
-  rationale: string | null
-  auto_assigned: boolean | null
-  confidence: number | null
-  provenance?: { source?: string } | null
-  reextract_modes?: string[]
-  has_extraction: boolean
-  via_folder_id: string | null
-  via_folder_name: string | null
-}
-
-export interface WorkspaceFolder {
-  folder_id: string
-  name: string
-  source_id: string | null
-  member_count: number
-  rationale: string | null
-  auto_assigned: boolean
-}
-
-export interface WorkspaceChild {
-  id: string
-  title: string
-  depth: number
-  order_idx: number
-  objectives: string[]
-  summary: string | null
-}
-
-export interface WorkspaceNote {
-  id: string
-  title: string
-  node_id: string | null
-  owner_type: string
-  owner_id: string | null
-  pinned: boolean
-  updated_at: string | null
-}
-
-export interface ScopeCounts {
-  direct: number
-  with_children: number
-}
-
-export interface NodeWorkspace {
-  node: {
-    id: string
-    course_id: string
-    course_title: string | null
-    title: string
-    summary: string | null
-    objectives: string[]
-    ai_hint: string | null
-    depth: number
-    is_root: boolean
-    parent_id: string | null
-    breadcrumb: { id: string; title: string; depth: number }[]
-  }
-  children: WorkspaceChild[]
-  folders: WorkspaceFolder[]
-  materials: WorkspaceMaterial[]
-  folder_material_ids: string[]
-  child_materials: Record<string, WorkspaceMaterial[]>
-  notes: WorkspaceNote[]
-  counts: {
-    notes: ScopeCounts
-    quizzes: ScopeCounts
-    exercises: ScopeCounts
-    flashcards: ScopeCounts
-    child_nodes: number
-  }
-  concepts: WorkspaceConcept[]
-}
-
 export async function nodeWorkspace(nodeId: string): Promise<NodeWorkspace> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/workspace`)
   return json<NodeWorkspace>(response)
@@ -446,44 +299,7 @@ export async function removeNodeConcept(
   }
 }
 
-export interface ConceptDraftEntry {
-  name: string
-  description: string | null
-  aliases: string[]
-}
-
-export interface ConceptLinkDraft {
-  from: string
-  to: string
-  relation: 'prereq-of' | 'part-of' | 'related-to'
-}
-
-export interface ConceptNodeDraft {
-  node_title: string
-  concepts: string[]
-}
-
-export interface ConceptDraft {
-  concepts: ConceptDraftEntry[]
-  links: ConceptLinkDraft[]
-  nodes: ConceptNodeDraft[]
-}
-
-export type ConceptMastery = 'strong' | 'shaky' | 'weak' | null
-
-export interface ConceptNode {
-  id: string
-  name: string
-  description: string | null
-  aliases: string[]
-  nodes: { node_id: string; node_title: string }[]
-  mastery?: ConceptMastery
-}
-
-export interface ConceptGraph {
-  concepts: ConceptNode[]
-  links: { from: string; to: string; relation: string }[]
-}
+export type ConceptMastery = Schemas['ConceptGraphConceptOut']['mastery']
 
 export async function extractConcepts(courseId: string): Promise<ConceptDraft> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/concepts/extract`, {
@@ -511,31 +327,11 @@ export async function conceptGraph(courseId: string): Promise<ConceptGraph> {
   return json<ConceptGraph>(response)
 }
 
-export interface OrganizerFinding {
-  kind: 'gap' | 'ordering' | 'orphan' | 'coverage'
-  title: string
-  detail: string | null
-  suggestion: string | null
-}
-
-export interface NodeReview {
-  node_id: string
-  node_title: string
-  findings: OrganizerFinding[]
-  material_id: string
-}
-
 export async function reviewNode(nodeId: string): Promise<NodeReview> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/review`, {
     method: 'POST',
   })
   return json<NodeReview>(response)
-}
-
-export interface NodeArtifacts {
-  cheat_sheet: { material_id: string; title: string } | null
-  reviews: { material_id: string; title: string }[]
-  artifact?: { material_id: string; title: string } | null
 }
 
 export async function getNodeArtifacts(
@@ -554,24 +350,6 @@ export async function draftNodeNote(
     method: 'POST',
   })
   return json<{ note_id: string; markdown: string; existing: boolean }>(response)
-}
-
-export interface OutlineDraftSection {
-  title: string
-  objectives: string[]
-  material_ids: string[]
-  rationale: string | null
-  confidence: number
-}
-
-export interface OutlineDraftChapter {
-  title: string
-  summary: string | null
-  sections: OutlineDraftSection[]
-}
-
-export interface OutlineDraft {
-  chapters: OutlineDraftChapter[]
 }
 
 export async function outlineDraft(courseId: string): Promise<OutlineDraft> {
@@ -609,13 +387,6 @@ export async function setStudyState(
 export async function listStudyStates(): Promise<Record<string, { status: string; progress: number }>> {
   const response = await apiFetch('/api/v1/study-states')
   return json<Record<string, { status: string; progress: number }>>(response)
-}
-
-export interface CourseTypeInfo {
-  id: string
-  key: string
-  name: string
-  description: string | null
 }
 
 export async function listCourseTypes(): Promise<CourseTypeInfo[]> {

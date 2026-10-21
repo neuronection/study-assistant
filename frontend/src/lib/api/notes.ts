@@ -1,5 +1,22 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
+import type { BlockDto } from './hand-types'
+
+type Schemas = components['schemas']
+
+export type NoteInfo = Schemas['NoteOut']
+export type NoteDrawingInfo = Schemas['DrawingOut']
+export type NoteDetailInfo = Omit<Schemas['NoteDetail'], 'body' | 'drawings'> & {
+  body: BlockDto[]
+  drawings: NoteDrawingInfo[]
+}
+export type NotesPage = Schemas['NotesPage']
+export type NoteTagSummary = Schemas['NoteTagCountOut']
+export type NoteVersionInfo = Schemas['NoteVersionOut']
+export type NoteVersionDetailInfo = Schemas['NoteVersionDetail']
+export type NoteActionResult = Schemas['ActionOut']
+export type NoteVersionDiffInfo = Schemas['NoteVersionDiffOut']
 
 export async function saveSessionSummaryNote(
   sessionId: string
@@ -8,39 +25,6 @@ export async function saveSessionSummaryNote(
     method: 'POST',
   })
   return json(response)
-}
-
-export interface NoteInfo {
-  id: string
-  title: string
-  course_id: string | null
-  node_id: string | null
-  owner_type: string
-  owner_id: string | null
-  tags: string[]
-  pinned: boolean
-  updated_at: string
-}
-
-export interface NoteDrawingInfo {
-  id: string
-  png_sha: string | null
-  strokes: unknown[]
-  view?: { x: number; y: number; width: number; height: number } | null
-  ocr_version: number
-  ocr_markdown: string | null
-  ocr_job_id?: string | null
-  created_at: string
-}
-
-export interface NoteDetailInfo extends NoteInfo {
-  body: BlockDto[]
-  drawings: NoteDrawingInfo[]
-}
-
-export interface NotesPage {
-  items: NoteInfo[]
-  next_cursor: string | null
 }
 
 export async function listNotes(
@@ -70,11 +54,6 @@ export async function listNotes(
   const suffix = params.size > 0 ? `?${params.toString()}` : ''
   const response = await apiFetch(`/api/v1/notes${suffix}`)
   return json<NotesPage>(response)
-}
-
-export interface NoteTagSummary {
-  tag: string
-  count: number
 }
 
 export async function listNoteTags(courseId?: string): Promise<NoteTagSummary[]> {
@@ -156,18 +135,6 @@ export async function moveNote(
   return json<NoteDetailInfo>(response)
 }
 
-export interface NoteVersionInfo {
-  version_id: string
-  cause: string
-  title: string
-  chars: number
-  created_at: string
-}
-
-export interface NoteVersionDetailInfo extends NoteVersionInfo {
-  body_md: string
-}
-
 export async function listNoteVersions(id: string): Promise<NoteVersionInfo[]> {
   const response = await apiFetch(`/api/v1/notes/${id}/versions`)
   return json<NoteVersionInfo[]>(response)
@@ -243,12 +210,6 @@ export async function deleteDrawing(noteId: string, drawingId: string): Promise<
   return json<NoteDetailInfo>(response)
 }
 
-export interface NoteActionResult {
-  action: string
-  markdown: string
-  violations: string | null
-}
-
 export async function runNoteAction(
   noteId: string,
   action: 'summarize' | 'cleanup' | 'explain' | 'expand'
@@ -259,14 +220,6 @@ export async function runNoteAction(
     body: JSON.stringify({ action }),
   })
   return json<NoteActionResult>(response)
-}
-
-export interface NoteVersionDiffInfo {
-  base: string
-  target: string
-  additions: number
-  deletions: number
-  diff: string
 }
 
 export async function diffNoteVersions(

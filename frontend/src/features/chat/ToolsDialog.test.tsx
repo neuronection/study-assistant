@@ -29,6 +29,7 @@ const catalog: AiToolInfo[] = [
     response: 'number',
     scope: 'Chat answers',
     kind: 'tool',
+    hitl: false,
   },
   {
     name: 'PROPOSE_EDITS',

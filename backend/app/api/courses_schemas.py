@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from ..core.vocab import (
     ConceptRelation,
@@ -8,6 +8,7 @@ from ..core.vocab import (
     MaterialStatus,
     ReviewFindingKind,
     StudyStatus,
+    applicable_extraction_modes,
 )
 
 
@@ -286,6 +287,11 @@ class WorkspaceMaterialOut(BaseModel):
     has_extraction: bool
     via_folder_id: str | None
     via_folder_name: str | None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def reextract_modes(self) -> list[str]:
+        return [mode.value for mode in applicable_extraction_modes(self.kind)]
 
 
 class WorkspaceNoteOut(BaseModel):

@@ -35,6 +35,7 @@ function folder(id: string, name: string, parentId: string | null): Folder {
     parent_id: parentId,
     source_id: null,
     created_at: '2026-08-21T00:00:00Z',
+    node_link_count: 0,
   }
 }
 
@@ -52,6 +53,11 @@ function RESULT(id: string, title: string): UploadResult {
       folder_id: null,
       blob_sha: null,
       created_at: '2026-08-21T00:00:00Z',
+      has_extraction: false,
+      tags: [],
+      starred: false,
+      link_count: 0,
+      reextract_modes: [],
     },
     job_id: null,
     deduped: false,

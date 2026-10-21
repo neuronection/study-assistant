@@ -273,6 +273,7 @@ export function AiHelperPopover({
     paramsRef.current = params
     requestRef.current = {
       text: params.text,
+      diagnostic: params.diagnostic ?? '',
       instruction: params.instruction,
       preset: params.preset,
       mode: params.mode,

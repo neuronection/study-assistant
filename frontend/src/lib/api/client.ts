@@ -1,3 +1,5 @@
+import type { UnsupportedTypeDetail } from './hand-types'
+
 export class ApiError extends Error {
   status: number
   detail: unknown
@@ -9,11 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-export interface UnsupportedTypeDetail {
-  reason: 'unsupported_type'
-  suffix: string
-  accepted: string[]
-}
+export type { UnsupportedTypeDetail } from './hand-types'
 
 export function unsupportedTypeDetail(detail: unknown): UnsupportedTypeDetail | null {
   if (

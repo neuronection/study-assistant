@@ -440,7 +440,7 @@ export function MaterialPickerDialog({
   }
 
   const openFolder = (entry: Folder) => {
-    if (entry.source_id !== null) {
+    if (entry.source_id != null) {
       setLocation({ kind: 'link', folderId: entry.id, sourceId: entry.source_id, subdir: '' })
     } else {
       setLocation({ kind: 'folder', folderId: entry.id })

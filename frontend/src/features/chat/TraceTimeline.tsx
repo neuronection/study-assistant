@@ -20,7 +20,7 @@ export function TraceTimeline({
 }) {
   const { t } = useTranslation()
   const entries: ChatTraceTimelineEntry[] = [
-    ...trace.rounds.map((round) => ({
+    ...(trace.rounds ?? []).map((round) => ({
       kind: 'phase' as const,
       label: t(round.phase === 'repairing' ? 'chat.trace.roundRepair' : 'chat.trace.roundThinking'),
       startMs: round.start_ms,

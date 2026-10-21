@@ -49,7 +49,7 @@ from ..domain.models import (
     Provider,
     TaskAssignment,
 )
-from ..domain.payloads import TaskParams
+from ..domain.payloads import PresetDecisionModel, PresetModelRef, TaskParams
 from ..extensions.search import (
     SearchError,
     delete_search_provider,
@@ -241,7 +241,7 @@ def _provider_out(service: ProvidersService, provider: Provider) -> ProviderOut:
         is_local=provider.is_local,
         country=provider.country,
         masked_key=service.masked_key(provider),
-        status=cast(dict[str, Any] | None, provider.status),
+        status=provider.status,
         created_at=provider.created_at,
     )
 
@@ -253,10 +253,10 @@ class PresetOut(BaseModel):
     fixed_base: bool
     local: bool
     key_url: str | None = None
-    preferred_model: dict[str, Any] | None = None
+    preferred_model: PresetModelRef | None = None
     curated_models: list[str] | None = None
     stt_model: str | None = None
-    decision_models: list[dict[str, Any]] | None = None
+    decision_models: list[PresetDecisionModel] | None = None
     decision_default: str | None = None
     provisional: bool | None = None
     steps: list[str] | None = None

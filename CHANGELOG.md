@@ -11,6 +11,17 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (typed contracts — generated types everywhere, plan 82 B / ADR-203)
+- **Every `lib/api` module consumes the generated OpenAPI schema.** The ~250
+  hand-written wire interfaces are gone; what remains is 27 registered
+  client-side shapes (narrowed views of open documents plus the few routes the
+  schema cannot see), enforced by `pnpm check:api-types` in CI. A backend DTO
+  change now fails `pnpm typecheck` instead of silently widening to `string`.
+- **Closed payload maps are typed server-side:** the chat turn trace, proposal
+  result document, provider status and preset model refs are generated shapes;
+  `MaterialOut.provenance` stays an open metadata document by design and
+  workspace materials expose `reextract_modes`.
+
 ### Changed (no-legacy sweep — mermaid fork removed, plan 82 A / ADR-202)
 - **Mermaid diagrams render through `@neuronection/assistant-ui`.** The local
   `components/blocks/MermaidDiagram.tsx` fork is deleted; `BlockRenderer` and

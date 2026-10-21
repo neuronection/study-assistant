@@ -1,12 +1,9 @@
 import type { components } from '@/lib/api-schema'
 import { apiFetch, json } from './client'
+import type { ExternalSourceKind } from './hand-types'
 
 export type ExternalSourceRow = components['schemas']['ExternalSourceOut']
-export type ExternalSourceKind =
-  | 'rss'
-  | 'youtube_channel'
-  | 'youtube_playlist'
-  | 'site_search'
+export type { ExternalSourceKind } from './hand-types'
 
 export async function listExternalSources(
   courseId?: string | null

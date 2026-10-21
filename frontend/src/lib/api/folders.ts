@@ -1,26 +1,13 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, expectOk, apiFetch } from './client'
 
-export interface Folder {
-  id: string
-  name: string
-  path: string
-  course_id: string
-  parent_id: string | null
-  source_id: string | null
-  created_at: string
-  node_link_count?: number
-}
+type Schemas = components['schemas']
 
-export interface FolderLinkInfo {
-  node_id: string
-  owner_title: string
-  breadcrumb: { id: string; title: string }[]
-  is_course_level: boolean
-  course_id: string
-  course_title: string
-  auto_assigned: boolean
-  rationale: string | null
-}
+export type Folder = Schemas['FolderOut']
+export type FolderLinkInfo = Schemas['FolderLinkInfoOut']
+export type FolderDeleteInfoNodeLink = Schemas['FolderNodeLinkOut']
+export type FolderDeleteInfo = Schemas['FolderDeleteInfoOut']
 
 export async function listFolders(courseId?: string): Promise<Folder[]> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
@@ -60,22 +47,6 @@ export async function moveFolder(
     body: JSON.stringify({ parent_id: parentId }),
   })
   return json<Folder>(response)
-}
-
-export interface FolderDeleteInfoNodeLink {
-  node_id: string
-  owner_title: string
-  breadcrumb: { id: string; title: string }[]
-  is_course_level: boolean
-  course_title: string
-  folder_count: number
-  material_count: number
-}
-
-export interface FolderDeleteInfo {
-  subfolders: number
-  materials: number
-  node_links: FolderDeleteInfoNodeLink[]
 }
 
 export async function getFolderLinks(id: string): Promise<FolderLinkInfo[]> {

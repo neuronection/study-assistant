@@ -126,6 +126,7 @@ export function ReRunSetupDialog({ provider, onClose }: { provider: Provider; on
           bind_chat: options.bindChat,
           bind_vision: options.bindVision,
           bind_stt: options.bindStt,
+          bind_embeddings: true,
           bind_decision: bindDecision,
         },
       }),

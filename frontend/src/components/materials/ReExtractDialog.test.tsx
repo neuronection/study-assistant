@@ -31,6 +31,10 @@ const PDF_MATERIAL: Material = {
   folder_id: null,
   blob_sha: 'a'.repeat(64),
   created_at: '2026-09-01T00:00:00Z',
+  has_extraction: true,
+  tags: [],
+  starred: false,
+  link_count: 0,
   reextract_modes: ['auto', 'text', 'ocr'],
 }
 

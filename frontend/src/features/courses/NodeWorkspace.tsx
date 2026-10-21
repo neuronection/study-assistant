@@ -1742,7 +1742,7 @@ function MaterialsTab({
                 mirrorFeedback(
                   result.created_nodes,
                   result.reused_nodes,
-                  result.skipped_folders,
+                  result.skipped_folders ?? [],
                 ),
             },
           ),

@@ -28,7 +28,7 @@ from ..domain.models import (
     TreeNode,
     utcnow,
 )
-from ..domain.payloads import ProposalPayload, ProposalResult
+from ..domain.payloads import ChatTrace, ProposalPayload, ProposalResult
 from ..domain.proposal_contract import ProposalPayloadError, validate_proposal_payload
 from ..jobs.runner import JobError, JobHandler, JobRunner
 from ..services.knowledge.tree import TreeError, TreeService
@@ -131,7 +131,7 @@ class ProposalOut(BaseModel):
     action: str
     payload: dict[str, Any]
     status: str
-    result: dict[str, Any] | None
+    result: ProposalResult | None
     message_id: str | None = None
     session_id: str | None = None
 
@@ -152,7 +152,7 @@ class MessageOut(BaseModel):
     tool_calls: list[ToolCallOut]
     proposals: list[ProposalOut]
     grounded: bool | None
-    trace: dict[str, Any] | None = None
+    trace: ChatTrace | None = None
     warnings: list[str] = Field(default_factory=list)
     parent_id: str | None = None
     state: dict[str, Any] | None = None

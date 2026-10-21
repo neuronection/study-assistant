@@ -48,7 +48,7 @@ export function useEditorTransformTransport(
       poll: async (jobId) => {
         const job = await getEditorTransformJob(jobId)
         return {
-          status: job.status === 'queued' ? 'running' : job.status,
+          status: editorJobStatus(job.status),
           result: job.result_md,
           error: job.error ?? undefined,
         }
@@ -56,4 +56,13 @@ export function useEditorTransformTransport(
     }),
     [requestRef, t]
   )
+}
+
+function editorJobStatus(
+  status: string
+): 'running' | 'done' | 'error' | 'cancelled' {
+  if (status === 'done' || status === 'error' || status === 'cancelled') {
+    return status
+  }
+  return 'running'
 }

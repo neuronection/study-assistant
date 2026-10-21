@@ -33,6 +33,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['scripts/**'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     files: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
     languageOptions: {
       globals: {

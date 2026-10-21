@@ -8,11 +8,7 @@ export type DiscoverySuggestionList = components['schemas']['SuggestionListOut']
 export type DiscoveryKinds = components['schemas']['DiscoverySitePreset']
 export type DiscoveryPrefs = components['schemas']['DiscoveryPrefsOut']
 
-export interface DiscoverySearchRequest {
-  query: string
-  providers?: string[] | null
-  cap?: number
-}
+export type DiscoverySearchRequest = components['schemas']['DiscoverySearchIn']
 
 export async function searchDiscovery(
   body: DiscoverySearchRequest

@@ -464,7 +464,12 @@ export function GenerateDialog({
     setList(list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
   }
 
-  const coverage = composed?.provenance?.coverage ?? null
+  const coverage = (composed?.provenance?.coverage ?? null) as {
+    total?: number
+    covered?: number
+  } | null
+  const coverageTotal = coverage?.total ?? null
+  const coverageCovered = coverage?.covered ?? null
   const finishComposed = () => {
     const result = composed
     setComposed(null)
@@ -495,15 +500,17 @@ export function GenerateDialog({
                   {t('generate.needsReviewWarning')}
                 </p>
               ) : null}
-              {coverage !== null && coverage.covered < coverage.total ? (
+              {coverageTotal !== null &&
+              coverageCovered !== null &&
+              coverageCovered < coverageTotal ? (
                 <p
                   className="text-muted-foreground text-xs"
                   data-testid="coverage-note"
                 >
                   {t('generate.coverageNote', {
-                    covered: coverage.covered,
-                    total: coverage.total,
-                    missing: coverage.total - coverage.covered,
+                    covered: coverageCovered,
+                    total: coverageTotal,
+                    missing: coverageTotal - coverageCovered,
                   })}
                 </p>
               ) : null}

@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:types": "(cd ../backend && uv run python ../scripts/export-openapi.py) && openapi-typescript openapi.json -o src/lib/api-schema.d.ts",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check:api-types": "node scripts/check-api-types.mjs",
+    "verify": "pnpm check:api-types && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "e2e": "playwright test",
     "i18n": "python3 ../scripts/translations/check_translations.py",
     "i18n:review": "python3 ../scripts/translations/check_translations.py --review"

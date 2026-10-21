@@ -1,122 +1,26 @@
+import type { components } from '@/lib/api-schema'
+
 import { json, apiFetch } from './client'
-import type { BlockDto } from './materials'
 
-export interface ChatSession {
-  id: string
-  public_id: string
-  course_id: string | null
-  node_id: string | null
-  title: string
-  use_embeddings: boolean | null
-  quizme?: boolean
-  quiz_pending?: {
-    question?: string
-    choices?: string[] | null
-    answered?: boolean
-    verdict?: 'correct' | 'incorrect' | null
-    verdict_detail?: string | null
-    student_answer?: string | null
-  } | null
-  created_at: string
-}
+type Schemas = components['schemas']
 
-export interface ChatCitation {
-  index: number
-  chunk_id: string
-  material_id: string
-  title: string
-  quote: string
-}
-
-export type MentionKind = 'material' | 'note' | 'concept' | 'node' | 'quiz' | 'exercise'
-
-export interface MentionRef {
-  ref: string
-  kind: MentionKind
-  id: string
-  title: string
-  course_id?: string | null
-  summary?: string | null
-}
-
-export interface ChatRead {
-  ref: string
-  kind: MentionKind
-  id: string
-  title: string
-  course_id?: string | null
-  chars: number
-}
-
-export interface ChatToolCall {
-  name: string
-  argument: string
-  phase?: string | null
-  result?: string | null
-  title?: string | null
-  status?: string | null
-  start_ms?: number | null
-  duration_ms?: number | null
-  quiz?: {
-    question?: string
-    choices?: string[] | null
-    answered?: boolean
-    verdict?: string | null
-    verdict_detail?: string | null
-    student_answer?: string | null
-    expected_display?: string | null
-  } | null
-}
-
-export interface ChatTraceRound {
-  index: number
-  streamed: boolean
-  start_ms: number
-  duration_ms: number
-  phase: string
-}
-
-export interface ChatTrace {
-  run_id: string
-  model: string | null
-  latency_ms: number
-  input_tokens: number | null
-  output_tokens: number | null
-  repair_rounds: number
-  rounds: ChatTraceRound[]
-  thinking?: string
-}
-
-export interface ChatContextData {
-  session_id: string
-  course_id: string | null
-  node: { id: string; title: string } | null
-  registry: MentionRef[]
-  latest_notes: { id: string; title: string }[]
-}
-
-export interface ChatProposal {
-  id: string
-  action: string
-  payload: Record<string, unknown>
-  status: 'proposed' | 'approved' | 'dismissed' | 'executed' | 'stale' | 'conflict'
-  result?:
-    | {
-        note_id?: string
-        material_id?: string
-        open_dialog?: Record<string, unknown>
-        error?: string
-        conflict?: string
-      }
-    | null
-  message_id?: string | null
-  session_id?: string | null
-}
-
-export interface ChatProposalList {
-  proposals: ChatProposal[]
-  next_cursor: string | null
-}
+export type ChatSession = Schemas['app__api__chat__SessionOut']
+export type ChatCitation = Schemas['CitationOut']
+export type MentionRef = Schemas['MentionRefOut']
+export type MentionKind = Schemas['MentionRefOut']['kind']
+export type ChatRead = Schemas['ReadOut']
+export type ChatToolCall = Schemas['ToolCallOut']
+export type ChatTraceRound = Schemas['ChatTraceRound']
+export type ChatTrace = Schemas['ChatTrace']
+export type ChatContextData = Schemas['SessionContextOut']
+export type ChatProposal = Schemas['ProposalOut']
+export type ChatProposalList = Schemas['ProposalListOut']
+export type ChatMessage = Schemas['MessageOut']
+export type QuizAnswerResult = Schemas['QuizAnswerOut']
+export type ChatBranchNode = Schemas['BranchNodeOut']
+export type ChatBranchTree = Schemas['BranchTreeOut']
+export type ChatAttachmentKind = Schemas['AttachmentIn']['kind']
+export type ChatAttachmentInput = Schemas['AttachmentIn']
 
 export async function listChatProposals(
   status?: ChatProposal['status']
@@ -126,27 +30,6 @@ export async function listChatProposals(
   const query = params.size > 0 ? `?${params.toString()}` : ''
   const response = await apiFetch(`/api/v1/chat/proposals${query}`)
   return json<ChatProposalList>(response)
-}
-
-export interface ChatMessage {
-  id: string
-  role: string
-  markdown: string
-  blocks?: BlockDto[]
-  citations: ChatCitation[]
-  mentions: MentionRef[]
-  reads: ChatRead[]
-  tool_calls: ChatToolCall[]
-  proposals: ChatProposal[]
-  grounded: boolean | null
-  trace?: ChatTrace | null
-  warnings?: string[]
-  parent_id?: string | null
-  /** Persisted turn-failure marker (uniform chat error display). */
-  state?: { turn_failed?: { code: string; detail: string } } | null
-  variant_index?: number
-  variant_count?: number
-  sibling_ids?: string[]
 }
 
 export async function listChatSessions(nodeId?: string): Promise<ChatSession[]> {
@@ -186,14 +69,6 @@ export async function updateChatSessionQuizme(
     body: JSON.stringify({ quizme }),
   })
   return json<ChatSession>(response)
-}
-
-export interface QuizAnswerResult {
-  correct: boolean
-  verdict_detail: string
-  expected_display: string | null
-  user_message_id: string
-  job_id: string | null
 }
 
 export async function answerQuizQuestion(
@@ -286,20 +161,6 @@ export async function stopChatTurn(sessionId: string): Promise<{ stopped: boolea
   return json<{ stopped: boolean }>(response)
 }
 
-export interface ChatBranchNode {
-  id: string
-  role: string
-  excerpt: string
-  parent_id: string | null
-  children: number[]
-  active_child_id: string | null
-}
-
-export interface ChatBranchTree {
-  active_root_id: string | null
-  nodes: ChatBranchNode[]
-}
-
 export async function getChatBranchTree(sessionId: string): Promise<ChatBranchTree> {
   const response = await apiFetch(`/api/v1/chat/sessions/${sessionId}/tree`)
   return json<ChatBranchTree>(response)
@@ -316,19 +177,6 @@ export async function dismissChatProposal(proposalId: string): Promise<ChatPropo
     method: 'POST',
   })
   return json<ChatProposal>(response)
-}
-
-export type ChatAttachmentKind =
-  | 'material'
-  | 'note'
-  | 'quiz'
-  | 'exercise'
-  | 'node'
-  | 'course'
-
-export interface ChatAttachmentInput {
-  kind: ChatAttachmentKind
-  id: string
 }
 
 export async function sendChatMessage(

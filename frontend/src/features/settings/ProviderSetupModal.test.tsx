@@ -248,6 +248,7 @@ describe('ProviderSetupModal', () => {
           bind_chat: true,
           bind_vision: true,
           bind_stt: true,
+          bind_embeddings: true,
           bind_decision: false,
         },
       })

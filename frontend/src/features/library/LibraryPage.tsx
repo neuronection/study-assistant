@@ -226,7 +226,7 @@ export function LibraryPage() {
       (entry) =>
         entry.id === searchParams.folder && entry.source_id === searchParams.source
     )
-    if (folder && folder.source_id !== null) {
+    if (folder && folder.source_id != null) {
       setLinkState({ folderId: folder.id, sourceId: folder.source_id, subdir: '' })
     }
   }, [searchParams.source, searchParams.folder, allFolders, linkState])
@@ -908,7 +908,7 @@ export function LibraryPage() {
   }, [course, currentFolder, allFolders, t, goToCourse, goToFolder, linkState, linkFolder])
 
   const openLinkFolder = (entry: Folder) => {
-    if (entry.source_id === null) {
+    if (entry.source_id == null) {
       goToFolder(entry.id)
       return
     }

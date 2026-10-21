@@ -630,7 +630,11 @@ function NextBestActions() {
             </p>
             <p className="text-muted-foreground text-xs">{evidenceLine(rec, t)}</p>
           </div>
-          <ActionButton kind={rec.kind} concept={rec.concept} skill={rec.skill} />
+          <ActionButton
+            kind={rec.kind}
+            concept={rec.concept ?? null}
+            skill={rec.skill ?? null}
+          />
         </div>
       ))}
     </div>

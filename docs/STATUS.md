@@ -3148,6 +3148,23 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 82 B: generated types everywhere (ADR-203).** All 28
+  `lib/api/*` modules now import `api-schema` and every wire shape is a
+  `components['schemas'][…]` alias; the 251 hand declarations shrank to **27
+  registered client shapes** in `lib/api/hand-types.ts` (open wire maps the app
+  narrows once, the `nx_auth` kit rows the schema cannot express, desktop-only
+  routes, and the sanitized block/provenance read models). The gate
+  `pnpm check:api-types` (wired into `verify` and CI) fails unregistered hand
+  declarations, stale register entries and modules that stop importing the
+  schema. Backend DTOs were typed where the map is closed — chat `trace`
+  (`ChatTrace`/`ChatTraceRound`, `run_id`, typed rounds), the proposal `result`
+  document, `provider.status`, preset model refs — so `pnpm api:types` emits
+  real shapes instead of `{}`; `MaterialOut.provenance` deliberately stays an
+  open metadata map (Pydantic would strip unknown keys) and
+  `WorkspaceMaterialOut` gains the computed `reextract_modes`. `pnpm api:types`
+  regenerated (276 paths / 414 schemas) in the same commit. Backend gate green
+  (ruff, format, mypy strict, 1,797 passed / 4 skipped); frontend gate green
+  (lint, typecheck, 1,468 tests, build, api-types).
 - 2026-10-21 — **plan 82 A step 1: the mermaid fork is gone and the chat hosts
   stop shadowing library names (ADR-202).** `components/blocks/MermaidDiagram.tsx`
   (+ its test) is deleted; `BlockRenderer` and the editor's `CaMermaid` node view
