@@ -26,7 +26,7 @@ def test_quizgen_validation_golden_set() -> None:
 def test_golden_covers_every_question_type() -> None:
     golden = load_golden()
     covered = {case["draft"].get("type") for case in golden["cases"]}
-    from app.core.vocab import QUESTION_TYPES
+    from app.core.vocab import QuestionType
 
-    missing = set(QUESTION_TYPES) - covered
+    missing = set(QuestionType.values()) - covered
     assert not missing, f"golden set never exercises: {sorted(missing)}"

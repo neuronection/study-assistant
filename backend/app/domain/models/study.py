@@ -2,6 +2,9 @@ from ...core.vocab import (
     AttemptMode as AttemptMode,
 )
 from ...core.vocab import (
+    ExerciseKind as ExerciseKind,
+)
+from ...core.vocab import (
     ItemFlag as ItemFlag,
 )
 from ...core.vocab import (
@@ -9,6 +12,9 @@ from ...core.vocab import (
 )
 from ...core.vocab import (
     PlanItemOrigin as PlanItemOrigin,
+)
+from ...core.vocab import (
+    QuestionType as QuestionType,
 )
 from ...core.vocab import (
     StudySessionKind as StudySessionKind,
@@ -139,7 +145,10 @@ class Activity(Base):
 
 class Question(Base):
     __tablename__ = "questions"
-    __table_args__ = (vocab_check("flag", ItemFlag),)
+    __table_args__ = (
+        vocab_check("flag", ItemFlag),
+        vocab_check("type", QuestionType),
+    )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     activity_id: Mapped[str] = mapped_column(
@@ -242,6 +251,7 @@ class Exercise(Base):
             ["tree_nodes.id", "tree_nodes.course_id"],
             ondelete="CASCADE",
         ),
+        vocab_check("kind", ExerciseKind),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)

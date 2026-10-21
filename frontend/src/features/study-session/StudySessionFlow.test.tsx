@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { StudySessionPage } from './StudySessionFlow'
-import type { ReviewDue } from '@/lib/api'
+import type { FlashcardInfo, ReviewDue } from '@/lib/api'
 
 const getStudyNext = vi.fn()
 const getReviewDue = vi.fn()
@@ -33,10 +33,10 @@ vi.mock('@/features/ai/GenerateDialog', () => ({
   GenerateDialog: () => <div>generate-dialog</div>,
 }))
 
-function makeCard(id: string, front: string) {
+function makeCard(id: string, front: string): FlashcardInfo {
   return {
     id,
-    kind: 'basic',
+    kind: 'card_basic',
     front: [{ type: 'text', md: front }],
     back: [{ type: 'text', md: `back ${front}` }],
     source: 'manual',

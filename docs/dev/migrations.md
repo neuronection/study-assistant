@@ -17,7 +17,10 @@ The schema is **one squashed baseline plus forward-only history** from here:
 
 - **Model-first, always.** Edit `backend/app/domain/models/`, then write the
   revision to match. The model⇄DB drift gate (`tests/test_model_db_drift.py`)
-  fails any database shape the models do not declare.
+  fails any database shape the models do not declare. The first forward
+  revision after the baseline is `0002_vocab_sweep` (plan 82 C): the model
+  gained `questions.type` / `exercises.kind` CHECK twins and the revision
+  adds them, on SQLite through `batch_alter_table(recreate="always")`.
 - **One migration per change, batched per round.** A feature round lands its
   schema changes in one revision per logical change (not one per day, not a
   grab-bag). Parallel worktrees renumber onto the new head before committing.

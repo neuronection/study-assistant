@@ -3,6 +3,10 @@ from enum import StrEnum
 
 class StrVocab(StrEnum):
     @classmethod
+    def values(cls) -> tuple[str, ...]:
+        return tuple(member.value for member in cls)
+
+    @classmethod
     def parse(cls, value: str) -> "StrVocab":
         try:
             return cls(value)
@@ -32,6 +36,40 @@ class JobType(StrVocab):
     GENESIS = "genesis"
     URL_IMPORT = "url_import"
     COMPOSE = "compose"
+
+
+class QuestionType(StrVocab):
+    SINGLE = "single"
+    MULTI = "multi"
+    TRUEFALSE = "truefalse"
+    TEXT = "text"
+    NUMERIC = "numeric"
+    EQUATION = "equation"
+    NUMBERLINE = "numberline"
+    TABLE_FILL = "table_fill"
+    COMPOSITE = "composite"
+    GRAPH_READ = "graph_read"
+    CODE = "code"
+
+
+class ExerciseKind(StrVocab):
+    MULTI_STEP = "multi_step"
+    CARD_BASIC = "card_basic"
+    CARD_REVERSE = "card_reverse"
+    CARD_CLOZE = "card_cloze"
+    MATCHING = "matching"
+    ORDERING = "ordering"
+    CATEGORIZE = "categorize"
+    FILL_BLANK = "fill_blank"
+    EXPLAIN = "explain"
+    ERROR_SPOT = "error_spot"
+    CORRECT_SOLUTION = "correct_solution"
+
+
+class FlashcardKind(StrVocab):
+    CARD_BASIC = "card_basic"
+    CARD_CLOZE = "card_cloze"
+    CARD_REVERSE = "card_reverse"
 
 
 class ToolEntryKind(StrVocab):
@@ -322,18 +360,3 @@ class WsTopic:
     @staticmethod
     def material(material_id: str) -> str:
         return f"material:{material_id}"
-
-
-QUESTION_TYPES: tuple[str, ...] = (
-    "single",
-    "multi",
-    "truefalse",
-    "text",
-    "numeric",
-    "equation",
-    "numberline",
-    "table_fill",
-    "composite",
-    "graph_read",
-    "code",
-)

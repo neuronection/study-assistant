@@ -146,7 +146,7 @@ def test_quiz_delete_and_restore_with_attempts() -> None:
             db.flush()
             question = Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "1+1?"}],
                 options=[{"type": "text", "md": "2"}],
                 answer={"index": 0},

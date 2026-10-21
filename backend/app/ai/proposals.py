@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from ..core.vocab import PLAN_ITEM_KINDS, QUESTION_TYPES
+from ..core.vocab import PLAN_ITEM_KINDS, QuestionType
 from .mentions import KIND_BY_LETTER, LETTER_BY_KIND
 
 
@@ -224,10 +224,10 @@ class GenerateQuizPayload(BaseModel):
     @field_validator("question_types")
     @classmethod
     def _known_question_types(cls, value: list[str]) -> list[str]:
-        unknown = [t for t in value if t not in QUESTION_TYPES]
+        unknown = [t for t in value if t not in QuestionType.values()]
         if unknown:
             raise ValueError(
-                f"unknown question type(s) {unknown} (allowed: {', '.join(QUESTION_TYPES)})"
+                f"unknown question type(s) {unknown} (allowed: {', '.join(QuestionType.values())})"
             )
         return value
 

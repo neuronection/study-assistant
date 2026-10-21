@@ -233,7 +233,7 @@ def test_analytics_exclude_scratch_courses(client: TestClient, profile_id: str) 
             db.flush()
             question = Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "1+1?"}],
                 options=[{"type": "text", "md": "2"}, {"type": "text", "md": "3"}],
                 answer={"index": 0},

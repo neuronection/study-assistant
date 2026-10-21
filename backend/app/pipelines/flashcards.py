@@ -9,6 +9,7 @@ from ..ai.parsing import blocks_to_md
 from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import FLASHCARDS_SYSTEM
 from ..ai.structured import FlashcardsOut
+from ..core.vocab import FlashcardKind
 from ..domain.models import Exercise, ExerciseStep
 from ..services.knowledge.context import ContextBundle
 from ..services.study.cards import create_card_exercise
@@ -18,7 +19,7 @@ FLASHCARDS_SKILL = "flashcards.generate"
 MAX_REPAIR_ROUNDS = 2
 MAX_CARDS = 30
 
-KINDS = ("card_basic", "card_cloze", "card_reverse")
+KINDS: tuple[FlashcardKind, ...] = tuple(FlashcardKind)
 CLOZE_RE = re.compile(r"\{\{c?\d*::?[^}]*\}\}|\{\{[^}]*\}\}")
 
 

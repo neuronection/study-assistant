@@ -67,7 +67,7 @@ def insert_quiz(app: FastAPI, course_id: str) -> str:
     db.add(
         Question(
             activity_id=activity.id,
-            type="choice",
+            type="single",
             stem=[{"type": "text", "md": "What is $d/dx\\ x^2$?"}],
             options=[
                 {"type": "text", "md": "$2x$"},
@@ -240,7 +240,7 @@ def test_read_quiz_and_exercise_attachments(
         ]
         second_prompt = "\n".join(str(message.content) for message in gateway.calls[-1])
         assert "Derivatives check — quiz with 1 questions" in second_prompt
-        assert "Q1 (choice): What is $d/dx\\ x^2$?" in second_prompt
+        assert "Q1 (single): What is $d/dx\\ x^2$?" in second_prompt
         assert "A) $2x$" in second_prompt
         assert "answer: A" in second_prompt
         assert "Chain rule practice — multi_step exercise with 1 steps" in second_prompt

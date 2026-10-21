@@ -4,4 +4,4 @@ The chain is one squashed baseline, so every head assertion imports this
 constant instead of carrying a literal (the pre-squash drift this replaces).
 """
 
-HEAD_REVISION = "0001_baseline"
+HEAD_REVISION = "0002_vocab_sweep"

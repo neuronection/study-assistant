@@ -7,7 +7,7 @@ from ..ai.gateway import LLMGateway
 from ..ai.runner import AuditRef, TaskRunner
 from ..ai.skills import QUIZGEN_SYSTEM
 from ..ai.structured import QuizgenOut
-from ..core.vocab import QUESTION_TYPES
+from ..core.vocab import QuestionType
 from ..domain.models import Activity, Question
 from ..domain.payloads import QuestionAnswer
 from ..math.code import validate_code_answer
@@ -40,7 +40,9 @@ class QuizgenError(ValueError):
     pass
 
 
-def _default_blueprint(count: int, question_types: list[str] | None = None) -> list[dict[str, Any]]:
+def _default_blueprint(
+    count: int, question_types: list[QuestionType] | None = None
+) -> list[dict[str, Any]]:
     count = max(1, min(count, 30))
     if question_types:
         types = list(question_types)
@@ -52,7 +54,7 @@ def _default_blueprint(count: int, question_types: list[str] | None = None) -> l
 def validate_question(draft: dict[str, Any], index: int) -> list[str]:
     problems: list[str] = []
     qtype = draft.get("type")
-    if qtype not in QUESTION_TYPES:
+    if qtype not in QuestionType.values():
         problems.append(f"q{index}: unknown type '{qtype}'")
         return problems
     if not str(draft.get("stem_md", "")).strip():
@@ -110,7 +112,7 @@ def _build_prompt(
     topic: str | None,
     skill: str | None,
     context: ContextBundle | None,
-    question_types: list[str] | None = None,
+    question_types: list[QuestionType] | None = None,
 ) -> str:
     blueprint = _default_blueprint(count, question_types)
     type_counts: dict[str, int] = {}
@@ -155,7 +157,7 @@ class QuizgenService:
         context: ContextBundle | None = None,
         topic: str | None = None,
         skill: str | None = None,
-        question_types: list[str] | None = None,
+        question_types: list[QuestionType] | None = None,
         shuffle: bool = False,
     ) -> tuple[list[Question], list[str]]:
         count = max(1, min(count, 30))

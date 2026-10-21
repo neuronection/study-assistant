@@ -19,7 +19,7 @@ vi.mock('react-i18next', async (importOriginal) => {
 function makeCard(id: string, frontMd: string): FlashcardInfo {
   return {
     id,
-    kind: 'basic',
+    kind: 'card_basic',
     front: [{ type: 'text', md: frontMd }],
     back: [{ type: 'text', md: `back ${id}` }],
     source: 'manual',

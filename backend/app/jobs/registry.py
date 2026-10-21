@@ -13,7 +13,7 @@ from fastapi import FastAPI
 
 from ..ai.graphs.chat_turn_adapter import ChatTurnEngine
 from ..api.chat import SessionTurnLocks, make_chat_turn_handler
-from ..core.vocab import WsTopic
+from ..core.vocab import JobType, WsTopic
 from ..pipelines.compose import make_compose_handler
 from ..pipelines.drawing_ocr import make_drawing_ocr_handler
 from ..pipelines.genesis import make_genesis_handler
@@ -28,7 +28,7 @@ def build_job_runner(app: FastAPI) -> JobRunner:
     """Build the `JobRunner` over `app.state` services; set `turn_locks`."""
 
     def _chat_turn_group(job: Any) -> str | None:
-        if job.type != "chat_turn":
+        if job.type != JobType.CHAT_TURN:
             return None
         chat_session_id = (job.payload or {}).get("chat_session_id")
         if chat_session_id is None:
@@ -43,11 +43,11 @@ def build_job_runner(app: FastAPI) -> JobRunner:
         app.state.session_factory,
         app.state.bus,
         handlers={
-            "ingest": make_ingest_handler(app.state.blobs, app.state.ocr, app.state.gateway),
-            "postprocess": make_postprocess_handler(
+            JobType.INGEST: make_ingest_handler(app.state.blobs, app.state.ocr, app.state.gateway),
+            JobType.POSTPROCESS: make_postprocess_handler(
                 app.state.embedder.embed, app.state.describer.describe
             ),
-            "chat_turn": make_chat_turn_handler(
+            JobType.CHAT_TURN: make_chat_turn_handler(
                 app.state.gateway,
                 app.state.embedder,
                 app.state.bus,
@@ -55,15 +55,15 @@ def build_job_runner(app: FastAPI) -> JobRunner:
                 search_transport_provider=lambda: getattr(app.state, "search_transport", None),
                 turn_locks=app.state.turn_locks,
             ),
-            "drawing_ocr": make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
-            "image_ocr": make_image_ocr_handler(app.state.gateway, app.state.blobs),
-            "genesis": make_genesis_handler(
+            JobType.DRAWING_OCR: make_drawing_ocr_handler(app.state.gateway, app.state.blobs),
+            JobType.IMAGE_OCR: make_image_ocr_handler(app.state.gateway, app.state.blobs),
+            JobType.GENESIS: make_genesis_handler(
                 app.state.gateway, app.state.blobs, app.state.embedder.embed
             ),
-            "compose": make_compose_handler(
+            JobType.COMPOSE: make_compose_handler(
                 app.state.gateway, app.state.blobs, app.state.embedder.embed
             ),
-            "url_import": make_url_import_handler(
+            JobType.URL_IMPORT: make_url_import_handler(
                 app.state.blobs,
                 lambda: getattr(app.state, "search_transport", None),
             ),

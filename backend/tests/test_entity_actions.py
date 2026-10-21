@@ -85,7 +85,7 @@ def make_quiz_with_history(app: FastAPI, course_id: str) -> str:
     db.flush()
     question = Question(
         activity_id=activity.id,
-        type="choice",
+        type="single",
         stem=[{"type": "text", "md": "1+1?"}],
         options=[{"type": "text", "md": "2"}, {"type": "text", "md": "3"}],
         answer={"index": 0},

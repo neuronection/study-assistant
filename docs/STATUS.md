@@ -3148,6 +3148,21 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 82 C: vocabulary sweep (ADR-204).** `QUESTION_TYPES` is
+  the `QuestionType` StrEnum, the exercise-kind constants are `ExerciseKind`,
+  the flashcard `KINDS` is `FlashcardKind`, and `jobs/registry.py` keys
+  handlers by `JobType` members (the dispatch test asserts enum ⇄ handler
+  parity both ways). The DTOs that carry these values are typed with the
+  enums — `QuestionOut.type`, `ExerciseOut.kind`, `CardIn`/`CardOut.kind`, the
+  quiz-generate `question_types` request list — so OpenAPI emits closed unions
+  and an unknown quiz type is a Pydantic 422. Migration `0002_vocab_sweep`
+  adds the CHECK twins for `questions.type` and `exercises.kind`
+  (`batch_alter_table(recreate="always")`, tested downgrade); CLOSED_SETS and
+  the generated schema inventory follow; `check-ai-alignment.sh` clean. Proof
+  of the ADR-203 acceptance: renaming `QuestionType.CODE` on the backend
+  turned `pnpm typecheck` red in `QuizRunner` (3 errors) before the revert.
+  Backend gate green (ruff, format, mypy strict, 1,825 passed / 4 skipped);
+  frontend gate green (lint, typecheck, 1,468 tests, build).
 - 2026-10-21 — **plan 82 B: generated types everywhere (ADR-203).** All 28
   `lib/api/*` modules now import `api-schema` and every wire shape is a
   `components['schemas'][…]` alias; the 251 hand declarations shrank to **27

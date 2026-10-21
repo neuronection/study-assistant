@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..ai.gateway import ProviderError, TaskUnassigned
-from ..core.vocab import QUESTION_TYPES, AttemptMode
+from ..core.vocab import AttemptMode, QuestionType
 from ..domain.models import (
     Activity,
     AiInteraction,
@@ -62,14 +62,14 @@ class GenerateIn(ContextParams):
     difficulty: int | None = Field(default=None, ge=1, le=5)
     topic: str | None = Field(default=None, max_length=300)
     skill: str | None = Field(default=None, max_length=20)
-    question_types: list[str] | None = None
+    question_types: list[QuestionType] | None = None
     shuffle: bool = False
     time_limit_sec: int | None = Field(default=None, ge=60, le=14400)
 
 
 class QuestionOut(BaseModel):
     id: str
-    type: str
+    type: QuestionType
     stem: list[dict[str, Any]]
     options: list[dict[str, Any]] | None
     difficulty: float | None
@@ -219,7 +219,7 @@ def _question_input(question: Question) -> dict[str, Any] | None:
 def _question_out(question: Question) -> QuestionOut:
     return QuestionOut(
         id=question.id,
-        type=question.type,
+        type=QuestionType(question.type),
         stem=cast(list[dict[str, Any]], question.stem),
         options=cast(list[dict[str, Any]], question.options),
         difficulty=question.difficulty,
@@ -238,13 +238,6 @@ def generate_quiz(
     session: Session = Depends(get_session),
 ) -> ActivityOut:
     profile = ensure_default_profile(session)
-    if body.question_types:
-        unknown = [t for t in body.question_types if t not in QUESTION_TYPES]
-        if unknown:
-            raise HTTPException(
-                status_code=422,
-                detail=f"unknown question type(s): {', '.join(unknown)}",
-            )
     node = None
     try:
         placement_node_id = TreeService(session).placement_node(body.course_id, body.node_id)

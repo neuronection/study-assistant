@@ -11,6 +11,15 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (vocabulary sweep — closed sets at every boundary, plan 82 C / ADR-204)
+- **Question types, exercise kinds, flashcard kinds and job handler keys are
+  StrEnums.** The API DTOs carry them, so the OpenAPI schema emits closed
+  unions: an unknown quiz `type` is rejected with a 422 and a new member
+  fails the frontend typecheck until the UI handles it. `questions.type` and
+  `exercises.kind` gain DB CHECK twins in migration `0002_vocab_sweep`, and a
+  job-dispatch test asserts every `JobType` member has a handler and vice
+  versa.
+
 ### Changed (typed contracts — generated types everywhere, plan 82 B / ADR-203)
 - **Every `lib/api` module consumes the generated OpenAPI schema.** The ~250
   hand-written wire interfaces are gone; what remains is 27 registered

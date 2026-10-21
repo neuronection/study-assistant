@@ -1,8 +1,8 @@
 # Data model (as built)
 
 SQLite, WAL mode, foreign keys on, busy-timeout 5 s. Managed by Alembic —
-one squashed baseline revision, `0001_baseline` (plan 81 F, ADR-196); the app
-runs migrations on startup. All user-content tables are `profile_id`-scoped
+the `0001_baseline` squash (plan 81 F, ADR-196) plus `0002_vocab_sweep`
+(plan 82 C); the app runs migrations on startup. All user-content tables are `profile_id`-scoped
 (no-auth profiles; a default profile is seeded on first run).
 
 The **contract** layer — per-table identity, closed sets and their CHECK twins,
@@ -406,6 +406,13 @@ signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0002_vocab_sweep (plan 82 C, ADR-204)**: `questions.type` and
+  `exercises.kind` gain their CHECK twins now that the vocabularies are
+  StrEnums (`QuestionType`, `ExerciseKind`; `exercises.kind` also carries the
+  `FlashcardKind` card kinds — cards are exercise rows). SQLite cannot add a
+  CHECK in place, so both land through `batch_alter_table(recreate="always")`;
+  a row holding an unknown value fails the copy loudly. Downgrade drops both
+  and recreates the previous shape.
 - **0001_baseline (plan 81 F, ADR-196)**: the chain squashed. The former
   `0001`–`0075` history is deleted and `0001_baseline` is regenerated from
   the post-A–E models (65 tables, all named constraints/CHECK twins, UUID

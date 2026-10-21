@@ -184,7 +184,7 @@ def test_teachback_recommendation_after_repeated_drilling(
             assert activity is not None
             question = Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "integrate by parts"}],
                 options=[{"type": "text", "md": "ok"}],
                 answer={"index": 0},

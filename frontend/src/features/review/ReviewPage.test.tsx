@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { ReviewPage } from './ReviewPage'
-import type { ReviewDue } from '@/lib/api'
+import type { FlashcardInfo, ReviewDue } from '@/lib/api'
 
 const getReviewDue = vi.fn()
 const reviewFlashcard = vi.fn()
@@ -34,10 +34,10 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-function makeCard(id: string, frontMd: string) {
+function makeCard(id: string, frontMd: string): FlashcardInfo {
   return {
     id,
-    kind: 'basic',
+    kind: 'card_basic',
     front: [{ type: 'text', md: frontMd }],
     back: [{ type: 'text', md: `back ${id}` }],
     source: 'manual',

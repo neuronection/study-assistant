@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..ai.gateway import ProviderError, TaskUnassigned
-from ..core.vocab import WsTopic
+from ..core.vocab import FlashcardKind, WsTopic
 from ..domain.models import (
     Exercise,
     Extraction,
@@ -47,7 +47,7 @@ class GenerateIn(ContextParams):
 
 
 class CardIn(BaseModel):
-    kind: str = "card_basic"
+    kind: FlashcardKind = FlashcardKind.CARD_BASIC
     front_md: str = Field(min_length=1, max_length=2000)
     back_md: str = Field(min_length=1, max_length=2000)
     course_id: str
@@ -56,7 +56,7 @@ class CardIn(BaseModel):
 
 class CardOut(BaseModel):
     id: str
-    kind: str
+    kind: FlashcardKind
     front: list[dict[str, Any]]
     back: list[dict[str, Any]]
     source: str
@@ -87,7 +87,11 @@ def card_out(card: Exercise, state: FsrsState | None) -> CardOut:
     source, source_ref = card_source(card)
     return CardOut(
         id=card.id,
-        kind=parts["kind"] if parts else "card_basic",
+        kind=(
+            FlashcardKind(parts["kind"])
+            if parts and parts["kind"] in FlashcardKind.values()
+            else FlashcardKind.CARD_BASIC
+        ),
         front=parts["front"] if parts else [],
         back=parts["back"] if parts else [],
         source=source,

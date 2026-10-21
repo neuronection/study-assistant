@@ -174,7 +174,7 @@ def test_generate_biases_weak_concepts(client: TestClient, profile_id: str) -> N
         assert row is not None
         question = Question(
             activity_id=row.id,
-            type="choice",
+            type="single",
             stem=[{"type": "text", "md": "2+2?"}],
             options=[{"type": "text", "md": "4"}],
             answer={"index": 0},
@@ -264,7 +264,7 @@ def _seed_answers(client: TestClient, course_id: str, profile_id: str, results: 
         assert row is not None
         question = Question(
             activity_id=row.id,
-            type="choice",
+            type="single",
             stem=[{"type": "text", "md": "2+2?"}],
             options=[{"type": "text", "md": "4"}],
             answer={"index": 0},

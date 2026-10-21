@@ -131,7 +131,7 @@ def seed_course(client: TestClient) -> str:
         db.add(
             Question(
                 activity_id=activity.id,
-                type="choice",
+                type="single",
                 stem=[{"type": "text", "md": "d/dx x^2?"}],
                 options=[{"type": "text", "md": "2x"}],
                 answer={"index": 0},

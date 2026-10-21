@@ -5102,11 +5102,8 @@ export interface components {
             course_id: string;
             /** Front Md */
             front_md: string;
-            /**
-             * Kind
-             * @default card_basic
-             */
-            kind: string;
+            /** @default card_basic */
+            kind: components["schemas"]["FlashcardKind"];
             /** Node Id */
             node_id?: string | null;
         };
@@ -5124,8 +5121,7 @@ export interface components {
             }[];
             /** Id */
             id: string;
-            /** Kind */
-            kind: string;
+            kind: components["schemas"]["FlashcardKind"];
             /** Node Id */
             node_id: string | null;
             /** Source */
@@ -5960,6 +5956,11 @@ export interface components {
             /** Deleted Item Id */
             deleted_item_id: string;
         };
+        /**
+         * ExerciseKind
+         * @enum {string}
+         */
+        ExerciseKind: "multi_step" | "card_basic" | "card_reverse" | "card_cloze" | "matching" | "ordering" | "categorize" | "fill_blank" | "explain" | "error_spot" | "correct_solution";
         /** ExerciseMove */
         ExerciseMove: {
             /** Node Id */
@@ -5975,11 +5976,8 @@ export interface components {
             difficulty: number | null;
             /** Id */
             id: string;
-            /**
-             * Kind
-             * @default multi_step
-             */
-            kind: string;
+            /** @default multi_step */
+            kind: components["schemas"]["ExerciseKind"];
             /** Node Id */
             node_id: string | null;
             /** Step Count */
@@ -6132,6 +6130,11 @@ export interface components {
             /** Partial Credit */
             partial_credit: number;
         };
+        /**
+         * FlashcardKind
+         * @enum {string}
+         */
+        FlashcardKind: "card_basic" | "card_cloze" | "card_reverse";
         /** FolderAllocationIn */
         FolderAllocationIn: {
             /** Folder Id */
@@ -7977,7 +7980,7 @@ export interface components {
             /** Markdown */
             markdown?: string;
             /** Material Id */
-            material_id?: string;
+            material_id?: string | null;
             /** Material Ids */
             material_ids?: string[];
             /** Name */
@@ -7989,7 +7992,7 @@ export interface components {
             /** Node Id */
             node_id?: string | null;
             /** Note Id */
-            note_id?: string;
+            note_id?: string | null;
             /** Note Ids */
             note_ids?: string[];
             /** Question Types */
@@ -8158,9 +8161,13 @@ export interface components {
             stem: {
                 [key: string]: unknown;
             }[];
-            /** Type */
-            type: string;
+            type: components["schemas"]["QuestionType"];
         };
+        /**
+         * QuestionType
+         * @enum {string}
+         */
+        QuestionType: "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" | "numberline" | "table_fill" | "composite" | "graph_read" | "code";
         /** QuizAnswerIn */
         QuizAnswerIn: {
             /** Answer */
@@ -9964,7 +9971,7 @@ export interface components {
             /** Note Ids */
             note_ids?: string[];
             /** Question Types */
-            question_types?: string[] | null;
+            question_types?: components["schemas"]["QuestionType"][] | null;
             /** @default subtree */
             scope: components["schemas"]["ContextScope"];
             /**

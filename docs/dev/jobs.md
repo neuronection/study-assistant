@@ -16,8 +16,11 @@ schedulers. Progress surfaces in the UI on the `/jobs` activity page.
   (marked `failed` with an "interrupted" error) and spawns worker threads
   (default 4). Workers poll the `jobs` table, claim a queued row, run its
   registered handler, and update status.
-- Handlers are registered by **name** in the `handlers` dict built in
-  `main.py`; each handler is `(Session, Job, ProgressReporter) -> None`.
+- Handlers are registered in `app/jobs/registry.py` keyed by **`JobType`
+  members** (plan 82 C, ADR-204) — the enum is the single vocabulary, so a
+  typo'd key cannot silently drop jobs. `tests/test_job_registry.py` asserts
+  every `JobType` member has a registered handler and vice versa. Each
+  handler is `(Session, Job, ProgressReporter) -> None`.
 - Progress is reported through the `EventBus`, which bridges worker threads to
   WebSocket subscribers via `publish_threadsafe`.
 - Failed jobs are recorded and logged (structlog `job_failed`); the pool keeps

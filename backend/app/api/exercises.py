@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.parsing import blocks_to_md as _blocks_to_md
+from ..core.vocab import ExerciseKind
 from ..domain.models import (
     Activity,
     ChatSession,
@@ -61,7 +62,7 @@ class ExerciseOut(BaseModel):
     title: str
     course_id: str | None
     node_id: str | None
-    kind: str = "multi_step"
+    kind: ExerciseKind = ExerciseKind.MULTI_STEP
     deck_ref: str | None = None
     difficulty: float | None
     step_count: int
@@ -497,7 +498,7 @@ def _exercise_out(exercise: Exercise, step_count: int) -> ExerciseOut:
         title=exercise.title,
         course_id=exercise.course_id,
         node_id=exercise.node_id,
-        kind=exercise.kind,
+        kind=ExerciseKind(exercise.kind),
         deck_ref=exercise.deck_ref,
         difficulty=exercise.difficulty,
         step_count=step_count,

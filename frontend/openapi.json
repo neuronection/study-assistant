@@ -1020,9 +1020,8 @@
             "type": "string"
           },
           "kind": {
-            "default": "card_basic",
-            "title": "Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/FlashcardKind",
+            "default": "card_basic"
           },
           "node_id": {
             "anyOf": [
@@ -1078,8 +1077,7 @@
             "type": "string"
           },
           "kind": {
-            "title": "Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/FlashcardKind"
           },
           "node_id": {
             "anyOf": [
@@ -3657,6 +3655,23 @@
         "title": "ExerciseDeletedOut",
         "type": "object"
       },
+      "ExerciseKind": {
+        "enum": [
+          "multi_step",
+          "card_basic",
+          "card_reverse",
+          "card_cloze",
+          "matching",
+          "ordering",
+          "categorize",
+          "fill_blank",
+          "explain",
+          "error_spot",
+          "correct_solution"
+        ],
+        "title": "ExerciseKind",
+        "type": "string"
+      },
       "ExerciseMove": {
         "properties": {
           "node_id": {
@@ -3714,9 +3729,8 @@
             "type": "string"
           },
           "kind": {
-            "default": "multi_step",
-            "title": "Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/ExerciseKind",
+            "default": "multi_step"
           },
           "node_id": {
             "anyOf": [
@@ -4173,6 +4187,15 @@
         ],
         "title": "FeedbackOut",
         "type": "object"
+      },
+      "FlashcardKind": {
+        "enum": [
+          "card_basic",
+          "card_cloze",
+          "card_reverse"
+        ],
+        "title": "FlashcardKind",
+        "type": "string"
       },
       "FolderAllocationIn": {
         "properties": {
@@ -10030,8 +10053,15 @@
             "type": "string"
           },
           "material_id": {
-            "title": "Material Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
           },
           "material_ids": {
             "items": {
@@ -10078,8 +10108,15 @@
             "title": "Node Id"
           },
           "note_id": {
-            "title": "Note Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Id"
           },
           "note_ids": {
             "items": {
@@ -10671,8 +10708,7 @@
             "type": "array"
           },
           "type": {
-            "title": "Type",
-            "type": "string"
+            "$ref": "#/components/schemas/QuestionType"
           }
         },
         "required": [
@@ -10688,6 +10724,23 @@
         ],
         "title": "QuestionOut",
         "type": "object"
+      },
+      "QuestionType": {
+        "enum": [
+          "single",
+          "multi",
+          "truefalse",
+          "text",
+          "numeric",
+          "equation",
+          "numberline",
+          "table_fill",
+          "composite",
+          "graph_read",
+          "code"
+        ],
+        "title": "QuestionType",
+        "type": "string"
       },
       "QuizAnswerIn": {
         "properties": {
@@ -16264,7 +16317,7 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/QuestionType"
                 },
                 "type": "array"
               },

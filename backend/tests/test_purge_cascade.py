@@ -91,7 +91,7 @@ def _seed_everything(session: Session, profile_id: str, course_id: str, root_id:
 
     question = Question(
         activity_id=activity.id,
-        type="choice",
+        type="single",
         stem=BLOCK,
         options=BLOCK,
         answer={"index": 0},

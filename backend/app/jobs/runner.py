@@ -90,6 +90,10 @@ class JobRunner:
     def has_handler(self, job_type: str) -> bool:
         return job_type in self._handlers
 
+    @property
+    def handler_types(self) -> frozenset[str]:
+        return frozenset(self._handlers)
+
     def retriable_handlers(self) -> frozenset[str]:
         return frozenset(self._handlers) - {JobType.CHAT_TURN}
 
