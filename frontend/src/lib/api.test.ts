@@ -83,7 +83,7 @@ describe('apiDetailMessage', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
     await expect(
-      createModel({ provider_id: 1, external_id: 'whisper-1', caps: ['audio'] })
+      createModel({ provider_id: '1', external_id: 'whisper-1', caps: ['audio'] })
     ).rejects.toThrow('caps: Value error, unknown caps: audio')
   })
 })
@@ -183,7 +183,7 @@ describe('course scoping params', () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
     await listQuizzes()
-    await listQuizzes(5)
+    await listQuizzes('5')
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/quiz/activities', {
       headers: new Headers(),
     })
@@ -195,7 +195,7 @@ describe('course scoping params', () => {
   test('dueFlashcards combines limit and course_id', async () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
-    await dueFlashcards(20, 7)
+    await dueFlashcards(20, '7')
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/flashcards/due?limit=20&course_id=7', {
       headers: new Headers(),
     })
@@ -204,7 +204,7 @@ describe('course scoping params', () => {
   test('listNotes combines query and course_id with encoding', async () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
-    await listNotes('chain rule', 3)
+    await listNotes('chain rule', '3')
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/notes?q=chain+rule&course_id=3', {
       headers: new Headers(),
     })
@@ -213,7 +213,7 @@ describe('course scoping params', () => {
   test('importQuiz appends course_id to dry_run', async () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
-    await importQuiz({ title: 'T', questions: [] }, false, 9)
+    await importQuiz({ title: 'T', questions: [] }, false, '9')
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/v1/quiz/import?dry_run=false&course_id=9')
     expect(init.method).toBe('POST')
@@ -222,7 +222,7 @@ describe('course scoping params', () => {
   test('importQpkg sends the required course_id query param', async () => {
     const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    await importQpkg(new File(['x'], 'deck.qpkg'), true, 3)
+    await importQpkg(new File(['x'], 'deck.qpkg'), true, '3')
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/v1/quiz/import-qpkg?dry_run=true&course_id=3')
     expect(init.method).toBe('POST')
@@ -231,7 +231,7 @@ describe('course scoping params', () => {
   test('importInboxFile sends the required course_id query param', async () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
-    await importInboxFile('set 1.caq.json', 5)
+    await importInboxFile('set 1.caq.json', '5')
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/v1/quiz/inbox/set%201.caq.json/import?course_id=5')
     expect(init.method).toBe('POST')
@@ -240,7 +240,7 @@ describe('course scoping params', () => {
   test('importAnkiDeck sends the required course_id query param', async () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
-    await importAnkiDeck(new File(['x'], 'deck.apkg'), 7)
+    await importAnkiDeck(new File(['x'], 'deck.apkg'), '7')
     const [url] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/v1/flashcards/import-anki?course_id=7')
   })
@@ -249,7 +249,7 @@ describe('course scoping params', () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
     await getDiagnostics()
-    await getDiagnostics(4)
+    await getDiagnostics('4')
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/analytics/diagnostics', {
       headers: new Headers(),
     })

@@ -14,7 +14,7 @@ export function noteBodyMd(note: NoteDetailInfo): string {
   let result = ''
   for (const block of note.body) {
     let part: string
-    if (block.type === 'drawing' && typeof block.drawing_id === 'number') {
+    if (block.type === 'drawing' && typeof block.drawing_id === 'string') {
       part = `![drawing](sa-drawing://${block.drawing_id})`
     } else {
       part = block.md ?? ''
@@ -42,7 +42,7 @@ export function useNoteAutosave({
   onError,
   reload,
 }: {
-  noteId: number
+  noteId: string
   note: NoteDetailInfo | undefined
   draft: string | null
   setDraft: Dispatch<SetStateAction<string | null>>

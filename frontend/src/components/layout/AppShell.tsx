@@ -156,18 +156,18 @@ function CourseSwitcher({
   onPick,
 }: {
   courses: Course[]
-  courseId: number | null
+  courseId: string | null
   selectLabel: string
   allLabel: string
   manageLabel: string
   searchLabel: string
   emptyLabel: string
   label: string
-  onPick: (courseId: number | null) => void
+  onPick: (courseId: string | null) => void
 }) {
   const [closeSignal, setCloseSignal] = useState(0)
   const [query, setQuery] = useState('')
-  const pick = (nextId: number | null) => {
+  const pick = (nextId: string | null) => {
     setCloseSignal((current) => current + 1)
     onPick(nextId)
   }
@@ -347,9 +347,9 @@ export function AppShell() {
   const queryClient = useQueryClient()
   const params = useParams({ strict: false }) as { courseId?: string; nodeId?: string }
   const workspaceSearch = useSearch({ strict: false }) as {
-    material?: number
-    note?: number
-    study?: number | 'new'
+    material?: string
+    note?: string
+    study?: string
   }
   const fileOpen = fileDockOpen(workspaceSearch)
   const rail = useRailLayout(fileOpen)
@@ -471,7 +471,7 @@ export function AppShell() {
     }
   }, [courses.data, courseId, setCourse])
 
-  const openCourse = async (targetId: number | null) => {
+  const openCourse = async (targetId: string | null) => {
     if (targetId !== courseId) {
       setCourse(targetId)
       await queryClient.invalidateQueries()

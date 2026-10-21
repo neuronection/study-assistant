@@ -21,7 +21,7 @@ function Harness({
   drawings,
   onSettled,
 }: {
-  drawings: { ocr_job_id?: number | null }[]
+  drawings: { ocr_job_id?: string | null }[]
   onSettled: () => void
 }) {
   useDrawingOcrSync(drawings, onSettled)
@@ -45,8 +45,8 @@ describe('useDrawingOcrSync', () => {
     const { rerender } = render(
       <Harness
         drawings={[
-          { ocr_job_id: 7 },
-          { ocr_job_id: 9 },
+          { ocr_job_id: '7' },
+          { ocr_job_id: '9' },
           { ocr_job_id: null },
           {},
         ]}
@@ -65,7 +65,7 @@ describe('useDrawingOcrSync', () => {
     expect(onSettled).toHaveBeenCalledTimes(2)
 
     rerender(
-      <Harness drawings={[{ ocr_job_id: 7 }, { ocr_job_id: null }]} onSettled={onSettled} />
+      <Harness drawings={[{ ocr_job_id: '7' }, { ocr_job_id: null }]} onSettled={onSettled} />
     )
     await waitFor(() => expect(unsubscribe).toHaveBeenCalled())
   })

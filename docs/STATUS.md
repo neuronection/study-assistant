@@ -48,12 +48,20 @@ the gate every later round builds on. ADRs 196–218 reserved.
   `"<created_at>|<id>"` keyset). Course bundle import honours incoming ids and
   remaps only on collision, so export → wipe → import preserves every
   reference (`tests/test_course_bundle.py`).
-  **Frontend half pending:** `pnpm api:types` + the hand-written client types
-  (`frontend/src/lib/api/*.ts` and the components that still declare
-  `courseId: number` etc.) must move to strings in one pass — until then
-  `frontend/openapi.json` / `api-schema.d.ts` are intentionally **not**
-  regenerated (the two CI drift guards will flag the stale pair). No frontend
-  runtime behaviour changed: the client passes ids through opaquely.
+  **Frontend half landed (2026-10-21).** `pnpm api:types` regenerates
+  `frontend/openapi.json` + `frontend/src/lib/api-schema.d.ts` (276 paths,
+  407 schemas) and the client sweep moved every hand-written entity id to
+  `string` / the generated types (~1,070 declarations across 185 files) —
+  `courseId: number`, `PlanItem.id: number`, `Number(courseId)` casts,
+  `Number(dataTransfer.getData('text/plan-item'))` and the `\d+` drawing /
+  mention regexes are gone. Ids pass through opaquely (no UUID parsing or
+  validation in the client); the only numeric ids left are the sanctioned
+  client-local ones registered in `frontend/src/lib/api/hand-types.ts`
+  (exercise-ordering position ids, pending-drawing placeholder refs; DOM
+  pointer ids are not API shapes). Route search params coerce
+  string-or-number to an opaque string (TanStack JSON-parses digit-only
+  values), since UUID values carry no numeric meaning. Frontend gate green:
+  lint, typecheck, 1,474 tests, build.
 
 **Plan 34 wave 8 — per-extension documentation lands in study
 (2026-10-19):** the three bundled connectors (`external-sources`,
@@ -3065,6 +3073,22 @@ a backend node binding) |
 
 ## Changelog
 
+- 2026-10-21 — **plan 81 C frontend: generated OpenAPI types are the wire
+  truth for ids.** `pnpm api:types` regenerated `frontend/openapi.json` (276
+  paths / 407 schemas) and `frontend/src/lib/api-schema.d.ts` against the UUID
+  backend; the client sweep then moved every hand-written entity id to
+  `string` / the generated types (~1,070 declarations across 185 files, all
+  tests included). Behavioural spots fixed with the types:
+  `Number(courseId)`/`Number(materialId)` casts removed, the plan-item drag
+  payload read without `Number(...)`, drawing/mention markdown regexes accept
+  UUID ids (`sa-drawing://<uuid>`, `[M<uuid>]`), the note body rejoin keeps
+  drawings (`typeof drawing_id === 'string'`), pending-drawing placeholder
+  refs stay client-local numbers while their remap values are UUIDs, and route
+  search params coerce string-or-number to opaque strings (TanStack
+  JSON-parses digit-only values; UUIDs stay unquoted). Client-side-only numeric
+  ids are registered in `frontend/src/lib/api/hand-types.ts`. Verification:
+  frontend lint/typecheck/1,474 tests/build green; backend ruff/mypy/1,758
+  tests green (unchanged). Closes the plan-81 C residual; D–F remain.
 - 2026-10-18 — **fix(extensions): real MCP server spawns work — the
   AsyncExitStack exit was a sync `with` (TypeError on every real
   spawn).** Found while building the plan 34 wave 5 quickstart: the

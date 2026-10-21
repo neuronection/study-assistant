@@ -38,10 +38,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    editExtraction: (id: number, md: string) => editExtraction(id, md),
-    addNode: (id: number, parent: number, title: string) => addNode(id, parent, title),
+    editExtraction: (id: string, md: string) => editExtraction(id, md),
+    addNode: (id: string, parent: number, title: string) => addNode(id, parent, title),
     createNote: (body: unknown) => createNote(body),
-    createChatSession: (courseId: number, nodeId: number, title: string) =>
+    createChatSession: (courseId: string, nodeId: string, title: string) =>
       createChatSession(courseId, nodeId, title),
   }
 })
@@ -59,10 +59,10 @@ function renderViewer(markdown: string) {
     <QueryClientProvider client={client}>
       <MindmapViewer
         markdown={markdown}
-        materialId={7}
+        materialId="7"
         materialTitle="Limits map"
-        courseId={3}
-        scopeNodeId={5}
+        courseId="3"
+        scopeNodeId="5"
       />
     </QueryClientProvider>
   )
@@ -76,8 +76,8 @@ describe('MindmapViewer', () => {
     fit.mockClear()
     destroy.mockClear()
     editExtraction.mockReset().mockResolvedValue({
-      id: 1,
-      material_id: 7,
+      id: '1',
+      material_id: '7',
       version: 2,
       extractor: 'compose',
       markdown: '',
@@ -118,9 +118,9 @@ describe('MindmapViewer', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => expect(editExtraction).toHaveBeenCalled())
-    expect(editExtraction).toHaveBeenCalledWith(7, expect.not.stringContaining('Definition'))
+    expect(editExtraction).toHaveBeenCalledWith('7', expect.not.stringContaining('Definition'))
     await waitFor(() =>
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['material', 7] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['material', '7'] })
     )
   })
 })

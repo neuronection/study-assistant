@@ -22,7 +22,7 @@ describe('MaterialRow', () => {
     const onToggle = vi.fn()
     renderWithClient(
       <MaterialRow
-        material={{ id: 7, title: 'Lecture 1', kind: 'pdf' }}
+        material={{ id: '7', title: 'Lecture 1', kind: 'pdf' }}
         selected
         onToggle={onToggle}
       />
@@ -35,25 +35,25 @@ describe('MaterialRow', () => {
 
   test('renders a clickable title when onOpen is provided', () => {
     const onOpen = vi.fn()
-    renderWithClient(<MaterialRow material={{ id: 7, title: 'Lecture 1' }} onOpen={onOpen} />)
+    renderWithClient(<MaterialRow material={{ id: '7', title: 'Lecture 1' }} onOpen={onOpen} />)
     fireEvent.click(screen.getByRole('button', { name: 'Lecture 1' }))
     expect(onOpen).toHaveBeenCalled()
   })
 
   test('title truncates by default and wraps to 2 lines when selected', () => {
     const { rerenderWithClient } = renderWithClient(
-      <MaterialRow material={{ id: 7, title: 'Lecture 1' }} selectionState="none" />
+      <MaterialRow material={{ id: '7', title: 'Lecture 1' }} selectionState="none" />
     )
     expect(screen.getByText('Lecture 1').className).toContain('truncate')
 
     rerenderWithClient(
-      <MaterialRow material={{ id: 7, title: 'Lecture 1' }} selectionState="selected" />
+      <MaterialRow material={{ id: '7', title: 'Lecture 1' }} selectionState="selected" />
     )
     expect(screen.getByText('Lecture 1').className).toContain('line-clamp-2')
   })
 
   test('renders an action node on the right', () => {
-    renderWithClient(<MaterialRow material={{ id: 7, title: 'Lecture 1' }} action={<span>added</span>} />)
+    renderWithClient(<MaterialRow material={{ id: '7', title: 'Lecture 1' }} action={<span>added</span>} />)
     expect(screen.getByText('added')).toBeInTheDocument()
   })
 
@@ -61,7 +61,7 @@ describe('MaterialRow', () => {
     const onToggle = vi.fn()
     renderWithClient(
       <MaterialRow
-        material={{ id: 7, title: 'Lecture 1', kind: 'pdf' }}
+        material={{ id: '7', title: 'Lecture 1', kind: 'pdf' }}
         locked
         lockedLabel="Assigned here"
       />
@@ -74,7 +74,7 @@ describe('MaterialRow', () => {
   test('renders status and read-status pills', () => {
     renderWithClient(
       <MaterialRow
-        material={{ id: 7, title: 'Lecture 1', status: 'ready', readStatus: 'studied' }}
+        material={{ id: '7', title: 'Lecture 1', status: 'ready', readStatus: 'studied' }}
       />
     )
     expect(screen.getByText('ready')).toBeInTheDocument()
@@ -83,14 +83,14 @@ describe('MaterialRow', () => {
 
   test('renders the placement badge only when linkCount is positive', () => {
     const { rerenderWithClient } = renderWithClient(
-      <MaterialRow material={{ id: 7, title: 'Lecture 1', linkCount: 2 }} />
+      <MaterialRow material={{ id: '7', title: 'Lecture 1', linkCount: 2 }} />
     )
     expect(screen.getByTitle('2 placements in the course tree')).toBeInTheDocument()
 
-    rerenderWithClient(<MaterialRow material={{ id: 7, title: 'Lecture 1', linkCount: 0 }} />)
+    rerenderWithClient(<MaterialRow material={{ id: '7', title: 'Lecture 1', linkCount: 0 }} />)
     expect(screen.queryByTitle(/placement/)).not.toBeInTheDocument()
 
-    rerenderWithClient(<MaterialRow material={{ id: 7, title: 'Lecture 1' }} />)
+    rerenderWithClient(<MaterialRow material={{ id: '7', title: 'Lecture 1' }} />)
     expect(screen.queryByTitle(/placement/)).not.toBeInTheDocument()
   })
 
@@ -98,7 +98,7 @@ describe('MaterialRow', () => {
     const onDragStart = vi.fn()
     renderWithClient(
       <MaterialRow
-        material={{ id: 7, title: 'Lecture 1' }}
+        material={{ id: '7', title: 'Lecture 1' }}
         draggable
         onDragStart={onDragStart}
         title="Drag to a node"

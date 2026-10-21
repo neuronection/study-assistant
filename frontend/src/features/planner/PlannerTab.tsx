@@ -87,14 +87,14 @@ export function PlannerTab({ courseId }: { courseId: string }) {
 
   const plan = useQuery({
     queryKey: ['plan', courseId],
-    queryFn: () => listPlanItems(Number(courseId)),
+    queryFn: () => listPlanItems(courseId),
   })
   const examEntry = useQuery({
     queryKey: ['exam-status'],
     queryFn: getExamStatus,
   })
   const readiness = (examEntry.data ?? []).find(
-    (entry) => entry.course_id === Number(courseId)
+    (entry) => entry.course_id === courseId
   )
 
   const refresh = async () => {
@@ -103,25 +103,25 @@ export function PlannerTab({ courseId }: { courseId: string }) {
   }
 
   const generate = useMutation({
-    mutationFn: () => generatePlan(Number(courseId)),
+    mutationFn: () => generatePlan(courseId),
     onSuccess: () => void refresh(),
     onError: (err: Error) => setError(err.message),
   })
   const toggleDone = useMutation({
     mutationFn: ({ item, done }: { item: PlanItem; done: boolean }) =>
-      updatePlanItem(Number(courseId), item.id, { done }),
+      updatePlanItem(courseId, item.id, { done }),
     onSuccess: () => void refresh(),
   })
   const reschedule = useMutation({
     mutationFn: ({ item, dueDate }: { item: PlanItem; dueDate: string }) =>
-      updatePlanItem(Number(courseId), item.id, { due_date: dueDate }),
+      updatePlanItem(courseId, item.id, { due_date: dueDate }),
     onSuccess: () => void refresh(),
   })
   const pushDay = (item: PlanItem) =>
     reschedule.mutate({ item, dueDate: shiftIso(item.due_date, 1) })
   const promote = useMutation({
     mutationFn: (item: PlanItem) =>
-      updatePlanItem(Number(courseId), item.id, {
+      updatePlanItem(courseId, item.id, {
         title: item.title,
         due_date: item.due_date,
         kind: item.kind,
@@ -129,12 +129,12 @@ export function PlannerTab({ courseId }: { courseId: string }) {
     onSuccess: () => void refresh(),
   })
   const remove = useMutation({
-    mutationFn: (item: PlanItem) => deletePlanItem(Number(courseId), item.id),
+    mutationFn: (item: PlanItem) => deletePlanItem(courseId, item.id),
     onSuccess: () => void refresh(),
   })
   const add = useMutation({
     mutationFn: () =>
-      createPlanItem(Number(courseId), {
+      createPlanItem(courseId, {
         title: newTitle.trim(),
         kind: 'study',
         due_date: newDate,
@@ -206,7 +206,7 @@ export function PlannerTab({ courseId }: { courseId: string }) {
             variant="outline"
             size="sm"
             title={t('planner.downloadIcs')}
-            onClick={() => window.open(planIcsUrl(Number(courseId)), '_blank')}
+            onClick={() => window.open(planIcsUrl(courseId), '_blank')}
           >
             <Download aria-hidden />
             ICS
@@ -285,7 +285,7 @@ export function PlannerTab({ courseId }: { courseId: string }) {
               data-testid="plan-day"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
-                const id = Number(event.dataTransfer.getData('text/plan-item'))
+                const id = event.dataTransfer.getData('text/plan-item')
                 const item = (plan.data ?? []).find((entry) => entry.id === id)
                 if (item !== undefined && item.due_date !== day) {
                   reschedule.mutate({ item, dueDate: day })

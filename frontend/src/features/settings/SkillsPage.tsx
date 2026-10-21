@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils'
 interface EditorProps {
   skillKey: string
   name: string
-  courseId: number | null
+  courseId: string | null
   onBack: () => void
 }
 
@@ -61,7 +61,7 @@ export function SkillsEditor({ skillKey, name, courseId, onBack }: EditorProps) 
     mutationFn: () =>
       saveSkillVersion(skillKey, {
         scope_type: scope,
-        scope_ref: scope === 'course' ? courseId : scope === 'course_type' ? undefined : null,
+        scope_ref: scope === 'course' ? courseId ?? undefined : scope === 'course_type' ? undefined : null,
         system_template: systemTemplate,
         user_template: userTemplate,
         contract: { max_words: maxWords === '' ? null : maxWords, no_answer_reveal: noReveal },
@@ -89,7 +89,7 @@ export function SkillsEditor({ skillKey, name, courseId, onBack }: EditorProps) 
   })
 
   const activate = useMutation({
-    mutationFn: (versionId: number) => activateSkillVersion(skillKey, versionId),
+    mutationFn: (versionId: string) => activateSkillVersion(skillKey, versionId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['skill-versions', skillKey] })
       await queryClient.invalidateQueries({ queryKey: ['skill-resolution', skillKey, courseId] })

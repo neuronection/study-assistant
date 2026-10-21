@@ -2,7 +2,7 @@ import { json, apiFetch } from './client'
 import type { FlashcardInfo } from './flashcards'
 
 export interface DueCourseGroup {
-  course_id: number
+  course_id: string
   course_title: string
   course_color: string | null
   due_count: number

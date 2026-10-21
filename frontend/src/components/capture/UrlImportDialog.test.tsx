@@ -28,7 +28,7 @@ beforeEach(() => {
 })
 
 const COURSES = [
-  { id: 3, title: 'Calculus I', subject: null, level: null, description: null, material_count: 0, color: null },
+  { id: '3', title: 'Calculus I', subject: null, level: null, description: null, material_count: 0, color: null },
 ]
 
 function renderDialog() {
@@ -47,7 +47,7 @@ async function switchToImportMode() {
 describe('UrlImportDialog', () => {
   test('attach is the default mode and calls the link endpoint', async () => {
     createLinkMaterial.mockResolvedValue({
-      material: { id: 44, title: 'example.com - bayes' },
+      material: { id: '44', title: 'example.com - bayes' },
       job_id: null,
       deduped: false,
     })
@@ -62,7 +62,7 @@ describe('UrlImportDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /attach link/i }))
     await waitFor(() =>
       expect(createLinkMaterial).toHaveBeenCalledWith({
-        course_id: 3,
+        course_id: '3',
         url: 'https://example.com/wiki/bayes',
       }),
     )
@@ -72,7 +72,7 @@ describe('UrlImportDialog', () => {
 
   test('attach surfaces a duplicate as success and navigates to the existing material', async () => {
     createLinkMaterial.mockResolvedValue({
-      material: { id: 44, title: 'example.com - bayes' },
+      material: { id: '44', title: 'example.com - bayes' },
       job_id: null,
       deduped: true,
     })
@@ -87,8 +87,8 @@ describe('UrlImportDialog', () => {
 
   test('import mode keeps the legacy parse behavior', async () => {
     importUrlMaterial.mockResolvedValue({
-      material: { id: 44, title: 'example.com - bayes' },
-      job_id: 7,
+      material: { id: '44', title: 'example.com - bayes' },
+      job_id: '7',
       deduped: false,
     })
     renderDialog()
@@ -98,7 +98,7 @@ describe('UrlImportDialog', () => {
     await switchToImportMode()
     fireEvent.click(screen.getByRole('button', { name: /^import$/i }))
     await waitFor(() =>
-      expect(importUrlMaterial).toHaveBeenCalledWith(3, 'https://example.com/wiki/bayes'),
+      expect(importUrlMaterial).toHaveBeenCalledWith('3', 'https://example.com/wiki/bayes'),
     )
     expect(createLinkMaterial).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

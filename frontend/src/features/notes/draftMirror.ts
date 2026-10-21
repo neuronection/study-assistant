@@ -3,11 +3,11 @@ export interface DraftMirror {
   savedAt: string
 }
 
-export function draftKey(noteId: number): string {
+export function draftKey(noteId: string): string {
   return `sa-note-draft:${noteId}`
 }
 
-export function readMirror(noteId: number): DraftMirror | null {
+export function readMirror(noteId: string): DraftMirror | null {
   try {
     const raw = localStorage.getItem(draftKey(noteId))
     if (!raw) {
@@ -23,7 +23,7 @@ export function readMirror(noteId: number): DraftMirror | null {
   }
 }
 
-export function writeMirror(noteId: number, bodyMd: string): void {
+export function writeMirror(noteId: string, bodyMd: string): void {
   try {
     localStorage.setItem(
       draftKey(noteId),
@@ -34,7 +34,7 @@ export function writeMirror(noteId: number, bodyMd: string): void {
   }
 }
 
-export function clearMirror(noteId: number): void {
+export function clearMirror(noteId: string): void {
   try {
     localStorage.removeItem(draftKey(noteId))
   } catch {

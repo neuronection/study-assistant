@@ -16,11 +16,11 @@ vi.mock('@/lib/api', async (importOriginal) => {
   }
 })
 
-function note(id: number, title: string, tags: string[] = []) {
+function note(id: string, title: string, tags: string[] = []) {
   return {
     id,
     title,
-    course_id: 1,
+    course_id: '1',
     node_id: null,
     owner_type: 'profile',
     owner_id: null,
@@ -37,7 +37,7 @@ function renderDialog(onSelect = vi.fn(), onClose = vi.fn()) {
     onClose,
     ...render(
       <QueryClientProvider client={client}>
-        <NotePickerDialog courseId={1} nodeTitle="Derivatives" onSelect={onSelect} onClose={onClose} />
+        <NotePickerDialog courseId="1" nodeTitle="Derivatives" onSelect={onSelect} onClose={onClose} />
       </QueryClientProvider>
     ),
   }
@@ -52,7 +52,7 @@ describe('NotePickerDialog', () => {
 
   test('lists course notes and returns selected entries', async () => {
     listNotes.mockResolvedValue({
-      items: [note(1, 'Derivative rules', ['limits']), note(2, 'Chain rule')],
+      items: [note('1', 'Derivative rules', ['limits']), note('2', 'Chain rule')],
       next_cursor: null,
     })
     const { onSelect } = renderDialog()
@@ -62,14 +62,14 @@ describe('NotePickerDialog', () => {
     fireEvent.click(screen.getByText('Chain rule'))
     fireEvent.click(screen.getByRole('button', { name: /^add 2 notes$/i }))
     expect(onSelect).toHaveBeenCalledWith([
-      { id: 1, title: 'Derivative rules' },
-      { id: 2, title: 'Chain rule' },
+      { id: '1', title: 'Derivative rules' },
+      { id: '2', title: 'Chain rule' },
     ])
   })
 
   test('fuzzy search filters the list', async () => {
     listNotes.mockResolvedValue({
-      items: [note(1, 'Derivative rules'), note(2, 'Chain rule')],
+      items: [note('1', 'Derivative rules'), note('2', 'Chain rule')],
       next_cursor: null,
     })
     renderDialog()
@@ -86,7 +86,7 @@ describe('NotePickerDialog', () => {
 
   test('tag chips filter the list', async () => {
     listNotes.mockResolvedValue({
-      items: [note(1, 'Derivative rules', ['limits']), note(2, 'Chain rule', ['algebra'])],
+      items: [note('1', 'Derivative rules', ['limits']), note('2', 'Chain rule', ['algebra'])],
       next_cursor: null,
     })
     listNoteTags.mockResolvedValue([
@@ -105,7 +105,7 @@ describe('NotePickerDialog', () => {
 
   test('select all shown toggles every visible note', async () => {
     listNotes.mockResolvedValue({
-      items: [note(1, 'A'), note(2, 'B')],
+      items: [note('1', 'A'), note('2', 'B')],
       next_cursor: null,
     })
     const { onSelect } = renderDialog()
@@ -115,14 +115,14 @@ describe('NotePickerDialog', () => {
     expect(screen.getByText('2 notes selected')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^add 2 notes$/i }))
     expect(onSelect).toHaveBeenCalledWith([
-      { id: 1, title: 'A' },
-      { id: 2, title: 'B' },
+      { id: '1', title: 'A' },
+      { id: '2', title: 'B' },
     ])
   })
 
   test('deselecting a row via its check indicator updates the count', async () => {
     listNotes.mockResolvedValue({
-      items: [note(1, 'A'), note(2, 'B')],
+      items: [note('1', 'A'), note('2', 'B')],
       next_cursor: null,
     })
     renderDialog()
@@ -136,7 +136,7 @@ describe('NotePickerDialog', () => {
   })
 
   test('Escape closes the dialog', async () => {
-    listNotes.mockResolvedValue({ items: [note(1, 'A')], next_cursor: null })
+    listNotes.mockResolvedValue({ items: [note('1', 'A')], next_cursor: null })
     const { onClose } = renderDialog()
     await screen.findByText('A')
     fireEvent.keyDown(document, { key: 'Escape' })

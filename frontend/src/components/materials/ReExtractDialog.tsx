@@ -32,7 +32,7 @@ export function ReExtractDialog({
   onClose,
   onSuccess,
 }: {
-  materialId: number | null
+  materialId: string | null
   open: boolean
   onClose: () => void
   onSuccess?: () => void | Promise<void>
@@ -44,7 +44,7 @@ export function ReExtractDialog({
 
   const detail = useQuery({
     queryKey: ['material', materialId],
-    queryFn: () => getMaterial(materialId ?? 0),
+    queryFn: () => getMaterial(materialId!),
     enabled: effective,
   })
   const material: Material | undefined = effective ? detail.data?.material : undefined

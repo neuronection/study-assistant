@@ -13,7 +13,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     startStudySession: (body: unknown) => startStudySession(body),
-    beatStudySession: (id: number, action: string) => beatStudySession(id, action),
+    beatStudySession: (id: string, action: string) => beatStudySession(id, action),
   }
 })
 
@@ -39,8 +39,8 @@ describe('FocusTimer', () => {
   beforeEach(() => {
     startStudySession.mockReset()
     beatStudySession.mockReset()
-    startStudySession.mockResolvedValue({ id: 31 })
-    beatStudySession.mockResolvedValue({ id: 31 })
+    startStudySession.mockResolvedValue({ id: '31' })
+    beatStudySession.mockResolvedValue({ id: '31' })
     act(() =>
       useFocusTimerStore.setState({
         phase: 'idle',
@@ -67,8 +67,8 @@ describe('FocusTimer', () => {
       expect(startStudySession).toHaveBeenCalledWith({
         kind: 'focus',
         source: 'timer',
-        course_id: 5,
-        node_id: 9,
+        course_id: '5',
+        node_id: '9',
       })
     )
     expect(await screen.findByText('25:00')).toBeInTheDocument()
@@ -83,7 +83,7 @@ describe('FocusTimer', () => {
         breakMin: 5,
         remainingSec: 1500,
         endsAt: Date.now() + 1_500_000,
-        sessionId: 31,
+        sessionId: '31',
       })
     )
     renderTimer()
@@ -96,7 +96,7 @@ describe('FocusTimer', () => {
     )
     act(() => useFocusTimerStore.getState().tick())
     expect(useFocusTimerStore.getState().phase).toBe('done')
-    await waitFor(() => expect(beatStudySession).toHaveBeenCalledWith(31, 'end'))
+    await waitFor(() => expect(beatStudySession).toHaveBeenCalledWith('31', 'end'))
     fireEvent.click(await screen.findByRole('button', { name: /break 5 min/i }))
     expect(useFocusTimerStore.getState().phase).toBe('break')
     expect(await screen.findByText('05:00')).toBeInTheDocument()
@@ -127,13 +127,13 @@ describe('FocusTimer', () => {
         breakMin: 5,
         remainingSec: 600,
         endsAt: Date.now() + 600_000,
-        sessionId: 31,
-        lastContext: { courseId: 5, nodeId: 9 },
+        sessionId: '31',
+        lastContext: { courseId: '5', nodeId: '9' },
       })
     )
     renderTimer()
     fireEvent.click(await screen.findByRole('button', { name: /pause/i }))
-    await waitFor(() => expect(beatStudySession).toHaveBeenCalledWith(31, 'end'))
+    await waitFor(() => expect(beatStudySession).toHaveBeenCalledWith('31', 'end'))
     expect(useFocusTimerStore.getState().phase).toBe('paused')
 
     fireEvent.click(screen.getByRole('button', { name: /resume/i }))
@@ -141,8 +141,8 @@ describe('FocusTimer', () => {
       expect(startStudySession).toHaveBeenCalledWith({
         kind: 'focus',
         source: 'timer',
-        course_id: 5,
-        node_id: 9,
+        course_id: '5',
+        node_id: '9',
       })
     )
     expect(useFocusTimerStore.getState().phase).toBe('focus')
@@ -156,13 +156,13 @@ describe('FocusTimer', () => {
         breakMin: 5,
         remainingSec: 600,
         endsAt: Date.now() + 600_000,
-        sessionId: 31,
+        sessionId: '31',
       })
     )
     renderTimer()
     fireEvent.click(await screen.findByRole('button', { name: /give up/i }))
     expect(useFocusTimerStore.getState().phase).toBe('idle')
-    await waitFor(() => expect(beatStudySession).toHaveBeenCalledWith(31, 'end'))
+    await waitFor(() => expect(beatStudySession).toHaveBeenCalledWith('31', 'end'))
     expect(
       await screen.findByRole('button', { name: /start a focus timer/i })
     ).toBeInTheDocument()

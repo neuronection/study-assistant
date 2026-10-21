@@ -109,6 +109,12 @@ dir and writes `frontend/openapi.json`) and then `openapi-typescript` to produce
 `frontend/src/lib/api-schema.d.ts`. Commit both; CI drift-guards them. Never
 hand-edit either file — change the Pydantic model instead.
 
+Entity id fields are plain `string` in the schema (no `format: uuid`), matching
+the UUID-string response models and how identity ids already surfaced. Clients
+treat them as opaque: no parsing, validation or numeric coercion. The generated
+schema is the wire truth — hand-written client types may narrow optionality but
+must not redeclare entity ids as numbers.
+
 ## Adding an endpoint
 
 1. Add the handler to the right area router and the DTOs beside it.

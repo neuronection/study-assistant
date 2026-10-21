@@ -15,13 +15,13 @@ import type { ChatAttachmentInput } from '@/lib/api'
 import { getWsClient } from '@/lib/ws-client'
 import { WsTopic } from '@/lib/constants'
 
-function useStudyChatStream(propSessionId: number | null) {
+function useStudyChatStream(propSessionId: string | null) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [sessionId, setSessionId] = useState(propSessionId)
-  const sessionIdRef = useRef<number | null>(sessionId)
+  const sessionIdRef = useRef<string | null>(sessionId)
   sessionIdRef.current = sessionId
-  const adoptingRef = useRef<number | null>(null)
+  const adoptingRef = useRef<string | null>(null)
 
   useEffect(() => {
     setSessionId(propSessionId)
@@ -82,15 +82,15 @@ function useStudyChatStream(propSessionId: number | null) {
     return stream.send(text)
   }
 
-  const beginEdit = (messageId: number) => {
+  const beginEdit = (messageId: string) => {
     transportRef.current?.beginEdit(messageId)
   }
 
-  const beginRegenerate = (messageId: number) => {
+  const beginRegenerate = (messageId: string) => {
     transportRef.current?.beginRegenerate(messageId)
   }
 
-  const adoptSession = (session: { id: number }) => {
+  const adoptSession = (session: { id: string }) => {
     adoptingRef.current = session.id
     sessionIdRef.current = session.id
     setSessionId(session.id)
@@ -100,12 +100,12 @@ function useStudyChatStream(propSessionId: number | null) {
 }
 
 export interface StudyChat {
-  sessionId: number | null
+  sessionId: string | null
   stream: ReturnType<typeof useChatStream>
   send: (text: string, attachments?: ChatAttachmentInput[]) => Promise<boolean>
-  beginEdit: (messageId: number) => void
-  beginRegenerate: (messageId: number) => void
-  adoptSession: (session: { id: number }) => void
+  beginEdit: (messageId: string) => void
+  beginRegenerate: (messageId: string) => void
+  adoptSession: (session: { id: string }) => void
 }
 
 const StudyChatContext = createContext<StudyChat | null>(null)
@@ -114,7 +114,7 @@ export function StudyChatProvider({
   sessionId,
   children,
 }: {
-  sessionId: number | null
+  sessionId: string | null
   children: ReactNode
 }) {
   const chat = useStudyChatStream(sessionId)

@@ -26,19 +26,19 @@ vi.mock('@/lib/api', async (importOriginal) => {
   }
 })
 
-function folder(id: number, name: string, parentId: number | null): Folder {
+function folder(id: string, name: string, parentId: string | null): Folder {
   return {
     id,
     name,
     path: name,
-    course_id: 1,
+    course_id: '1',
     parent_id: parentId,
     source_id: null,
     created_at: '2026-08-21T00:00:00Z',
   }
 }
 
-function RESULT(id: number, title: string): UploadResult {
+function RESULT(id: string, title: string): UploadResult {
   return {
     material: {
       id,
@@ -48,7 +48,7 @@ function RESULT(id: number, title: string): UploadResult {
       filename: title,
       mime: 'application/pdf',
       pages: 1,
-      course_id: 1,
+      course_id: '1',
       group_id: null,
       folder_id: null,
       blob_sha: null,
@@ -77,9 +77,9 @@ function Harness({
   onFolderCreated,
   variant = 'block',
 }: {
-  courseId: number | null
-  getFolderId?: () => number | null
-  getTargetNodeId?: () => number | null
+  courseId: string | null
+  getFolderId?: () => string | null
+  getTargetNodeId?: () => string | null
   onUploaded?: (result: UploadResult) => void
   onFolderCreated?: (folder: Folder) => void
   variant?: 'block' | 'row'
@@ -120,10 +120,10 @@ describe('useMaterialUpload', () => {
     uploadMaterial.mockImplementation(async (sent: File) =>
       sent.name === 'bad.pdf'
         ? Promise.reject(new Error('boom'))
-        : Promise.resolve(RESULT(sent.name === 'a.pdf' ? 1 : 2, sent.name))
+        : Promise.resolve(RESULT(sent.name === 'a.pdf' ? '1' : '2', sent.name))
     )
     const onUploaded = vi.fn()
-    const invalidateSpy = renderHarness({ courseId: 1, getFolderId: () => 4, onUploaded })
+    const invalidateSpy = renderHarness({ courseId: '1', getFolderId: () => '4', onUploaded })
 
     await act(async () => {
       await held?.uploadFiles([file('a.pdf'), file('bad.pdf'), file('b.pdf')])
@@ -131,8 +131,8 @@ describe('useMaterialUpload', () => {
 
     expect(uploadMaterial).toHaveBeenCalledTimes(3)
     for (const call of uploadMaterial.mock.calls) {
-      expect(call[1]).toBe(1)
-      expect(call[2]).toBe(4)
+      expect(call[1]).toBe('1')
+      expect(call[2]).toBe('4')
     }
     expect(onUploaded).toHaveBeenCalledTimes(2)
     await waitFor(() =>
@@ -144,7 +144,7 @@ describe('useMaterialUpload', () => {
   })
 
   test('file input carries the accepted types as its accept attribute', async () => {
-    renderHarness({ courseId: 1 })
+    renderHarness({ courseId: '1' })
     const input = screen.getByLabelText('Drop files here or click to browse')
     await waitFor(() => expect(input.getAttribute('accept')).toBe('.pdf,.docx'))
   })
@@ -158,7 +158,7 @@ describe('useMaterialUpload', () => {
         accepted: ['.pdf'],
       })
     )
-    renderHarness({ courseId: 1 })
+    renderHarness({ courseId: '1' })
 
     await act(async () => {
       await held?.uploadFiles([file('notes.rtf')])
@@ -170,10 +170,10 @@ describe('useMaterialUpload', () => {
   test('a transcribe-size warning renders for oversized recordings', async () => {
     listFolders.mockResolvedValue([])
     uploadMaterial.mockResolvedValue({
-      ...RESULT(6, 'big.mp3'),
+      ...RESULT('6', 'big.mp3'),
       warnings: [{ code: 'transcribe_size_exceeded', limit_mb: 25, file_mb: 57 }],
     })
-    renderHarness({ courseId: 1 })
+    renderHarness({ courseId: '1' })
 
     await act(async () => {
       await held?.uploadFiles([file('big.mp3')])
@@ -191,13 +191,13 @@ describe('useMaterialUpload', () => {
   })
 
   test('folder uploads recreate the directory tree, reusing existing folders', async () => {
-    listFolders.mockResolvedValue([folder(20, 'Existing pack', null)])
-    createFolder.mockImplementation(async (name: string, parentId: number | null) => {
+    listFolders.mockResolvedValue([folder('20', 'Existing pack', null)])
+    createFolder.mockImplementation(async (name: string, parentId: string | null) => {
       const id = 100 + createFolder.mock.calls.length
-      return folder(id, name, parentId)
+      return folder(String(id), name, parentId)
     })
-    uploadMaterial.mockResolvedValue(RESULT(1, 'a.pdf'))
-    renderHarness({ courseId: 1 })
+    uploadMaterial.mockResolvedValue(RESULT('1', 'a.pdf'))
+    renderHarness({ courseId: '1' })
 
     await act(async () => {
       await held?.uploadFiles([
@@ -209,87 +209,87 @@ describe('useMaterialUpload', () => {
     })
 
     expect(createFolder).toHaveBeenCalledTimes(3)
-    expect(createFolder).toHaveBeenNthCalledWith(1, 'pack', null, 1)
-    expect(createFolder).toHaveBeenNthCalledWith(2, 'inner', 101, 1)
-    expect(createFolder).toHaveBeenNthCalledWith(3, 'deep', 102, 1)
+    expect(createFolder).toHaveBeenNthCalledWith(1, 'pack', null, '1')
+    expect(createFolder).toHaveBeenNthCalledWith(2, 'inner', '101', '1')
+    expect(createFolder).toHaveBeenNthCalledWith(3, 'deep', '102', '1')
 
     const folderByCall = uploadMaterial.mock.calls.map((call) => call[2])
-    expect(folderByCall).toEqual([101, 102, 103])
+    expect(folderByCall).toEqual(['101', '102', '103'])
     expect(uploadMaterial).toHaveBeenCalledTimes(3)
   })
 
   test('a target node is passed top-level items only; folder-structure items stay folder-placed', async () => {
     listFolders.mockResolvedValue([])
-    createFolder.mockImplementation(async (name: string, parentId: number | null) =>
-      folder(101, name, parentId)
+    createFolder.mockImplementation(async (name: string, parentId: string | null) =>
+      folder('101', name, parentId)
     )
-    uploadMaterial.mockResolvedValue(RESULT(1, 'x.pdf'))
-    renderHarness({ courseId: 1, getTargetNodeId: () => 77 })
+    uploadMaterial.mockResolvedValue(RESULT('1', 'x.pdf'))
+    renderHarness({ courseId: '1', getTargetNodeId: () => '77' })
 
     await act(async () => {
       await held?.uploadFiles([file('top.pdf'), file('nested.pdf', 'pack/nested.pdf')])
     })
 
     expect(uploadMaterial).toHaveBeenCalledTimes(2)
-    expect(uploadMaterial.mock.calls[0]).toEqual([expect.anything(), 1, null, 77])
-    expect(uploadMaterial.mock.calls[1]).toEqual([expect.anything(), 1, 101, null])
+    expect(uploadMaterial.mock.calls[0]).toEqual([expect.anything(), '1', null, '77'])
+    expect(uploadMaterial.mock.calls[1]).toEqual([expect.anything(), '1', '101', null])
   })
 
   test('no node param is sent without getTargetNodeId', async () => {
     listFolders.mockResolvedValue([])
-    uploadMaterial.mockResolvedValue(RESULT(1, 'x.pdf'))
-    renderHarness({ courseId: 1 })
+    uploadMaterial.mockResolvedValue(RESULT('1', 'x.pdf'))
+    renderHarness({ courseId: '1' })
 
     await act(async () => {
       await held?.uploadFiles([file('top.pdf')])
     })
 
-    expect(uploadMaterial.mock.calls[0]).toEqual([expect.anything(), 1, null, null])
+    expect(uploadMaterial.mock.calls[0]).toEqual([expect.anything(), '1', null, null])
   })
 
   test('existing folder chains are reused without createFolder calls', async () => {
     listFolders.mockResolvedValue([
-      folder(30, 'pack', null),
-      folder(31, 'inner', 30),
-      folder(40, 'Other', null),
+      folder('30', 'pack', null),
+      folder('31', 'inner', '30'),
+      folder('40', 'Other', null),
     ])
-    uploadMaterial.mockResolvedValue(RESULT(2, 'n.pdf'))
-    renderHarness({ courseId: 1 })
+    uploadMaterial.mockResolvedValue(RESULT('2', 'n.pdf'))
+    renderHarness({ courseId: '1' })
 
     await act(async () => {
       await held?.uploadFiles([file('n.pdf', 'pack/inner/n.pdf')])
     })
 
     expect(createFolder).not.toHaveBeenCalled()
-    expect(uploadMaterial.mock.calls[0][2]).toBe(31)
+    expect(uploadMaterial.mock.calls[0][2]).toBe('31')
   })
 
   test('a folder upload under a picker base folder nests below the base', async () => {
-    listFolders.mockResolvedValue([folder(50, 'Base', null)])
-    createFolder.mockImplementation(async (name: string, parentId: number | null) => {
+    listFolders.mockResolvedValue([folder('50', 'Base', null)])
+    createFolder.mockImplementation(async (name: string, parentId: string | null) => {
       const id = 200 + createFolder.mock.calls.length
-      return folder(id, name, parentId)
+      return folder(String(id), name, parentId)
     })
-    uploadMaterial.mockResolvedValue(RESULT(3, 'z.pdf'))
-    renderHarness({ courseId: 1, getFolderId: () => 50 })
+    uploadMaterial.mockResolvedValue(RESULT('3', 'z.pdf'))
+    renderHarness({ courseId: '1', getFolderId: () => '50' })
 
     await act(async () => {
       await held?.uploadFiles([file('z.pdf', 'tree/z.pdf')])
     })
 
-    expect(createFolder).toHaveBeenCalledWith('tree', 50, 1)
-    expect(uploadMaterial.mock.calls[0][2]).toBe(201)
+    expect(createFolder).toHaveBeenCalledWith('tree', '50', '1')
+    expect(uploadMaterial.mock.calls[0][2]).toBe('201')
   })
 
   test('onFolderCreated reports each top-level folder created', async () => {
     listFolders.mockResolvedValue([])
-    createFolder.mockImplementation(async (name: string, parentId: number | null) => {
+    createFolder.mockImplementation(async (name: string, parentId: string | null) => {
       const id = 400 + createFolder.mock.calls.length
-      return folder(id, name, parentId)
+      return folder(String(id), name, parentId)
     })
-    uploadMaterial.mockResolvedValue(RESULT(3, 'z.pdf'))
+    uploadMaterial.mockResolvedValue(RESULT('3', 'z.pdf'))
     const onFolderCreated = vi.fn()
-    renderHarness({ courseId: 1, onFolderCreated })
+    renderHarness({ courseId: '1', onFolderCreated })
 
     await act(async () => {
       await held?.uploadFiles([
@@ -307,9 +307,9 @@ describe('useMaterialUpload', () => {
 
   test('dropzone folder input accepts a directory selection', async () => {
     listFolders.mockResolvedValue([])
-    createFolder.mockResolvedValue(folder(60, 'pack', null))
-    uploadMaterial.mockResolvedValue(RESULT(4, 'd.pdf'))
-    renderHarness({ courseId: 1 })
+    createFolder.mockResolvedValue(folder('60', 'pack', null))
+    uploadMaterial.mockResolvedValue(RESULT('4', 'd.pdf'))
+    renderHarness({ courseId: '1' })
 
     expect(screen.getByRole('button', { name: 'Upload a folder' })).toBeInTheDocument()
     const input = screen.getByLabelText('Upload a folder')
@@ -319,12 +319,12 @@ describe('useMaterialUpload', () => {
       target: { files: [file('d.pdf', 'pack/d.pdf')] },
     })
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    expect(uploadMaterial.mock.calls[0][2]).toBe(60)
+    expect(uploadMaterial.mock.calls[0][2]).toBe('60')
   })
 
   test('banner click offers both files and folder upload from the menu', async () => {
     listFolders.mockResolvedValue([])
-    renderHarness({ courseId: 1 })
+    renderHarness({ courseId: '1' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose what to upload' }))
     expect(await screen.findByRole('menu')).toBeInTheDocument()
@@ -335,9 +335,9 @@ describe('useMaterialUpload', () => {
 
   test('banner menu folder option uploads through the directory picker', async () => {
     listFolders.mockResolvedValue([])
-    createFolder.mockResolvedValue(folder(60, 'pack', null))
-    uploadMaterial.mockResolvedValue(RESULT(4, 'd.pdf'))
-    renderHarness({ courseId: 1 })
+    createFolder.mockResolvedValue(folder('60', 'pack', null))
+    uploadMaterial.mockResolvedValue(RESULT('4', 'd.pdf'))
+    renderHarness({ courseId: '1' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose what to upload' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Upload folder…' }))
@@ -347,17 +347,17 @@ describe('useMaterialUpload', () => {
       target: { files: [file('d.pdf', 'pack/d.pdf')] },
     })
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    expect(uploadMaterial.mock.calls[0][2]).toBe(60)
+    expect(uploadMaterial.mock.calls[0][2]).toBe('60')
   })
 
   test('dropping a folder on the banner recreates the folder tree', async () => {
     listFolders.mockResolvedValue([])
-    createFolder.mockImplementation(async (name: string, parentId: number | null) => {
+    createFolder.mockImplementation(async (name: string, parentId: string | null) => {
       const id = 300 + createFolder.mock.calls.length
-      return folder(id, name, parentId)
+      return folder(String(id), name, parentId)
     })
-    uploadMaterial.mockResolvedValue(RESULT(5, 'a.pdf'))
-    renderHarness({ courseId: 1 })
+    uploadMaterial.mockResolvedValue(RESULT('5', 'a.pdf'))
+    renderHarness({ courseId: '1' })
 
     const makeFile = (name: string) => new File(['x'], name)
     const fileEntry = (name: string, blob: File) => ({
@@ -392,8 +392,8 @@ describe('useMaterialUpload', () => {
     })
 
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(2))
-    expect(createFolder).toHaveBeenCalledWith('dropped', null, 1)
-    expect(createFolder).toHaveBeenCalledWith('sub', 301, 1)
+    expect(createFolder).toHaveBeenCalledWith('dropped', null, '1')
+    expect(createFolder).toHaveBeenCalledWith('sub', '301', '1')
   })
 })
 

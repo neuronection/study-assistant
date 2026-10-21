@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { createCourse, createSampleCourse, listCourses } from '@/lib/api'
 
 export interface WizardCourse {
-  id: number
+  id: string
   title: string
 }
 
@@ -24,7 +24,7 @@ export function CourseStep({
   const [subject, setSubject] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const adopt = async (courseId: number) => {
+  const adopt = async (courseId: string) => {
     await queryClient.invalidateQueries({ queryKey: ['courses'] })
     await queryClient.invalidateQueries({ queryKey: ['onboarding-state'] })
     const courses = await queryClient.fetchQuery({

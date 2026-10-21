@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { apiFetch, blobUrl, getMaterial } from '@/lib/api'
 
-export function OriginalView({ materialId }: { materialId: number }) {
+export function OriginalView({ materialId }: { materialId: string }) {
   const { t } = useTranslation()
   const { data } = useQuery({
     queryKey: ['material', materialId],

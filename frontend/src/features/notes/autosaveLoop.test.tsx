@@ -19,7 +19,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getNote: (id: number) => getNote(id),
+    getNote: (id: string) => getNote(id),
     updateNote: (...args: unknown[]) =>
       updateNote(...(args as [number, object])),
   }
@@ -27,7 +27,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 
 function NOTE(body: string): NoteDetailInfo {
   return {
-    id: 3,
+    id: '3',
     title: 'Probe',
     course_id: null,
     node_id: null,
@@ -52,7 +52,7 @@ function Harness({ apiRef }: { apiRef: { current: MarkdownEditorApi | null } }) 
   const note = useQuery({ queryKey: ['note', 3], queryFn: () => getNote(3) })
   const [draft, setDraft] = useState<string | null>(null)
   const autosave = useNoteAutosave({
-    noteId: 3,
+    noteId: '3',
     note: note.data,
     draft,
     setDraft,
@@ -91,7 +91,7 @@ describe('autosave full loop', () => {
   test('save + invalidate-refetch never replaces the document or moves the caret', async () => {
     let serverBody = 'first para\n\n\n\nsecond para\n\nthird'
     getNote.mockImplementation(async () => NOTE(serverBody))
-    updateNote.mockImplementation(async (_id: number, body: { body_md?: string }) => {
+    updateNote.mockImplementation(async (_id: string, body: { body_md?: string }) => {
       serverBody = body.body_md ?? serverBody
       return NOTE(serverBody)
     })

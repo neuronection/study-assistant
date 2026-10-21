@@ -181,7 +181,7 @@ function SuccessDefaults({
   providerName,
   result,
 }: {
-  providerId: number
+  providerId: string
   providerName: string
   result: ProviderSetupResult
 }) {
@@ -229,7 +229,7 @@ function SuccessDefaults({
   const bind = useMutation({
     mutationFn: ({ requires, modelId }: { requires: string; modelId: string }) => {
       const fallback = defaultByCap.get(requires)?.fallback_model_id ?? null
-      return assignTaskDefault(requires, Number(modelId), fallback)
+      return assignTaskDefault(requires, modelId, fallback)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] })

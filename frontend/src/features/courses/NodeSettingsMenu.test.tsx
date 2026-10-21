@@ -17,7 +17,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 })
 
 const NODE = {
-  id: 5,
+  id: '5',
   title: 'Derivatives',
   summary: 'Rates of change' as string | null,
   ai_hint: null as string | null,
@@ -58,7 +58,7 @@ describe('NodeSettingsMenu', () => {
 
     fireEvent.click(save)
     await waitFor(() =>
-      expect(updateNode).toHaveBeenCalledWith(5, {
+      expect(updateNode).toHaveBeenCalledWith('5', {
         title: 'Derivatives II',
         summary: 'Faster rates',
         ai_hint: 'prefer numeric answers',
@@ -71,7 +71,7 @@ describe('NodeSettingsMenu', () => {
   test('root routes title and description through the course PATCH', async () => {
     updateCourse.mockResolvedValue(undefined)
     updateNode.mockResolvedValue(undefined)
-    renderMenu({ ...NODE, id: 1, is_root: true, summary: null })
+    renderMenu({ ...NODE, id: '1', is_root: true, summary: null })
     openPanel()
 
     fireEvent.change(screen.getByRole('textbox', { name: /^title$/i }), {
@@ -86,12 +86,12 @@ describe('NodeSettingsMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
     await waitFor(() =>
-      expect(updateCourse).toHaveBeenCalledWith(3, {
+      expect(updateCourse).toHaveBeenCalledWith('3', {
         title: 'Calculus II',
         description: 'Whole course description',
       })
     )
-    await waitFor(() => expect(updateNode).toHaveBeenCalledWith(1, { ai_hint: 'be terse' }))
+    await waitFor(() => expect(updateNode).toHaveBeenCalledWith('1', { ai_hint: 'be terse' }))
   })
 
   test('unchanged fields are not sent and save stays disabled without edits', async () => {
@@ -105,7 +105,7 @@ describe('NodeSettingsMenu', () => {
       target: { value: 'Only the description changed' },
     })
     fireEvent.click(save)
-    await waitFor(() => expect(updateNode).toHaveBeenCalledWith(5, { summary: 'Only the description changed' }))
+    await waitFor(() => expect(updateNode).toHaveBeenCalledWith('5', { summary: 'Only the description changed' }))
   })
 
   test('failed save keeps the panel open with the typed text and an error', async () => {
@@ -142,7 +142,7 @@ describe('NodeSettingsMenu', () => {
 describe('NodeSettingsMenu exam date', () => {
   test('root saves the exam date through the course PATCH and clears on empty', async () => {
     updateCourse.mockResolvedValue(undefined)
-    const root = { ...NODE, id: 1, title: 'Calculus', is_root: true }
+    const root = { ...NODE, id: '1', title: 'Calculus', is_root: true }
     renderMenu(root, '2026-09-01')
     openPanel()
 
@@ -154,21 +154,21 @@ describe('NodeSettingsMenu exam date', () => {
     expect(save).toBeEnabled()
     fireEvent.click(save)
     await waitFor(() =>
-      expect(updateCourse).toHaveBeenCalledWith(3, { exam_date: '2026-09-15' })
+      expect(updateCourse).toHaveBeenCalledWith('3', { exam_date: '2026-09-15' })
     )
 
   })
 
   test('clearing the exam date sends null', async () => {
     updateCourse.mockResolvedValue(undefined)
-    const root = { ...NODE, id: 1, title: 'Calculus', is_root: true }
+    const root = { ...NODE, id: '1', title: 'Calculus', is_root: true }
     renderMenu(root, '2026-09-01')
     openPanel()
 
     fireEvent.change(screen.getByLabelText(/exam date/i), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
     await waitFor(() =>
-      expect(updateCourse).toHaveBeenCalledWith(3, { exam_date: null })
+      expect(updateCourse).toHaveBeenCalledWith('3', { exam_date: null })
     )
   })
 

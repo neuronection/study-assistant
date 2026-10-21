@@ -53,15 +53,15 @@ export type GenerateRequest = {
     count?: number | null
     steps?: number | null
     difficulty?: number | null
-    materialIds?: number[]
-    noteIds?: number[]
+    materialIds?: string[]
+    noteIds?: string[]
     instructions?: string | null
     questionTypes?: string[]
     shuffle?: boolean
     flashcards?: {
       source: 'note' | 'material'
-      noteId?: number | null
-      materialId?: number | null
+      noteId?: string | null
+      materialId?: string | null
     }
   }
 }
@@ -295,13 +295,13 @@ export function ProposalCard({
               count?: number
               steps?: number
               difficulty?: number
-              material_ids?: number[]
-              note_ids?: number[]
+              material_ids?: string[]
+              note_ids?: string[]
               instructions?: string
               question_types?: string[]
               shuffle?: boolean
-              material_id?: number
-              note_id?: number
+              material_id?: string
+              note_id?: string
             }
           | undefined
         const flashcards =
@@ -584,8 +584,8 @@ export function ProposalCard({
                   steps: (view.payload?.steps as number | undefined) ?? null,
                   difficulty:
                     (view.payload?.difficulty as number | undefined) ?? null,
-                  materialIds: view.payload?.material_ids as number[] | undefined,
-                  noteIds: view.payload?.note_ids as number[] | undefined,
+                  materialIds: view.payload?.material_ids as string[] | undefined,
+                  noteIds: view.payload?.note_ids as string[] | undefined,
                   instructions:
                     (view.payload?.instructions as string | undefined) ?? null,
                   questionTypes: view.payload?.question_types as

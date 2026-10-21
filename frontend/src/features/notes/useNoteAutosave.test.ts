@@ -6,7 +6,7 @@ import { noteBodyMd } from './useNoteAutosave'
 
 function note(body: NoteDetailInfo['body']): NoteDetailInfo {
   return {
-    id: 1,
+    id: '1',
     title: 't',
     course_id: null,
     node_id: null,
@@ -25,7 +25,7 @@ describe('noteBodyMd', () => {
     const md = noteBodyMd(
       note([
         { type: 'text', md: 'before' },
-        { type: 'drawing', drawing_id: 4 },
+        { type: 'drawing', drawing_id: '4' },
         { type: 'text', md: 'after' },
       ])
     )
@@ -45,9 +45,9 @@ describe('noteBodyMd', () => {
     const md = noteBodyMd(
       note([
         { type: 'text', md: 'start\n\n' },
-        { type: 'drawing', drawing_id: 1 },
+        { type: 'drawing', drawing_id: '1' },
         { type: 'text', md: '\n\nmid\n\n\n' },
-        { type: 'drawing', drawing_id: 2 },
+        { type: 'drawing', drawing_id: '2' },
         { type: 'text', md: '\ntail\n' },
       ])
     )

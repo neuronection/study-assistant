@@ -14,7 +14,7 @@ export function ModelsStep() {
   const [error, setError] = useState<string | null>(null)
 
   const toggle = useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       updateModel(id, { enabled }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['models'] })

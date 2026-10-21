@@ -46,7 +46,7 @@ export function ReviewPage() {
   useStudySession({ kind: 'review', entityRef: 'review:page' })
 
   const review = useMutation({
-    mutationFn: ({ cardId, rating }: { cardId: number; rating: number }) =>
+    mutationFn: ({ cardId, rating }: { cardId: string; rating: number }) =>
       reviewFlashcard(cardId, rating),
   })
 
@@ -55,7 +55,7 @@ export function ReviewPage() {
     [due.data]
   )
   const groupByCardId = useMemo(() => {
-    const map = new Map<number, DueCourseGroup>()
+    const map = new Map<string, DueCourseGroup>()
     for (const group of due.data?.groups ?? []) {
       for (const card of group.cards) {
         map.set(card.id, group)

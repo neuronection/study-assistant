@@ -10,24 +10,24 @@ const restoreNoteVersion = vi.fn()
 const diffNoteVersions = vi.fn()
 
 vi.mock('@/lib/api', () => ({
-  listNoteVersions: (id: number) => listNoteVersions(id),
-  getNoteVersion: (noteId: number, versionId: number) => getNoteVersion(noteId, versionId),
-  restoreNoteVersion: (noteId: number, versionId: number) =>
+  listNoteVersions: (id: string) => listNoteVersions(id),
+  getNoteVersion: (noteId: string, versionId: string) => getNoteVersion(noteId, versionId),
+  restoreNoteVersion: (noteId: string, versionId: string) =>
     restoreNoteVersion(noteId, versionId),
-  diffNoteVersions: (noteId: number, from: string, to: string) =>
+  diffNoteVersions: (noteId: string, from: string, to: string) =>
     diffNoteVersions(noteId, from, to),
 }))
 
 const VERSIONS = [
   {
-    version_id: 12,
+    version_id: '12',
     cause: 'restore',
     title: 'Limits',
     chars: 220,
     created_at: '2026-08-21T10:00:00',
   },
   {
-    version_id: 7,
+    version_id: '7',
     cause: 'autosave-coalesced',
     title: 'Limits',
     chars: 180,
@@ -40,7 +40,7 @@ function renderDialog(props: Partial<Parameters<typeof NoteHistoryDialog>[0]> = 
   return render(
     <QueryClientProvider client={client}>
       <NoteHistoryDialog
-        noteId={3}
+        noteId="3"
         dirty={false}
         onSaveVersion={vi.fn().mockResolvedValue(undefined)}
         onRestored={vi.fn()}
@@ -58,11 +58,11 @@ describe('NoteHistoryDialog', () => {
     restoreNoteVersion.mockReset()
     diffNoteVersions.mockReset()
     listNoteVersions.mockResolvedValue(VERSIONS)
-    getNoteVersion.mockImplementation(async (_noteId: number, versionId: number) => ({
+    getNoteVersion.mockImplementation(async (_noteId: string, versionId: string) => ({
       ...VERSIONS.find((entry) => entry.version_id === versionId)!,
       body_md: `Version ${versionId} content`,
     }))
-    restoreNoteVersion.mockResolvedValue({ id: 3 })
+    restoreNoteVersion.mockResolvedValue({ id: '3' })
   })
 
   test('lists versions with cause chips and previews a picked version', async () => {
@@ -71,7 +71,7 @@ describe('NoteHistoryDialog', () => {
     expect(screen.getByText('autosave')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /#12/i }))
-    await waitFor(() => expect(getNoteVersion).toHaveBeenCalledWith(3, 12))
+    await waitFor(() => expect(getNoteVersion).toHaveBeenCalledWith('3', '12'))
     expect(await screen.findByText(/Version 12 content/i)).toBeInTheDocument()
   })
 
@@ -84,7 +84,7 @@ describe('NoteHistoryDialog', () => {
     await screen.findByText(/Version 12 content/i)
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }))
 
-    await waitFor(() => expect(restoreNoteVersion).toHaveBeenCalledWith(3, 12))
+    await waitFor(() => expect(restoreNoteVersion).toHaveBeenCalledWith('3', '12'))
     await waitFor(() => expect(onRestored).toHaveBeenCalled())
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
@@ -127,7 +127,7 @@ describe('NoteHistoryDialog', () => {
     fireEvent.change(targetSelect, { target: { value: 'current' } })
 
     await waitFor(() =>
-      expect(diffNoteVersions).toHaveBeenCalledWith(3, '12', 'current')
+      expect(diffNoteVersions).toHaveBeenCalledWith('3', '12', 'current')
     )
     const diff = await screen.findByTestId('diff-view')
     expect(diff).toHaveTextContent('-old line')

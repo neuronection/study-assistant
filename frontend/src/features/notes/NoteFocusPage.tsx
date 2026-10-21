@@ -11,7 +11,7 @@ import { LazyNoteEditor } from './LazyNoteEditor'
 export function NoteFocusPage() {
   const { noteId } = useParams({ from: '/note/$noteId' })
   const { from, print } = useSearch({ from: '/note/$noteId' })
-  const id = Number(noteId)
+  const id = noteId
   const note = useQuery({
     queryKey: ['note', id],
     queryFn: () => getNote(id),

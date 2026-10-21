@@ -41,9 +41,9 @@ describe('fuzzy adapter (library searchScore)', () => {
 
 describe('fuzzyFilter', () => {
   const items = [
-    { id: 1, title: 'Chain rule basics' },
-    { id: 2, title: 'Integration by parts' },
-    { id: 3, title: 'chain-chain-chain' },
+    { id: '1', title: 'Chain rule basics' },
+    { id: '2', title: 'Integration by parts' },
+    { id: '3', title: 'chain-chain-chain' },
   ]
 
   test('empty query returns all items unfiltered', () => {
@@ -52,12 +52,12 @@ describe('fuzzyFilter', () => {
 
   test('filters non-matches and ranks best matches first', () => {
     const result = fuzzyFilter(items, 'chain rule', (item) => item.title)
-    expect(result[0]?.id).toBe(1)
+    expect(result[0]?.id).toBe('1')
     expect(result).toHaveLength(1)
   })
 
   test('shorter text wins score ties', () => {
     const result = fuzzyFilter(items, 'chain', (item) => item.title)
-    expect(result[0]?.id).toBe(1)
+    expect(result[0]?.id).toBe('1')
   })
 })

@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api'
 
 export async function exportMarkdownWithDrawings(
   markdown: string,
-  drawings: Array<{ id: number; png_sha: string | null }>
+  drawings: Array<{ id: string; png_sha: string | null }>
 ): Promise<string> {
   let resolved = markdown
   for (const drawing of drawings) {

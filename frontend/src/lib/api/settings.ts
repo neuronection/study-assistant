@@ -4,7 +4,7 @@ import { json, apiFetch, ApiError } from './client'
 export type LocalEngineHit = components['schemas']['LocalEngineHitOut']
 
 export interface Provider {
-  id: number
+  id: string
   name: string
   type: string
   base_url: string
@@ -84,7 +84,7 @@ export async function setupProviderPreset(
 }
 
 export async function setProviderDefault(
-  providerId: number,
+  providerId: string,
   body: { model_name: string; task?: string }
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/set-default`, {
@@ -136,13 +136,13 @@ export async function createProvider(body: {
   return json<Provider>(response)
 }
 
-export async function testProvider(id: number): Promise<Provider> {
+export async function testProvider(id: string): Promise<Provider> {
   const response = await apiFetch(`/api/v1/providers/${id}/test`, { method: 'POST' })
   return json<Provider>(response)
 }
 
 export async function updateProvider(
-  id: number,
+  id: string,
   body: {
     name?: string
     base_url?: string | null
@@ -160,7 +160,7 @@ export async function updateProvider(
   return json<Provider>(response)
 }
 
-export async function deleteProvider(id: number): Promise<void> {
+export async function deleteProvider(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/providers/${id}`, { method: 'DELETE' })
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
@@ -168,8 +168,8 @@ export async function deleteProvider(id: number): Promise<void> {
 }
 
 export interface AiModel {
-  id: number
-  provider_id: number
+  id: string
+  provider_id: string
   external_id: string
   label: string
   caps: string[]
@@ -184,7 +184,7 @@ export async function listModels(): Promise<AiModel[]> {
   return json<AiModel[]>(response)
 }
 
-export async function discoverModels(providerId: number): Promise<AiModel[]> {
+export async function discoverModels(providerId: string): Promise<AiModel[]> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/models`, { method: 'POST' })
   return json<AiModel[]>(response)
 }
@@ -194,13 +194,13 @@ export interface RemoteModelInfo {
   caps: string[]
 }
 
-export async function listRemoteModels(providerId: number): Promise<RemoteModelInfo[]> {
+export async function listRemoteModels(providerId: string): Promise<RemoteModelInfo[]> {
   const response = await apiFetch(`/api/v1/providers/${providerId}/remote-models`)
   return json<RemoteModelInfo[]>(response)
 }
 
 export async function createModel(body: {
-  provider_id: number
+  provider_id: string
   external_id: string
   label?: string | null
   caps?: string[] | null
@@ -219,7 +219,7 @@ export async function createModel(body: {
 }
 
 export async function updateModel(
-  id: number,
+  id: string,
   body: {
     enabled?: boolean
     label?: string
@@ -238,7 +238,7 @@ export async function updateModel(
   return json<AiModel>(response)
 }
 
-export async function deleteModel(id: number): Promise<void> {
+export async function deleteModel(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/models/${id}`, { method: 'DELETE' })
   if (!response.ok && response.status !== 204) {
     throw new Error(`delete failed: ${response.status}`)
@@ -249,8 +249,8 @@ export interface TaskInfo {
   task: string
   description: string
   requires: string
-  model_id: number | null
-  fallback_model_id: number | null
+  model_id: string | null
+  fallback_model_id: string | null
   model_label: string | null
   fallback_model_label: string | null
   inherits_default: boolean
@@ -260,8 +260,8 @@ export interface TaskInfo {
 
 export interface DefaultTaskInfo {
   requires: string
-  model_id: number | null
-  fallback_model_id: number | null
+  model_id: string | null
+  fallback_model_id: string | null
   model_label: string | null
   fallback_model_label: string | null
   /** ADR-0036: the model a decision:<kind> row inherits when its picker's
@@ -276,8 +276,8 @@ export async function listTasks(): Promise<TaskInfo[]> {
 
 export async function assignTask(
   task: string,
-  modelId: number | null,
-  fallbackModelId: number | null = null
+  modelId: string | null,
+  fallbackModelId: string | null = null
 ): Promise<TaskInfo> {
   const response = await apiFetch(`/api/v1/tasks/${task}`, {
     method: 'PUT',
@@ -294,8 +294,8 @@ export async function listTaskDefaults(): Promise<DefaultTaskInfo[]> {
 
 export async function assignTaskDefault(
   requires: string,
-  modelId: number | null,
-  fallbackModelId: number | null = null
+  modelId: string | null,
+  fallbackModelId: string | null = null
 ): Promise<DefaultTaskInfo> {
   const response = await apiFetch(`/api/v1/tasks/defaults/${requires}`, {
     method: 'PUT',
@@ -401,9 +401,9 @@ export interface SkillInfo {
 }
 
 export interface SkillVersionInfo {
-  id: number
+  id: string
   scope_type: string
-  scope_ref: number | null
+  scope_ref: string | null
   version: number
   system_template: string
   user_template: string
@@ -427,7 +427,7 @@ export async function saveSkillVersion(
   skillKey: string,
   body: {
     scope_type: string
-    scope_ref?: number | null
+    scope_ref?: string | null
     system_template: string
     user_template?: string
     contract?: Record<string, unknown> | null
@@ -443,7 +443,7 @@ export async function saveSkillVersion(
 
 export async function activateSkillVersion(
   skillKey: string,
-  versionId: number
+  versionId: string
 ): Promise<SkillVersionInfo> {
   const response = await apiFetch(
     `/api/v1/skills/${skillKey}/versions/${versionId}/activate`,
@@ -494,7 +494,7 @@ export async function importSkillPackCommit(
 
 export async function skillResolution(
   skillKey: string,
-  courseId?: number | null
+  courseId?: string | null
 ): Promise<{ chain: Record<string, string>; active: SkillVersionInfo | null }> {
   const params = courseId ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/skills/${skillKey}/resolution${params}`)
@@ -508,7 +508,7 @@ export async function skillTestRun(
   system: string
   user: string
   constraints: { kind: string; params: Record<string, unknown> }[]
-  skill_version_id: number
+  skill_version_id: string
 }> {
   const response = await apiFetch('/api/v1/skills/test-run', {
     method: 'POST',
@@ -519,6 +519,6 @@ export async function skillTestRun(
     system: string
     user: string
     constraints: { kind: string; params: Record<string, unknown> }[]
-    skill_version_id: number
+    skill_version_id: string
   }>(response)
 }

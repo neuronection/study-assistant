@@ -1,9 +1,9 @@
 export const WsTopic = {
-  jobs: (jobId: number): string => `jobs:${jobId}`,
-  chat: (sessionId: number): string => `chat:${sessionId}`,
-  source: (sourceId: number): string => `source:${sourceId}`,
-  note: (noteId: number): string => `note:${noteId}`,
-  material: (materialId: number): string => `material:${materialId}`,
+  jobs: (jobId: string): string => `jobs:${jobId}`,
+  chat: (sessionId: string): string => `chat:${sessionId}`,
+  source: (sourceId: string): string => `source:${sourceId}`,
+  note: (noteId: string): string => `note:${noteId}`,
+  material: (materialId: string): string => `material:${materialId}`,
 } as const
 
 export const storageKeys = {

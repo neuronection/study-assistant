@@ -33,11 +33,11 @@ export function FileDock() {
   const setFileWidth = useDockStore((state) => state.setFileWidth)
   const persistFileWidth = useDockStore((state) => state.persistFileWidth)
   const [alongsidePicker, setAlongsidePicker] = useState(false)
-  const courseIdNumber = params.courseId !== undefined ? Number(params.courseId) : null
-  const nodeNumber = params.nodeId !== undefined ? Number(params.nodeId) : null
+  const courseIdValue = params.courseId ?? null
+  const nodeIdValue = params.nodeId ?? null
   const context = useFocusContext(
-    search.note !== undefined ? courseIdNumber : null,
-    search.note !== undefined ? nodeNumber : null
+    search.note !== undefined ? courseIdValue : null,
+    search.note !== undefined ? nodeIdValue : null
   )
   const resize = useRailResize({
     width: rail.fileWidth ?? fileWidth,
@@ -119,12 +119,12 @@ export function FileDock() {
             onStudyAlongside={search.study === undefined ? () => setAlongsidePicker(true) : undefined}
             onExpand={expandNote}
           />
-          {alongsidePicker && courseIdNumber !== null ? (
+          {alongsidePicker && courseIdValue !== null ? (
             <MaterialPickerDialog
-              courseId={courseIdNumber}
-              nodeId={nodeNumber}
+              courseId={courseIdValue}
+              nodeId={nodeIdValue}
               nodeTitle={context?.nodeTitle}
-              assignedIds={new Set<number>()}
+              assignedIds={new Set<string>()}
               mode="select"
               onClose={() => setAlongsidePicker(false)}
               onSelect={(ids) => {

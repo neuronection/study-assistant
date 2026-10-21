@@ -27,12 +27,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    courseTree: (id: number) => courseTree(id),
+    courseTree: (id: string) => courseTree(id),
     addNode: (...args: unknown[]) => addNode(...(args as [number, number, string])),
     renameNode: (...args: unknown[]) => renameNode(...(args as [number, string])),
-    deleteNode: (id: number) => deleteNode(id),
+    deleteNode: (id: string) => deleteNode(id),
     restoreNode: (token: string) => restoreNode(token),
-    restoreDeletedItem: (id: number) => restoreDeletedItem(id),
+    restoreDeletedItem: (id: string) => restoreDeletedItem(id),
     moveNode: (...args: unknown[]) => moveNode(...(args as [number, number, number])),
     allocateMaterial: (...args: unknown[]) =>
       allocateMaterial(...(args as [number, number])),
@@ -43,7 +43,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 })
 
 interface TestNode {
-  id: number
+  id: string
   title: string
   summary: string | null
   objectives: string[]
@@ -62,7 +62,7 @@ interface TestNode {
 }
 
 function makeNode(
-  id: number,
+  id: string,
   title: string,
   depth: number,
   children: TestNode[] = [],
@@ -82,9 +82,9 @@ function makeNode(
   }
 }
 
-const TREE = makeNode(1, 'Calculus', 0, [
-  makeNode(2, 'Limits', 1, [
-    makeNode(3, 'Continuity', 2, [], {
+const TREE = makeNode('1', 'Calculus', 0, [
+  makeNode('2', 'Limits', 1, [
+    makeNode('3', 'Continuity', 2, [], {
       materials: 2,
       notes: 0,
       quizzes: 1,
@@ -92,8 +92,7 @@ const TREE = makeNode(1, 'Calculus', 0, [
       flashcards: 3,
     }),
   ]),
-  makeNode(
-    4,
+  makeNode('4',
     'Derivatives',
     1,
     [],
@@ -110,7 +109,7 @@ function chevronFor(title: string) {
 }
 
 function renderSidebar(
-  currentId: number | undefined,
+  currentId: string | undefined,
   options: { courseOrigin?: string | null } = {}
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -153,10 +152,10 @@ describe('NodeTreeSidebar', () => {
     allocateMaterial.mockReset()
     window.localStorage.clear()
     courseTree.mockResolvedValue([TREE])
-    addNode.mockResolvedValue({ id: 99, title: 'New', order_idx: 1000, depth: 1 })
+    addNode.mockResolvedValue({ id: '99', title: 'New', order_idx: 1000, depth: 1 })
     renameNode.mockResolvedValue(undefined)
     deleteNode.mockResolvedValue('token-1')
-    restoreNode.mockResolvedValue({ id: 4 })
+    restoreNode.mockResolvedValue({ id: '4' })
     moveNode.mockResolvedValue(undefined)
     allocateMaterial.mockResolvedValue(undefined)
   })
@@ -194,7 +193,7 @@ describe('NodeTreeSidebar', () => {
   })
 
   test('auto-expands ancestors of the current node and highlights it', async () => {
-    renderSidebar(3)
+    renderSidebar('3')
     expect(await screen.findByText('Continuity')).toBeInTheDocument()
 
     const current = screen.getByRole('treeitem', { selected: true })
@@ -205,7 +204,7 @@ describe('NodeTreeSidebar', () => {
   })
 
   test('shows only non-zero counts with tooltips', async () => {
-    renderSidebar(3)
+    renderSidebar('3')
     const continuity = await screen.findByText('Continuity')
     const row = continuity.closest('div')
     expect(row).not.toBeNull()
@@ -231,8 +230,8 @@ describe('NodeTreeSidebar', () => {
   })
 
   test('shows node total and an empty hint for a childless course', async () => {
-    courseTree.mockResolvedValue([makeNode(1, 'Empty course', 0)])
-    renderSidebar(1)
+    courseTree.mockResolvedValue([makeNode('1', 'Empty course', 0)])
+    renderSidebar('1')
     expect(await screen.findByText('Empty course')).toBeInTheDocument()
     expect(screen.getByText('1 node')).toBeInTheDocument()
     expect(screen.getByText('No child nodes yet.')).toBeInTheDocument()
@@ -249,7 +248,7 @@ describe('NodeTreeSidebar', () => {
     fireEvent.change(input, { target: { value: 'Chain rule' } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
 
-    await waitFor(() => expect(addNode).toHaveBeenCalledWith(9, 4, 'Chain rule'))
+    await waitFor(() => expect(addNode).toHaveBeenCalledWith('9', '4', 'Chain rule'))
   })
 
   test('context menu edits: rename swaps the row for an inline form', async () => {
@@ -263,11 +262,11 @@ describe('NodeTreeSidebar', () => {
     fireEvent.change(input, { target: { value: 'Differentiation' } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
 
-    await waitFor(() => expect(renameNode).toHaveBeenCalledWith(4, 'Differentiation'))
+    await waitFor(() => expect(renameNode).toHaveBeenCalledWith('4', 'Differentiation'))
   })
 
   test('scratchpad context menu offers promote and the dialog submits the fields', async () => {
-    promoteNode.mockResolvedValue({ id: 12, title: 'Abstract Algebra' })
+    promoteNode.mockResolvedValue({ id: '12', title: 'Abstract Algebra' })
     renderSidebar(undefined, { courseOrigin: 'scratch' })
     await screen.findByText('Derivatives')
 
@@ -281,7 +280,7 @@ describe('NodeTreeSidebar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create course' }))
 
     await waitFor(() =>
-      expect(promoteNode).toHaveBeenCalledWith(9, 4, {
+      expect(promoteNode).toHaveBeenCalledWith('9', '4', {
         title: 'Abstract Algebra',
         subject: null,
         level: null,
@@ -313,11 +312,11 @@ describe('NodeTreeSidebar', () => {
     fireEvent.contextMenu(screen.getByText('Derivatives'))
     fireEvent.click(screen.getByRole('menuitem', { name: /delete node/i }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete node' }))
-    await waitFor(() => expect(deleteNode).toHaveBeenCalledWith(4))
+    await waitFor(() => expect(deleteNode).toHaveBeenCalledWith('4'))
   })
 
   test('context menu on panel background targets the active node', async () => {
-    renderSidebar(4)
+    renderSidebar('4')
     await screen.findByText('Derivatives')
 
     fireEvent.contextMenu(screen.getByRole('tree'))
@@ -329,17 +328,17 @@ describe('NodeTreeSidebar', () => {
     fireEvent.change(input, { target: { value: 'Differentiation' } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
 
-    await waitFor(() => expect(renameNode).toHaveBeenCalledWith(4, 'Differentiation'))
+    await waitFor(() => expect(renameNode).toHaveBeenCalledWith('4', 'Differentiation'))
   })
 
   test('background context menu delete confirms against the active node', async () => {
-    renderSidebar(4)
+    renderSidebar('4')
     await screen.findByText('Derivatives')
 
     fireEvent.contextMenu(screen.getByRole('tree'))
     fireEvent.click(screen.getByRole('menuitem', { name: /delete node/i }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete node' }))
-    await waitFor(() => expect(deleteNode).toHaveBeenCalledWith(4))
+    await waitFor(() => expect(deleteNode).toHaveBeenCalledWith('4'))
   })
 
   test('background context menu falls back to the course root without a current node', async () => {
@@ -354,7 +353,7 @@ describe('NodeTreeSidebar', () => {
     fireEvent.change(input, { target: { value: 'Integrals' } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
 
-    await waitFor(() => expect(addNode).toHaveBeenCalledWith(9, 1, 'Integrals'))
+    await waitFor(() => expect(addNode).toHaveBeenCalledWith('9', '1', 'Integrals'))
   })
 
   test('context menu works across the whole panel chrome, but not inside the filter input', async () => {
@@ -405,7 +404,7 @@ describe('NodeTreeSidebar', () => {
       clientY: 0,
     })
 
-    await waitFor(() => expect(moveNode).toHaveBeenCalledWith(2, 4, 0))
+    await waitFor(() => expect(moveNode).toHaveBeenCalledWith('2', '4', 0))
   })
 
   test('dropping a material onto a row assigns it to that node', async () => {
@@ -427,7 +426,7 @@ describe('NodeTreeSidebar', () => {
       },
     })
 
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(4, 42))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('4', '42'))
   })
 
   test('dropping a multi-item payload assigns every material', async () => {
@@ -437,7 +436,7 @@ describe('NodeTreeSidebar', () => {
     const derivatives = screen
       .getByText('Derivatives')
       .closest('div[role="treeitem"]') as HTMLElement
-    const payload = JSON.stringify({ folderIds: [], materialIds: [42, 43], noteIds: [] })
+    const payload = JSON.stringify({ folderIds: [], materialIds: ['42', '43'], noteIds: [] })
 
     fireEvent.dragOver(derivatives, {
       dataTransfer: { types: ['application/x-sa-item'] },
@@ -449,8 +448,8 @@ describe('NodeTreeSidebar', () => {
       },
     })
 
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(4, 42))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(4, 43))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('4', '42'))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('4', '43'))
   })
 
   test('dropping a note payload moves every note to that node', async () => {
@@ -461,7 +460,7 @@ describe('NodeTreeSidebar', () => {
     const derivatives = screen
       .getByText('Derivatives')
       .closest('div[role="treeitem"]') as HTMLElement
-    const payload = JSON.stringify({ folderIds: [], materialIds: [], noteIds: [21, 22] })
+    const payload = JSON.stringify({ folderIds: [], materialIds: [], noteIds: ['21', '22'] })
 
     fireEvent.dragOver(derivatives, {
       dataTransfer: { types: ['application/x-sa-item'] },
@@ -473,13 +472,13 @@ describe('NodeTreeSidebar', () => {
       },
     })
 
-    await waitFor(() => expect(moveNote).toHaveBeenCalledWith(21, 4))
-    await waitFor(() => expect(moveNote).toHaveBeenCalledWith(22, 4))
+    await waitFor(() => expect(moveNote).toHaveBeenCalledWith('21', '4'))
+    await waitFor(() => expect(moveNote).toHaveBeenCalledWith('22', '4'))
   })
 
   test('auto-expands the current node’s ancestors even with a persisted expansion map', async () => {
-    window.localStorage.setItem('sa-tree-expanded-9', JSON.stringify({ 4: true }))
-    renderSidebar(3)
+    window.localStorage.setItem('sa-tree-expanded-9', JSON.stringify({ '4': true }))
+    renderSidebar('3')
     expect(await screen.findByText('Continuity')).toBeInTheDocument()
     expect(screen.getByText('Limits')).toBeInTheDocument()
     expect(screen.getByRole('tree').getAttribute('aria-activedescendant')).toBe(
@@ -598,7 +597,7 @@ describe('NodeTreeSidebar', () => {
   })
 
   test('delete shows an undo toast that restores the node from the trash', async () => {
-    deleteNode.mockResolvedValue({ deleted_item_id: 91 })
+    deleteNode.mockResolvedValue({ deleted_item_id: '91' })
     restoreDeletedItem.mockResolvedValue({ status: 'restored', entity_type: 'node' })
     renderSidebar(undefined)
     await screen.findByText('Derivatives')
@@ -606,11 +605,11 @@ describe('NodeTreeSidebar', () => {
     fireEvent.contextMenu(screen.getByText('Derivatives'))
     fireEvent.click(screen.getByRole('menuitem', { name: /delete node/i }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete node' }))
-    await waitFor(() => expect(deleteNode).toHaveBeenCalledWith(4))
+    await waitFor(() => expect(deleteNode).toHaveBeenCalledWith('4'))
 
     expect(await screen.findByText('Node deleted.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /undo/i }))
-    await waitFor(() => expect(restoreDeletedItem).toHaveBeenCalledWith(91))
+    await waitFor(() => expect(restoreDeletedItem).toHaveBeenCalledWith('91'))
   })
 
   test('expansion state persists to localStorage per course', async () => {
@@ -662,6 +661,6 @@ function dropEvent(mime: string, payloadValue: string, clientY?: number) {
     })
     derivatives.dispatchEvent(dropEvent('application/x-sa-node', '2', 105))
 
-    await waitFor(() => expect(moveNode).toHaveBeenCalledWith(2, 1, 1))
+    await waitFor(() => expect(moveNode).toHaveBeenCalledWith('2', '1', 1))
   })
 })

@@ -98,7 +98,7 @@ export function NotificationBell() {
 
   const openReview = () => void navigate({ to: '/review' })
   const openChat = () => void navigate({ to: '/chat' })
-  const openPlanner = (courseId: number) =>
+  const openPlanner = (courseId: string) =>
     void navigate({
       to: '/courses/$courseId',
       params: { courseId: String(courseId) },

@@ -105,7 +105,7 @@ function ActionButton({
       courseIdForBody,
       difficulty,
     }: {
-      courseIdForBody: number
+      courseIdForBody: string
       difficulty: number
     }) =>
       generateQuiz({
@@ -123,7 +123,7 @@ function ActionButton({
   })
 
   const teachBack = useMutation({
-    mutationFn: (body: { course_id: number; concept: string | null }) =>
+    mutationFn: (body: { course_id: string; concept: string | null }) =>
       createTeachBack({
         course_id: body.course_id,
         concept: body.concept,
@@ -138,7 +138,7 @@ function ActionButton({
   })
 
   const askTutor = useMutation({
-    mutationFn: (courseId: number) =>
+    mutationFn: (courseId: string) =>
       createChatSession(courseId, null, concept ? `Ask about ${concept}` : undefined),
     onSuccess: async (session) => {
       await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
@@ -512,7 +512,7 @@ function ContinueReadingCard() {
     })),
   })
   const trees = useMemo(() => {
-    const map = new Map<number, (typeof treeQueries)[number]['data']>()
+    const map = new Map<string, (typeof treeQueries)[number]['data']>()
     courseIds.forEach((id, index) => {
       map.set(id, treeQueries[index]?.data)
     })

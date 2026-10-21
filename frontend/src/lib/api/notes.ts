@@ -2,8 +2,8 @@ import { json, apiFetch } from './client'
 import type { BlockDto } from './materials'
 
 export async function saveSessionSummaryNote(
-  sessionId: number
-): Promise<{ note_id: number; node_title: string | null }> {
+  sessionId: string
+): Promise<{ note_id: string; node_title: string | null }> {
   const response = await apiFetch(`/api/v1/exercises/sessions/${sessionId}/summary-note`, {
     method: 'POST',
   })
@@ -11,25 +11,25 @@ export async function saveSessionSummaryNote(
 }
 
 export interface NoteInfo {
-  id: number
+  id: string
   title: string
-  course_id: number | null
-  node_id: number | null
+  course_id: string | null
+  node_id: string | null
   owner_type: string
-  owner_id: number | null
+  owner_id: string | null
   tags: string[]
   pinned: boolean
   updated_at: string
 }
 
 export interface NoteDrawingInfo {
-  id: number
+  id: string
   png_sha: string | null
   strokes: unknown[]
   view?: { x: number; y: number; width: number; height: number } | null
   ocr_version: number
   ocr_markdown: string | null
-  ocr_job_id?: number | null
+  ocr_job_id?: string | null
   created_at: string
 }
 
@@ -45,8 +45,8 @@ export interface NotesPage {
 
 export async function listNotes(
   query?: string,
-  courseId?: number,
-  options?: { tag?: string; limit?: number; cursor?: string; node_id?: number; include_children?: boolean }
+  courseId?: string,
+  options?: { tag?: string; limit?: number; cursor?: string; node_id?: string; include_children?: boolean }
 ): Promise<NotesPage> {
   const params = new URLSearchParams()
   if (query) {
@@ -77,7 +77,7 @@ export interface NoteTagSummary {
   count: number
 }
 
-export async function listNoteTags(courseId?: number): Promise<NoteTagSummary[]> {
+export async function listNoteTags(courseId?: string): Promise<NoteTagSummary[]> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/notes/tags/list${params}`)
   return json<NoteTagSummary[]>(response)
@@ -86,10 +86,10 @@ export async function listNoteTags(courseId?: number): Promise<NoteTagSummary[]>
 export async function createNote(body: {
   title: string
   body_md?: string
-  course_id: number
-  node_id?: number | null
+  course_id: string
+  node_id?: string | null
   owner_type?: string
-  owner_id?: number | null
+  owner_id?: string | null
   tags?: string[]
 }): Promise<NoteDetailInfo> {
   const response = await apiFetch('/api/v1/notes', {
@@ -100,21 +100,21 @@ export async function createNote(body: {
   return json<NoteDetailInfo>(response)
 }
 
-export async function getNote(id: number): Promise<NoteDetailInfo> {
+export async function getNote(id: string): Promise<NoteDetailInfo> {
   const response = await apiFetch(`/api/v1/notes/${id}`)
   return json<NoteDetailInfo>(response)
 }
 
 export async function composeNote(body: {
-  course_id: number
-  node_id?: number | null
+  course_id: string
+  node_id?: string | null
   scope?: string
   title?: string | null
   instructions?: string | null
-  include_material_ids?: number[]
-  exclude_material_ids?: number[]
-  note_ids?: number[]
-  concept_ids?: number[]
+  include_material_ids?: string[]
+  exclude_material_ids?: string[]
+  note_ids?: string[]
+  concept_ids?: string[]
   context_hint?: string | null
 }): Promise<NoteDetailInfo> {
   const response = await apiFetch('/api/v1/notes/compose', {
@@ -126,7 +126,7 @@ export async function composeNote(body: {
 }
 
 export async function updateNote(
-  id: number,
+  id: string,
   body: {
     title?: string
     body_md?: string
@@ -145,8 +145,8 @@ export async function updateNote(
 }
 
 export async function moveNote(
-  id: number,
-  nodeId: number | null
+  id: string,
+  nodeId: string | null
 ): Promise<NoteDetailInfo> {
   const response = await apiFetch(`/api/v1/notes/${id}/move`, {
     method: 'PATCH',
@@ -157,7 +157,7 @@ export async function moveNote(
 }
 
 export interface NoteVersionInfo {
-  version_id: number
+  version_id: string
   cause: string
   title: string
   chars: number
@@ -168,22 +168,22 @@ export interface NoteVersionDetailInfo extends NoteVersionInfo {
   body_md: string
 }
 
-export async function listNoteVersions(id: number): Promise<NoteVersionInfo[]> {
+export async function listNoteVersions(id: string): Promise<NoteVersionInfo[]> {
   const response = await apiFetch(`/api/v1/notes/${id}/versions`)
   return json<NoteVersionInfo[]>(response)
 }
 
 export async function getNoteVersion(
-  noteId: number,
-  versionId: number
+  noteId: string,
+  versionId: string
 ): Promise<NoteVersionDetailInfo> {
   const response = await apiFetch(`/api/v1/notes/${noteId}/versions/${versionId}`)
   return json<NoteVersionDetailInfo>(response)
 }
 
 export async function restoreNoteVersion(
-  noteId: number,
-  versionId: number
+  noteId: string,
+  versionId: string
 ): Promise<NoteDetailInfo> {
   const response = await apiFetch(`/api/v1/notes/${noteId}/restore`, {
     method: 'POST',
@@ -193,13 +193,13 @@ export async function restoreNoteVersion(
   return json<NoteDetailInfo>(response)
 }
 
-export async function deleteNote(id: number): Promise<{ deleted_item_id: number }> {
+export async function deleteNote(id: string): Promise<{ deleted_item_id: string }> {
   const response = await apiFetch(`/api/v1/notes/${id}`, { method: 'DELETE' })
-  return json<{ deleted_item_id: number }>(response)
+  return json<{ deleted_item_id: string }>(response)
 }
 
 export async function addDrawing(
-  noteId: number,
+  noteId: string,
   strokes: unknown[],
   pngBase64: string,
   ocr = true,
@@ -213,7 +213,7 @@ export async function addDrawing(
   return json<NoteDetailInfo>(response)
 }
 
-export async function reocrDrawing(noteId: number, drawingId: number): Promise<NoteDetailInfo> {
+export async function reocrDrawing(noteId: string, drawingId: string): Promise<NoteDetailInfo> {
   const response = await apiFetch(`/api/v1/notes/${noteId}/drawings/${drawingId}/reocr`, {
     method: 'POST',
   })
@@ -221,8 +221,8 @@ export async function reocrDrawing(noteId: number, drawingId: number): Promise<N
 }
 
 export async function updateDrawing(
-  noteId: number,
-  drawingId: number,
+  noteId: string,
+  drawingId: string,
   strokes: unknown[],
   pngBase64: string,
   ocr: boolean,
@@ -236,7 +236,7 @@ export async function updateDrawing(
   return json<NoteDetailInfo>(response)
 }
 
-export async function deleteDrawing(noteId: number, drawingId: number): Promise<NoteDetailInfo> {
+export async function deleteDrawing(noteId: string, drawingId: string): Promise<NoteDetailInfo> {
   const response = await apiFetch(`/api/v1/notes/${noteId}/drawings/${drawingId}`, {
     method: 'DELETE',
   })
@@ -250,7 +250,7 @@ export interface NoteActionResult {
 }
 
 export async function runNoteAction(
-  noteId: number,
+  noteId: string,
   action: 'summarize' | 'cleanup' | 'explain' | 'expand'
 ): Promise<NoteActionResult> {
   const response = await apiFetch(`/api/v1/notes/${noteId}/actions`, {
@@ -270,7 +270,7 @@ export interface NoteVersionDiffInfo {
 }
 
 export async function diffNoteVersions(
-  noteId: number,
+  noteId: string,
   from: string,
   to: string
 ): Promise<NoteVersionDiffInfo> {

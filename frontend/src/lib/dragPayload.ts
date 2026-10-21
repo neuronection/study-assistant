@@ -6,18 +6,18 @@ export const MATERIAL_MIME = 'application/x-sa-material'
 export type DragKind = 'folder' | 'material' | 'note'
 
 export interface DragPayload {
-  folderIds: number[]
-  materialIds: number[]
-  noteIds: number[]
+  folderIds: string[]
+  materialIds: string[]
+  noteIds: string[]
 }
 
-const emptyIds: number[] = []
+const emptyIds: string[] = []
 
 export function buildDragPayload(
   event: DragEvent,
   opts: {
     key: string
-    id: number
+    id: string
     kind: DragKind
     selected: ReadonlySet<string>
     selectedPayload: DragPayload
@@ -60,9 +60,9 @@ export function parseDragPayload(event: DragEvent): DragPayload | null {
       return null
     }
     return {
-      folderIds: parsed.folderIds.map(Number),
-      materialIds: parsed.materialIds.map(Number),
-      noteIds: Array.isArray(parsed.noteIds) ? parsed.noteIds.map(Number) : emptyIds,
+      folderIds: parsed.folderIds.map(String),
+      materialIds: parsed.materialIds.map(String),
+      noteIds: Array.isArray(parsed.noteIds) ? parsed.noteIds.map(String) : emptyIds,
     }
   } catch {
     return null
@@ -92,7 +92,7 @@ export function setDragCountImage(event: DragEvent, count: number, label: string
   event.dataTransfer.setDragImage(canvas, 8, canvas.height / 2)
 }
 
-function singlePayload(kind: DragKind, id: number): DragPayload {
+function singlePayload(kind: DragKind, id: string): DragPayload {
   if (kind === 'folder') {
     return { folderIds: [id], materialIds: emptyIds, noteIds: emptyIds }
   }

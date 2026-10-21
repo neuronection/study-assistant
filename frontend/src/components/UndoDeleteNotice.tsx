@@ -9,7 +9,7 @@ export function UndoDeleteNotice({
   deletedItemId,
   onDismiss,
 }: {
-  deletedItemId: number | null
+  deletedItemId: string | null
   onDismiss: () => void
 }) {
   const { t } = useTranslation()
@@ -24,7 +24,7 @@ export function UndoDeleteNotice({
   }, [deletedItemId, onDismiss])
 
   const restore = useMutation({
-    mutationFn: () => restoreDeletedItem(deletedItemId as number),
+    mutationFn: () => restoreDeletedItem(deletedItemId!),
     onSuccess: async () => {
       onDismiss()
       await queryClient.invalidateQueries()

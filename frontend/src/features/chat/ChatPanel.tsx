@@ -150,9 +150,9 @@ export function ChatPanel({
   >(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sentCountRef = useRef(0)
-  const adoptingRef = useRef<number | null>(null)
-  const ensureSessionRef = useRef<Promise<number | null> | null>(null)
-  const createdSessionIdRef = useRef<number | null>(null)
+  const adoptingRef = useRef<string | null>(null)
+  const ensureSessionRef = useRef<Promise<string | null> | null>(null)
+  const createdSessionIdRef = useRef<string | null>(null)
   const [reasoningOpen, setReasoningOpen] = useReasoningOpen()
   const isPage = variant === 'page'
   const storeWidth = useChatStore((state) => state.width)
@@ -217,7 +217,7 @@ export function ChatPanel({
   })
 
   const branchSelect = useMutation({
-    mutationFn: (messageId: number) => selectChatVariant(messageId),
+    mutationFn: (messageId: string) => selectChatVariant(messageId),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['chat-messages', activeSession],
@@ -255,7 +255,7 @@ export function ChatPanel({
     })
   }
 
-  const handleEditResend = (messageId: number, content: string) => {
+  const handleEditResend = (messageId: string, content: string) => {
     if (sending || content.length === 0) {
       return
     }
@@ -264,7 +264,7 @@ export function ChatPanel({
     void chat.send(content)
   }
 
-  const handleRegenerate = (userMessageId: number) => {
+  const handleRegenerate = (userMessageId: string) => {
     if (sending) {
       return
     }
@@ -286,7 +286,7 @@ export function ChatPanel({
     if (lastUser === undefined) {
       return
     }
-    handleRegenerate(Number(lastUser.id))
+    handleRegenerate(lastUser.id)
   }
 
   useEffect(() => {
@@ -319,7 +319,7 @@ export function ChatPanel({
     setAttachClose((current) => current + 1)
   }
 
-  const ensureUploadSession = useCallback((): Promise<number | null> => {
+  const ensureUploadSession = useCallback((): Promise<string | null> => {
     const known = activeSession ?? createdSessionIdRef.current
     if (known !== null) {
       return Promise.resolve(known)
@@ -346,7 +346,7 @@ export function ChatPanel({
     return ensureSessionRef.current
   }, [activeSession, uploadCourseId, t, onSessionCreated, queryClient])
 
-  const ensureChatUploadFolder = useCallback(async (): Promise<number | null> => {
+  const ensureChatUploadFolder = useCallback(async (): Promise<string | null> => {
     if (uploadCourseId === null) {
       return null
     }
@@ -375,7 +375,7 @@ export function ChatPanel({
   }, [uploadCourseId, ensureUploadSession, sessions.data, t])
 
   const nameChatUpload = useCallback(
-    async (item: UploadItem, folderId: number | null): Promise<string> => {
+    async (item: UploadItem, folderId: string | null): Promise<string> => {
       if (item.label === undefined || folderId === null || uploadCourseId === null) {
         return item.file.name
       }

@@ -23,12 +23,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
       searchDiscovery(...args),
     listDiscoverySuggestions: (params: unknown) => listDiscoverySuggestions(params),
     saveDiscoverySuggestion: (body: unknown) => saveDiscoverySuggestion(body),
-    patchDiscoverySuggestion: (id: number, body: unknown) =>
+    patchDiscoverySuggestion: (id: string, body: unknown) =>
       patchDiscoverySuggestion(id, body),
-    deleteDiscoverySuggestion: (id: number) => deleteDiscoverySuggestion(id),
+    deleteDiscoverySuggestion: (id: string) => deleteDiscoverySuggestion(id),
     createLinkMaterial: (body: unknown) => createLinkMaterial(body),
-    parseLinkMaterial: (id: number) => parseLinkMaterial(id),
-    getJob: (id: number) => getJob(id),
+    parseLinkMaterial: (id: string) => parseLinkMaterial(id),
+    getJob: (id: string) => getJob(id),
     getProfilePreferences: () => getProfilePreferences(),
   }
 })
@@ -63,8 +63,8 @@ function renderDialog(props: Partial<Parameters<typeof DiscoverDialog>[0]> = {})
       <DiscoverDialog
         open
         onClose={() => undefined}
-        courseId={7}
-        nodeId={12}
+        courseId="7"
+        nodeId="12"
         defaultQuery="derivatives"
         {...props}
       />
@@ -117,7 +117,7 @@ describe('DiscoverDialog', () => {
   test('save for later persists the result and shows the saved state', async () => {
     searchDiscovery.mockResolvedValue({ results: [RESULT], errors: [] })
     saveDiscoverySuggestion.mockResolvedValue({
-      suggestion: { ...RESULT, id: 5, status: 'saved', material_id: null },
+      suggestion: { ...RESULT, id: '5', status: 'saved', material_id: null },
       created: true,
     })
     renderDialog()
@@ -129,8 +129,8 @@ describe('DiscoverDialog', () => {
           provider: 'youtube',
           url: 'https://youtube.com/watch?v=abc',
           kind: 'video',
-          course_id: 7,
-          node_id: 12,
+          course_id: '7',
+          node_id: '12',
         }),
       ),
     )
@@ -139,55 +139,55 @@ describe('DiscoverDialog', () => {
   test('attach as link creates the material and links the suggestion', async () => {
     searchDiscovery.mockResolvedValue({ results: [RESULT], errors: [] })
     saveDiscoverySuggestion.mockResolvedValue({
-      suggestion: { ...RESULT, id: 5, status: 'saved', material_id: null },
+      suggestion: { ...RESULT, id: '5', status: 'saved', material_id: null },
       created: true,
     })
     createLinkMaterial.mockResolvedValue({
-      material: { id: 44, title: 'Chain rule intuition' },
+      material: { id: '44', title: 'Chain rule intuition' },
       deduped: false,
       job_id: null,
     })
     patchDiscoverySuggestion.mockResolvedValue({
-      id: 5,
+      id: '5',
       status: 'saved',
-      material_id: 44,
+      material_id: '44',
     })
     renderDialog()
     await runSearch()
     fireEvent.click(screen.getByRole('button', { name: /attach as link/i }))
     await waitFor(() =>
       expect(createLinkMaterial).toHaveBeenCalledWith({
-        course_id: 7,
+        course_id: '7',
         url: 'https://youtube.com/watch?v=abc',
         title: 'Chain rule intuition',
-        node_id: 12,
+        node_id: '12',
       }),
     )
     await waitFor(() =>
-      expect(patchDiscoverySuggestion).toHaveBeenCalledWith(5, { material_id: 44 }),
+      expect(patchDiscoverySuggestion).toHaveBeenCalledWith('5', { material_id: '44' }),
     )
   })
 
   test('import & parse runs the parse job and attaches the material', async () => {
     searchDiscovery.mockResolvedValue({ results: [RESULT], errors: [] })
     saveDiscoverySuggestion.mockResolvedValue({
-      suggestion: { ...RESULT, id: 5, status: 'saved', material_id: null },
+      suggestion: { ...RESULT, id: '5', status: 'saved', material_id: null },
       created: true,
     })
     createLinkMaterial.mockResolvedValue({
-      material: { id: 44, title: 'Chain rule intuition' },
+      material: { id: '44', title: 'Chain rule intuition' },
       deduped: false,
       job_id: null,
     })
-    parseLinkMaterial.mockResolvedValue({ job_id: 9 })
+    parseLinkMaterial.mockResolvedValue({ job_id: '9' })
     getJob.mockResolvedValue({ status: 'done', error: null })
-    patchDiscoverySuggestion.mockResolvedValue({ id: 5, status: 'saved' })
+    patchDiscoverySuggestion.mockResolvedValue({ id: '5', status: 'saved' })
     renderDialog()
     await runSearch()
     fireEvent.click(screen.getByRole('button', { name: /import & parse/i }))
-    await waitFor(() => expect(parseLinkMaterial).toHaveBeenCalledWith(44))
+    await waitFor(() => expect(parseLinkMaterial).toHaveBeenCalledWith('44'))
     await waitFor(() =>
-      expect(patchDiscoverySuggestion).toHaveBeenCalledWith(5, { material_id: 44 }),
+      expect(patchDiscoverySuggestion).toHaveBeenCalledWith('5', { material_id: '44' }),
     )
   })
 
@@ -196,7 +196,7 @@ describe('DiscoverDialog', () => {
       results: [
         {
           ...RESULT,
-          suggestion: { id: 5, status: 'dismissed', material_id: null },
+          suggestion: { id: '5', status: 'dismissed', material_id: null },
         },
       ],
       errors: [],
@@ -212,8 +212,8 @@ describe('DiscoverDialog', () => {
     listDiscoverySuggestions.mockResolvedValue({
       items: [
         {
-          id: 3,
-          course_id: 7,
+          id: '3',
+          course_id: '7',
           node_id: null,
           provider: 'web',
           url: 'https://example.com/x',
@@ -230,13 +230,13 @@ describe('DiscoverDialog', () => {
       ],
       next_cursor: null,
     })
-    patchDiscoverySuggestion.mockResolvedValue({ id: 3, status: 'suggested' })
+    patchDiscoverySuggestion.mockResolvedValue({ id: '3', status: 'suggested' })
     searchDiscovery.mockResolvedValue({ results: [], errors: [] })
     renderDialog()
     expect(await screen.findByText('A saved page')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /restore/i }))
     await waitFor(() =>
-      expect(patchDiscoverySuggestion).toHaveBeenCalledWith(3, { status: 'suggested' }),
+      expect(patchDiscoverySuggestion).toHaveBeenCalledWith('3', { status: 'suggested' }),
     )
   })
 

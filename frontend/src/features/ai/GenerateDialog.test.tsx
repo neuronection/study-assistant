@@ -28,27 +28,27 @@ vi.mock('@/lib/api', async (importOriginal) => {
     generateExercise: (body: unknown) => generateExercise(body),
     generateFlashcards: (body: unknown) => generateFlashcards(body),
     composeMaterialAsync: (body: unknown) => composeMaterialAsync(body),
-    getJob: (jobId: number) => getJob(jobId),
-    cancelJob: (jobId: number) => cancelJob(jobId),
-    getMaterial: (id: number) => getMaterial(id),
-    previewAiContext: (courseId: number, spec: unknown) => previewAiContext(courseId, spec),
+    getJob: (jobId: string) => getJob(jobId),
+    cancelJob: (jobId: string) => cancelJob(jobId),
+    getMaterial: (id: string) => getMaterial(id),
+    previewAiContext: (courseId: string, spec: unknown) => previewAiContext(courseId, spec),
     listMaterials: (...args: unknown[]) => listMaterials(...args),
     listNotes: (...args: unknown[]) => listNotes(...args),
-    nodeWorkspace: (nodeId: number) => nodeWorkspace(nodeId),
-    conceptGraph: (courseId: number) => conceptGraph(courseId),
+    nodeWorkspace: (nodeId: string) => nodeWorkspace(nodeId),
+    conceptGraph: (courseId: string) => conceptGraph(courseId),
     listCourses: () => listCourses(),
-    getNodeArtifacts: (id: number, kind?: string) => getNodeArtifacts(id, kind),
-    getUnassignedMaterials: (courseId: number) => getUnassignedMaterials(courseId),
+    getNodeArtifacts: (id: string, kind?: string) => getNodeArtifacts(id, kind),
+    getUnassignedMaterials: (courseId: string) => getUnassignedMaterials(courseId),
   }
 })
 
 const testHooks = vi.hoisted(() => ({
-  materialIds: [7],
-  noteEntries: [{ id: 11, title: 'My note' }],
+  materialIds: ['7'],
+  noteEntries: [{ id: '11', title: 'My note' }],
 }))
 
 vi.mock('@/features/courses/MaterialPickerDialog', () => ({
-  MaterialPickerDialog: (props: { onSelect?: (ids: number[]) => void }) => (
+  MaterialPickerDialog: (props: { onSelect?: (ids: string[]) => void }) => (
     <button type="button" onClick={() => props.onSelect?.(testHooks.materialIds)}>
       confirm-pick
     </button>
@@ -57,7 +57,7 @@ vi.mock('@/features/courses/MaterialPickerDialog', () => ({
 
 vi.mock('@/features/notes/NotePickerDialog', () => ({
   NotePickerDialog: (props: {
-    onSelect?: (entries: Array<{ id: number; title: string }>) => void
+    onSelect?: (entries: Array<{ id: string; title: string }>) => void
   }) => (
     <button type="button" onClick={() => props.onSelect?.(testHooks.noteEntries)}>
       confirm-notes
@@ -68,10 +68,10 @@ vi.mock('@/features/notes/NotePickerDialog', () => ({
 const PREVIEW = {
   stats: {
     materials: [
-      { id: 1, title: 'Lecture 1' },
-      { id: 2, title: 'Lecture 2' },
+      { id: '1', title: 'Lecture 1' },
+      { id: '2', title: 'Lecture 2' },
     ],
-    chunks: [{ material_id: 1, title: 'Lecture 1' }],
+    chunks: [{ material_id: '1', title: 'Lecture 1' }],
     notes: [],
     concepts: [],
     hints: 1,
@@ -83,8 +83,8 @@ const PREVIEW = {
 
 const WORKSPACE = {
   node: {
-    id: 5,
-    course_id: 3,
+    id: '5',
+    course_id: '3',
     course_title: 'Calculus',
     title: 'Ch',
     summary: null,
@@ -92,13 +92,13 @@ const WORKSPACE = {
     ai_hint: 'node hint',
     depth: 1,
     is_root: false,
-    parent_id: 1,
+    parent_id: '1',
     breadcrumb: [],
   },
   children: [],
-  materials: [{ material_id: 1, title: 'Lecture 1', kind: 'doc', status: 'ready', read_status: 'unread', progress: 0 }],
+  materials: [{ material_id: '1', title: 'Lecture 1', kind: 'doc', status: 'ready', read_status: 'unread', progress: 0 }],
   child_materials: {
-    6: [{ material_id: 2, title: 'Lecture 2', kind: 'doc', status: 'ready', read_status: 'unread', progress: 0 }],
+    6: [{ material_id: '2', title: 'Lecture 2', kind: 'doc', status: 'ready', read_status: 'unread', progress: 0 }],
   },
   notes: [],
   counts: {
@@ -113,9 +113,9 @@ const WORKSPACE = {
 
 function renderDialog(props: {
   task: 'quiz' | 'exercise' | 'flashcards' | 'compose' | 'practice'
-  courseId?: number | null
-  scopeNodeId?: number
-  rootNodeId?: number
+  courseId?: string | null
+  scopeNodeId?: string
+  rootNodeId?: string
   onSuccess?: (result: unknown) => void
 }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -123,7 +123,7 @@ function renderDialog(props: {
     <QueryClientProvider client={client}>
       <GenerateDialog
         task={props.task}
-        courseId={props.courseId ?? 3}
+        courseId={props.courseId ?? '3'}
         scopeNodeId={props.scopeNodeId}
         rootNodeId={props.rootNodeId}
         onClose={() => undefined}
@@ -135,18 +135,18 @@ function renderDialog(props: {
 
 describe('GenerateDialog', () => {
   beforeEach(() => {
-    generateQuiz.mockReset().mockResolvedValue({ id: 9, question_count: 8 })
-    generateExercise.mockReset().mockResolvedValue({ id: 21, step_count: 3 })
+    generateQuiz.mockReset().mockResolvedValue({ id: '9', question_count: 8 })
+    generateExercise.mockReset().mockResolvedValue({ id: '21', step_count: 3 })
     generateFlashcards.mockReset().mockResolvedValue([])
-    composeMaterialAsync.mockReset().mockResolvedValue({ job_id: 5 })
+    composeMaterialAsync.mockReset().mockResolvedValue({ job_id: '5' })
     getJob.mockReset().mockResolvedValue({
-      id: 5,
+      id: '5',
       type: 'compose',
       status: 'done',
       progress: 100,
       stage: 'done',
       error: null,
-      material_id: 77,
+      material_id: '77',
       retriable: false,
       stale: false,
       label: 'compose',
@@ -156,24 +156,24 @@ describe('GenerateDialog', () => {
     })
     cancelJob.mockReset().mockResolvedValue({})
     getMaterial.mockReset().mockResolvedValue({
-      material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
+      material: { id: '77', title: 'Guide', provenance: { source: 'ai-composed' } },
       extraction: null,
       index_card: null,
       drawings: [],
     })
     previewAiContext.mockReset().mockResolvedValue(PREVIEW)
     listMaterials.mockReset().mockResolvedValue([
-      { id: 1, title: 'Lecture 1' },
-      { id: 2, title: 'Lecture 2' },
-      { id: 7, title: 'Unlinked' },
+      { id: '1', title: 'Lecture 1' },
+      { id: '2', title: 'Lecture 2' },
+      { id: '7', title: 'Unlinked' },
     ])
     listNotes.mockReset().mockResolvedValue({
-      items: [{ id: 11, title: 'My note' }],
+      items: [{ id: '11', title: 'My note' }],
       next_cursor: null,
     })
     nodeWorkspace.mockReset().mockResolvedValue(WORKSPACE)
     conceptGraph.mockReset().mockResolvedValue({
-      concepts: [{ id: 31, name: 'chain rule', description: null, aliases: [], nodes: [] }],
+      concepts: [{ id: '31', name: 'chain rule', description: null, aliases: [], nodes: [] }],
       links: [],
     })
     listCourses.mockReset().mockResolvedValue([])
@@ -183,12 +183,12 @@ describe('GenerateDialog', () => {
       artifact: null,
     })
     getUnassignedMaterials.mockReset().mockResolvedValue({ count: 0, materials: [] })
-    testHooks.materialIds = [7]
-    testHooks.noteEntries = [{ id: 11, title: 'My note' }]
+    testHooks.materialIds = ['7']
+    testHooks.noteEntries = [{ id: '11', title: 'My note' }]
   })
 
   test('compose preset sends kind, title, instructions and scope context', async () => {
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     const kindSelect = await screen.findByLabelText('Document kind')
     fireEvent.change(kindSelect, { target: { value: 'summary_sheet' } })
     const titleInput = screen.getByPlaceholderText('Title (optional)')
@@ -200,11 +200,11 @@ describe('GenerateDialog', () => {
     await waitFor(() => expect(composeMaterialAsync).toHaveBeenCalled())
     expect(composeMaterialAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        course_id: 3,
+        course_id: '3',
         kind: 'summary_sheet',
         title: 'Limits cheat sheet',
         instructions: 'compact formulas only',
-        node_id: 5,
+        node_id: '5',
       })
     )
   })
@@ -213,9 +213,9 @@ describe('GenerateDialog', () => {
     getNodeArtifacts.mockResolvedValue({
       cheat_sheet: null,
       reviews: [],
-      artifact: { material_id: 77, title: 'Derivatives — study guide' },
+      artifact: { material_id: '77', title: 'Derivatives — study guide' },
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     expect(
       await screen.findByText(/Derivatives — study guide/)
     ).toBeInTheDocument()
@@ -234,18 +234,18 @@ describe('GenerateDialog', () => {
     const onSuccess = vi.fn()
     getMaterial.mockResolvedValue({
       material: {
-        id: 77,
+        id: '77',
         title: 'Guide',
         provenance: {
           source: 'ai-composed',
-          coverage: { total: 14, covered: 8, missing_ids: [1, 2, 3] },
+          coverage: { total: 14, covered: 8, missing_ids: ['1', '2', '3'] },
         },
       },
       extraction: null,
       index_card: null,
       drawings: [],
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1, onSuccess })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1', onSuccess })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
     expect(
       await screen.findByTestId('coverage-note')
@@ -254,13 +254,13 @@ describe('GenerateDialog', () => {
     expect(onSuccess).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: /close/i }))
     await waitFor(() => expect(onSuccess).toHaveBeenCalled())
-    expect(onSuccess.mock.calls[0][0]).toMatchObject({ id: 77 })
+    expect(onSuccess.mock.calls[0][0]).toMatchObject({ id: '77' })
   })
 
   test('compose result stays silent when every material was retrieved', async () => {
     getMaterial.mockResolvedValue({
       material: {
-        id: 77,
+        id: '77',
         title: 'Guide',
         provenance: {
           source: 'ai-composed',
@@ -271,7 +271,7 @@ describe('GenerateDialog', () => {
       index_card: null,
       drawings: [],
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
     await screen.findByText(/"Guide" is ready\./)
     expect(screen.queryByTestId('coverage-note')).not.toBeInTheDocument()
@@ -281,7 +281,7 @@ describe('GenerateDialog', () => {
   test('compose result flags needs_review from provenance', async () => {
     getMaterial.mockResolvedValue({
       material: {
-        id: 77,
+        id: '77',
         title: 'Formulas',
         provenance: { source: 'ai-composed', needs_review: true },
       },
@@ -289,7 +289,7 @@ describe('GenerateDialog', () => {
       index_card: null,
       drawings: [],
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
     expect(await screen.findByTestId('needs-review-warning')).toBeInTheDocument()
     expect(screen.queryByTestId('coverage-note')).not.toBeInTheDocument()
@@ -301,7 +301,7 @@ describe('GenerateDialog', () => {
       polls += 1
       if (polls <= 2) {
         return {
-          id: 5,
+          id: '5',
           type: 'compose',
           status: 'running',
           progress: 42,
@@ -317,13 +317,13 @@ describe('GenerateDialog', () => {
         }
       }
       return {
-        id: 5,
+        id: '5',
         type: 'compose',
         status: 'done',
         progress: 100,
         stage: 'done',
         error: null,
-        material_id: 77,
+        material_id: '77',
         retriable: false,
         stale: false,
         label: 'compose',
@@ -332,7 +332,7 @@ describe('GenerateDialog', () => {
         finished_at: null,
       }
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
     expect(await screen.findByTestId('compose-progress')).toHaveTextContent('42%')
     const cancelButtons = screen.getAllByRole('button', { name: /cancel/i })
@@ -340,7 +340,7 @@ describe('GenerateDialog', () => {
     expect(await screen.findByText(/"Guide" is ready\./)).toBeInTheDocument()
     expect(screen.queryByTestId('compose-progress')).not.toBeInTheDocument()
     expect(composeMaterialAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ course_id: 3, kind: 'study_guide' })
+      expect.objectContaining({ course_id: '3', kind: 'study_guide' })
     )
   })
 
@@ -348,10 +348,10 @@ describe('GenerateDialog', () => {
     let cancelled = false
     cancelJob.mockImplementation(async () => {
       cancelled = true
-      return { id: 5, status: 'cancelled' }
+      return { id: '5', status: 'cancelled' }
     })
     getJob.mockImplementation(async () => ({
-      id: 5,
+      id: '5',
       type: 'compose',
       status: cancelled ? 'cancelled' : 'queued',
       progress: 0,
@@ -365,27 +365,27 @@ describe('GenerateDialog', () => {
       started_at: null,
       finished_at: null,
     }))
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /compose/i }))
     await screen.findByTestId('compose-progress')
     const cancelButtons = screen.getAllByRole('button', { name: /cancel/i })
     fireEvent.click(cancelButtons[cancelButtons.length - 1])
-    expect(cancelJob).toHaveBeenCalledWith(5)
+    expect(cancelJob).toHaveBeenCalledWith('5')
     expect(await screen.findByText(/Composition cancelled\./)).toBeInTheDocument()
   })
 
   test('unassigned materials notice stays opt-in and forwards the flag', async () => {
     getUnassignedMaterials.mockResolvedValue({
       count: 3,
-      materials: [{ id: 41, title: 'Orphan' }],
+      materials: [{ id: '41', title: 'Orphan' }],
     })
     getMaterial.mockResolvedValue({
-      material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
+      material: { id: '77', title: 'Guide', provenance: { source: 'ai-composed' } },
       extraction: null,
       index_card: null,
       drawings: [],
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     expect(
       await screen.findByText(/3 materials in this course are not placed/i)
     ).toBeInTheDocument()
@@ -403,15 +403,15 @@ describe('GenerateDialog', () => {
   test('unassigned notice defaults off and hides at course scope', async () => {
     getUnassignedMaterials.mockResolvedValue({
       count: 3,
-      materials: [{ id: 41, title: 'Orphan' }],
+      materials: [{ id: '41', title: 'Orphan' }],
     })
     getMaterial.mockResolvedValue({
-      material: { id: 77, title: 'Guide', provenance: { source: 'ai-composed' } },
+      material: { id: '77', title: 'Guide', provenance: { source: 'ai-composed' } },
       extraction: null,
       index_card: null,
       drawings: [],
     })
-    renderDialog({ task: 'compose', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'compose', scopeNodeId: '5', rootNodeId: '1' })
     expect(
       await screen.findByText(/3 materials in this course are not placed/i)
     ).toBeInTheDocument()
@@ -441,13 +441,13 @@ describe('GenerateDialog', () => {
   })
 
   test('quiz preset at a node: scope, preview, and excluded materials flow to the request', async () => {
-    renderDialog({ task: 'quiz', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'quiz', scopeNodeId: '5', rootNodeId: '1' })
     expect(await screen.findByLabelText('Scope')).toBeInTheDocument()
 
     await waitFor(() =>
       expect(previewAiContext).toHaveBeenCalledWith(
-        3,
-        expect.objectContaining({ node_id: 5, scope: 'subtree' })
+        '3',
+        expect.objectContaining({ node_id: '5', scope: 'subtree' })
       )
     )
     expect(
@@ -457,7 +457,7 @@ describe('GenerateDialog', () => {
       screen.getByText(/all 2 materials in this scope are included/i)
     ).toBeInTheDocument()
 
-    testHooks.materialIds = [1]
+    testHooks.materialIds = ['1']
     fireEvent.click(screen.getByRole('button', { name: /exclude from context/i }))
     fireEvent.click(await screen.findByRole('button', { name: /confirm-pick/i }))
     expect(
@@ -469,16 +469,16 @@ describe('GenerateDialog', () => {
     await waitFor(() => expect(generateQuiz).toHaveBeenCalled())
     expect(generateQuiz).toHaveBeenCalledWith(
       expect.objectContaining({
-        course_id: 3,
-        node_id: 1,
+        course_id: '3',
+        node_id: '1',
         scope: 'course',
-        exclude_material_ids: [1],
+        exclude_material_ids: ['1'],
       })
     )
   })
 
   test('opting into an out-of-scope material sends include_material_ids', async () => {
-    renderDialog({ task: 'exercise', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'exercise', scopeNodeId: '5', rootNodeId: '1' })
     await screen.findByLabelText('Scope')
     fireEvent.click(screen.getByRole('button', { name: /add material/i }))
     fireEvent.click(await screen.findByRole('button', { name: /confirm-pick/i }))
@@ -486,15 +486,15 @@ describe('GenerateDialog', () => {
     await waitFor(() => expect(generateExercise).toHaveBeenCalled())
     expect(generateExercise).toHaveBeenCalledWith(
       expect.objectContaining({
-        node_id: 5,
+        node_id: '5',
         scope: 'subtree',
-        include_material_ids: [7],
+        include_material_ids: ['7'],
       })
     )
   })
 
   test('notes and one-time hint are attached as context', async () => {
-    renderDialog({ task: 'quiz', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'quiz', scopeNodeId: '5', rootNodeId: '1' })
     await screen.findByLabelText('Scope')
     fireEvent.click(screen.getByRole('button', { name: /add note/i }))
     fireEvent.click(await screen.findByRole('button', { name: /confirm-notes/i }))
@@ -506,20 +506,20 @@ describe('GenerateDialog', () => {
     await waitFor(() => expect(generateQuiz).toHaveBeenCalled())
     expect(generateQuiz).toHaveBeenCalledWith(
       expect.objectContaining({
-        note_ids: [11],
+        note_ids: ['11'],
         context_hint: 'prefer numeric answers',
       })
     )
   })
 
   test('at the root there is no scope picker and course scope is used', async () => {
-    renderDialog({ task: 'quiz', scopeNodeId: 1, rootNodeId: 1 })
+    renderDialog({ task: 'quiz', scopeNodeId: '1', rootNodeId: '1' })
     expect(await screen.findByPlaceholderText(/topic/i)).toBeInTheDocument()
     expect(screen.queryByLabelText('Scope')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /generate quiz/i }))
     await waitFor(() => expect(generateQuiz).toHaveBeenCalled())
     expect(generateQuiz).toHaveBeenCalledWith(
-      expect.objectContaining({ node_id: 1, scope: 'course' })
+      expect.objectContaining({ node_id: '1', scope: 'course' })
     )
   })
 
@@ -536,7 +536,7 @@ describe('GenerateDialog', () => {
     expect(generateFlashcards).toHaveBeenCalledWith(
       expect.objectContaining({
         source: 'mistakes',
-        course_id: 3,
+        course_id: '3',
         context_hint: 'keep them short',
       })
     )
@@ -544,13 +544,13 @@ describe('GenerateDialog', () => {
 
   test('preview errors are tolerated', async () => {
     previewAiContext.mockRejectedValue(new Error('boom'))
-    renderDialog({ task: 'quiz', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'quiz', scopeNodeId: '5', rootNodeId: '1' })
     expect(await screen.findByLabelText('Scope')).toBeInTheDocument()
     expect(await screen.findByText(/nothing will be sent/i)).toBeInTheDocument()
   })
 
   test('practice mode generates a quiz with selected question types and shuffle', async () => {
-    renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'practice', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /single choice/i }))
     fireEvent.click(screen.getByRole('button', { name: /shuffle/i }))
     fireEvent.click(screen.getByRole('button', { name: /generate practice/i }))
@@ -559,25 +559,25 @@ describe('GenerateDialog', () => {
       expect.objectContaining({
         question_types: ['multi', 'truefalse', 'text', 'numeric', 'equation', 'numberline', 'table_fill', 'composite', 'graph_read', 'code'],
         shuffle: true,
-        course_id: 3,
+        course_id: '3',
       })
     )
     expect(generateExercise).not.toHaveBeenCalled()
   })
 
   test('practice mode mixes quiz types and exercise kinds', async () => {
-    renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'practice', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /^matching pairs$/i }))
     fireEvent.click(screen.getByRole('button', { name: /generate practice/i }))
     await waitFor(() => expect(generateQuiz).toHaveBeenCalled())
     await waitFor(() => expect(generateExercise).toHaveBeenCalled())
     expect(generateExercise).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'matching', course_id: 3 })
+      expect.objectContaining({ kind: 'matching', course_id: '3' })
     )
   })
 
   test('practice mode disables generate when nothing is selected', async () => {
-    renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'practice', scopeNodeId: '5', rootNodeId: '1' })
     const allTypes = await screen.findAllByRole('button', { name: /single choice|multiple select|true \/ false|typed answer|numeric|equation|number line|table fill|multi-part|graph|code/i })
     for (const chip of allTypes) {
       fireEvent.click(chip)
@@ -587,7 +587,7 @@ describe('GenerateDialog', () => {
   })
 
   test('practice mode sends quiz when no exercise kinds chosen and vice versa', async () => {
-    renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'practice', scopeNodeId: '5', rootNodeId: '1' })
     const allTypes = await screen.findAllByRole('button', { name: /single choice|multiple select|true \/ false|typed answer|numeric|equation|number line|table fill|multi-part|graph|code/i })
     for (const chip of allTypes) {
       fireEvent.click(chip)
@@ -599,7 +599,7 @@ describe('GenerateDialog', () => {
   })
 
   test('practice mode chip info buttons open a details popover', async () => {
-    renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'practice', scopeNodeId: '5', rootNodeId: '1' })
     const infos = await screen.findAllByRole('button', { name: 'Details' })
     expect(infos.length).toBeGreaterThan(6)
     fireEvent.click(infos[0])
@@ -607,7 +607,7 @@ describe('GenerateDialog', () => {
   })
 
   test('practice mode field info buttons explain each control', async () => {
-    renderDialog({ task: 'practice', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'practice', scopeNodeId: '5', rootNodeId: '1' })
     fireEvent.click(await screen.findByRole('button', { name: /shuffle/i }))
     const labels = screen.getAllByText('Shuffle')
     const group = labels[labels.length - 1].closest('.group') as HTMLElement
@@ -618,7 +618,7 @@ describe('GenerateDialog', () => {
   })
 
   test('an added material chip can be removed again', async () => {
-    renderDialog({ task: 'exercise', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'exercise', scopeNodeId: '5', rootNodeId: '1' })
     await screen.findByLabelText('Scope')
     fireEvent.click(screen.getByRole('button', { name: /add material/i }))
     fireEvent.click(await screen.findByRole('button', { name: /confirm-pick/i }))
@@ -633,9 +633,9 @@ describe('GenerateDialog', () => {
   })
 
   test('an excluded material chip can be re-included', async () => {
-    renderDialog({ task: 'quiz', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'quiz', scopeNodeId: '5', rootNodeId: '1' })
     await screen.findByLabelText('Scope')
-    testHooks.materialIds = [1]
+    testHooks.materialIds = ['1']
     fireEvent.click(
       await screen.findByRole('button', { name: /exclude from context/i })
     )
@@ -650,7 +650,7 @@ describe('GenerateDialog', () => {
   })
 
   test('a note chip can be removed from the context', async () => {
-    renderDialog({ task: 'quiz', scopeNodeId: 5, rootNodeId: 1 })
+    renderDialog({ task: 'quiz', scopeNodeId: '5', rootNodeId: '1' })
     await screen.findByLabelText('Scope')
     fireEvent.click(screen.getByRole('button', { name: /add note/i }))
     fireEvent.click(await screen.findByRole('button', { name: /confirm-notes/i }))

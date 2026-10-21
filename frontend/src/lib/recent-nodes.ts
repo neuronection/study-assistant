@@ -2,14 +2,14 @@ import { storageKeys } from '@/lib/constants'
 import type { NodeInfo } from '@/lib/api'
 
 export interface RecentNodeEntry {
-  courseId: number
-  nodeId: number
+  courseId: string
+  nodeId: string
   at: number
 }
 
 export interface ResolvedRecentNode {
-  courseId: number
-  nodeId: number
+  courseId: string
+  nodeId: string
   at: number
   title: string
   breadcrumb: string
@@ -55,8 +55,8 @@ export function getRecentNodes(): RecentNodeEntry[] {
     if (
       typeof item === 'object' &&
       item !== null &&
-      typeof (item as RecentNodeEntry).courseId === 'number' &&
-      typeof (item as RecentNodeEntry).nodeId === 'number' &&
+      typeof (item as RecentNodeEntry).courseId === 'string' &&
+      typeof (item as RecentNodeEntry).nodeId === 'string' &&
       typeof (item as RecentNodeEntry).at === 'number'
     ) {
       entries.push(item as RecentNodeEntry)
@@ -65,7 +65,7 @@ export function getRecentNodes(): RecentNodeEntry[] {
   return entries
 }
 
-export function recordRecentNode(courseId: number, nodeId: number): void {
+export function recordRecentNode(courseId: string, nodeId: string): void {
   const rest = getRecentNodes().filter(
     (entry) => entry.courseId !== courseId || entry.nodeId !== nodeId
   )
@@ -82,7 +82,7 @@ export function recordRecentNode(courseId: number, nodeId: number): void {
 
 function findTrail(
   nodes: NodeInfo[],
-  nodeId: number,
+  nodeId: string,
   trail: NodeInfo[]
 ): NodeInfo[] | null {
   for (const entry of nodes) {
@@ -99,8 +99,8 @@ function findTrail(
 
 export function resolveRecentNodes(
   entries: RecentNodeEntry[],
-  trees: Map<number, NodeInfo[] | undefined>,
-  courseTitles: Map<number, string>
+  trees: Map<string, NodeInfo[] | undefined>,
+  courseTitles: Map<string, string>
 ): ResolvedRecentNode[] {
   const resolved: ResolvedRecentNode[] = []
   for (const entry of entries) {

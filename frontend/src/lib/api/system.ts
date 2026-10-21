@@ -60,7 +60,7 @@ export function desktopFileUrl(path: string): string {
 }
 
 export interface DeletedItemInfo {
-  id: number
+  id: string
   entity_type: string
   title: string
   deleted_at: string
@@ -73,7 +73,7 @@ export async function listDeletedItems(): Promise<DeletedItemInfo[]> {
 }
 
 export async function restoreDeletedItem(
-  id: number
+  id: string
 ): Promise<{ status: string; entity_type: string; title: string }> {
   const response = await apiFetch(`/api/v1/deleted-items/${id}/restore`, {
     method: 'POST',
@@ -81,7 +81,7 @@ export async function restoreDeletedItem(
   return json<{ status: string; entity_type: string; title: string }>(response)
 }
 
-export async function purgeDeletedItem(id: number): Promise<void> {
+export async function purgeDeletedItem(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/deleted-items/${id}`, {
     method: 'DELETE',
   })
@@ -350,10 +350,10 @@ export async function resetWorkingDir(): Promise<{ restart_required: boolean }> 
 }
 
 export async function createSampleCourse(): Promise<{
-  course_id: number
+  course_id: string
   materials: number
   created: boolean
 }> {
   const response = await apiFetch('/api/v1/onboarding/sample', { method: 'POST' })
-  return json<{ course_id: number; materials: number; created: boolean }>(response)
+  return json<{ course_id: string; materials: number; created: boolean }>(response)
 }

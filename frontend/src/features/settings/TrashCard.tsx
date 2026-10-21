@@ -18,7 +18,7 @@ export function TrashCard() {
   })
 
   const restore = useMutation({
-    mutationFn: (id: number) => restoreDeletedItem(id),
+    mutationFn: (id: string) => restoreDeletedItem(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['deleted-items'] })
       await queryClient.invalidateQueries()
@@ -26,7 +26,7 @@ export function TrashCard() {
   })
 
   const purge = useMutation({
-    mutationFn: (id: number) => purgeDeletedItem(id),
+    mutationFn: (id: string) => purgeDeletedItem(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['deleted-items'] })
     },

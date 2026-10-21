@@ -85,7 +85,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -95,12 +95,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -190,7 +190,7 @@
         "properties": {
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "rationale": {
             "anyOf": [
@@ -241,7 +241,7 @@
           },
           "question_id": {
             "title": "Question Id",
-            "type": "integer"
+            "type": "string"
           },
           "type": {
             "title": "Type",
@@ -260,7 +260,7 @@
         "properties": {
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -296,7 +296,7 @@
         "properties": {
           "chat_session_id": {
             "title": "Chat Session Id",
-            "type": "integer"
+            "type": "string"
           },
           "public_id": {
             "title": "Public Id",
@@ -314,7 +314,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "enum": [
@@ -340,7 +340,7 @@
         "properties": {
           "activity_id": {
             "title": "Activity Id",
-            "type": "integer"
+            "type": "string"
           },
           "finished_at": {
             "anyOf": [
@@ -355,7 +355,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "mode": {
             "$ref": "#/components/schemas/AttemptMode"
@@ -404,7 +404,7 @@
         "properties": {
           "activity_id": {
             "title": "Activity Id",
-            "type": "integer"
+            "type": "string"
           },
           "deadline_at": {
             "anyOf": [
@@ -430,7 +430,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "mode": {
             "title": "Mode",
@@ -780,7 +780,7 @@
           "active_child_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -790,7 +790,7 @@
           },
           "children": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Children",
             "type": "array"
@@ -801,12 +801,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -835,7 +835,7 @@
           "active_root_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -866,7 +866,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -1011,7 +1011,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "front_md": {
             "maxLength": 2000,
@@ -1027,7 +1027,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1075,7 +1075,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -1084,7 +1084,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1176,7 +1176,7 @@
         "properties": {
           "chunk_id": {
             "title": "Chunk Id",
-            "type": "integer"
+            "type": "string"
           },
           "index": {
             "title": "Index",
@@ -1184,7 +1184,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "quote": {
             "title": "Quote",
@@ -1209,7 +1209,7 @@
         "properties": {
           "concept_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Concept Ids",
             "type": "array"
@@ -1228,11 +1228,11 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "exclude_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Exclude Material Ids",
             "type": "array"
@@ -1251,7 +1251,7 @@
           },
           "include_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Include Material Ids",
             "type": "array"
@@ -1281,7 +1281,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1291,7 +1291,7 @@
           },
           "note_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Note Ids",
             "type": "array"
@@ -1329,7 +1329,7 @@
         "properties": {
           "job_id": {
             "title": "Job Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -1342,7 +1342,7 @@
         "properties": {
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_title": {
             "title": "Node Title",
@@ -1443,7 +1443,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "mastery": {
             "anyOf": [
@@ -1676,7 +1676,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -1793,7 +1793,7 @@
           "course_type_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1863,7 +1863,7 @@
           "model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1900,7 +1900,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "status": {
             "title": "Status",
@@ -1966,11 +1966,11 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_is_root": {
             "title": "Node Is Root",
@@ -2058,7 +2058,7 @@
           "course_type_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2096,7 +2096,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "level": {
             "anyOf": [
@@ -2155,7 +2155,7 @@
           "fallback_model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2199,7 +2199,7 @@
           "model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2289,7 +2289,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "key": {
             "title": "Key",
@@ -2336,7 +2336,7 @@
           "course_type_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2452,7 +2452,7 @@
           "fallback_model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2474,7 +2474,7 @@
           "model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2569,7 +2569,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "purge_after": {
             "title": "Purge After",
@@ -2604,7 +2604,7 @@
           "job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2624,7 +2624,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "outcome": {
             "$ref": "#/components/schemas/DeriveOutcome"
@@ -2919,7 +2919,7 @@
           },
           "note_id": {
             "title": "Note Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -2939,12 +2939,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "ocr_job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3050,7 +3050,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "pattern": {
             "maxLength": 60,
@@ -3088,7 +3088,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -3113,11 +3113,11 @@
         "properties": {
           "card_id": {
             "title": "Card Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -3176,7 +3176,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3218,7 +3218,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3251,7 +3251,7 @@
         "properties": {
           "job_id": {
             "title": "Job Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -3344,7 +3344,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -3377,7 +3377,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -3493,7 +3493,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "difficulty": {
             "anyOf": [
@@ -3509,7 +3509,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3545,7 +3545,7 @@
         "properties": {
           "deleted_item_id": {
             "title": "Deleted Item Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -3559,7 +3559,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3576,7 +3576,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3608,7 +3608,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "default": "multi_step",
@@ -3618,7 +3618,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3690,7 +3690,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "enabled": {
             "default": true,
@@ -3758,7 +3758,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "enabled": {
             "title": "Enabled",
@@ -3766,7 +3766,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -3965,7 +3965,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "markdown": {
             "title": "Markdown",
@@ -3973,7 +3973,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "version": {
             "title": "Version",
@@ -4075,7 +4075,7 @@
         "properties": {
           "folder_id": {
             "title": "Folder Id",
-            "type": "integer"
+            "type": "string"
           },
           "rationale": {
             "anyOf": [
@@ -4099,11 +4099,11 @@
         "properties": {
           "folder_id": {
             "title": "Folder Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -4117,7 +4117,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -4135,7 +4135,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "maxLength": 200,
@@ -4146,7 +4146,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4203,7 +4203,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -4215,7 +4215,7 @@
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "owner_title": {
             "title": "Owner Title",
@@ -4251,7 +4251,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4293,7 +4293,7 @@
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "owner_title": {
             "title": "Owner Title",
@@ -4316,7 +4316,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -4325,7 +4325,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -4339,7 +4339,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4354,7 +4354,7 @@
           "source_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4527,7 +4527,7 @@
           "job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4844,7 +4844,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "imported_at": {
             "title": "Imported At",
@@ -4853,7 +4853,7 @@
           "postprocess_job_ids": {
             "default": [],
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Postprocess Job Ids",
             "type": "array"
@@ -5014,7 +5014,7 @@
           "job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5024,7 +5024,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -5153,7 +5153,7 @@
           },
           "question_id": {
             "title": "Question Id",
-            "type": "integer"
+            "type": "string"
           },
           "stem_excerpt": {
             "title": "Stem Excerpt",
@@ -5210,7 +5210,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "label": {
             "title": "Label",
@@ -5219,7 +5219,7 @@
           "material_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5363,7 +5363,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -5381,12 +5381,12 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5397,7 +5397,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5488,11 +5488,11 @@
         "properties": {
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -5506,7 +5506,7 @@
         "properties": {
           "material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "maxItems": 200,
             "minItems": 1,
@@ -5556,7 +5556,7 @@
           "folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5572,7 +5572,7 @@
         "properties": {
           "deleted_item_id": {
             "title": "Deleted Item Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -5586,7 +5586,7 @@
           "folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5597,7 +5597,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5677,7 +5677,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "mime": {
             "anyOf": [
@@ -5693,7 +5693,7 @@
           "ocr_job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5737,7 +5737,7 @@
         "properties": {
           "job_id": {
             "title": "Job Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -5779,7 +5779,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -5791,7 +5791,7 @@
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "owner_title": {
             "title": "Owner Title",
@@ -5838,7 +5838,7 @@
           "folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5865,7 +5865,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -5890,7 +5890,7 @@
           "folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5901,7 +5901,7 @@
           "group_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5916,7 +5916,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/MaterialKind"
@@ -6095,7 +6095,7 @@
           "job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6109,7 +6109,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6606,7 +6606,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6616,7 +6616,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -6656,7 +6656,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6666,7 +6666,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -6761,7 +6761,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "markdown": {
             "title": "Markdown",
@@ -6777,7 +6777,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6805,7 +6805,7 @@
           },
           "sibling_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Sibling Ids",
             "type": "array"
@@ -6940,7 +6940,7 @@
         "properties": {
           "folder_id": {
             "title": "Folder Id",
-            "type": "integer"
+            "type": "string"
           },
           "rationale": {
             "anyOf": [
@@ -6999,7 +6999,7 @@
         "properties": {
           "activity_id": {
             "title": "Activity Id",
-            "type": "integer"
+            "type": "string"
           },
           "activity_title": {
             "title": "Activity Title",
@@ -7018,11 +7018,11 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "question_id": {
             "title": "Question Id",
-            "type": "integer"
+            "type": "string"
           },
           "stem_excerpt": {
             "title": "Stem Excerpt",
@@ -7106,7 +7106,7 @@
           },
           "provider_id": {
             "title": "Provider Id",
-            "type": "integer"
+            "type": "string"
           },
           "reasoning_effort": {
             "anyOf": [
@@ -7171,7 +7171,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "label": {
             "title": "Label",
@@ -7194,7 +7194,7 @@
           },
           "provider_id": {
             "title": "Provider Id",
-            "type": "integer"
+            "type": "string"
           },
           "reasoning_effort": {
             "anyOf": [
@@ -7326,7 +7326,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -7381,7 +7381,7 @@
         "properties": {
           "concept_id": {
             "title": "Concept Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -7394,11 +7394,11 @@
         "properties": {
           "concept_id": {
             "title": "Concept Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -7412,7 +7412,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "objectives": {
             "anyOf": [
@@ -7430,7 +7430,7 @@
           },
           "parent_id": {
             "title": "Parent Id",
-            "type": "integer"
+            "type": "string"
           },
           "summary": {
             "anyOf": [
@@ -7466,7 +7466,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "order_idx": {
             "title": "Order Idx",
@@ -7490,7 +7490,7 @@
         "properties": {
           "deleted_item_id": {
             "title": "Deleted Item Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -7514,7 +7514,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "depth": {
             "title": "Depth",
@@ -7522,7 +7522,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "is_root": {
             "title": "Is Root",
@@ -7542,7 +7542,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7585,7 +7585,7 @@
         "properties": {
           "parent_id": {
             "title": "Parent Id",
-            "type": "integer"
+            "type": "string"
           },
           "position": {
             "title": "Position",
@@ -7603,7 +7603,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "order_idx": {
             "title": "Order Idx",
@@ -7612,7 +7612,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7646,7 +7646,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -7666,11 +7666,11 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_title": {
             "title": "Node Title",
@@ -7755,7 +7755,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -7801,7 +7801,7 @@
           },
           "folder_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Folder Material Ids",
             "type": "array"
@@ -7849,7 +7849,7 @@
         "properties": {
           "concept_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Concept Ids",
             "type": "array"
@@ -7868,18 +7868,18 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "exclude_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Exclude Material Ids",
             "type": "array"
           },
           "include_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Include Material Ids",
             "type": "array"
@@ -7899,7 +7899,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7909,7 +7909,7 @@
           },
           "note_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Note Ids",
             "type": "array"
@@ -7947,12 +7947,12 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7963,7 +7963,7 @@
           "owner_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8002,7 +8002,7 @@
         "properties": {
           "deleted_item_id": {
             "title": "Deleted Item Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -8024,7 +8024,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8042,12 +8042,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8058,7 +8058,7 @@
           "owner_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8111,7 +8111,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8128,7 +8128,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8138,12 +8138,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8154,7 +8154,7 @@
           "owner_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -8204,7 +8204,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -8222,7 +8222,7 @@
         "properties": {
           "version_id": {
             "title": "Version Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -8346,7 +8346,7 @@
           },
           "version_id": {
             "title": "Version Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -8413,7 +8413,7 @@
           },
           "version_id": {
             "title": "Version Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -8639,7 +8639,7 @@
           },
           "material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Material Ids",
             "type": "array"
@@ -8762,7 +8762,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "description": {
             "maxLength": 2000,
@@ -8892,7 +8892,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -8920,7 +8920,7 @@
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_title": {
             "title": "Node Title",
@@ -8952,7 +8952,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -8966,7 +8966,7 @@
         "properties": {
           "material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "maxItems": 40,
             "title": "Material Ids",
@@ -8999,7 +8999,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -9011,7 +9011,7 @@
           },
           "item_id": {
             "title": "Item Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/PlanItemKind"
@@ -9084,7 +9084,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -9128,7 +9128,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "detail": {
             "anyOf": [
@@ -9159,7 +9159,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/PlanItemKind"
@@ -9167,7 +9167,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -9465,7 +9465,7 @@
           },
           "concept_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Concept Ids",
             "type": "array"
@@ -9484,18 +9484,18 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "exclude_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Exclude Material Ids",
             "type": "array"
           },
           "include_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Include Material Ids",
             "type": "array"
@@ -9510,7 +9510,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -9520,7 +9520,7 @@
           },
           "note_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Note Ids",
             "type": "array"
@@ -9754,12 +9754,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "message_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -9787,7 +9787,7 @@
           "session_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -9904,7 +9904,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "is_local": {
             "anyOf": [
@@ -10153,7 +10153,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "input": {
             "anyOf": [
@@ -10260,7 +10260,7 @@
           "job_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -10270,7 +10270,7 @@
           },
           "user_message_id": {
             "title": "User Message Id",
-            "type": "integer"
+            "type": "string"
           },
           "verdict_detail": {
             "title": "Verdict Detail",
@@ -10290,7 +10290,7 @@
         "properties": {
           "deleted_item_id": {
             "title": "Deleted Item Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -10375,7 +10375,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -10430,7 +10430,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -10440,7 +10440,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -10680,7 +10680,7 @@
           },
           "question_id": {
             "title": "Question Id",
-            "type": "integer"
+            "type": "string"
           },
           "question_type": {
             "anyOf": [
@@ -10778,7 +10778,7 @@
           "material_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -10789,7 +10789,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -10984,7 +10984,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "created": {
             "title": "Created",
@@ -11042,7 +11042,7 @@
           "scope_ref": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -11170,7 +11170,7 @@
         "properties": {
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "nodes": {
             "default": [],
@@ -11212,11 +11212,11 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "title": "Node Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_title": {
             "title": "Node Title",
@@ -11492,7 +11492,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -11526,7 +11526,7 @@
           },
           "session_id": {
             "title": "Session Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -11544,7 +11544,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -11555,7 +11555,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -11587,7 +11587,7 @@
         "properties": {
           "deleted_item_id": {
             "title": "Deleted Item Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -12202,7 +12202,7 @@
           },
           "source_id": {
             "title": "Source Id",
-            "type": "integer"
+            "type": "string"
           },
           "subdir": {
             "title": "Subdir",
@@ -12244,7 +12244,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "include_globs": {
             "anyOf": [
@@ -12311,7 +12311,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/MaterialKind"
@@ -12343,7 +12343,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "enabled": {
             "title": "Enabled",
@@ -12351,7 +12351,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "include_globs": {
             "anyOf": [
@@ -12584,7 +12584,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "input": {
             "anyOf": [
@@ -12705,7 +12705,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -12717,7 +12717,7 @@
           },
           "item_id": {
             "title": "Item Id",
-            "type": "integer"
+            "type": "string"
           },
           "overdue": {
             "title": "Overdue",
@@ -12797,7 +12797,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -12833,7 +12833,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/StudySessionKind"
@@ -12841,7 +12841,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -12885,7 +12885,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -12911,7 +12911,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13030,7 +13030,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -13073,7 +13073,7 @@
           "next_cursor": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13093,7 +13093,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13108,7 +13108,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "title": "Kind",
@@ -13117,7 +13117,7 @@
           "material_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13133,7 +13133,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13194,7 +13194,7 @@
           "material_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13205,7 +13205,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13233,7 +13233,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13267,7 +13267,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13335,12 +13335,12 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "material_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13375,7 +13375,7 @@
           },
           "note_id": {
             "title": "Note Id",
-            "type": "integer"
+            "type": "string"
           }
         },
         "required": [
@@ -13390,7 +13390,7 @@
           "fallback_model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13401,7 +13401,7 @@
           "model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13433,7 +13433,7 @@
           "fallback_model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13460,7 +13460,7 @@
           "model_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13528,7 +13528,7 @@
           "concept_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13538,12 +13538,12 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -13587,7 +13587,7 @@
           },
           "skill_version_id": {
             "title": "Skill Version Id",
-            "type": "integer"
+            "type": "string"
           },
           "system": {
             "title": "System",
@@ -13617,7 +13617,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "description": {
             "anyOf": [
@@ -13640,7 +13640,7 @@
           "folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14025,7 +14025,7 @@
         "properties": {
           "folder_id": {
             "title": "Folder Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -14034,7 +14034,7 @@
           "source_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14070,7 +14070,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "rationale": {
             "anyOf": [
@@ -14134,7 +14134,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "is_root": {
             "title": "Is Root",
@@ -14195,7 +14195,7 @@
         "properties": {
           "job_id": {
             "title": "Job Id",
-            "type": "integer"
+            "type": "string"
           },
           "user_message": {
             "$ref": "#/components/schemas/MessageOut"
@@ -14212,7 +14212,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -14279,7 +14279,7 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "title": "Course Title",
@@ -14302,7 +14302,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/PlanItemKind"
@@ -14310,7 +14310,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14379,12 +14379,12 @@
         "properties": {
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14506,7 +14506,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "is_active": {
             "title": "Is Active",
@@ -14527,7 +14527,7 @@
           "scope_ref": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14571,7 +14571,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -14639,7 +14639,7 @@
           "concept_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14733,7 +14733,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "objectives": {
             "items": {
@@ -14781,7 +14781,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -14789,7 +14789,7 @@
           },
           "node_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Node Ids",
             "type": "array"
@@ -14841,7 +14841,7 @@
           },
           "folder_id": {
             "title": "Folder Id",
-            "type": "integer"
+            "type": "string"
           },
           "member_count": {
             "title": "Member Count",
@@ -14865,7 +14865,7 @@
           "source_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -14918,7 +14918,7 @@
           },
           "material_id": {
             "title": "Material Id",
-            "type": "integer"
+            "type": "string"
           },
           "progress": {
             "title": "Progress",
@@ -14960,7 +14960,7 @@
           "via_folder_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15020,7 +15020,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "course_title": {
             "anyOf": [
@@ -15039,7 +15039,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "is_root": {
             "title": "Is Root",
@@ -15055,7 +15055,7 @@
           "parent_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15099,12 +15099,12 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15115,7 +15115,7 @@
           "owner_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15171,7 +15171,7 @@
           "course_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15186,12 +15186,12 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15276,7 +15276,7 @@
         "properties": {
           "concept_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Concept Ids",
             "type": "array"
@@ -15295,7 +15295,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "difficulty": {
             "anyOf": [
@@ -15312,14 +15312,14 @@
           },
           "exclude_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Exclude Material Ids",
             "type": "array"
           },
           "include_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Include Material Ids",
             "type": "array"
@@ -15332,7 +15332,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15342,7 +15342,7 @@
           },
           "note_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Note Ids",
             "type": "array"
@@ -15385,11 +15385,11 @@
           },
           "exercise_id": {
             "title": "Exercise Id",
-            "type": "integer"
+            "type": "string"
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "independence_score": {
             "anyOf": [
@@ -15426,7 +15426,7 @@
         "properties": {
           "concept_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Concept Ids",
             "type": "array"
@@ -15452,18 +15452,18 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "exclude_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Exclude Material Ids",
             "type": "array"
           },
           "include_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Include Material Ids",
             "type": "array"
@@ -15471,7 +15471,7 @@
           "material_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15482,7 +15482,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15493,7 +15493,7 @@
           "note_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15503,7 +15503,7 @@
           },
           "note_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Note Ids",
             "type": "array"
@@ -15577,7 +15577,7 @@
           },
           "question_id": {
             "title": "Question Id",
-            "type": "integer"
+            "type": "string"
           },
           "response": {
             "title": "Response"
@@ -15621,7 +15621,7 @@
           "concept_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15631,7 +15631,7 @@
           },
           "concept_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Concept Ids",
             "type": "array"
@@ -15657,7 +15657,7 @@
           },
           "course_id": {
             "title": "Course Id",
-            "type": "integer"
+            "type": "string"
           },
           "difficulty": {
             "anyOf": [
@@ -15674,14 +15674,14 @@
           },
           "exclude_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Exclude Material Ids",
             "type": "array"
           },
           "include_material_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Include Material Ids",
             "type": "array"
@@ -15689,7 +15689,7 @@
           "node_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -15699,7 +15699,7 @@
           },
           "note_ids": {
             "items": {
-              "type": "integer"
+              "type": "string"
             },
             "title": "Note Ids",
             "type": "array"
@@ -16091,7 +16091,7 @@
             "required": true,
             "schema": {
               "title": "Job Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -16133,7 +16133,7 @@
             "required": true,
             "schema": {
               "title": "Job Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -16360,7 +16360,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -16542,7 +16542,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -17038,7 +17038,7 @@
             "required": true,
             "schema": {
               "title": "Message Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17090,7 +17090,7 @@
             "required": true,
             "schema": {
               "title": "Message Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17132,7 +17132,7 @@
             "required": true,
             "schema": {
               "title": "Message Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17178,7 +17178,7 @@
             "required": true,
             "schema": {
               "title": "Message Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17308,7 +17308,7 @@
             "required": true,
             "schema": {
               "title": "Proposal Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17350,7 +17350,7 @@
             "required": true,
             "schema": {
               "title": "Proposal Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17393,7 +17393,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -17484,7 +17484,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17524,7 +17524,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17576,7 +17576,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17618,7 +17618,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17662,7 +17662,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17714,7 +17714,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17766,7 +17766,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -17808,7 +17808,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18202,7 +18202,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -18252,7 +18252,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18292,7 +18292,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18344,7 +18344,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18386,7 +18386,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18438,7 +18438,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18480,7 +18480,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -18540,7 +18540,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18592,7 +18592,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -18601,7 +18601,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18636,7 +18636,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18680,7 +18680,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18732,7 +18732,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18774,7 +18774,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -18783,7 +18783,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18818,7 +18818,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18870,7 +18870,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -18879,7 +18879,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18931,7 +18931,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -18983,7 +18983,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19025,7 +19025,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19077,7 +19077,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19121,7 +19121,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19173,7 +19173,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19213,7 +19213,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19255,7 +19255,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -19264,7 +19264,7 @@
             "required": true,
             "schema": {
               "title": "Item Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19297,7 +19297,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -19306,7 +19306,7 @@
             "required": true,
             "schema": {
               "title": "Item Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19358,7 +19358,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19404,7 +19404,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19450,7 +19450,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -19511,7 +19511,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -19572,7 +19572,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19643,7 +19643,7 @@
             "required": true,
             "schema": {
               "title": "Item Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19678,7 +19678,7 @@
             "required": true,
             "schema": {
               "title": "Item Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19787,7 +19787,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -19803,7 +19803,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -19863,7 +19863,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -19950,7 +19950,7 @@
             "required": true,
             "schema": {
               "title": "Suggestion Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -19983,7 +19983,7 @@
             "required": true,
             "schema": {
               "title": "Suggestion Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20036,7 +20036,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -20052,7 +20052,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -20194,7 +20194,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20365,7 +20365,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20417,7 +20417,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20469,7 +20469,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20521,7 +20521,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20563,7 +20563,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20650,7 +20650,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20690,7 +20690,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20730,7 +20730,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20782,7 +20782,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20834,7 +20834,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -20886,7 +20886,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20928,7 +20928,7 @@
             "required": true,
             "schema": {
               "title": "Exercise Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -20961,6 +20961,30 @@
         "summary": "Exercise Steps",
         "tags": [
           "exercises"
+        ]
+      }
+    },
+    "/api/v1/extensions/host-profile": {
+      "get": {
+        "description": "The author-visible host profile (plan 37 \u00a76.2.4).",
+        "operationId": "get_host_profile_api_v1_extensions_host_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Host Profile Api V1 Extensions Host Profile Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Host Profile",
+        "tags": [
+          "extensions"
         ]
       }
     },
@@ -21034,7 +21058,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21125,7 +21149,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21158,7 +21182,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21210,7 +21234,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21257,7 +21281,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21273,7 +21297,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21385,7 +21409,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21401,7 +21425,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21464,7 +21488,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21555,7 +21579,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21607,7 +21631,7 @@
             "required": true,
             "schema": {
               "title": "Card Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21642,7 +21666,7 @@
             "required": true,
             "schema": {
               "title": "Card Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21695,7 +21719,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -21786,7 +21810,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -21831,7 +21855,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21873,7 +21897,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21919,7 +21943,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -21971,7 +21995,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -22023,7 +22047,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -22356,7 +22380,7 @@
             "required": true,
             "schema": {
               "title": "Job Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -22389,7 +22413,7 @@
             "required": true,
             "schema": {
               "title": "Job Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -22431,7 +22455,7 @@
             "required": true,
             "schema": {
               "title": "Job Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -22473,7 +22497,7 @@
             "required": true,
             "schema": {
               "title": "Job Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -22516,7 +22540,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -22532,7 +22556,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -22618,7 +22642,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -22628,7 +22652,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -22644,7 +22668,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -22969,7 +22993,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23009,7 +23033,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23049,7 +23073,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23101,7 +23125,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23153,7 +23177,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23205,7 +23229,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23257,7 +23281,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -23266,7 +23290,7 @@
             "required": true,
             "schema": {
               "title": "Drawing Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23306,7 +23330,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -23315,7 +23339,7 @@
             "required": true,
             "schema": {
               "title": "Drawing Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23367,7 +23391,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -23376,7 +23400,7 @@
             "required": true,
             "schema": {
               "title": "Drawing Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23418,7 +23442,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23470,7 +23494,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23516,7 +23540,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -23576,7 +23600,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -23627,7 +23651,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23673,7 +23697,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23725,7 +23749,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23777,7 +23801,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23819,7 +23843,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23878,7 +23902,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -23930,7 +23954,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24320,7 +24344,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -24411,7 +24435,7 @@
             "required": true,
             "schema": {
               "title": "Model Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24444,7 +24468,7 @@
             "required": true,
             "schema": {
               "title": "Model Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24537,7 +24561,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24577,7 +24601,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24617,7 +24641,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24669,7 +24693,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -24727,7 +24751,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24779,7 +24803,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -24788,7 +24812,7 @@
             "required": true,
             "schema": {
               "title": "Concept Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24823,7 +24847,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24865,7 +24889,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24917,7 +24941,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -24926,7 +24950,7 @@
             "required": true,
             "schema": {
               "title": "Folder Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -24961,7 +24985,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25013,7 +25037,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -25022,7 +25046,7 @@
             "required": true,
             "schema": {
               "title": "Material Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25057,7 +25081,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25109,7 +25133,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25161,7 +25185,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25203,7 +25227,7 @@
             "required": true,
             "schema": {
               "title": "Node Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25262,7 +25286,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -25278,7 +25302,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -25459,7 +25483,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -25511,7 +25535,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25551,7 +25575,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25591,7 +25615,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25643,7 +25667,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25695,7 +25719,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25747,7 +25771,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -25756,7 +25780,7 @@
             "required": true,
             "schema": {
               "title": "Drawing Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25796,7 +25820,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -25805,7 +25829,7 @@
             "required": true,
             "schema": {
               "title": "Drawing Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25857,7 +25881,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -25866,7 +25890,7 @@
             "required": true,
             "schema": {
               "title": "Drawing Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25908,7 +25932,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -25960,7 +25984,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26012,7 +26036,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26058,7 +26082,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -26118,7 +26142,7 @@
             "required": true,
             "schema": {
               "title": "Note Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -26127,7 +26151,7 @@
             "required": true,
             "schema": {
               "title": "Version Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26655,7 +26679,7 @@
             "required": true,
             "schema": {
               "title": "Provider Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26688,7 +26712,7 @@
             "required": true,
             "schema": {
               "title": "Provider Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26740,7 +26764,7 @@
             "required": true,
             "schema": {
               "title": "Provider Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26786,7 +26810,7 @@
             "required": true,
             "schema": {
               "title": "Provider Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26832,7 +26856,7 @@
             "required": true,
             "schema": {
               "title": "Provider Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26884,7 +26908,7 @@
             "required": true,
             "schema": {
               "title": "Provider Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -26927,7 +26951,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -26943,7 +26967,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -27005,7 +27029,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27045,7 +27069,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27085,7 +27109,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27137,7 +27161,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27183,7 +27207,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -27235,7 +27259,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27275,7 +27299,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27315,7 +27339,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27367,7 +27391,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27413,7 +27437,7 @@
             "required": true,
             "schema": {
               "title": "Activity Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27466,7 +27490,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -27518,7 +27542,7 @@
             "required": true,
             "schema": {
               "title": "Attempt Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27570,7 +27594,7 @@
             "required": true,
             "schema": {
               "title": "Attempt Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27612,7 +27636,7 @@
             "required": true,
             "schema": {
               "title": "Attempt Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -27621,7 +27645,7 @@
             "required": true,
             "schema": {
               "title": "Question Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27663,7 +27687,7 @@
             "required": true,
             "schema": {
               "title": "Attempt Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -27672,7 +27696,7 @@
             "required": true,
             "schema": {
               "title": "Question Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27718,7 +27742,7 @@
             "required": true,
             "schema": {
               "title": "Attempt Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -27727,7 +27751,7 @@
             "required": true,
             "schema": {
               "title": "Question Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27779,7 +27803,7 @@
             "required": true,
             "schema": {
               "title": "Attempt Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -27862,7 +27886,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -27924,7 +27948,7 @@
             "required": true,
             "schema": {
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -28040,9 +28064,9 @@
             "name": "course_id",
             "required": false,
             "schema": {
-              "default": 0,
+              "default": "",
               "title": "Course Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -28085,7 +28109,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -28247,7 +28271,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -28688,7 +28712,7 @@
             "required": true,
             "schema": {
               "title": "Course Type Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -28892,7 +28916,7 @@
             "required": true,
             "schema": {
               "title": "Left Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -28901,7 +28925,7 @@
             "required": true,
             "schema": {
               "title": "Right Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -28953,7 +28977,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -29148,7 +29172,7 @@
             "required": true,
             "schema": {
               "title": "Version Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29275,7 +29299,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29308,7 +29332,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29360,7 +29384,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -29412,7 +29436,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29464,7 +29488,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29516,7 +29540,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29558,7 +29582,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29593,7 +29617,7 @@
             "required": true,
             "schema": {
               "title": "Source Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29719,7 +29743,7 @@
             "required": true,
             "schema": {
               "title": "Session Id",
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -29797,7 +29821,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"

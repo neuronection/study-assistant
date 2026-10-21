@@ -10,7 +10,7 @@ function makeSource(overrides: Partial<NodeSource<unknown>> = {}): NodeSource<un
   return {
     kind: 'test',
     toEntity: () => ({ id: '1', label: 'Node' }),
-    toContext: () => ({ courseId: 3, scopeNodeId: 5 }),
+    toContext: () => ({ courseId: '3', scopeNodeId: '5' }),
     ...overrides,
   }
 }
@@ -80,7 +80,7 @@ describe('buildEntityActions', () => {
     action?.onSelect()
     expect(teachBack).toHaveBeenCalledWith(
       { id: '1', label: 'Node' },
-      { courseId: 3, scopeNodeId: 5 }
+      { courseId: '3', scopeNodeId: '5' }
     )
 
     const without = buildEntityActions(makeSource(), 'node', makeHandlers(), t)
@@ -121,7 +121,7 @@ describe('buildEntityActions', () => {
     expect(handlers.generate).toHaveBeenCalledWith(
       'quiz',
       { id: '1', label: 'Node' },
-      { courseId: 3, scopeNodeId: 5 },
+      { courseId: '3', scopeNodeId: '5' },
       'FULL MAP'
     )
   })

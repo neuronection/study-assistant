@@ -6,13 +6,13 @@ import type { ConceptGraph } from '@/lib/api'
 function graph(count: number, links: ConceptGraph['links'] = []): ConceptGraph {
   return {
     concepts: Array.from({ length: count }, (_, index) => ({
-      id: index + 1,
+      id: String(index + 1),
       name: `concept-${index + 1}`,
       description: null,
       aliases: [],
       nodes:
         index % 3 === 0
-          ? [{ node_id: 1, node_title: 'Ch' }]
+          ? [{ node_id: '1', node_title: 'Ch' }]
           : [],
       mastery: (['strong', 'shaky', 'weak', null] as const)[index % 4],
     })),
@@ -43,8 +43,8 @@ describe('layoutGraph', () => {
       second.nodes.map((node) => [node.id, node.x, node.y]),
     )
     expect(first.edges).toEqual([
-      { from: 1, to: 2, relation: 'prereq-of' },
-      { from: 2, to: 3, relation: 'related-to' },
+      { from: '1', to: '2', relation: 'prereq-of' },
+      { from: '2', to: '3', relation: 'related-to' },
     ])
   })
 
@@ -75,7 +75,7 @@ describe('layoutGraph', () => {
     const data = graph(200, links)
     const layout = layoutGraph(data, 5)
     expect(layout.nodes.length).toBe(150)
-    expect(layout.nodes.some((node) => node.id === 1)).toBe(true)
-    expect(layout.edges.every((edge) => edge.from === 1)).toBe(true)
+    expect(layout.nodes.some((node) => node.id === '1')).toBe(true)
+    expect(layout.edges.every((edge) => edge.from === '1')).toBe(true)
   })
 })

@@ -144,22 +144,22 @@ describe('mapStudyEvent', () => {
 })
 
 describe('createStudyChatTransport', () => {
-  function makeTransport(getSessionId: () => number | null = () => 4) {
+  function makeTransport(getSessionId: () => string | null = () => '4') {
     return createStudyChatTransport({ getSessionId, phaseLabel })
   }
 
   test('send posts to the active session with attachments and clears them after', async () => {
-    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 1 })
-    let sessionId: number | null = 4
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: '1' })
+    let sessionId: string | null = '4'
     const transport = makeTransport(() => sessionId)
     const seen: string[] = []
     transport.subscribe({ onEvent: (event) => seen.push(event.event) })
-    transport.setAttachments([{ kind: 'note', id: 7 }])
+    transport.setAttachments([{ kind: 'note', id: '7' }])
     await transport.send({ text: 'hello' })
-    expect(sendChatMessage).toHaveBeenCalledWith(4, 'hello', [{ kind: 'note', id: 7 }])
-    sessionId = 5
+    expect(sendChatMessage).toHaveBeenCalledWith('4', 'hello', [{ kind: 'note', id: '7' }])
+    sessionId = '5'
     await transport.send({ text: 'again' })
-    expect(sendChatMessage).toHaveBeenLastCalledWith(5, 'again', [])
+    expect(sendChatMessage).toHaveBeenLastCalledWith('5', 'again', [])
   })
 
   test('send without a session throws (the hook reports send_failed)', async () => {
@@ -171,11 +171,11 @@ describe('createStudyChatTransport', () => {
     stopChatTurn.mockResolvedValue({ stopped: true })
     const transport = makeTransport()
     await transport.stop?.()
-    expect(stopChatTurn).toHaveBeenCalledWith(4)
+    expect(stopChatTurn).toHaveBeenCalledWith('4')
   })
 
   test('stragglers from a previous turn are gated until the new stream starts', async () => {
-    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 2 })
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: '2' })
     const transport = makeTransport()
     const seen: { event: string; run_id?: string }[] = []
     transport.subscribe({ onEvent: (event) => seen.push({ event: event.event, run_id: 'run_id' in event ? event.run_id : undefined }) })
@@ -203,7 +203,7 @@ describe('createStudyChatTransport', () => {
 })
 
 describe('useStudyChat (provider wiring)', () => {
-  function renderInProvider(sessionId: number | null) {
+  function renderInProvider(sessionId: string | null) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     return renderHook(() => useStudyChatContext(), {
       wrapper: ({ children }) => (
@@ -215,8 +215,8 @@ describe('useStudyChat (provider wiring)', () => {
   }
 
   test('a pushed turn streams through useChatStream and finalizes', async () => {
-    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 1 })
-    const { result } = renderInProvider(4)
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: '1' })
+    const { result } = renderInProvider('4')
     expect(result.current.stream.live).toBeNull()
 
     await act(async () => {
@@ -238,8 +238,8 @@ describe('useStudyChat (provider wiring)', () => {
   })
 
   test('a server-stopped turn ends interrupted through flow_interrupted', async () => {
-    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 1 })
-    const { result } = renderInProvider(4)
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: '1' })
+    const { result } = renderInProvider('4')
     await act(async () => {
       await result.current.send('stop me')
     })
@@ -256,8 +256,8 @@ describe('useStudyChat (provider wiring)', () => {
   })
 
   test('reasoning and tool call events land in the live turn state', async () => {
-    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 1 })
-    const { result } = renderInProvider(4)
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: '1' })
+    const { result } = renderInProvider('4')
     await act(async () => {
       await result.current.send('think')
     })
@@ -294,8 +294,8 @@ describe('useStudyChat (provider wiring)', () => {
   })
 
   test('coalesced deltas arrive in order and reset clears the tail', async () => {
-    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: 1 })
-    const { result } = renderInProvider(4)
+    sendChatMessage.mockResolvedValue({ user_message: {}, job_id: '1' })
+    const { result } = renderInProvider('4')
     await act(async () => {
       await result.current.send('hi')
     })

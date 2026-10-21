@@ -10,16 +10,16 @@ describe('clipboard-store', () => {
   test('set and clear round-trip the clipboard payload', () => {
     useClipboardStore.getState().set({
       kind: 'library',
-      courseId: 3,
-      folderIds: [1],
-      materialIds: [10, 11],
+      courseId: '3',
+      folderIds: ['1'],
+      materialIds: ['10', '11'],
       mode: 'cut',
     })
     expect(useClipboardStore.getState().item).toEqual({
       kind: 'library',
-      courseId: 3,
-      folderIds: [1],
-      materialIds: [10, 11],
+      courseId: '3',
+      folderIds: ['1'],
+      materialIds: ['10', '11'],
       mode: 'cut',
     })
 

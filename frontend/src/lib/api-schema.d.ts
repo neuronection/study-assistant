@@ -1824,6 +1824,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/extensions/host-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Host Profile
+         * @description The author-visible host profile (plan 37 §6.2.4).
+         */
+        get: operations["get_host_profile_api_v1_extensions_host_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/extensions/{extension_id}/documentation": {
         parameters: {
             query?: never;
@@ -4795,11 +4815,11 @@ export interface components {
         /** ActivityOut */
         ActivityOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Question Count */
             question_count: number;
             /** Time Limit Sec */
@@ -4824,7 +4844,7 @@ export interface components {
         /** AllocationIn */
         AllocationIn: {
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Rationale */
             rationale?: string | null;
         };
@@ -4842,14 +4862,14 @@ export interface components {
             /** Key */
             key: string;
             /** Question Id */
-            question_id: number;
+            question_id: string;
             /** Type */
             type: string;
         };
         /** ArtifactRefOut */
         ArtifactRefOut: {
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Title */
             title: string;
         };
@@ -4861,14 +4881,14 @@ export interface components {
         /** AskOut */
         AskOut: {
             /** Chat Session Id */
-            chat_session_id: number;
+            chat_session_id: string;
             /** Public Id */
             public_id: string;
         };
         /** AttachmentIn */
         AttachmentIn: {
             /** Id */
-            id: number;
+            id: string;
             /**
              * Kind
              * @enum {string}
@@ -4878,11 +4898,11 @@ export interface components {
         /** AttemptListItemOut */
         AttemptListItemOut: {
             /** Activity Id */
-            activity_id: number;
+            activity_id: string;
             /** Finished At */
             finished_at: string | null;
             /** Id */
-            id: number;
+            id: string;
             mode: components["schemas"]["AttemptMode"];
             /** Score */
             score: number | null;
@@ -4899,13 +4919,13 @@ export interface components {
         /** AttemptOut */
         AttemptOut: {
             /** Activity Id */
-            activity_id: number;
+            activity_id: string;
             /** Deadline At */
             deadline_at: string | null;
             /** Finished At */
             finished_at: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Mode */
             mode: string;
             /** Score */
@@ -5004,22 +5024,22 @@ export interface components {
         /** BranchNodeOut */
         BranchNodeOut: {
             /** Active Child Id */
-            active_child_id: number | null;
+            active_child_id: string | null;
             /** Children */
-            children: number[];
+            children: string[];
             /** Excerpt */
             excerpt: string;
             /** Id */
-            id: number;
+            id: string;
             /** Parent Id */
-            parent_id: number | null;
+            parent_id: string | null;
             /** Role */
             role: string;
         };
         /** BranchTreeOut */
         BranchTreeOut: {
             /** Active Root Id */
-            active_root_id: number | null;
+            active_root_id: string | null;
             /** Nodes */
             nodes: components["schemas"]["BranchNodeOut"][];
         };
@@ -5028,7 +5048,7 @@ export interface components {
             /** Depth */
             depth: number;
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
@@ -5079,7 +5099,7 @@ export interface components {
             /** Back Md */
             back_md: string;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Front Md */
             front_md: string;
             /**
@@ -5088,7 +5108,7 @@ export interface components {
              */
             kind: string;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
         };
         /** CardOut */
         CardOut: {
@@ -5103,11 +5123,11 @@ export interface components {
                 [key: string]: unknown;
             }[];
             /** Id */
-            id: number;
+            id: string;
             /** Kind */
             kind: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Source */
             source: string;
             /** Source Ref */
@@ -5130,11 +5150,11 @@ export interface components {
         /** CitationOut */
         CitationOut: {
             /** Chunk Id */
-            chunk_id: number;
+            chunk_id: string;
             /** Index */
             index: number;
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Quote */
             quote: string;
             /** Title */
@@ -5143,17 +5163,17 @@ export interface components {
         /** ComposeIn */
         ComposeIn: {
             /** Concept Ids */
-            concept_ids?: number[];
+            concept_ids?: string[];
             /** Context Hint */
             context_hint?: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Exclude Material Ids */
-            exclude_material_ids?: number[];
+            exclude_material_ids?: string[];
             /** Extra Md */
             extra_md?: string | null;
             /** Include Material Ids */
-            include_material_ids?: number[];
+            include_material_ids?: string[];
             /**
              * Include Unassigned
              * @default false
@@ -5167,9 +5187,9 @@ export interface components {
              */
             kind: string;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Note Ids */
-            note_ids?: number[];
+            note_ids?: string[];
             /**
              * Regenerate
              * @default false
@@ -5186,12 +5206,12 @@ export interface components {
         /** ComposeQueuedOut */
         ComposeQueuedOut: {
             /** Job Id */
-            job_id: number;
+            job_id: string;
         };
         /** ConceptCoverageOut */
         ConceptCoverageOut: {
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Node Title */
             node_title: string;
         };
@@ -5220,7 +5240,7 @@ export interface components {
             /** Description */
             description: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Mastery */
             mastery?: string | null;
             /** Name */
@@ -5301,7 +5321,7 @@ export interface components {
         /** ContextNodeOut */
         ContextNodeOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
@@ -5343,7 +5363,7 @@ export interface components {
             /** Color */
             color?: string | null;
             /** Course Type Id */
-            course_type_id?: number | null;
+            course_type_id?: string | null;
             /** Description */
             description?: string | null;
             /** Level */
@@ -5358,7 +5378,7 @@ export interface components {
             /** Global Model Label */
             global_model_label: string | null;
             /** Model Id */
-            model_id: number | null;
+            model_id: string | null;
             /** Model Label */
             model_label: string | null;
             /** Requires */
@@ -5367,7 +5387,7 @@ export interface components {
         /** CourseDeletedOut */
         CourseDeletedOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Status */
             status: string;
         };
@@ -5385,9 +5405,9 @@ export interface components {
             /** Confidence */
             confidence: number | null;
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Node Is Root */
             node_is_root: boolean;
             /** Node Title */
@@ -5410,7 +5430,7 @@ export interface components {
             /** Color */
             color: string | null;
             /** Course Type Id */
-            course_type_id?: number | null;
+            course_type_id?: string | null;
             /** Description */
             description: string | null;
             /** Exam Date */
@@ -5421,7 +5441,7 @@ export interface components {
              */
             hidden: boolean;
             /** Id */
-            id: number;
+            id: string;
             /** Level */
             level: string | null;
             /** Material Count */
@@ -5438,7 +5458,7 @@ export interface components {
             /** Description */
             description: string;
             /** Fallback Model Id */
-            fallback_model_id: number | null;
+            fallback_model_id: string | null;
             /** Fallback Model Label */
             fallback_model_label: string | null;
             /** Global Fallback Model Label */
@@ -5446,7 +5466,7 @@ export interface components {
             /** Global Model Label */
             global_model_label: string | null;
             /** Model Id */
-            model_id: number | null;
+            model_id: string | null;
             /** Model Label */
             model_label: string | null;
             /** Requires */
@@ -5468,7 +5488,7 @@ export interface components {
             /** Description */
             description: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Key */
             key: string;
             /** Name */
@@ -5481,7 +5501,7 @@ export interface components {
             /** Color */
             color?: string | null;
             /** Course Type Id */
-            course_type_id?: number | null;
+            course_type_id?: string | null;
             /** Description */
             description?: string | null;
             /** Exam Date */
@@ -5513,11 +5533,11 @@ export interface components {
         /** DefaultTaskOut */
         DefaultTaskOut: {
             /** Fallback Model Id */
-            fallback_model_id: number | null;
+            fallback_model_id: string | null;
             /** Fallback Model Label */
             fallback_model_label: string | null;
             /** Model Id */
-            model_id: number | null;
+            model_id: string | null;
             /** Model Label */
             model_label: string | null;
             /** Requires */
@@ -5547,7 +5567,7 @@ export interface components {
             /** Entity Type */
             entity_type: string;
             /** Id */
-            id: number;
+            id: string;
             /** Purge After */
             purge_after: string;
             /** Title */
@@ -5561,10 +5581,10 @@ export interface components {
         /** DeriveResultOut */
         DeriveResultOut: {
             /** Job Id */
-            job_id?: number | null;
+            job_id?: string | null;
             material?: components["schemas"]["MaterialOut"] | null;
             /** Material Id */
-            material_id: number;
+            material_id: string;
             outcome: components["schemas"]["DeriveOutcome"];
         };
         /** DiagnosticsOut */
@@ -5665,7 +5685,7 @@ export interface components {
             /** Markdown */
             markdown: string;
             /** Note Id */
-            note_id: number;
+            note_id: string;
         };
         /** DrawingOut */
         DrawingOut: {
@@ -5675,9 +5695,9 @@ export interface components {
              */
             created_at: string;
             /** Id */
-            id: number;
+            id: string;
             /** Ocr Job Id */
-            ocr_job_id?: number | null;
+            ocr_job_id?: string | null;
             /** Ocr Markdown */
             ocr_markdown: string | null;
             /** Ocr Version */
@@ -5708,7 +5728,7 @@ export interface components {
         /** DrillIn */
         DrillIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Pattern */
             pattern: string;
         };
@@ -5719,7 +5739,7 @@ export interface components {
             /** Course Color */
             course_color: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Due Count */
@@ -5728,9 +5748,9 @@ export interface components {
         /** DueReviewEntryOut */
         DueReviewEntryOut: {
             /** Card Id */
-            card_id: number;
+            card_id: string;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Kind */
@@ -5754,7 +5774,7 @@ export interface components {
              */
             context_document: string;
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /**
              * Diagnostic
              * @default
@@ -5782,7 +5802,7 @@ export interface components {
              */
             mode: "transform" | "write";
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Preset */
             preset?: string | null;
             /**
@@ -5794,7 +5814,7 @@ export interface components {
         /** EditorTransformJobOut */
         EditorTransformJobOut: {
             /** Job Id */
-            job_id: number;
+            job_id: string;
         };
         /** EditorTransformStatusOut */
         EditorTransformStatusOut: {
@@ -5836,7 +5856,7 @@ export interface components {
         /** ExamEntryOut */
         ExamEntryOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Days Left */
@@ -5852,7 +5872,7 @@ export interface components {
              */
             answers_in_scope: number;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Days Left */
@@ -5887,11 +5907,11 @@ export interface components {
             /** Context Md */
             context_md?: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Difficulty */
             difficulty?: number | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Steps */
             steps: components["schemas"]["StepIn"][];
             /** Title */
@@ -5900,30 +5920,30 @@ export interface components {
         /** ExerciseDeletedOut */
         ExerciseDeletedOut: {
             /** Deleted Item Id */
-            deleted_item_id: number;
+            deleted_item_id: string;
         };
         /** ExerciseMove */
         ExerciseMove: {
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
         };
         /** ExerciseOut */
         ExerciseOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /** Deck Ref */
             deck_ref?: string | null;
             /** Difficulty */
             difficulty: number | null;
             /** Id */
-            id: number;
+            id: string;
             /**
              * Kind
              * @default multi_step
              */
             kind: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Step Count */
             step_count: number;
             /** Title */
@@ -5946,7 +5966,7 @@ export interface components {
         /** ExternalSourceIn */
         ExternalSourceIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /**
              * Enabled
              * @default true
@@ -5968,11 +5988,11 @@ export interface components {
         /** ExternalSourceOut */
         ExternalSourceOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Enabled */
             enabled: boolean;
             /** Id */
-            id: number;
+            id: string;
             /** Kind */
             kind: string;
             /** Label */
@@ -6035,11 +6055,11 @@ export interface components {
             /** Extractor */
             extractor: string;
             /** Id */
-            id: number;
+            id: string;
             /** Markdown */
             markdown: string;
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Version */
             version: number;
         };
@@ -6077,32 +6097,32 @@ export interface components {
         /** FolderAllocationIn */
         FolderAllocationIn: {
             /** Folder Id */
-            folder_id: number;
+            folder_id: string;
             /** Rationale */
             rationale?: string | null;
         };
         /** FolderAssignedOut */
         FolderAssignedOut: {
             /** Folder Id */
-            folder_id: number;
+            folder_id: string;
             /** Node Id */
-            node_id: number;
+            node_id: string;
         };
         /** FolderBreadcrumbOut */
         FolderBreadcrumbOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
         /** FolderCreate */
         FolderCreate: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Name */
             name: string;
             /** Parent Id */
-            parent_id?: number | null;
+            parent_id?: string | null;
         };
         /** FolderDeleteInfoOut */
         FolderDeleteInfoOut: {
@@ -6120,13 +6140,13 @@ export interface components {
             /** Breadcrumb */
             breadcrumb: components["schemas"]["FolderBreadcrumbOut"][];
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Is Course Level */
             is_course_level: boolean;
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Owner Title */
             owner_title: string;
             /** Rationale */
@@ -6135,7 +6155,7 @@ export interface components {
         /** FolderMove */
         FolderMove: {
             /** Parent Id */
-            parent_id: number | null;
+            parent_id: string | null;
         };
         /** FolderNodeLinkOut */
         FolderNodeLinkOut: {
@@ -6150,21 +6170,21 @@ export interface components {
             /** Material Count */
             material_count: number;
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Owner Title */
             owner_title: string;
         };
         /** FolderOut */
         FolderOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
             /** Id */
-            id: number;
+            id: string;
             /** Name */
             name: string;
             /**
@@ -6173,11 +6193,11 @@ export interface components {
              */
             node_link_count: number;
             /** Parent Id */
-            parent_id: number | null;
+            parent_id: string | null;
             /** Path */
             path: string;
             /** Source Id */
-            source_id?: number | null;
+            source_id?: string | null;
         };
         /** FolderRename */
         FolderRename: {
@@ -6241,7 +6261,7 @@ export interface components {
             /** Estimated Tasks */
             estimated_tasks: number;
             /** Job Id */
-            job_id: number | null;
+            job_id: string | null;
             /** Task Cap */
             task_cap: number;
         };
@@ -6344,14 +6364,14 @@ export interface components {
         /** ImportedCourseOut */
         ImportedCourseOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Imported At */
             imported_at: string;
             /**
              * Postprocess Job Ids
              * @default []
              */
-            postprocess_job_ids: number[];
+            postprocess_job_ids: string[];
             /** Title */
             title: string;
         };
@@ -6398,9 +6418,9 @@ export interface components {
             /** Deduped */
             deduped: boolean;
             /** Job Id */
-            job_id: number | null;
+            job_id: string | null;
             /** Material Id */
-            material_id: number;
+            material_id: string;
         };
         /** InstanceConfigOut */
         InstanceConfigOut: {
@@ -6441,7 +6461,7 @@ export interface components {
             /** P Correct */
             p_correct: number;
             /** Question Id */
-            question_id: number;
+            question_id: string;
             /** Stem Excerpt */
             stem_excerpt: string;
         };
@@ -6454,11 +6474,11 @@ export interface components {
             /** Finished At */
             finished_at: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Label */
             label: string;
             /** Material Id */
-            material_id: number | null;
+            material_id: string | null;
             /** Progress */
             progress: number;
             /** Retriable */
@@ -6511,18 +6531,18 @@ export interface components {
         /** LinkBreadcrumbOut */
         LinkBreadcrumbOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
         /** LinkIn */
         LinkIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Folder Id */
-            folder_id?: number | null;
+            folder_id?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Title */
             title?: string | null;
             /** Url */
@@ -6549,14 +6569,14 @@ export interface components {
         /** MaterialAssignedOut */
         MaterialAssignedOut: {
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Node Id */
-            node_id: number;
+            node_id: string;
         };
         /** MaterialBatchDeriveIn */
         MaterialBatchDeriveIn: {
             /** Material Ids */
-            material_ids: number[];
+            material_ids: string[];
         };
         /** MaterialBatchDeriveOut */
         MaterialBatchDeriveOut: {
@@ -6572,19 +6592,19 @@ export interface components {
         /** MaterialCopyIn */
         MaterialCopyIn: {
             /** Folder Id */
-            folder_id?: number | null;
+            folder_id?: string | null;
         };
         /** MaterialDeletedOut */
         MaterialDeletedOut: {
             /** Deleted Item Id */
-            deleted_item_id: number;
+            deleted_item_id: string;
         };
         /** MaterialDeriveIn */
         MaterialDeriveIn: {
             /** Folder Id */
-            folder_id?: number | null;
+            folder_id?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
         };
         /** MaterialDetailOut */
         MaterialDetailOut: {
@@ -6606,11 +6626,11 @@ export interface components {
              */
             created_at: string;
             /** Id */
-            id: number;
+            id: string;
             /** Mime */
             mime: string | null;
             /** Ocr Job Id */
-            ocr_job_id?: number | null;
+            ocr_job_id?: string | null;
             /** Ocr Markdown */
             ocr_markdown: string | null;
             /** Ocr Version */
@@ -6621,7 +6641,7 @@ export interface components {
         /** MaterialJobOut */
         MaterialJobOut: {
             /** Job Id */
-            job_id: number;
+            job_id: string;
         };
         /**
          * MaterialKind
@@ -6635,13 +6655,13 @@ export interface components {
             /** Breadcrumb */
             breadcrumb: components["schemas"]["LinkBreadcrumbOut"][];
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Is Course Level */
             is_course_level: boolean;
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Owner Title */
             owner_title: string;
             /** Rationale */
@@ -6651,14 +6671,14 @@ export interface components {
         /** MaterialMove */
         MaterialMove: {
             /** Folder Id */
-            folder_id?: number | null;
+            folder_id?: string | null;
         };
         /** MaterialOut */
         MaterialOut: {
             /** Blob Sha */
             blob_sha: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /**
              * Created At
              * Format: date-time
@@ -6669,16 +6689,16 @@ export interface components {
             /** Filename */
             filename: string;
             /** Folder Id */
-            folder_id: number | null;
+            folder_id: string | null;
             /** Group Id */
-            group_id: number | null;
+            group_id: string | null;
             /**
              * Has Extraction
              * @default false
              */
             has_extraction: boolean;
             /** Id */
-            id: number;
+            id: string;
             kind: components["schemas"]["MaterialKind"];
             /**
              * Link Count
@@ -6732,10 +6752,10 @@ export interface components {
             /** Deduped */
             deduped: boolean;
             /** Job Id */
-            job_id: number | null;
+            job_id: string | null;
             material: components["schemas"]["MaterialOut"];
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Warnings */
             warnings?: components["schemas"]["UploadWarningOut"][];
         };
@@ -6887,9 +6907,9 @@ export interface components {
         /** MentionOut */
         MentionOut: {
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Kind */
             kind: string;
             /** Ref */
@@ -6902,9 +6922,9 @@ export interface components {
         /** MentionRefOut */
         MentionRefOut: {
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Kind */
             kind: string;
             /** Ref */
@@ -6932,13 +6952,13 @@ export interface components {
             /** Grounded */
             grounded: boolean | null;
             /** Id */
-            id: number;
+            id: string;
             /** Markdown */
             markdown: string;
             /** Mentions */
             mentions: components["schemas"]["MentionOut"][];
             /** Parent Id */
-            parent_id?: number | null;
+            parent_id?: string | null;
             /** Proposals */
             proposals: components["schemas"]["ProposalOut"][];
             /** Reads */
@@ -6946,7 +6966,7 @@ export interface components {
             /** Role */
             role: string;
             /** Sibling Ids */
-            sibling_ids?: number[];
+            sibling_ids?: string[];
             /** State */
             state?: {
                 [key: string]: unknown;
@@ -6997,7 +7017,7 @@ export interface components {
         /** MirrorFolderIn */
         MirrorFolderIn: {
             /** Folder Id */
-            folder_id: number;
+            folder_id: string;
             /** Rationale */
             rationale?: string | null;
             /**
@@ -7020,7 +7040,7 @@ export interface components {
         /** MistakeListItemOut */
         MistakeListItemOut: {
             /** Activity Id */
-            activity_id: number;
+            activity_id: string;
             /** Activity Title */
             activity_title: string;
             /** Created At */
@@ -7028,9 +7048,9 @@ export interface components {
             /** Error Tags */
             error_tags: string[];
             /** Id */
-            id: number;
+            id: string;
             /** Question Id */
-            question_id: number;
+            question_id: string;
             /** Stem Excerpt */
             stem_excerpt: string;
         };
@@ -7052,7 +7072,7 @@ export interface components {
             /** Max Tokens */
             max_tokens?: number | null;
             /** Provider Id */
-            provider_id: number;
+            provider_id: string;
             /** Reasoning Effort */
             reasoning_effort?: string | null;
             /** Temperature */
@@ -7069,7 +7089,7 @@ export interface components {
             /** External Id */
             external_id: string;
             /** Id */
-            id: number;
+            id: string;
             /** Label */
             label: string;
             /** Max Tokens */
@@ -7077,7 +7097,7 @@ export interface components {
             /** Missing */
             missing: boolean;
             /** Provider Id */
-            provider_id: number;
+            provider_id: string;
             /** Reasoning Effort */
             reasoning_effort?: string | null;
             /** Temperature */
@@ -7103,7 +7123,7 @@ export interface components {
         /** MostBehindNodeOut */
         MostBehindNodeOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
@@ -7117,23 +7137,23 @@ export interface components {
         /** NodeConceptIn */
         NodeConceptIn: {
             /** Concept Id */
-            concept_id: number;
+            concept_id: string;
         };
         /** NodeConceptLinkedOut */
         NodeConceptLinkedOut: {
             /** Concept Id */
-            concept_id: number;
+            concept_id: string;
             /** Node Id */
-            node_id: number;
+            node_id: string;
         };
         /** NodeCreate */
         NodeCreate: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Objectives */
             objectives?: string[] | null;
             /** Parent Id */
-            parent_id: number;
+            parent_id: string;
             /** Summary */
             summary?: string | null;
             /** Title */
@@ -7144,7 +7164,7 @@ export interface components {
             /** Depth */
             depth: number;
             /** Id */
-            id: number;
+            id: string;
             /** Order Idx */
             order_idx: number;
             /** Title */
@@ -7153,18 +7173,18 @@ export interface components {
         /** NodeDeletedOut */
         NodeDeletedOut: {
             /** Deleted Item Id */
-            deleted_item_id: number;
+            deleted_item_id: string;
         };
         /** NodeDetailOut */
         NodeDetailOut: {
             /** Ai Hint */
             ai_hint: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Depth */
             depth: number;
             /** Id */
-            id: number;
+            id: string;
             /** Is Root */
             is_root: boolean;
             /** Objectives */
@@ -7172,7 +7192,7 @@ export interface components {
             /** Order Idx */
             order_idx: number;
             /** Parent Id */
-            parent_id: number | null;
+            parent_id: string | null;
             /** Summary */
             summary: string | null;
             /** Title */
@@ -7181,18 +7201,18 @@ export interface components {
         /** NodeMove */
         NodeMove: {
             /** Parent Id */
-            parent_id: number;
+            parent_id: string;
             /** Position */
             position: number;
         };
         /** NodeMovedOut */
         NodeMovedOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Order Idx */
             order_idx: number;
             /** Parent Id */
-            parent_id: number | null;
+            parent_id: string | null;
         };
         /** NodeRestore */
         NodeRestore: {
@@ -7202,16 +7222,16 @@ export interface components {
         /** NodeRestoredOut */
         NodeRestoredOut: {
             /** Id */
-            id: number;
+            id: string;
         };
         /** NodeReviewOut */
         NodeReviewOut: {
             /** Findings */
             findings: components["schemas"]["ReviewFindingOut"][];
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Node Title */
             node_title: string;
         };
@@ -7231,7 +7251,7 @@ export interface components {
             /** Ai Hint */
             ai_hint: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
@@ -7247,7 +7267,7 @@ export interface components {
             concepts: components["schemas"]["WorkspaceConceptOut"][];
             counts: components["schemas"]["WorkspaceCountsOut"];
             /** Folder Material Ids */
-            folder_material_ids: number[];
+            folder_material_ids: string[];
             /** Folders */
             folders: components["schemas"]["WorkspaceFolderOut"][];
             /** Materials */
@@ -7259,21 +7279,21 @@ export interface components {
         /** NoteComposeIn */
         NoteComposeIn: {
             /** Concept Ids */
-            concept_ids?: number[];
+            concept_ids?: string[];
             /** Context Hint */
             context_hint?: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Exclude Material Ids */
-            exclude_material_ids?: number[];
+            exclude_material_ids?: string[];
             /** Include Material Ids */
-            include_material_ids?: number[];
+            include_material_ids?: string[];
             /** Instructions */
             instructions?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Note Ids */
-            note_ids?: number[];
+            note_ids?: string[];
             /**
              * Scope
              * @default subtree
@@ -7290,11 +7310,11 @@ export interface components {
              */
             body_md: string;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Owner Id */
-            owner_id?: number | null;
+            owner_id?: string | null;
             /**
              * Owner Type
              * @default standalone
@@ -7308,7 +7328,7 @@ export interface components {
         /** NoteDeletedOut */
         NoteDeletedOut: {
             /** Deleted Item Id */
-            deleted_item_id: number;
+            deleted_item_id: string;
         };
         /** NoteDetail */
         NoteDetail: {
@@ -7317,17 +7337,17 @@ export interface components {
                 [key: string]: unknown;
             }[];
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /** Drawings */
             drawings: {
                 [key: string]: unknown;
             }[];
             /** Id */
-            id: number;
+            id: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Owner Id */
-            owner_id: number | null;
+            owner_id: string | null;
             /** Owner Type */
             owner_type: string;
             /** Pinned */
@@ -7342,18 +7362,18 @@ export interface components {
         /** NoteMove */
         NoteMove: {
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
         };
         /** NoteOut */
         NoteOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Owner Id */
-            owner_id: number | null;
+            owner_id: string | null;
             /** Owner Type */
             owner_type: string;
             /** Pinned */
@@ -7368,14 +7388,14 @@ export interface components {
         /** NotePreviewOut */
         NotePreviewOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
         /** NoteRestoreIn */
         NoteRestoreIn: {
             /** Version Id */
-            version_id: number;
+            version_id: string;
         };
         /** NoteTagCountOut */
         NoteTagCountOut: {
@@ -7415,7 +7435,7 @@ export interface components {
             /** Title */
             title: string;
             /** Version Id */
-            version_id: number;
+            version_id: string;
         };
         /** NoteVersionDiffOut */
         NoteVersionDiffOut: {
@@ -7441,7 +7461,7 @@ export interface components {
             /** Title */
             title: string;
             /** Version Id */
-            version_id: number;
+            version_id: string;
         };
         /** NotesPage */
         NotesPage: {
@@ -7515,7 +7535,7 @@ export interface components {
             /** Confidence */
             confidence: number;
             /** Material Ids */
-            material_ids: number[];
+            material_ids: string[];
             /** Objectives */
             objectives: string[];
             /** Rationale */
@@ -7554,7 +7574,7 @@ export interface components {
         /** PatternCreateIn */
         PatternCreateIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Description */
             description: string;
             /** Example */
@@ -7601,7 +7621,7 @@ export interface components {
         /** PatternProposeIn */
         PatternProposeIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
         };
         /** PlacementCandidateOut */
         PlacementCandidateOut: {
@@ -7612,7 +7632,7 @@ export interface components {
             /** Matched On */
             matched_on: string[];
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Node Title */
             node_title: string;
             /** Score */
@@ -7623,12 +7643,12 @@ export interface components {
             /** Candidates */
             candidates: components["schemas"]["PlacementCandidateOut"][];
             /** Material Id */
-            material_id: number;
+            material_id: string;
         };
         /** PlacementSuggestionsIn */
         PlacementSuggestionsIn: {
             /** Material Ids */
-            material_ids: number[];
+            material_ids: string[];
         };
         /** PlacementSuggestionsOut */
         PlacementSuggestionsOut: {
@@ -7638,13 +7658,13 @@ export interface components {
         /** PlanEntryOut */
         PlanEntryOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Due Date */
             due_date: string;
             /** Item Id */
-            item_id: number;
+            item_id: string;
             kind: components["schemas"]["PlanItemKind"];
             /** Overdue */
             overdue: boolean;
@@ -7670,7 +7690,7 @@ export interface components {
             /** @default study */
             kind: components["schemas"]["PlanItemKind"];
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Title */
             title: string;
         };
@@ -7687,7 +7707,7 @@ export interface components {
         /** PlanItemOut */
         PlanItemOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Detail */
             detail: string | null;
             /** Done At */
@@ -7698,10 +7718,10 @@ export interface components {
              */
             due_date: string;
             /** Id */
-            id: number;
+            id: string;
             kind: components["schemas"]["PlanItemKind"];
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             origin: components["schemas"]["PlanItemOrigin"];
             /** Sort Key */
             sort_key: number;
@@ -7783,24 +7803,24 @@ export interface components {
              */
             chunk_chars: number;
             /** Concept Ids */
-            concept_ids?: number[];
+            concept_ids?: string[];
             /** Context Hint */
             context_hint?: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Exclude Material Ids */
-            exclude_material_ids?: number[];
+            exclude_material_ids?: string[];
             /** Include Material Ids */
-            include_material_ids?: number[];
+            include_material_ids?: string[];
             /**
              * Max Chunks
              * @default 12
              */
             max_chunks: number;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Note Ids */
-            note_ids?: number[];
+            note_ids?: string[];
             /** Query */
             query?: string | null;
             /** @default subtree */
@@ -7865,9 +7885,9 @@ export interface components {
             /** Action */
             action: string;
             /** Id */
-            id: number;
+            id: string;
             /** Message Id */
-            message_id?: number | null;
+            message_id?: string | null;
             /** Payload */
             payload: {
                 [key: string]: unknown;
@@ -7877,7 +7897,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Session Id */
-            session_id?: number | null;
+            session_id?: string | null;
             /** Status */
             status: string;
         };
@@ -7910,7 +7930,7 @@ export interface components {
             /** Enabled */
             enabled: boolean;
             /** Id */
-            id: number;
+            id: string;
             /** Is Local */
             is_local?: boolean | null;
             /** Masked Key */
@@ -7969,7 +7989,7 @@ export interface components {
             /** Flag */
             flag: string;
             /** Id */
-            id: number;
+            id: string;
             /** Input */
             input?: {
                 [key: string]: unknown;
@@ -7999,16 +8019,16 @@ export interface components {
             /** Expected Display */
             expected_display?: string | null;
             /** Job Id */
-            job_id: number | null;
+            job_id: string | null;
             /** User Message Id */
-            user_message_id: number;
+            user_message_id: string;
             /** Verdict Detail */
             verdict_detail: string;
         };
         /** QuizDeletedOut */
         QuizDeletedOut: {
             /** Deleted Item Id */
-            deleted_item_id: number;
+            deleted_item_id: string;
         };
         /** QuizHelpEntryOut */
         QuizHelpEntryOut: {
@@ -8038,7 +8058,7 @@ export interface components {
         /** QuizMove */
         QuizMove: {
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
         };
         /** QuizRename */
         QuizRename: {
@@ -8055,9 +8075,9 @@ export interface components {
             /** Chars */
             chars: number;
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /** Id */
-            id: number;
+            id: string;
             /** Kind */
             kind: string;
             /** Ref */
@@ -8135,7 +8155,7 @@ export interface components {
             /** Partial Credit */
             partial_credit: number | null;
             /** Question Id */
-            question_id: number;
+            question_id: string;
             /** Question Type */
             question_type?: string | null;
             /** Response */
@@ -8165,9 +8185,9 @@ export interface components {
             /** Entity Type */
             entity_type: string;
             /** Material Id */
-            material_id?: number | null;
+            material_id?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Status */
             status: string;
             /** Title */
@@ -8231,7 +8251,7 @@ export interface components {
         /** SampleCourseOut */
         SampleCourseOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Created */
             created: boolean;
             /**
@@ -8258,7 +8278,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Scope Ref */
-            scope_ref?: number | null;
+            scope_ref?: string | null;
             /** Scope Type */
             scope_type: string;
             /** System Template */
@@ -8309,7 +8329,7 @@ export interface components {
         /** SearchHit */
         SearchHit: {
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /**
              * Nodes
              * @default []
@@ -8325,9 +8345,9 @@ export interface components {
         /** SearchHitNode */
         SearchHitNode: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Node Id */
-            node_id: number;
+            node_id: string;
             /** Node Title */
             node_title: string;
         };
@@ -8414,21 +8434,21 @@ export interface components {
         /** SessionContextOut */
         SessionContextOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /** Latest Notes */
             latest_notes: components["schemas"]["NotePreviewOut"][];
             node: components["schemas"]["ContextNodeOut"] | null;
             /** Registry */
             registry: components["schemas"]["MentionRefOut"][];
             /** Session Id */
-            session_id: number;
+            session_id: string;
         };
         /** SessionCreate */
         SessionCreate: {
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /**
              * Title
              * @default New chat
@@ -8440,7 +8460,7 @@ export interface components {
         /** SessionDeletedOut */
         SessionDeletedOut: {
             /** Deleted Item Id */
-            deleted_item_id: number;
+            deleted_item_id: string;
         };
         /** SessionUpdate */
         SessionUpdate: {
@@ -8651,7 +8671,7 @@ export interface components {
             /** Scan Interval Sec */
             scan_interval_sec: number | null;
             /** Source Id */
-            source_id: number;
+            source_id: string;
             /** Subdir */
             subdir: string;
             /** Subdirs */
@@ -8662,7 +8682,7 @@ export interface components {
         /** SourceIn */
         SourceIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Include Globs */
             include_globs?: string[] | null;
             /** Label */
@@ -8687,7 +8707,7 @@ export interface components {
             /** Filename */
             filename: string;
             /** Id */
-            id: number;
+            id: string;
             kind: components["schemas"]["MaterialKind"];
             /** Relpath */
             relpath: string;
@@ -8698,11 +8718,11 @@ export interface components {
         /** SourceOut */
         SourceOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Enabled */
             enabled: boolean;
             /** Id */
-            id: number;
+            id: string;
             /** Include Globs */
             include_globs: string[] | null;
             /** Label */
@@ -8781,7 +8801,7 @@ export interface components {
             /** Has Expected */
             has_expected: boolean;
             /** Id */
-            id: number;
+            id: string;
             /** Input */
             input?: {
                 [key: string]: unknown;
@@ -8822,13 +8842,13 @@ export interface components {
         /** StudyPlanRowOut */
         StudyPlanRowOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Due Date */
             due_date: string;
             /** Item Id */
-            item_id: number;
+            item_id: string;
             /** Overdue */
             overdue: boolean;
             /** Title */
@@ -8862,7 +8882,7 @@ export interface components {
         /** StudySessionOut */
         StudySessionOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /** Duration Sec */
             duration_sec: number;
             /** Ended At */
@@ -8870,10 +8890,10 @@ export interface components {
             /** Entity Ref */
             entity_ref: string | null;
             /** Id */
-            id: number;
+            id: string;
             kind: components["schemas"]["StudySessionKind"];
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             source: components["schemas"]["StudySessionSource"];
             /** Started At */
             started_at: string;
@@ -8886,12 +8906,12 @@ export interface components {
         /** StudySessionStartIn */
         StudySessionStartIn: {
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /** Entity Ref */
             entity_ref?: string | null;
             kind: components["schemas"]["StudySessionKind"];
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** @default auto */
             source: components["schemas"]["StudySessionSource"];
         };
@@ -8931,7 +8951,7 @@ export interface components {
             /** Concept */
             concept: string;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** N */
@@ -8946,29 +8966,29 @@ export interface components {
             /** Items */
             items: components["schemas"]["SuggestionOut"][];
             /** Next Cursor */
-            next_cursor?: number | null;
+            next_cursor?: string | null;
         };
         /** SuggestionOut */
         SuggestionOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
             /** Id */
-            id: number;
+            id: string;
             /** Kind */
             kind: string;
             /** Material Id */
-            material_id: number | null;
+            material_id: string | null;
             /** Meta */
             meta?: {
                 [key: string]: unknown;
             };
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Provider */
             provider: string;
             /**
@@ -8993,16 +9013,16 @@ export interface components {
         /** SuggestionPatchIn */
         SuggestionPatchIn: {
             /** Material Id */
-            material_id?: number | null;
+            material_id?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Status */
             status?: string | null;
         };
         /** SuggestionSaveIn */
         SuggestionSaveIn: {
             /** Course Id */
-            course_id?: number | null;
+            course_id?: string | null;
             /** Kind */
             kind?: string | null;
             /** Meta */
@@ -9010,7 +9030,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Provider */
             provider: string;
             /** Snippet */
@@ -9029,9 +9049,9 @@ export interface components {
         /** SuggestionStateOut */
         SuggestionStateOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Material Id */
-            material_id?: number | null;
+            material_id?: string | null;
             /** Status */
             status: string;
         };
@@ -9040,14 +9060,14 @@ export interface components {
             /** Node Title */
             node_title: string | null;
             /** Note Id */
-            note_id: number;
+            note_id: string;
         };
         /** TaskAssignmentIn */
         TaskAssignmentIn: {
             /** Fallback Model Id */
-            fallback_model_id?: number | null;
+            fallback_model_id?: string | null;
             /** Model Id */
-            model_id?: number | null;
+            model_id?: string | null;
         };
         /** TaskOut */
         TaskOut: {
@@ -9056,7 +9076,7 @@ export interface components {
             /** Description */
             description: string;
             /** Fallback Model Id */
-            fallback_model_id: number | null;
+            fallback_model_id: string | null;
             /** Fallback Model Label */
             fallback_model_label: string | null;
             /**
@@ -9065,7 +9085,7 @@ export interface components {
              */
             inherits_default: boolean;
             /** Model Id */
-            model_id: number | null;
+            model_id: string | null;
             /** Model Label */
             model_label: string | null;
             /** Monthly Cap Usd */
@@ -9080,11 +9100,11 @@ export interface components {
             /** Concept */
             concept?: string | null;
             /** Concept Id */
-            concept_id?: number | null;
+            concept_id?: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
         };
         /** TestRunIn */
         TestRunIn: {
@@ -9100,7 +9120,7 @@ export interface components {
             /** Constraints */
             constraints: components["schemas"]["ConstraintOut"][];
             /** Skill Version Id */
-            skill_version_id: number;
+            skill_version_id: string;
             /** System */
             system: string;
             /** User */
@@ -9114,13 +9134,13 @@ export interface components {
              */
             content: string;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Description */
             description?: string | null;
             /** Filename */
             filename: string;
             /** Folder Id */
-            folder_id?: number | null;
+            folder_id?: string | null;
         };
         /** ToolArgumentOut */
         ToolArgumentOut: {
@@ -9255,11 +9275,11 @@ export interface components {
         /** TreeNodeFolderLink */
         TreeNodeFolderLink: {
             /** Folder Id */
-            folder_id: number;
+            folder_id: string;
             /** Name */
             name: string;
             /** Source Id */
-            source_id: number | null;
+            source_id: string | null;
         };
         /** TreeNodeMaterialLink */
         TreeNodeMaterialLink: {
@@ -9268,7 +9288,7 @@ export interface components {
             /** Confidence */
             confidence: number | null;
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Rationale */
             rationale: string | null;
             /** Title */
@@ -9286,7 +9306,7 @@ export interface components {
             /** Folder Links */
             folder_links: components["schemas"]["TreeNodeFolderLink"][];
             /** Id */
-            id: number;
+            id: string;
             /** Is Root */
             is_root: boolean;
             /** Materials */
@@ -9303,13 +9323,13 @@ export interface components {
         /** TurnQueued */
         TurnQueued: {
             /** Job Id */
-            job_id: number;
+            job_id: string;
             user_message: components["schemas"]["MessageOut"];
         };
         /** UnassignedMaterialOut */
         UnassignedMaterialOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Title */
             title: string;
         };
@@ -9334,7 +9354,7 @@ export interface components {
         /** UpcomingItemOut */
         UpcomingItemOut: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string;
             /** Detail */
@@ -9342,10 +9362,10 @@ export interface components {
             /** Due Date */
             due_date: string;
             /** Id */
-            id: number;
+            id: string;
             kind: components["schemas"]["PlanItemKind"];
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             origin: components["schemas"]["PlanItemOrigin"];
             /** Title */
             title: string;
@@ -9362,9 +9382,9 @@ export interface components {
         /** UrlImportIn */
         UrlImportIn: {
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Url */
             url: string;
         };
@@ -9403,7 +9423,7 @@ export interface components {
             /** Created At */
             created_at: string;
             /** Id */
-            id: number;
+            id: string;
             /** Is Active */
             is_active: boolean;
             /** Params */
@@ -9411,7 +9431,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Scope Ref */
-            scope_ref: number | null;
+            scope_ref: string | null;
             /** Scope Type */
             scope_type: string;
             /** System Template */
@@ -9424,7 +9444,7 @@ export interface components {
         /** ViaFolderOut */
         ViaFolderOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Name */
             name: string;
         };
@@ -9448,7 +9468,7 @@ export interface components {
             /** Concept */
             concept: string;
             /** Concept Id */
-            concept_id: number | null;
+            concept_id: string | null;
             /** Enough Data */
             enough_data: boolean;
             /** Last Seen At */
@@ -9481,7 +9501,7 @@ export interface components {
             /** Depth */
             depth: number;
             /** Id */
-            id: number;
+            id: string;
             /** Objectives */
             objectives: string[];
             /** Order Idx */
@@ -9496,11 +9516,11 @@ export interface components {
             /** Direct */
             direct: boolean;
             /** Id */
-            id: number;
+            id: string;
             /** Name */
             name: string;
             /** Node Ids */
-            node_ids: number[];
+            node_ids: string[];
         };
         /** WorkspaceCountsOut */
         WorkspaceCountsOut: {
@@ -9516,7 +9536,7 @@ export interface components {
             /** Auto Assigned */
             auto_assigned: boolean;
             /** Folder Id */
-            folder_id: number;
+            folder_id: string;
             /** Member Count */
             member_count: number;
             /** Name */
@@ -9524,7 +9544,7 @@ export interface components {
             /** Rationale */
             rationale: string | null;
             /** Source Id */
-            source_id: number | null;
+            source_id: string | null;
         };
         /** WorkspaceMaterialOut */
         WorkspaceMaterialOut: {
@@ -9536,7 +9556,7 @@ export interface components {
             has_extraction: boolean;
             kind: components["schemas"]["MaterialKind"];
             /** Material Id */
-            material_id: number;
+            material_id: string;
             /** Progress */
             progress: number;
             /** Provenance */
@@ -9550,7 +9570,7 @@ export interface components {
             /** Title */
             title: string;
             /** Via Folder Id */
-            via_folder_id: number | null;
+            via_folder_id: string | null;
             /** Via Folder Name */
             via_folder_name: string | null;
         };
@@ -9561,19 +9581,19 @@ export interface components {
             /** Breadcrumb */
             breadcrumb: components["schemas"]["BreadcrumbEntryOut"][];
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Course Title */
             course_title: string | null;
             /** Depth */
             depth: number;
             /** Id */
-            id: number;
+            id: string;
             /** Is Root */
             is_root: boolean;
             /** Objectives */
             objectives: string[];
             /** Parent Id */
-            parent_id: number | null;
+            parent_id: string | null;
             /** Summary */
             summary: string | null;
             /** Title */
@@ -9582,11 +9602,11 @@ export interface components {
         /** WorkspaceNoteOut */
         WorkspaceNoteOut: {
             /** Id */
-            id: number;
+            id: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Owner Id */
-            owner_id: number | null;
+            owner_id: string | null;
             /** Owner Type */
             owner_type: string | null;
             /** Pinned */
@@ -9599,16 +9619,16 @@ export interface components {
         /** SessionOut */
         app__api__chat__SessionOut: {
             /** Course Id */
-            course_id: number | null;
+            course_id: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
             /** Id */
-            id: number;
+            id: string;
             /** Node Id */
-            node_id: number | null;
+            node_id: string | null;
             /** Public Id */
             public_id: string;
             /** Quiz Pending */
@@ -9637,26 +9657,26 @@ export interface components {
         /** GenerateIn */
         app__api__exercises__GenerateIn: {
             /** Concept Ids */
-            concept_ids?: number[];
+            concept_ids?: string[];
             /** Context Hint */
             context_hint?: string | null;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Difficulty */
             difficulty?: number | null;
             /** Exclude Material Ids */
-            exclude_material_ids?: number[];
+            exclude_material_ids?: string[];
             /** Include Material Ids */
-            include_material_ids?: number[];
+            include_material_ids?: string[];
             /**
              * Kind
              * @default multi_step
              */
             kind: string;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Note Ids */
-            note_ids?: number[];
+            note_ids?: string[];
             /** @default subtree */
             scope: components["schemas"]["ContextScope"];
             /**
@@ -9672,9 +9692,9 @@ export interface components {
             /** Current Step Idx */
             current_step_idx: number;
             /** Exercise Id */
-            exercise_id: number;
+            exercise_id: string;
             /** Id */
-            id: number;
+            id: string;
             /** Independence Score */
             independence_score: number | null;
             /** Socratic */
@@ -9685,7 +9705,7 @@ export interface components {
         /** GenerateIn */
         app__api__flashcards__GenerateIn: {
             /** Concept Ids */
-            concept_ids?: number[];
+            concept_ids?: string[];
             /** Context Hint */
             context_hint?: string | null;
             /**
@@ -9694,19 +9714,19 @@ export interface components {
              */
             count: number;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Exclude Material Ids */
-            exclude_material_ids?: number[];
+            exclude_material_ids?: string[];
             /** Include Material Ids */
-            include_material_ids?: number[];
+            include_material_ids?: string[];
             /** Material Id */
-            material_id?: number | null;
+            material_id?: string | null;
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Note Id */
-            note_id?: number | null;
+            note_id?: string | null;
             /** Note Ids */
-            note_ids?: number[];
+            note_ids?: string[];
             /** @default subtree */
             scope: components["schemas"]["ContextScope"];
             /**
@@ -9735,7 +9755,7 @@ export interface components {
             /** Input Mode */
             input_mode?: string | null;
             /** Question Id */
-            question_id: number;
+            question_id: string;
             /** Response */
             response: unknown;
             /** Strokes */
@@ -9748,9 +9768,9 @@ export interface components {
         /** GenerateIn */
         app__api__quiz__GenerateIn: {
             /** Concept Id */
-            concept_id?: number | null;
+            concept_id?: string | null;
             /** Concept Ids */
-            concept_ids?: number[];
+            concept_ids?: string[];
             /** Context Hint */
             context_hint?: string | null;
             /**
@@ -9759,17 +9779,17 @@ export interface components {
              */
             count: number;
             /** Course Id */
-            course_id: number;
+            course_id: string;
             /** Difficulty */
             difficulty?: number | null;
             /** Exclude Material Ids */
-            exclude_material_ids?: number[];
+            exclude_material_ids?: string[];
             /** Include Material Ids */
-            include_material_ids?: number[];
+            include_material_ids?: string[];
             /** Node Id */
-            node_id?: number | null;
+            node_id?: string | null;
             /** Note Ids */
-            note_ids?: number[];
+            note_ids?: string[];
             /** Question Types */
             question_types?: string[] | null;
             /** @default subtree */
@@ -10024,7 +10044,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                job_id: string;
             };
             cookie?: never;
         };
@@ -10055,7 +10075,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                job_id: string;
             };
             cookie?: never;
         };
@@ -10243,7 +10263,7 @@ export interface operations {
     diagnostics_api_v1_analytics_diagnostics_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -10387,7 +10407,7 @@ export interface operations {
     recommendations_api_v1_analytics_recommendations_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -10807,7 +10827,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                message_id: number;
+                message_id: string;
             };
             cookie?: never;
         };
@@ -10842,7 +10862,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                message_id: number;
+                message_id: string;
             };
             cookie?: never;
         };
@@ -10873,7 +10893,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                message_id: number;
+                message_id: string;
             };
             cookie?: never;
         };
@@ -10904,7 +10924,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                message_id: number;
+                message_id: string;
             };
             cookie?: never;
         };
@@ -10972,7 +10992,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                proposal_id: number;
+                proposal_id: string;
             };
             cookie?: never;
         };
@@ -11003,7 +11023,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                proposal_id: number;
+                proposal_id: string;
             };
             cookie?: never;
         };
@@ -11032,7 +11052,7 @@ export interface operations {
     list_sessions_api_v1_chat_sessions_get: {
         parameters: {
             query?: {
-                node_id?: number | null;
+                node_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -11098,7 +11118,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11129,7 +11149,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11164,7 +11184,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11195,7 +11215,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11226,7 +11246,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11261,7 +11281,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11296,7 +11316,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11327,7 +11347,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -11645,7 +11665,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11678,7 +11698,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11709,7 +11729,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11744,7 +11764,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11775,7 +11795,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11810,7 +11830,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11844,7 +11864,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11875,7 +11895,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11910,8 +11930,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
-                folder_id: number;
+                course_id: string;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -11940,7 +11960,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -11971,7 +11991,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12006,7 +12026,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12037,8 +12057,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
-                material_id: number;
+                course_id: string;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -12067,7 +12087,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12102,8 +12122,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
-                node_id: number;
+                course_id: string;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -12138,7 +12158,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12173,7 +12193,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12204,7 +12224,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12239,7 +12259,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12270,7 +12290,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12305,7 +12325,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12336,7 +12356,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12367,8 +12387,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
-                item_id: number;
+                course_id: string;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -12397,8 +12417,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
-                item_id: number;
+                course_id: string;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -12433,7 +12453,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12464,7 +12484,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12495,7 +12515,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
                 requires: string;
             };
             cookie?: never;
@@ -12531,7 +12551,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
                 task: string;
             };
             cookie?: never;
@@ -12567,7 +12587,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_id: number;
+                course_id: string;
             };
             cookie?: never;
         };
@@ -12618,7 +12638,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -12647,7 +12667,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -12729,12 +12749,12 @@ export interface operations {
     list_suggestions_api_v1_discovery_suggestions_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
-                node_id?: number | null;
+                course_id?: string | null;
+                node_id?: string | null;
                 status?: string | null;
                 kind?: string | null;
                 limit?: number;
-                cursor?: number | null;
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -12800,7 +12820,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                suggestion_id: number;
+                suggestion_id: string;
             };
             cookie?: never;
         };
@@ -12829,7 +12849,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                suggestion_id: number;
+                suggestion_id: string;
             };
             cookie?: never;
         };
@@ -12862,8 +12882,8 @@ export interface operations {
     list_exercises_api_v1_exercises_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
-                node_id?: number | null;
+                course_id?: string | null;
+                node_id?: string | null;
                 include_children?: boolean;
             };
             header?: never;
@@ -12961,7 +12981,7 @@ export interface operations {
     drill_patterns_api_v1_exercises_drills_patterns_get: {
         parameters: {
             query: {
-                course_id: number;
+                course_id: string;
             };
             header?: never;
             path?: never;
@@ -13093,7 +13113,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -13128,7 +13148,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -13163,7 +13183,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -13198,7 +13218,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -13229,7 +13249,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -13293,7 +13313,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13324,7 +13344,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13355,7 +13375,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13390,7 +13410,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13427,7 +13447,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13458,7 +13478,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13489,7 +13509,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                exercise_id: number;
+                exercise_id: string;
             };
             cookie?: never;
         };
@@ -13511,6 +13531,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_host_profile_api_v1_extensions_host_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -13551,7 +13593,7 @@ export interface operations {
     list_sources_api_v1_external_sources_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -13617,7 +13659,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -13646,7 +13688,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -13681,7 +13723,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -13712,8 +13754,8 @@ export interface operations {
     list_cards_api_v1_flashcards_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
-                node_id?: number | null;
+                course_id?: string | null;
+                node_id?: string | null;
                 include_children?: boolean;
             };
             header?: never;
@@ -13779,8 +13821,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
-                course_id?: number | null;
-                node_id?: number | null;
+                course_id?: string | null;
+                node_id?: string | null;
                 include_children?: boolean;
             };
             header?: never;
@@ -13812,7 +13854,7 @@ export interface operations {
     export_anki_api_v1_flashcards_export_anki_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -13876,7 +13918,7 @@ export interface operations {
     import_anki_api_v1_flashcards_import_anki_post: {
         parameters: {
             query: {
-                course_id: number;
+                course_id: string;
             };
             header?: never;
             path?: never;
@@ -13913,7 +13955,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                card_id: number;
+                card_id: string;
             };
             cookie?: never;
         };
@@ -13942,7 +13984,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                card_id: number;
+                card_id: string;
             };
             cookie?: never;
         };
@@ -13975,7 +14017,7 @@ export interface operations {
     list_folders_api_v1_folders_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -14043,7 +14085,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                folder_id: number;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -14072,7 +14114,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                folder_id: number;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -14103,7 +14145,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                folder_id: number;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -14134,7 +14176,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                folder_id: number;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -14169,7 +14211,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                folder_id: number;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -14204,7 +14246,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                folder_id: number;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -14443,7 +14485,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                job_id: string;
             };
             cookie?: never;
         };
@@ -14474,7 +14516,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                job_id: string;
             };
             cookie?: never;
         };
@@ -14503,7 +14545,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                job_id: string;
             };
             cookie?: never;
         };
@@ -14534,7 +14576,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                job_id: number;
+                job_id: string;
             };
             cookie?: never;
         };
@@ -14563,8 +14605,8 @@ export interface operations {
     list_materials_api_v1_materials_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
-                folder_id?: number | null;
+                course_id?: string | null;
+                folder_id?: string | null;
                 unfiled?: boolean;
                 tag?: string | null;
                 starred?: boolean;
@@ -14598,9 +14640,9 @@ export interface operations {
     upload_material_api_v1_materials_post: {
         parameters: {
             query: {
-                course_id: number;
-                folder_id?: number | null;
-                node_id?: number | null;
+                course_id: string;
+                folder_id?: string | null;
+                node_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -14855,7 +14897,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -14886,7 +14928,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -14917,7 +14959,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -14952,7 +14994,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -14987,7 +15029,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15022,7 +15064,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15057,8 +15099,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
-                drawing_id: number;
+                material_id: string;
+                drawing_id: string;
             };
             cookie?: never;
         };
@@ -15093,8 +15135,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
-                drawing_id: number;
+                material_id: string;
+                drawing_id: string;
             };
             cookie?: never;
         };
@@ -15125,8 +15167,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
-                drawing_id: number;
+                material_id: string;
+                drawing_id: string;
             };
             cookie?: never;
         };
@@ -15157,7 +15199,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15192,7 +15234,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15226,7 +15268,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15257,7 +15299,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
                 version: number;
             };
             cookie?: never;
@@ -15289,7 +15331,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15320,7 +15362,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15355,7 +15397,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15390,7 +15432,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15421,7 +15463,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15456,7 +15498,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15491,7 +15533,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                material_id: number;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -15803,7 +15845,7 @@ export interface operations {
     list_models_api_v1_models_get: {
         parameters: {
             query?: {
-                provider_id?: number | null;
+                provider_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -15869,7 +15911,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                model_id: number;
+                model_id: string;
             };
             cookie?: never;
         };
@@ -15898,7 +15940,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                model_id: number;
+                model_id: string;
             };
             cookie?: never;
         };
@@ -15966,7 +16008,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -15997,7 +16039,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16028,7 +16070,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16065,7 +16107,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16096,7 +16138,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16131,8 +16173,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
-                concept_id: number;
+                node_id: string;
+                concept_id: string;
             };
             cookie?: never;
         };
@@ -16161,7 +16203,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16192,7 +16234,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16227,8 +16269,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
-                folder_id: number;
+                node_id: string;
+                folder_id: string;
             };
             cookie?: never;
         };
@@ -16257,7 +16299,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16292,8 +16334,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
-                material_id: number;
+                node_id: string;
+                material_id: string;
             };
             cookie?: never;
         };
@@ -16322,7 +16364,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16357,7 +16399,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16392,7 +16434,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16423,7 +16465,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                node_id: number;
+                node_id: string;
             };
             cookie?: never;
         };
@@ -16453,8 +16495,8 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
-                course_id?: number | null;
-                node_id?: number | null;
+                course_id?: string | null;
+                node_id?: string | null;
                 include_children?: boolean;
                 tag?: string | null;
                 limit?: number;
@@ -16555,7 +16597,7 @@ export interface operations {
     list_note_tags_api_v1_notes_tags_list_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -16588,7 +16630,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16619,7 +16661,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16650,7 +16692,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16685,7 +16727,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16720,7 +16762,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16755,8 +16797,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
-                drawing_id: number;
+                note_id: string;
+                drawing_id: string;
             };
             cookie?: never;
         };
@@ -16791,8 +16833,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
-                drawing_id: number;
+                note_id: string;
+                drawing_id: string;
             };
             cookie?: never;
         };
@@ -16823,8 +16865,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
-                drawing_id: number;
+                note_id: string;
+                drawing_id: string;
             };
             cookie?: never;
         };
@@ -16855,7 +16897,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16890,7 +16932,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16925,7 +16967,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16959,7 +17001,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                note_id: number;
+                note_id: string;
             };
             cookie?: never;
         };
@@ -16990,8 +17032,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                note_id: number;
-                version_id: number;
+                note_id: string;
+                version_id: string;
             };
             cookie?: never;
         };
@@ -17413,7 +17455,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider_id: number;
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -17442,7 +17484,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider_id: number;
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -17477,7 +17519,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider_id: number;
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -17508,7 +17550,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider_id: number;
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -17539,7 +17581,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider_id: number;
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -17574,7 +17616,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                provider_id: number;
+                provider_id: string;
             };
             cookie?: never;
         };
@@ -17603,8 +17645,8 @@ export interface operations {
     list_quizzes_api_v1_quiz_activities_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
-                node_id?: number | null;
+                course_id?: string | null;
+                node_id?: string | null;
                 include_children?: boolean;
             };
             header?: never;
@@ -17638,7 +17680,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17669,7 +17711,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17700,7 +17742,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17735,7 +17777,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17768,7 +17810,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17799,7 +17841,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17830,7 +17872,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17861,7 +17903,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17896,7 +17938,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17927,7 +17969,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                activity_id: number;
+                activity_id: string;
             };
             cookie?: never;
         };
@@ -17960,7 +18002,7 @@ export interface operations {
     list_attempts_api_v1_quiz_attempts_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -17993,7 +18035,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                attempt_id: number;
+                attempt_id: string;
             };
             cookie?: never;
         };
@@ -18028,7 +18070,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                attempt_id: number;
+                attempt_id: string;
             };
             cookie?: never;
         };
@@ -18059,8 +18101,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                attempt_id: number;
-                question_id: number;
+                attempt_id: string;
+                question_id: string;
             };
             cookie?: never;
         };
@@ -18091,8 +18133,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                attempt_id: number;
-                question_id: number;
+                attempt_id: string;
+                question_id: string;
             };
             cookie?: never;
         };
@@ -18123,8 +18165,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                attempt_id: number;
-                question_id: number;
+                attempt_id: string;
+                question_id: string;
             };
             cookie?: never;
         };
@@ -18159,7 +18201,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                attempt_id: number;
+                attempt_id: string;
             };
             cookie?: never;
         };
@@ -18221,7 +18263,7 @@ export interface operations {
     import_caq_api_v1_quiz_import_post: {
         parameters: {
             query: {
-                course_id: number;
+                course_id: string;
                 dry_run?: boolean;
             };
             header?: never;
@@ -18257,7 +18299,7 @@ export interface operations {
     import_qpkg_api_v1_quiz_import_qpkg_post: {
         parameters: {
             query: {
-                course_id: number;
+                course_id: string;
                 dry_run?: boolean;
             };
             header?: never;
@@ -18333,7 +18375,7 @@ export interface operations {
     inbox_import_api_v1_quiz_inbox__filename__import_post: {
         parameters: {
             query?: {
-                course_id?: number;
+                course_id?: string;
             };
             header?: never;
             path: {
@@ -18366,7 +18408,7 @@ export interface operations {
     list_mistakes_api_v1_quiz_mistakes_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -18463,7 +18505,7 @@ export interface operations {
             query: {
                 q: string;
                 limit?: number;
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -18816,7 +18858,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                course_type_id: number;
+                course_type_id: string;
             };
             cookie?: never;
         };
@@ -18950,8 +18992,8 @@ export interface operations {
             header?: never;
             path: {
                 skill_key: string;
-                left_id: number;
-                right_id: number;
+                left_id: string;
+                right_id: string;
             };
             cookie?: never;
         };
@@ -18980,7 +19022,7 @@ export interface operations {
     resolution_api_v1_skills__skill_key__resolution_get: {
         parameters: {
             query?: {
-                course_id?: number | null;
+                course_id?: string | null;
             };
             header?: never;
             path: {
@@ -19113,7 +19155,7 @@ export interface operations {
             header?: never;
             path: {
                 skill_key: string;
-                version_id: number;
+                version_id: string;
             };
             cookie?: never;
         };
@@ -19217,7 +19259,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19246,7 +19288,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19283,7 +19325,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19314,7 +19356,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19349,7 +19391,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19384,7 +19426,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19415,7 +19457,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19444,7 +19486,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                source_id: number;
+                source_id: string;
             };
             cookie?: never;
         };
@@ -19539,7 +19581,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                session_id: number;
+                session_id: string;
             };
             cookie?: never;
         };
@@ -19594,7 +19636,7 @@ export interface operations {
     study_next_api_v1_study_next_get: {
         parameters: {
             query?: {
-                course?: number | null;
+                course?: string | null;
             };
             header?: never;
             path?: never;

@@ -49,8 +49,8 @@ import { TextDiffView } from '@/components/ui/text-diff-view'
 import type { EditorTransformRequest } from '@/lib/api'
 
 export interface AiHelperContext {
-  courseId?: number
-  nodeId?: number
+  courseId?: string
+  nodeId?: string
   title: string
 }
 

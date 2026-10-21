@@ -40,18 +40,18 @@ const INTERVALS: { value: number; labelKey: string }[] = [
 ]
 
 type EditorState = {
-  id: number | null
+  id: string | null
   kind: ExternalSourceKind
   url: string
   label: string
-  courseId: number | null
+  courseId: string | null
   interval: number
   maxItems: string
   query: string
   site: string
 }
 
-function emptyEditor(courseId: number | null): EditorState {
+function emptyEditor(courseId: string | null): EditorState {
   return {
     id: null,
     kind: 'rss',
@@ -227,7 +227,7 @@ function SourceEditorDialog({
                 className="bg-surface border-border w-full rounded-md border px-2 py-1.5 text-sm"
                 value={draft.courseId ?? ''}
                 onChange={(event) =>
-                  setDraft({ ...draft, courseId: Number(event.target.value) })
+                  setDraft({ ...draft, courseId: event.target.value })
                 }
               >
                 {(courses.data ?? []).map((course) => (
@@ -308,7 +308,7 @@ export function WebSourcesCard() {
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
 
   const toggle = useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       updateExternalSource(id, { enabled }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['external-sources'] })
@@ -316,14 +316,14 @@ export function WebSourcesCard() {
   })
 
   const remove = useMutation({
-    mutationFn: (id: number) => deleteExternalSource(id),
+    mutationFn: (id: string) => deleteExternalSource(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['external-sources'] })
     },
   })
 
   const scanNow = useMutation({
-    mutationFn: (id: number) => scanExternalSource(id),
+    mutationFn: (id: string) => scanExternalSource(id),
     onSuccess: async (stats: { new: number; updated: number }) => {
       setScanNotice(t('webSources.scanDone', { count: stats.new }))
       await queryClient.invalidateQueries({ queryKey: ['external-sources'] })
@@ -332,7 +332,7 @@ export function WebSourcesCard() {
     onError: (cause: Error) => setScanNotice(cause.message),
   })
 
-  const courseTitle = (courseId: number) =>
+  const courseTitle = (courseId: string) =>
     (courses.data ?? []).find((course) => course.id === courseId)?.title ?? ''
 
   return (

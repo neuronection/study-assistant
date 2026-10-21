@@ -5,14 +5,14 @@ import {
 import { useChatStore, type ChatSessionRef, type PendingAskAttachment } from '@/lib/chat-store'
 
 export interface AskMaterialTarget {
-  id: number
-  course_id: number | null
+  id: string
+  course_id: string | null
   title: string
 }
 
 export interface AskMaterialInput {
   material: AskMaterialTarget
-  scopeNodeId?: number | null
+  scopeNodeId?: string | null
   content: string
   attachments?: PendingAskAttachment[]
   selection?: string | null
@@ -66,8 +66,8 @@ export interface AskMaterialsInput {
   quizMe?: boolean
 }
 
-export function selectionAskKey(materialIds: number[]): string {
-  return [...materialIds].sort((a, b) => a - b).join('-')
+export function selectionAskKey(materialIds: string[]): string {
+  return [...materialIds].sort((a, b) => a.localeCompare(b)).join('-')
 }
 
 export async function askMaterials(input: AskMaterialsInput): Promise<ChatSessionRef> {

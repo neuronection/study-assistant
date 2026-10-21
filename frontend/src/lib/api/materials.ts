@@ -7,7 +7,7 @@ export type AcceptedTypes = Schemas['AcceptedTypesOut']
 import type { NoteDrawingInfo } from './notes'
 
 export interface Material {
-  id: number
+  id: string
   title: string
   description?: string | null
   kind: string
@@ -15,15 +15,15 @@ export interface Material {
   filename: string
   mime: string | null
   pages: number | null
-  course_id: number
-  group_id: number | null
-  folder_id: number | null
+  course_id: string
+  group_id: string | null
+  folder_id: string | null
   blob_sha: string | null
   provenance?: {
     source?: string
     kind?: string
     model?: string | null
-    coverage?: { total: number; covered: number; missing_ids: number[] } | null
+    coverage?: { total: number; covered: number; missing_ids: string[] } | null
     needs_review?: boolean
     video_id?: string
     channel?: string
@@ -40,8 +40,8 @@ export interface Material {
 }
 
 export interface Extraction {
-  id: number
-  material_id: number
+  id: string
+  material_id: string
   version: number
   extractor: string
   markdown: string
@@ -63,13 +63,13 @@ export interface IndexCard {
 }
 
 export interface MaterialImageInfo {
-  id: number
+  id: string
   position: number
   blob_sha: string | null
   mime: string | null
   ocr_version: number
   ocr_markdown: string | null
-  ocr_job_id: number | null
+  ocr_job_id: string | null
   created_at: string
 }
 
@@ -89,20 +89,20 @@ export interface UploadWarning {
 
 export interface UploadResult {
   material: Material
-  job_id: number | null
+  job_id: string | null
   deduped: boolean
-  node_id?: number | null
+  node_id?: string | null
   warnings?: UploadWarning[]
 }
 
 export interface SearchHitNodeDto {
-  course_id: number
-  node_id: number
+  course_id: string
+  node_id: string
   node_title: string
 }
 
 export interface SearchHitDto {
-  material_id: number
+  material_id: string
   title: string
   snippet: string
   score?: number
@@ -111,9 +111,9 @@ export interface SearchHitDto {
 
 export async function uploadMaterial(
   file: File,
-  courseId: number,
-  folderId: number | null = null,
-  nodeId: number | null = null
+  courseId: string,
+  folderId: string | null = null,
+  nodeId: string | null = null
 ): Promise<UploadResult> {
   const form = new FormData()
   form.append('file', file)
@@ -132,8 +132,8 @@ export async function uploadMaterial(
 }
 
 export async function listMaterials(
-  folderId?: number,
-  courseId?: number,
+  folderId?: string,
+  courseId?: string,
   unfiled?: boolean,
   filters?: { tag?: string; starred?: boolean }
 ): Promise<Material[]> {
@@ -159,9 +159,9 @@ export async function listMaterials(
 }
 
 export async function importUrlMaterial(
-  courseId: number,
+  courseId: string,
   url: string,
-  nodeId?: number | null,
+  nodeId?: string | null,
 ): Promise<UploadResult> {
   const response = await apiFetch('/api/v1/materials/import-url', {
     method: 'POST',
@@ -172,7 +172,7 @@ export async function importUrlMaterial(
 }
 
 export async function patchMaterial(
-  materialId: number,
+  materialId: string,
   body: { title?: string; description?: string; tags?: string[]; starred?: boolean },
 ): Promise<Material> {
   const response = await apiFetch(`/api/v1/materials/${materialId}`, {
@@ -185,24 +185,24 @@ export async function patchMaterial(
 }
 
 export interface MaterialLinkInfo {
-  node_id: number
+  node_id: string
   owner_title: string
-  breadcrumb: { id: number; title: string }[]
+  breadcrumb: { id: string; title: string }[]
   is_course_level: boolean
-  course_id: number | null
+  course_id: string | null
   course_title: string | null
   auto_assigned: boolean
   rationale: string | null
-  via_folder: { id: number; name: string } | null
+  via_folder: { id: string; name: string } | null
 }
 
-export async function getMaterialLinks(materialId: number): Promise<MaterialLinkInfo[]> {
+export async function getMaterialLinks(materialId: string): Promise<MaterialLinkInfo[]> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/links`)
   return json<MaterialLinkInfo[]>(response)
 }
 
 export interface UnassignedMaterial {
-  id: number
+  id: string
   title: string
 }
 
@@ -211,27 +211,27 @@ export interface UnassignedMaterials {
   materials: UnassignedMaterial[]
 }
 
-export async function getUnassignedMaterials(courseId: number): Promise<UnassignedMaterials> {
+export async function getUnassignedMaterials(courseId: string): Promise<UnassignedMaterials> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/materials/unassigned`)
   return json<UnassignedMaterials>(response)
 }
 
 export interface PlacementCandidate {
-  node_id: number
+  node_id: string
   node_title: string
-  breadcrumb: { id: number; title: string }[]
+  breadcrumb: { id: string; title: string }[]
   score: number
   matched_on: string[]
 }
 
 export interface PlacementSuggestion {
-  material_id: number
+  material_id: string
   candidates: PlacementCandidate[]
 }
 
 export async function getPlacementSuggestions(
-  courseId: number,
-  materialIds: number[]
+  courseId: string,
+  materialIds: string[]
 ): Promise<{ suggestions: PlacementSuggestion[] }> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/placement-suggestions`, {
     method: 'POST',
@@ -242,8 +242,8 @@ export async function getPlacementSuggestions(
 }
 
 export async function createTextFile(body: {
-  course_id: number
-  folder_id?: number | null
+  course_id: string
+  folder_id?: string | null
   filename: string
   content: string
   description?: string | null
@@ -257,7 +257,7 @@ export async function createTextFile(body: {
 }
 
 export interface PendingDrawing {
-  ref: number
+  ref: number | string
   strokes: unknown[]
   png_base64: string
   ocr: boolean
@@ -266,7 +266,7 @@ export interface PendingDrawing {
 
 export function remapDrawingRefsInMarkdown(
   markdown: string,
-  mapping: Record<number, number>
+  mapping: Record<number, string>
 ): string {
   return markdown.replace(/!\[[^\]]*\]\(sa-drawing:\/\/(-?\d+)\)/g, (full, idStr: string) => {
     const old = Number(idStr)
@@ -276,7 +276,7 @@ export function remapDrawingRefsInMarkdown(
   })
 }
 
-async function waitForMaterialReady(materialId: number, timeoutMs = 15000): Promise<void> {
+async function waitForMaterialReady(materialId: string, timeoutMs = 15000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const detail = await getMaterial(materialId)
@@ -292,15 +292,15 @@ async function waitForMaterialReady(materialId: number, timeoutMs = 15000): Prom
 }
 
 export interface TextFileEditState {
-  materialId: number
+  materialId: string
   content: string
-  refToReal: Record<number, number>
-  jobId: number | null
+  refToReal: Record<number, string>
+  jobId: string | null
 }
 
 export async function createTextMaterial(params: {
-  course_id: number
-  folder_id?: number | null
+  course_id: string
+  folder_id?: string | null
   filename: string
   content: string
   description?: string | null
@@ -328,7 +328,7 @@ export async function createTextMaterial(params: {
 }
 
 export async function updateTextMaterial(params: {
-  materialId: number
+  materialId: string
   content: string
   description?: string | null
   drawings: PendingDrawing[]
@@ -343,7 +343,7 @@ export async function updateTextMaterial(params: {
 }
 
 export async function reingestMaterial(
-  materialId: number,
+  materialId: string,
   options?: { mode: components['schemas']['ExtractionMode'] },
 ): Promise<UploadResult> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/reingest`, {
@@ -358,14 +358,13 @@ export async function reingestMaterial(
 }
 
 async function commitNewDrawings(
-  materialId: number,
+  materialId: string,
   drawings: PendingDrawing[]
-): Promise<Record<number, number>> {
-  const known = new Set<number>()
-  const refToReal: Record<number, number> = {}
+): Promise<Record<number, string>> {
+  const known = new Set<string>()
+  const refToReal: Record<number, string> = {}
   for (const pending of drawings) {
-    if (pending.ref > 0) {
-      known.add(pending.ref)
+    if (typeof pending.ref !== 'number' || pending.ref > 0) {
       continue
     }
     const detail = await addMaterialDrawing(
@@ -384,7 +383,7 @@ async function commitNewDrawings(
   return refToReal
 }
 
-export async function renameMaterial(id: number, title: string): Promise<Material> {
+export async function renameMaterial(id: string, title: string): Promise<Material> {
   const response = await apiFetch(`/api/v1/materials/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -394,7 +393,7 @@ export async function renameMaterial(id: number, title: string): Promise<Materia
 }
 
 export async function setMaterialDescription(
-  id: number,
+  id: string,
   description: string | null
 ): Promise<Material> {
   const response = await apiFetch(`/api/v1/materials/${id}`, {
@@ -406,8 +405,8 @@ export async function setMaterialDescription(
 }
 
 export async function moveMaterial(
-  id: number,
-  folderId: number | null
+  id: string,
+  folderId: string | null
 ): Promise<Material> {
   const response = await apiFetch(`/api/v1/materials/${id}/move`, {
     method: 'PATCH',
@@ -418,8 +417,8 @@ export async function moveMaterial(
 }
 
 export async function copyMaterial(
-  id: number,
-  folderId: number | null
+  id: string,
+  folderId: string | null
 ): Promise<Material> {
   const response = await apiFetch(`/api/v1/materials/${id}/copy`, {
     method: 'POST',
@@ -430,8 +429,8 @@ export async function copyMaterial(
 }
 
 export async function deriveMaterial(
-  id: number,
-  options?: { folderId?: number | null; nodeId?: number | null }
+  id: string,
+  options?: { folderId?: string | null; nodeId?: string | null }
 ): Promise<UploadResult> {
   const response = await apiFetch(`/api/v1/materials/${id}/derive`, {
     method: 'POST',
@@ -446,7 +445,7 @@ export async function deriveMaterial(
 
 export type DeriveBatchResult = Schemas['MaterialBatchDeriveOut']
 
-export async function deriveMaterials(ids: number[]): Promise<DeriveBatchResult> {
+export async function deriveMaterials(ids: string[]): Promise<DeriveBatchResult> {
   const response = await apiFetch('/api/v1/materials/derive', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -455,19 +454,19 @@ export async function deriveMaterials(ids: number[]): Promise<DeriveBatchResult>
   return json<DeriveBatchResult>(response)
 }
 
-export async function deleteMaterial(id: number): Promise<{ deleted_item_id: number }> {
+export async function deleteMaterial(id: string): Promise<{ deleted_item_id: string }> {
   const response = await apiFetch(`/api/v1/materials/${id}`, { method: 'DELETE' })
-  return json<{ deleted_item_id: number }>(response)
+  return json<{ deleted_item_id: string }>(response)
 }
 
-export async function getMaterial(id: number): Promise<MaterialDetail> {
+export async function getMaterial(id: string): Promise<MaterialDetail> {
   const response = await apiFetch(`/api/v1/materials/${id}`)
   return json<MaterialDetail>(response)
 }
 
 export async function search(
   query: string,
-  courseId?: number
+  courseId?: string
 ): Promise<{ query: string; hits: SearchHitDto[] }> {
   const course = courseId !== undefined ? `&course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/search?q=${encodeURIComponent(query)}${course}`)
@@ -475,7 +474,7 @@ export async function search(
 }
 
 export async function editExtraction(
-  materialId: number,
+  materialId: string,
   markdown: string
 ): Promise<Extraction> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/extraction`, {
@@ -497,14 +496,14 @@ export interface ExtractionVersionInfo {
 }
 
 export async function listExtractionVersions(
-  materialId: number
+  materialId: string
 ): Promise<ExtractionVersionInfo[]> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/extractions`)
   return json<ExtractionVersionInfo[]>(response)
 }
 
 export async function getExtractionVersion(
-  materialId: number,
+  materialId: string,
   version: number
 ): Promise<Extraction> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/extractions/${version}`)
@@ -512,7 +511,7 @@ export async function getExtractionVersion(
 }
 
 export async function mindmapEdit(
-  materialId: number,
+  materialId: string,
   body: { mode?: string; instruction?: string | null; focus_node?: string | null }
 ): Promise<MindmapEditResult> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/mindmap-edit`, {
@@ -524,31 +523,31 @@ export async function mindmapEdit(
 }
 
 export interface WorkspaceConcept {
-  id: number
+  id: string
   name: string
   direct: boolean
-  node_ids: number[]
+  node_ids: string[]
 }
 
 export interface CourseMaterialLink {
-  node_id: number
+  node_id: string
   node_title: string
   node_is_root: boolean
-  material_id: number
+  material_id: string
   title: string
   rationale: string | null
   auto_assigned: boolean
   confidence: number | null
 }
 
-export async function listCourseMaterials(courseId: number): Promise<CourseMaterialLink[]> {
+export async function listCourseMaterials(courseId: string): Promise<CourseMaterialLink[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/materials`)
   return json<CourseMaterialLink[]>(response)
 }
 
 export async function assignCourseMaterial(
-  courseId: number,
-  materialId: number
+  courseId: string,
+  materialId: string
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/materials`, {
     method: 'POST',
@@ -559,8 +558,8 @@ export async function assignCourseMaterial(
 }
 
 export async function unassignCourseMaterial(
-  courseId: number,
-  materialId: number
+  courseId: string,
+  materialId: string
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/materials/${materialId}`, {
     method: 'DELETE',
@@ -571,8 +570,8 @@ export async function unassignCourseMaterial(
 }
 
 export async function allocateMaterial(
-  nodeId: number,
-  materialId: number
+  nodeId: string,
+  materialId: string
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/materials`, {
     method: 'POST',
@@ -583,8 +582,8 @@ export async function allocateMaterial(
 }
 
 export async function deallocateMaterial(
-  nodeId: number,
-  materialId: number
+  nodeId: string,
+  materialId: string
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/materials/${materialId}`, {
     method: 'DELETE',
@@ -595,8 +594,8 @@ export async function deallocateMaterial(
 }
 
 export async function allocateNodeFolder(
-  nodeId: number,
-  folderId: number,
+  nodeId: string,
+  folderId: string,
   rationale?: string
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/folder-materials`, {
@@ -615,8 +614,8 @@ export interface MirrorFolderResult {
 }
 
 export async function mirrorFolder(
-  nodeId: number,
-  folderId: number,
+  nodeId: string,
+  folderId: string,
   recursive = true
 ): Promise<MirrorFolderResult> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/mirror-folder`, {
@@ -628,8 +627,8 @@ export async function mirrorFolder(
 }
 
 export async function deallocateNodeFolder(
-  nodeId: number,
-  folderId: number
+  nodeId: string,
+  folderId: string
 ): Promise<void> {
   const response = await apiFetch(
     `/api/v1/nodes/${nodeId}/folder-materials/${folderId}`,
@@ -655,22 +654,22 @@ export type ComposeKind = (typeof COMPOSE_KINDS)[number]
 
 export interface ComposedMaterial {
   material: Material
-  job_id: number | null
+  job_id: string | null
   deduped: boolean
 }
 
 export async function composeMaterial(body: {
-  course_id: number
-  node_id?: number | null
+  course_id: string
+  node_id?: string | null
   kind: ComposeKind
   title?: string | null
   instructions?: string | null
   extra_md?: string | null
   scope?: string
-  include_material_ids?: number[]
-  exclude_material_ids?: number[]
-  note_ids?: number[]
-  concept_ids?: number[]
+  include_material_ids?: string[]
+  exclude_material_ids?: string[]
+  note_ids?: string[]
+  concept_ids?: string[]
   context_hint?: string | null
   regenerate?: boolean
   include_unassigned?: boolean
@@ -683,20 +682,20 @@ export async function composeMaterial(body: {
   return json<ComposedMaterial>(response)
 }
 
-export async function composeMaterialAsync(body: Parameters<typeof composeMaterial>[0]): Promise<{ job_id: number }> {  const response = await apiFetch('/api/v1/materials/compose/async', {
+export async function composeMaterialAsync(body: Parameters<typeof composeMaterial>[0]): Promise<{ job_id: string }> {  const response = await apiFetch('/api/v1/materials/compose/async', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  return json<{ job_id: number }>(response)
+  return json<{ job_id: string }>(response)
 }
 
 export interface LinkMaterialBody {
-  course_id: number
+  course_id: string
   url: string
   title?: string | null
-  node_id?: number | null
-  folder_id?: number | null
+  node_id?: string | null
+  folder_id?: string | null
 }
 
 export async function createLinkMaterial(
@@ -710,24 +709,24 @@ export async function createLinkMaterial(
   return json<ComposedMaterial>(response)
 }
 
-export async function parseLinkMaterial(materialId: number): Promise<{ job_id: number }> {
+export async function parseLinkMaterial(materialId: string): Promise<{ job_id: string }> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/parse`, {
     method: 'POST',
   })
-  return json<{ job_id: number }>(response)
+  return json<{ job_id: string }>(response)
 }
 
 export async function transcribeLinkAudio(
-  materialId: number,
-): Promise<{ job_id: number }> {
+  materialId: string,
+): Promise<{ job_id: string }> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/transcribe-audio`, {
     method: 'POST',
   })
-  return json<{ job_id: number }>(response)
+  return json<{ job_id: string }>(response)
 }
 
 export async function addMaterialDrawing(
-  materialId: number,
+  materialId: string,
   strokes: unknown[],
   pngBase64: string,
   ocr = true,
@@ -742,8 +741,8 @@ export async function addMaterialDrawing(
 }
 
 export async function updateMaterialDrawing(
-  materialId: number,
-  drawingId: number,
+  materialId: string,
+  drawingId: string,
   strokes: unknown[],
   pngBase64: string,
   ocr: boolean,
@@ -758,8 +757,8 @@ export async function updateMaterialDrawing(
 }
 
 export async function reocrMaterialDrawing(
-  materialId: number,
-  drawingId: number
+  materialId: string,
+  drawingId: string
 ): Promise<MaterialDetail> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/drawings/${drawingId}/reocr`, {
     method: 'POST',
@@ -768,8 +767,8 @@ export async function reocrMaterialDrawing(
 }
 
 export async function deleteMaterialDrawing(
-  materialId: number,
-  drawingId: number
+  materialId: string,
+  drawingId: string
 ): Promise<MaterialDetail> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/drawings/${drawingId}`, {
     method: 'DELETE',
@@ -791,7 +790,7 @@ export interface ExtractionDiffInfo {
 }
 
 export async function diffExtractionVersions(
-  materialId: number,
+  materialId: string,
   from: string,
   to: string
 ): Promise<ExtractionDiffInfo> {

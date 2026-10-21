@@ -18,15 +18,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    approveChatProposal: (id: number) => approveChatProposal(id),
-    dismissChatProposal: (id: number) => dismissChatProposal(id),
+    approveChatProposal: (id: string) => approveChatProposal(id),
+    dismissChatProposal: (id: string) => dismissChatProposal(id),
   }
 })
 
 import type { ChatProposal } from '@/lib/api'
 
 const PROPOSAL: ChatProposal = {
-  id: 7,
+  id: '7',
   action: 'create_note',
   payload: {
     title: 'Chain rule summary',
@@ -88,21 +88,21 @@ describe('ProposalCard', () => {
     approveChatProposal.mockResolvedValue({ ...PROPOSAL, status: 'executed' })
     renderCard(PROPOSAL)
     fireEvent.click(await screen.findByRole('button', { name: /approve/i }))
-    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith('7'))
   })
 
   test('dismiss calls the API', async () => {
     dismissChatProposal.mockResolvedValue({ ...PROPOSAL, status: 'dismissed' })
     renderCard(PROPOSAL)
     fireEvent.click(await screen.findByRole('button', { name: /dismiss/i }))
-    await waitFor(() => expect(dismissChatProposal).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(dismissChatProposal).toHaveBeenCalledWith('7'))
   })
 
   test('executed card links to the created note and has no actions', async () => {
     renderCard({
       ...PROPOSAL,
       status: 'executed',
-      result: { note_id: 42 },
+      result: { note_id: '42' },
     })
     const link = await screen.findByRole('link', { name: /open the note/i })
     expect(link).toHaveAttribute('href', '/note/42?from=%2F')
@@ -170,13 +170,13 @@ describe('ProposalCard', () => {
       ...PROPOSAL,
       action: 'edit_note',
       status: 'executed',
-      result: { note_id: 42 },
+      result: { note_id: '42' },
     })
     renderCard({
       ...PROPOSAL,
       action: 'edit_note',
       payload: {
-        note_id: 42,
+        note_id: '42',
         new_body_md: '# Note\n\nFixed: the derivative is $-2x$.',
         original_md: '# Note\n\nThe derivative is $2x$.',
         reason: 'sign error',
@@ -203,7 +203,7 @@ describe('ProposalCard', () => {
       document.querySelector('[data-as="markdown-diff-view"]'),
     ).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /approve/i }))
-    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith('7'))
   })
 
   test('append_note previews the merged result (plan 66-B)', async () => {
@@ -211,7 +211,7 @@ describe('ProposalCard', () => {
       ...PROPOSAL,
       action: 'append_note',
       payload: {
-        note_id: 42,
+        note_id: '42',
         markdown: 'Extra worked example.',
         heading: 'Worked example',
         original_md: '# Note\n\nBase body.',
@@ -232,7 +232,7 @@ describe('ProposalCard', () => {
     renderCard({
       ...PROPOSAL,
       action: 'edit_note',
-      payload: { note_id: 42, new_body_md: 'Rewritten body.' },
+      payload: { note_id: '42', new_body_md: 'Rewritten body.' },
     })
     expect(await screen.findByText(/Edit note/)).toBeInTheDocument()
     expect(
@@ -249,7 +249,7 @@ describe('ProposalCard', () => {
       ...PROPOSAL,
       action: 'edit_material',
       payload: {
-        material_id: 12,
+        material_id: '12',
         new_markdown: '# Chain rule\n\nCorrected statement.',
         original_md: '# Chain rule\n\nBroken statement.',
       },
@@ -268,7 +268,7 @@ describe('ProposalCard', () => {
       ...PROPOSAL,
       action: 'append_material',
       payload: {
-        material_id: 12,
+        material_id: '12',
         markdown: 'A new section body.',
         heading: 'Extra practice',
         original_md: '# Chain rule\n\nBody.',
@@ -288,13 +288,13 @@ describe('ProposalCard', () => {
       ...PROPOSAL,
       action: 'append_material',
       payload: {
-        material_id: 12,
+        material_id: '12',
         markdown: 'A new section body.',
         heading: 'Extra practice',
         original_md: '# Chain rule\n\nBody.',
         target_kind: 'material',
         target_name: 'integral-tricks.md',
-        target_node_id: 3,
+        target_node_id: '3',
         target_node_path: ['Analysis I', 'Chapter 3'],
       },
     })
@@ -311,7 +311,7 @@ describe('ProposalCard', () => {
       action: 'create_material',
       payload: { title: 'Chain rule summary', body_md: 'Body.' },
       status: 'executed',
-      result: { material_id: 12 },
+      result: { material_id: '12' },
     })
     const link = await screen.findByRole('link', { name: /open the material/i })
     expect(link).toHaveAttribute('href', '/library/12?from=%2F')
@@ -324,8 +324,8 @@ describe('ProposalCard', () => {
       payload: {
         topic: 'chain rule',
         count: 5,
-        material_ids: [12],
-        note_ids: [4],
+        material_ids: ['12'],
+        note_ids: ['4'],
         instructions: 'Focus on the sign rule',
         question_types: ['single'],
         shuffle: true,
@@ -335,8 +335,8 @@ describe('ProposalCard', () => {
         open_dialog: {
           topic: 'chain rule',
           count: 5,
-          material_ids: [12],
-          note_ids: [4],
+          material_ids: ['12'],
+          note_ids: ['4'],
           instructions: 'Focus on the sign rule',
           question_types: ['single'],
           shuffle: true,
@@ -350,8 +350,8 @@ describe('ProposalCard', () => {
         payload: {
           topic: 'chain rule',
           count: 5,
-          material_ids: [12],
-          note_ids: [4],
+          material_ids: ['12'],
+          note_ids: ['4'],
           instructions: 'Focus on the sign rule',
           question_types: ['single'],
           shuffle: true,
@@ -368,8 +368,8 @@ describe('ProposalCard', () => {
           count: 5,
           steps: null,
           difficulty: null,
-          materialIds: [12],
-          noteIds: [4],
+          materialIds: ['12'],
+          noteIds: ['4'],
           instructions: 'Focus on the sign rule',
           questionTypes: ['single'],
           shuffle: true,
@@ -383,17 +383,17 @@ describe('ProposalCard', () => {
     approveChatProposal.mockResolvedValue({
       ...PROPOSAL,
       action: 'generate_flashcards',
-      payload: { material_id: 12, count: 12 },
+      payload: { material_id: '12', count: 12 },
       status: 'approved',
       result: {
-        open_dialog: { material_id: 12, count: 12 },
+        open_dialog: { material_id: '12', count: 12 },
       },
     })
     renderCard(
       {
         ...PROPOSAL,
         action: 'generate_flashcards',
-        payload: { material_id: 12, count: 12 },
+        payload: { material_id: '12', count: 12 },
       },
       onOpenGenerate,
     )
@@ -403,7 +403,7 @@ describe('ProposalCard', () => {
         task: 'flashcards',
         params: expect.objectContaining({
           count: 12,
-          flashcards: { source: 'material', materialId: 12, noteId: null },
+          flashcards: { source: 'material', materialId: '12', noteId: null },
         }),
       }),
     )
@@ -425,10 +425,10 @@ describe('ProposalCard', () => {
 
 describe('ProposalCard anchored edits (plan 78-C)', () => {
   const ANCHORED: ChatProposal = {
-    id: 12,
+    id: '12',
     action: 'edit_note',
     payload: {
-      note_id: 5,
+      note_id: '5',
       original_md: '# Note\n\nThe derivative is $2x$.',
       new_body_md: '# Note\n\nThe derivative is $-2x$.',
       reason: 'sign error',
@@ -458,7 +458,7 @@ describe('ProposalCard anchored edits (plan 78-C)', () => {
     renderCard({
       ...ANCHORED,
       payload: {
-        note_id: 5,
+        note_id: '5',
         original_md: '# Note',
         new_body_md: '# Note rewritten',
       },
@@ -470,10 +470,10 @@ describe('ProposalCard anchored edits (plan 78-C)', () => {
 
 describe('ProposalCard conflict flow (plan 78-D)', () => {
   const CONFLICT: ChatProposal = {
-    id: 21,
+    id: '21',
     action: 'edit_note',
     payload: {
-      note_id: 5,
+      note_id: '5',
       original_md: '# Note\n\nCurrent content.',
       new_body_md: '# Note\n\nCurrent content, fixed.',
     },
@@ -503,13 +503,13 @@ describe('ProposalCard conflict flow (plan 78-D)', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: /approve refreshed diff/i }),
     )
-    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith(21))
+    await waitFor(() => expect(approveChatProposal).toHaveBeenCalledWith('21'))
   })
 })
 
 describe('ProposalCard rendered preview (plan 78-F)', () => {
   const CREATE: ChatProposal = {
-    id: 31,
+    id: '31',
     action: 'create_note',
     payload: {
       title: 'Chain rule summary',
@@ -537,10 +537,10 @@ describe('ProposalCard rendered preview (plan 78-F)', () => {
 
   test('anchored edits preview the resolved result', async () => {
     renderCard({
-      id: 32,
+      id: '32',
       action: 'edit_note',
       payload: {
-        note_id: 5,
+        note_id: '5',
         original_md: '# Note\n\nalpha beta',
         new_body_md: '# Note\n\nalpha BETA',
       },
@@ -556,7 +556,7 @@ describe('ProposalCard rendered preview (plan 78-F)', () => {
 
   test('generate proposals have no rendered preview (content exists only after generation)', async () => {
     renderCard({
-      id: 33,
+      id: '33',
       action: 'generate_quiz',
       payload: { topic: 'Chain rule', count: 5, difficulty: 2 },
       status: 'proposed',

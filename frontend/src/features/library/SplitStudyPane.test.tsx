@@ -17,9 +17,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getMaterial: (id: number) => getMaterial(id),
-    getMaterialLinks: (id: number) => getMaterialLinks(id),
-    courseTree: (id: number) => courseTree(id),
+    getMaterial: (id: string) => getMaterial(id),
+    getMaterialLinks: (id: string) => getMaterialLinks(id),
+    courseTree: (id: string) => courseTree(id),
     createNote: (body: unknown) => createNote(body),
   }
 })
@@ -30,7 +30,7 @@ vi.mock('@/features/notes/LazyNoteEditor', () => ({
     insertRef,
     onRequestClose,
   }: {
-    noteId: number
+    noteId: string
     insertRef?: { current: StudyInsertApi | null }
     onRequestClose?: () => void
   }) => {
@@ -58,7 +58,7 @@ vi.mock('./MaterialDetailBody', () => ({
     onQuoteSelection,
     onClose,
   }: {
-    materialId: number
+    materialId: string
     onQuoteSelection?: (text: string) => void
     onClose?: () => void
   }) => (
@@ -83,8 +83,8 @@ vi.mock('./MaterialDetailDrawer', () => ({
 
 const MATERIAL = {
   material: {
-    id: 5,
-    course_id: 2,
+    id: '5',
+    course_id: '2',
     title: 'Chain rule worksheet',
     status: 'ready',
     course_id_ref: 2,
@@ -96,9 +96,9 @@ function renderPane(props: Partial<Parameters<typeof SplitStudyPane>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
       <SplitStudyPane
-        courseId={2}
-        materialId={5}
-        study={42}
+        courseId="2"
+        materialId="5"
+        study="42"
         onNoteCreated={vi.fn()}
         onClose={vi.fn()}
         onCloseNotes={vi.fn()}
@@ -119,10 +119,10 @@ describe('SplitStudyPane', () => {
     createNote.mockReset()
     getMaterial.mockResolvedValue(MATERIAL)
     getMaterialLinks.mockResolvedValue([
-      { node_id: 9, is_course_level: false, node_title: 'Derivatives' },
+      { node_id: '9', is_course_level: false, node_title: 'Derivatives' },
     ])
     courseTree.mockResolvedValue([
-      { id: 1, title: 'Calculus', children: [], materials: [] },
+      { id: '1', title: 'Calculus', children: [], materials: [] },
     ])
   })
 
@@ -142,14 +142,14 @@ describe('SplitStudyPane', () => {
 
   test('study=new creates a note placed on the material node and reports it', async () => {
     const onNoteCreated = vi.fn()
-    createNote.mockResolvedValue({ id: 77, title: 'Notes — Chain rule worksheet' })
+    createNote.mockResolvedValue({ id: '77', title: 'Notes — Chain rule worksheet' })
     renderPane({ study: 'new', onNoteCreated })
 
     await waitFor(() => expect(createNote).toHaveBeenCalled())
     expect(createNote).toHaveBeenCalledWith(
-      expect.objectContaining({ course_id: 2, node_id: 9 })
+      expect.objectContaining({ course_id: '2', node_id: '9' })
     )
-    await waitFor(() => expect(onNoteCreated).toHaveBeenCalledWith(77))
+    await waitFor(() => expect(onNoteCreated).toHaveBeenCalledWith('77'))
     expect(await screen.findByTestId('study-note-editor')).toHaveTextContent('note:77')
   })
 
@@ -165,7 +165,7 @@ describe('SplitStudyPane', () => {
       fireEvent.click(screen.getByTestId('quote-wiring-probe'))
       expect(insert).toHaveBeenCalledWith(
         expect.stringContaining("$(fg)' = f'g + fg'$"),
-        expect.objectContaining({ materialId: 5, title: 'Chain rule worksheet' })
+        expect.objectContaining({ materialId: '5', title: 'Chain rule worksheet' })
       )
     })
   })

@@ -16,7 +16,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-function makeCard(id: number, frontMd: string): FlashcardInfo {
+function makeCard(id: string, frontMd: string): FlashcardInfo {
   return {
     id,
     kind: 'basic',
@@ -45,7 +45,7 @@ describe('ReviewQueue (presentational)', () => {
   test('renders the first card, reveals on click, rates via keyboard 1-4', async () => {
     renderQueue(
       <ReviewQueue
-        cards={[makeCard(1, 'front one'), makeCard(2, 'front two')]}
+        cards={[makeCard('1', 'front one'), makeCard('2', 'front two')]}
         onRate={onRate}
       />
     )
@@ -59,7 +59,7 @@ describe('ReviewQueue (presentational)', () => {
     fireEvent.keyDown(document.body, { key: '3' })
     expect(onRate).toHaveBeenCalledTimes(1)
     expect(onRate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 1 }),
+      expect.objectContaining({ id: '1' }),
       3
     )
     await waitFor(() => expect(screen.getByText('front two')).toBeInTheDocument())
@@ -68,7 +68,7 @@ describe('ReviewQueue (presentational)', () => {
   test('progress counter advances and completion renders when the batch empties', () => {
     renderQueue(
       <ReviewQueue
-        cards={[makeCard(1, 'front one')]}
+        cards={[makeCard('1', 'front one')]}
         total={4}
         onRate={onRate}
         completion={<p>batch-complete-view</p>}
@@ -91,7 +91,7 @@ describe('ReviewQueue (presentational)', () => {
 
   test('ratings are ignored while busy', () => {
     renderQueue(
-      <ReviewQueue cards={[makeCard(1, 'front one')]} busy onRate={onRate} />
+      <ReviewQueue cards={[makeCard('1', 'front one')]} busy onRate={onRate} />
     )
     fireEvent.keyDown(document.body, { key: '4' })
     expect(onRate).not.toHaveBeenCalled()

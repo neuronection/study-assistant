@@ -23,7 +23,7 @@ describe('MaterialTile', () => {
     const onClick = vi.fn()
     renderWithClient(
       <MaterialTile
-        material={{ id: 7, title: 'Lecture 1', kind: 'pdf', status: 'ready' }}
+        material={{ id: '7', title: 'Lecture 1', kind: 'pdf', status: 'ready' }}
         onClick={onClick}
       />
     )
@@ -36,24 +36,24 @@ describe('MaterialTile', () => {
   test('clamps to 3 lines by default and 4 when selected', () => {
     const title = 'Lecture 1'
     const { rerenderWithClient } = renderWithClient(
-      <MaterialTile material={{ id: 7, title, kind: 'pdf' }} selectionState="none" />
+      <MaterialTile material={{ id: '7', title, kind: 'pdf' }} selectionState="none" />
     )
     expect(screen.getByText(title).className).toContain('line-clamp-3')
     expect(screen.getByText(title).className).not.toContain('line-clamp-4')
 
     rerenderWithClient(
-      <MaterialTile material={{ id: 7, title, kind: 'pdf' }} selectionState="selected" />
+      <MaterialTile material={{ id: '7', title, kind: 'pdf' }} selectionState="selected" />
     )
     expect(screen.getByText(title).className).toContain('line-clamp-4')
   })
 
   test('renders the placement badge only when linkCount is positive', () => {
     const { rerenderWithClient } = renderWithClient(
-      <MaterialTile material={{ id: 7, title: 'Lecture 1', linkCount: 3 }} />
+      <MaterialTile material={{ id: '7', title: 'Lecture 1', linkCount: 3 }} />
     )
     expect(screen.getByTitle('3 placements in the course tree')).toBeInTheDocument()
 
-    rerenderWithClient(<MaterialTile material={{ id: 7, title: 'Lecture 1', linkCount: 0 }} />)
+    rerenderWithClient(<MaterialTile material={{ id: '7', title: 'Lecture 1', linkCount: 0 }} />)
     expect(screen.queryByTitle(/placement/)).not.toBeInTheDocument()
   })
 })

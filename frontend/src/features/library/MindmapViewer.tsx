@@ -34,10 +34,10 @@ export function MindmapViewer({
   scopeNodeId,
 }: {
   markdown: string
-  materialId: number
+  materialId: string
   materialTitle: string
-  courseId: number
-  scopeNodeId: number | null
+  courseId: string
+  scopeNodeId: string | null
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()

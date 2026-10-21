@@ -24,8 +24,8 @@ export function mindmapLlmHint(markdown: string, focusLabel: string | null): str
 
 export function createMindmapSource(options: {
   markdown: string
-  courseId: number
-  scopeNodeId: number | null
+  courseId: string
+  scopeNodeId: string | null
   save: (markdown: string) => void
 }): NodeSource<MindmapNode> {
   const parsed = parseMindmap(options.markdown)

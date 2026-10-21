@@ -20,7 +20,7 @@ function setup(block: Block) {
 
 describe('BlockActions', () => {
   test('renders nothing for non-copyable blocks', () => {
-    setup({ type: 'mention', ref: 'N1', kind: 'note', id: 1, title: 'Note' })
+    setup({ type: 'mention', ref: 'N1', kind: 'note', id: '1', title: 'Note' })
     expect(screen.queryByRole('button', { name: 'Copy options' })).toBeNull()
   })
 

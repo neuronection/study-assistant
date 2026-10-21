@@ -34,16 +34,16 @@ import type {
 } from './types'
 
 export interface DrawingMeta {
-  id: number
+  id: string
   png_sha: string | null
   ocr_markdown: string | null
 }
 
-export type DrawingResolver = (id: number) => DrawingMeta | undefined
+export type DrawingResolver = (id: string) => DrawingMeta | undefined
 
 
 
-const MENTION_TOKEN_RE = /\[(M|N|C|T|Q|E)(\d+)\]/g
+const MENTION_TOKEN_RE = /\[(M|N|C|T|Q|E)([0-9a-zA-Z-]+)\]/g
 
 export function mentionsToMarkdownLinks(md: string, mentions: MentionRef[]): string {
   const known = new Map(mentions.map((mention) => [mention.ref, mention]))
@@ -312,7 +312,7 @@ function ImageRefBlockView({
   resolve,
 }: {
   block: ImageRefBlock
-  resolve?: (id: number) => MaterialImageMeta | undefined
+  resolve?: (id: string) => MaterialImageMeta | undefined
 }) {
   const meta = resolve?.(block.image_id)
   if (meta?.blob_sha) {
@@ -419,7 +419,7 @@ export function BlockRenderer({
   className?: string
   actions?: boolean
   resolveDrawing?: DrawingResolver
-  resolveImage?: (id: number) => MaterialImageMeta | undefined
+  resolveImage?: (id: string) => MaterialImageMeta | undefined
   onWidgetStateChange?: (widgetId: string, state: Record<string, unknown>) => void
 }) {
   return (

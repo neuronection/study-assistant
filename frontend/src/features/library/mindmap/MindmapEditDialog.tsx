@@ -18,7 +18,7 @@ export function MindmapEditDialog({
   onClose,
   onApplied,
 }: {
-  materialId: number
+  materialId: string
   focusNode?: string
   onClose: () => void
   onApplied: () => void

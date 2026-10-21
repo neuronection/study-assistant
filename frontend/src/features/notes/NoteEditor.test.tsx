@@ -21,15 +21,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    getNote: (id: number) => getNote(id),
+    getNote: (id: string) => getNote(id),
     updateNote: (...args: unknown[]) => updateNote(...(args as [number, object])),
     runNoteAction: (...args: unknown[]) => runNoteAction(...(args as [number, string])),
-    courseTree: (id: number) => courseTree(id),
-    deleteNote: (id: number) => deleteNote(id),
+    courseTree: (id: string) => courseTree(id),
+    deleteNote: (id: string) => deleteNote(id),
     addDrawing: (...args: unknown[]) => addDrawing(...(args as [number, unknown[], string])),
     updateDrawing: (...args: unknown[]) =>
       updateDrawing(...(args as [number, number, unknown[], string, boolean])),
-    deleteDrawing: (noteId: number, drawingId: number) =>
+    deleteDrawing: (noteId: string, drawingId: string) =>
       deleteDrawing(noteId, drawingId),
   }
 })
@@ -55,15 +55,15 @@ vi.mock('@/components/editor/MarkdownEditor', async () => {
           pngBase64: string,
           ocr: boolean
         ) => Promise<number | null>
-        remove: (drawingId: number) => Promise<void>
+        remove: (drawingId: string) => Promise<void>
       }
       apiRef?: {
         current: {
-          insertDrawing: (id: number) => void
-          removeDrawing: (id: number) => void
+          insertDrawing: (id: string) => void
+          removeDrawing: (id: string) => void
         } | null
       }
-      aiHelper?: { courseId?: number; nodeId?: number; title: string }
+      aiHelper?: { courseId?: string; nodeId?: string; title: string }
       onSnapRegion?: () => void
     }) => {
       const latest = React.useRef({ value, onChange })
@@ -71,7 +71,7 @@ vi.mock('@/components/editor/MarkdownEditor', async () => {
       React.useEffect(() => {
         if (apiRef) {
           apiRef.current = {
-            insertDrawing: (id: number) =>
+            insertDrawing: (id: string) =>
               onChange(`${latest.current.value}\n\n![drawing](sa-drawing://${id})`),
             removeDrawing: () => undefined,
           }
@@ -100,7 +100,7 @@ vi.mock('@/components/editor/MarkdownEditor', async () => {
           {drawingAdapter ? (
             <button
               type="button"
-              onClick={() => void drawingAdapter.remove(7)}
+              onClick={() => void drawingAdapter.remove('7')}
             >
               editor-delete-drawing
             </button>
@@ -141,7 +141,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 const NOTE = (overrides: Partial<Record<string, unknown>> = {}) => ({
-  id: 3,
+  id: '3',
   title: 'Chain rule derivation',
   course_id: null,
   node_id: null,
@@ -157,7 +157,7 @@ const NOTE = (overrides: Partial<Record<string, unknown>> = {}) => ({
 
 const TREE = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -166,7 +166,7 @@ const TREE = [
     is_root: true,
     children: [
       {
-        id: 5,
+        id: '5',
         title: 'Derivatives',
         summary: null,
         objectives: [],
@@ -175,7 +175,7 @@ const TREE = [
         is_root: false,
         children: [
           {
-            id: 11,
+            id: '11',
             title: 'Chain rule',
             summary: null,
             objectives: [],
@@ -193,7 +193,7 @@ const TREE = [
   },
 ]
 
-function renderEditor(noteId = 3, props: Partial<Parameters<typeof NoteEditor>[0]> = {}) {
+function renderEditor(noteId = '3', props: Partial<Parameters<typeof NoteEditor>[0]> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -214,7 +214,7 @@ describe('NoteEditor', () => {
     addDrawing.mockReset()
     deleteDrawing.mockReset()
     getNote.mockResolvedValue(NOTE())
-    updateNote.mockImplementation(async (_id: number, body: { body_md?: string }) =>
+    updateNote.mockImplementation(async (_id: string, body: { body_md?: string }) =>
       NOTE({
         body: [{ type: 'text', md: body.body_md ?? 'Original body' }],
         updated_at: '2026-08-19T12:00:00',
@@ -233,7 +233,7 @@ describe('NoteEditor', () => {
     const title = await screen.findByRole('textbox', { name: 'Note title' })
     fireEvent.change(title, { target: { value: 'Renamed note' } })
     fireEvent.submit(title.closest('form')!)
-    await waitFor(() => expect(updateNote).toHaveBeenCalledWith(3, { title: 'Renamed note' }))
+    await waitFor(() => expect(updateNote).toHaveBeenCalledWith('3', { title: 'Renamed note' }))
   })
 
   test('adds and removes tags via the chip editor', async () => {
@@ -245,11 +245,11 @@ describe('NoteEditor', () => {
     fireEvent.change(input, { target: { value: 'exam' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() =>
-      expect(updateNote).toHaveBeenCalledWith(3, { tags: ['calculus', 'exam'] })
+      expect(updateNote).toHaveBeenCalledWith('3', { tags: ['calculus', 'exam'] })
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }))
-    await waitFor(() => expect(updateNote).toHaveBeenCalledWith(3, { tags: [] }))
+    await waitFor(() => expect(updateNote).toHaveBeenCalledWith('3', { tags: [] }))
   })
 
   test('AI result is editable and appends the edited text into the saved body', async () => {
@@ -269,7 +269,7 @@ describe('NoteEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save now' }))
     await waitFor(() =>
       expect(updateNote).toHaveBeenCalledWith(
-        3,
+        '3',
         expect.objectContaining({
           body_md: expect.stringContaining('Edited summary'),
         })
@@ -277,7 +277,7 @@ describe('NoteEditor', () => {
     )
     await waitFor(() =>
       expect(updateNote).toHaveBeenCalledWith(
-        3,
+        '3',
         expect.objectContaining({
           body_md: expect.stringContaining('Original body'),
         })
@@ -317,14 +317,14 @@ describe('NoteEditor', () => {
     })
     await waitFor(() =>
       expect(updateNote).toHaveBeenCalledWith(
-        3,
+        '3',
         expect.objectContaining({
           body_md: 'Typed derivation',
           base_updated_at: '2026-08-19T10:00:00',
         })
       )
     )
-    expect(JSON.parse(localStorage.getItem(draftKey(3)) ?? 'null')).toBeNull()
+    expect(JSON.parse(localStorage.getItem(draftKey('3')) ?? 'null')).toBeNull()
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'))
   })
 
@@ -354,7 +354,7 @@ describe('NoteEditor', () => {
     await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(2))
     await waitFor(() =>
       expect(updateNote).toHaveBeenLastCalledWith(
-        3,
+        '3',
         expect.objectContaining({ body_md: 'Retry me' })
       )
     )
@@ -380,13 +380,13 @@ describe('NoteEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Keep mine' }))
     await waitFor(() =>
-      expect(updateNote).toHaveBeenCalledWith(3, { body_md: 'Divergent edit' })
+      expect(updateNote).toHaveBeenCalledWith('3', { body_md: 'Divergent edit' })
     )
   })
 
   test('shows the recovery banner when the mirror is newer than the note', async () => {
     localStorage.setItem(
-      draftKey(3),
+      draftKey('3'),
       JSON.stringify({ body_md: 'Crashed draft', savedAt: '2026-08-19T11:00:00' })
     )
     renderEditor()
@@ -399,14 +399,14 @@ describe('NoteEditor', () => {
 
   test('discarding the recovery banner removes the mirror', async () => {
     localStorage.setItem(
-      draftKey(3),
+      draftKey('3'),
       JSON.stringify({ body_md: 'Crashed draft', savedAt: '2026-08-19T11:00:00' })
     )
     renderEditor()
     expect(await screen.findByText(/previous session/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
     await waitFor(() =>
-      expect(localStorage.getItem(draftKey(3))).toBeNull()
+      expect(localStorage.getItem(draftKey('3'))).toBeNull()
     )
   })
 
@@ -419,7 +419,7 @@ describe('NoteEditor', () => {
       view.unmount()
     })
     await waitFor(() =>
-      expect(updateNote).toHaveBeenCalledWith(3, { body_md: 'Last minute note' })
+      expect(updateNote).toHaveBeenCalledWith('3', { body_md: 'Last minute note' })
     )
   })
 
@@ -428,12 +428,12 @@ describe('NoteEditor', () => {
       NOTE({
         body: [
           { type: 'text', md: 'before' },
-          { type: 'drawing', drawing_id: 4 },
+          { type: 'drawing', drawing_id: '4' },
           { type: 'text', md: 'after' },
         ],
         drawings: [
           {
-            id: 4,
+            id: '4',
             png_sha: 'abc123',
             strokes: [],
             ocr_version: 1,
@@ -459,7 +459,7 @@ describe('NoteEditor', () => {
         body: [{ type: 'text', md: 'plain' }],
         drawings: [
           {
-            id: 11,
+            id: '11',
             png_sha: 'newsha',
             strokes: [],
             ocr_version: 1,
@@ -473,7 +473,7 @@ describe('NoteEditor', () => {
     await screen.findByRole('textbox', { name: /note body/i })
 
     fireEvent.click(screen.getByRole('button', { name: 'editor-insert-drawing' }))
-    await waitFor(() => expect(addDrawing).toHaveBeenCalledWith(3, [], 'AAA', true, undefined))
+    await waitFor(() => expect(addDrawing).toHaveBeenCalledWith('3', [], 'AAA', true, undefined))
   })
 
   test('the drawing adapter remove wires through to deleteDrawing', async () => {
@@ -482,7 +482,7 @@ describe('NoteEditor', () => {
         body: [{ type: 'text', md: 'before\n\n![drawing](sa-drawing://7)\n\nafter' }],
         drawings: [
           {
-            id: 7,
+            id: '7',
             png_sha: 'sha7',
             strokes: [],
             ocr_version: 1,
@@ -502,7 +502,7 @@ describe('NoteEditor', () => {
     await screen.findByRole('textbox', { name: /note body/i })
 
     fireEvent.click(screen.getByRole('button', { name: 'editor-delete-drawing' }))
-    await waitFor(() => expect(deleteDrawing).toHaveBeenCalledWith(3, 7))
+    await waitFor(() => expect(deleteDrawing).toHaveBeenCalledWith('3', '7'))
   })
 
   test('study-alongside renders in the drawer header row and invokes the callback', async () => {
@@ -511,7 +511,7 @@ describe('NoteEditor', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <NoteEditor noteId={3} onClose={onClose} onStudyAlongside={onStudyAlongside} />
+        <NoteEditor noteId="3" onClose={onClose} onStudyAlongside={onStudyAlongside} />
       </QueryClientProvider>
     )
     const button = await screen.findByRole('button', { name: /study alongside/i })
@@ -543,13 +543,13 @@ describe('NoteEditor', () => {
   })
 
   test('focus header links the course and the placement node', async () => {
-    getNote.mockResolvedValue(NOTE({ course_id: 9, node_id: 11 }))
+    getNote.mockResolvedValue(NOTE({ course_id: '9', node_id: '11' }))
     courseTree.mockResolvedValue(TREE)
     const onClose = vi.fn()
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <NoteEditor noteId={3} onClose={onClose} />
+        <NoteEditor noteId="3" onClose={onClose} />
       </QueryClientProvider>
     )
     const courseLink = await screen.findByRole('link', { name: 'Calculus I' })
@@ -559,13 +559,13 @@ describe('NoteEditor', () => {
   })
 
   test('root-placed note shows only the course crumb', async () => {
-    getNote.mockResolvedValue(NOTE({ course_id: 9, node_id: 1 }))
+    getNote.mockResolvedValue(NOTE({ course_id: '9', node_id: '1' }))
     courseTree.mockResolvedValue(TREE)
     const onClose = vi.fn()
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <NoteEditor noteId={3} onClose={onClose} />
+        <NoteEditor noteId="3" onClose={onClose} />
       </QueryClientProvider>
     )
     await screen.findByRole('textbox', { name: 'Note title' })
@@ -574,7 +574,7 @@ describe('NoteEditor', () => {
   })
 
   test('note editor passes course and node to the AI helper', async () => {
-    getNote.mockResolvedValue(NOTE({ course_id: 9, node_id: 11 }))
+    getNote.mockResolvedValue(NOTE({ course_id: '9', node_id: '11' }))
     renderEditor()
     await screen.findByRole('textbox', { name: 'Note title' })
     expect(
@@ -585,7 +585,7 @@ describe('NoteEditor', () => {
   test('the snap button opens the capture flow and registers this note as target (plan 67 C)', async () => {
     renderEditor()
     await screen.findByRole('textbox', { name: 'Note title' })
-    expect(useCaptureStore.getState().snapTarget?.noteId).toBe(3)
+    expect(useCaptureStore.getState().snapTarget?.noteId).toBe('3')
     expect(useCaptureStore.getState().snapTarget?.title).toBe('Chain rule derivation')
     expect(useCaptureStore.getState().snapOpen).toBe(false)
 
@@ -598,7 +598,7 @@ describe('NoteEditor', () => {
       NOTE({
         drawings: [
           {
-            id: 21,
+            id: '21',
             png_sha: 'sha21',
             strokes: [],
             ocr_version: 0,
@@ -614,8 +614,8 @@ describe('NoteEditor', () => {
     expect(target).not.toBeNull()
 
     const drawingId = await target!.insert('QUJD')
-    expect(drawingId).toBe(21)
-    expect(addDrawing).toHaveBeenCalledWith(3, [], 'QUJD', false, null)
+    expect(drawingId).toBe('21')
+    expect(addDrawing).toHaveBeenCalledWith('3', [], 'QUJD', false, null)
   })
 
   test('the snap target undo removes the drawing and unregisters on unmount (plan 67 C)', async () => {
@@ -623,8 +623,8 @@ describe('NoteEditor', () => {
     const view = renderEditor()
     await screen.findByRole('textbox', { name: 'Note title' })
     const target = useCaptureStore.getState().snapTarget!
-    await target.remove(21)
-    await waitFor(() => expect(deleteDrawing).toHaveBeenCalledWith(3, 21))
+    await target.remove('21')
+    await waitFor(() => expect(deleteDrawing).toHaveBeenCalledWith('3', '21'))
 
     view.unmount()
     expect(useCaptureStore.getState().snapTarget).toBeNull()
@@ -635,7 +635,7 @@ describe('NoteEditor', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <NoteEditor noteId={3} onClose={onClose} />
+        <NoteEditor noteId="3" onClose={onClose} />
       </QueryClientProvider>
     )
     fireEvent.click(await screen.findByRole('button', { name: 'Close' }))
@@ -652,13 +652,13 @@ describe('NoteEditor', () => {
   test('per-pane close flushes a dirty draft and calls onRequestClose (plan 62-A)', async () => {
     const onRequestClose = vi.fn()
     updateNote.mockClear()
-    renderEditor(3, { onRequestClose, closeLabel: 'Close notes' })
+    renderEditor('3', { onRequestClose, closeLabel: 'Close notes' })
     const body = await screen.findByRole('textbox', { name: /note body/i })
     fireEvent.change(body, { target: { value: 'Draft to flush' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Close notes' }))
     await waitFor(() =>
       expect(updateNote).toHaveBeenCalledWith(
-        3,
+        '3',
         expect.objectContaining({ body_md: 'Draft to flush' })
       )
     )
@@ -668,7 +668,7 @@ describe('NoteEditor', () => {
   test('per-pane close without changes skips the save and closes (plan 62-A)', async () => {
     const onRequestClose = vi.fn()
     updateNote.mockClear()
-    renderEditor(3, { onRequestClose, closeLabel: 'Close notes' })
+    renderEditor('3', { onRequestClose, closeLabel: 'Close notes' })
     await screen.findByRole('textbox', { name: /note body/i })
     fireEvent.click(screen.getByRole('button', { name: 'Close notes' }))
     expect(updateNote).not.toHaveBeenCalled()
@@ -678,11 +678,11 @@ describe('NoteEditor', () => {
   test('delete in inline mode calls onRequestClose instead of onClose (plan 62-A)', async () => {
     const onRequestClose = vi.fn()
     deleteNote.mockResolvedValue(undefined)
-    renderEditor(3, { onRequestClose })
+    renderEditor('3', { onRequestClose })
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'More note actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith('3'))
     await waitFor(() => expect(onRequestClose).toHaveBeenCalled())
   })
 
@@ -692,13 +692,13 @@ describe('NoteEditor', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <NoteEditor noteId={3} onClose={onClose} />
+        <NoteEditor noteId="3" onClose={onClose} />
       </QueryClientProvider>
     )
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'More note actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith('3'))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
@@ -707,7 +707,7 @@ describe('NoteEditor', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
       <QueryClientProvider client={client}>
-        <NoteEditor noteId={3} onClose={onClose} />
+        <NoteEditor noteId="3" onClose={onClose} />
       </QueryClientProvider>
     )
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'More note actions' }))
@@ -744,7 +744,7 @@ describe('NoteEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save now' }))
     await waitFor(() =>
       expect(updateNote).toHaveBeenCalledWith(
-        3,
+        '3',
         expect.objectContaining({ body_md: 'Chip draft' })
       )
     )

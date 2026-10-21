@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils'
 const POLL_INTERVAL_MS = 800
 const POLL_DEADLINE_MS = 15 * 60_000
 
-async function pollJob(jobId: number): Promise<void> {
+async function pollJob(jobId: string): Promise<void> {
   const deadline = Date.now() + POLL_DEADLINE_MS
   while (Date.now() < deadline) {
     const job = await getJob(jobId)
@@ -73,8 +73,8 @@ function providerOptions(
 type DiscoverDialogProps = {
   open: boolean
   onClose: () => void
-  courseId: number | null
-  nodeId?: number | null
+  courseId: string | null
+  nodeId?: string | null
   defaultQuery?: string
 }
 
@@ -220,7 +220,7 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
   })
 
   const patchSaved = useMutation({
-    mutationFn: ({ id, ...body }: { id: number; status?: string; material_id?: number }) =>
+    mutationFn: ({ id, ...body }: { id: string; status?: string; material_id?: string }) =>
       patchDiscoverySuggestion(id, body),
     onSuccess: async () => {
       setNotice(null)
@@ -231,7 +231,7 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
   })
 
   const forget = useMutation({
-    mutationFn: (id: number) => deleteDiscoverySuggestion(id),
+    mutationFn: (id: string) => deleteDiscoverySuggestion(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['discovery', 'suggestions'] })
       if (submitted) search.mutate()

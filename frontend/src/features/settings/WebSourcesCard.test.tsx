@@ -18,22 +18,22 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listExternalSources: (...args: Parameters<typeof actual.listExternalSources>) =>
       listExternalSources(...args),
     createExternalSource: (body: unknown) => createExternalSource(body),
-    updateExternalSource: (id: number, body: unknown) =>
+    updateExternalSource: (id: string, body: unknown) =>
       updateExternalSource(id, body),
-    deleteExternalSource: (id: number) => deleteExternalSource(id),
-    scanExternalSource: (id: number) => scanExternalSource(id),
+    deleteExternalSource: (id: string) => deleteExternalSource(id),
+    scanExternalSource: (id: string) => scanExternalSource(id),
     listCourses: () => listCourses(),
   }
 })
 
 const COURSES = [
-  { id: 7, title: 'Calculus I' },
-  { id: 8, title: 'Algebra' },
+  { id: '7', title: 'Calculus I' },
+  { id: '8', title: 'Algebra' },
 ]
 
 const SOURCE = {
-  id: 3,
-  course_id: 7,
+  id: '3',
+  course_id: '7',
   kind: 'rss',
   url: 'https://math.example/feed',
   label: 'Math Feed',
@@ -68,7 +68,7 @@ describe('WebSourcesCard', () => {
       SOURCE,
       {
         ...SOURCE,
-        id: 4,
+        id: '4',
         kind: 'youtube_channel',
         label: 'Math channel',
         enabled: false,
@@ -101,7 +101,7 @@ describe('WebSourcesCard', () => {
     await waitFor(() =>
       expect(createExternalSource).toHaveBeenCalledWith(
         expect.objectContaining({
-          course_id: 8,
+          course_id: '8',
           kind: 'rss',
           url: 'https://new.example/rss',
           label: 'New feed',
@@ -144,7 +144,7 @@ describe('WebSourcesCard', () => {
   test('scan now surfaces the new count and refreshes suggestions', async () => {
     renderCard()
     fireEvent.click(await screen.findByRole('button', { name: /scan now/i }))
-    await waitFor(() => expect(scanExternalSource).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(scanExternalSource).toHaveBeenCalledWith('3'))
     expect(
       await screen.findByText(/scan finished — 2 new/i),
     ).toBeInTheDocument()
@@ -154,9 +154,9 @@ describe('WebSourcesCard', () => {
     renderCard()
     fireEvent.click(await screen.findByRole('checkbox', { name: /enabled/i }))
     await waitFor(() =>
-      expect(updateExternalSource).toHaveBeenCalledWith(3, { enabled: false }),
+      expect(updateExternalSource).toHaveBeenCalledWith('3', { enabled: false }),
     )
     fireEvent.click(screen.getByRole('button', { name: /delete/i }))
-    await waitFor(() => expect(deleteExternalSource).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(deleteExternalSource).toHaveBeenCalledWith('3'))
   })
 })

@@ -16,8 +16,8 @@ describe('workspace-store', () => {
   })
 
   test('setCourse persists and clears', () => {
-    useWorkspaceStore.getState().setCourse(3)
-    expect(useWorkspaceStore.getState().courseId).toBe(3)
+    useWorkspaceStore.getState().setCourse('3')
+    expect(useWorkspaceStore.getState().courseId).toBe('3')
     expect(window.localStorage.getItem(storageKeys.courseId)).toBe('3')
 
     useWorkspaceStore.getState().setCourse(null)
@@ -28,9 +28,9 @@ describe('workspace-store', () => {
   test('hydrate reads the stored course and rejects junk', () => {
     window.localStorage.setItem(storageKeys.courseId, '7')
     useWorkspaceStore.getState().hydrate()
-    expect(useWorkspaceStore.getState().courseId).toBe(7)
+    expect(useWorkspaceStore.getState().courseId).toBe('7')
 
-    window.localStorage.setItem(storageKeys.courseId, 'not-a-number')
+    window.localStorage.setItem(storageKeys.courseId, '')
     useWorkspaceStore.getState().hydrate()
     expect(useWorkspaceStore.getState().courseId).toBeNull()
   })

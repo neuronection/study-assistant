@@ -20,14 +20,14 @@ vi.mock('@/lib/api', async (importOriginal) => {
 })
 
 const PDF_MATERIAL: Material = {
-  id: 42,
+  id: '42',
   title: 'Calculus II — Lecture 3',
   kind: 'pdf',
   status: 'ready',
   filename: 'calc3.pdf',
   mime: 'application/pdf',
   pages: 12,
-  course_id: 3,
+  course_id: '3',
   group_id: null,
   folder_id: null,
   blob_sha: 'a'.repeat(64),
@@ -39,7 +39,7 @@ function materialFixture(overrides: Partial<Material> = {}): Material {
   return { ...PDF_MATERIAL, ...overrides }
 }
 
-function renderDialog(materialId: number | null, props: { open?: boolean } = {}) {
+function renderDialog(materialId: string | null, props: { open?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -69,7 +69,7 @@ describe('ReExtractDialog', () => {
       drawings: [],
       images: [],
     })
-    renderDialog(42)
+    renderDialog('42')
     expect(await screen.findByTestId('reextract-mode-auto')).toBeInTheDocument()
     expect(await screen.findByTestId('reextract-mode-text')).toBeInTheDocument()
     expect(await screen.findByTestId('reextract-mode-ocr')).toBeInTheDocument()
@@ -84,7 +84,7 @@ describe('ReExtractDialog', () => {
       drawings: [],
       images: [],
     })
-    renderDialog(42)
+    renderDialog('42')
     expect(await screen.findByTestId('reextract-mode-auto')).toBeInTheDocument()
     expect(screen.queryByTestId('reextract-mode-text')).toBeNull()
     expect(screen.queryByTestId('reextract-mode-ocr')).toBeNull()
@@ -98,11 +98,11 @@ describe('ReExtractDialog', () => {
       drawings: [],
       images: [],
     })
-    reingestMaterial.mockResolvedValue({ job_id: 9, material_id: 42, deduped: false })
-    renderDialog(42)
+    reingestMaterial.mockResolvedValue({ job_id: '9', material_id: '42', deduped: false })
+    renderDialog('42')
     fireEvent.click(await screen.findByTestId('reextract-mode-ocr'))
     fireEvent.click(screen.getByRole('button', { name: 'Re-extract' }))
-    await waitFor(() => expect(reingestMaterial).toHaveBeenCalledWith(42, { mode: 'ocr' }))
+    await waitFor(() => expect(reingestMaterial).toHaveBeenCalledWith('42', { mode: 'ocr' }))
     await waitFor(() => expect(onCloseMock).toHaveBeenCalled())
   })
 
@@ -114,7 +114,7 @@ describe('ReExtractDialog', () => {
       drawings: [],
       images: [],
     })
-    renderDialog(42)
+    renderDialog('42')
     expect(
       await screen.findByText('Currently extracting — wait for the running extraction to finish first.'),
     ).toBeInTheDocument()
@@ -131,7 +131,7 @@ describe('ReExtractDialog', () => {
       images: [],
     })
     reingestMaterial.mockRejectedValue(new Error('re-ingest failed (422)'))
-    renderDialog(42)
+    renderDialog('42')
     const confirm = await screen.findByRole('button', { name: 'Re-extract' })
     await waitFor(() => expect(confirm).toBeEnabled())
     fireEvent.click(confirm)

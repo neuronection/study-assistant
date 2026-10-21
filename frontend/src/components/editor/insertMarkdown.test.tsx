@@ -165,7 +165,7 @@ describe('insertMarkdown', () => {
         value="hello world here"
         onChange={vi.fn()}
         ariaLabel="Note body"
-        aiHelper={{ courseId: 1, nodeId: 2, title: 'Note' }}
+        aiHelper={{ courseId: '1', nodeId: '2', title: 'Note' }}
       />
     )
     await waitFor(() => expect(proseRoot().textContent).toContain('hello world here'))

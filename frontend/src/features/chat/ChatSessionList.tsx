@@ -29,21 +29,21 @@ export function ChatSessionList({
   onSelect?: () => void
   onSelectSession?: (session: ChatSession) => void
   onNewChat?: () => void
-  activeSessionId?: number | null
+  activeSessionId?: string | null
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const urlSessionId = useActiveChatSession().sessionId
   const activeSession = activeSessionId ?? urlSessionId
-  const [renaming, setRenaming] = useState<{ id: number; title: string } | null>(null)
+  const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null)
   const [confirm, confirmElement] = useConfirm()
-  const [deletedItemId, setDeletedItemId] = useState<number | null>(null)
+  const [deletedItemId, setDeletedItemId] = useState<string | null>(null)
 
   const sessions = useQuery({ queryKey: ['chat-sessions'], queryFn: () => listChatSessions() })
 
   const rename = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) =>
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
       renameChatSession(id, title),
     onSuccess: async () => {
       setRenaming(null)
@@ -52,7 +52,7 @@ export function ChatSessionList({
   })
 
   const remove = useMutation({
-    mutationFn: (id: number) => deleteChatSession(id),
+    mutationFn: (id: string) => deleteChatSession(id),
     onSuccess: async (result) => {
       if (activeSession === result.deleted_item_id) {
         if (onNewChat) {

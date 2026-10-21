@@ -31,12 +31,12 @@ export async function listJobs(params?: {
 
 export type JobsSummary = Schemas['JobsSummary']
 
-export async function getJob(jobId: number): Promise<JobInfo> {
+export async function getJob(jobId: string): Promise<JobInfo> {
   const response = await apiFetch(`/api/v1/jobs/${jobId}`)
   return json<JobInfo>(response)
 }
 
-export async function cancelJob(jobId: number): Promise<JobInfo> {
+export async function cancelJob(jobId: string): Promise<JobInfo> {
   const response = await apiFetch(`/api/v1/jobs/${jobId}/cancel`, {
     method: 'POST',
   })
@@ -48,7 +48,7 @@ export async function getJobsSummary(): Promise<JobsSummary> {
   return json<JobsSummary>(response)
 }
 
-export async function retryJob(jobId: number): Promise<JobInfo> {
+export async function retryJob(jobId: string): Promise<JobInfo> {
   const response = await apiFetch(`/api/v1/jobs/${jobId}/retry`, { method: 'POST' })
   if (!response.ok) {
     throw new Error(`retry failed (${response.status})`)
@@ -75,7 +75,7 @@ export async function listJobTypes(): Promise<JobTypeInfo[]> {
   return json<JobTypeInfo[]>(response)
 }
 
-export async function deleteJob(jobId: number): Promise<void> {
+export async function deleteJob(jobId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/jobs/${jobId}`, { method: 'DELETE' })
   if (!response.ok) {
     throw new Error(`Failed to delete job (${response.status})`)

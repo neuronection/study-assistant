@@ -112,7 +112,7 @@ export function mapStudyEvent(
 }
 
 export interface StudyChatTransportDeps {
-  getSessionId: () => number | null
+  getSessionId: () => string | null
   phaseLabel: (phase: string) => string
 }
 
@@ -120,15 +120,15 @@ export interface StudyChatTransport extends ChatStreamTransport {
   push: (payload: unknown) => void
   setAttachments: (items: ChatAttachmentInput[]) => void
   /** Route the next `send` through the edit-branch endpoint. */
-  beginEdit: (messageId: number) => void
+  beginEdit: (messageId: string) => void
   /** Route the next `send` through the regenerate endpoint. */
-  beginRegenerate: (messageId: number) => void
+  beginRegenerate: (messageId: string) => void
 }
 
 type SendIntent =
   | { kind: 'send' }
-  | { kind: 'edit'; messageId: number }
-  | { kind: 'regenerate'; messageId: number }
+  | { kind: 'edit'; messageId: string }
+  | { kind: 'regenerate'; messageId: string }
 
 /**
  * App-side WS adapter (family plan 11 §3 / ADR-0006): feeds the session

@@ -1,7 +1,7 @@
 import { json, apiFetch } from './client'
 
 export interface ExamStatusEntry {
-  course_id: number
+  course_id: string
   course_title: string
   exam_date: string
   days_left: number
@@ -10,7 +10,7 @@ export interface ExamStatusEntry {
   remaining_nodes: number
   nodes_per_day: number | null
   on_track: boolean
-  most_behind_node: { id: number; title: string } | null
+  most_behind_node: { id: string; title: string } | null
   readiness?: number | null
   readiness_state?: string
   trend?: 'improving' | 'flat' | 'declining' | null
@@ -59,7 +59,7 @@ export interface Diagnostics {
   skills: string[]
 }
 
-export async function getDiagnostics(courseId?: number): Promise<Diagnostics> {
+export async function getDiagnostics(courseId?: string): Promise<Diagnostics> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/analytics/diagnostics${params}`)
   return json<Diagnostics>(response)
@@ -80,7 +80,7 @@ export interface Recommendation {
   }
 }
 
-export async function getRecommendations(courseId?: number): Promise<Recommendation[]> {
+export async function getRecommendations(courseId?: string): Promise<Recommendation[]> {
   const params = courseId !== undefined ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/analytics/recommendations${params}`)
   return json<Recommendation[]>(response)

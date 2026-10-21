@@ -11,8 +11,8 @@ export interface CourseTaskInfo {
   task: string
   description: string
   requires: string
-  model_id: number | null
-  fallback_model_id: number | null
+  model_id: string | null
+  fallback_model_id: string | null
   model_label: string | null
   fallback_model_label: string | null
   global_model_label: string | null
@@ -22,21 +22,21 @@ export interface CourseTaskInfo {
 export interface CourseDefaultTaskInfo {
   // ADR-0037: course capability defaults are single-slot.
   requires: string
-  model_id: number | null
+  model_id: string | null
   model_label: string | null
   global_model_label: string | null
 }
 
-export async function listCourseTasks(courseId: number): Promise<CourseTaskInfo[]> {
+export async function listCourseTasks(courseId: string): Promise<CourseTaskInfo[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tasks`)
   return json<CourseTaskInfo[]>(response)
 }
 
 export async function assignCourseTask(
-  courseId: number,
+  courseId: string,
   task: string,
-  modelId: number | null,
-  fallbackModelId: number | null = null
+  modelId: string | null,
+  fallbackModelId: string | null = null
 ): Promise<CourseTaskInfo> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tasks/${task}`, {
     method: 'PUT',
@@ -47,16 +47,16 @@ export async function assignCourseTask(
 }
 
 export async function listCourseTaskDefaults(
-  courseId: number
+  courseId: string
 ): Promise<CourseDefaultTaskInfo[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tasks/defaults`)
   return json<CourseDefaultTaskInfo[]>(response)
 }
 
 export async function assignCourseTaskDefault(
-  courseId: number,
+  courseId: string,
   requires: string,
-  modelId: number | null
+  modelId: string | null
 ): Promise<CourseDefaultTaskInfo> {
   // ADR-0037: course capability defaults are single-slot.
   const response = await apiFetch(
@@ -71,7 +71,7 @@ export async function assignCourseTaskDefault(
 }
 
 export interface Course {
-  id: number
+  id: string
   title: string
   subject: string | null
   level: string | null
@@ -95,8 +95,8 @@ export async function getScratchpad(): Promise<ScratchpadInfo> {
 }
 
 export async function promoteNode(
-  courseId: number,
-  nodeId: number,
+  courseId: string,
+  nodeId: string,
   body: { title: string; subject?: string | null; level?: string | null; color?: string | null }
 ): Promise<Course> {
   const response = await apiFetch(
@@ -143,7 +143,7 @@ export async function listCourses(): Promise<Course[]> {
   return json<Course[]>(response)
 }
 
-export async function getCourse(id: number): Promise<Course> {
+export async function getCourse(id: string): Promise<Course> {
   const response = await apiFetch(`/api/v1/courses/${id}`)
   return json<Course>(response)
 }
@@ -162,7 +162,7 @@ export async function createCourse(body: {
   return json<Course>(response)
 }
 
-export async function deleteCourse(id: number, confirmedBackup: boolean): Promise<void> {
+export async function deleteCourse(id: string, confirmedBackup: boolean): Promise<void> {
   const response = await apiFetch(
     `/api/v1/courses/${id}?confirmed_backup=${confirmedBackup}`,
     { method: 'DELETE' }
@@ -172,7 +172,7 @@ export async function deleteCourse(id: number, confirmedBackup: boolean): Promis
   }
 }
 
-export function courseExportUrl(courseId: number): string {
+export function courseExportUrl(courseId: string): string {
   return `/api/v1/courses/${courseId}/export`
 }
 
@@ -187,7 +187,7 @@ export async function importCourseBundle(
   dryRun: boolean
 ): Promise<
   | { dry_run: true; preview: CourseBundlePreview }
-  | { dry_run: false; imported: { course_id: number; title: string } }
+  | { dry_run: false; imported: { course_id: string; title: string } }
 > {
   const response = await apiFetch(
     `/api/v1/courses/import?dry_run=${dryRun}`,
@@ -197,7 +197,7 @@ export async function importCourseBundle(
 }
 
 export interface AllocationInfo {
-  material_id: number
+  material_id: string
   title: string
   rationale: string | null
   auto_assigned: boolean
@@ -215,13 +215,13 @@ export interface NodeCounts {
 }
 
 export interface NodeFolderLink {
-  folder_id: number
+  folder_id: string
   name: string
-  source_id: number | null
+  source_id: string | null
 }
 
 export interface NodeInfo {
-  id: number
+  id: string
   title: string
   summary: string | null
   objectives: string[]
@@ -235,15 +235,15 @@ export interface NodeInfo {
   folder_links?: NodeFolderLink[]
 }
 
-export async function courseTree(courseId: number): Promise<NodeInfo[]> {
+export async function courseTree(courseId: string): Promise<NodeInfo[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tree`)
   return json<NodeInfo[]>(response)
 }
 
 export interface NodeDetail {
-  id: number
-  course_id: number
-  parent_id: number | null
+  id: string
+  course_id: string
+  parent_id: string | null
   title: string
   summary: string | null
   objectives: string[]
@@ -252,25 +252,25 @@ export interface NodeDetail {
   order_idx: number
 }
 
-export async function getNode(nodeId: number): Promise<NodeDetail> {
+export async function getNode(nodeId: string): Promise<NodeDetail> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}`)
   return json<NodeDetail>(response)
 }
 
 export async function addNode(
-  courseId: number,
-  parentId: number,
+  courseId: string,
+  parentId: string,
   title: string
-): Promise<{ id: number; title: string; order_idx: number; depth: number }> {
+): Promise<{ id: string; title: string; order_idx: number; depth: number }> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/nodes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ course_id: courseId, parent_id: parentId, title }),
   })
-  return json<{ id: number; title: string; order_idx: number; depth: number }>(response)
+  return json<{ id: string; title: string; order_idx: number; depth: number }>(response)
 }
 
-export async function renameNode(id: number, title: string): Promise<void> {
+export async function renameNode(id: string, title: string): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -280,7 +280,7 @@ export async function renameNode(id: number, title: string): Promise<void> {
 }
 
 export async function updateNode(
-  id: number,
+  id: string,
   body: { title?: string; summary?: string; ai_hint?: string }
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${id}`, {
@@ -292,7 +292,7 @@ export async function updateNode(
 }
 
 export async function updateCourse(
-  id: number,
+  id: string,
   body: {
     title?: string
     subject?: string
@@ -311,8 +311,8 @@ export async function updateCourse(
 }
 
 export async function moveNode(
-  id: number,
-  parentId: number,
+  id: string,
+  parentId: string,
   position: number
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${id}/move`, {
@@ -323,22 +323,22 @@ export async function moveNode(
   await json<unknown>(response)
 }
 
-export async function deleteNode(id: number): Promise<{ deleted_item_id: number }> {
+export async function deleteNode(id: string): Promise<{ deleted_item_id: string }> {
   const response = await apiFetch(`/api/v1/nodes/${id}`, { method: 'DELETE' })
-  return json<{ deleted_item_id: number }>(response)
+  return json<{ deleted_item_id: string }>(response)
 }
 
-export async function restoreNode(undoToken: string): Promise<{ id: number }> {
+export async function restoreNode(undoToken: string): Promise<{ id: string }> {
   const response = await apiFetch('/api/v1/nodes/restore', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ undo_token: undoToken }),
   })
-  return json<{ id: number }>(response)
+  return json<{ id: string }>(response)
 }
 
 export interface WorkspaceMaterial {
-  material_id: number
+  material_id: string
   title: string
   kind: string
   status: string
@@ -350,21 +350,21 @@ export interface WorkspaceMaterial {
   provenance?: { source?: string } | null
   reextract_modes?: string[]
   has_extraction: boolean
-  via_folder_id: number | null
+  via_folder_id: string | null
   via_folder_name: string | null
 }
 
 export interface WorkspaceFolder {
-  folder_id: number
+  folder_id: string
   name: string
-  source_id: number | null
+  source_id: string | null
   member_count: number
   rationale: string | null
   auto_assigned: boolean
 }
 
 export interface WorkspaceChild {
-  id: number
+  id: string
   title: string
   depth: number
   order_idx: number
@@ -373,11 +373,11 @@ export interface WorkspaceChild {
 }
 
 export interface WorkspaceNote {
-  id: number
+  id: string
   title: string
-  node_id: number | null
+  node_id: string | null
   owner_type: string
-  owner_id: number | null
+  owner_id: string | null
   pinned: boolean
   updated_at: string | null
 }
@@ -389,8 +389,8 @@ export interface ScopeCounts {
 
 export interface NodeWorkspace {
   node: {
-    id: number
-    course_id: number
+    id: string
+    course_id: string
     course_title: string | null
     title: string
     summary: string | null
@@ -398,13 +398,13 @@ export interface NodeWorkspace {
     ai_hint: string | null
     depth: number
     is_root: boolean
-    parent_id: number | null
-    breadcrumb: { id: number; title: string; depth: number }[]
+    parent_id: string | null
+    breadcrumb: { id: string; title: string; depth: number }[]
   }
   children: WorkspaceChild[]
   folders: WorkspaceFolder[]
   materials: WorkspaceMaterial[]
-  folder_material_ids: number[]
+  folder_material_ids: string[]
   child_materials: Record<string, WorkspaceMaterial[]>
   notes: WorkspaceNote[]
   counts: {
@@ -417,26 +417,26 @@ export interface NodeWorkspace {
   concepts: WorkspaceConcept[]
 }
 
-export async function nodeWorkspace(nodeId: number): Promise<NodeWorkspace> {
+export async function nodeWorkspace(nodeId: string): Promise<NodeWorkspace> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/workspace`)
   return json<NodeWorkspace>(response)
 }
 
 export async function addNodeConcept(
-  nodeId: number,
-  conceptId: number
-): Promise<{ node_id: number; concept_id: number }> {
+  nodeId: string,
+  conceptId: string
+): Promise<{ node_id: string; concept_id: string }> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/concepts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ concept_id: conceptId }),
   })
-  return json<{ node_id: number; concept_id: number }>(response)
+  return json<{ node_id: string; concept_id: string }>(response)
 }
 
 export async function removeNodeConcept(
-  nodeId: number,
-  conceptId: number
+  nodeId: string,
+  conceptId: string
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/concepts/${conceptId}`, {
     method: 'DELETE',
@@ -472,11 +472,11 @@ export interface ConceptDraft {
 export type ConceptMastery = 'strong' | 'shaky' | 'weak' | null
 
 export interface ConceptNode {
-  id: number
+  id: string
   name: string
   description: string | null
   aliases: string[]
-  nodes: { node_id: number; node_title: string }[]
+  nodes: { node_id: string; node_title: string }[]
   mastery?: ConceptMastery
 }
 
@@ -485,7 +485,7 @@ export interface ConceptGraph {
   links: { from: string; to: string; relation: string }[]
 }
 
-export async function extractConcepts(courseId: number): Promise<ConceptDraft> {
+export async function extractConcepts(courseId: string): Promise<ConceptDraft> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/concepts/extract`, {
     method: 'POST',
   })
@@ -493,7 +493,7 @@ export async function extractConcepts(courseId: number): Promise<ConceptDraft> {
 }
 
 export async function commitConcepts(
-  courseId: number,
+  courseId: string,
   draft: ConceptDraft
 ): Promise<{ concepts: number; created: number; links: number; nodes: number }> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/concepts/commit`, {
@@ -506,7 +506,7 @@ export async function commitConcepts(
   )
 }
 
-export async function conceptGraph(courseId: number): Promise<ConceptGraph> {
+export async function conceptGraph(courseId: string): Promise<ConceptGraph> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/concepts`)
   return json<ConceptGraph>(response)
 }
@@ -519,13 +519,13 @@ export interface OrganizerFinding {
 }
 
 export interface NodeReview {
-  node_id: number
+  node_id: string
   node_title: string
   findings: OrganizerFinding[]
-  material_id: number
+  material_id: string
 }
 
-export async function reviewNode(nodeId: number): Promise<NodeReview> {
+export async function reviewNode(nodeId: string): Promise<NodeReview> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/review`, {
     method: 'POST',
   })
@@ -533,13 +533,13 @@ export async function reviewNode(nodeId: number): Promise<NodeReview> {
 }
 
 export interface NodeArtifacts {
-  cheat_sheet: { material_id: number; title: string } | null
-  reviews: { material_id: number; title: string }[]
-  artifact?: { material_id: number; title: string } | null
+  cheat_sheet: { material_id: string; title: string } | null
+  reviews: { material_id: string; title: string }[]
+  artifact?: { material_id: string; title: string } | null
 }
 
 export async function getNodeArtifacts(
-  nodeId: number,
+  nodeId: string,
   kind?: string
 ): Promise<NodeArtifacts> {
   const suffix = kind ? `?kind=${encodeURIComponent(kind)}` : ''
@@ -548,18 +548,18 @@ export async function getNodeArtifacts(
 }
 
 export async function draftNodeNote(
-  nodeId: number
-): Promise<{ note_id: number; markdown: string; existing: boolean }> {
+  nodeId: string
+): Promise<{ note_id: string; markdown: string; existing: boolean }> {
   const response = await apiFetch(`/api/v1/nodes/${nodeId}/draft-note`, {
     method: 'POST',
   })
-  return json<{ note_id: number; markdown: string; existing: boolean }>(response)
+  return json<{ note_id: string; markdown: string; existing: boolean }>(response)
 }
 
 export interface OutlineDraftSection {
   title: string
   objectives: string[]
-  material_ids: number[]
+  material_ids: string[]
   rationale: string | null
   confidence: number
 }
@@ -574,7 +574,7 @@ export interface OutlineDraft {
   chapters: OutlineDraftChapter[]
 }
 
-export async function outlineDraft(courseId: number): Promise<OutlineDraft> {
+export async function outlineDraft(courseId: string): Promise<OutlineDraft> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/outline/draft`, {
     method: 'POST',
   })
@@ -582,7 +582,7 @@ export async function outlineDraft(courseId: number): Promise<OutlineDraft> {
 }
 
 export async function outlineCommit(
-  courseId: number,
+  courseId: string,
   chapters: OutlineDraftChapter[]
 ): Promise<{ chapters: number; sections: number; allocations: number }> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/outline/commit`, {
@@ -594,7 +594,7 @@ export async function outlineCommit(
 }
 
 export async function setStudyState(
-  materialId: number,
+  materialId: string,
   status: 'unread' | 'reading' | 'studied',
   progress?: number
 ): Promise<{ status: string; progress: number }> {
@@ -612,7 +612,7 @@ export async function listStudyStates(): Promise<Record<string, { status: string
 }
 
 export interface CourseTypeInfo {
-  id: number
+  id: string
   key: string
   name: string
   description: string | null

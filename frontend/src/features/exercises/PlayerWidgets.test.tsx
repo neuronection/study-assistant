@@ -43,17 +43,17 @@ vi.mock('@/components/math/MathInput', () => ({
 }))
 
 const EXERCISE = {
-  id: 1,
+  id: '1',
   title: 'Squares',
-  course_id: 9,
-  node_id: 5,
+  course_id: '9',
+  node_id: '5',
   difficulty: 2,
   step_count: 1,
 }
 
 const TREE = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -69,7 +69,7 @@ function renderPlayer() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <Player exerciseId={1} />
+      <Player exerciseId="1" />
     </QueryClientProvider>
   )
 }
@@ -80,7 +80,7 @@ describe('exercise Player widget state', () => {
     routerState.location.search = {}
     exerciseSteps.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         order_idx: 0,
         prompt: [
           { type: 'text', md: 'Which steps did you use?' },
@@ -97,8 +97,8 @@ describe('exercise Player widget state', () => {
     getExercise.mockResolvedValue(EXERCISE)
     courseTree.mockResolvedValue(TREE)
     startExerciseSession.mockResolvedValue({
-      id: 3,
-      exercise_id: 1,
+      id: '3',
+      exercise_id: '1',
       current_step_idx: 0,
       status: 'active',
       socratic: false,
@@ -110,8 +110,8 @@ describe('exercise Player widget state', () => {
       error_class: null,
       advanced: false,
       session: {
-        id: 3,
-        exercise_id: 1,
+        id: '3',
+        exercise_id: '1',
         current_step_idx: 0,
         status: 'active',
         socratic: false,
@@ -130,7 +130,7 @@ describe('exercise Player widget state', () => {
     fireEvent.click(screen.getByRole('button', { name: /check/i }))
 
     await waitFor(() =>
-      expect(submitStepAnswer).toHaveBeenCalledWith(3, '2x', {
+      expect(submitStepAnswer).toHaveBeenCalledWith('3', '2x', {
         w1: { checked: ['factor'] },
       })
     )

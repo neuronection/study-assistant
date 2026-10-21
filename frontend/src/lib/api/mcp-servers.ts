@@ -72,7 +72,7 @@ export async function deleteMcpServer(id: string): Promise<void> {
   }
 }
 
-export async function refreshMcpServer(id: number | string): Promise<McpServerRow> {
+export async function refreshMcpServer(id: string | string): Promise<McpServerRow> {
   const response = await apiFetch(`/api/v1/mcp/servers/${id}/refresh`, {
     method: 'POST',
   })

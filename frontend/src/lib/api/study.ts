@@ -1,16 +1,16 @@
 import { apiFetch, json } from './client'
 
 export interface StudyPlanRow {
-  item_id: number
+  item_id: string
   title: string
-  course_id: number
+  course_id: string
   course_title: string
   due_date: string
   overdue: boolean
 }
 
 export interface StudyWeakCell {
-  course_id: number
+  course_id: string
   course_title: string
   concept: string
   skill: string
@@ -30,7 +30,7 @@ export interface StudyNext {
   streak: number
 }
 
-export async function getStudyNext(courseId?: number): Promise<StudyNext> {
+export async function getStudyNext(courseId?: string): Promise<StudyNext> {
   const query = courseId !== undefined ? `?course=${courseId}` : ''
   const response = await apiFetch(`/api/v1/study/next${query}`)
   return json<StudyNext>(response)

@@ -72,7 +72,7 @@ type PracticeItem = QuizActivity | ExerciseInfo
 type GenerateResult = QuizActivity | ExerciseInfo | FlashcardInfo[] | Material | PracticeItem[]
 
 interface MaterialOption {
-  id: number
+  id: string
   title: string
   inScope: boolean
 }
@@ -89,9 +89,9 @@ export function GenerateDialog({
   onSuccess,
 }: {
   task: GenerateTask
-  courseId: number | null
-  scopeNodeId?: number
-  rootNodeId?: number
+  courseId: string | null
+  scopeNodeId?: string
+  rootNodeId?: string
   initial?: {
     topic?: string | null
     count?: number | null
@@ -100,15 +100,15 @@ export function GenerateDialog({
     composeKind?: ComposeKind
     exerciseKind?: ExerciseKind
     hint?: string | null
-    materialIds?: number[]
-    noteIds?: number[]
+    materialIds?: string[]
+    noteIds?: string[]
     instructions?: string | null
     questionTypes?: string[]
     shuffle?: boolean
     flashcards?: {
       source: 'note' | 'material'
-      noteId?: number | null
-      materialId?: number | null
+      noteId?: string | null
+      materialId?: string | null
     }
   }
   onClose: () => void
@@ -146,28 +146,28 @@ export function GenerateDialog({
   const [source, setSource] = useState<'mistakes' | 'note' | 'material'>(
     initial?.flashcards?.source ?? 'mistakes',
   )
-  const [sourceNoteId, setSourceNoteId] = useState<number | null>(
+  const [sourceNoteId, setSourceNoteId] = useState<string | null>(
     initial?.flashcards?.noteId ?? null,
   )
-  const [sourceMaterialId, setSourceMaterialId] = useState<number | null>(
+  const [sourceMaterialId, setSourceMaterialId] = useState<string | null>(
     initial?.flashcards?.materialId ?? null,
   )
-  const [pickedCourse, setPickedCourse] = useState<number | null>(null)
+  const [pickedCourse, setPickedCourse] = useState<string | null>(null)
   const [hint, setHint] = useState(initial?.hint ?? '')
-  const [excluded, setExcluded] = useState<number[]>([])
-  const [extraMaterials, setExtraMaterials] = useState<number[]>(
+  const [excluded, setExcluded] = useState<string[]>([])
+  const [extraMaterials, setExtraMaterials] = useState<string[]>(
     initial?.materialIds ?? [],
   )
   const [pickerMode, setPickerMode] = useState<'add' | 'exclude' | null>(null)
-  const [noteTitles, setNoteTitles] = useState<Map<number, string>>(
+  const [noteTitles, setNoteTitles] = useState<Map<string, string>>(
     new Map((initial?.noteIds ?? []).map((id) => [id, ''])),
   )
   const [showNotePicker, setShowNotePicker] = useState(false)
-  const [conceptIds, setConceptIds] = useState<number[]>([])
+  const [conceptIds, setConceptIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [composed, setComposed] = useState<Material | null>(null)
   const [includeUnassigned, setIncludeUnassigned] = useState(false)
-  const [composeJobId, setComposeJobId] = useState<number | null>(null)
+  const [composeJobId, setComposeJobId] = useState<string | null>(null)
   const [composeProgress, setComposeProgress] = useState<{
     progress: number
     stage: string | null
@@ -179,7 +179,7 @@ export function GenerateDialog({
     scope === 'course' ? (rootNodeId ?? scopeNodeId ?? null) : (scopeNodeId ?? null)
   const existingArtifact = useQuery({
     queryKey: ['node-artifact', placementNodeId, composeKind],
-    queryFn: () => getNodeArtifacts(placementNodeId as number, composeKind),
+    queryFn: () => getNodeArtifacts(placementNodeId!, composeKind),
     enabled: task === 'compose' && placementNodeId !== null && composeHasContext,
   })
   const existing = task === 'compose' ? (existingArtifact.data?.artifact ?? null) : null
@@ -187,12 +187,12 @@ export function GenerateDialog({
 
   const workspace = useQuery({
     queryKey: ['node-workspace', String(scopeNodeId)],
-    queryFn: () => nodeWorkspace(scopeNodeId as number),
+    queryFn: () => nodeWorkspace(scopeNodeId!),
     enabled: showContextSections && scopeNodeId !== undefined && !atRoot,
   })
   const courseMaterials = useQuery({
     queryKey: ['materials', 'course', courseIdForRequest],
-    queryFn: () => listMaterials(undefined, courseIdForRequest as number),
+    queryFn: () => listMaterials(undefined, courseIdForRequest!),
     enabled:
       courseIdForRequest !== null &&
       (showContextSections || source === 'material') &&
@@ -201,7 +201,7 @@ export function GenerateDialog({
 
   const unassigned = useQuery({
     queryKey: ['materials', 'unassigned', courseIdForRequest],
-    queryFn: () => getUnassignedMaterials(courseIdForRequest as number),
+    queryFn: () => getUnassignedMaterials(courseIdForRequest!),
     enabled:
       task === 'compose' &&
       courseIdForRequest !== null &&
@@ -221,7 +221,7 @@ export function GenerateDialog({
     const nested = Object.values(workspace.data?.child_materials ?? {}).flatMap((rows) =>
       rows.map((entry) => entry.material_id)
     )
-    const titles = new Map<number, string>()
+    const titles = new Map<string, string>()
     for (const entry of workspace.data?.materials ?? []) {
       titles.set(entry.material_id, entry.title)
     }
@@ -242,14 +242,14 @@ export function GenerateDialog({
   }, [showContextSections, courseIdForRequest, atRoot, scope, courseMaterials.data, workspace.data])
 
   const materialTitle = useMemo(() => {
-    const titles = new Map<number, string>()
+    const titles = new Map<string, string>()
     for (const option of materialOptions) {
       titles.set(option.id, option.title)
     }
     for (const material of courseMaterials.data ?? []) {
       titles.set(material.id, material.title)
     }
-    return (id: number) => titles.get(id) ?? `#${id}`
+    return (id: string) => titles.get(id) ?? `#${id}`
   }, [materialOptions, courseMaterials.data])
 
   const notes = useQuery({
@@ -268,14 +268,14 @@ export function GenerateDialog({
           limit: 50,
         })
       }
-      return listNotes(undefined, courseIdForRequest as number, { limit: 50 })
+      return listNotes(undefined, courseIdForRequest!, { limit: 50 })
     },
     enabled: courseIdForRequest !== null,
   })
 
   const concepts = useQuery({
     queryKey: ['concepts', 'graph', courseIdForRequest],
-    queryFn: () => conceptGraph(courseIdForRequest as number),
+    queryFn: () => conceptGraph(courseIdForRequest!),
     enabled: courseIdForRequest !== null && showContextSections,
   })
 
@@ -326,7 +326,7 @@ export function GenerateDialog({
 
   const preview = useQuery({
     queryKey: ['ai-preview', courseIdForRequest, JSON.stringify(debouncedSpec)],
-    queryFn: () => previewAiContext(courseIdForRequest as number, debouncedSpec),
+    queryFn: () => previewAiContext(courseIdForRequest!, debouncedSpec),
     enabled: courseIdForRequest !== null,
   })
 
@@ -460,7 +460,7 @@ export function GenerateDialog({
     onError: (err: Error) => setError(err.message),
   })
 
-  const toggle = (id: number, list: number[], setList: (next: number[]) => void) => {
+  const toggle = (id: string, list: string[], setList: (next: string[]) => void) => {
     setList(list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id])
   }
 
@@ -551,7 +551,7 @@ export function GenerateDialog({
                 <select
                   className="bg-surface border-border rounded-md border px-2 py-1.5"
                   value={sourceNoteId ?? ''}
-                  onChange={(event) => setSourceNoteId(Number(event.target.value))}
+                  onChange={(event) => setSourceNoteId(event.target.value)}
                   aria-label={t('cards.noteLabel')}
                 >
                   <option value="">{t('cards.pickNote')}</option>
@@ -566,7 +566,7 @@ export function GenerateDialog({
                 <select
                   className="bg-surface border-border rounded-md border px-2 py-1.5"
                   value={sourceMaterialId ?? ''}
-                  onChange={(event) => setSourceMaterialId(Number(event.target.value))}
+                  onChange={(event) => setSourceMaterialId(event.target.value)}
                   aria-label={t('generate.materialLabel')}
                 >
                   <option value="">{t('generate.pickMaterial')}</option>

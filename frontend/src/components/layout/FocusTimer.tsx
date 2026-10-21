@@ -14,15 +14,15 @@ import {
 } from '@/lib/focus-timer-store'
 import { cn } from '@/lib/utils'
 
-function useRouteStudyContext(): { courseId: number | null; nodeId: number | null } {
+function useRouteStudyContext(): { courseId: string | null; nodeId: string | null } {
   const pathname = useLocation({ select: (location) => location.pathname })
-  const match = pathname.match(/^\/courses\/(\d+)(?:\/n\/(\d+))?/)
+  const match = pathname.match(/^\/courses\/([^/]+)(?:\/n\/([^/]+))?/)
   if (match === null) {
     return { courseId: null, nodeId: null }
   }
   return {
-    courseId: Number(match[1]),
-    nodeId: match[2] === undefined ? null : Number(match[2]),
+    courseId: match[1],
+    nodeId: match[2] === undefined ? null : match[2],
   }
 }
 

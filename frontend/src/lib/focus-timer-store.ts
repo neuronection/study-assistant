@@ -27,11 +27,11 @@ interface FocusTimerState {
   /** Monotonic-ish anchor: epoch ms when the current stretch ends (running) or the frozen remainder (paused). */
   endsAt: number
   remainingSec: number
-  sessionId: number | null
+  sessionId: string | null
   startedAtSec: number
-  lastContext: { courseId: number | null; nodeId: number | null }
-  start: (preset: FocusPreset, context: { courseId: number | null; nodeId: number | null }) => void
-  startCustom: (focusMin: number, breakMin: number, context: { courseId: number | null; nodeId: number | null }) => void
+  lastContext: { courseId: string | null; nodeId: string | null }
+  start: (preset: FocusPreset, context: { courseId: string | null; nodeId: string | null }) => void
+  startCustom: (focusMin: number, breakMin: number, context: { courseId: string | null; nodeId: string | null }) => void
   pause: () => void
   resume: () => void
   giveUp: () => void
@@ -43,7 +43,7 @@ interface FocusTimerState {
 function logSession(
   state: FocusTimerState,
   action: 'start' | 'end',
-  context: { courseId: number | null; nodeId: number | null }
+  context: { courseId: string | null; nodeId: string | null }
 ): void {
   const kind: StudySessionKind = 'focus'
   if (action === 'start') {

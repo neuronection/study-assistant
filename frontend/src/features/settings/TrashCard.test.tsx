@@ -10,13 +10,13 @@ const purgeDeletedItem = vi.fn()
 
 vi.mock('@/lib/api', () => ({
   listDeletedItems: () => listDeletedItems(),
-  restoreDeletedItem: (id: number) => restoreDeletedItem(id),
-  purgeDeletedItem: (id: number) => purgeDeletedItem(id),
+  restoreDeletedItem: (id: string) => restoreDeletedItem(id),
+  purgeDeletedItem: (id: string) => purgeDeletedItem(id),
 }))
 
 const ITEMS = [
   {
-    id: 3,
+    id: '3',
     entity_type: 'quiz',
     title: 'Limits quiz',
     deleted_at: '2026-08-21T10:00:00',
@@ -56,13 +56,13 @@ describe('TrashCard', () => {
   test('restore calls the endpoint', async () => {
     renderCard()
     fireEvent.click(await screen.findByRole('button', { name: 'Restore' }))
-    await waitFor(() => expect(restoreDeletedItem).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(restoreDeletedItem).toHaveBeenCalledWith('3'))
   })
 
   test('delete forever purges the item', async () => {
     renderCard()
     fireEvent.click(await screen.findByRole('button', { name: 'Delete forever' }))
-    await waitFor(() => expect(purgeDeletedItem).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(purgeDeletedItem).toHaveBeenCalledWith('3'))
   })
 
   test('empty state', async () => {

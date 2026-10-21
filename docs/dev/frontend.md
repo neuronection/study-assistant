@@ -78,6 +78,12 @@ Request and response types come from the generated schema:
 
 Regenerate with `pnpm api:types` after any endpoint change and commit both
 files; CI drift-guards them. Hand-write types only for client-side-only shapes.
+Entity ids are opaque strings end to end — the generated schema is the wire
+truth (`PlanItem.id`, `course_id`, `job_id`, … are `string`); never coerce them
+with `Number(...)` or parse them. Client-local numeric ids (exercise-ordering
+position ids, pending-drawing placeholder refs) are the only exceptions,
+registered in `frontend/src/lib/api/hand-types.ts`; DOM pointer ids are not API
+shapes.
 The WebSocket client lives in `lib/` and subscribes to the same topics the
 backend publishes (see [api.md](api.md) and [jobs.md](jobs.md)).
 

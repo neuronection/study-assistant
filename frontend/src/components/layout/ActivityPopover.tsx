@@ -193,7 +193,7 @@ export function ActivityButton() {
   }
 
   const retryOne = useMutation({
-    mutationFn: (jobId: number) => retryJob(jobId),
+    mutationFn: (jobId: string) => retryJob(jobId),
     onSuccess: async () => {
       setRetryError(null)
       await invalidate()
@@ -210,7 +210,7 @@ export function ActivityButton() {
   })
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const deleteOne = useMutation({
-    mutationFn: (jobId: number) => deleteJob(jobId),
+    mutationFn: (jobId: string) => deleteJob(jobId),
     onSuccess: async () => {
       setDeleteError(null)
       await invalidate()

@@ -36,14 +36,14 @@ describe('LocalEngines', () => {
   test('probes on demand and offers one-click add', async () => {
     detectLocalEngines.mockResolvedValue([HIT])
     const onCreated = vi.fn()
-    createProvider.mockResolvedValue({ id: 7, name: HIT.name })
+    createProvider.mockResolvedValue({ id: '7', name: HIT.name })
     renderDetector({ onCreated })
     expect(screen.queryByText('Ollama (local)')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /detect local engines/i }))
     expect(await screen.findByText('Ollama (local)')).toBeInTheDocument()
     expect(screen.getByText('http://localhost:11434/v1 · 2 models')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /add ollama \(local\)/i }))
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 7 })))
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: '7' })))
     expect(createProvider).toHaveBeenCalledWith({
       name: 'Ollama (local)',
       type: 'openai_compatible',

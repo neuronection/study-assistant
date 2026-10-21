@@ -1,6 +1,6 @@
-export type WorkspaceSearch = { tab?: string; note?: number; material?: number }
+export type WorkspaceSearch = { tab?: string; note?: string; material?: string }
 
-export function openNote(noteId: number) {
+export function openNote(noteId: string) {
   return (prev: WorkspaceSearch): WorkspaceSearch => ({ ...prev, note: noteId })
 }
 

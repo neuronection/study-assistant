@@ -15,7 +15,7 @@ export function MaterialDetailDrawer({
   onExpand,
   docked = false,
 }: {
-  materialId: number
+  materialId: string
   onClose: () => void
   onTakeNotes?: () => void
   onExpand?: () => void

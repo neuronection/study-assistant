@@ -70,14 +70,14 @@ const MATERIAL_DRAG_MIME = 'application/x-sa-material'
 const expandedKey = (courseId: string) => `sa-tree-expanded-${courseId}`
 
 type FlatRow = { node: NodeInfo; depth: number; hasChildren: boolean }
-type EditState = { kind: 'add' | 'rename'; nodeId: number } | null
+type EditState = { kind: 'add' | 'rename'; nodeId: string } | null
 type DropEdge = 'into' | 'before' | 'after'
-type DropTarget = { id: number; edge: DropEdge }
+type DropTarget = { id: string; edge: DropEdge }
 type TreeActions = {
   addPending: boolean
   renamePending: boolean
-  addChild: (parentId: number, title: string) => void
-  rename: (id: number, title: string) => void
+  addChild: (parentId: string, title: string) => void
+  rename: (id: string, title: string) => void
 }
 
 const COUNT_ITEMS: { key: keyof NodeCounts; label: string; icon: typeof BookOpen }[] = [
@@ -87,14 +87,14 @@ const COUNT_ITEMS: { key: keyof NodeCounts; label: string; icon: typeof BookOpen
   { key: 'notes', label: 'notes', icon: NotebookPen },
 ]
 
-function readStoredExpanded(courseId: string): Record<number, boolean> | null {
+function readStoredExpanded(courseId: string): Record<string, boolean> | null {
   try {
     const raw = window.localStorage.getItem(expandedKey(courseId))
     if (raw === null) {
       return null
     }
     const parsed = JSON.parse(raw) as number[]
-    const map: Record<number, boolean> = {}
+    const map: Record<string, boolean> = {}
     for (const id of parsed) {
       map[id] = true
     }
@@ -104,7 +104,7 @@ function readStoredExpanded(courseId: string): Record<number, boolean> | null {
   }
 }
 
-function storeExpanded(courseId: string, expanded: Record<number, boolean>) {
+function storeExpanded(courseId: string, expanded: Record<string, boolean>) {
   try {
     window.localStorage.setItem(
       expandedKey(courseId),
@@ -276,15 +276,15 @@ function TreeRow({
   }: {
   row: FlatRow
   expanded: boolean
-  onToggle: (nodeId: number) => void
+  onToggle: (nodeId: string) => void
   courseId: string
-  currentId: number | undefined
+  currentId: string | undefined
   tab?: string
   editing: EditState
   setEditing: (edit: EditState) => void
   onMenu: (event: React.MouseEvent, node: NodeInfo) => void
   dropTarget: DropTarget | null
-  materialTarget: number | null
+  materialTarget: string | null
   focused: boolean
   onDragStartRow: (event: React.DragEvent, node: NodeInfo) => void
   onDragOverRow: (event: React.DragEvent, node: NodeInfo) => void
@@ -469,7 +469,7 @@ export function NodeTreeSidebar({
   courseOrigin = null,
 }: {
   courseId: string
-  currentId: number | undefined
+  currentId: string | undefined
   tab?: string
   courseOrigin?: string | null
 }) {
@@ -477,7 +477,7 @@ export function NodeTreeSidebar({
   const navigate = useNavigate()
   const from = useCurrentOrigin()
   const queryClient = useQueryClient()
-  const [expanded, setExpanded] = useState<Record<number, boolean>>(() =>
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
     readStoredExpanded(courseId) ?? {}
   )
   const restoredRef = useRef(readStoredExpanded(courseId) !== null)
@@ -521,12 +521,12 @@ export function NodeTreeSidebar({
   )
   const [editing, setEditing] = useState<EditState>(null)
   const [promoteTarget, setPromoteTarget] = useState<NodeInfo | null>(null)
-  const [dragId, setDragId] = useState<number | null>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
-  const [materialTarget, setMaterialTarget] = useState<number | null>(null)
+  const [materialTarget, setMaterialTarget] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
   const [focusIndex, setFocusIndex] = useState<number>(-1)
-  const [undoItemId, setUndoItemId] = useState<number | null>(null)
+  const [undoItemId, setUndoItemId] = useState<string | null>(null)
   const undoTimer = useRef<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [confirm, confirmElement] = useConfirm()
@@ -539,7 +539,7 @@ export function NodeTreeSidebar({
     }
   }, [])
 
-  const showUndo = (itemId: number | null) => {
+  const showUndo = (itemId: string | null) => {
     if (undoTimer.current !== null) {
       window.clearTimeout(undoTimer.current)
     }
@@ -562,7 +562,7 @@ export function NodeTreeSidebar({
 
   const tree = useQuery({
     queryKey: ['tree', courseId],
-    queryFn: () => courseTree(Number(courseId)),
+    queryFn: () => courseTree(courseId),
   })
 
   const refresh = async () => {
@@ -571,38 +571,38 @@ export function NodeTreeSidebar({
   }
 
   const add = useMutation({
-    mutationFn: ({ parentId, title }: { parentId: number; title: string }) =>
-      addNode(Number(courseId), parentId, title),
+    mutationFn: ({ parentId, title }: { parentId: string; title: string }) =>
+      addNode(courseId, parentId, title),
     onSuccess: () => void refresh(),
   })
   const rename = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) => renameNode(id, title),
+    mutationFn: ({ id, title }: { id: string; title: string }) => renameNode(id, title),
     onSuccess: () => void refresh(),
   })
   const remove = useMutation({
-    mutationFn: (id: number) => deleteNode(id),
+    mutationFn: (id: string) => deleteNode(id),
     onSuccess: (item) => showUndo(item.deleted_item_id),
     onError: () => showUndo(null),
   })
   const restore = useMutation({
-    mutationFn: (itemId: number) => restoreDeletedItem(itemId),
+    mutationFn: (itemId: string) => restoreDeletedItem(itemId),
     onSuccess: async () => {
       showUndo(null)
       await refresh()
     },
   })
   const move = useMutation({
-    mutationFn: ({ id, parentId, position }: { id: number; parentId: number; position: number }) =>
+    mutationFn: ({ id, parentId, position }: { id: string; parentId: string; position: number }) =>
       moveNode(id, parentId, position),
     onSuccess: () => void refresh(),
   })
   const assignMaterial = useMutation({
-    mutationFn: ({ nodeId, materialId }: { nodeId: number; materialId: number }) =>
+    mutationFn: ({ nodeId, materialId }: { nodeId: string; materialId: string }) =>
       allocateMaterial(nodeId, materialId),
     onSuccess: () => void refresh(),
   })
   const moveNotes = useMutation({
-    mutationFn: ({ nodeId, noteIds }: { nodeId: number; noteIds: number[] }) =>
+    mutationFn: ({ nodeId, noteIds }: { nodeId: string; noteIds: string[] }) =>
       Promise.all(noteIds.map((noteId) => moveNote(noteId, nodeId))),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['notes'] })
@@ -611,13 +611,13 @@ export function NodeTreeSidebar({
   })
   const promote = useMutation({
     mutationFn: (input: {
-      nodeId: number
+      nodeId: string
       title: string
       subject: string | null
       level: string | null
       color: string | null
     }) =>
-      promoteNode(Number(courseId), input.nodeId, {
+      promoteNode(courseId, input.nodeId, {
         title: input.title,
         subject: input.subject,
         level: input.level,
@@ -657,7 +657,7 @@ export function NodeTreeSidebar({
   }, [tree.data])
 
   const breadcrumbOf = useMemo(() => {
-    const map = new Map<number, string>()
+    const map = new Map<string, string>()
     const root = tree.data?.[0]
     if (root !== undefined) {
       const walk = (node: NodeInfo, ancestorTitles: string[]) => {
@@ -675,7 +675,7 @@ export function NodeTreeSidebar({
   }, [tree.data])
 
   const siblingsOf = useMemo(() => {
-    const map = new Map<number, { parentId: number; index: number }>()
+    const map = new Map<string, { parentId: string; index: number }>()
     const root = tree.data?.[0]
     if (root !== undefined) {
       const walk = (node: NodeInfo) => {
@@ -690,10 +690,10 @@ export function NodeTreeSidebar({
   }, [tree.data])
 
   const descendantsOf = useMemo(() => {
-    const map = new Map<number, Set<number>>()
+    const map = new Map<string, Set<string>>()
     const root = tree.data?.[0]
     if (root !== undefined) {
-      const walk = (node: NodeInfo, ancestors: number[]) => {
+      const walk = (node: NodeInfo, ancestors: string[]) => {
         for (const ancestor of ancestors) {
           map.set(ancestor, (map.get(ancestor) ?? new Set()).add(node.id))
         }
@@ -707,8 +707,8 @@ export function NodeTreeSidebar({
   }, [tree.data])
 
   const ancestors = useMemo(() => {
-    const chain: number[] = []
-    const walk = (node: NodeInfo, path: number[]): boolean => {
+    const chain: string[] = []
+    const walk = (node: NodeInfo, path: string[]): boolean => {
       const nextPath = [...path, node.id]
       if (node.id === currentId) {
         chain.push(...nextPath)
@@ -780,7 +780,7 @@ export function NodeTreeSidebar({
     overscan: 10,
   })
 
-  const scrolledForRef = useRef<number | undefined>(undefined)
+  const scrolledForRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (currentId === undefined || scrolledForRef.current === currentId) {
       return
@@ -801,7 +801,7 @@ export function NodeTreeSidebar({
   }, [currentId, rows, virtualize, virtualizer])
 
   const expandAll = () => {
-    const next: Record<number, boolean> = {}
+    const next: Record<string, boolean> = {}
     for (const row of allNodes) {
       if (row.node.children.length > 0) {
         next[row.node.id] = true
@@ -867,7 +867,7 @@ export function NodeTreeSidebar({
   }
 
   const courseNodeSource = useMemo(
-    () => createCourseNodeSource(Number(courseId)),
+    () => createCourseNodeSource(courseId),
     [courseId]
   )
   const studyHandlers = useEntityActionHandlers({
@@ -903,7 +903,7 @@ export function NodeTreeSidebar({
     return 'into'
   }
 
-  const canDropNode = (node: NodeInfo, edge: DropEdge, draggedId: number | null): boolean => {
+  const canDropNode = (node: NodeInfo, edge: DropEdge, draggedId: string | null): boolean => {
     if (draggedId === null || node.id === draggedId) {
       return false
     }
@@ -953,10 +953,10 @@ export function NodeTreeSidebar({
     const materialId = event.dataTransfer.getData(MATERIAL_DRAG_MIME)
     if (materialId) {
       setMaterialTarget(null)
-      assignMaterial.mutate({ nodeId: node.id, materialId: Number(materialId) })
+      assignMaterial.mutate({ nodeId: node.id, materialId })
       return
     }
-    const dragged = Number(event.dataTransfer.getData(DRAG_MIME))
+    const dragged = event.dataTransfer.getData(DRAG_MIME)
     const storedEdge = dropTarget?.id === node.id ? dropTarget.edge : null
     const edge =
       storedEdge ?? dropEdgeFor(event, event.currentTarget as HTMLElement)
@@ -1078,7 +1078,7 @@ export function NodeTreeSidebar({
   const rowProps = (row: FlatRow, index: number) => ({
     row,
     expanded: expanded[row.node.id] ?? false,
-    onToggle: (nodeId: number) =>
+    onToggle: (nodeId: string) =>
       setExpanded((current) => ({ ...current, [nodeId]: !current[nodeId] })),
     courseId,
     currentId,
@@ -1283,7 +1283,7 @@ export function NodeTreeSidebar({
         generate.task === 'study_guide' ? (
           <GenerateDialog
             task="compose"
-            courseId={Number(courseId)}
+            courseId={courseId}
             scopeNodeId={studyNode.id}
             rootNodeId={root?.id}
             initial={{ composeKind: 'study_guide', topic: generate.topic, hint: generate.hint }}
@@ -1293,7 +1293,7 @@ export function NodeTreeSidebar({
         ) : (
           <GenerateDialog
             task={generate.task}
-            courseId={Number(courseId)}
+            courseId={courseId}
             scopeNodeId={studyNode.id}
             rootNodeId={root?.id}
             initial={{
@@ -1317,7 +1317,7 @@ export function NodeTreeSidebar({
       ) : null}
       {noteCompose && studyNode !== null ? (
         <NoteComposeDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           nodeId={studyNode.id}
           initialFocus={noteCompose.focus}
           initialHint={noteCompose.hint ?? undefined}

@@ -87,7 +87,7 @@ vi.mock('@/features/chat/useStudyChat', () => ({
     sessionId,
     children,
   }: {
-    sessionId: number | null
+    sessionId: string | null
     children: React.ReactNode
   }) => {
     chatPanelState.sessionProps = { sessionId }
@@ -97,7 +97,7 @@ vi.mock('@/features/chat/useStudyChat', () => ({
 
 const COURSES = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     subject: null,
     level: null,
@@ -107,7 +107,7 @@ const COURSES = [
     material_count: 2,
   },
   {
-    id: 2,
+    id: '2',
     title: 'Linear Algebra',
     subject: null,
     level: null,
@@ -219,7 +219,7 @@ describe('AppShell rail', () => {
     expect(within(listbox).getByRole('option', { name: /linear algebra/i })).toBeInTheDocument()
 
     fireEvent.click(within(listbox).getByRole('option', { name: /linear algebra/i }))
-    await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe(2))
+    await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe('2'))
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
         to: '/courses/$courseId',
@@ -229,7 +229,7 @@ describe('AppShell rail', () => {
   })
 
   test('switcher keeps an explicit all-courses row', async () => {
-    useWorkspaceStore.getState().setCourse(1)
+    useWorkspaceStore.getState().setCourse('1')
     renderShell()
     fireEvent.click(await screen.findByRole('button', { name: 'Current course' }))
     const listbox = await screen.findByRole('listbox', { name: 'Current course' })
@@ -283,7 +283,7 @@ describe('AppShell rail', () => {
   })
 
   test('active course shows quick destinations for workspace, materials, notes and practice', async () => {
-    useWorkspaceStore.getState().setCourse(1)
+    useWorkspaceStore.getState().setCourse('1')
     renderShell()
     const grid = await screen.findByRole('group', { name: 'Course shortcuts' })
     expect(within(grid).getByRole('link', { name: 'Workspace' })).toHaveAttribute(
@@ -312,7 +312,7 @@ describe('AppShell rail', () => {
   })
 
   test('switcher popover always links to the Courses page', async () => {
-    useWorkspaceStore.getState().setCourse(1)
+    useWorkspaceStore.getState().setCourse('1')
     renderShell()
     fireEvent.click(await screen.findByRole('button', { name: 'Current course' }))
     const dialog = await screen.findByRole('dialog', { name: 'Current course' })
@@ -340,7 +340,7 @@ describe('AppShell rail', () => {
       session: unknown,
     ) => void
     onSessionCreated({
-      id: 7,
+      id: '7',
       public_id: 'uuid-7',
       course_id: null,
       node_id: null,
@@ -348,7 +348,7 @@ describe('AppShell rail', () => {
       created_at: new Date().toISOString(),
     })
 
-    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe(7))
+    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe('7'))
     expect(navigate).not.toHaveBeenCalled()
   })
 
@@ -360,14 +360,14 @@ describe('AppShell rail', () => {
       session: unknown,
     ) => void
     onSelectSession({
-      id: 9,
+      id: '9',
       public_id: 'uuid-9',
       course_id: null,
       node_id: null,
       title: 'New chat',
       created_at: new Date().toISOString(),
     })
-    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe(9))
+    await waitFor(() => expect(chatPanelState.sessionProps?.sessionId).toBe('9'))
     expect(navigate).not.toHaveBeenCalled()
 
     const onNewChat = chatPanelState.props?.onNewChat as () => void
@@ -377,10 +377,10 @@ describe('AppShell rail', () => {
   })
 
   test('node-ask pins the sidepanel to the store session and expand goes full page', async () => {
-    act(() => useChatStore.getState().openSession({ id: 5, publicId: 'uuid-5' }))
+    act(() => useChatStore.getState().openSession({ id: '5', publicId: 'uuid-5' }))
     renderShell()
     expect(await screen.findByTitle('Close chat')).toBeInTheDocument()
-    expect(chatPanelState.sessionProps?.sessionId).toBe(5)
+    expect(chatPanelState.sessionProps?.sessionId).toBe('5')
 
     const onExpand = chatPanelState.props?.onExpand as () => void
     onExpand()

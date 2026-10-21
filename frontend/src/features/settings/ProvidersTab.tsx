@@ -31,13 +31,13 @@ export function ProvidersTab() {
   const [form, setForm] = useState<{ provider: Provider } | null>(null)
   const [setupOpen, setSetupOpen] = useState(false)
   const [reSetupProvider, setReSetupProvider] = useState<Provider | null>(null)
-  const [busyId, setBusyId] = useState<number | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [confirm, confirmElement] = useConfirm()
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['providers'] })
 
   const test = useMutation({
-    mutationFn: (id: number) => testProvider(id),
+    mutationFn: (id: string) => testProvider(id),
     onMutate: (id) => setBusyId(id),
     onSettled: () => {
       setBusyId(null)
@@ -45,7 +45,7 @@ export function ProvidersTab() {
     },
   })
   const remove = useMutation({
-    mutationFn: (id: number) => deleteProvider(id),
+    mutationFn: (id: string) => deleteProvider(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['providers'] })
       await queryClient.invalidateQueries({ queryKey: ['models'] })
@@ -53,13 +53,13 @@ export function ProvidersTab() {
     },
   })
 
-  const hasRegisteredModel = (providerId: number) =>
+  const hasRegisteredModel = (providerId: string) =>
     (models.data ?? []).some((model) => model.provider_id === providerId)
 
   // Live count from the models query — `status.model_count` is only a
   // snapshot written by catalog-fetching flows, so manually added models
   // (or hand-edited catalogs) never showed on the card.
-  const modelCount = (providerId: number) =>
+  const modelCount = (providerId: string) =>
     (models.data ?? []).filter((model) => model.provider_id === providerId).length
 
   const runDelete = async (provider: Provider) => {

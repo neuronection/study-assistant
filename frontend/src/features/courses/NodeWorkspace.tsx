@@ -183,7 +183,7 @@ const TAB_META: Record<WorkspaceTab, { icon: typeof LayoutDashboard }> = {
   settings: { icon: Settings },
 }
 
-function findNodeCounts(nodes: NodeInfo[], nodeId: number): NodeCounts | undefined {
+function findNodeCounts(nodes: NodeInfo[], nodeId: string): NodeCounts | undefined {
   const walk = (entries: NodeInfo[]): NodeCounts | undefined => {
     for (const entry of entries) {
       if (entry.id === nodeId) {
@@ -220,9 +220,9 @@ function ScopeChip({
   courseId,
   titles,
 }: {
-  nodeId: number | null
+  nodeId: string | null
   courseId: string
-  titles: Map<number, string>
+  titles: Map<string, string>
 }) {
   const { t } = useTranslation()
   if (nodeId === null) {
@@ -241,12 +241,12 @@ function ScopeChip({
   )
 }
 
-function buildTitleMap(nodes: { id: number; title: string; children: unknown[] }[]): Map<number, string> {
-  const map = new Map<number, string>()
-  const walk = (entries: { id: number; title: string; children: unknown[] }[]) => {
+function buildTitleMap(nodes: { id: string; title: string; children: unknown[] }[]): Map<string, string> {
+  const map = new Map<string, string>()
+  const walk = (entries: { id: string; title: string; children: unknown[] }[]) => {
     for (const entry of entries) {
       map.set(entry.id, entry.title)
-      walk(entry.children as { id: number; title: string; children: unknown[] }[])
+      walk(entry.children as { id: string; title: string; children: unknown[] }[])
     }
   }
   walk(nodes)
@@ -264,9 +264,9 @@ function WorkspaceMaterialRow({
   onDragStart,
 }: {
   entry: WorkspaceMaterial
-  onUnassign?: (materialId: number) => void
+  onUnassign?: (materialId: string) => void
   unassignTitle?: string
-  onOpen: (materialId: number, event: React.MouseEvent<Element>) => void
+  onOpen: (materialId: string, event: React.MouseEvent<Element>) => void
   onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void
   selectionState?: 'none' | 'selected' | 'cut'
   onPointerDown?: (event: React.MouseEvent<HTMLDivElement>) => void
@@ -331,9 +331,9 @@ function ChildCard({
   courseId: string
   child: WorkspaceChild
   materialCount: number
-  studyTargetId: number | null
-  askTargetId: number | null
-  onPractice: (childId: number) => void
+  studyTargetId: string | null
+  askTargetId: string | null
+  onPractice: (childId: string) => void
   onAsk: (child: WorkspaceChild) => void
 }) {
   const { t } = useTranslation()
@@ -403,7 +403,7 @@ function OutlineDraftView({
   const { t } = useTranslation()
   const [chapters, setChapters] = useState<OutlineDraftChapter[]>(draft.chapters)
   const commit = useMutation({
-    mutationFn: () => outlineCommit(Number(courseId), chapters),
+    mutationFn: () => outlineCommit(courseId, chapters),
     onSuccess: () => onDone(),
   })
 
@@ -627,9 +627,9 @@ function OrganizerCard({
   onOpenMaterial,
   extraActions,
 }: {
-  nodeId: number
+  nodeId: string
   courseId: string
-  onOpenMaterial: (materialId: number) => void
+  onOpenMaterial: (materialId: string) => void
   extraActions?: TabAction[]
 }) {
   const { t } = useTranslation()
@@ -658,7 +658,7 @@ function OrganizerCard({
     },
   })
   const sheetPreview = useMutation({
-    mutationFn: (materialId: number) => getMaterial(materialId),
+    mutationFn: (materialId: string) => getMaterial(materialId),
     onSuccess: (detail) => {
       setCheatsheet(detail.extraction?.markdown ?? null)
       void refreshArtifacts()
@@ -734,7 +734,7 @@ function OrganizerCard({
       {composeDialog !== null ? (
         <AIGenerateDialog
           task="compose"
-          courseId={Number(courseId)}
+          courseId={courseId}
           scopeNodeId={nodeId}
           rootNodeId={undefined}
           initial={
@@ -820,15 +820,15 @@ function OverviewTab({
   onAskHere,
 }: {
   courseId: string
-  currentId: number
+  currentId: string
   isRoot: boolean
   workspace: NonNullable<ReturnType<typeof useWorkspaceQuery>['data']>
   tree: NodeInfo[] | undefined
-  onPractice: (nodeId: number) => void
+  onPractice: (nodeId: string) => void
   onAsk: (child: WorkspaceChild) => void
-  studyTargetId: number | null
-  askTargetId: number | null
-  onOpenMaterial: (materialId: number) => void
+  studyTargetId: string | null
+  askTargetId: string | null
+  onOpenMaterial: (materialId: string) => void
   onGoToMaterials: () => void
   onStudyLauncher: () => void
   onAskHere: () => void
@@ -840,7 +840,7 @@ function OverviewTab({
   const [draft, setDraft] = useState<{ chapters: OutlineDraftChapter[] } | null>(null)
 
   const addNodeHere = useMutation({
-    mutationFn: () => addNode(Number(courseId), currentId, title.trim()),
+    mutationFn: () => addNode(courseId, currentId, title.trim()),
     onSuccess: async () => {
       setAdding(false)
       setTitle('')
@@ -850,7 +850,7 @@ function OverviewTab({
   })
 
   const generateDraft = useMutation({
-    mutationFn: () => outlineDraft(Number(courseId)),
+    mutationFn: () => outlineDraft(courseId),
     onSuccess: (result) => setDraft(result),
   })
 
@@ -984,18 +984,18 @@ function MaterialsTab({
   onCloseFolder,
 }: {
   courseId: string
-  currentId: number
+  currentId: string
   workspace: NonNullable<ReturnType<typeof useWorkspaceQuery>['data']>
-  folderId: number | null
-  onOpenMaterial: (materialId: number) => void
-  onOpenFolder: (folderId: number) => void
+  folderId: string | null
+  onOpenMaterial: (materialId: string) => void
+  onOpenFolder: (folderId: string) => void
   onCloseFolder: () => void
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [reExtractTarget, setReExtractTarget] = useState<number | null>(null)
+  const [reExtractTarget, setReExtractTarget] = useState<string | null>(null)
   const [view, setView] = useStoredView(storageKeys.materialsView, 'list')
   const [menu, setMenu] = useState<{
     x: number
@@ -1016,7 +1016,7 @@ function MaterialsTab({
   const [browseMenu, setBrowseMenu] = useState<{
     x: number
     y: number
-    material: { id: number; title: string }
+    material: { id: string; title: string }
   } | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [textDialog, setTextDialog] = useState<'txt' | 'md' | null>(null)
@@ -1026,20 +1026,20 @@ function MaterialsTab({
   const [materialQuery, setMaterialQuery] = useState('')
   const [discoverOpen, setDiscoverOpen] = useState(false)
   const [unassignedOpen, setUnassignedOpen] = useState(false)
-  const [unassignedTarget, setUnassignedTarget] = useState<number | null>(null)
+  const [unassignedTarget, setUnassignedTarget] = useState<string | null>(null)
   const unassigned = useQuery({
-    queryKey: ['materials', 'unassigned', Number(courseId)],
-    queryFn: () => getUnassignedMaterials(Number(courseId)),
+    queryKey: ['materials', 'unassigned', courseId],
+    queryFn: () => getUnassignedMaterials(courseId),
     enabled: workspace.node.is_root && folderId === null,
   })
   const allFoldersQuery = useQuery({
-    queryKey: ['folders', Number(courseId)],
-    queryFn: () => listFolders(Number(courseId)),
+    queryKey: ['folders', courseId],
+    queryFn: () => listFolders(courseId),
     enabled: folderId !== null,
   })
   const folderMaterialsQuery = useQuery({
-    queryKey: ['materials', folderId, Number(courseId)],
-    queryFn: () => listMaterials(folderId as number),
+    queryKey: ['materials', folderId, courseId],
+    queryFn: () => listMaterials(folderId!),
     enabled: folderId !== null,
   })
   const allFolders = useMemo(() => allFoldersQuery.data ?? [], [allFoldersQuery.data])
@@ -1052,7 +1052,7 @@ function MaterialsTab({
   }, [folderId])
   const sourceBrowseQuery = useQuery({
     queryKey: ['source-browse', linkedSourceId, sourceSubdir],
-    queryFn: () => browseSource(linkedSourceId as number, sourceSubdir),
+    queryFn: () => browseSource(linkedSourceId!, sourceSubdir),
     enabled: linkedSourceId !== null,
   })
   const sourceBrowse = linkedSourceId !== null ? (sourceBrowseQuery.data ?? null) : null
@@ -1137,7 +1137,7 @@ function MaterialsTab({
     setSuggestPending(true)
     try {
       const result = await getPlacementSuggestions(
-        Number(courseId),
+        courseId,
         (unassigned.data?.materials ?? []).map((entry) => entry.id),
       )
       setSuggestions(result.suggestions)
@@ -1146,7 +1146,7 @@ function MaterialsTab({
     }
   }
   const assignUnassigned = useMutation({
-    mutationFn: async ({ nodeId, materialId }: { nodeId: number; materialId: number }) => {
+    mutationFn: async ({ nodeId, materialId }: { nodeId: string; materialId: string }) => {
       await allocateMaterial(nodeId, materialId)
     },
     onSuccess: async () => {
@@ -1185,7 +1185,7 @@ function MaterialsTab({
     [sourceBrowse, normalizedQuery]
   )
   const ingestLinked = useMutation({
-    mutationFn: ({ sourceId, relpath }: { sourceId: number; relpath: string }) =>
+    mutationFn: ({ sourceId, relpath }: { sourceId: string; relpath: string }) =>
       ingestSourceFile(sourceId, relpath),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['source-browse'] })
@@ -1199,13 +1199,13 @@ function MaterialsTab({
   }
 
   const unassign = useMutation({
-    mutationFn: (materialId: number) => deallocateMaterial(currentId, materialId),
+    mutationFn: (materialId: string) => deallocateMaterial(currentId, materialId),
     onSuccess: () => void refresh(),
   })
 
   const [deriveNotice, setDeriveNotice] = useState<string | null>(null)
   const derive = useMutation({
-    mutationFn: (ids: number[]) => deriveMaterials(ids),
+    mutationFn: (ids: string[]) => deriveMaterials(ids),
     onSuccess: (result) => {
       void refresh()
       const parts: string[] = []
@@ -1227,7 +1227,7 @@ function MaterialsTab({
     input: TextFileCreateInput
   ): Promise<TextFileEditState | null> => {
     const state = await createTextMaterial({
-      course_id: Number(courseId),
+      course_id: courseId,
       folder_id: null,
       filename: input.filename,
       content: input.content,
@@ -1256,7 +1256,7 @@ function MaterialsTab({
 
   const createFolderAndAssign = useMutation({
     mutationFn: async (name: string) => {
-      const folder = await createFolder(name, null, Number(courseId))
+      const folder = await createFolder(name, null, courseId)
       await allocateNodeFolder(currentId, folder.id)
       return folder
     },
@@ -1270,12 +1270,12 @@ function MaterialsTab({
   })
 
   const unassignFolder = useMutation({
-    mutationFn: (folderId: number) => deallocateNodeFolder(currentId, folderId),
+    mutationFn: (folderId: string) => deallocateNodeFolder(currentId, folderId),
     onSuccess: () => void refresh(),
   })
 
   const assignSelection = useMutation({
-    mutationFn: async ({ nodeId }: { nodeId: number }) => {
+    mutationFn: async ({ nodeId }: { nodeId: string }) => {
       for (const materialId of selectedMaterialIds) {
         await allocateMaterial(nodeId, materialId)
       }
@@ -1314,14 +1314,14 @@ function MaterialsTab({
     () =>
       [...selection.selected]
         .filter((key) => key.startsWith('m'))
-        .map((key) => Number(key.slice(1))),
+        .map((key) => key.slice(1)),
     [selection.selected]
   )
   const selectedFolderIds = useMemo(
     () =>
       [...selection.selected]
         .filter((key) => key.startsWith('f'))
-        .map((key) => Number(key.slice(1))),
+        .map((key) => key.slice(1)),
     [selection.selected]
   )
   const liveSelection = useRef(selection.selected)
@@ -1331,14 +1331,14 @@ function MaterialsTab({
     const viaFolder = new Set(workspace.folder_material_ids)
     const materialIds = [...liveSelection.current]
       .filter((key) => key.startsWith('m'))
-      .map((key) => Number(key.slice(1)))
+      .map((key) => key.slice(1))
       .filter((materialId) => !viaFolder.has(materialId))
     for (const materialId of materialIds) {
       unassign.mutate(materialId)
     }
     const folderIds = [...liveSelection.current]
       .filter((key) => key.startsWith('f'))
-      .map((key) => Number(key.slice(1)))
+      .map((key) => key.slice(1))
     for (const folderId of folderIds) {
       unassignFolder.mutate(folderId)
     }
@@ -1346,7 +1346,7 @@ function MaterialsTab({
   }
 
   const upload = useMaterialUpload({
-    courseId: Number(courseId),
+    courseId: courseId,
     getTargetNodeId: () => currentId,
     onFolderCreated: async (folder) => {
       await allocateNodeFolder(currentId, folder.id)
@@ -1397,7 +1397,7 @@ function MaterialsTab({
       void navigate({
         to: '/library',
         search: {
-          course: Number(courseId),
+          course: courseId,
           folder: folder.folder_id,
           source: folder.source_id ?? undefined,
         },
@@ -1411,7 +1411,7 @@ function MaterialsTab({
       void navigate({
         to: '/library',
         search: {
-          course: Number(courseId),
+          course: courseId,
           folder: folder.id,
           source: folder.source_id ?? undefined,
         },
@@ -1501,7 +1501,7 @@ function MaterialsTab({
   ])
 
   const renderLinkedEntry = (entry: {
-    id: number
+    id: string
     title: string
     kind: string
     status: string
@@ -1636,7 +1636,7 @@ function MaterialsTab({
     }
     const selectedIds = [...selection.selected]
       .filter((key) => key.startsWith('m'))
-      .map((key) => Number(key.slice(1)))
+      .map((key) => key.slice(1))
     const pool =
       multi && selection.selected.has(`m${entry.material_id}`)
         ? selectedIds
@@ -1687,7 +1687,7 @@ function MaterialsTab({
   }
 
   const mirrorFolder = useMutation({
-    mutationFn: ({ folderId }: { folderId: number }) =>
+    mutationFn: ({ folderId }: { folderId: string }) =>
       mirrorFolderApi(currentId, folderId),
     onSuccess: () => void refresh(),
   })
@@ -1770,7 +1770,7 @@ function MaterialsTab({
     const key = `m${entry.material_id}`
     const materialIds = [...liveSelection.current]
       .filter((entry2) => entry2.startsWith('m'))
-      .map((entry2) => Number(entry2.slice(1)))
+      .map((entry2) => entry2.slice(1))
     const dragMaterialIds = selection.selected.has(key)
       ? materialIds
       : [entry.material_id]
@@ -2065,7 +2065,7 @@ function MaterialsTab({
                     title={t('library.ingestHint')}
                     onClick={() =>
                       ingestLinked.mutate({
-                        sourceId: linkedSourceId as number,
+                        sourceId: linkedSourceId,
                         relpath: entry.relpath,
                       })
                     }
@@ -2219,7 +2219,7 @@ function MaterialsTab({
       {textDialog !== null ? (
         <NewTextFileDialog
           defaultKind={textDialog}
-          courseId={Number(courseId)}
+          courseId={courseId}
           onCreate={onCreateText}
           onSave={onSaveText}
           onCancel={() => setTextDialog(null)}
@@ -2247,13 +2247,13 @@ function MaterialsTab({
       <DiscoverDialog
         open={discoverOpen}
         onClose={() => setDiscoverOpen(false)}
-        courseId={Number(courseId)}
+        courseId={courseId}
         nodeId={currentId}
         defaultQuery={workspace.node.is_root ? '' : workspace.node.title}
       />
       {pickerOpen ? (
         <MaterialPickerDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           nodeId={currentId}
           nodeTitle={workspace.node.title}
           assignedIds={new Set([
@@ -2268,7 +2268,7 @@ function MaterialsTab({
       ) : null}
       {assignOpen ? (
         <AssignToNodeDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           title={t('assignToNode.title')}
           countText={t('assignToNode.materialCount', {
             count: selection.selected.size,
@@ -2280,7 +2280,7 @@ function MaterialsTab({
       ) : null}
       {unassignedTarget !== null ? (
         <AssignToNodeDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           title={t('workspace.assignNeedsPlacement')}
           countText={
             (unassigned.data?.materials ?? []).find(
@@ -2309,9 +2309,9 @@ function NotesTab({
   onOpenNote,
 }: {
   courseId: string
-  currentId: number
-  titles: Map<number, string>
-  onOpenNote: (noteId: number) => void
+  currentId: string
+  titles: Map<string, string>
+  onOpenNote: (noteId: string) => void
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -2319,8 +2319,8 @@ function NotesTab({
   const [submitted, setSubmitted] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [view, setView] = useStoredView(storageKeys.notesView, 'list')
-  const [renaming, setRenaming] = useState<{ id: number; title: string } | null>(null)
-  const [undoItem, setUndoItem] = useState<number | null>(null)
+  const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null)
+  const [undoItem, setUndoItem] = useState<string | null>(null)
   const [moveOpen, setMoveOpen] = useState(false)
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number } | null>(null)
   const [confirm, confirmElement] = useConfirm()
@@ -2335,7 +2335,7 @@ function NotesTab({
     queryKey: ['notes', 'node', currentId, submitted, activeTag],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
-      listNotes(submitted || undefined, Number(courseId), {
+      listNotes(submitted || undefined, courseId, {
         tag: activeTag ?? undefined,
         node_id: currentId,
         limit: pageSize,
@@ -2344,15 +2344,15 @@ function NotesTab({
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
   })
   const tags = useQuery({
-    queryKey: ['note-tags', Number(courseId)],
-    queryFn: () => listNoteTags(Number(courseId)),
+    queryKey: ['note-tags', courseId],
+    queryFn: () => listNoteTags(courseId),
   })
 
   const create = useMutation({
     mutationFn: () =>
       createNote({
         title: t('notes.defaultTitle'),
-        course_id: Number(courseId),
+        course_id: courseId,
         node_id: currentId,
         tags: activeTag ? [activeTag] : [],
       }),
@@ -2370,7 +2370,7 @@ function NotesTab({
     },
   })
   const rename = useMutation({
-    mutationFn: ({ id, title }: { id: number; title: string }) =>
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
       updateNote(id, { title }),
     onSuccess: async () => {
       setRenaming(null)
@@ -2378,7 +2378,7 @@ function NotesTab({
     },
   })
   const remove = useMutation({
-    mutationFn: (noteId: number) => deleteNote(noteId),
+    mutationFn: (noteId: string) => deleteNote(noteId),
     onSuccess: async (result) => {
       setUndoItem(result.deleted_item_id)
       await queryClient.invalidateQueries({ queryKey: ['notes'] })
@@ -2394,14 +2394,14 @@ function NotesTab({
   const noteOrder = useMemo(() => flatNotes.map((note) => String(note.id)), [flatNotes])
   const selection = useSelection(noteOrder)
   const selectedNoteIds = useMemo(
-    () => [...selection.selected].map((key) => Number(key)),
+    () => [...selection.selected].map((key) => key),
     [selection.selected]
   )
   const liveSelection = useRef(selection.selected)
   liveSelection.current = selection.selected
 
   const moveNotes = useMutation({
-    mutationFn: async ({ nodeId, noteIds }: { nodeId: number; noteIds: number[] }) => {
+    mutationFn: async ({ nodeId, noteIds }: { nodeId: string; noteIds: string[] }) => {
       for (const noteId of noteIds) {
         await moveNote(noteId, nodeId)
       }
@@ -2415,7 +2415,7 @@ function NotesTab({
   })
 
   const deleteSelectedNotes = async () => {
-    const noteIds = [...liveSelection.current].map((key) => Number(key))
+    const noteIds = [...liveSelection.current].map((key) => key)
     if (noteIds.length === 0) {
       return
     }
@@ -2437,7 +2437,7 @@ function NotesTab({
 
   const allTags = (tags.data ?? []).map((entry) => entry.tag)
 
-  const noteItems: Array<EntityItemEntry & { noteId: number }> = flatNotes.map((note) => ({
+  const noteItems: Array<EntityItemEntry & { noteId: string }> = flatNotes.map((note) => ({
     key: String(note.id),
     noteId: note.id,
     title: note.title,
@@ -2447,7 +2447,7 @@ function NotesTab({
     trailing: <ScopeChip nodeId={note.node_id} courseId={courseId} titles={titles} />,
   }))
 
-  const noteMenu = (item: EntityItemEntry & { noteId: number }): ContextMenuItem[] => {
+  const noteMenu = (item: EntityItemEntry & { noteId: string }): ContextMenuItem[] => {
     const multi = selection.selected.size > 1 && selection.selected.has(item.key)
     const items: ContextMenuItem[] = []
     if (!multi) {
@@ -2647,7 +2647,7 @@ function NotesTab({
       </div>
       {moveOpen ? (
         <AssignToNodeDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           title={t('workspace.moveToNode')}
           countText={t('moveToNode.count', { count: selectedNoteIds.length })}
           confirmLabel={t('moveToNode.confirm')}
@@ -2711,22 +2711,22 @@ function CoverageTab({
   titles,
 }: {
   courseId: string
-  currentId: number
+  currentId: string
   workspace: NonNullable<ReturnType<typeof useWorkspaceQuery>['data']>
-  titles: Map<number, string>
+  titles: Map<string, string>
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [pickerId, setPickerId] = useState<number | null>(null)
+  const [pickerId, setPickerId] = useState<string | null>(null)
   const [draft, setDraft] = useState<ConceptDraft | null>(null)
 
   const graph = useQuery({
     queryKey: ['concepts', courseId],
-    queryFn: () => conceptGraph(Number(courseId)),
+    queryFn: () => conceptGraph(courseId),
   })
 
   const generate = useMutation({
-    mutationFn: () => extractConcepts(Number(courseId)),
+    mutationFn: () => extractConcepts(courseId),
     onSuccess: (result) => setDraft(result),
   })
 
@@ -2736,14 +2736,14 @@ function CoverageTab({
   }
 
   const add = useMutation({
-    mutationFn: (conceptId: number) => addNodeConcept(currentId, conceptId),
+    mutationFn: (conceptId: string) => addNodeConcept(currentId, conceptId),
     onSuccess: async () => {
       setPickerId(null)
       await refresh()
     },
   })
   const remove = useMutation({
-    mutationFn: (conceptId: number) => removeNodeConcept(currentId, conceptId),
+    mutationFn: (conceptId: string) => removeNodeConcept(currentId, conceptId),
     onSuccess: () => void refresh(),
   })
 
@@ -2780,7 +2780,7 @@ function CoverageTab({
                 value={pickerId ?? ''}
                 aria-label={t('workspace.addCoverage')}
                 onChange={(event) => {
-                  const value = Number(event.target.value)
+                  const value = event.target.value
                   if (value) {
                     add.mutate(value)
                   }
@@ -2855,9 +2855,9 @@ function TutorTab({
   onAsk,
   askPending,
 }: {
-  currentId: number
+  currentId: string
   nodeTitle: string
-  onAsk: (targetId: number, title: string) => void
+  onAsk: (targetId: string, title: string) => void
   askPending: boolean
 }) {
   const { t } = useTranslation()
@@ -2920,7 +2920,7 @@ function TutorTab({
   )
 }
 
-function useWorkspaceQuery(nodeId: number | undefined) {
+function useWorkspaceQuery(nodeId: string | undefined) {
   return useQuery({
     queryKey: ['node-workspace', nodeId !== undefined ? String(nodeId) : 'pending'],
     queryFn: () => nodeWorkspace(nodeId!),
@@ -2932,10 +2932,10 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   const { t } = useTranslation()
   const search = useSearch({ strict: false }) as {
     tab?: string
-    note?: number
-    material?: number
-    study?: number | 'new'
-    folder?: number
+    note?: string
+    material?: string
+    study?: string
+    folder?: string
   }
   const navigate = useNavigate()
   const from = useCurrentOrigin()
@@ -2944,14 +2944,14 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
 
   const tree = useQuery({
     queryKey: ['tree', courseId],
-    queryFn: () => courseTree(Number(courseId)),
+    queryFn: () => courseTree(courseId),
   })
   const courseQuery = useQuery({
     queryKey: ['course', courseId],
-    queryFn: () => getCourse(Number(courseId)),
+    queryFn: () => getCourse(courseId),
   })
   const rootId = tree.data?.[0]?.id
-  const currentId = nodeId !== undefined ? Number(nodeId) : rootId
+  const currentId = nodeId !== undefined ? nodeId : rootId
   const workspace = useWorkspaceQuery(currentId)
   const currentNodeCounts = useMemo(
     () => (currentId !== undefined ? findNodeCounts(tree.data ?? [], currentId) : undefined),
@@ -2961,23 +2961,23 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
 
   useEffect(() => {
     if (currentId !== undefined) {
-      recordRecentNode(Number(courseId), currentId)
+      recordRecentNode(courseId, currentId)
     }
   }, [courseId, currentId])
 
   const studyHere = useMutation({
-    mutationFn: (targetId: number) =>
-      generateQuiz({ course_id: Number(courseId), node_id: targetId, count: 8 }),
+    mutationFn: (targetId: string) =>
+      generateQuiz({ course_id: courseId, node_id: targetId, count: 8 }),
     onSuccess: async (activity) => {
       await queryClient.invalidateQueries({ queryKey: ['quizzes'] })
       void navigate({ to: '/quiz/$activityId', params: { activityId: String(activity.id) }, search: { from } })
     },
   })
-  const [launcherNode, setLauncherNode] = useState<number | null>(null)
+  const [launcherNode, setLauncherNode] = useState<string | null>(null)
   const openChatSession = useChatStore((state) => state.openSession)
   const askAbout = useMutation({
-    mutationFn: ({ targetId, title }: { targetId: number; title: string }) =>
-      createChatSession(Number(courseId), targetId, title),
+    mutationFn: ({ targetId, title }: { targetId: string; title: string }) =>
+      createChatSession(courseId, targetId, title),
     onSuccess: async (session) => {
       await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
       openChatSession({ id: session.id, publicId: session.public_id })
@@ -2999,7 +2999,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const openNoteAt = (noteId: number) => {
+  const openNoteAt = (noteId: string) => {
     const nextSearch = openNote(noteId)
     if (nodeId !== undefined) {
       void navigate({
@@ -3012,8 +3012,8 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const openMaterialAt = (materialId: number) => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => ({
+  const openMaterialAt = (materialId: string) => {
+    const nextSearch = (prev: { tab?: string; note?: string; material?: string; study?: string }) => ({
       ...prev,
       material: materialId,
     })
@@ -3028,14 +3028,14 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const openFolderInView = (folderId: number) => {
+  const openFolderInView = (folderId: string) => {
     const nextSearch = (
       prev: {
         tab?: string
-        note?: number
-        material?: number
-        study?: number | 'new'
-        folder?: number
+        note?: string
+        material?: string
+        study?: string
+        folder?: string
       },
     ) => ({ ...prev, tab: 'materials' as const, folder: folderId })
     if (nodeId !== undefined) {
@@ -3053,10 +3053,10 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     const nextSearch = (
       prev: {
         tab?: string
-        note?: number
-        material?: number
-        study?: number | 'new'
-        folder?: number
+        note?: string
+        material?: string
+        study?: string
+        folder?: string
       },
     ) => {
       const rest = { ...prev }
@@ -3074,8 +3074,8 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const studyNoteCreated = (noteId: number) => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => ({
+  const studyNoteCreated = (noteId: string) => {
+    const nextSearch = (prev: { tab?: string; note?: string; material?: string; study?: string }) => ({
       ...prev,
       study: noteId,
     })
@@ -3091,7 +3091,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   }
 
   const closeStudy = () => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => {
+    const nextSearch = (prev: { tab?: string; note?: string; material?: string; study?: string }) => {
       const rest = { ...prev }
       delete rest.material
       delete rest.study
@@ -3109,7 +3109,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
   }
 
   const closeNotes = () => {
-    const nextSearch = (prev: { tab?: string; note?: number; material?: number; study?: number | 'new' }) => {
+    const nextSearch = (prev: { tab?: string; note?: string; material?: string; study?: string }) => {
       const rest = { ...prev }
       delete rest.study
       return rest
@@ -3125,7 +3125,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
     }
   }
 
-  const onNoteCreated = async (noteId: number) => {
+  const onNoteCreated = async (noteId: string) => {
     await queryClient.invalidateQueries({ queryKey: ['notes'] })
     openNoteAt(noteId)
   }
@@ -3373,7 +3373,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
       </div>
       {search.material !== undefined && search.study !== undefined ? (
         <SplitStudyPane
-          courseId={Number(courseId)}
+          courseId={courseId}
           materialId={search.material}
           study={search.study}
           onNoteCreated={studyNoteCreated}
@@ -3383,7 +3383,7 @@ export function NodeWorkspace({ courseId, nodeId }: { courseId: string; nodeId?:
       ) : null}
       {launcherNode !== null && rootId !== undefined ? (
         <StudyLauncherDialog
-          courseId={Number(courseId)}
+          courseId={courseId}
           nodeId={launcherNode}
           rootNodeId={rootId}
           onClose={() => setLauncherNode(null)}

@@ -57,9 +57,9 @@ vi.mock('@/lib/ws-client', () => ({
 }))
 
 const SESSION: ChatSession = {
-  id: 4,
+  id: '4',
   public_id: 'uuid-4',
-  course_id: 7,
+  course_id: '7',
   node_id: null,
   title: 'New chat',
   use_embeddings: null,
@@ -87,7 +87,7 @@ function renderPanel() {
     path: '/',
     component: () => (
       <QueryClientProvider client={client}>
-        <StudyChatProvider sessionId={4}>
+        <StudyChatProvider sessionId="4">
           <ChatPanel onSessionCreated={() => undefined} />
         </StudyChatProvider>
       </QueryClientProvider>

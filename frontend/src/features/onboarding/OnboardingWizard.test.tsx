@@ -31,9 +31,9 @@ vi.mock('@/lib/api', async (importOriginal) => {
     createProvider: (body: unknown) => createProvider(body),
     detectLocalEngines: () => detectLocalEngines(),
     listModels: () => listModels(),
-    updateModel: (id: number, body: unknown) => updateModel(id, body),
+    updateModel: (id: string, body: unknown) => updateModel(id, body),
     listTaskDefaults: () => listTaskDefaults(),
-    assignTaskDefault: (requires: string, modelId: number | null) =>
+    assignTaskDefault: (requires: string, modelId: string | null) =>
       assignTaskDefault(requires, modelId),
     createCourse: (body: unknown) => createCourse(body),
     createSampleCourse: () => createSampleCourse(),
@@ -64,8 +64,8 @@ const WORKING_DIR = {
 const PROVIDER_STATE = { ...FRESH_STATE, has_provider: true }
 
 const MODEL = {
-  id: 7,
-  provider_id: 1,
+  id: '7',
+  provider_id: '1',
   external_id: 'gemini-2.5-flash',
   label: 'gemini-2.5-flash',
   caps: ['text', 'vision'],
@@ -166,7 +166,7 @@ describe('OnboardingWizard', () => {
         models: ['qwen3:8b', 'nomic-embed-text'],
       },
     ])
-    createProvider.mockResolvedValue({ id: 9, name: 'Ollama (local)' })
+    createProvider.mockResolvedValue({ id: '9', name: 'Ollama (local)' })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
@@ -185,7 +185,7 @@ describe('OnboardingWizard', () => {
   })
 
   test('provider creation advances to the models step', async () => {
-    createProvider.mockResolvedValue({ id: 3, name: 'Google' })
+    createProvider.mockResolvedValue({ id: '3', name: 'Google' })
     renderWizard()
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
     expect(await screen.findByText('Where should your data live?')).toBeInTheDocument()
@@ -199,8 +199,8 @@ describe('OnboardingWizard', () => {
   })
 
   test('full flow: course creation wires the files step and the done summary', async () => {
-    createCourse.mockResolvedValue({ id: 12, title: 'Calculus I' })
-    listCourses.mockResolvedValue([{ id: 12, title: 'Calculus I' }])
+    createCourse.mockResolvedValue({ id: '12', title: 'Calculus I' })
+    listCourses.mockResolvedValue([{ id: '12', title: 'Calculus I' }])
     getOnboardingState.mockResolvedValue({
       has_provider: true,
       has_enabled_model: true,

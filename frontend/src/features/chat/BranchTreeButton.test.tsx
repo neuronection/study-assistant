@@ -25,29 +25,29 @@ vi.mock('@/lib/ws-client', () => ({
 }))
 
 const TREE = {
-  active_root_id: 1,
+  active_root_id: '1',
   nodes: [
     {
-      id: 1,
+      id: '1',
       role: 'user',
       excerpt: 'first question',
       parent_id: null,
       children: [2, 3],
-      active_child_id: 2,
+      active_child_id: '2',
     },
     {
-      id: 2,
+      id: '2',
       role: 'assistant',
       excerpt: 'Answer one',
-      parent_id: 1,
+      parent_id: '1',
       children: [],
       active_child_id: null,
     },
     {
-      id: 3,
+      id: '3',
       role: 'assistant',
       excerpt: 'Answer two',
-      parent_id: 1,
+      parent_id: '1',
       children: [],
       active_child_id: null,
     },
@@ -58,7 +58,7 @@ function renderTreeButton() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <BranchTreeButton sessionId={4} />
+      <BranchTreeButton sessionId="4" />
     </QueryClientProvider>,
   )
 }
@@ -87,6 +87,6 @@ describe('BranchTreeButton (plan 41 via library ChatBranchTree)', () => {
     renderTreeButton()
     fireEvent.click(await screen.findByRole('button', { name: 'Conversation branches' }))
     fireEvent.click(await screen.findByRole('treeitem', { name: /Answer two/ }))
-    await waitFor(() => expect(selectChatVariant).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(selectChatVariant).toHaveBeenCalledWith('3'))
   })
 })

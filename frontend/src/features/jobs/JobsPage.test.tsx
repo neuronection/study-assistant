@@ -14,9 +14,9 @@ const mockDeleteAllFailed = vi.fn()
 vi.mock('@/lib/api', () => ({
   listJobs: (params?: unknown) => mockListJobs(params),
   listJobTypes: () => mockListTypes(),
-  retryJob: (jobId: number) => mockRetryOne(jobId),
+  retryJob: (jobId: string) => mockRetryOne(jobId),
   retryFailedJobs: (types?: string[]) => mockRetryAll(types),
-  deleteJob: (jobId: number) => mockDeleteOne(jobId),
+  deleteJob: (jobId: string) => mockDeleteOne(jobId),
   deleteFailedJobs: (options?: unknown) => mockDeleteAllFailed(options),
 }))
 
@@ -70,14 +70,14 @@ vi.mock('react-i18next', async (importOriginal) => {
 })
 
 const FAILED = {
-  id: 31,
+  id: '31',
   type: 'ingest',
   status: 'failed' as const,
   progress: 40,
   stage: 'ocr',
   error: 'OCR provider unavailable',
   label: 'Lecture 3.pdf',
-  material_id: 77,
+  material_id: '77',
   retriable: true,
   stale: false,
   created_at: new Date().toISOString(),
@@ -130,7 +130,7 @@ describe('JobsPage', () => {
     mockRetryOne.mockResolvedValue({ ...FAILED, status: 'queued', error: null })
     renderPage()
     fireEvent.click(await screen.findByLabelText(/retry: lecture 3\.pdf/i))
-    await waitFor(() => expect(mockRetryOne).toHaveBeenCalledWith(31))
+    await waitFor(() => expect(mockRetryOne).toHaveBeenCalledWith('31'))
   })
 
   test('status tabs are routable links updating the status param', async () => {
@@ -155,7 +155,7 @@ describe('JobsPage', () => {
     renderPage()
     fireEvent.click(await screen.findByLabelText(/jobs\.deleteOne: lecture 3\.pdf/i))
     fireEvent.click(await screen.findByRole('button', { name: 'jobs.deleteOne' }))
-    await waitFor(() => expect(mockDeleteOne).toHaveBeenCalledWith(31))
+    await waitFor(() => expect(mockDeleteOne).toHaveBeenCalledWith('31'))
   })
 
   test('row delete does nothing when the confirmation is dismissed', async () => {
@@ -189,7 +189,7 @@ describe('JobsPage', () => {
     mockDeleteAllFailed.mockResolvedValue({ deleted: 1 })
     mockListJobs.mockResolvedValue([
       FAILED,
-      { ...FAILED, id: 32, stale: true, retriable: false },
+      { ...FAILED, id: '32', stale: true, retriable: false },
     ])
     renderPage('/jobs?status=failed')
     await screen.findAllByText('Lecture 3.pdf')
@@ -216,7 +216,7 @@ describe('JobsPage', () => {
     mockListJobs.mockResolvedValue([
       {
         ...FAILED,
-        id: 44,
+        id: '44',
         status: 'cancelled',
         retriable: false,
         error: null,

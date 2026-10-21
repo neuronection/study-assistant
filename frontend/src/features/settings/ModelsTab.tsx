@@ -52,7 +52,7 @@ export function ModelsTab() {
     }
   }, [expandedProviderId, providers.data])
 
-  const providerId = expandedProviderId !== null ? Number(expandedProviderId) : null
+  const providerId = expandedProviderId
   const remote = useQuery({
     queryKey: ['remote-models', expandedProviderId],
     queryFn: () => listRemoteModels(providerId!),
@@ -69,7 +69,7 @@ export function ModelsTab() {
     setError(null)
     try {
       await createModel({
-        provider_id: Number(pid),
+        provider_id: pid,
         external_id: draft.externalId,
         label: draft.label ?? null,
         caps: draft.caps,
@@ -93,7 +93,7 @@ export function ModelsTab() {
         await Promise.all(
           drafts.slice(offset, offset + BATCH).map((draft) =>
             createModel({
-              provider_id: Number(pid),
+              provider_id: pid,
               external_id: draft.externalId,
               caps: draft.caps,
               enabled: true,
@@ -112,7 +112,7 @@ export function ModelsTab() {
   const handleUpdate = async (model: ModelRegistryModel, patch: ModelRegistryPatch) => {
     setError(null)
     try {
-      await updateModel(Number(model.id), {
+      await updateModel(model.id, {
         ...(patch.label !== undefined ? { label: patch.label } : {}),
         ...(patch.caps !== undefined ? { caps: patch.caps } : {}),
         ...(patch.reasoningEffort !== undefined
@@ -143,7 +143,7 @@ export function ModelsTab() {
     }
     setError(null)
     try {
-      await deleteModel(Number(model.id))
+      await deleteModel(model.id)
       await refresh()
     } catch (err) {
       setError((err as Error).message)

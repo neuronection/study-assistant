@@ -77,8 +77,8 @@ function JobRow({
   onDelete,
 }: {
   job: JobInfo
-  onRetry: (jobId: number) => void
-  onDelete: (jobId: number) => void
+  onRetry: (jobId: string) => void
+  onDelete: (jobId: string) => void
 }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
@@ -221,7 +221,7 @@ export function JobsPage() {
   }
 
   const retryOne = useMutation({
-    mutationFn: (jobId: number) => retryJob(jobId),
+    mutationFn: (jobId: string) => retryJob(jobId),
     onSuccess: async () => {
       setRetryError(null)
       await invalidate()
@@ -238,7 +238,7 @@ export function JobsPage() {
     onError: (error: Error) => setRetryError(error.message),
   })
   const deleteOne = useMutation({
-    mutationFn: (jobId: number) => deleteJob(jobId),
+    mutationFn: (jobId: string) => deleteJob(jobId),
     onSuccess: async () => {
       setDeleteError(null)
       await invalidate()

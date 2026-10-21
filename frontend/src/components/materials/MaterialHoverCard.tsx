@@ -12,7 +12,7 @@ export function MaterialHoverCard({
   openDelay = 150,
   children,
 }: {
-  materialId: number
+  materialId: string
   openDelay?: number
   children: ReactNode
 }) {

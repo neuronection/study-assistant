@@ -4,19 +4,19 @@ export type GenerateScope = 'node' | 'subtree' | 'course'
 
 export interface GenerateContext {
   scope?: GenerateScope
-  include_material_ids?: number[]
-  exclude_material_ids?: number[]
-  note_ids?: number[]
-  concept_ids?: number[]
+  include_material_ids?: string[]
+  exclude_material_ids?: string[]
+  note_ids?: string[]
+  concept_ids?: string[]
   context_hint?: string | null
 }
 
 export interface AiContextPreview {
   stats: {
-    materials: { id: number; title: string }[]
-    chunks: { material_id: number; title: string }[]
-    notes: { id: number; title: string }[]
-    concepts: { id: number; name: string }[]
+    materials: { id: string; title: string }[]
+    chunks: { material_id: string; title: string }[]
+    notes: { id: string; title: string }[]
+    concepts: { id: string; name: string }[]
     hints: number
     approx_chars: number
     retrieval_query: string | null
@@ -25,8 +25,8 @@ export interface AiContextPreview {
 }
 
 export async function previewAiContext(
-  courseId: number,
-  spec: GenerateContext & { node_id?: number | null; query?: string | null }
+  courseId: string,
+  spec: GenerateContext & { node_id?: string | null; query?: string | null }
 ): Promise<AiContextPreview> {
   const response = await apiFetch('/api/v1/ai/context/preview', {
     method: 'POST',
@@ -87,13 +87,13 @@ export interface EditorTransformRequest {
   include_context?: boolean
   context_document?: string
   ground_in_material?: boolean
-  course_id?: number | null
-  node_id?: number | null
+  course_id?: string | null
+  node_id?: string | null
   diagnostic?: string
 }
 
 export interface EditorTransformJobOut {
-  job_id: number
+  job_id: string
 }
 
 export type EditorTransformJobStatus =
@@ -123,13 +123,13 @@ export async function startEditorTransform(
 }
 
 export async function getEditorTransformJob(
-  jobId: number
+  jobId: string
 ): Promise<EditorTransformJobState> {
   const response = await apiFetch(`/api/v1/ai/editor/jobs/${jobId}`)
   return json<EditorTransformJobState>(response)
 }
 
-export async function cancelEditorTransformJob(jobId: number): Promise<void> {
+export async function cancelEditorTransformJob(jobId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/ai/editor/jobs/${jobId}/cancel`, {
     method: 'POST',
   })

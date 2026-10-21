@@ -94,18 +94,28 @@ function buildRouter(initialUrl: string) {
   const courseRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/courses/$courseId',
-    validateSearch: (search: Record<string, unknown>): { tab?: string; note?: number } => ({
+    validateSearch: (search: Record<string, unknown>): {
+      tab?: string
+      note?: string
+      folder?: string
+    } => ({
       tab: typeof search.tab === 'string' ? search.tab : undefined,
-      note: typeof search.note === 'number' ? search.note : undefined,
+      note: search.note === undefined ? undefined : String(search.note),
+      folder: search.folder === undefined ? undefined : String(search.folder),
     }),
     component: () => <NodeWorkspace courseId="3" />,
   })
   const nodeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/courses/$courseId/n/$nodeId',
-    validateSearch: (search: Record<string, unknown>): { tab?: string; note?: number } => ({
+    validateSearch: (search: Record<string, unknown>): {
+      tab?: string
+      note?: string
+      folder?: string
+    } => ({
       tab: typeof search.tab === 'string' ? search.tab : undefined,
-      note: typeof search.note === 'number' ? search.note : undefined,
+      note: search.note === undefined ? undefined : String(search.note),
+      folder: search.folder === undefined ? undefined : String(search.folder),
     }),
     component: () => <NodeWorkspace courseId="3" nodeId="5" />,
   })
@@ -168,7 +178,7 @@ vi.mock('@/features/notes/LazyNoteEditor', async (importOriginal) => {
       onClose,
       onRequestClose,
     }: {
-      noteId: number
+      noteId: string
       onClose?: () => void
       onRequestClose?: () => void
     }) =>
@@ -188,23 +198,23 @@ vi.mock('@/features/notes/LazyNoteEditor', async (importOriginal) => {
 vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOriginal<typeof import('@/lib/api')>()
   return {
     ...actual,
-    nodeWorkspace: (id: number) => nodeWorkspace(id),
-    courseTree: (id: number) => courseTree(id),
-    getCourse: (id: number) => getCourse(id),
+    nodeWorkspace: (id: string) => nodeWorkspace(id),
+    courseTree: (id: string) => courseTree(id),
+    getCourse: (id: string) => getCourse(id),
     listCourses: () => listCourses(),
     listNotes: (...args: unknown[]) => listNotes(...(args as [])),
     listNoteTags: (...args: unknown[]) => listNoteTags(...(args as [])),
-    getNote: (id: number) => getNote(id),
+    getNote: (id: string) => getNote(id),
     listMaterials: (...args: unknown[]) => listMaterials(...(args as [])),
-    getMaterial: (id: number) => getMaterial(id),
-    getMaterialLinks: (id: number) => getMaterialLinks(id),
+    getMaterial: (id: string) => getMaterial(id),
+    getMaterialLinks: (id: string) => getMaterialLinks(id),
     listStudyStates: () => listStudyStates(),
     listQuizzes: (...args: unknown[]) => listQuizzes(...(args as [])),
     listExercises: (...args: unknown[]) => listExercises(...(args as [])),
     listFlashcards: (...args: unknown[]) => listFlashcards(...(args as [])),
     dueFlashcards: (...args: unknown[]) => dueFlashcards(...(args as [])),
-    reviewFlashcard: (cardId: number, rating: number) => reviewFlashcard(cardId, rating),
-    listChatSessions: (nodeId?: number) => listChatSessions(nodeId),
+    reviewFlashcard: (cardId: string, rating: number) => reviewFlashcard(cardId, rating),
+    listChatSessions: (nodeId?: string) => listChatSessions(nodeId),
     generateQuiz: (body: unknown) => generateQuiz(body),
     generateFlashcards: (body: unknown) => generateFlashcards(body),
     createChatSession: (...args: unknown[]) =>
@@ -212,27 +222,27 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     createNote: (body: unknown) => createNote(body),
     addNodeConcept: (...args: unknown[]) => addNodeConcept(...(args as [number, number])),
     removeNodeConcept: (...args: unknown[]) => removeNodeConcept(...(args as [number, number])),
-    conceptGraph: (id: number) => conceptGraph(id),
-    extractConcepts: (id: number) => extractConcepts(id),
+    conceptGraph: (id: string) => conceptGraph(id),
+    extractConcepts: (id: string) => extractConcepts(id),
     commitConcepts: (...args: unknown[]) => commitConcepts(...(args as [])),
     updateNode: (...args: unknown[]) => updateNode(...(args as [number, object])),
     updateCourse: (...args: unknown[]) => updateCourse(...(args as [number, object])),
     addNode: (...args: unknown[]) => addNode(...(args as [number, number, string])),
-    outlineDraft: (id: number) => outlineDraft(id),
-    outlineCommit: (id: number, chapters: unknown) => outlineCommit(id, chapters),
-    draftNodeNote: (id: number) => draftNodeNote(id),
-    getNodeArtifacts: (id: number, kind?: string) => getNodeArtifacts(id, kind),
-    similarExercise: (id: number) => similarExercise(id),
+    outlineDraft: (id: string) => outlineDraft(id),
+    outlineCommit: (id: string, chapters: unknown) => outlineCommit(id, chapters),
+    draftNodeNote: (id: string) => draftNodeNote(id),
+    getNodeArtifacts: (id: string, kind?: string) => getNodeArtifacts(id, kind),
+    similarExercise: (id: string) => similarExercise(id),
     drillPatterns: () => drillPatterns(),
     updateNote: (...args: unknown[]) => updateNote(...(args as [number, object])),
-    deleteNote: (id: number) => deleteNote(id),
-    moveNote: (id: number, nodeId: number | null) => moveNote(id, nodeId),
-    moveQuiz: (id: number, nodeId: number | null) => moveQuiz(id, nodeId),
-    moveExercise: (id: number, nodeId: number | null) => moveExercise(id, nodeId),
+    deleteNote: (id: string) => deleteNote(id),
+    moveNote: (id: string, nodeId: string | null) => moveNote(id, nodeId),
+    moveQuiz: (id: string, nodeId: string | null) => moveQuiz(id, nodeId),
+    moveExercise: (id: string, nodeId: string | null) => moveExercise(id, nodeId),
     renameQuiz: (...args: unknown[]) => renameQuiz(...(args as [number, string])),
-    deleteQuiz: (id: number) => deleteQuiz(id),
+    deleteQuiz: (id: string) => deleteQuiz(id),
     renameExercise: (...args: unknown[]) => renameExercise(...(args as [number, string])),
-    deleteExercise: (id: number) => deleteExercise(id),
+    deleteExercise: (id: string) => deleteExercise(id),
     deallocateMaterial: (...args: unknown[]) => deallocateMaterial(...(args as [number, number])),
     deallocateNodeFolder: (...args: unknown[]) =>
       deallocateNodeFolder(...(args as [number, number])),
@@ -253,13 +263,13 @@ vi.mock('@/lib/api', async (importOriginal) => {  const actual = await importOri
     createFolder: (...args: unknown[]) => createFolder(...(args as [string, number | null, number])),
     createTextMaterial: (...args: unknown[]) => createTextMaterial(...(args as [])),
     updateTextMaterial: (...args: unknown[]) => updateTextMaterial(...(args as [])),
-    previewAiContext: (courseId: number, spec: unknown) => previewAiContext(courseId, spec),
+    previewAiContext: (courseId: string, spec: unknown) => previewAiContext(courseId, spec),
     composeMaterialAsync: (body: unknown) => composeMaterialAsync(body),
-    getJob: (jobId: number) => getJob(jobId),
-    listCourseTasks: (courseId: number) => listCourseTasks(courseId),
+    getJob: (jobId: string) => getJob(jobId),
+    listCourseTasks: (courseId: string) => listCourseTasks(courseId),
     assignCourseTask: (...args: unknown[]) =>
       assignCourseTask(...(args as [number, string, number | null, number | null])),
-    listCourseTaskDefaults: (courseId: number) => listCourseTaskDefaults(courseId),
+    listCourseTaskDefaults: (courseId: string) => listCourseTaskDefaults(courseId),
     assignCourseTaskDefault: (...args: unknown[]) =>
       assignCourseTaskDefault(
         ...(args as [number, string, number | null, number | null])
@@ -280,7 +290,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 const TREE = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -289,7 +299,7 @@ const TREE = [
     is_root: true,
     children: [
       {
-        id: 5,
+        id: '5',
         title: 'Derivatives',
         summary: null,
         objectives: [],
@@ -298,7 +308,7 @@ const TREE = [
         is_root: false,
         children: [
           {
-            id: 11,
+            id: '11',
             title: 'Chain rule',
             summary: null,
             objectives: [],
@@ -318,8 +328,8 @@ const TREE = [
 
 const ROOT_WS = {
   node: {
-    id: 1,
-    course_id: 3,
+    id: '1',
+    course_id: '3',
     course_title: 'Calculus I',
     title: 'Calculus I',
     summary: 'The course root',
@@ -327,10 +337,10 @@ const ROOT_WS = {
     depth: 0,
     is_root: true,
     parent_id: null,
-    breadcrumb: [{ id: 1, title: 'Calculus I', depth: 0 }],
+    breadcrumb: [{ id: '1', title: 'Calculus I', depth: 0 }],
   },
   children: [
-    { id: 5, title: 'Derivatives', depth: 1, order_idx: 0, objectives: [], summary: null },
+    { id: '5', title: 'Derivatives', depth: 1, order_idx: 0, objectives: [], summary: null },
   ],
   folders: [],
   materials: [],
@@ -348,23 +358,23 @@ const ROOT_WS = {
 
 const NODE_WS = {
   node: {
-    id: 5,
-    course_id: 3,
+    id: '5',
+    course_id: '3',
     course_title: 'Calculus I',
     title: 'Derivatives',
     summary: 'Rates of change',
     objectives: ['Compute derivatives'],
     depth: 1,
     is_root: false,
-    parent_id: 1,
+    parent_id: '1',
     breadcrumb: [
-      { id: 1, title: 'Calculus I', depth: 0 },
-      { id: 5, title: 'Derivatives', depth: 1 },
+      { id: '1', title: 'Calculus I', depth: 0 },
+      { id: '5', title: 'Derivatives', depth: 1 },
     ],
   },
   children: [
     {
-      id: 11,
+      id: '11',
       title: 'Chain rule',
       depth: 2,
       order_idx: 0,
@@ -375,7 +385,7 @@ const NODE_WS = {
   folders: [],
   materials: [
     {
-      material_id: 7,
+      material_id: '7',
       title: 'chain-rule.pdf',
       kind: 'pdf',
       status: 'ready',
@@ -393,7 +403,7 @@ const NODE_WS = {
   child_materials: {
     11: [
       {
-        material_id: 8,
+        material_id: '8',
         title: 'worked problems',
         kind: 'txt',
         status: 'ready',
@@ -416,8 +426,8 @@ const NODE_WS = {
     child_nodes: 1,
   },
   concepts: [
-    { id: 71, name: 'chain rule', direct: true, node_ids: [5] },
-    { id: 72, name: 'limits', direct: false, node_ids: [11] },
+    { id: '71', name: 'chain rule', direct: true, node_ids: ['5'] },
+    { id: '72', name: 'limits', direct: false, node_ids: ['11'] },
   ],
 }
 
@@ -427,7 +437,7 @@ const DRAFT = {
       title: 'Limits',
       summary: 'Approaching values',
       sections: [
-        { title: 'Continuity', objectives: [], material_ids: [4], rationale: null, confidence: 0.9 },
+        { title: 'Continuity', objectives: [], material_ids: ['4'], rationale: null, confidence: 0.9 },
         { title: 'Asymptotes', objectives: [], material_ids: [], rationale: null, confidence: 0.8 },
       ],
     },
@@ -451,13 +461,13 @@ function renderWorkspace(initialUrl: string) {
 }
 
 function primeDefaults() {
-  nodeWorkspace.mockImplementation((id: number) =>
-    Promise.resolve(id === 1 ? ROOT_WS : NODE_WS)
+  nodeWorkspace.mockImplementation((id: string) =>
+    Promise.resolve(id === '1' ? ROOT_WS : NODE_WS)
   )
   courseTree.mockResolvedValue(TREE)
   listFolders.mockResolvedValue([])
   browseSource.mockResolvedValue({
-    source_id: 77,
+    source_id: '77',
     label: 'Source',
     path: '/src',
     subdir: '',
@@ -470,19 +480,19 @@ function primeDefaults() {
     materials: [],
     uningested: [],
   })
-  ingestSourceFile.mockResolvedValue({ material_id: 1, job_id: null, deduped: false })
-  createFolder.mockImplementation(async (name: string, parentId: number | null) => ({
-    id: 900 + createFolder.mock.calls.length,
+  ingestSourceFile.mockResolvedValue({ material_id: '1', job_id: null, deduped: false })
+  createFolder.mockImplementation(async (name: string, parentId: string | null) => ({
+    id: String(900 + createFolder.mock.calls.length),
     name,
     path: name,
-    course_id: 3,
+    course_id: '3',
     parent_id: parentId,
     source_id: null,
     created_at: '2026-08-21T00:00:00Z',
   }))
   listCourses.mockResolvedValue([
     {
-      id: 3,
+      id: '3',
       title: 'Calculus I',
       subject: null,
       level: null,
@@ -493,7 +503,7 @@ function primeDefaults() {
     },
   ])
   getCourse.mockResolvedValue({
-    id: 3,
+    id: '3',
     title: 'Calculus I',
     subject: null,
     level: null,
@@ -509,12 +519,12 @@ function primeDefaults() {
   getPlacementSuggestions.mockResolvedValue({ suggestions: [] })
   getNodeArtifacts.mockResolvedValue({ cheat_sheet: null, reviews: [] })
   listNoteTags.mockResolvedValue([])
-  getNote.mockImplementation((id: number) =>
+  getNote.mockImplementation((id: string) =>
     Promise.resolve({
       id,
       title: `Note detail ${id}`,
-      course_id: 3,
-      node_id: 5,
+      course_id: '3',
+      node_id: '5',
       owner_type: 'standalone',
       owner_id: null,
       tags: [],
@@ -525,14 +535,14 @@ function primeDefaults() {
     })
   )
   listMaterials.mockResolvedValue([])
-  getMaterial.mockImplementation((id: number) =>
+  getMaterial.mockImplementation((id: string) =>
     Promise.resolve({
       material: {
         id,
         title: 'chain-rule.pdf',
         kind: 'pdf',
         status: 'ready',
-        course_id: 3,
+        course_id: '3',
         folder_id: null,
         created_at: '2026-08-19T00:00:00Z',
         provenance: null,
@@ -541,12 +551,12 @@ function primeDefaults() {
   )
   getMaterialLinks.mockResolvedValue([
     {
-      node_id: 5,
+      node_id: '5',
       owner_title: 'Derivatives',
       rationale: null,
       breadcrumb: [
-        { id: 1, title: 'Calculus I' },
-        { id: 5, title: 'Derivatives' },
+        { id: '1', title: 'Calculus I' },
+        { id: '5', title: 'Derivatives' },
       ],
       is_course_level: false,
     },
@@ -567,21 +577,21 @@ function primeDefaults() {
   commitConcepts.mockResolvedValue({ concepts: 1, created: 1, links: 0, nodes: 0 })
   updateNode.mockResolvedValue(undefined)
   updateCourse.mockResolvedValue(undefined)
-  similarExercise.mockResolvedValue({ id: 61, title: 'Similar', step_count: 3 })
+  similarExercise.mockResolvedValue({ id: '61', title: 'Similar', step_count: 3 })
   drillPatterns.mockResolvedValue([])
   previewAiContext.mockResolvedValue({
     stats: { materials: [], chunks: [], notes: [], concepts: [], hints: 0 },
     rendered: '',
   })
-  composeMaterialAsync.mockResolvedValue({ job_id: 3 })
+  composeMaterialAsync.mockResolvedValue({ job_id: '3' })
   getJob.mockResolvedValue({
-    id: 3,
+    id: '3',
     type: 'compose',
     status: 'done',
     progress: 100,
     stage: 'done',
     error: null,
-    material_id: 99,
+    material_id: '99',
     retriable: false,
     stale: false,
     label: 'compose',
@@ -661,8 +671,8 @@ describe('NodeWorkspace', () => {
     await waitFor(() => {
       const raw = window.localStorage.getItem('sa-recent-nodes.default')
       expect(raw).not.toBeNull()
-      const entries = JSON.parse(raw!) as Array<{ courseId: number; nodeId: number }>
-      expect(entries[0]).toMatchObject({ courseId: 3, nodeId: 5 })
+      const entries = JSON.parse(raw!) as Array<{ courseId: string; nodeId: string }>
+      expect(entries[0]).toMatchObject({ courseId: '3', nodeId: '5' })
     })
     window.localStorage.removeItem('sa-recent-nodes.default')
   })
@@ -679,14 +689,14 @@ describe('NodeWorkspace', () => {
 
   test('child cards show the subsection description when set', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? {
               ...ROOT_WS,
               children: [
-                { id: 5, title: 'Derivatives', depth: 1, order_idx: 0, objectives: [], summary: 'Rates of change' },
-                { id: 6, title: 'Integrals', depth: 1, order_idx: 1, objectives: [], summary: null },
+                { id: '5', title: 'Derivatives', depth: 1, order_idx: 0, objectives: [], summary: 'Rates of change' },
+                { id: '6', title: 'Integrals', depth: 1, order_idx: 1, objectives: [], summary: null },
               ],
               child_materials: { 5: [], 6: [] },
             }
@@ -737,25 +747,25 @@ describe('NodeWorkspace', () => {
 
   test('quick practice on a child card quizzes that child node', async () => {
     primeDefaults()
-    generateQuiz.mockResolvedValue({ id: 43, title: 'Chain rule · quiz', question_count: 8 })
+    generateQuiz.mockResolvedValue({ id: '43', title: 'Chain rule · quiz', question_count: 8 })
     renderWorkspace('/courses/3/n/5')
     fireEvent.click(await screen.findByRole('button', { name: /^practice$/i }))
     await waitFor(() =>
-      expect(generateQuiz).toHaveBeenCalledWith({ course_id: 3, node_id: 11, count: 8 })
+      expect(generateQuiz).toHaveBeenCalledWith({ course_id: '3', node_id: '11', count: 8 })
     )
   })
 
   test('practice pending state marks only the clicked child card', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               children: [
-                { id: 11, title: 'Chain rule', depth: 2, order_idx: 0, objectives: [], summary: null },
-                { id: 12, title: 'Integration by parts', depth: 2, order_idx: 1, objectives: [], summary: null },
+                { id: '11', title: 'Chain rule', depth: 2, order_idx: 0, objectives: [], summary: null },
+                { id: '12', title: 'Integration by parts', depth: 2, order_idx: 1, objectives: [], summary: null },
               ],
               child_materials: { 11: [], 12: [] },
             }
@@ -767,7 +777,7 @@ describe('NodeWorkspace', () => {
     expect(practiceButtons).toHaveLength(2)
     fireEvent.click(practiceButtons[0])
     await waitFor(() =>
-      expect(generateQuiz).toHaveBeenCalledWith({ course_id: 3, node_id: 11, count: 8 })
+      expect(generateQuiz).toHaveBeenCalledWith({ course_id: '3', node_id: '11', count: 8 })
     )
     const pending = screen.getAllByRole('button', { name: /^practice$/i })
     expect(pending[0]).toBeDisabled()
@@ -777,18 +787,18 @@ describe('NodeWorkspace', () => {
 
   test('concepts tab toggles coverage and adds via the picker', async () => {
     primeDefaults()
-    addNodeConcept.mockResolvedValue({ node_id: 5, concept_id: 73 })
+    addNodeConcept.mockResolvedValue({ node_id: '5', concept_id: '73' })
     removeNodeConcept.mockResolvedValue(undefined)
     conceptGraph.mockResolvedValue({
       concepts: [
         {
-          id: 71,
+          id: '71',
           name: 'chain rule',
           aliases: [],
-          nodes: [{ node_id: 5, node_title: 'Derivatives' }],
+          nodes: [{ node_id: '5', node_title: 'Derivatives' }],
         },
-        { id: 72, name: 'limits', aliases: [], nodes: [{ node_id: 11, node_title: 'Chain rule' }] },
-        { id: 73, name: 'continuity', aliases: [], nodes: [] },
+        { id: '72', name: 'limits', aliases: [], nodes: [{ node_id: '11', node_title: 'Chain rule' }] },
+        { id: '73', name: 'continuity', aliases: [], nodes: [] },
       ],
       links: [],
     })
@@ -796,14 +806,14 @@ describe('NodeWorkspace', () => {
     expect(await screen.findByText('Concept coverage')).toBeInTheDocument()
     expect(screen.getByText('chain rule')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /covers this node/i }))
-    await waitFor(() => expect(removeNodeConcept).toHaveBeenCalledWith(5, 71))
+    await waitFor(() => expect(removeNodeConcept).toHaveBeenCalledWith('5', '71'))
 
     fireEvent.click(screen.getByRole('button', { name: /cover here/i }))
-    await waitFor(() => expect(addNodeConcept).toHaveBeenCalledWith(5, 72))
+    await waitFor(() => expect(addNodeConcept).toHaveBeenCalledWith('5', '72'))
 
     const picker = screen.getByRole('combobox', { name: /add coverage/i })
     fireEvent.change(picker, { target: { value: '73' } })
-    await waitFor(() => expect(addNodeConcept).toHaveBeenCalledWith(5, 73))
+    await waitFor(() => expect(addNodeConcept).toHaveBeenCalledWith('5', '73'))
   })
 
   test('concepts tab extracts a draft from the tab bar and commits it', async () => {
@@ -812,12 +822,12 @@ describe('NodeWorkspace', () => {
     expect(await screen.findByText('Concept coverage')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /extract concepts/i }))
-    await waitFor(() => expect(extractConcepts).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(extractConcepts).toHaveBeenCalledWith('3'))
     expect(await screen.findByText('Concept draft')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /commit/i }))
     await waitFor(() =>
-      expect(commitConcepts).toHaveBeenCalledWith(3, {
+      expect(commitConcepts).toHaveBeenCalledWith('3', {
         concepts: [{ name: 'chain rule', description: null, aliases: [] }],
         links: [],
         nodes: [],
@@ -828,10 +838,10 @@ describe('NodeWorkspace', () => {
   test('overview cheat-sheet menu offers open existing and regenerate when a sheet exists', async () => {
     primeDefaults()
     getNodeArtifacts.mockResolvedValue({
-      cheat_sheet: { material_id: 42, title: 'Derivatives — cheat sheet' },
+      cheat_sheet: { material_id: '42', title: 'Derivatives — cheat sheet' },
       reviews: [
-        { material_id: 50, title: 'Derivatives — Review 2026-08-21' },
-        { material_id: 45, title: 'Derivatives — Review 2026-08-14' },
+        { material_id: '50', title: 'Derivatives — Review 2026-08-21' },
+        { material_id: '45', title: 'Derivatives — Review 2026-08-14' },
       ],
     })
     renderWorkspace('/courses/3/n/5')
@@ -841,7 +851,7 @@ describe('NodeWorkspace', () => {
     expect(screen.getByRole('menuitem', { name: /regenerate cheat sheet/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: /open existing/i }))
     await waitFor(() =>
-      expect(routerHolder.current!.state.location.search).toMatchObject({ material: 42 })
+      expect(routerHolder.current!.state.location.search).toMatchObject({ material: '42' })
     )
   })
 
@@ -859,22 +869,22 @@ describe('NodeWorkspace', () => {
     primeDefaults()
     getMaterial.mockResolvedValue({
       material: {
-        id: 99,
+        id: '99',
         title: 'Derivatives — cheat sheet',
         kind: 'markdown',
         status: 'ready',
         filename: 'Cheat sheet.md',
         mime: 'text/markdown',
         pages: null,
-        course_id: 3,
+        course_id: '3',
         group_id: null,
         folder_id: null,
         blob_sha: null,
         created_at: '2026-08-23T00:00:00Z',
       },
       extraction: {
-        id: 1,
-        material_id: 99,
+        id: '1',
+        material_id: '99',
         version: 1,
         extractor: 'text',
         markdown: '# Derivatives cheat sheet\n\n- Power rule: $f\'(x) = nx^{n-1}$',
@@ -890,30 +900,30 @@ describe('NodeWorkspace', () => {
     fireEvent.click(submit)
     await waitFor(() =>
       expect(composeMaterialAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ node_id: 5, kind: 'cheat_sheet' })
+        expect.objectContaining({ node_id: '5', kind: 'cheat_sheet' })
       )
     )
     fireEvent.click(await screen.findByRole('button', { name: /close/i }))
-    await waitFor(() => expect(getMaterial).toHaveBeenCalledWith(99))
+    await waitFor(() => expect(getMaterial).toHaveBeenCalledWith('99'))
     expect(await screen.findByText(/Power rule/)).toBeInTheDocument()
   })
 
   test('overview adds a child node under the current node', async () => {
     primeDefaults()
-    addNode.mockResolvedValue({ id: 12, title: 'Integrals', order_idx: 1000, depth: 2 })
+    addNode.mockResolvedValue({ id: '12', title: 'Integrals', order_idx: 1000, depth: 2 })
     renderWorkspace('/courses/3/n/5')
     fireEvent.click(await screen.findByRole('button', { name: 'Add child' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Node title' }), {
       target: { value: 'Integrals' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Add' }))
-    await waitFor(() => expect(addNode).toHaveBeenCalledWith(3, 5, 'Integrals'))
+    await waitFor(() => expect(addNode).toHaveBeenCalledWith('3', '5', 'Integrals'))
   })
 
   test('overview empty state offers to add the first child', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
-      Promise.resolve(id === 1 ? ROOT_WS : { ...NODE_WS, children: [], child_materials: {} })
+    nodeWorkspace.mockImplementation((id: string) =>
+      Promise.resolve(id === '1' ? ROOT_WS : { ...NODE_WS, children: [], child_materials: {} })
     )
     renderWorkspace('/courses/3/n/5')
     expect(await screen.findByText(/No subsections yet/i)).toBeInTheDocument()
@@ -922,8 +932,8 @@ describe('NodeWorkspace', () => {
 
   test('fresh course root shows the guided onboarding card instead of the action bar', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
-      Promise.resolve(id === 1 ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
+    nodeWorkspace.mockImplementation((id: string) =>
+      Promise.resolve(id === '1' ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
     )
     renderWorkspace('/courses/3')
     expect(await screen.findByTestId('course-onboarding')).toBeInTheDocument()
@@ -939,8 +949,8 @@ describe('NodeWorkspace', () => {
 
   test('onboarding add materials navigates to the materials tab', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
-      Promise.resolve(id === 1 ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
+    nodeWorkspace.mockImplementation((id: string) =>
+      Promise.resolve(id === '1' ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
     )
     renderWorkspace('/courses/3')
     fireEvent.click(await screen.findByRole('button', { name: /add materials/i }))
@@ -954,12 +964,12 @@ describe('NodeWorkspace', () => {
   test('onboarding generate outline drafts the course outline', async () => {
     primeDefaults()
     outlineDraft.mockResolvedValue(DRAFT)
-    nodeWorkspace.mockImplementation((id: number) =>
-      Promise.resolve(id === 1 ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
+    nodeWorkspace.mockImplementation((id: string) =>
+      Promise.resolve(id === '1' ? { ...ROOT_WS, children: [], child_materials: {} } : NODE_WS)
     )
     renderWorkspace('/courses/3')
     fireEvent.click(await screen.findByRole('button', { name: /generate ai outline/i }))
-    await waitFor(() => expect(outlineDraft).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(outlineDraft).toHaveBeenCalledWith('3'))
     expect(await screen.findByText('Limits')).toBeInTheDocument()
   })
 
@@ -974,13 +984,13 @@ describe('NodeWorkspace', () => {
 
   test('root overview add node posts against the root', async () => {
     primeDefaults()
-    addNode.mockResolvedValue({ id: 9, title: 'Integrals', order_idx: 1000, depth: 1 })
+    addNode.mockResolvedValue({ id: '9', title: 'Integrals', order_idx: 1000, depth: 1 })
     renderWorkspace('/courses/3')
     fireEvent.click(await screen.findByRole('button', { name: /add node/i }))
     const input = screen.getByPlaceholderText('Node title')
     fireEvent.change(input, { target: { value: 'Integrals' } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
-    await waitFor(() => expect(addNode).toHaveBeenCalledWith(3, 1, 'Integrals'))
+    await waitFor(() => expect(addNode).toHaveBeenCalledWith('3', '1', 'Integrals'))
   })
 
   test('root AI outline drafts, prunes and commits', async () => {
@@ -1003,7 +1013,7 @@ describe('NodeWorkspace', () => {
     expect(within(draftCard).getByText('Continuity')).toBeInTheDocument()
 
     fireEvent.click(within(draftCard).getByRole('button', { name: /commit outline/i }))
-    await waitFor(() => expect(outlineCommit).toHaveBeenCalledWith(3, [DRAFT.chapters[0]]))
+    await waitFor(() => expect(outlineCommit).toHaveBeenCalledWith('3', [DRAFT.chapters['0']]))
     await waitFor(() => expect(screen.queryByText('Limits')).not.toBeInTheDocument())
   })
 
@@ -1020,17 +1030,17 @@ describe('NodeWorkspace', () => {
   test('tutor tab lists node-bound sessions and ask opens the sidebar', async () => {
     primeDefaults()
     listChatSessions.mockResolvedValue([
-      { id: 9, course_id: 3, node_id: 5, title: 'Derivatives chat' },
+      { id: '9', course_id: '3', node_id: '5', title: 'Derivatives chat' },
     ])
-    createChatSession.mockResolvedValue({ id: 12, public_id: 'uuid-12', course_id: 3, node_id: 5, title: 'Derivatives' })
+    createChatSession.mockResolvedValue({ id: '12', public_id: 'uuid-12', course_id: '3', node_id: '5', title: 'Derivatives' })
     renderWorkspace('/courses/3/n/5?tab=tutor')
     expect(await screen.findByText('Derivatives chat')).toBeInTheDocument()
-    await waitFor(() => expect(listChatSessions).toHaveBeenCalledWith(5))
+    await waitFor(() => expect(listChatSessions).toHaveBeenCalledWith('5'))
 
     fireEvent.click(screen.getAllByRole('button', { name: /ask about this node/i })[0])
-    await waitFor(() => expect(createChatSession).toHaveBeenCalledWith(3, 5, 'Derivatives'))
+    await waitFor(() => expect(createChatSession).toHaveBeenCalledWith('3', '5', 'Derivatives'))
     await waitFor(() => expect(useChatStore.getState().open).toBe(true))
-    expect(useChatStore.getState().session).toEqual({ id: 12, publicId: 'uuid-12' })
+    expect(useChatStore.getState().session).toEqual({ id: '12', publicId: 'uuid-12' })
   })
 
   test('notes tab rolls up notes with node chips and opens a row in the drawer', async () => {
@@ -1038,10 +1048,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Chain rule note',
-          course_id: 3,
-          node_id: 11,
+          course_id: '3',
+          node_id: '11',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -1054,16 +1064,16 @@ describe('NodeWorkspace', () => {
     renderWorkspace('/courses/3/n/5?tab=notes')
     expect(await screen.findByText('Chain rule note')).toBeInTheDocument()
     expect(screen.getByText('Chain rule')).toBeInTheDocument()
-    expect(listNotes).toHaveBeenCalledWith(undefined, 3, {
+    expect(listNotes).toHaveBeenCalledWith(undefined, '3', {
       tag: undefined,
-      node_id: 5,
+      node_id: '5',
       limit: 50,
       cursor: undefined,
     })
 
     fireEvent.doubleClick(screen.getByRole('button', { name: /chain rule note/i }))
     await waitFor(() =>
-      expect(routerHolder.current!.state.location.search).toMatchObject({ note: 21 })
+      expect(routerHolder.current!.state.location.search).toMatchObject({ note: '21' })
     )
     expect(
       screen.queryByRole('textbox', { name: 'Note title' })
@@ -1084,10 +1094,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Chain rule note',
-          course_id: 3,
-          node_id: 11,
+          course_id: '3',
+          node_id: '11',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -1107,19 +1117,19 @@ describe('NodeWorkspace', () => {
     const input = await screen.findByRole('textbox', { name: 'Rename note' })
     fireEvent.change(input, { target: { value: 'Renamed note' } })
     fireEvent.submit(input.closest('form')!)
-    await waitFor(() => expect(updateNote).toHaveBeenCalledWith(21, { title: 'Renamed note' }))
+    await waitFor(() => expect(updateNote).toHaveBeenCalledWith('21', { title: 'Renamed note' }))
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Actions' })[0])
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     expect(deleteNote).not.toHaveBeenCalled()
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(21))
+    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith('21'))
   })
 
   test('practice tab deletes a quiz from the row menu', async () => {
     primeDefaults()
     listQuizzes.mockResolvedValue([
-      { id: 50, title: 'Node quiz', type: 'quiz', course_id: 3, node_id: 5, question_count: 4 },
+      { id: '50', title: 'Node quiz', type: 'quiz', course_id: '3', node_id: '5', question_count: 4 },
     ])
     deleteQuiz.mockResolvedValue(undefined)
     renderWorkspace('/courses/3/n/5?tab=practice')
@@ -1127,24 +1137,24 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteQuiz).toHaveBeenCalledWith(50))
+    await waitFor(() => expect(deleteQuiz).toHaveBeenCalledWith('50'))
   })
 
   test('notes tab creates a note here and pins it in the dock URL', async () => {
     primeDefaults()
-    createNote.mockResolvedValue({ id: 30, body: [], drawings: [], tags: [] })
+    createNote.mockResolvedValue({ id: '30', body: [], drawings: [], tags: [] })
     renderWorkspace('/courses/3/n/5?tab=notes')
     fireEvent.click(await screen.findByRole('button', { name: /new note here/i }))
     await waitFor(() =>
       expect(createNote).toHaveBeenCalledWith({
         title: 'Untitled note',
-        course_id: 3,
-        node_id: 5,
+        course_id: '3',
+        node_id: '5',
         tags: [],
       })
     )
     await waitFor(() =>
-      expect(routerHolder.current!.state.location.search).toMatchObject({ note: 30 })
+      expect(routerHolder.current!.state.location.search).toMatchObject({ note: '30' })
     )
     expect(
       screen.queryByRole('textbox', { name: 'Note title' })
@@ -1159,10 +1169,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Chain rule note',
-          course_id: 3,
-          node_id: 11,
+          course_id: '3',
+          node_id: '11',
           owner_type: 'standalone',
           owner_id: null,
           tags: ['exam'],
@@ -1176,9 +1186,9 @@ describe('NodeWorkspace', () => {
     renderWorkspace('/courses/3/n/5?tab=notes')
     fireEvent.click(await screen.findByRole('button', { name: 'exam' }))
     await waitFor(() =>
-      expect(listNotes).toHaveBeenLastCalledWith(undefined, 3, {
+      expect(listNotes).toHaveBeenLastCalledWith(undefined, '3', {
         tag: 'exam',
-        node_id: 5,
+        node_id: '5',
         limit: 50,
         cursor: undefined,
       })
@@ -1188,9 +1198,9 @@ describe('NodeWorkspace', () => {
     const input = await screen.findByRole('textbox', { name: /search notes/i })
     fireEvent.change(input, { target: { value: 'chain rule' } })
     await waitFor(() =>
-      expect(listNotes).toHaveBeenLastCalledWith('chain rule', 3, {
+      expect(listNotes).toHaveBeenLastCalledWith('chain rule', '3', {
         tag: 'exam',
-        node_id: 5,
+        node_id: '5',
         limit: 50,
         cursor: undefined,
       })
@@ -1200,10 +1210,10 @@ describe('NodeWorkspace', () => {
   test('practice tab lists scoped quizzes and exercises with node chips', async () => {
     primeDefaults()
     listQuizzes.mockResolvedValue([
-      { id: 50, title: 'Node quiz', type: 'quiz', course_id: 3, node_id: 5, question_count: 4 },
+      { id: '50', title: 'Node quiz', type: 'quiz', course_id: '3', node_id: '5', question_count: 4 },
     ])
     listExercises.mockResolvedValue([
-      { id: 60, title: 'Node exercise', course_id: 3, node_id: 11, difficulty: 2, step_count: 3 },
+      { id: '60', title: 'Node exercise', course_id: '3', node_id: '11', difficulty: 2, step_count: 3 },
     ])
     renderWorkspace('/courses/3/n/5?tab=practice')
     expect(await screen.findByText('Node quiz')).toBeInTheDocument()
@@ -1225,10 +1235,10 @@ describe('NodeWorkspace', () => {
   test('practice tab rows navigate to the quiz runner and exercise player', async () => {
     primeDefaults()
     listQuizzes.mockResolvedValue([
-      { id: 50, title: 'Node quiz', type: 'quiz', course_id: 3, node_id: 5, question_count: 4 },
+      { id: '50', title: 'Node quiz', type: 'quiz', course_id: '3', node_id: '5', question_count: 4 },
     ])
     listExercises.mockResolvedValue([
-      { id: 60, title: 'Node exercise', course_id: 3, node_id: 11, difficulty: 2, step_count: 3 },
+      { id: '60', title: 'Node exercise', course_id: '3', node_id: '11', difficulty: 2, step_count: 3 },
     ])
     const first = renderWorkspace('/courses/3/n/5?tab=practice')
     fireEvent.doubleClick(await screen.findByRole('button', { name: /node quiz/i }))
@@ -1266,7 +1276,7 @@ describe('NodeWorkspace', () => {
   test('practice tab similar action generates an isomorphic variant', async () => {
     primeDefaults()
     listExercises.mockResolvedValue([
-      { id: 60, title: 'Node exercise', course_id: 3, node_id: 11, difficulty: 2, step_count: 3 },
+      { id: '60', title: 'Node exercise', course_id: '3', node_id: '11', difficulty: 2, step_count: 3 },
     ])
     renderWorkspace('/courses/3/n/5?tab=practice')
     await screen.findByText('Node exercise')
@@ -1275,7 +1285,7 @@ describe('NodeWorkspace', () => {
     fireEvent.click(
       await screen.findByRole('menuitem', { name: /generate a similar exercise/i })
     )
-    await waitFor(() => expect(similarExercise).toHaveBeenCalledWith(60))
+    await waitFor(() => expect(similarExercise).toHaveBeenCalledWith('60'))
   })
 
   test('practice tab drills card uses the workspace course', async () => {
@@ -1309,7 +1319,7 @@ describe('NodeWorkspace', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.doubleClick(row)
     await waitFor(() =>
-      expect(routerHolder.current!.state.location.search).toMatchObject({ material: 7 })
+      expect(routerHolder.current!.state.location.search).toMatchObject({ material: '7' })
     )
     expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -1326,7 +1336,7 @@ describe('NodeWorkspace', () => {
       expect(routerHolder.current!.state.location.search).toMatchObject({ material: 7 })
     )
     expect(
-      (routerHolder.current!.state.location.search as { study?: number }).study
+      (routerHolder.current!.state.location.search as { study?: string }).study
     ).toBeUndefined()
   })
 
@@ -1369,12 +1379,12 @@ describe('NodeWorkspace', () => {
     const row = await screen.findByRole('button', { name: /chain-rule\.pdf/i })
     fireEvent.contextMenu(row)
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from node' }))
-    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith(5, 7))
+    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith('5', '7'))
   })
 
   test('materials tab right-click on a pdf offers Re-extract and opens the dialog', async () => {
     primeDefaults()
-    getMaterial.mockImplementation((id: number) =>
+    getMaterial.mockImplementation((id: string) =>
       Promise.resolve({
         material: {
           id,
@@ -1384,7 +1394,7 @@ describe('NodeWorkspace', () => {
           filename: 'chain-rule.pdf',
           mime: 'application/pdf',
           pages: 4,
-          course_id: 3,
+          course_id: '3',
           group_id: null,
           folder_id: null,
           blob_sha: 'b'.repeat(64),
@@ -1408,10 +1418,10 @@ describe('NodeWorkspace', () => {
   test('materials tab uploads place at the node in the single upload call', async () => {
     primeDefaults()
     uploadMaterial.mockResolvedValue({
-      material: { id: 77, title: 'problems.pdf', kind: 'pdf', status: 'pending' },
+      material: { id: '77', title: 'problems.pdf', kind: 'pdf', status: 'pending' },
       job_id: null,
       deduped: false,
-      node_id: 5,
+      node_id: '5',
     })
     renderWorkspace('/courses/3/n/5?tab=materials')
     await screen.findByRole('button', { name: /chain-rule\.pdf/i })
@@ -1420,9 +1430,9 @@ describe('NodeWorkspace', () => {
       target: { files: [new File(['data'], 'problems.pdf', { type: 'application/pdf' })] },
     })
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(1))
-    expect(uploadMaterial.mock.calls[0][1]).toBe(3)
+    expect(uploadMaterial.mock.calls[0][1]).toBe('3')
     expect(uploadMaterial.mock.calls[0][2]).toBeNull()
-    expect(uploadMaterial.mock.calls[0][3]).toBe(5)
+    expect(uploadMaterial.mock.calls[0][3]).toBe('5')
     await waitFor(() => expect(allocateMaterial).not.toHaveBeenCalled())
   })
 
@@ -1461,12 +1471,12 @@ describe('NodeWorkspace', () => {
   test('materials tab new Markdown file creates it unfiled and assigns it to the node', async () => {
     primeDefaults()
     createTextMaterial.mockResolvedValue({
-      materialId: 88,
+      materialId: '88',
       content: '$x^2$ rules',
       refToReal: {},
       jobId: null,
     })
-    allocateMaterial.mockResolvedValue({ node_id: 5, material_id: 88 })
+    allocateMaterial.mockResolvedValue({ node_id: '5', material_id: '88' })
     renderWorkspace('/courses/3/n/5?tab=materials')
     await screen.findByRole('button', { name: /chain-rule\.pdf/i })
 
@@ -1480,7 +1490,7 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() =>
       expect(createTextMaterial).toHaveBeenCalledWith({
-        course_id: 3,
+        course_id: '3',
         folder_id: null,
         filename: 'derivation.md',
         content: '$x^2$ rules',
@@ -1488,7 +1498,7 @@ describe('NodeWorkspace', () => {
         drawings: [],
       })
     )
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(5, 88))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('5', '88'))
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Save' })).not.toBeNull()
     )
@@ -1510,8 +1520,8 @@ describe('NodeWorkspace', () => {
       target: { value: 'Practice set' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
-    await waitFor(() => expect(createFolder).toHaveBeenCalledWith('Practice set', null, 3))
-    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith(5, 901))
+    await waitFor(() => expect(createFolder).toHaveBeenCalledWith('Practice set', null, '3'))
+    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith('5', '901'))
     await waitFor(() =>
       expect(screen.queryByPlaceholderText('Folder name')).not.toBeInTheDocument()
     )
@@ -1586,7 +1596,7 @@ describe('NodeWorkspace', () => {
     allocateNodeFolder.mockClear()
     allocateNodeFolder.mockResolvedValue(undefined)
     uploadMaterial.mockImplementation(async (sent: File) => ({
-      material: { id: 70 + sent.name.charCodeAt(0), title: sent.name, kind: 'pdf', status: 'pending' },
+      material: { id: String(70 + sent.name.charCodeAt(0)), title: sent.name, kind: 'pdf', status: 'pending' },
       job_id: null,
       deduped: false,
     }))
@@ -1602,12 +1612,12 @@ describe('NodeWorkspace', () => {
     fireEvent.change(input, { target: { files: [pack, deep] } })
 
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalledTimes(2))
-    expect(createFolder).toHaveBeenCalledWith('Lecture pack', null, 3)
-    expect(createFolder).toHaveBeenCalledWith('week1', 901, 3)
+    expect(createFolder).toHaveBeenCalledWith('Lecture pack', null, '3')
+    expect(createFolder).toHaveBeenCalledWith('week1', '901', '3')
     const targetFolders = uploadMaterial.mock.calls.map((call) => call[2])
-    expect(new Set(targetFolders)).toEqual(new Set([901, 902]))
+    expect(new Set(targetFolders)).toEqual(new Set(['901', '902']))
     await waitFor(() =>
-      expect(allocateNodeFolder).toHaveBeenCalledWith(5, 901)
+      expect(allocateNodeFolder).toHaveBeenCalledWith('5', '901')
     )
     expect(allocateNodeFolder).toHaveBeenCalledTimes(1)
     expect(allocateMaterial).not.toHaveBeenCalled()
@@ -1626,13 +1636,13 @@ describe('NodeWorkspace', () => {
     primeDefaults()
     listFlashcards.mockResolvedValue([
       {
-        id: 7,
+        id: '7',
         kind: 'basic',
         front: [{ type: 'text', md: 'Power rule' }],
         back: [{ type: 'text', md: 'n times x to the n minus one' }],
         source: 'note',
         source_ref: null,
-        node_id: 5,
+        node_id: '5',
         due_at: null,
         state: null,
       },
@@ -1643,7 +1653,7 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getByRole('tab', { name: /flashcards/i }))
     expect(setsSegment).toHaveAttribute('aria-selected', 'false')
     expect(await screen.findByText('Power rule')).toBeInTheDocument()
-    expect(dueFlashcards).toHaveBeenCalledWith(20, 3, 5)
+    expect(dueFlashcards).toHaveBeenCalledWith(20, '3', '5')
   })
 
   test('practice tab keeps quiz actions on the sets segment only', async () => {
@@ -1659,26 +1669,26 @@ describe('NodeWorkspace', () => {
     primeDefaults()
     dueFlashcards.mockResolvedValue([
       {
-        id: 7,
+        id: '7',
         kind: 'basic',
         front: [{ type: 'text', md: 'Power rule for x to the n?' }],
         back: [{ type: 'text', md: 'n times x to the n minus one' }],
         source: 'note',
         source_ref: null,
-        node_id: 5,
+        node_id: '5',
         due_at: null,
         state: null,
       },
     ])
     renderWorkspace('/courses/3/n/5?tab=cards')
     expect(await screen.findByText(/Power rule for/)).toBeInTheDocument()
-    expect(dueFlashcards).toHaveBeenCalledWith(20, 3, 5)
+    expect(dueFlashcards).toHaveBeenCalledWith(20, '3', '5')
 
     fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
     expect(await screen.findByText('n times x to the n minus one')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /good/i }))
-    await waitFor(() => expect(reviewFlashcard).toHaveBeenCalledWith(7, 3))
+    await waitFor(() => expect(reviewFlashcard).toHaveBeenCalledWith('7', 3))
   })
 
   test('old chapters route redirects to the node workspace', async () => {
@@ -1705,7 +1715,7 @@ describe('NodeWorkspace', () => {
       target: { value: 'prefer numeric answers' },
     })
     fireEvent.click(within(panel).getByRole('button', { name: /save/i }))
-    await waitFor(() => expect(updateNode).toHaveBeenCalledWith(5, { ai_hint: 'prefer numeric answers' }))
+    await waitFor(() => expect(updateNode).toHaveBeenCalledWith('5', { ai_hint: 'prefer numeric answers' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
@@ -1735,7 +1745,7 @@ describe('NodeWorkspace', () => {
     })
     fireEvent.click(within(panel).getByRole('button', { name: /save/i }))
     await waitFor(() =>
-      expect(updateCourse).toHaveBeenCalledWith(3, {
+      expect(updateCourse).toHaveBeenCalledWith('3', {
         title: 'Calculus II',
         description: 'A different description',
       })
@@ -1752,13 +1762,13 @@ describe('NodeWorkspace', () => {
 
     fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from node' }))
-    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith(5, 7))
+    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith('5', '7'))
 
     fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Assign to node…' }))
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chain rule/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(11, 7))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('11', '7'))
   })
 
   test('materials tab right-click saves extracted text as a material', async () => {
@@ -1766,10 +1776,10 @@ describe('NodeWorkspace', () => {
     deriveMaterialsMock.mockResolvedValue({
       results: [
         {
-          material_id: 7,
+          material_id: '7',
           outcome: 'created',
           material: null,
-          job_id: 41,
+          job_id: '41',
         },
       ],
       created: 1,
@@ -1781,22 +1791,22 @@ describe('NodeWorkspace', () => {
 
     fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Save as material' }))
-    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith([7]))
+    await waitFor(() => expect(deriveMaterialsMock).toHaveBeenCalledWith(['7']))
     expect(await screen.findByText('Saved 1 material')).toBeInTheDocument()
   })
 
   test('materials tab shows assigned folders as folder rows with unassign', async () => {
     primeDefaults()
     deallocateNodeFolder.mockResolvedValue(undefined)
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -1805,7 +1815,7 @@ describe('NodeWorkspace', () => {
                 },
               ],
               materials: [NODE_WS.materials[0]],
-              folder_material_ids: [9],
+              folder_material_ids: ['9'],
             }
       )
     )
@@ -1818,20 +1828,20 @@ describe('NodeWorkspace', () => {
     expect(within(row).getByText('2')).toBeInTheDocument()
 
     fireEvent.click(within(row).getByTitle('Unassign folder'))
-    await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith(5, 10))
+    await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith('5', '10'))
   })
 
   test('materials tab does not list files from an assigned folder', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -1840,7 +1850,7 @@ describe('NodeWorkspace', () => {
                 },
               ],
               materials: [],
-              folder_material_ids: [8, 9],
+              folder_material_ids: ['8', '9'],
             }
       )
     )
@@ -1854,15 +1864,15 @@ describe('NodeWorkspace', () => {
 
   test('assigned folders render as grid tiles too', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -1885,15 +1895,15 @@ describe('NodeWorkspace', () => {
 
   test('double-clicking an assigned folder drills in inside the tab (plan 76 B)', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -1910,7 +1920,7 @@ describe('NodeWorkspace', () => {
     await waitFor(() =>
       expect(routerHolder.current!.state.location.search).toMatchObject({
         tab: 'materials',
-        folder: 10,
+        folder: '10',
       })
     )
     expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
@@ -1918,17 +1928,17 @@ describe('NodeWorkspace', () => {
 
   test('linked-source assigned folder browses its source in the tab (plan 76 C)', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
-                  source_id: 77,
+                  source_id: '77',
                   member_count: 2,
                   rationale: null,
                   auto_assigned: false,
@@ -1939,17 +1949,17 @@ describe('NodeWorkspace', () => {
     )
     listFolders.mockResolvedValue([
       {
-        id: 10,
+        id: '10',
         name: 'Lectures',
         path: '/Lectures',
-        course_id: 3,
+        course_id: '3',
         parent_id: null,
-        source_id: 77,
+        source_id: '77',
         created_at: '2026-09-01T00:00:00Z',
       },
     ])
     browseSource.mockResolvedValue({
-      source_id: 77,
+      source_id: '77',
       label: 'Lecture vault',
       path: '/vault',
       subdir: '',
@@ -1961,7 +1971,7 @@ describe('NodeWorkspace', () => {
       subdirs: [{ name: 'week-1' }],
       materials: [
         {
-          id: 55,
+          id: '55',
           title: 'intro-scan.pdf',
           kind: 'pdf',
           status: 'ready',
@@ -1979,31 +1989,31 @@ describe('NodeWorkspace', () => {
     await waitFor(() =>
       expect(routerHolder.current!.state.location.search).toMatchObject({
         tab: 'materials',
-        folder: 10,
+        folder: '10',
       })
     )
     expect(await screen.findByText('intro-scan.pdf')).toBeInTheDocument()
-    expect(browseSource).toHaveBeenCalledWith(77, '')
+    expect(browseSource).toHaveBeenCalledWith('77', '')
     expect(screen.getByText('week-1')).toBeInTheDocument()
     expect(screen.getByText('new-notes.txt')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('week-1'))
-    await waitFor(() => expect(browseSource).toHaveBeenCalledWith(77, 'week-1'))
+    await waitFor(() => expect(browseSource).toHaveBeenCalledWith('77', 'week-1'))
   })
 
   test('linked-source browse offers open-in-library at the crumb row (plan 76 C)', async () => {
     primeDefaults()
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
-                  source_id: 77,
+                  source_id: '77',
                   member_count: 2,
                   rationale: null,
                   auto_assigned: false,
@@ -2014,12 +2024,12 @@ describe('NodeWorkspace', () => {
     )
     listFolders.mockResolvedValue([
       {
-        id: 10,
+        id: '10',
         name: 'Lectures',
         path: '/Lectures',
-        course_id: 3,
+        course_id: '3',
         parent_id: null,
-        source_id: 77,
+        source_id: '77',
         created_at: '2026-09-01T00:00:00Z',
       },
     ])
@@ -2030,7 +2040,7 @@ describe('NodeWorkspace', () => {
       expect(navigateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           to: '/library',
-          search: expect.objectContaining({ course: 3, folder: 10, source: 77 }),
+          search: expect.objectContaining({ course: '3', folder: '10', source: '77' }),
         })
       )
     )
@@ -2039,15 +2049,15 @@ describe('NodeWorkspace', () => {
   test('assigned folder context menu unassigns it', async () => {
     primeDefaults()
     deallocateNodeFolder.mockResolvedValue(undefined)
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -2065,7 +2075,7 @@ describe('NodeWorkspace', () => {
       await screen.findByRole('menuitem', { name: 'Open in library' })
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Unassign folder' }))
-    await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith(5, 10))
+    await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith('5', '10'))
   })
 
   test('materials tab folder menu mirrors the folder structure into nodes', async () => {
@@ -2076,15 +2086,15 @@ describe('NodeWorkspace', () => {
       folder_links: 3,
       skipped_folders: [],
     })
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -2101,7 +2111,7 @@ describe('NodeWorkspace', () => {
     fireEvent.click(
       await screen.findByRole('menuitem', { name: 'Mirror folder structure into nodes' })
     )
-    await waitFor(() => expect(mirrorFolder).toHaveBeenCalledWith(5, 10))
+    await waitFor(() => expect(mirrorFolder).toHaveBeenCalledWith('5', '10'))
     expect(
       await screen.findByText('2 nodes created')
     ).toBeInTheDocument()
@@ -2115,15 +2125,15 @@ describe('NodeWorkspace', () => {
       folder_links: 2,
       skipped_folders: ['pack/a/b/c'],
     })
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -2152,8 +2162,8 @@ describe('NodeWorkspace', () => {
     getUnassignedMaterials.mockResolvedValue({
       count: 2,
       materials: [
-        { id: 51, title: 'orphan-a.pdf' },
-        { id: 52, title: 'orphan-b.pdf' },
+        { id: '51', title: 'orphan-a.pdf' },
+        { id: '52', title: 'orphan-b.pdf' },
       ],
     })
     allocateMaterial.mockResolvedValue(undefined)
@@ -2171,7 +2181,7 @@ describe('NodeWorkspace', () => {
     fireEvent.click(
       within(placeDialog).getByRole('button', { name: 'Assign' })
     )
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(expect.anything(), 51))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(expect.anything(), '51'))
     await waitFor(() =>
       expect(getUnassignedMaterials).toHaveBeenCalled()
     )
@@ -2188,19 +2198,19 @@ describe('NodeWorkspace', () => {
     primeDefaults()
     getUnassignedMaterials.mockResolvedValue({
       count: 1,
-      materials: [{ id: 51, title: 'integration by parts worked examples.pdf' }],
+      materials: [{ id: '51', title: 'integration by parts worked examples.pdf' }],
     })
     getPlacementSuggestions.mockResolvedValue({
       suggestions: [
         {
-          material_id: 51,
+          material_id: '51',
           candidates: [
             {
-              node_id: 11,
+              node_id: '11',
               node_title: 'Integration techniques',
               breadcrumb: [
-                { id: 1, title: 'Calculus I' },
-                { id: 11, title: 'Integration techniques' },
+                { id: '1', title: 'Calculus I' },
+                { id: '11', title: 'Integration techniques' },
               ],
               score: 0.42,
               matched_on: ['integration'],
@@ -2215,14 +2225,14 @@ describe('NodeWorkspace', () => {
     fireEvent.click(await screen.findByTestId('needs-placement-strip'))
     fireEvent.click(await screen.findByRole('button', { name: 'Suggest for all' }))
     await waitFor(() =>
-      expect(getPlacementSuggestions).toHaveBeenCalledWith(3, [51])
+      expect(getPlacementSuggestions).toHaveBeenCalledWith('3', ['51'])
     )
     const chip = await screen.findByRole('button', {
       name: 'Calculus I › Integration techniques',
     })
     expect(chip).toHaveAttribute('title', 'integration')
     fireEvent.click(chip)
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(11, 51))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('11', '51'))
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Calculus I › Integration techniques' }))
         .not.toBeInTheDocument()
@@ -2233,15 +2243,15 @@ describe('NodeWorkspace', () => {
     primeDefaults()
     deallocateMaterial.mockResolvedValue(undefined)
     deallocateNodeFolder.mockResolvedValue(undefined)
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -2261,23 +2271,23 @@ describe('NodeWorkspace', () => {
     fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Unassign' }))
 
-    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith(5, 7))
-    await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith(5, 10))
+    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith('5', '7'))
+    await waitFor(() => expect(deallocateNodeFolder).toHaveBeenCalledWith('5', '10'))
   })
 
   test('materials tab assign-to-node also moves selected folders', async () => {
     primeDefaults()
     allocateMaterial.mockResolvedValue(undefined)
     allocateNodeFolder.mockResolvedValue(undefined)
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 2,
@@ -2297,23 +2307,23 @@ describe('NodeWorkspace', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Assign to node…' }))
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chain rule/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Assign' }))
-    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith(11, 7))
-    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith(11, 10))
+    await waitFor(() => expect(allocateMaterial).toHaveBeenCalledWith('11', '7'))
+    await waitFor(() => expect(allocateNodeFolder).toHaveBeenCalledWith('11', '10'))
   })
 
   test('materials tab bulk unassign skips folder-member materials', async () => {
     primeDefaults()
     deallocateMaterial.mockResolvedValue(undefined)
-    nodeWorkspace.mockImplementation((id: number) =>
+    nodeWorkspace.mockImplementation((id: string) =>
       Promise.resolve(
-        id === 1
+        id === '1'
           ? ROOT_WS
           : {
               ...NODE_WS,
               materials: [NODE_WS.materials[0]],
               folders: [
                 {
-                  folder_id: 10,
+                  folder_id: '10',
                   name: 'Lectures',
                   source_id: null,
                   member_count: 1,
@@ -2321,7 +2331,7 @@ describe('NodeWorkspace', () => {
                   auto_assigned: false,
                 },
               ],
-              folder_material_ids: [9],
+              folder_material_ids: ['9'],
             }
       )
     )
@@ -2333,8 +2343,8 @@ describe('NodeWorkspace', () => {
     fireEvent.contextMenu(screen.getByText('chain-rule.pdf'))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from node' }))
 
-    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith(5, 7))
-    expect(deallocateMaterial).not.toHaveBeenCalledWith(5, 9)
+    await waitFor(() => expect(deallocateMaterial).toHaveBeenCalledWith('5', '7'))
+    expect(deallocateMaterial).not.toHaveBeenCalledWith('5', '9')
   })
 
   test('notes tab bulk-deletes and moves the selection to a node', async () => {
@@ -2342,10 +2352,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Limits note',
-          course_id: 3,
-          node_id: 5,
+          course_id: '3',
+          node_id: '5',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -2353,10 +2363,10 @@ describe('NodeWorkspace', () => {
           updated_at: '2026-08-19T00:00:00Z',
         },
         {
-          id: 22,
+          id: '22',
           title: 'Chain note',
-          course_id: 3,
-          node_id: 5,
+          course_id: '3',
+          node_id: '5',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -2366,7 +2376,7 @@ describe('NodeWorkspace', () => {
       ],
       next_cursor: null,
     })
-    deleteNote.mockResolvedValue({ deleted_item_id: 90 })
+    deleteNote.mockResolvedValue({ deleted_item_id: '90' })
     moveNote.mockResolvedValue(undefined)
     renderWorkspace('/courses/3/n/5?tab=notes')
     await screen.findByText('Limits note')
@@ -2378,8 +2388,8 @@ describe('NodeWorkspace', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(21))
-    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith(22))
+    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith('21'))
+    await waitFor(() => expect(deleteNote).toHaveBeenCalledWith('22'))
 
     fireEvent.mouseDown(screen.getByText('Limits note'))
     fireEvent.mouseDown(screen.getByText('Chain note'), { ctrlKey: true })
@@ -2387,8 +2397,8 @@ describe('NodeWorkspace', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: /Move to node/i }))
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chain rule/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Move' }))
-    await waitFor(() => expect(moveNote).toHaveBeenCalledWith(21, 11))
-    await waitFor(() => expect(moveNote).toHaveBeenCalledWith(22, 11))
+    await waitFor(() => expect(moveNote).toHaveBeenCalledWith('21', '11'))
+    await waitFor(() => expect(moveNote).toHaveBeenCalledWith('22', '11'))
   })
 
   test('notes tab marquee drag selects the intersecting notes without a count bar', async () => {
@@ -2396,10 +2406,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Limits note',
-          course_id: 3,
-          node_id: 5,
+          course_id: '3',
+          node_id: '5',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -2439,10 +2449,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Limits note',
-          course_id: 3,
-          node_id: 5,
+          course_id: '3',
+          node_id: '5',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -2450,10 +2460,10 @@ describe('NodeWorkspace', () => {
           updated_at: '2026-08-19T00:00:00Z',
         },
         {
-          id: 22,
+          id: '22',
           title: 'Chain note',
-          course_id: 3,
-          node_id: 5,
+          course_id: '3',
+          node_id: '5',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -2486,11 +2496,11 @@ describe('NodeWorkspace', () => {
     })
 
     const item = JSON.parse(payload['application/x-sa-item']) as {
-      folderIds: number[]
-      materialIds: number[]
-      noteIds: number[]
+      folderIds: string[]
+      materialIds: string[]
+      noteIds: string[]
     }
-    expect(item.noteIds).toEqual([21, 22])
+    expect(item.noteIds).toEqual(['21', '22'])
   })
 
   test('notes drag of an unselected note carries just it and selects it', async () => {
@@ -2498,10 +2508,10 @@ describe('NodeWorkspace', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Limits note',
-          course_id: 3,
-          node_id: 5,
+          course_id: '3',
+          node_id: '5',
           owner_type: 'standalone',
           owner_id: null,
           tags: [],
@@ -2530,24 +2540,24 @@ describe('NodeWorkspace', () => {
     })
 
     const item = JSON.parse(payload['application/x-sa-item']) as {
-      folderIds: number[]
-      materialIds: number[]
-      noteIds: number[]
+      folderIds: string[]
+      materialIds: string[]
+      noteIds: string[]
     }
-    expect(item.noteIds).toEqual([21])
+    expect(item.noteIds).toEqual(['21'])
     await waitFor(() => expect(wrapper.className).toContain('bg-primary/10'))
   })
 
   test('practice tab moves selected quizzes and deletes selected exercises', async () => {
     primeDefaults()
     listQuizzes.mockResolvedValue([
-      { id: 50, title: 'Node quiz', type: 'quiz', course_id: 3, node_id: 5, question_count: 4 },
+      { id: '50', title: 'Node quiz', type: 'quiz', course_id: '3', node_id: '5', question_count: 4 },
     ])
     listExercises.mockResolvedValue([
-      { id: 60, title: 'Drill', course_id: 3, node_id: 5, step_count: 2, difficulty: null },
+      { id: '60', title: 'Drill', course_id: '3', node_id: '5', step_count: 2, difficulty: null },
     ])
     moveQuiz.mockResolvedValue(undefined)
-    deleteExercise.mockResolvedValue({ deleted_item_id: 91 })
+    deleteExercise.mockResolvedValue({ deleted_item_id: '91' })
     renderWorkspace('/courses/3/n/5?tab=practice')
     await screen.findByText('Node quiz')
 
@@ -2555,13 +2565,13 @@ describe('NodeWorkspace', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Move to node/i })[0])
     fireEvent.click(await screen.findByRole('treeitem', { name: /Chain rule/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Move' }))
-    await waitFor(() => expect(moveQuiz).toHaveBeenCalledWith(50, 11))
+    await waitFor(() => expect(moveQuiz).toHaveBeenCalledWith('50', '11'))
 
     fireEvent.mouseDown(screen.getByText('Drill'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0])
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(deleteExercise).toHaveBeenCalledWith(60))
+    await waitFor(() => expect(deleteExercise).toHaveBeenCalledWith('60'))
   })
 
   test('settings tab appears at the course root only and deep-links to course details', async () => {
@@ -2591,7 +2601,7 @@ describe('NodeWorkspace', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
     await waitFor(() =>
-      expect(updateCourse).toHaveBeenCalledWith(3, {
+      expect(updateCourse).toHaveBeenCalledWith('3', {
         title: 'Analysis I',
         description: 'Limits, derivatives, integrals',
       })
@@ -2601,8 +2611,8 @@ describe('NodeWorkspace', () => {
   test('settings tasks subtab lists overrides and assigns a course model', async () => {
     primeDefaults()
     listModels.mockResolvedValue([
-      { id: 1, label: 'local-mini', caps: ['text'], enabled: true, missing: false },
-      { id: 2, label: 'vision-pro', caps: ['text', 'vision'], enabled: true, missing: false },
+      { id: '1', label: 'local-mini', caps: ['text'], enabled: true, missing: false },
+      { id: '2', label: 'vision-pro', caps: ['text', 'vision'], enabled: true, missing: false },
     ])
     listCourseTaskDefaults.mockResolvedValue([])
     listCourseTasks.mockResolvedValue([
@@ -2621,7 +2631,7 @@ describe('NodeWorkspace', () => {
         task: 'ocr',
         description: 'Scanned page OCR',
         requires: 'vision',
-        model_id: 2,
+        model_id: '2',
         fallback_model_id: null,
         model_label: 'vision-pro',
         fallback_model_label: null,
@@ -2641,7 +2651,7 @@ describe('NodeWorkspace', () => {
     expect(chatModel).toHaveValue('')
     fireEvent.change(chatModel, { target: { value: '1' } })
     await waitFor(() =>
-      expect(assignCourseTask).toHaveBeenCalledWith(3, 'chat', 1, null)
+      expect(assignCourseTask).toHaveBeenCalledWith('3', 'chat', '1', null)
     )
 
     const ocrModel = screen.getByRole('combobox', { name: 'ocr course model' })
@@ -2656,46 +2666,46 @@ describe('NodeWorkspace', () => {
   describe('materials tab folder browsing (plan 76 B)', () => {
     const FOLDERS = [
       {
-        id: 901,
+        id: '901',
         name: 'Lectures',
         path: '/Lectures',
-        course_id: 3,
+        course_id: '3',
         parent_id: null,
         source_id: null,
         created_at: '2026-09-01T00:00:00Z',
       },
       {
-        id: 902,
+        id: '902',
         name: 'Week 1',
         path: '/Lectures/Week 1',
-        course_id: 3,
-        parent_id: 901,
+        course_id: '3',
+        parent_id: '901',
         source_id: null,
         created_at: '2026-09-01T00:00:00Z',
       },
     ]
     const FOLDER_MATERIAL = {
-      id: 44,
+      id: '44',
       title: 'limits-notes.md',
       kind: 'md',
       status: 'ready',
-      course_id: 3,
-      folder_id: 901,
+      course_id: '3',
+      folder_id: '901',
       created_at: '2026-09-01T00:00:00Z',
       provenance: null,
     }
 
     function primeFolderWorkspace() {
       primeDefaults()
-      nodeWorkspace.mockImplementation((id: number) =>
+      nodeWorkspace.mockImplementation((id: string) =>
         Promise.resolve(
-          id === 1
+          id === '1'
             ? ROOT_WS
             : {
                 ...NODE_WS,
                 folders: [
                   {
-                    folder_id: 901,
+                    folder_id: '901',
                     name: 'Lectures',
                     source_id: null,
                     member_count: 1,
@@ -2717,7 +2727,7 @@ describe('NodeWorkspace', () => {
       await waitFor(() =>
         expect(routerHolder.current!.state.location.search).toMatchObject({
           tab: 'materials',
-          folder: 901,
+          folder: '901',
         })
       )
       expect(routerHolder.current!.state.location.pathname).toBe('/courses/3/n/5')
@@ -2726,8 +2736,8 @@ describe('NodeWorkspace', () => {
     test('folder view shows full folder contents with breadcrumbs', async () => {
       primeFolderWorkspace()
       listFolders.mockResolvedValue(FOLDERS)
-      listMaterials.mockImplementation((folderId: number) =>
-        Promise.resolve(folderId === 901 ? [FOLDER_MATERIAL] : [])
+      listMaterials.mockImplementation((folderId: string) =>
+        Promise.resolve(folderId === '901' ? [FOLDER_MATERIAL] : [])
       )
       renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
       expect(await screen.findByRole('button', { name: /limits-notes\.md/i })).toBeInTheDocument()
@@ -2738,15 +2748,15 @@ describe('NodeWorkspace', () => {
     test('clicking the root crumb leaves the folder view', async () => {
       primeFolderWorkspace()
       listFolders.mockResolvedValue(FOLDERS)
-      listMaterials.mockImplementation((folderId: number) =>
-        Promise.resolve(folderId === 901 ? [FOLDER_MATERIAL] : [])
+      listMaterials.mockImplementation((folderId: string) =>
+        Promise.resolve(folderId === '901' ? [FOLDER_MATERIAL] : [])
       )
       renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
       expect(await screen.findByRole('button', { name: /limits-notes\.md/i })).toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'Materials' }))
       await waitFor(() =>
         expect(
-          (routerHolder.current!.state.location.search as { folder?: number }).folder
+          (routerHolder.current!.state.location.search as { folder?: string }).folder
         ).toBeUndefined()
       )
       expect(await screen.findByRole('button', { name: /chain-rule\.pdf/i })).toBeInTheDocument()
@@ -2760,7 +2770,7 @@ describe('NodeWorkspace', () => {
       const sub = await screen.findByText('Week 1')
       fireEvent.doubleClick(sub)
       await waitFor(() =>
-        expect(routerHolder.current!.state.location.search).toMatchObject({ folder: 902 })
+        expect(routerHolder.current!.state.location.search).toMatchObject({ folder: '902' })
       )
     })
 
@@ -2775,14 +2785,14 @@ describe('NodeWorkspace', () => {
     test('a material inside a folder opens the dock in place', async () => {
       primeFolderWorkspace()
       listFolders.mockResolvedValue(FOLDERS)
-      listMaterials.mockImplementation((folderId: number) =>
-        Promise.resolve(folderId === 901 ? [FOLDER_MATERIAL] : [])
+      listMaterials.mockImplementation((folderId: string) =>
+        Promise.resolve(folderId === '901' ? [FOLDER_MATERIAL] : [])
       )
       renderWorkspace('/courses/3/n/5?tab=materials&folder=901')
       const row = await screen.findByRole('button', { name: /limits-notes\.md/i })
       fireEvent.doubleClick(row)
       await waitFor(() =>
-        expect(routerHolder.current!.state.location.search).toMatchObject({ material: 44 })
+        expect(routerHolder.current!.state.location.search).toMatchObject({ material: '44' })
       )
     })
 
@@ -2798,7 +2808,7 @@ describe('NodeWorkspace', () => {
       ).toBeInTheDocument()
       fireEvent.click(screen.getByRole('menuitem', { name: 'Open' }))
       await waitFor(() =>
-        expect(routerHolder.current!.state.location.search).toMatchObject({ folder: 902 })
+        expect(routerHolder.current!.state.location.search).toMatchObject({ folder: '902' })
       )
     })
   })

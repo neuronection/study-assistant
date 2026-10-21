@@ -109,7 +109,7 @@ async function openAiSection(label: string) {
 }
 
 const PROVIDER = {
-  id: 1,
+  id: '1',
   name: 'Google Gemini',
   type: 'google',
   base_url: 'https://generativelanguage.googleapis.com',
@@ -136,14 +136,14 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([
       {
         ...PROVIDER,
-        id: 2,
+        id: '2',
         name: 'Local Ollama',
         is_local: true,
         country: 'DE',
         enabled: false,
         masked_key: null,
       },
-      { ...PROVIDER, id: 3, name: 'Cloud Gemini', is_local: false, country: 'US' },
+      { ...PROVIDER, id: '3', name: 'Cloud Gemini', is_local: false, country: 'US' },
     ])
     await await renderSettings('/settings?tab=ai&section=providers')
     expect(await screen.findByText('Local Ollama')).toBeInTheDocument()
@@ -164,8 +164,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text'],
@@ -183,7 +183,7 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Google Gemini')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Actions for Google Gemini' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Test' }))
-    await waitFor(() => expect(testProvider).toHaveBeenCalledWith(1))
+    await waitFor(() => expect(testProvider).toHaveBeenCalledWith('1'))
     expect(await screen.findByText('Connected')).toBeInTheDocument()
   })
 
@@ -208,15 +208,15 @@ describe('SettingsPage', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/delete this provider/i)).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete provider' }))
-    await waitFor(() => expect(deleteProvider).toHaveBeenCalledWith(1))
+    await waitFor(() => expect(deleteProvider).toHaveBeenCalledWith('1'))
   })
 
   test('models tab lists selected (enabled) models with a catalog trigger', async () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -224,8 +224,8 @@ describe('SettingsPage', () => {
         missing: false,
       },
       {
-        id: 12,
-        provider_id: 1,
+        id: '12',
+        provider_id: '1',
         external_id: 'gemini-2.5-pro',
         label: 'gemini-2.5-pro',
         caps: ['text'],
@@ -310,7 +310,7 @@ describe('SettingsPage', () => {
     listTaskDefaults.mockResolvedValue([
       {
         requires: 'text',
-        model_id: 11,
+        model_id: '11',
         fallback_model_id: null,
         model_label: 'gemini-2.5-flash',
         fallback_model_label: null,
@@ -333,8 +333,8 @@ describe('SettingsPage', () => {
     ])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -370,8 +370,8 @@ describe('SettingsPage', () => {
     ])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'tools'],
@@ -386,7 +386,7 @@ describe('SettingsPage', () => {
     fireEvent.click(trigger)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
-    await waitFor(() => expect(assignTask).toHaveBeenCalledWith('quizgen', 11))
+    await waitFor(() => expect(assignTask).toHaveBeenCalledWith('quizgen', '11'))
   })
 
   test('tasks tab sets a default model per capability', async () => {
@@ -399,8 +399,8 @@ describe('SettingsPage', () => {
     listTasks.mockResolvedValue([])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -415,7 +415,7 @@ describe('SettingsPage', () => {
     fireEvent.click(textPrimary)
     const option = await screen.findByRole('option', { name: 'gemini-2.5-flash' })
     fireEvent.click(option)
-    await waitFor(() => expect(assignTaskDefault).toHaveBeenCalledWith('text', 11, null))
+    await waitFor(() => expect(assignTaskDefault).toHaveBeenCalledWith('text', '11', null))
   })
 
   test('add provider opens the setup modal with the preset grid', async () => {
@@ -604,13 +604,13 @@ describe('SettingsPage', () => {
     screen.getByRole('button', { name: /^save$/i }).click()
     await waitFor(() =>
       expect(updateProvider).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.not.objectContaining({ api_key: expect.anything() })
       )
     )
     await waitFor(() =>
       expect(updateProvider).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.objectContaining({ name: 'Gemini main', enabled: true })
       )
     )
@@ -620,8 +620,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -637,8 +637,8 @@ describe('SettingsPage', () => {
       { external_id: 'text-embedding-004', caps: ['embeddings'] },
     ])
     createModel.mockResolvedValue({
-      id: 12,
-      provider_id: 1,
+      id: '12',
+      provider_id: '1',
       external_id: 'gemini-2.5-pro',
       label: 'gemini-2.5-pro',
       caps: ['text', 'vision', 'tools'],
@@ -665,7 +665,7 @@ describe('SettingsPage', () => {
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
         expect.objectContaining({
-          provider_id: 1,
+          provider_id: '1',
           external_id: 'gemini-2.5-pro',
           caps: ['text', 'vision', 'tools'],
           enabled: true,
@@ -681,8 +681,8 @@ describe('SettingsPage', () => {
     listModels.mockResolvedValue([])
     listRemoteModels.mockRejectedValue(new Error('no key'))
     createModel.mockResolvedValue({
-      id: 21,
-      provider_id: 1,
+      id: '21',
+      provider_id: '1',
       external_id: 'nimble',
       label: 'nimble',
       caps: ['decision'],
@@ -729,8 +729,8 @@ describe('SettingsPage', () => {
       )
     )
     createModel.mockResolvedValue({
-      id: 13,
-      provider_id: 1,
+      id: '13',
+      provider_id: '1',
       external_id: 'gpt-9-turbo',
       label: 'gpt-9-turbo',
       caps: ['text'],
@@ -758,7 +758,7 @@ describe('SettingsPage', () => {
     await waitFor(() =>
       expect(createModel).toHaveBeenCalledWith(
         expect.objectContaining({
-          provider_id: 1,
+          provider_id: '1',
           external_id: 'gpt-9-turbo',
           caps: ['text', 'vision'],
           enabled: true,
@@ -771,8 +771,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -785,7 +785,7 @@ describe('SettingsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /delete model gemini-2\.5-flash/i }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete model' }))
-    await waitFor(() => expect(deleteModel).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(deleteModel).toHaveBeenCalledWith('11'))
   })
 
   test('models tab bulk-adds pending entries from the modal footer', async () => {
@@ -796,7 +796,7 @@ describe('SettingsPage', () => {
       { external_id: 'gemini-2.5-pro', caps: ['text'] },
       { external_id: 'text-embedding-004', caps: ['embeddings'] },
     ])
-    createModel.mockResolvedValue({ id: 1 })
+    createModel.mockResolvedValue({ id: '1' })
     createModel.mockClear()
     await await renderSettings()
     await openAiSection('Models')
@@ -820,8 +820,8 @@ describe('SettingsPage', () => {
     listProviders.mockResolvedValue([PROVIDER])
     listModels.mockResolvedValue([
       {
-        id: 11,
-        provider_id: 1,
+        id: '11',
+        provider_id: '1',
         external_id: 'gemini-2.5-flash',
         label: 'gemini-2.5-flash',
         caps: ['text', 'vision', 'tools'],
@@ -830,8 +830,8 @@ describe('SettingsPage', () => {
       },
     ])
     updateModel.mockResolvedValue({
-      id: 11,
-      provider_id: 1,
+      id: '11',
+      provider_id: '1',
       external_id: 'gemini-2.5-flash',
       label: 'Flash',
       caps: ['text'],
@@ -849,7 +849,7 @@ describe('SettingsPage', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: /^save$/i }))
     await waitFor(() =>
-      expect(updateModel).toHaveBeenCalledWith(11, {
+      expect(updateModel).toHaveBeenCalledWith('11', {
         label: 'Flash',
         caps: ['text', 'tools'],
         reasoning_effort: null,

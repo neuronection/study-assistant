@@ -51,9 +51,9 @@ export function CourseSettingsTab({
         onChange={(next) => setSubTab(next as SubTab)}
       />
       {subTab === 'general' ? (
-        <GeneralSection courseId={Number(courseId)} course={course} />
+        <GeneralSection courseId={courseId} course={course} />
       ) : (
-        <TasksSection courseId={Number(courseId)} />
+        <TasksSection courseId={courseId} />
       )}
     </div>
   )
@@ -63,7 +63,7 @@ function GeneralSection({
   courseId,
   course,
 }: {
-  courseId: number
+  courseId: string
   course: Course
 }) {
   const { t } = useTranslation()
@@ -130,7 +130,7 @@ function GeneralSection({
   )
 }
 
-function TasksSection({ courseId }: { courseId: number }) {
+function TasksSection({ courseId }: { courseId: string }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const tasks = useQuery({
@@ -154,8 +154,8 @@ function TasksSection({ courseId }: { courseId: number }) {
     }: {
       task: string
       field: 'model' | 'fallback'
-      otherValue: number | null
-      modelId: number | null
+      otherValue: string | null
+      modelId: string | null
     }) =>
       field === 'model'
         ? assignCourseTask(courseId, task, modelId, otherValue)
@@ -170,7 +170,7 @@ function TasksSection({ courseId }: { courseId: number }) {
       modelId,
     }: {
       requires: string
-      modelId: number | null
+      modelId: string | null
     }) => assignCourseTaskDefault(courseId, requires, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['course-task-defaults', courseId] })
@@ -225,7 +225,7 @@ function TasksSection({ courseId }: { courseId: number }) {
                   const value = event.target.value
                   assignDefault.mutate({
                     requires,
-                    modelId: value === '' ? null : Number(value),
+                    modelId: value === '' ? null : value,
                   })
                 }}
                 aria-label={capLabel}
@@ -273,7 +273,7 @@ function TasksSection({ courseId }: { courseId: number }) {
                   task: task.task,
                   field: 'model',
                   otherValue: task.fallback_model_id,
-                  modelId: value === '' ? null : Number(value),
+                  modelId: value === '' ? null : value,
                 })
               }}
               aria-label={t('courseSettings.modelAria', { task: task.task })}
@@ -298,7 +298,7 @@ function TasksSection({ courseId }: { courseId: number }) {
                   task: task.task,
                   field: 'fallback',
                   otherValue: task.model_id,
-                  modelId: value === '' ? null : Number(value),
+                  modelId: value === '' ? null : value,
                 })
               }}
               aria-label={t('courseSettings.fallbackAria', { task: task.task })}

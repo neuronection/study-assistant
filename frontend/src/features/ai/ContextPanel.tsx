@@ -32,7 +32,7 @@ export function ReadIndicator({ read }: { read: ChatRead }) {
   )
 }
 
-export function ContextPanel({ sessionId }: { sessionId: number }) {
+export function ContextPanel({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
   const presets = useMotionPresets()
   const [open, setOpen] = useState(false)

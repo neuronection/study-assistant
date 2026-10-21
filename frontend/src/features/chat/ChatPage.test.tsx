@@ -14,7 +14,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 const activeSession = vi.hoisted(() => ({
   value: null as unknown as
-    | { chatId: string | null; sessionId: number | null; session: unknown; isResolving: boolean }
+    | { chatId: string | null; sessionId: string | null; session: unknown; isResolving: boolean }
     | undefined,
 }))
 
@@ -22,8 +22,8 @@ vi.mock('./useChatSession', () => ({
   useActiveChatSession: () =>
     activeSession.value ?? {
       chatId: 'uuid-9',
-      sessionId: 9,
-      session: { id: 9, public_id: 'uuid-9' },
+      sessionId: '9',
+      session: { id: '9', public_id: 'uuid-9' },
       isResolving: false,
     },
 }))
@@ -43,8 +43,8 @@ vi.mock('./ChatSessionList', () => ({
 function defaultSession(): void {
   activeSession.value = {
     chatId: 'uuid-9',
-    sessionId: 9,
-    session: { id: 9, public_id: 'uuid-9' },
+    sessionId: '9',
+    session: { id: '9', public_id: 'uuid-9' },
     isResolving: false,
   }
 }
@@ -72,7 +72,7 @@ describe('ChatPage', () => {
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/' }))
     expect(useChatStore.getState().open).toBe(true)
-    expect(useChatStore.getState().session).toEqual({ id: 9, publicId: 'uuid-9' })
+    expect(useChatStore.getState().session).toEqual({ id: '9', publicId: 'uuid-9' })
   })
 
   test('collapse without a resolved session opens a fresh sidepanel', async () => {

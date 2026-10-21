@@ -31,7 +31,7 @@ export function DefaultsStep() {
       modelId,
     }: {
       requires: string
-      modelId: number | null
+      modelId: string | null
     }) => assignTaskDefault(requires, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['task-defaults'] })
@@ -75,7 +75,7 @@ export function DefaultsStep() {
                     assign.mutate(
                       {
                         requires,
-                        modelId: value === '' ? null : Number(value),
+                        modelId: value === '' ? null : value,
                       },
                       { onError: (err: Error) => setError(err.message) }
                     )

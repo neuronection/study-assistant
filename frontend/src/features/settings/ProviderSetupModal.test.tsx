@@ -23,7 +23,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     createProvider: (body: unknown) => createProvider(body),
     listModels: () => listModels(),
     listTaskDefaults: () => listTaskDefaults(),
-    assignTaskDefault: (requires: string, modelId: number | null, fallback: number | null) =>
+    assignTaskDefault: (requires: string, modelId: string | null, fallback: number | null) =>
       assignTaskDefault(requires, modelId, fallback),
   }
 })
@@ -81,7 +81,7 @@ const PRESETS: Record<string, unknown> = {
 const SETUP_OK = {
   ok: true,
   provider: {
-    id: 1, name: 'OpenAI', type: 'openai_compatible', base_url: '', preset_key: 'openai',
+    id: '1', name: 'OpenAI', type: 'openai_compatible', base_url: '', preset_key: 'openai',
     enabled: true, is_local: false, country: null, masked_key: null, status: null, created_at: '',
   },
   catalog_count: 2,
@@ -102,8 +102,8 @@ function renderModal() {
 }
 
 const PROVIDER_MODELS = [
-  { id: 11, provider_id: 1, external_id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', caps: ['text', 'vision', 'tools'], enabled: true, missing: false, reasoning_effort: null },
-  { id: 12, provider_id: 1, external_id: 'whisper-1', label: 'whisper-1', caps: ['stt'], enabled: true, missing: false, reasoning_effort: null },
+  { id: '11', provider_id: '1', external_id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', caps: ['text', 'vision', 'tools'], enabled: true, missing: false, reasoning_effort: null },
+  { id: '12', provider_id: '1', external_id: 'whisper-1', label: 'whisper-1', caps: ['stt'], enabled: true, missing: false, reasoning_effort: null },
 ]
 const TASK_DEFAULTS = [
   { requires: 'text', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
@@ -287,7 +287,7 @@ describe('ProviderSetupModal', () => {
     listModels.mockResolvedValue([
       ...PROVIDER_MODELS,
       {
-        id: 13, provider_id: 1, external_id: 'openrouter.jev-latest', label: 'Jev via OpenRouter',
+        id: '13', provider_id: '1', external_id: 'openrouter.jev-latest', label: 'Jev via OpenRouter',
         caps: ['decision'], decision_transport: 'systemone', enabled: true, missing: false,
         reasoning_effort: null,
       },
@@ -342,7 +342,7 @@ describe('ProviderSetupModal', () => {
 
   test('edited base URL routes through the manual form', async () => {
     createProvider.mockResolvedValue({
-      id: 7, name: 'OpenAI relay', type: 'openai_compatible',
+      id: '7', name: 'OpenAI relay', type: 'openai_compatible',
       base_url: 'https://relay.test/v1', preset_key: null, enabled: true,
       is_local: false, country: null, masked_key: null, status: { model_count: 3 },
       created_at: '',
@@ -400,7 +400,7 @@ describe('ProviderSetupModal', () => {
 
   test('custom tile opens the manual form with full fields', async () => {
     createProvider.mockResolvedValue({
-      id: 9, name: 'LM Studio', type: 'openai_compatible', base_url: 'http://localhost:1234/v1',
+      id: '9', name: 'LM Studio', type: 'openai_compatible', base_url: 'http://localhost:1234/v1',
       preset_key: null, enabled: true, is_local: true, country: null, masked_key: null, status: null,
       created_at: '',
     })

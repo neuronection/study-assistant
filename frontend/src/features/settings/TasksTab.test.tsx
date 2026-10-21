@@ -23,15 +23,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listTaskDefaults: () => listTaskDefaults(),
     listPresets: () => listPresets(),
     getCosts: () => getCosts(),
-    assignTask: (task: string, modelId: number | null) => assignTask(task, modelId),
-    assignTaskDefault: (requires: string, modelId: number | null, fallback: number | null) =>
+    assignTask: (task: string, modelId: string | null) => assignTask(task, modelId),
+    assignTaskDefault: (requires: string, modelId: string | null, fallback: number | null) =>
       assignTaskDefault(requires, modelId, fallback),
   }
 })
 
 const PROVIDERS = [
   {
-    id: 1,
+    id: '1',
     name: 'TypeSafe',
     type: 'decision',
     base_url: 'https://api.typesafe.ai',
@@ -47,8 +47,8 @@ const PROVIDERS = [
 
 const MODELS = [
   {
-    id: 10,
-    provider_id: 1,
+    id: '10',
+    provider_id: '1',
     external_id: 'jev-latest',
     label: 'Jev (latest)',
     caps: ['decision'],
@@ -83,16 +83,16 @@ const DECISION_KINDS = [
 
 interface DefaultRow {
   requires: string
-  model_id: number | null
-  fallback_model_id: number | null
+  model_id: string | null
+  fallback_model_id: string | null
   model_label: string | null
   fallback_model_label: string | null
   resolved_inherit_label?: string | null
 }
 
 function defaultsFixture(options: {
-  defaultModelId?: number | null
-  kindModelId?: number | null
+  defaultModelId?: string | null
+  kindModelId?: string | null
   resolvedInheritLabel?: string | null
 } = {}) {
   const { defaultModelId = null, kindModelId = null, resolvedInheritLabel = null } = options
@@ -198,7 +198,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
 
   test('the resolved default moves to a "Defaults to" meta line; the trigger keeps the short state word (matrix 7)', async () => {
     listTaskDefaults.mockResolvedValue(
-      defaultsFixture({ defaultModelId: 10, resolvedInheritLabel: 'Jev (latest)' })
+      defaultsFixture({ defaultModelId: '10', resolvedInheritLabel: 'Jev (latest)' })
     )
     renderTab()
     const booleanGate = await screen.findByRole('combobox', { name: 'Boolean gate' })
@@ -229,7 +229,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     fireEvent.click(await screen.findByRole('option', { name: /jev \(latest\)/i }))
 
     await waitFor(() =>
-      expect(assignTaskDefault).toHaveBeenCalledWith('decision:boolean-gate', 10, null)
+      expect(assignTaskDefault).toHaveBeenCalledWith('decision:boolean-gate', '10', null)
     )
     expect(assignTask).not.toHaveBeenCalled()
   })
@@ -242,13 +242,13 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     fireEvent.click(await screen.findByRole('option', { name: /jev \(latest\)/i }))
 
     await waitFor(() =>
-      expect(assignTaskDefault).toHaveBeenCalledWith('decision', 10, null)
+      expect(assignTaskDefault).toHaveBeenCalledWith('decision', '10', null)
     )
   })
 
   test('the X clear on a kind row assigns null — the inherit state (D3)', async () => {
     listTaskDefaults.mockResolvedValue(
-      defaultsFixture({ defaultModelId: 10, kindModelId: 10, resolvedInheritLabel: 'Jev (latest)' })
+      defaultsFixture({ defaultModelId: '10', kindModelId: '10', resolvedInheritLabel: 'Jev (latest)' })
     )
     renderTab()
     await screen.findByText('Tool dispatch')
@@ -269,7 +269,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
   })
 
   test('"Simplify" appears when 4/4 kinds resolve to one model and the default is empty (matrix 6)', async () => {
-    listTaskDefaults.mockResolvedValue(defaultsFixture({ kindModelId: 10 }))
+    listTaskDefaults.mockResolvedValue(defaultsFixture({ kindModelId: '10' }))
     renderTab()
 
     expect(
@@ -279,7 +279,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
 
   test('no "Simplify" when the default is already set (matrix 6)', async () => {
     listTaskDefaults.mockResolvedValue(
-      defaultsFixture({ defaultModelId: 10, kindModelId: 10 })
+      defaultsFixture({ defaultModelId: '10', kindModelId: '10' })
     )
     renderTab()
 
@@ -294,7 +294,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     const partial = defaultsFixture()
     for (const [index, slot] of DECISION_KINDS.entries()) {
       const row = partial.find((entry) => entry.requires === slot)!
-      row.model_id = index === 0 ? 10 : null
+      row.model_id = index === 0 ? '10' : null
     }
     listTaskDefaults.mockResolvedValue(partial)
     renderTab()
@@ -307,7 +307,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
   })
 
   test('the Simplify chip posts the decision default (one click, never automatic)', async () => {
-    listTaskDefaults.mockResolvedValue(defaultsFixture({ kindModelId: 10 }))
+    listTaskDefaults.mockResolvedValue(defaultsFixture({ kindModelId: '10' }))
     renderTab()
 
     fireEvent.click(
@@ -315,7 +315,7 @@ describe('TasksTab Decision defaults (plan 29 / ADR-0036, uniform section ruling
     )
 
     await waitFor(() =>
-      expect(assignTaskDefault).toHaveBeenCalledWith('decision', 10, null)
+      expect(assignTaskDefault).toHaveBeenCalledWith('decision', '10', null)
     )
   })
 })

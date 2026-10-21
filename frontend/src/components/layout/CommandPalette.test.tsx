@@ -26,7 +26,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listQuizzes: () => listQuizzes(),
     listExercises: () => listExercises(),
     createNote: (body: unknown) => createNote(body),
-    courseTree: (id: number) => courseTree(id),
+    courseTree: (id: string) => courseTree(id),
     generateQuiz: (body: unknown) => generateQuiz(body),
     search: (query: string) => search(query),
   }
@@ -126,7 +126,7 @@ describe('CommandPalette', () => {
     useWorkspaceStore.getState().setCourse(null)
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -136,12 +136,12 @@ describe('CommandPalette', () => {
         material_count: 0,
       },
     ])
-    createNote.mockResolvedValue({ id: 12, body: [], drawings: [], tags: [] })
+    createNote.mockResolvedValue({ id: '12', body: [], drawings: [], tags: [] })
     renderPalette()
     await screen.findByText('Go to Calculus I')
     fireEvent.click(screen.getByText('New note'))
     await waitFor(() =>
-      expect(createNote).toHaveBeenCalledWith(expect.objectContaining({ course_id: 3 }))
+      expect(createNote).toHaveBeenCalledWith(expect.objectContaining({ course_id: '3' }))
     )
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
@@ -156,9 +156,9 @@ describe('CommandPalette', () => {
     listNotes.mockResolvedValue({
       items: [
         {
-          id: 21,
+          id: '21',
           title: 'Chain rule note',
-          course_id: 3,
+          course_id: '3',
           node_id: null,
           owner_type: 'standalone',
           owner_id: null,
@@ -167,9 +167,9 @@ describe('CommandPalette', () => {
           updated_at: '2026-08-19T00:00:00Z',
         },
         {
-          id: 22,
+          id: '22',
           title: 'U-substitution walkthrough',
-          course_id: 3,
+          course_id: '3',
           node_id: null,
           owner_type: 'standalone',
           owner_id: null,
@@ -197,7 +197,7 @@ describe('CommandPalette', () => {
     useWorkspaceStore.getState().setCourse(null)
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -207,7 +207,7 @@ describe('CommandPalette', () => {
         material_count: 0,
       },
       {
-        id: 4,
+        id: '4',
         title: 'Linear Algebra',
         subject: null,
         level: null,
@@ -228,7 +228,7 @@ describe('CommandPalette', () => {
     useWorkspaceStore.getState().setCourse(null)
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -240,7 +240,7 @@ describe('CommandPalette', () => {
     ])
     renderPalette()
     fireEvent.click(await screen.findByText('Go to Calculus I'))
-    await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe(3))
+    await waitFor(() => expect(useWorkspaceStore.getState().courseId).toBe('3'))
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
         to: '/courses/$courseId',
@@ -254,27 +254,27 @@ describe('CommandPalette', () => {
     listCourses.mockResolvedValue([])
     listQuizzes.mockResolvedValue([
       {
-        id: 50,
+        id: '50',
         title: 'Derivatives quiz',
         type: 'quiz',
-        course_id: 3,
+        course_id: '3',
         node_id: null,
         question_count: 8,
       },
       {
-        id: 51,
+        id: '51',
         title: 'Limits quiz',
         type: 'quiz',
-        course_id: 3,
+        course_id: '3',
         node_id: null,
         question_count: 6,
       },
     ])
     listExercises.mockResolvedValue([
       {
-        id: 60,
+        id: '60',
         title: 'Chain rule drill',
-        course_id: 3,
+        course_id: '3',
         node_id: null,
         difficulty: 2,
         step_count: 3,
@@ -311,11 +311,11 @@ describe('CommandPalette', () => {
   })
 
   test('open node and quiz actions work for the active course', async () => {
-    useWorkspaceStore.getState().setCourse(3)
+    useWorkspaceStore.getState().setCourse('3')
     listCourses.mockResolvedValue([])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -324,7 +324,7 @@ describe('CommandPalette', () => {
         is_root: true,
         children: [
           {
-            id: 5,
+            id: '5',
             title: 'Derivatives',
             summary: null,
             objectives: [],
@@ -333,7 +333,7 @@ describe('CommandPalette', () => {
             is_root: false,
             children: [
               {
-                id: 11,
+                id: '11',
                 title: 'Chain rule',
                 summary: null,
                 objectives: [],
@@ -350,11 +350,11 @@ describe('CommandPalette', () => {
         materials: [],
       },
     ])
-    generateQuiz.mockResolvedValue({ id: 44, title: 'Derivatives quiz', question_count: 8 })
+    generateQuiz.mockResolvedValue({ id: '44', title: 'Derivatives quiz', question_count: 8 })
     renderPalette()
     fireEvent.click(await screen.findByText('Quiz me on Derivatives'))
     await waitFor(() =>
-      expect(generateQuiz).toHaveBeenCalledWith({ course_id: 3, node_id: 5, count: 8 })
+      expect(generateQuiz).toHaveBeenCalledWith({ course_id: '3', node_id: '5', count: 8 })
     )
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
@@ -377,7 +377,7 @@ describe('CommandPalette', () => {
     useWorkspaceStore.getState().setCourse(null)
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -387,7 +387,7 @@ describe('CommandPalette', () => {
         material_count: 0,
       },
       {
-        id: 4,
+        id: '4',
         title: 'Linear Algebra',
         subject: null,
         level: null,
@@ -397,11 +397,11 @@ describe('CommandPalette', () => {
         material_count: 0,
       },
     ])
-    courseTree.mockImplementation((id: number) => {
-      if (id === 4) {
+    courseTree.mockImplementation((id: string) => {
+      if (id === '4') {
         return Promise.resolve([
           {
-            id: 2,
+            id: '2',
             title: 'Linear Algebra',
             summary: null,
             objectives: [],
@@ -410,7 +410,7 @@ describe('CommandPalette', () => {
             is_root: true,
             children: [
               {
-                id: 7,
+                id: '7',
                 title: 'Matrices',
                 summary: null,
                 objectives: [],
@@ -419,7 +419,7 @@ describe('CommandPalette', () => {
                 is_root: false,
                 children: [
                   {
-                    id: 9,
+                    id: '9',
                     title: 'Determinants',
                     summary: null,
                     objectives: [],
@@ -428,7 +428,7 @@ describe('CommandPalette', () => {
                     is_root: false,
                     children: [
                       {
-                        id: 18,
+                        id: '18',
                         title: 'Laplace expansion',
                         summary: null,
                         objectives: [],
@@ -451,7 +451,7 @@ describe('CommandPalette', () => {
       }
       return Promise.resolve([
         {
-          id: 1,
+          id: '1',
           title: 'Calculus I',
           summary: null,
           objectives: [],
@@ -479,11 +479,11 @@ describe('CommandPalette', () => {
   })
 
   test('quiz-me actions stay capped at depth 2 while open nodes reach deeper', async () => {
-    useWorkspaceStore.getState().setCourse(4)
+    useWorkspaceStore.getState().setCourse('4')
     listCourses.mockResolvedValue([])
     courseTree.mockResolvedValue([
       {
-        id: 2,
+        id: '2',
         title: 'Linear Algebra',
         summary: null,
         objectives: [],
@@ -492,7 +492,7 @@ describe('CommandPalette', () => {
         is_root: true,
         children: [
           {
-            id: 7,
+            id: '7',
             title: 'Matrices',
             summary: null,
             objectives: [],
@@ -501,7 +501,7 @@ describe('CommandPalette', () => {
             is_root: false,
             children: [
               {
-                id: 9,
+                id: '9',
                 title: 'Determinants',
                 summary: null,
                 objectives: [],
@@ -510,7 +510,7 @@ describe('CommandPalette', () => {
                 is_root: false,
                 children: [
                   {
-                    id: 18,
+                    id: '18',
                     title: 'Laplace expansion',
                     summary: null,
                     objectives: [],
@@ -542,7 +542,7 @@ describe('CommandPalette', () => {
     useWorkspaceStore.getState().setCourse(null)
     listCourses.mockResolvedValue([
       {
-        id: 4,
+        id: '4',
         title: 'Linear Algebra',
         subject: null,
         level: null,
@@ -554,7 +554,7 @@ describe('CommandPalette', () => {
     ])
     courseTree.mockResolvedValue([
       {
-        id: 2,
+        id: '2',
         title: 'Linear Algebra',
         summary: null,
         objectives: [],
@@ -563,7 +563,7 @@ describe('CommandPalette', () => {
         is_root: true,
         children: [
           {
-            id: 9,
+            id: '9',
             title: 'Determinants',
             summary: null,
             objectives: [],
@@ -572,7 +572,7 @@ describe('CommandPalette', () => {
             is_root: false,
             children: [
               {
-                id: 21,
+                id: '21',
                 title: 'Cofactor identities',
                 summary: null,
                 objectives: [],
@@ -607,11 +607,11 @@ describe('CommandPalette', () => {
     })
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 30000 }])
+      JSON.stringify([{ courseId: '3', nodeId: '5', at: Date.now() - 30000 }])
     )
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -623,7 +623,7 @@ describe('CommandPalette', () => {
     ])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -632,7 +632,7 @@ describe('CommandPalette', () => {
         is_root: true,
         children: [
           {
-            id: 5,
+            id: '5',
             title: 'Derivatives',
             summary: null,
             objectives: [],
@@ -654,11 +654,11 @@ describe('CommandPalette', () => {
   })
 
   test('open node actions are capped at 40 entries', async () => {
-    useWorkspaceStore.getState().setCourse(3)
+    useWorkspaceStore.getState().setCourse('3')
     listCourses.mockResolvedValue([])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -666,7 +666,7 @@ describe('CommandPalette', () => {
         depth: 0,
         is_root: true,
         children: Array.from({ length: 45 }, (_, index) => ({
-          id: 100 + index,
+          id: String(100 + index),
           title: `Section ${index + 1}`,
           summary: null,
           objectives: [],
@@ -691,11 +691,11 @@ describe('CommandPalette', () => {
     window.localStorage.removeItem('sa-recent-nodes.default')
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 3, nodeId: 5, at: Date.now() - 30000 }])
+      JSON.stringify([{ courseId: '3', nodeId: '5', at: Date.now() - 30000 }])
     )
     listCourses.mockResolvedValue([
       {
-        id: 3,
+        id: '3',
         title: 'Calculus I',
         subject: null,
         level: null,
@@ -707,7 +707,7 @@ describe('CommandPalette', () => {
     ])
     courseTree.mockResolvedValue([
       {
-        id: 1,
+        id: '1',
         title: 'Calculus I',
         summary: null,
         objectives: [],
@@ -716,7 +716,7 @@ describe('CommandPalette', () => {
         is_root: true,
         children: [
           {
-            id: 5,
+            id: '5',
             title: 'Derivatives',
             summary: null,
             objectives: [],
@@ -760,7 +760,7 @@ describe('CommandPalette content search', () => {
       query: 'chain rule',
       hits: [
         {
-          material_id: 9,
+          material_id: '9',
           title: 'Lecture 3',
           snippet: 'The chain rule states $(fg)\' = f\'g + fg\'$',
           score: 0.9,
@@ -780,11 +780,11 @@ describe('CommandPalette content search', () => {
       query: 'chain rule',
       hits: [
         {
-          material_id: 9,
+          material_id: '9',
           title: 'Lecture 3',
           snippet: "The chain rule states $(fg)' = f'g + fg'$",
           score: 0.9,
-          nodes: [{ course_id: 3, node_id: 7, node_title: 'Series' }],
+          nodes: [{ course_id: '3', node_id: '7', node_title: 'Series' }],
         },
       ],
     })
@@ -798,7 +798,7 @@ describe('CommandPalette content search', () => {
       expect(navigate).toHaveBeenCalledWith({
         to: '/courses/$courseId/n/$nodeId',
         params: { courseId: '3', nodeId: '7' },
-        search: { material: 9 },
+        search: { material: '9' },
       })
     )
   })
@@ -807,7 +807,7 @@ describe('CommandPalette content search', () => {
     search.mockResolvedValue({
       query: 'limits',
       hits: [
-        { material_id: 12, title: 'Limits handout', snippet: 'epsilon-delta', score: 0.8 },
+        { material_id: '12', title: 'Limits handout', snippet: 'epsilon-delta', score: 0.8 },
       ],
     })
     renderPalette()

@@ -79,7 +79,7 @@ export function MaterialDetailBody({
   onClose,
   closeLabel,
 }: {
-  materialId: number
+  materialId: string
   activeTab: DetailTab
   onTabChange: (tab: DetailTab) => void
   showTitle?: boolean
@@ -95,7 +95,7 @@ export function MaterialDetailBody({
   const [historyOpen, setHistoryOpen] = useState(false)
   const [reExtractOpen, setReExtractOpen] = useState(false)
   const [derived, setDerived] = useState<{
-    id: number
+    id: string
     title: string
     deduped: boolean
   } | null>(null)
@@ -122,10 +122,10 @@ export function MaterialDetailBody({
       return null
     }
   })()
-  const [parseJobId, setParseJobId] = useState<number | null>(null)
-  const [transcribeJobId, setTranscribeJobId] = useState<number | null>(null)
+  const [parseJobId, setParseJobId] = useState<string | null>(null)
+  const [transcribeJobId, setTranscribeJobId] = useState<string | null>(null)
 
-  const pollJob = async (jobId: number) => {
+  const pollJob = async (jobId: string) => {
     const deadline = Date.now() + 15 * 60_000
     while (Date.now() < deadline) {
       const job = await getJob(jobId)

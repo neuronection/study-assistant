@@ -4,7 +4,7 @@ import type { ChatAttachmentInput } from '@/lib/api'
 import { storageKeys } from '@/lib/constants'
 
 export interface ChatSessionRef {
-  id: number
+  id: string
   publicId: string
 }
 
@@ -62,7 +62,7 @@ interface ChatState {
   open: boolean
   session: ChatSessionRef | null
   pendingSend: PendingAsk | null
-  viewerAsks: Record<number, ChatSessionRef>
+  viewerAsks: Record<string, ChatSessionRef>
   selectionAsks: Record<string, ChatSessionRef>
   width: number
   setOpen: (open: boolean) => void
@@ -70,8 +70,8 @@ interface ChatState {
   setSession: (session: ChatSessionRef | null) => void
   queueSend: (ask: PendingAsk) => void
   clearPendingSend: () => void
-  setViewerAsk: (materialId: number, session: ChatSessionRef) => void
-  clearViewerAsk: (materialId?: number) => void
+  setViewerAsk: (materialId: string, session: ChatSessionRef) => void
+  clearViewerAsk: (materialId?: string) => void
   setSelectionAsk: (key: string, session: ChatSessionRef) => void
   clearSelectionAsk: (key?: string) => void
   setChatWidth: (width: number) => void

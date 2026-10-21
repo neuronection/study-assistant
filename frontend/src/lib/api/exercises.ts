@@ -3,10 +3,10 @@ import type { BlockDto } from './materials'
 import type { GenerateContext } from './ai'
 
 export interface ExerciseInfo {
-  id: number
+  id: string
   title: string
-  course_id: number | null
-  node_id: number | null
+  course_id: string | null
+  node_id: string | null
   difficulty: number | null
   step_count: number
 }
@@ -35,7 +35,7 @@ export interface ExerciseStepInput {
 }
 
 export interface ExerciseStepInfo {
-  id: number
+  id: string
   order_idx: number
   prompt: BlockDto[]
   has_expected: boolean
@@ -44,8 +44,8 @@ export interface ExerciseStepInfo {
 }
 
 export interface ExerciseSessionInfo {
-  id: number
-  exercise_id: number
+  id: string
+  exercise_id: string
   current_step_idx: number
   status: string
   socratic: boolean
@@ -53,8 +53,8 @@ export interface ExerciseSessionInfo {
 }
 
 export async function listExercises(
-  courseId?: number,
-  nodeId?: number,
+  courseId?: string,
+  nodeId?: string,
   includeChildren = true
 ): Promise<ExerciseInfo[]> {
   const params = new URLSearchParams()
@@ -71,8 +71,8 @@ export async function listExercises(
 }
 
 export async function createExercise(body: {
-  course_id: number
-  node_id?: number | null
+  course_id: string
+  node_id?: string | null
   title: string
   steps: { prompt_md: string; expected?: { value: string } | null }[]
 }): Promise<ExerciseInfo> {
@@ -85,10 +85,10 @@ export async function createExercise(body: {
 }
 
 export async function createTeachBack(body: {
-  course_id: number
-  node_id?: number | null
+  course_id: string
+  node_id?: string | null
   concept?: string | null
-  concept_id?: number | null
+  concept_id?: string | null
 }): Promise<ExerciseInfo> {
   const response = await apiFetch('/api/v1/exercises/teach-back', {
     method: 'POST',
@@ -98,13 +98,13 @@ export async function createTeachBack(body: {
   return json<ExerciseInfo>(response)
 }
 
-export async function getExercise(exerciseId: number): Promise<ExerciseInfo> {
+export async function getExercise(exerciseId: string): Promise<ExerciseInfo> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}`)
   return json<ExerciseInfo>(response)
 }
 
 export async function renameExercise(
-  exerciseId: number,
+  exerciseId: string,
   title: string
 ): Promise<ExerciseInfo> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}`, {
@@ -116,8 +116,8 @@ export async function renameExercise(
 }
 
 export async function moveExercise(
-  exerciseId: number,
-  nodeId: number | null
+  exerciseId: string,
+  nodeId: string | null
 ): Promise<ExerciseInfo> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}/move`, {
     method: 'PATCH',
@@ -128,19 +128,19 @@ export async function moveExercise(
 }
 
 export async function deleteExercise(
-  exerciseId: number
-): Promise<{ deleted_item_id: number }> {
+  exerciseId: string
+): Promise<{ deleted_item_id: string }> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}`, { method: 'DELETE' })
-  return json<{ deleted_item_id: number }>(response)
+  return json<{ deleted_item_id: string }>(response)
 }
 
-export async function exerciseSteps(exerciseId: number): Promise<ExerciseStepInfo[]> {
+export async function exerciseSteps(exerciseId: string): Promise<ExerciseStepInfo[]> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}/steps`)
   return json<ExerciseStepInfo[]>(response)
 }
 
 export async function startExerciseSession(
-  exerciseId: number,
+  exerciseId: string,
   socratic = false
 ): Promise<ExerciseSessionInfo> {
   const response = await apiFetch(
@@ -159,7 +159,7 @@ export interface StepCheck {
 }
 
 export async function submitStepAnswer(
-  sessionId: number,
+  sessionId: string,
   response: unknown,
   state?: Record<string, unknown> | null,
 ): Promise<StepCheck> {
@@ -178,7 +178,7 @@ export interface HintResult {
 }
 
 export async function requestHint(
-  sessionId: number,
+  sessionId: string,
   level: number,
   lastResponse: string | null = null
 ): Promise<HintResult> {
@@ -191,8 +191,8 @@ export async function requestHint(
 }
 
 export async function generateExercise(body: {
-  course_id: number
-  node_id?: number | null
+  course_id: string
+  node_id?: string | null
   topic?: string | null
   difficulty?: number | null
   step_count?: number
@@ -206,7 +206,7 @@ export async function generateExercise(body: {
   return json<ExerciseInfo>(response)
 }
 
-export async function similarExercise(exerciseId: number): Promise<ExerciseInfo> {
+export async function similarExercise(exerciseId: string): Promise<ExerciseInfo> {
   const response = await apiFetch(`/api/v1/exercises/${exerciseId}/similar`, { method: 'POST' })
   return json<ExerciseInfo>(response)
 }
@@ -228,14 +228,14 @@ export interface PatternProposal {
   example?: string | null
 }
 
-export async function drillPatterns(courseId: number): Promise<DrillPattern[]> {
+export async function drillPatterns(courseId: string): Promise<DrillPattern[]> {
   const response = await apiFetch(
     `/api/v1/exercises/drills/patterns?course_id=${encodeURIComponent(courseId)}`
   )
   return json<DrillPattern[]>(response)
 }
 
-export async function proposePatterns(courseId: number): Promise<PatternProposal[]> {
+export async function proposePatterns(courseId: string): Promise<PatternProposal[]> {
   const response = await apiFetch('/api/v1/exercises/drills/propose', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -245,7 +245,7 @@ export async function proposePatterns(courseId: number): Promise<PatternProposal
 }
 
 export async function createPattern(
-  courseId: number,
+  courseId: string,
   proposal: PatternProposal
 ): Promise<DrillPattern> {
   const response = await apiFetch('/api/v1/exercises/drills/patterns', {
@@ -256,7 +256,7 @@ export async function createPattern(
   return json<DrillPattern>(response)
 }
 
-export async function startDrill(pattern: string, courseId: number): Promise<ExerciseInfo> {
+export async function startDrill(pattern: string, courseId: string): Promise<ExerciseInfo> {
   const response = await apiFetch('/api/v1/exercises/drills', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

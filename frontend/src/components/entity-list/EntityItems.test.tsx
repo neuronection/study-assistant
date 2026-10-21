@@ -18,12 +18,12 @@ import {
 } from '@/components/entity-list/EntityItems'
 
 interface Item extends EntityItemEntry {
-  itemId: number
+  itemId: string
 }
 
 const ITEMS: Item[] = [
-  { key: 'a', itemId: 1, title: 'Alpha', icon: FileText, meta: '2 pages' },
-  { key: 'b', itemId: 2, title: 'Beta', icon: FileText, meta: null },
+  { key: 'a', itemId: '1', title: 'Alpha', icon: FileText, meta: '2 pages' },
+  { key: 'b', itemId: '2', title: 'Beta', icon: FileText, meta: null },
 ]
 
 function menu(item: Item) {

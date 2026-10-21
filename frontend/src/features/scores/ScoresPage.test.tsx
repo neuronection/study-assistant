@@ -106,8 +106,8 @@ describe('ScoresPage', () => {
   test('history tab lists attempts with score coloring', async () => {
     listQuizAttempts.mockResolvedValue([
       {
-        id: 1,
-        activity_id: 2,
+        id: '1',
+        activity_id: '2',
         title: 'Quiz · today',
         mode: 'practice',
         started_at: '2026-08-19T09:00:00',

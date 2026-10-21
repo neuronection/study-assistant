@@ -10,9 +10,9 @@ export interface MentionBlock {
   type: 'mention'
   ref: string
   kind: MentionRef['kind']
-  id: number
+  id: string
   title: string
-  course_id?: number | null
+  course_id?: string | null
 }
 
 export interface MathBlock {
@@ -56,12 +56,12 @@ export interface GeoBlock {
 
 export interface DrawingBlock {
   type: 'drawing'
-  drawing_id: number
+  drawing_id: string
 }
 
 export interface ImageRefBlock {
   type: 'image_ref'
-  image_id: number
+  image_id: string
 }
 
 export interface WidgetBlock {

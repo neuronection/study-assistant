@@ -3,24 +3,23 @@ import { storageKeys } from '@/lib/constants'
 
 const STORAGE_KEY = storageKeys.courseId
 
-function readStoredCourse(): number | null {
+function readStoredCourse(): string | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw === null) {
+    if (raw === null || raw.length === 0) {
       return null
     }
-    const value = Number(raw)
-    return Number.isFinite(value) && value > 0 ? value : null
+    return raw
   } catch {
     return null
   }
 }
 
 interface WorkspaceState {
-  courseId: number | null
+  courseId: string | null
   hydrated: boolean
   hydrate: () => void
-  setCourse: (courseId: number | null) => void
+  setCourse: (courseId: string | null) => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({

@@ -87,8 +87,8 @@ describe('GenesisDialog', () => {
     draftGenesis.mockResolvedValue(DRAFT)
     listSearchProviders.mockResolvedValue([])
     createGenesisCourse.mockResolvedValue({
-      course: { id: 42, title: 'Linear Algebra for Economists' },
-      job_id: 7,
+      course: { id: '42', title: 'Linear Algebra for Economists' },
+      job_id: '7',
       estimated_tasks: 2,
       task_cap: 60,
     })

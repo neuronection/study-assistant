@@ -5,7 +5,7 @@ import type { ChatMessage } from '@/lib/api'
 
 function message(overrides: Partial<ChatMessage>): ChatMessage {
   return {
-    id: 1,
+    id: '1',
     role: 'user',
     markdown: '',
     citations: [],
@@ -23,14 +23,14 @@ describe('exportSessionMarkdown', () => {
     const markdown = messagesToMarkdown('Derivatives', [
       message({ markdown: 'What is the derivative of x^2?' }),
       message({
-        id: 2,
+        id: '2',
         role: 'assistant',
         markdown: 'The derivative is 2x [1].',
         citations: [
           {
             index: 1,
-            chunk_id: 3,
-            material_id: 4,
+            chunk_id: '3',
+            material_id: '4',
             title: 'rules.md',
             quote: 'power rule',
           },

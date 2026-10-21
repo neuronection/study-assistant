@@ -70,7 +70,7 @@ function renderPanel() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <StudyChatProvider sessionId={4}>
+      <StudyChatProvider sessionId="4">
         <ChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
       </StudyChatProvider>
     </QueryClientProvider>
@@ -80,7 +80,7 @@ function renderPanel() {
 function renderAdoptingPanel() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Wrapper() {
-    const [sessionId, setSessionId] = useState<number | null>(null)
+    const [sessionId, setSessionId] = useState<string | null>(null)
     return (
       <QueryClientProvider client={client}>
         <StudyChatProvider sessionId={sessionId}>
@@ -95,15 +95,15 @@ function renderAdoptingPanel() {
   return render(<Wrapper />)
 }
 
-const SESSION = { id: 4, public_id: 'uuid-4', course_id: null, title: 'New chat' }
+const SESSION = { id: '4', public_id: 'uuid-4', course_id: null, title: 'New chat' }
 
 describe('ChatPanel streaming', () => {
   test('stream deltas render progressively then finalize', async () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 12,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '12',
     })
     renderPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -123,9 +123,9 @@ describe('ChatPanel streaming', () => {
     expect(await screen.findByText(/The answer is/)).toBeInTheDocument()
 
     listChatMessages.mockResolvedValue([
-      { id: 9, role: 'user', markdown: 'derive x^2', citations: [], grounded: null },
+      { id: '9', role: 'user', markdown: 'derive x^2', citations: [], grounded: null },
       {
-        id: 10,
+        id: '10',
         role: 'assistant',
         markdown: 'The answer is $2x$ [1]',
         citations: [],
@@ -143,8 +143,8 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 12,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '12',
     })
     renderPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -168,8 +168,8 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 13,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '13',
     })
     renderPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -198,8 +198,8 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 13,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '13',
     })
     renderPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -225,11 +225,11 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'Summarize this', citations: [], grounded: null },
-      job_id: 14,
+      user_message: { id: '9', role: 'user', markdown: 'Summarize this', citations: [], grounded: null },
+      job_id: '14',
     })
     act(() => {
-      useChatStore.getState().openSession({ id: 4, publicId: 'uuid-4' })
+      useChatStore.getState().openSession({ id: '4', publicId: 'uuid-4' })
       useChatStore.getState().queueSend({ content: 'Summarize this', mode: 'send' })
     })
     renderPanel()
@@ -251,14 +251,14 @@ describe('ChatPanel streaming', () => {
   test('thinking dots persist and the stream flows after adopting the created session', async () => {    listChatSessions.mockResolvedValue([])
     listChatMessages.mockResolvedValue([])
     createChatSession.mockResolvedValue({
-      id: 99,
+      id: '99',
       public_id: 'uuid-99',
       course_id: null,
       title: 'derive x^2',
     })
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 13,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '13',
     })
     renderAdoptingPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -280,8 +280,8 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 13,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '13',
     })
     renderPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -298,9 +298,9 @@ describe('ChatPanel streaming', () => {
     } satisfies ChatEvent)
 
     listChatMessages.mockResolvedValue([
-      { id: 9, role: 'user', markdown: 'long answer please', citations: [], grounded: null },
+      { id: '9', role: 'user', markdown: 'long answer please', citations: [], grounded: null },
       {
-        id: 10,
+        id: '10',
         role: 'assistant',
         markdown: 'Partial answ',
         citations: [],
@@ -318,8 +318,8 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 13,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '13',
     })
     renderPanel()
     const input = await screen.findByPlaceholderText('Ask about your material…')
@@ -343,15 +343,15 @@ describe('ChatPanel streaming', () => {
     listChatSessions.mockResolvedValue([SESSION])
     listChatMessages.mockResolvedValue([])
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 9, role: 'user', markdown: 'hi', citations: [], grounded: null },
-      job_id: 13,
+      user_message: { id: '9', role: 'user', markdown: 'hi', citations: [], grounded: null },
+      job_id: '13',
     })
     // The settings deep-link is a router Link — mount under a minimal tree.
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const rootRoute = createRootRoute({
       component: () => (
         <QueryClientProvider client={client}>
-          <StudyChatProvider sessionId={4}>
+          <StudyChatProvider sessionId="4">
             <ChatPanel onSessionCreated={() => undefined} onClose={() => undefined} />
           </StudyChatProvider>
         </QueryClientProvider>

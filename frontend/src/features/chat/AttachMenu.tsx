@@ -47,7 +47,7 @@ export const ATTACH_KIND_ICONS: Record<
 
 export interface PendingAttachment {
   kind: ChatAttachmentKind
-  id: number
+  id: string
   title: string
 }
 
@@ -69,7 +69,7 @@ const TABS: {
 
 interface Row {
   kind: ChatAttachmentKind
-  id: number
+  id: string
   title: string
   meta: string | null
 }
@@ -83,10 +83,10 @@ export function AttachMenu({
   onSelect,
   extraActions = [],
 }: {
-  courseId: number | null
-  uploadCourseId?: number | null
+  courseId: string | null
+  uploadCourseId?: string | null
   uploadHint?: string
-  resolveUploadFolder?: () => Promise<number | null>
+  resolveUploadFolder?: () => Promise<string | null>
   attached: PendingAttachment[]
   onSelect: (item: PendingAttachment) => void
   extraActions?: { key: string; icon: ComponentType<{ className?: string }>; label: string; run: () => void }[]
@@ -123,7 +123,7 @@ export function AttachMenu({
   })
   const nodes = useQuery({
     queryKey: ['attach', 'nodes', courseId],
-    queryFn: () => courseTree(courseId as number),
+    queryFn: () => courseTree(courseId!),
     enabled: tab === 'nodes' && courseId !== null,
   })
 
@@ -145,10 +145,10 @@ export function AttachMenu({
     getFolderId:
       resolveUploadFolder ??
       (async () => {
-        const folders = await listFolders(uploadCourseId as number)
+        const folders = await listFolders(uploadCourseId!)
         const existing = folders.find((folder) => folder.name === CHAT_UPLOADS_FOLDER)
         return (
-          existing ?? (await createFolder(CHAT_UPLOADS_FOLDER, null, uploadCourseId as number))
+          existing ?? (await createFolder(CHAT_UPLOADS_FOLDER, null, uploadCourseId!))
         ).id
       }),
     onUploaded: async (result) => {

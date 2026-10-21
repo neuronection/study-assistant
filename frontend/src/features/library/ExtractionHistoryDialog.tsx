@@ -25,7 +25,7 @@ export function ExtractionHistoryDialog({
   materialId,
   onClose,
 }: {
-  materialId: number
+  materialId: string
   onClose: () => void
 }) {
   useCloseFloatings()

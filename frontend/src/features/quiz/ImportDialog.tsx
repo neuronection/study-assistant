@@ -22,7 +22,7 @@ export function ImportDialog({
   courseId,
   onClose,
 }: {
-  courseId: number | null
+  courseId: string | null
   onClose: () => void
 }) {
   useCloseFloatings()
@@ -34,12 +34,12 @@ export function ImportDialog({
   const [error, setError] = useState<string | null>(null)
   const [pkgResult, setPkgResult] = useState<string | null>(null)
   const [pkgFile, setPkgFile] = useState<File | null>(null)
-  const [pickedCourse, setPickedCourse] = useState<number | null>(null)
+  const [pickedCourse, setPickedCourse] = useState<string | null>(null)
   const pkgInput = useRef<HTMLInputElement>(null)
   const courseIdForRequest = courseId ?? pickedCourse
 
   const run = useMutation({
-    mutationFn: ({ dryRun, courseIdForBody }: { dryRun: boolean; courseIdForBody: number }) =>
+    mutationFn: ({ dryRun, courseIdForBody }: { dryRun: boolean; courseIdForBody: string }) =>
       importQuiz(JSON.parse(caqText), dryRun, courseIdForBody),
     onSuccess: async (result) => {
       setError(null)
@@ -61,7 +61,7 @@ export function ImportDialog({
     }: {
       file: File
       dryRun: boolean
-      courseIdForBody: number
+      courseIdForBody: string
     }) => importQpkg(file, dryRun, courseIdForBody),
     onSuccess: async (result, variables) => {
       setError(null)
@@ -219,10 +219,10 @@ function PackageTab({
   onPkg: (file: File) => void
   pkgResult: string | null
   pkgFile: File | null
-  courseIdForRequest: number | null
+  courseIdForRequest: string | null
   runPkg: {
     isPending: boolean
-    mutate: (variables: { file: File; dryRun: boolean; courseIdForBody: number }) => void
+    mutate: (variables: { file: File; dryRun: boolean; courseIdForBody: string }) => void
     data?: ImportResult
   }
 }) {
@@ -299,7 +299,7 @@ function InboxTab({
   courseId,
   onImported,
 }: {
-  courseId: number | null
+  courseId: string | null
   onImported: () => Promise<void>
 }) {
   const { t } = useTranslation()
@@ -308,7 +308,7 @@ function InboxTab({
   const [message, setMessage] = useState<string | null>(null)
 
   const importFile = useMutation({
-    mutationFn: ({ filename, courseIdForBody }: { filename: string; courseIdForBody: number }) =>
+    mutationFn: ({ filename, courseIdForBody }: { filename: string; courseIdForBody: string }) =>
       importInboxFile(filename, courseIdForBody),
     onSuccess: async (result) => {
       setMessage(t('quiz.inboxImported', { valid: result.valid }))

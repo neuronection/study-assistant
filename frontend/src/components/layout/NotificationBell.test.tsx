@@ -34,14 +34,14 @@ function renderBell() {
 const AGGREGATE: Notifications = {
   due_cards: 3,
   due_reviews: [
-    { card_id: 1, kind: 'card_basic', course_id: 1, course_title: 'Calculus' },
+    { card_id: '1', kind: 'card_basic', course_id: '1', course_title: 'Calculus' },
   ],
   plan_today: [
     {
-      item_id: 7,
+      item_id: '7',
       title: 'overdue task',
       kind: 'study',
-      course_id: 1,
+      course_id: '1',
       course_title: 'Calculus',
       due_date: '2026-09-14',
       overdue: true,
@@ -50,7 +50,7 @@ const AGGREGATE: Notifications = {
   plan_overdue_count: 1,
   exams: [
     {
-      course_id: 1,
+      course_id: '1',
       course_title: 'Calculus',
       exam_date: '2026-09-20',
       days_left: 5,

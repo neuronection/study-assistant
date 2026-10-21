@@ -21,14 +21,14 @@ vi.mock('@/lib/api', async (importOriginal) => {
 const GRAPH = {
   concepts: [
     {
-      id: 1,
+      id: '1',
       name: 'chain rule',
       description: 'Derivative of composites',
       aliases: ['chain-rule'],
-      nodes: [{ node_id: 11, node_title: 'Chain rule' }],
+      nodes: [{ node_id: '11', node_title: 'Chain rule' }],
     },
     {
-      id: 2,
+      id: '2',
       name: 'limits',
       description: null,
       aliases: [],
@@ -74,7 +74,7 @@ describe('ConceptsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /commit/i }))
     await waitFor(() =>
-      expect(commitConcepts).toHaveBeenCalledWith(3, {
+      expect(commitConcepts).toHaveBeenCalledWith('3', {
         concepts: [{ name: 'chain rule', description: 'd', aliases: [] }],
         links: [],
         nodes: [],

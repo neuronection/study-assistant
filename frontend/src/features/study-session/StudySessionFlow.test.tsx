@@ -17,7 +17,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     ...actual,
     getStudyNext: () => getStudyNext(),
     getReviewDue: () => getReviewDue(),
-    reviewFlashcard: (cardId: number, rating: number) =>
+    reviewFlashcard: (cardId: string, rating: number) =>
       reviewFlashcard(cardId, rating),
     updatePlanItem: (...args: unknown[]) =>
       updatePlanItem(...(args as [number, number, { done?: boolean }])),
@@ -33,7 +33,7 @@ vi.mock('@/features/ai/GenerateDialog', () => ({
   GenerateDialog: () => <div>generate-dialog</div>,
 }))
 
-function makeCard(id: number, front: string) {
+function makeCard(id: string, front: string) {
   return {
     id,
     kind: 'basic',
@@ -51,11 +51,11 @@ const DUE: ReviewDue = {
   total_due: 1,
   groups: [
     {
-      course_id: 3,
+      course_id: '3',
       course_title: 'Calculus I',
       course_color: null,
       due_count: 1,
-      cards: [makeCard(11, 'derivative of x^2')],
+      cards: [makeCard('11', 'derivative of x^2')],
     },
   ],
 }
@@ -95,9 +95,9 @@ describe('StudySessionPage', () => {
       review_courses: ['Calculus I'],
       plan_rows: [
         {
-          item_id: 77,
+          item_id: '77',
           title: 'Review limits',
-          course_id: 3,
+          course_id: '3',
           course_title: 'Calculus I',
           due_date: '2026-09-16',
           overdue: true,
@@ -110,7 +110,7 @@ describe('StudySessionPage', () => {
       streak: 3,
     })
     getReviewDue.mockResolvedValue(DUE)
-    updatePlanItem.mockResolvedValue({ id: 77, done: true })
+    updatePlanItem.mockResolvedValue({ id: '77', done: true })
 
     renderFlow()
     expect(await screen.findByText('Review 1 due cards')).toBeInTheDocument()
@@ -120,7 +120,7 @@ describe('StudySessionPage', () => {
     expect(await screen.findByText('Plan triage — 1 open')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-    await waitFor(() => expect(updatePlanItem).toHaveBeenCalledWith(3, 77, { done: true }))
+    await waitFor(() => expect(updatePlanItem).toHaveBeenCalledWith('3', '77', { done: true }))
     fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
 
     expect(await screen.findByText('Session wrapped up')).toBeInTheDocument()
@@ -136,7 +136,7 @@ describe('StudySessionPage', () => {
       plan_rows: [],
       weak_cells: [
         {
-          course_id: 3,
+          course_id: '3',
           course_title: 'Calculus I',
           concept: 'integration by parts',
           skill: 'compute',

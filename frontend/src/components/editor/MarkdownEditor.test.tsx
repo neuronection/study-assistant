@@ -144,7 +144,7 @@ describe('MarkdownEditor', () => {
           }}
           ariaLabel="Note body"
           apiRef={api}
-          drawings={[{ id: 7, png_sha: 'abc', ocr_markdown: null }]}
+          drawings={[{ id: '7', png_sha: 'abc', ocr_markdown: null }]}
         />
       )
     }
@@ -152,7 +152,7 @@ describe('MarkdownEditor', () => {
     await waitFor(() => expect(proseRoot().textContent).toContain('b'))
     await waitFor(() => expect(api.current).not.toBeNull())
 
-    api.current?.insertDrawing(7)
+    api.current?.insertDrawing('7')
     await waitFor(() => expect(emitted).toContain('sa-drawing://7'))
     expect(emitted).toContain('a\n\n\nb')
     expect(emitted).not.toContain('&nbsp;')
@@ -255,7 +255,7 @@ describe('MarkdownEditor', () => {
     await waitFor(() => expect(proseRoot().textContent).toContain('hello'))
     await waitFor(() => expect(api.current).not.toBeNull())
 
-    api.current?.insertDrawing(7)
+    api.current?.insertDrawing('7')
     await waitFor(() => expect(emitted).toContain('sa-drawing://7'))
     const paragraphBefore = proseRoot().firstElementChild
     onChange.mockClear()
@@ -275,7 +275,7 @@ describe('MarkdownEditor', () => {
         value={'before\n\n![drawing](sa-drawing://3)\n\nafter'}
         onChange={onChange}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: '$2x$' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: '$2x$' }]}
       />
     )
     await waitFor(() =>
@@ -295,7 +295,7 @@ describe('MarkdownEditor', () => {
         value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: '$2x$' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: '$2x$' }]}
         drawingAdapter={adapter}
       />
     )
@@ -316,7 +316,7 @@ describe('MarkdownEditor', () => {
     fireEvent.pointerDown(menuButton)
     expect(await screen.findByRole('menu')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Run OCR again' }))
-    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith('3'))
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Edit drawing' }))
@@ -335,7 +335,7 @@ describe('MarkdownEditor', () => {
         value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: null }]}
         drawingAdapter={adapter}
       />
     )
@@ -347,7 +347,7 @@ describe('MarkdownEditor', () => {
     clickElement(image.closest('[data-drag-handle]') as HTMLElement)
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Run OCR again' }))
-    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(adapter.reocr).toHaveBeenCalledWith('3'))
 
     rerender(
       <MarkdownEditor
@@ -355,7 +355,7 @@ describe('MarkdownEditor', () => {
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
-          { id: 3, png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: 77 },
+          { id: '3', png_sha: 'abc', ocr_markdown: 'first text', ocr_job_id: '77' },
         ]}
         drawingAdapter={adapter}
       />
@@ -366,7 +366,7 @@ describe('MarkdownEditor', () => {
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
-          { id: 3, png_sha: 'abc', ocr_markdown: 'second text', ocr_job_id: null },
+          { id: '3', png_sha: 'abc', ocr_markdown: 'second text', ocr_job_id: null },
         ]}
         drawingAdapter={adapter}
       />
@@ -396,7 +396,7 @@ describe('MarkdownEditor', () => {
           emitted = next
         }}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: '$2x$' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: '$2x$' }]}
         drawingAdapter={adapter}
       />
     )
@@ -410,7 +410,7 @@ describe('MarkdownEditor', () => {
     fireEvent.pointerDown(await screen.findByRole('button', { name: 'Drawing options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
-    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith('3'))
     await waitFor(() =>
       expect(proseRoot().querySelector('img[src="/api/v1/blobs/abc"]')).toBeNull()
     )
@@ -430,8 +430,8 @@ describe('MarkdownEditor', () => {
         onChange={vi.fn()}
         ariaLabel="Note body"
         drawings={[
-          { id: 4, png_sha: 'abc', ocr_markdown: null, strokes: [] },
-          { id: 7, png_sha: 'orphan', ocr_markdown: null, strokes: [] },
+          { id: '4', png_sha: 'abc', ocr_markdown: null, strokes: [] },
+          { id: '7', png_sha: 'orphan', ocr_markdown: null, strokes: [] },
         ]}
         drawingAdapter={adapter}
       />
@@ -444,7 +444,7 @@ describe('MarkdownEditor', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'More drawing actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete drawing' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete drawing' }))
-    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith(7))
+    await waitFor(() => expect(adapter.remove).toHaveBeenCalledWith('7'))
   })
 
   test('drawing delete asks for confirmation before removing', async () => {
@@ -459,7 +459,7 @@ describe('MarkdownEditor', () => {
         value={'text\n\n![drawing](sa-drawing://3)\n\nmore text'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: null }]}
         drawingAdapter={adapter}
       />
     )
@@ -484,7 +484,7 @@ describe('MarkdownEditor', () => {
         value={'text before\n\n![drawing](sa-drawing://3)\n\ntext after'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: null }]}
       />
     )
     const image = await waitFor(() => {
@@ -512,7 +512,7 @@ describe('MarkdownEditor', () => {
         value={'one\n\n![drawing](sa-drawing://3)\n\ntwo'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: null }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: null }]}
       />
     )
     const image = await waitFor(() => {
@@ -534,7 +534,7 @@ describe('MarkdownEditor', () => {
         value={'![drawing](sa-drawing://3)'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: 'first text' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: 'first text' }]}
       />
     )
     await waitFor(() => expect(proseRoot().textContent).toContain('first text'))
@@ -544,7 +544,7 @@ describe('MarkdownEditor', () => {
         value={'![drawing](sa-drawing://3)'}
         onChange={vi.fn()}
         ariaLabel="Note body"
-        drawings={[{ id: 3, png_sha: 'abc', ocr_markdown: 'second text' }]}
+        drawings={[{ id: '3', png_sha: 'abc', ocr_markdown: 'second text' }]}
       />
     )
     await waitFor(() => expect(proseRoot().textContent).toContain('second text'))
@@ -560,7 +560,7 @@ describe('MarkdownEditor', () => {
     await waitFor(() => expect(proseRoot().textContent).toContain('hello'))
     await waitFor(() => expect(api.current).not.toBeNull())
 
-    api.current?.insertDrawing(7)
+    api.current?.insertDrawing('7')
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
         expect.stringContaining('sa-drawing://7')
@@ -591,7 +591,7 @@ describe('MarkdownEditor', () => {
           onChange={setValue}
           ariaLabel="Note body"
           apiRef={api}
-          drawings={[{ id: 7, png_sha: 'abc', ocr_markdown: null }]}
+          drawings={[{ id: '7', png_sha: 'abc', ocr_markdown: null }]}
         />
       )
     }
@@ -605,7 +605,7 @@ describe('MarkdownEditor', () => {
     expect(redo).toBeDisabled()
 
     await act(async () => {
-      api.current?.insertDrawing(7)
+      api.current?.insertDrawing('7')
     })
     await waitFor(() => expect(proseRoot().querySelector('img')).not.toBeNull())
 
@@ -630,7 +630,7 @@ describe('MarkdownEditor', () => {
 
     api.current?.insertQuote('line one\nline two', {
       title: 'Worksheet',
-      materialId: 5,
+      materialId: '5',
     })
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith(
@@ -987,7 +987,7 @@ describe('MarkdownEditor', () => {
   test('pen button opens the canvas; saving calls create and inserts the ref', async () => {
     let emitted = ''
     const adapter = {
-      create: vi.fn(async () => 11),
+      create: vi.fn(async () => '11'),
       update: vi.fn(async () => undefined),
       reocr: vi.fn(async () => undefined),
       remove: vi.fn(async () => undefined),
@@ -1027,7 +1027,7 @@ describe('MarkdownEditor', () => {
 
   test('turning the OCR toggle off saves the drawing without extraction', async () => {
     const adapter = {
-      create: vi.fn(async () => 12),
+      create: vi.fn(async () => '12'),
       update: vi.fn(async () => undefined),
       reocr: vi.fn(async () => undefined),
       remove: vi.fn(async () => undefined),
@@ -1066,7 +1066,7 @@ describe('MarkdownEditor', () => {
         ariaLabel="Note body"
         drawings={[
           {
-            id: 3,
+            id: '3',
             png_sha: 'abc',
             ocr_markdown: 'old',
             strokes: [{ points: [[1, 1]], color: '#1a1a1a', width: 2 }],
@@ -1089,7 +1089,7 @@ describe('MarkdownEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save drawing' }))
     await waitFor(() =>
       expect(adapter.update).toHaveBeenCalledWith(
-        3,
+        '3',
         [{ points: [[0, 0]], color: '#1a1a1a', width: 2 }],
         'AAA',
         true,
@@ -1115,7 +1115,7 @@ describe('MarkdownEditor', () => {
         ariaLabel="Note body"
         drawings={[
           {
-            id: 3,
+            id: '3',
             png_sha: 'abc',
             ocr_markdown: null,
             strokes: [{ points: [[1, 1]], color: '#1a1a1a', width: 2 }],
@@ -1149,8 +1149,8 @@ describe('MarkdownEditor', () => {
         }}
         ariaLabel="Note body"
         drawings={[
-          { id: 4, png_sha: 'abc123', ocr_markdown: '$2x$', strokes: [] },
-          { id: 7, png_sha: 'orphan', ocr_markdown: null, strokes: [] },
+          { id: '4', png_sha: 'abc123', ocr_markdown: '$2x$', strokes: [] },
+          { id: '7', png_sha: 'orphan', ocr_markdown: null, strokes: [] },
         ]}
       />
     )

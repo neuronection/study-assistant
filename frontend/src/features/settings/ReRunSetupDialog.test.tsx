@@ -81,7 +81,7 @@ const PRESETS: Record<string, unknown> = {
 }
 
 const PROVIDER: Provider = {
-  id: 3,
+  id: '3',
   name: 'Google Gemini',
   type: 'google',
   base_url: 'https://generativelanguage.googleapis.com',
@@ -96,7 +96,7 @@ const PROVIDER: Provider = {
 
 const TASK_DEFAULTS = [
   { requires: 'text', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
-  { requires: 'vision', model_id: 42, fallback_model_id: null, model_label: 'gemini-2.5-flash', fallback_model_label: null },
+  { requires: 'vision', model_id: '42', fallback_model_id: null, model_label: 'gemini-2.5-flash', fallback_model_label: null },
   { requires: 'stt', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
   { requires: 'embeddings', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
   { requires: 'decision', model_id: null, fallback_model_id: null, model_label: null, fallback_model_label: null },
@@ -163,7 +163,7 @@ describe('ReRunSetupDialog', () => {
     setupMutation.mockResolvedValue({ ok: true })
     const openrouter: Provider = {
       ...PROVIDER,
-      id: 5,
+      id: '5',
       name: 'OpenRouter',
       type: 'openai_compatible',
       preset_key: 'openrouter',
@@ -203,7 +203,7 @@ describe('ReRunSetupDialog', () => {
     expect(screen.getByRole('button', { name: /gemini-3\.8-flash/i })).toHaveAttribute('aria-pressed', 'false')
     first.unmount()
 
-    const openai: Provider = { ...PROVIDER, id: 4, name: 'OpenAI', type: 'openai_compatible', preset_key: 'openai' }
+    const openai: Provider = { ...PROVIDER, id: '4', name: 'OpenAI', type: 'openai_compatible', preset_key: 'openai' }
     const second = renderDialog(openai)
     await screen.findByText(/uses the stored key for/i)
     expect(await screen.findByRole('button', { pressed: true, name: /whisper-1/i })).toBeInTheDocument()

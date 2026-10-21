@@ -15,7 +15,7 @@ export function AskAiPopover({
   kind,
 }: {
   material: AskMaterialTarget
-  scopeNodeId?: number | null
+  scopeNodeId?: string | null
   kind?: string
 }) {
   const { t } = useTranslation()

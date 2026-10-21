@@ -7,14 +7,14 @@ export type PlanItem = Schemas['PlanItemOut']
 export type PlanItemKind = Schemas['PlanItemKind']
 export type UpcomingItem = Schemas['UpcomingItemOut']
 
-export async function listPlanItems(courseId: number): Promise<PlanItem[]> {
+export async function listPlanItems(courseId: string): Promise<PlanItem[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/plan`)
   return json<PlanItem[]>(response)
 }
 
 export async function createPlanItem(
-  courseId: number,
-  body: { title: string; kind: string; due_date: string; node_id?: number | null }
+  courseId: string,
+  body: { title: string; kind: string; due_date: string; node_id?: string | null }
 ): Promise<PlanItem> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/plan`, {
     method: 'POST',
@@ -25,8 +25,8 @@ export async function createPlanItem(
 }
 
 export async function updatePlanItem(
-  courseId: number,
-  itemId: number,
+  courseId: string,
+  itemId: string,
   body: { title?: string; due_date?: string; done?: boolean; kind?: string }
 ): Promise<PlanItem> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/plan/${itemId}`, {
@@ -37,7 +37,7 @@ export async function updatePlanItem(
   return json<PlanItem>(response)
 }
 
-export async function deletePlanItem(courseId: number, itemId: number): Promise<void> {
+export async function deletePlanItem(courseId: string, itemId: string): Promise<void> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/plan/${itemId}`, {
     method: 'DELETE',
   })
@@ -46,7 +46,7 @@ export async function deletePlanItem(courseId: number, itemId: number): Promise<
   }
 }
 
-export async function generatePlan(courseId: number): Promise<{
+export async function generatePlan(courseId: string): Promise<{
   created: number
   items: PlanItem[]
 }> {
@@ -61,6 +61,6 @@ export async function listUpcomingItems(days = 7): Promise<UpcomingItem[]> {
   return json<UpcomingItem[]>(response)
 }
 
-export function planIcsUrl(courseId: number): string {
+export function planIcsUrl(courseId: string): string {
   return `/api/v1/courses/${courseId}/plan.ics`
 }

@@ -190,7 +190,7 @@ export function TasksTab() {
     (models.data ?? []).map((model) => [String(model.id), model.label || model.external_id])
   )
   const catalog = Object.values(
-    enabledModels.reduce<Record<number, ModelPickerProvider>>((acc, model) => {
+    enabledModels.reduce<Record<string, ModelPickerProvider>>((acc, model) => {
       acc[model.provider_id] = acc[model.provider_id] ?? {
         id: String(model.provider_id),
         name: providerNames.get(model.provider_id) ?? `#${model.provider_id}`,
@@ -214,7 +214,7 @@ export function TasksTab() {
     .filter((provider) => provider.models.length > 0)
 
   const assign = useMutation({
-    mutationFn: ({ task, modelId }: { task: string; modelId: number | null }) =>
+    mutationFn: ({ task, modelId }: { task: string; modelId: string | null }) =>
       assignTask(task, modelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -228,8 +228,8 @@ export function TasksTab() {
       fallbackModelId,
     }: {
       requires: string
-      modelId: number | null
-      fallbackModelId: number | null
+      modelId: string | null
+      fallbackModelId: string | null
     }) => assignTaskDefault(requires, modelId, fallbackModelId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] })
@@ -261,7 +261,7 @@ export function TasksTab() {
 
   const handleAssign = (taskId: string, modelId: string | null) => {
     setError(null)
-    const id = modelId ? Number(modelId) : null
+    const id = modelId
     if (taskId.startsWith(DEFAULT_PREFIX) || taskId.startsWith('decision:')) {
       const requires = taskId.startsWith(DEFAULT_PREFIX)
         ? taskId.slice(DEFAULT_PREFIX.length)
@@ -273,7 +273,7 @@ export function TasksTab() {
         // Fallback data stays in the backend untouched — the API round-
         // trips whatever is stored; the UI just stops offering a picker.
         fallbackModelId:
-          entry?.fallback_model_id != null ? Number(entry.fallback_model_id) : null,
+          entry?.fallback_model_id ?? null,
       })
     } else {
       assign.mutate({ task: taskId, modelId: id })
@@ -412,7 +412,7 @@ export function TasksTab() {
                     setError(null)
                     assignDefault.mutate({
                       requires: 'decision',
-                      modelId: Number(simplifyModelId),
+                      modelId: simplifyModelId,
                       fallbackModelId: null,
                     })
                   }}

@@ -79,7 +79,7 @@ export function PlannerWeekView({
               aria-label={day}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
-                const id = Number(event.dataTransfer.getData(PLAN_DRAG_TYPE))
+                const id = event.dataTransfer.getData(PLAN_DRAG_TYPE)
                 const item = items.find((entry) => entry.id === id)
                 if (item !== undefined && item.due_date !== day) {
                   onMove(item, day)

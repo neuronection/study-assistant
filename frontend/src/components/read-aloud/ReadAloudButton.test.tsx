@@ -70,7 +70,7 @@ describe('ReadAloudButton', () => {
 
   beforeEach(() => {
     mockDefaults.mockReset()
-    mockDefaults.mockResolvedValue([{ requires: 'text', model_id: 1 }])
+    mockDefaults.mockResolvedValue([{ requires: 'text', model_id: '1' }])
     speechSynthesis = {
       getVoices: vi.fn(() => [{ name: 'Voice' }]),
       cancel: vi.fn(),

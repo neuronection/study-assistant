@@ -83,7 +83,7 @@ function withName(item: File, name: string): File {
   return new File([item], name, { type: item.type, lastModified: item.lastModified })
 }
 
-type FolderCache = Map<number | null, Map<string, Folder>>
+type FolderCache = Map<string | null, Map<string, Folder>>
 
 function indexFolders(folders: Folder[], cache: FolderCache): void {
   for (const folder of folders) {
@@ -94,13 +94,13 @@ function indexFolders(folders: Folder[], cache: FolderCache): void {
 }
 
 async function ensureFolderPath(
-  courseId: number,
+  courseId: string,
   segments: string[],
-  baseFolderId: number | null,
+  baseFolderId: string | null,
   cache: FolderCache,
   created: () => void,
   onTopLevelCreated: ((folder: Folder) => void | Promise<void>) | undefined
-): Promise<number | null> {
+): Promise<string | null> {
   let parent = baseFolderId
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]
@@ -130,10 +130,10 @@ export function useMaterialUpload({
   onUploaded,
   onFolderCreated,
 }: {
-  courseId: number | null
-  getFolderId?: () => number | null | Promise<number | null>
-  getTargetNodeId?: () => number | null | Promise<number | null>
-  nameFile?: (item: UploadItem, folderId: number | null, courseId: number) => Promise<string> | string
+  courseId: string | null
+  getFolderId?: () => string | null | Promise<string | null>
+  getTargetNodeId?: () => string | null | Promise<string | null>
+  nameFile?: (item: UploadItem, folderId: string | null, courseId: string) => Promise<string> | string
   onUploaded?: (result: UploadResult, item: UploadItem) => void | Promise<void>
   onFolderCreated?: (folder: Folder) => void | Promise<void>
 }): MaterialUploadController {
@@ -163,7 +163,7 @@ export function useMaterialUpload({
       const noteCreated = () => {
         foldersCreated = true
       }
-      const createdTopLevel = new Set<number>()
+      const createdTopLevel = new Set<string>()
       const topLevelCreated = (folder: Folder): void | Promise<void> => {
         if (createdTopLevel.has(folder.id)) {
           return undefined
@@ -171,8 +171,8 @@ export function useMaterialUpload({
         createdTopLevel.add(folder.id)
         return onFolderCreated?.(folder)
       }
-      const targetFolders = new Map<string, Promise<number | null>>()
-      const folderTarget = (segments: string[]): Promise<number | null> => {
+      const targetFolders = new Map<string, Promise<string | null>>()
+      const folderTarget = (segments: string[]): Promise<string | null> => {
         const key = `${baseFolderId ?? 'root'}://${segments.join('/')}`
         let target = targetFolders.get(key)
         if (target === undefined) {

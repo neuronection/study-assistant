@@ -5,7 +5,7 @@ import type { ChatMessage } from '@/lib/api'
 
 function message(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
-    id: 7,
+    id: '7',
     role: 'assistant',
     markdown: 'Hello',
     citations: [],
@@ -40,9 +40,9 @@ describe('hasStructuredBlocks (plan 60 §5 content rule)', () => {
       { type: 'geo', jsxgraph: '' },
       { type: 'widget', widget: 'checklist', id: 'w1', props: {} },
       { type: 'image', alt: '' },
-      { type: 'image_ref', image_id: 1 },
-      { type: 'drawing', drawing_id: 1 },
-      { type: 'mention', ref: 'M1', kind: 'material', id: 1, title: 'T' },
+      { type: 'image_ref', image_id: '1' },
+      { type: 'drawing', drawing_id: '1' },
+      { type: 'mention', ref: 'M1', kind: 'material', id: '1', title: 'T' },
       { type: 'table', rows: [['a']] },
     ]) {
       expect(hasStructuredBlocks(message({ blocks: [block] }))).toBe(true)
@@ -54,12 +54,12 @@ describe('toChatMessageView', () => {
   test('maps ids to strings and decorates variants', () => {
     const view = toChatMessageView(
       message({
-        id: 30,
+        id: '30',
         role: 'user',
-        parent_id: 12,
+        parent_id: '12',
         variant_index: 2,
         variant_count: 3,
-        sibling_ids: [11, 30, 44],
+        sibling_ids: ['11', '30', '44'],
       }),
     )
     expect(view).toEqual({

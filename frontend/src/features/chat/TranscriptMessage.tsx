@@ -105,9 +105,9 @@ export function TranscriptMessage({
   view: ChatMessageView
   actionPending?: boolean
   onOpenGenerate?: (request: GenerateRequest) => void
-  onEditResend?: (messageId: number, content: string) => void
-  onRegenerate?: (userMessageId: number) => void
-  onSwitchVariant?: (messageId: number) => void
+  onEditResend?: (messageId: string, content: string) => void
+  onRegenerate?: (userMessageId: string) => void
+  onSwitchVariant?: (messageId: string) => void
 }) {
   const { t } = useTranslation()
   const isUser = message.role === 'user'
@@ -180,7 +180,7 @@ export function TranscriptMessage({
                 message.parent_id != null &&
                 onRegenerate !== undefined &&
                 !actionPending
-                  ? () => onRegenerate(message.parent_id as number)
+                  ? () => onRegenerate(message.parent_id!)
                   : undefined,
             }
           : {
@@ -191,12 +191,12 @@ export function TranscriptMessage({
                   : undefined,
               onRegenerate:
                 !isUser && onRegenerate !== undefined && message.parent_id != null && !actionPending
-                  ? () => onRegenerate(message.parent_id as number)
+                  ? () => onRegenerate(message.parent_id!)
                   : undefined,
             }
       }
       variants={view.variants}
-      onSelectVariant={(id) => onSwitchVariant?.(Number(id))}
+      onSelectVariant={(id) => onSwitchVariant?.(id)}
       chips={
         isUser && (message.mentions ?? []).length > 0 ? (
           <>

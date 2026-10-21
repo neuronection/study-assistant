@@ -75,7 +75,7 @@ vi.mock('@/lib/ws-client', () => ({
   }),
 }))
 
-function renderPanel(sessionId: number | null, session: ChatSession = SESSION) {
+function renderPanel(sessionId: string | null, session: ChatSession = SESSION) {
   baseMocks(session)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const rootRoute = createRootRoute()
@@ -98,9 +98,9 @@ function renderPanel(sessionId: number | null, session: ChatSession = SESSION) {
 }
 
 const SESSION: ChatSession = {
-  id: 4,
+  id: '4',
   public_id: 'uuid-4',
-  course_id: 7,
+  course_id: '7',
   node_id: null,
   title: 'New chat',
   use_embeddings: null,
@@ -126,12 +126,12 @@ describe('ChatPanel composer extras (plan 40C)', () => {
     vi.clearAllMocks()
     baseMocks()
     listFolders.mockResolvedValue([
-      { id: 55, name: 'Chat uploads', course_id: 7, parent_id: null },
+      { id: '55', name: 'Chat uploads', course_id: '7', parent_id: null },
     ])
     listMaterials.mockResolvedValue([])
     createFolder.mockImplementation(
-      async (name: string, parentId: number | null, courseId: number) => ({
-        id: 500 + createFolder.mock.calls.length,
+      async (name: string, parentId: string | null, courseId: string) => ({
+        id: String(500 + createFolder.mock.calls.length),
         name,
         path: name,
         course_id: courseId,
@@ -141,16 +141,16 @@ describe('ChatPanel composer extras (plan 40C)', () => {
       }),
     )
     uploadMaterial.mockResolvedValue({
-      material: { id: 77, title: 'drawing.png', kind: 'image' },
+      material: { id: '77', title: 'drawing.png', kind: 'image' },
     })
   })
 
   test('IME composition never submits the draft (plan 60 S4)', async () => {
     sendChatMessage.mockResolvedValue({
-      user_message: { id: 12, role: 'user', markdown: 'hello', citations: [], grounded: null },
-      job_id: 15,
+      user_message: { id: '12', role: 'user', markdown: 'hello', citations: [], grounded: null },
+      job_id: '15',
     })
-    renderPanel(4)
+    renderPanel('4')
     const composer = (await screen.findByPlaceholderText(
       'Ask about your material…',
     )) as HTMLTextAreaElement
@@ -159,11 +159,11 @@ describe('ChatPanel composer extras (plan 40C)', () => {
     expect(composer.value).toBe('きょう')
     expect(sendChatMessage).not.toHaveBeenCalled()
     fireEvent.keyDown(composer, { key: 'Enter', keyCode: 13 })
-    await waitFor(() => expect(sendChatMessage).toHaveBeenCalledWith(4, 'きょう', []))
+    await waitFor(() => expect(sendChatMessage).toHaveBeenCalledWith('4', 'きょう', []))
   })
 
   test('equation dialog inserts inline latex at the cursor into the draft', async () => {
-    renderPanel(4)
+    renderPanel('4')
     fireEvent.click(await screen.findByRole('button', { name: 'Attach an item' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Insert equation…' }))
     const field = await screen.findByRole('textbox', { name: 'Equation editor' })
@@ -185,7 +185,7 @@ describe('ChatPanel composer extras (plan 40C)', () => {
       strokesToPng: () =>
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     }))
-    renderPanel(4)
+    renderPanel('4')
     fireEvent.click(await screen.findByRole('button', { name: 'Attach an item' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open drawing canvas…' }))
     const saveButton = await screen.findByRole('button', { name: 'Attach drawing' })
@@ -196,25 +196,25 @@ describe('ChatPanel composer extras (plan 40C)', () => {
     await waitFor(() => {
       expect(uploadMaterial).toHaveBeenCalledWith(
         expect.any(File),
-        7,
-        501,
+        '7',
+        '501',
         null,
       )
     })
     const sent = uploadMaterial.mock.calls[0][0] as File
     expect(sent.name).toBe('Drawing 1.png')
-    expect(createFolder).toHaveBeenCalledWith('New chat (#4)', 55, 7)
+    expect(createFolder).toHaveBeenCalledWith('New chat (#4)', '55', '7')
   })
 
   test('draw uploads enumerate per conversation folder', async () => {
     listMaterials.mockResolvedValue([
-      { id: 1, title: 'Drawing 1.png' },
-      { id: 2, title: 'Drawing 3.png' },
+      { id: '1', title: 'Drawing 1.png' },
+      { id: '2', title: 'Drawing 3.png' },
     ])
     uploadMaterial.mockResolvedValue({
-      material: { id: 77, title: 'Drawing 4.png', kind: 'image' },
+      material: { id: '77', title: 'Drawing 4.png', kind: 'image' },
     })
-    renderPanel(4)
+    renderPanel('4')
     fireEvent.click(await screen.findByRole('button', { name: 'Attach an item' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open drawing canvas…' }))
     fireEvent.click(await screen.findByRole('button', { name: 'add-stroke' }))
@@ -222,13 +222,13 @@ describe('ChatPanel composer extras (plan 40C)', () => {
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalled())
     const sent = uploadMaterial.mock.calls[0][0] as File
     expect(sent.name).toBe('Drawing 4.png')
-    expect(listMaterials).toHaveBeenCalledWith(501, 7)
+    expect(listMaterials).toHaveBeenCalledWith('501', '7')
   })
 
   test('course-less session falls back to the Unsorted course for drawing uploads', async () => {
     listCourses.mockResolvedValue([
       {
-        id: 9,
+        id: '9',
         title: 'Unsorted',
         subject: null,
         level: null,
@@ -238,7 +238,7 @@ describe('ChatPanel composer extras (plan 40C)', () => {
         material_count: 0,
       },
       {
-        id: 11,
+        id: '11',
         title: 'Calculus',
         subject: null,
         level: null,
@@ -248,11 +248,11 @@ describe('ChatPanel composer extras (plan 40C)', () => {
         material_count: 2,
       },
     ])
-    listFolders.mockResolvedValue([{ id: 65, name: 'Chat uploads', course_id: 9, parent_id: null }])
+    listFolders.mockResolvedValue([{ id: '65', name: 'Chat uploads', course_id: '9', parent_id: null }])
     uploadMaterial.mockResolvedValue({
-      material: { id: 88, title: 'drawing.png', kind: 'image' },
+      material: { id: '88', title: 'drawing.png', kind: 'image' },
     })
-    renderPanel(4, COURSELESS_SESSION)
+    renderPanel('4', COURSELESS_SESSION)
     fireEvent.click(await screen.findByRole('button', { name: 'Attach an item' }))
     expect(await screen.findByRole('button', { name: 'Open drawing canvas…' }))
     expect(screen.getByRole('button', { name: 'Capture screenshot…' }))
@@ -262,15 +262,15 @@ describe('ChatPanel composer extras (plan 40C)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'add-stroke' }))
     fireEvent.click(saveButton)
     await waitFor(() => expect(uploadMaterial).toHaveBeenCalled())
-    expect(uploadMaterial.mock.calls[0][1]).toBe(9)
-    expect(uploadMaterial.mock.calls[0][2]).toBe(501)
-    expect(createFolder).toHaveBeenCalledWith('New chat (#4)', 65, 9)
+    expect(uploadMaterial.mock.calls[0][1]).toBe('9')
+    expect(uploadMaterial.mock.calls[0][2]).toBe('501')
+    expect(createFolder).toHaveBeenCalledWith('New chat (#4)', '65', '9')
   })
 
   test('course-less session without a resolvable course hides drawing, screenshot and upload', async () => {
     listCourses.mockResolvedValue([
       {
-        id: 11,
+        id: '11',
         title: 'Calculus',
         subject: null,
         level: null,
@@ -280,7 +280,7 @@ describe('ChatPanel composer extras (plan 40C)', () => {
         material_count: 0,
       },
       {
-        id: 12,
+        id: '12',
         title: 'Algebra',
         subject: null,
         level: null,
@@ -290,7 +290,7 @@ describe('ChatPanel composer extras (plan 40C)', () => {
         material_count: 0,
       },
     ])
-    renderPanel(4, COURSELESS_SESSION)
+    renderPanel('4', COURSELESS_SESSION)
     fireEvent.click(await screen.findByRole('button', { name: 'Attach an item' }))
     expect(await screen.findByRole('button', { name: 'Insert equation…' }))
     expect(screen.queryByRole('button', { name: 'Open drawing canvas…' })).toBeNull()
@@ -306,7 +306,7 @@ describe('ChatPanel composer extras (plan 40C)', () => {
       value: {},
     })
     try {
-      renderPanel(4)
+      renderPanel('4')
       fireEvent.click(await screen.findByRole('button', { name: 'Attach an item' }))
       fireEvent.click(
         await screen.findByRole('button', { name: 'Capture screenshot…' }),

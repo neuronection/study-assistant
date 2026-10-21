@@ -33,7 +33,7 @@ export function QuickCapture() {
   const queryClient = useQueryClient()
   const [body, setBody] = useState('')
   const [savedTitle, setSavedTitle] = useState<string | null>(null)
-  const [savedNoteId, setSavedNoteId] = useState<number | null>(null)
+  const [savedNoteId, setSavedNoteId] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scratchpad = useQuery({

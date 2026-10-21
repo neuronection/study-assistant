@@ -20,7 +20,7 @@ const ALL_ON = {
 
 const TREE: NodeInfo[] = [
   {
-    id: 1,
+    id: '1',
     title: 'Calculus I',
     summary: null,
     objectives: [],
@@ -29,7 +29,7 @@ const TREE: NodeInfo[] = [
     is_root: true,
     children: [
       {
-        id: 2,
+        id: '2',
         title: 'Limits',
         summary: null,
         objectives: [],
@@ -38,7 +38,7 @@ const TREE: NodeInfo[] = [
         is_root: false,
         children: [
           {
-            id: 3,
+            id: '3',
             title: 'Continuity',
             summary: null,
             objectives: [],
@@ -73,7 +73,7 @@ describe('NodeRecentStrip', () => {
     })
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
+      JSON.stringify([{ courseId: '9', nodeId: '3', at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(TREE)
     expect(container).toBeEmptyDOMElement()
@@ -83,8 +83,8 @@ describe('NodeRecentStrip', () => {
     window.localStorage.setItem(
       'sa-recent-nodes.default',
       JSON.stringify([
-        { courseId: 9, nodeId: 3, at: Date.now() - 60000 },
-        { courseId: 9, nodeId: 2, at: Date.now() - 3600000 },
+        { courseId: '9', nodeId: '3', at: Date.now() - 60000 },
+        { courseId: '9', nodeId: '2', at: Date.now() - 3600000 },
       ])
     )
     renderStrip(TREE)
@@ -101,8 +101,8 @@ describe('NodeRecentStrip', () => {
     window.localStorage.setItem(
       'sa-recent-nodes.default',
       JSON.stringify([
-        { courseId: 9, nodeId: 1, at: Date.now() - 30000 },
-        { courseId: 9, nodeId: 2, at: Date.now() - 3600000 },
+        { courseId: '9', nodeId: '1', at: Date.now() - 30000 },
+        { courseId: '9', nodeId: '2', at: Date.now() - 3600000 },
       ])
     )
     renderStrip(TREE)
@@ -113,7 +113,7 @@ describe('NodeRecentStrip', () => {
   test('clicking a pill navigates to the node workspace', () => {
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
+      JSON.stringify([{ courseId: '9', nodeId: '3', at: Date.now() - 60000 }])
     )
     renderStrip(TREE)
     fireEvent.click(screen.getByText('Continuity'))
@@ -126,7 +126,7 @@ describe('NodeRecentStrip', () => {
   test('ignores entries from other courses', () => {
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 4, nodeId: 3, at: Date.now() - 60000 }])
+      JSON.stringify([{ courseId: '4', nodeId: '3', at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(TREE)
     expect(container).toBeEmptyDOMElement()
@@ -135,7 +135,7 @@ describe('NodeRecentStrip', () => {
   test('stays hidden while the tree is loading', () => {
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 9, nodeId: 3, at: Date.now() - 60000 }])
+      JSON.stringify([{ courseId: '9', nodeId: '3', at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(undefined)
     expect(container).toBeEmptyDOMElement()
@@ -144,7 +144,7 @@ describe('NodeRecentStrip', () => {
   test('drops entries whose node no longer exists', () => {
     window.localStorage.setItem(
       'sa-recent-nodes.default',
-      JSON.stringify([{ courseId: 9, nodeId: 999, at: Date.now() - 60000 }])
+      JSON.stringify([{ courseId: '9', nodeId: '999', at: Date.now() - 60000 }])
     )
     const { container } = renderStrip(TREE)
     expect(container).toBeEmptyDOMElement()

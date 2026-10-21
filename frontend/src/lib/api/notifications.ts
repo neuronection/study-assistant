@@ -1,24 +1,24 @@
 import { json, apiFetch } from './client'
 
 export interface DueReviewEntry {
-  card_id: number
+  card_id: string
   kind: string
-  course_id: number
+  course_id: string
   course_title: string
 }
 
 export interface PlanEntry {
-  item_id: number
+  item_id: string
   title: string
   kind: string
-  course_id: number
+  course_id: string
   course_title: string
   due_date: string
   overdue: boolean
 }
 
 export interface ExamEntry {
-  course_id: number
+  course_id: string
   course_title: string
   exam_date: string
   days_left: number

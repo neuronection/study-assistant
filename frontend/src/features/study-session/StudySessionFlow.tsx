@@ -190,7 +190,7 @@ function ReviewPhase({
   const queryClient = useQueryClient()
   const due = useQuery({ queryKey: ['review-due'], queryFn: () => getReviewDue() })
   const review = useMutation({
-    mutationFn: ({ cardId, rating }: { cardId: number; rating: number }) =>
+    mutationFn: ({ cardId, rating }: { cardId: string; rating: number }) =>
       reviewFlashcard(cardId, rating),
   })
   const [answered, setAnswered] = useState(0)
@@ -258,7 +258,7 @@ function PlanPhase({
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [doneIds, setDoneIds] = useState<number[]>([])
+  const [doneIds, setDoneIds] = useState<string[]>([])
   const complete = useMutation({
     mutationFn: (row: StudyNext['plan_rows'][number]) =>
       updatePlanItem(row.course_id, row.item_id, { done: true }),

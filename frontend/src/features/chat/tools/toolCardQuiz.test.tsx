@@ -47,7 +47,7 @@ function renderCard() {
 describe('QuizCardView through the library tool card', () => {
   beforeEach(() => {
     answerQuizQuestion.mockReset()
-    useChatStore.setState({ session: { id: 9, publicId: 'p9' } })
+    useChatStore.setState({ session: { id: '9', publicId: 'p9' } })
   })
 
   test('quiz cards render expanded with the question and grade the pick', async () => {
@@ -55,8 +55,8 @@ describe('QuizCardView through the library tool card', () => {
       correct: true,
       verdict_detail: 'exact choice match',
       expected_display: '0',
-      user_message_id: 11,
-      job_id: 3,
+      user_message_id: '11',
+      job_id: '3',
     })
     renderCard()
 
@@ -65,7 +65,7 @@ describe('QuizCardView through the library tool card', () => {
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /B\s*1/ }))
 
-    await waitFor(() => expect(answerQuizQuestion).toHaveBeenCalledWith(9, 1))
+    await waitFor(() => expect(answerQuizQuestion).toHaveBeenCalledWith('9', 1))
     expect(await screen.findByText('Correct!')).toBeInTheDocument()
   })
 
@@ -74,8 +74,8 @@ describe('QuizCardView through the library tool card', () => {
       correct: false,
       verdict_detail: 'exact choice match',
       expected_display: '0',
-      user_message_id: 11,
-      job_id: 3,
+      user_message_id: '11',
+      job_id: '3',
     })
     renderCard()
 

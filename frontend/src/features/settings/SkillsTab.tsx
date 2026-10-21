@@ -16,7 +16,7 @@ export function SkillsTab() {
   const courseTypes = useQuery({ queryKey: ['course-types'], queryFn: listCourseTypes })
   const courses = useQuery({ queryKey: ['courses'], queryFn: listCourses })
   const [editing, setEditing] = useState<{ key: string; name: string } | null>(null)
-  const [courseId, setCourseId] = useState<number | null>(null)
+  const [courseId, setCourseId] = useState<string | null>(null)
   const [newType, setNewType] = useState<{ key: string; name: string } | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -63,7 +63,7 @@ export function SkillsTab() {
         <select
           className="bg-surface border-border rounded-md border px-2 py-1.5"
           value={courseId ?? ''}
-          onChange={(event) => setCourseId(event.target.value === '' ? null : Number(event.target.value))}
+          onChange={(event) => setCourseId(event.target.value === '' ? null : event.target.value)}
         >
           <option value="">{t('settings.noCourse')}</option>
           {(courses.data ?? []).map((course) => (

@@ -17,10 +17,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return {
     ...actual,
     listModels: () => listModels(),
-    listCourseTasks: (courseId: number) => listCourseTasks(courseId),
+    listCourseTasks: (courseId: string) => listCourseTasks(courseId),
     assignCourseTask: (...args: unknown[]) =>
       assignCourseTask(...(args as [number, string, number | null, number | null])),
-    listCourseTaskDefaults: (courseId: number) => listCourseTaskDefaults(courseId),
+    listCourseTaskDefaults: (courseId: string) => listCourseTaskDefaults(courseId),
     assignCourseTaskDefault: (...args: unknown[]) =>
       assignCourseTaskDefault(
         ...(args as [number, string, number | null, number | null])
@@ -30,7 +30,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 })
 
 const COURSE: Course = {
-  id: 3,
+  id: '3',
   title: 'Calculus I',
   subject: null,
   level: null,
@@ -67,7 +67,7 @@ describe('CourseSettingsTab', () => {
     fireEvent.click(save)
 
     await waitFor(() =>
-      expect(updateCourse).toHaveBeenCalledWith(3, {
+      expect(updateCourse).toHaveBeenCalledWith('3', {
         title: 'Analysis I',
         description: '',
       })
@@ -76,8 +76,8 @@ describe('CourseSettingsTab', () => {
 
   test('switching to tasks lists per-task overrides with inherited labels', async () => {
     listModels.mockResolvedValue([
-      { id: 1, label: 'local-mini', caps: ['text'], enabled: true, missing: false },
-      { id: 2, label: 'vision-pro', caps: ['vision'], enabled: true, missing: false },
+      { id: '1', label: 'local-mini', caps: ['text'], enabled: true, missing: false },
+      { id: '2', label: 'vision-pro', caps: ['vision'], enabled: true, missing: false },
     ])
     listCourseTaskDefaults.mockResolvedValue([])
     listCourseTasks.mockResolvedValue([
@@ -96,7 +96,7 @@ describe('CourseSettingsTab', () => {
         task: 'ocr',
         description: 'Scanned page OCR',
         requires: 'vision',
-        model_id: 2,
+        model_id: '2',
         fallback_model_id: null,
         model_label: 'vision-pro',
         fallback_model_label: null,
@@ -111,7 +111,7 @@ describe('CourseSettingsTab', () => {
     expect(await screen.findByText('chat')).toBeInTheDocument()
     expect(screen.getByText('Tutor chat turns')).toBeInTheDocument()
     expect(screen.getByText(/using global-chat/i)).toBeInTheDocument()
-    expect(listCourseTasks).toHaveBeenCalledWith(3)
+    expect(listCourseTasks).toHaveBeenCalledWith('3')
 
     const chatModel = screen.getByRole('combobox', { name: 'chat course model' })
     expect(within(chatModel).getAllByRole('option')[0]).toHaveTextContent(
@@ -126,14 +126,14 @@ describe('CourseSettingsTab', () => {
   })
 
   test('picking a course override assigns it; picking the inherit option clears it', async () => {    listModels.mockResolvedValue([
-      { id: 1, label: 'local-mini', caps: ['text'], enabled: true, missing: false },
+      { id: '1', label: 'local-mini', caps: ['text'], enabled: true, missing: false },
     ])
     const row = {
       task: 'quizgen',
       description: 'Quiz generation',
       requires: 'text',
-      model_id: 1 as number | null,
-      fallback_model_id: null as number | null,
+      model_id: '1' as string | null,
+      fallback_model_id: null as string | null,
       model_label: 'local-mini' as string | null,
       fallback_model_label: null as string | null,
       global_model_label: null,
@@ -142,7 +142,7 @@ describe('CourseSettingsTab', () => {
     listCourseTaskDefaults.mockResolvedValue([])
     listCourseTasks.mockResolvedValue([row])
     assignCourseTask.mockImplementation(
-      (_courseId: number, _task: string, modelId: number | null, fallbackModelId: number | null) => {
+      (_courseId: string, _task: string, modelId: string | null, fallbackModelId: string | null) => {
         row.model_id = modelId
         row.fallback_model_id = fallbackModelId
         row.model_label = modelId === null ? null : 'local-mini'
@@ -157,20 +157,20 @@ describe('CourseSettingsTab', () => {
 
     fireEvent.change(select, { target: { value: '1' } })
     await waitFor(() =>
-      expect(assignCourseTask).toHaveBeenLastCalledWith(3, 'quizgen', 1, null)
+      expect(assignCourseTask).toHaveBeenLastCalledWith('3', 'quizgen', '1', null)
     )
 
     const fallback = screen.getByRole('combobox', { name: 'quizgen course fallback model' })
     fireEvent.change(fallback, { target: { value: '1' } })
     await waitFor(() =>
-      expect(assignCourseTask).toHaveBeenLastCalledWith(3, 'quizgen', 1, 1)
+      expect(assignCourseTask).toHaveBeenLastCalledWith('3', 'quizgen', '1', '1')
     )
 
     fireEvent.change(screen.getByRole('combobox', { name: 'quizgen course model' }), {
       target: { value: '' },
     })
     await waitFor(() =>
-      expect(assignCourseTask).toHaveBeenLastCalledWith(3, 'quizgen', null, 1)
+      expect(assignCourseTask).toHaveBeenLastCalledWith('3', 'quizgen', null, '1')
     )
   })
 })
@@ -178,13 +178,13 @@ describe('CourseSettingsTab', () => {
 describe('CourseSettingsTab defaults card', () => {
   test('lists capability defaults, shows inherited global label and assigns a course default', async () => {
     listModels.mockResolvedValue([
-      { id: 1, label: 'local-mini', caps: ['text'], enabled: true, missing: false },
-      { id: 2, label: 'vision-pro', caps: ['vision'], enabled: true, missing: false },
+      { id: '1', label: 'local-mini', caps: ['text'], enabled: true, missing: false },
+      { id: '2', label: 'vision-pro', caps: ['vision'], enabled: true, missing: false },
     ])
     const textRow = {
       requires: 'text',
-      model_id: null as number | null,
-      fallback_model_id: null as number | null,
+      model_id: null as string | null,
+      fallback_model_id: null as string | null,
       model_label: null as string | null,
       fallback_model_label: null as string | null,
       global_model_label: 'cloud-default',
@@ -201,7 +201,7 @@ describe('CourseSettingsTab defaults card', () => {
     }
     listCourseTaskDefaults.mockResolvedValue([textRow, visionRow])
     assignCourseTaskDefault.mockImplementation(
-      (_courseId: number, requires: string, modelId: number | null) => {
+      (_courseId: string, requires: string, modelId: string | null) => {
         if (requires === 'text') {
           textRow.model_id = modelId
           textRow.model_label = modelId === null ? null : 'local-mini'
@@ -222,10 +222,10 @@ describe('CourseSettingsTab defaults card', () => {
 
     fireEvent.change(textSelect, { target: { value: '1' } })
     await waitFor(() =>
-      expect(assignCourseTaskDefault).toHaveBeenCalledWith(3, 'text', 1)
+      expect(assignCourseTaskDefault).toHaveBeenCalledWith('3', 'text', '1')
     )
     await waitFor(() => expect(textSelect).toHaveValue('1'))
-    expect(listCourseTaskDefaults).toHaveBeenCalledWith(3)
+    expect(listCourseTaskDefaults).toHaveBeenCalledWith('3')
 
     expect(visionRow.global_model_label).toBeNull()
   })

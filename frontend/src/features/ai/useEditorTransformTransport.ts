@@ -43,10 +43,10 @@ export function useEditorTransformTransport(
           }
         }),
       cancel: async (jobId) => {
-        await cancelEditorTransformJob(Number(jobId)).catch(() => undefined)
+        await cancelEditorTransformJob(jobId).catch(() => undefined)
       },
       poll: async (jobId) => {
-        const job = await getEditorTransformJob(Number(jobId))
+        const job = await getEditorTransformJob(jobId)
         return {
           status: job.status === 'queued' ? 'running' : job.status,
           result: job.result_md,

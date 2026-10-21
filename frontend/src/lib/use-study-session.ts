@@ -11,8 +11,8 @@ const HEARTBEAT_MS = 60_000
 export interface StudySessionOptions {
   kind: StudySessionKind
   entityRef?: string | null
-  courseId?: number | null
-  nodeId?: number | null
+  courseId?: string | null
+  nodeId?: string | null
   enabled?: boolean
 }
 
@@ -32,7 +32,7 @@ export function useStudySession(options: StudySessionOptions): void {
     if (!enabled) {
       return
     }
-    let sessionId: number | null = null
+    let sessionId: string | null = null
     let cancelled = false
     startStudySession({
       kind,

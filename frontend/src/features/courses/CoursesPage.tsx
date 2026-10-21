@@ -40,7 +40,7 @@ export function CoursesPage() {
   const [importPreview, setImportPreview] = useState<CourseBundlePreview | null>(null)
 
   const lastVisitByCourse = useMemo(() => {
-    const map = new Map<number, { nodeId: number; at: number }>()
+    const map = new Map<string, { nodeId: string; at: number }>()
     for (const entry of getRecentNodes()) {
       if (!map.has(entry.courseId)) {
         map.set(entry.courseId, { nodeId: entry.nodeId, at: entry.at })
@@ -57,22 +57,22 @@ export function CoursesPage() {
   )
   const recentTreeQueries = useQueries({
     queries: recentCourseIds.map((id) => ({
-      queryKey: ['tree', String(id)],
+      queryKey: ['tree', id],
       queryFn: () => courseTree(id),
     })),
   })
   const lastVisitRows = useMemo(() => {
     if (!courseCardMeta) {
-      return new Map<number, ResolvedRecentNode>()
+      return new Map<string, ResolvedRecentNode>()
     }
-    const trees = new Map<number, NodeInfo[] | undefined>()
+    const trees = new Map<string, NodeInfo[] | undefined>()
     recentCourseIds.forEach((id, index) => {
       trees.set(id, recentTreeQueries[index]?.data)
     })
     const titles = new Map(
       (courses.data ?? []).map((course) => [course.id, course.title])
     )
-    const rows = new Map<number, ResolvedRecentNode>()
+    const rows = new Map<string, ResolvedRecentNode>()
     for (const [courseId, entry] of lastVisitByCourse) {
       const resolved = resolveRecentNodes(
         [{ courseId, nodeId: entry.nodeId, at: entry.at }],
@@ -115,7 +115,7 @@ export function CoursesPage() {
   })
 
   const remove = useMutation({
-    mutationFn: (id: number) => deleteCourse(id, true),
+    mutationFn: (id: string) => deleteCourse(id, true),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['courses'] }),
   })
 
@@ -292,7 +292,7 @@ export function CoursesPage() {
               <div className="min-w-0 flex-1">
                 <Link
                   to="/courses/$courseId"
-                  params={{ courseId: String(course.id) }}
+                  params={{ courseId: course.id }}
                   className="block truncate text-sm font-medium hover:underline"
                 >
                   {course.title}
@@ -312,8 +312,8 @@ export function CoursesPage() {
                       void navigate({
                         to: '/courses/$courseId/n/$nodeId',
                         params: {
-                          courseId: String(course.id),
-                          nodeId: String(lastVisit.nodeId),
+                          courseId: course.id,
+                          nodeId: lastVisit.nodeId,
                         },
                       })
                     }}

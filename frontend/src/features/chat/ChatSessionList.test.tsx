@@ -23,7 +23,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listChatSessions: () => listChatSessions(),
     renameChatSession: (...args: unknown[]) =>
       renameChatSession(...(args as [number, string])),
-    deleteChatSession: (id: number) => deleteChatSession(id),
+    deleteChatSession: (id: string) => deleteChatSession(id),
   }
 })
 
@@ -31,7 +31,7 @@ function renderList(
   props: {
     onSelectSession?: (session: ChatSession) => void
     onNewChat?: () => void
-    activeSessionId?: number | null
+    activeSessionId?: string | null
   } = {},
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -66,7 +66,7 @@ function renderList(
 
 const SESSIONS = [
   {
-    id: 4,
+    id: '4',
     public_id: 'uuid-4',
     course_id: null,
     node_id: null,
@@ -74,7 +74,7 @@ const SESSIONS = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 5,
+    id: '5',
     public_id: 'uuid-5',
     course_id: null,
     node_id: null,
@@ -118,7 +118,7 @@ describe('ChatSessionList (library list, app actions)', () => {
     renderList({ onSelectSession })
     fireEvent.click(await screen.findByText('Chain rule chat'))
     expect(onSelectSession).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 4, public_id: 'uuid-4' }),
+      expect.objectContaining({ id: '4', public_id: 'uuid-4' }),
     )
     expect(screen.queryByText('chat-detail')).not.toBeInTheDocument()
   })
@@ -134,9 +134,9 @@ describe('ChatSessionList (library list, app actions)', () => {
 
   test('deleting the active sidepanel chat calls onNewChat', async () => {
     listChatSessions.mockResolvedValue(SESSIONS)
-    deleteChatSession.mockResolvedValue({ deleted_item_id: 4 })
+    deleteChatSession.mockResolvedValue({ deleted_item_id: '4' })
     const onNewChat = vi.fn()
-    renderList({ onNewChat, activeSessionId: 4 })
+    renderList({ onNewChat, activeSessionId: '4' })
     const row = (await screen.findByText('Chain rule chat')).closest('[role="listitem"]')
     expect(row).not.toBeNull()
     fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Delete chat' }))
@@ -155,19 +155,19 @@ describe('ChatSessionList (library list, app actions)', () => {
     const input = await screen.findByRole('textbox', { name: 'Rename chat' })
     fireEvent.change(input, { target: { value: 'Renamed' } })
     fireEvent.submit(input.closest('form')!)
-    await waitFor(() => expect(renameChatSession).toHaveBeenCalledWith(4, 'Renamed'))
+    await waitFor(() => expect(renameChatSession).toHaveBeenCalledWith('4', 'Renamed'))
   })
 
   test('deletes a chat from its row action', async () => {
     listChatSessions.mockResolvedValue(SESSIONS)
-    deleteChatSession.mockResolvedValue({ deleted_item_id: 4 })
+    deleteChatSession.mockResolvedValue({ deleted_item_id: '4' })
     renderList()
     const row = (await screen.findByText('Chain rule chat')).closest('[role="listitem"]')
     expect(row).not.toBeNull()
     fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Delete chat' }))
     const dialog = await screen.findByRole('dialog', { name: 'Delete chat' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete chat' }))
-    await waitFor(() => expect(deleteChatSession).toHaveBeenCalledWith(4))
+    await waitFor(() => expect(deleteChatSession).toHaveBeenCalledWith('4'))
   })
 
   test('shows skeleton rows while sessions load', async () => {

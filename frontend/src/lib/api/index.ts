@@ -655,3 +655,6 @@ export {
   refreshMcpServer,
   updateMcpServer,
 } from './mcp-servers'
+
+export type { ExerciseOrderingItem } from './hand-types'
+export { HAND_TYPE_REGISTER } from './hand-types'

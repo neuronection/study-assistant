@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import type { ExerciseOrderingItem } from '@/lib/api/hand-types'
 import { Button } from '@/components/ui/button'
 import type { Block } from '@/components/blocks/types'
 import type { ExerciseStepInput } from '@/lib/api'
@@ -74,7 +75,7 @@ export function OrderingInput({
   disabled?: boolean
 }) {
   const { t } = useTranslation()
-  const items = (input.items ?? []) as { id: number; label: string }[]
+  const items = (input.items ?? []) as ExerciseOrderingItem[]
   const order = value ?? items.map((item) => item.id)
   const move = (from: number, to: number) => {
     if (to < 0 || to >= order.length) {

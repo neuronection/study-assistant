@@ -73,7 +73,7 @@ function formatElapsed(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export function QuizRunner({ activityId }: { activityId: number }) {
+export function QuizRunner({ activityId }: { activityId: string }) {
   const search = useRouterState({ select: (state) => state.location.search as { print?: string } })
   if (search.print === 'paper' || search.print === 'key') {
     return <QuizPrintPaper activityId={activityId} mode={search.print} />
@@ -81,7 +81,7 @@ export function QuizRunner({ activityId }: { activityId: number }) {
   return <QuizRunnerInner activityId={activityId} />
 }
 
-function QuizRunnerInner({ activityId }: { activityId: number }) {
+function QuizRunnerInner({ activityId }: { activityId: string }) {
   const { t } = useTranslation()
   const presets = useMotionPresets()
   const from = useRouterState({ select: (state) => (state.location.search as { from?: string }).from })
@@ -145,7 +145,7 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
   const questionsForAttempt = useMemo(() => {
     const list = questions.data ?? []
     if (!shuffleOn || list.length === 0) {
-      return { order: list, optionMaps: new Map<number, number[]>() }
+      return { order: list, optionMaps: new Map<string, number[]>() }
     }
     const seeded = (seed: number) => {
       let state = seed >>> 0
@@ -156,7 +156,7 @@ function QuizRunnerInner({ activityId }: { activityId: number }) {
     }
     const rng = seeded(shuffleNonce + list.length)
     const order = [...list].sort(() => rng() - 0.5)
-    const optionMaps = new Map<number, number[]>()
+    const optionMaps = new Map<string, number[]>()
     for (const question of order) {
       if (question.options && (question.type === 'single' || question.type === 'multi')) {
         const indexed = question.options.map((_, index) => index)

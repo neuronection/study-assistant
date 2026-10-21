@@ -22,10 +22,10 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 interface InsertOutcome {
-  noteId: number
+  noteId: string
   title: string
-  drawingId: number
-  remove: (drawingId: number) => Promise<void>
+  drawingId: string
+  remove: (drawingId: string) => Promise<void>
 }
 
 export function SnapIntoNote() {

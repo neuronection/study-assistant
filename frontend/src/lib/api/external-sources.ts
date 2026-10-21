@@ -9,7 +9,7 @@ export type ExternalSourceKind =
   | 'site_search'
 
 export async function listExternalSources(
-  courseId?: number | null
+  courseId?: string | null
 ): Promise<ExternalSourceRow[]> {
   const suffix = courseId != null ? `?course_id=${courseId}` : ''
   const response = await apiFetch(`/api/v1/external-sources${suffix}`)
@@ -17,7 +17,7 @@ export async function listExternalSources(
 }
 
 export async function createExternalSource(body: {
-  course_id: number
+  course_id: string
   kind: ExternalSourceKind
   url: string
   label?: string | null
@@ -34,7 +34,7 @@ export async function createExternalSource(body: {
 }
 
 export async function updateExternalSource(
-  id: number,
+  id: string,
   body: {
     label?: string | null
     enabled?: boolean
@@ -50,7 +50,7 @@ export async function updateExternalSource(
   return json<ExternalSourceRow>(response)
 }
 
-export async function deleteExternalSource(id: number): Promise<void> {
+export async function deleteExternalSource(id: string): Promise<void> {
   const response = await apiFetch(`/api/v1/external-sources/${id}`, {
     method: 'DELETE',
   })
@@ -60,7 +60,7 @@ export async function deleteExternalSource(id: number): Promise<void> {
 }
 
 export async function scanExternalSource(
-  id: number
+  id: string
 ): Promise<{ new: number; updated: number }> {
   const response = await apiFetch(`/api/v1/external-sources/${id}/scan`, {
     method: 'POST',
