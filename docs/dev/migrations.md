@@ -60,14 +60,22 @@ asserts the transform. A worked pattern is
 and the recent BYOK vocabulary rewrite is covered by
 `tests/test_byok_migration.py` (legacy shape → upgrade → downgrade round-trip).
 
-## Bump the head-assertion tests
+## Bump the head-assertion test
 
-Three test files assert the literal head revision string after migrating. All
-must be bumped to the new revision id or the suite goes red:
+The literal head revision string is asserted in one file — bump it on every
+new revision or the suite goes red:
 
-- `backend/tests/test_course_required.py`
-- `backend/tests/test_exercise_kinds_migration.py`
-- `backend/tests/test_phase8a_materials.py`
+- `backend/tests/test_profile_identity_migration.py`
+  (`test_migration_head_is_latest`)
+
+More files run migrations but pin **mid-chain** revisions (fixed shape
+assertions — touch only when that revision's shape or the chain changes;
+they become baseline round-trips if the chain is ever squashed):
+
+- `backend/tests/test_course_required.py` (`0019_tree_nodes`, `0065_identity_core`)
+- `backend/tests/test_phase8a_materials.py` (`0013_skills`)
+- `backend/tests/test_byok_migration.py`, `tests/test_chat_branches_migration.py`,
+  `tests/test_search_fuzzy.py`, `tests/test_exercise_kinds_migration.py`
 
 ## SQLite pitfalls
 
