@@ -31,8 +31,11 @@ vi.mock('@/lib/api', async (importOriginal) => {
       updateDrawing(...(args as [number, number, unknown[], string, boolean])),
     deleteDrawing: (noteId: string, drawingId: string) =>
       deleteDrawing(noteId, drawingId),
+    listNoteLinks: () => Promise.resolve({ outbound: [], backlinks: [] }),
   }
 })
+
+vi.mock('./NoteLinks', () => ({ NoteLinks: () => null }))
 
 vi.mock('@/components/editor/MarkdownEditor', async () => {
   const React = await import('react')

@@ -79,7 +79,7 @@ def test_chain_round_trips_from_base(tmp_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         assert (
             connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            == "0005_plan_item_external_uid"
+            == "0006_vault_notes"
         )
 
 
@@ -127,3 +127,30 @@ def test_plan_item_external_uid_is_unique_per_course(tmp_path: Path) -> None:
     with pytest.raises(sqlite3.IntegrityError):
         _insert_plan_item(db_path, course_id, "lecture-1")
     _insert_plan_item(db_path, uuid.uuid4().hex, "lecture-1")
+
+
+def _insert_source(db_path: Path, preset: str) -> None:
+    stamp = datetime(2026, 10, 22, 12, 0, 0).isoformat(sep=" ")
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO material_sources "
+            "(id, profile_id, label, path, recursive, course_id, enabled, "
+            "mirror_subdirs, preset, created_at) "
+            "VALUES (?, ?, 'vault', '/tmp/vault', 1, ?, 1, 0, ?, ?)",
+            (uuid.uuid4().hex, uuid.uuid4().hex, uuid.uuid4().hex, preset, stamp),
+        )
+
+
+def test_source_preset_check_round_trips(tmp_path: Path) -> None:
+    db_path = tmp_path / "vault.db"
+    command.upgrade(_cfg(db_path), "head")
+    _insert_source(db_path, "folder")
+    _insert_source(db_path, "vault")
+    with pytest.raises(sqlite3.IntegrityError):
+        _insert_source(db_path, "sync")
+    with sqlite3.connect(db_path) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert "note_links" in tables

@@ -41,6 +41,7 @@ import { useConfirm } from '@/lib/use-confirm'
 import { useDrawingOcrSync } from '@/lib/useDrawingOcrSync'
 
 import { NoteHistoryDialog } from './NoteHistoryDialog'
+import { NoteLinks } from './NoteLinks'
 import { noteBodyMd, useNoteAutosave } from './useNoteAutosave'
 
 const ACTIONS = ['summarize', 'cleanup', 'explain', 'expand'] as const
@@ -577,6 +578,7 @@ export function NoteEditor({
           meta={
             <>
               {tagsRow}
+              <NoteLinks noteId={noteId} />
               {autosaveChip}
             </>
           }
@@ -735,6 +737,7 @@ export function NoteEditor({
           </div>
         </div>
         {tagsRow}
+        <NoteLinks noteId={noteId} />
         {actionResultCard}
         {infoResultCard}
         {editorBlock}

@@ -17,6 +17,9 @@ from ...core.vocab import (
     MaterialStatus as MaterialStatus,
 )
 from ...core.vocab import (
+    SourcePreset as SourcePreset,
+)
+from ...core.vocab import (
     StudyStatus as StudyStatus,
 )
 from ...core.vocab import (
@@ -506,6 +509,13 @@ class Note(Base):
     search_text: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[StringList | None] = mapped_column(JSON)
     pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    source_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("material_sources.id", ondelete="SET NULL"), index=True
+    )
+    external_path: Mapped[str | None] = mapped_column(String(1000))
+    file_mtime: Mapped[float | None] = mapped_column(Float)
+    file_size: Mapped[int | None] = mapped_column(Integer)
+    content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -519,6 +529,26 @@ class Note(Base):
     def _validate_body(self, key: str, value: Any) -> Any:
         self.body_schema_version = DOCUMENT_SCHEMA_VERSION
         return validate_document("notes.body", value)
+
+
+class NoteLink(Base):
+    __tablename__ = "note_links"
+    __table_args__ = (
+        Index("uq_note_links_from_target", "from_note_id", "target", unique=True),
+        Index("ix_note_links_to_note", "to_note_id"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))
+    from_note_id: Mapped[str] = mapped_column(_UUID, ForeignKey("notes.id", ondelete="CASCADE"))
+    to_note_id: Mapped[str | None] = mapped_column(
+        _UUID, ForeignKey("notes.id", ondelete="CASCADE")
+    )
+    target: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class NoteDrawing(Base):
@@ -587,6 +617,7 @@ class NoteVersion(Base):
 
 class MaterialSource(Base):
     __tablename__ = "material_sources"
+    __table_args__ = (vocab_check("preset", SourcePreset),)
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
@@ -594,6 +625,7 @@ class MaterialSource(Base):
     )
     label: Mapped[str] = mapped_column(String(200))
     path: Mapped[str] = mapped_column(String(1000))
+    preset: Mapped[str] = mapped_column(String(20), default="folder", server_default="folder")
     recursive: Mapped[bool] = mapped_column(Boolean, default=True)
     include_globs: Mapped[StringList | None] = mapped_column(JSON)
     course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))

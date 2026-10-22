@@ -128,7 +128,10 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   scan_interval_sec? (per-source override, min 15 s; NULL → global default),
   last_scan_error?, last_scanned_at — linked folders (B15/ADR-037); scans are
   stat-first, changed files re-ingest as new extraction versions, moved files
-  remap by content hash
+  remap by content hash. **`preset`** (0006, plan 85 D, ADR-213;
+  `folder|vault`, CHECK twin) selects the scan meaning: `folder` ingests files
+  as materials and gets a library folder node, `vault` ingests `.md` files as
+  **notes** with `[[wikilink]]` edges and has no folder node
 - **material_suggestions** (0062, plan 73-D): id, profile_id, course_id?
   (nullable — scratchpad-level discovery is allowed; suggestions are pointers,
   not study content), node_id? (composite `(node_id, course_id)` FK discipline
@@ -291,7 +294,15 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   `![drawing](sa-drawing://N)` markdown; unknown ids rejected 422; every write
   is validated by `app/domain/documents.py`), search_text (title + body +
   drawings' OCR markdown — powers note search incl. handwriting), tags JSON,
-  pinned, timestamps
+  pinned, timestamps; **vault provenance** (0006, plan 85 D, ADR-213):
+  `source_id?` → `material_sources` (`SET NULL` — unlinking keeps the note),
+  `external_path`, `file_mtime`, `file_size`, `content_hash` mirror the
+  linked-folder scanner so rescans version an edited `.md` file
+- **note_links** (0006, plan 85 D, ADR-213): id, profile_id, course_id,
+  `from_note_id` → notes (CASCADE), `to_note_id?` → notes (CASCADE, NULL for a
+  broken wikilink), `target` (the link text), created_at; unique
+  `(from_note_id, target)`, indexed by target for backlinks. Populated by the
+  vault scanner from `[[wikilinks]]`; never written by the editor.
 - **note_drawings**: id, note_id, strokes JSON (+ `strokes_schema_version`,
   ADR-200; replayable vector strokes — the source of truth), png_sha → blobs
   (content-addressed render), **view_x/view_y/view_width/view_height** (0046,
@@ -414,6 +425,13 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0006_vault_notes (plan 85 D, ADR-213)**: `material_sources` gains
+  `preset` (`folder|vault`, CHECK twin, default `folder`); `notes` gains the
+  linked-file provenance (`source_id` → `material_sources` `SET NULL`,
+  `external_path`, `file_mtime`, `file_size`, `content_hash`); new
+  `note_links` table (outbound wikilink edges with a nullable resolved
+  target). SQLite rebuilds `material_sources`/`notes` through batch mode;
+  downgrade drops the table, the columns and the CHECK.
 - **0005_plan_item_external_uid (plan 85 C, ADR-213)**: `plan_items` gains the
   nullable `external_uid` column and the partial unique index
   `uq_plan_items_course_external_uid` (`WHERE external_uid IS NOT NULL`).

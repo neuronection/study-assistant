@@ -63,6 +63,7 @@ mistakes :: record
 models :: record
 node_concepts :: record
 note_drawings :: record
+note_links :: record
 note_versions :: record
 notes :: record
 plan_items :: record

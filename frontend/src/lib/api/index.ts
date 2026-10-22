@@ -392,6 +392,8 @@ export {
 
 export type {
   NoteActionResult,
+  NoteLinkInfo,
+  NoteLinksInfo,
   NoteDetailInfo,
   NoteDrawingInfo,
   NoteInfo,
@@ -430,12 +432,14 @@ export {
   diffNoteVersions,
   getNote,
   getNoteVersion,
+  listNoteLinks,
   listNoteTags,
   listNoteVersions,
   listNotes,
   moveNote,
   reocrDrawing,
   restoreNoteVersion,
+  vaultExportUrl,
   runNoteAction,
   saveSessionSummaryNote,
   updateDrawing,

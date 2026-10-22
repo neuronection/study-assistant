@@ -8543,6 +8543,77 @@
         "title": "NoteDetail",
         "type": "object"
       },
+      "NoteLinkOut": {
+        "properties": {
+          "broken": {
+            "default": false,
+            "title": "Broken",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "note_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Id"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "target",
+          "note_id",
+          "title"
+        ],
+        "title": "NoteLinkOut",
+        "type": "object"
+      },
+      "NoteLinksOut": {
+        "properties": {
+          "backlinks": {
+            "items": {
+              "$ref": "#/components/schemas/NoteLinkOut"
+            },
+            "title": "Backlinks",
+            "type": "array"
+          },
+          "outbound": {
+            "items": {
+              "$ref": "#/components/schemas/NoteLinkOut"
+            },
+            "title": "Outbound",
+            "type": "array"
+          }
+        },
+        "required": [
+          "outbound",
+          "backlinks"
+        ],
+        "title": "NoteLinksOut",
+        "type": "object"
+      },
       "NoteMove": {
         "properties": {
           "node_id": {
@@ -13204,6 +13275,10 @@
             "title": "Path",
             "type": "string"
           },
+          "preset": {
+            "$ref": "#/components/schemas/SourcePreset",
+            "default": "folder"
+          },
           "recursive": {
             "default": true,
             "title": "Recursive",
@@ -13329,9 +13404,18 @@
             "title": "Mirror Subdirs",
             "type": "boolean"
           },
+          "note_count": {
+            "default": 0,
+            "title": "Note Count",
+            "type": "integer"
+          },
           "path": {
             "title": "Path",
             "type": "string"
+          },
+          "preset": {
+            "$ref": "#/components/schemas/SourcePreset",
+            "default": "folder"
           },
           "recursive": {
             "title": "Recursive",
@@ -13362,6 +13446,14 @@
         ],
         "title": "SourceOut",
         "type": "object"
+      },
+      "SourcePreset": {
+        "enum": [
+          "folder",
+          "vault"
+        ],
+        "title": "SourcePreset",
+        "type": "string"
       },
       "SourceSubdirOut": {
         "properties": {
@@ -26691,6 +26783,46 @@
         ]
       }
     },
+    "/api/v1/notes/vault.zip": {
+      "get": {
+        "operationId": "export_course_vault_api_v1_notes_vault_zip_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Course Vault",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/v1/notes/{note_id}": {
       "delete": {
         "operationId": "delete_note_api_v1_notes__note_id__delete",
@@ -27083,6 +27215,48 @@
           }
         },
         "summary": "Reocr Drawing",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/v1/notes/{note_id}/links": {
+      "get": {
+        "operationId": "get_note_links_api_v1_notes__note_id__links_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteLinksOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Note Links",
         "tags": [
           "notes"
         ]

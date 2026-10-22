@@ -62,6 +62,7 @@ export async function addSource(body: {
   path: string
   course_id: string
   recursive?: boolean
+  preset?: 'folder' | 'vault'
 }): Promise<LinkedSource> {
   const response = await apiFetch('/api/v1/sources', {
     method: 'POST',

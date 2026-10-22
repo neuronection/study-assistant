@@ -232,3 +232,15 @@ export async function diffNoteVersions(
   )
   return json<NoteVersionDiffInfo>(response)
 }
+
+export type NoteLinkInfo = Schemas['NoteLinkOut']
+export type NoteLinksInfo = Schemas['NoteLinksOut']
+
+export async function listNoteLinks(noteId: string): Promise<NoteLinksInfo> {
+  const response = await apiFetch(`/api/v1/notes/${noteId}/links`)
+  return json<NoteLinksInfo>(response)
+}
+
+export function vaultExportUrl(courseId: string): string {
+  return `/api/v1/notes/vault.zip?course_id=${encodeURIComponent(courseId)}`
+}

@@ -201,6 +201,30 @@ your current course (or the Scratchpad if none is selected). Snapshots are
 plain images: the handwriting-OCR pass is skipped, and **Run OCR again** from
 the drawing's ⋯ menu extracts their text on demand.
 
+## Markdown vaults (Obsidian-shaped)
+
+A **vault** is a folder of Markdown files linked to a course. Open **Notes →
+Notes vault** in the course workspace:
+
+- **Link vault folder…** picks a directory. Its `.md` files become notes:
+  the title comes from frontmatter `title` (or the first `# heading`, or the
+  filename) and tags from frontmatter `tags` (`[a, b]` or a `- item` list).
+  Non-Markdown files are ignored; nothing outside the folder is touched.
+- `[[Wikilinks]]` (with optional `|label` and `#section`) become note links.
+  Resolved links appear as chips above the note and navigate on click; a link
+  with no matching note shows as a dashed, disabled chip (broken), never a
+  silent no-op. Backlinks from other notes appear beside the outbound links.
+- **Rescan vault** re-reads the folder: an edited file becomes a **new version**
+  of the same note (the previous content stays in Version history — the
+  originals-sacred rule). New files become notes, moves are matched by content
+  hash, and unchanged files are skipped.
+- **Download as vault** exports the course's notes as a zip of `.md` files with
+  `title`/`tags` frontmatter, ready to drop into Obsidian. This is export only:
+  edits made in Obsidian are picked up by **Rescan**, but the app never writes
+  into the folder (no two-way sync).
+
+Unlinking the vault keeps every note; it only stops future rescans.
+
 ## AI note actions
 
 The **AI** button above the editor opens a menu: **Summarize**, **Clean up**,

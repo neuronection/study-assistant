@@ -2,25 +2,30 @@ import hashlib
 import mimetypes
 import os
 import posixpath
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ...core.vocab import MaterialStatus
+from ...core.vocab import MaterialStatus, SourcePreset
 from ...domain.models import (
     Blob,
     Course,
     Material,
     MaterialFolder,
     MaterialSource,
+    Note,
+    NoteLink,
     utcnow,
 )
+from .drawings import blocks_md, md_to_blocks, note_search_text
 from .materials import UnsupportedMaterialError, detect_kind
+from .notes import normalize_tags, save_note_body
 
 DEFAULT_GLOBS = (
     "*.pdf",
@@ -101,6 +106,60 @@ def _sanitize_label(label: str) -> str:
     return cleaned[:200] or "link"
 
 
+WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
+
+
+def _parse_tag_list(value: str) -> list[str]:
+    text = value.strip().strip("[]")
+    return [part.strip().strip("\"'") for part in text.split(",") if part.strip()]
+
+
+def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return {}, text
+    end = next((index for index in range(1, len(lines)) if lines[index].strip() == "---"), None)
+    if end is None:
+        return {}, text
+    meta: dict[str, Any] = {}
+    key = ""
+    for line in lines[1:end]:
+        stripped = line.strip()
+        if stripped.startswith("- ") and key == "tags":
+            meta.setdefault("tags", []).append(stripped[2:].strip().strip("\"'"))
+            continue
+        if ":" not in line:
+            continue
+        name, _colon, raw = line.partition(":")
+        key = name.strip().lower()
+        value = raw.strip()
+        if key == "tags":
+            meta["tags"] = _parse_tag_list(value) if value else []
+        elif key == "title":
+            meta["title"] = value.strip("\"'")
+    body = "\n".join(lines[end + 1 :]).lstrip("\n")
+    return meta, body
+
+
+def _vault_title(meta: dict[str, Any], body: str, path: Path) -> str:
+    title = str(meta.get("title") or "").strip()
+    if title:
+        return title
+    for line in body.splitlines():
+        if line.startswith("# "):
+            heading = line[2:].strip()
+            if heading:
+                return heading
+    return path.stem
+
+
+def _vault_tags(meta: dict[str, Any]) -> list[str]:
+    tags = meta.get("tags")
+    if isinstance(tags, list):
+        return [str(tag) for tag in tags]
+    return []
+
+
 class SourcesService:
     def __init__(self, session: Session, blobs_root: Path) -> None:
         self._session = session
@@ -163,6 +222,7 @@ class SourcesService:
         course_id: str | None = None,
         scan_interval_sec: int | None = None,
         mirror_subdirs: bool = False,
+        preset: str = SourcePreset.FOLDER.value,
     ) -> MaterialSource:
         if course_id is None:
             raise SourcesError("a course is required for a linked source")
@@ -174,6 +234,7 @@ class SourcesService:
             raise SourcesError(f"not a directory: {resolved}")
         if scan_interval_sec is not None and scan_interval_sec < 15:
             raise SourcesError("scan interval must be at least 15 seconds")
+        preset_value = SourcePreset.parse(preset).value
         source = MaterialSource(
             profile_id=profile_id,
             label=_sanitize_label(label) or resolved.name,
@@ -183,10 +244,12 @@ class SourcesService:
             course_id=course_id,
             scan_interval_sec=scan_interval_sec,
             mirror_subdirs=mirror_subdirs,
+            preset=preset_value,
         )
         self._session.add(source)
         self._session.flush()
-        self._create_link_node(source)
+        if preset_value == SourcePreset.FOLDER.value:
+            self._create_link_node(source)
         return source
 
     def delete_source(self, profile_id: str, source_id: str) -> bool:
@@ -194,11 +257,17 @@ class SourcesService:
         if source is None or source.profile_id != profile_id:
             return False
         self._unlink_materials(source_id)
+        self._unlink_notes(source_id)
         node = self._link_folder(source_id)
         if node is not None:
             self._session.delete(node)
         self._session.delete(source)
         return True
+
+    def _unlink_notes(self, source_id: str) -> None:
+        for note in self._session.scalars(select(Note).where(Note.source_id == source_id)):
+            note.source_id = None
+            note.external_path = None
 
     def _unlink_materials(self, source_id: str) -> None:
         for material in self._session.scalars(
@@ -370,6 +439,8 @@ class SourcesService:
         source = self._session.get(MaterialSource, source_id)
         if source is None or source.profile_id != profile_id:
             raise SourcesError("source not found")
+        if source.preset == SourcePreset.VAULT.value:
+            return self._scan_vault(source)
         root = Path(source.path)
         if not root.is_dir():
             source.enabled = False
@@ -465,6 +536,154 @@ class SourcesService:
         source.last_scan_error = None
         self._session.flush()
         return ScanReport(stats=stats, skipped=skipped, new_relpaths=new_relpaths[:20])
+
+    def _scan_vault(self, source: MaterialSource) -> ScanReport:
+        root = Path(source.path)
+        if not root.is_dir():
+            source.enabled = False
+            source.last_scan_error = f"source directory is gone: {root}"
+            self._session.flush()
+            raise SourcesError(source.last_scan_error)
+        known = {
+            str(note.external_path): note
+            for note in self._session.scalars(
+                select(Note).where(
+                    Note.profile_id == source.profile_id,
+                    Note.source_id == source.id,
+                )
+            )
+            if note.external_path is not None
+        }
+        stats = {
+            "new": 0,
+            "updated": 0,
+            "unchanged": 0,
+            "missing": 0,
+            "moved": 0,
+            "skipped": 0,
+        }
+        skipped: list[str] = []
+        seen: set[str] = set()
+        for path in _iter_files(root, source.recursive, ["*.md", "*.markdown"]):
+            key = str(path)
+            seen.add(key)
+            stat = path.stat()
+            content_hash = _content_hash(path)
+            note = known.get(key)
+            if note is not None:
+                if note.file_mtime == stat.st_mtime and note.file_size == stat.st_size:
+                    stats["unchanged"] += 1
+                    continue
+                if note.content_hash == content_hash:
+                    note.file_mtime = stat.st_mtime
+                    note.file_size = stat.st_size
+                    stats["unchanged"] += 1
+                    continue
+                self._update_note_from_file(note, path, stat, content_hash)
+                stats["updated"] += 1
+                continue
+            moved = self._session.scalars(
+                select(Note).where(
+                    Note.profile_id == source.profile_id,
+                    Note.source_id == source.id,
+                    Note.content_hash == content_hash,
+                )
+            ).first()
+            if moved is not None:
+                moved.external_path = key
+                moved.file_mtime = stat.st_mtime
+                moved.file_size = stat.st_size
+                stats["moved"] += 1
+                continue
+            created = self._create_note_from_file(source, path, stat, content_hash)
+            if created is None:
+                stats["skipped"] += 1
+                skipped.append(f"{path.name}: not UTF-8 text")
+                continue
+            stats["new"] += 1
+        for known_path in known:
+            if known_path not in seen and not Path(known_path).is_file():
+                stats["missing"] += 1
+        self._sync_note_links(source)
+        source.last_scanned_at = utcnow()
+        source.last_scan_error = None
+        self._session.flush()
+        return ScanReport(stats=stats, skipped=skipped, new_relpaths=[])
+
+    def _read_vault_file(self, path: Path) -> tuple[dict[str, Any], str] | None:
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except (UnicodeDecodeError, OSError):
+            return None
+        return _parse_frontmatter(text)
+
+    def _create_note_from_file(
+        self, source: MaterialSource, path: Path, stat: Any, content_hash: str
+    ) -> Note | None:
+        parsed = self._read_vault_file(path)
+        if parsed is None:
+            return None
+        meta, body = parsed
+        note = Note(
+            profile_id=source.profile_id,
+            course_id=source.course_id,
+            title=_vault_title(meta, body, path)[:300],
+            body=md_to_blocks(body),
+            tags=normalize_tags(_vault_tags(meta)) or None,
+            owner_type="standalone",
+            source_id=source.id,
+            external_path=str(path),
+            file_mtime=stat.st_mtime,
+            file_size=stat.st_size,
+            content_hash=content_hash,
+        )
+        note.search_text = note_search_text(note)
+        self._session.add(note)
+        self._session.flush()
+        return note
+
+    def _update_note_from_file(self, note: Note, path: Path, stat: Any, content_hash: str) -> None:
+        parsed = self._read_vault_file(path)
+        if parsed is None:
+            return
+        meta, body = parsed
+        note.title = _vault_title(meta, body, path)[:300]
+        note.tags = normalize_tags(_vault_tags(meta)) or None
+        save_note_body(self._session, note, body, cause="source", force=True)
+        note.file_mtime = stat.st_mtime
+        note.file_size = stat.st_size
+        note.content_hash = content_hash
+
+    def _sync_note_links(self, source: MaterialSource) -> None:
+        notes = list(
+            self._session.scalars(
+                select(Note).where(
+                    Note.profile_id == source.profile_id,
+                    Note.source_id == source.id,
+                )
+            )
+        )
+        by_title = {note.title.strip().lower(): note for note in notes if note.title.strip()}
+        for note in notes:
+            self._session.execute(delete(NoteLink).where(NoteLink.from_note_id == note.id))
+            targets: list[str] = []
+            for target in WIKILINK_RE.findall(blocks_md(note.body)):
+                cleaned = target.strip()
+                if cleaned and cleaned.lower() not in {item.lower() for item in targets}:
+                    targets.append(cleaned)
+            for target in targets:
+                linked = by_title.get(target.lower())
+                self._session.add(
+                    NoteLink(
+                        profile_id=note.profile_id,
+                        course_id=note.course_id,
+                        from_note_id=note.id,
+                        to_note_id=linked.id
+                        if linked is not None and linked.id != note.id
+                        else None,
+                        target=target[:300],
+                    )
+                )
 
     def mirror_subdirs(self, source: MaterialSource) -> dict[str, str]:
         folder = self._link_folder(source.id)

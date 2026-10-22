@@ -77,6 +77,9 @@ from .content import (
     NoteDrawing as NoteDrawing,
 )
 from .content import (
+    NoteLink as NoteLink,
+)
+from .content import (
     NoteVersion as NoteVersion,
 )
 from .core import JSON as JSON

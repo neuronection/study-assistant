@@ -1,9 +1,12 @@
 import base64
+import io
+import re
+import zipfile
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -13,8 +16,10 @@ from ..ai.gateway import LLMGateway, Message, ProviderError, TaskUnassigned
 from ..ai.skills import NOTE_ACTION_SYSTEM, NOTE_COMPOSE_SYSTEM
 from ..domain.models import (
     AiInteraction,
+    Course,
     Note,
     NoteDrawing,
+    NoteLink,
     NoteVersion,
     utcnow,
 )
@@ -393,6 +398,94 @@ def list_note_tags(
         {"tag": tag, "count": count}
         for tag, count in sorted(counts.items(), key=lambda entry: (-entry[1], entry[0]))
     ]
+
+
+class NoteLinkOut(BaseModel):
+    id: str
+    target: str
+    note_id: str | None
+    title: str | None
+    broken: bool = False
+
+
+class NoteLinksOut(BaseModel):
+    outbound: list[NoteLinkOut]
+    backlinks: list[NoteLinkOut]
+
+
+@router.get("/{note_id}/links", response_model=NoteLinksOut)
+def get_note_links(note_id: str, session: Session = Depends(get_session)) -> NoteLinksOut:
+    profile = ensure_default_profile(session)
+    note = _load_note(session, note_id, profile.id)
+    outbound: list[NoteLinkOut] = []
+    for link in session.scalars(select(NoteLink).where(NoteLink.from_note_id == note.id)):
+        target = session.get(Note, link.to_note_id) if link.to_note_id else None
+        outbound.append(
+            NoteLinkOut(
+                id=link.id,
+                target=link.target,
+                note_id=link.to_note_id,
+                title=target.title if target is not None else None,
+                broken=link.to_note_id is None,
+            )
+        )
+    backlinks: list[NoteLinkOut] = []
+    for link in session.scalars(select(NoteLink).where(NoteLink.to_note_id == note.id)):
+        source = session.get(Note, link.from_note_id)
+        backlinks.append(
+            NoteLinkOut(
+                id=link.id,
+                target=link.target,
+                note_id=link.from_note_id,
+                title=source.title if source is not None else None,
+            )
+        )
+    return NoteLinksOut(outbound=outbound, backlinks=backlinks)
+
+
+def _vault_filename(title: str, index: int, used: set[str]) -> str:
+    cleaned = re.sub(r'[\\/:*?"<>|]+', "-", title).strip().strip(".")
+    base = cleaned[:120] or f"note-{index}"
+    name = f"{base}.md"
+    suffix = 2
+    while name in used:
+        name = f"{base} ({suffix}).md"
+        suffix += 1
+    used.add(name)
+    return name
+
+
+@router.get("/vault.zip")
+def export_course_vault(
+    course_id: str,
+    session: Session = Depends(get_session),
+) -> Response:
+    profile = ensure_default_profile(session)
+    course = session.get(Course, course_id)
+    if course is None or course.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="course not found")
+    notes = list(
+        session.scalars(
+            select(Note)
+            .where(Note.profile_id == profile.id, Note.course_id == course_id)
+            .order_by(Note.title, Note.id)
+        )
+    )
+    buffer = io.BytesIO()
+    used: set[str] = set()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for index, note in enumerate(notes, start=1):
+            tags = ", ".join(note.tags or [])
+            frontmatter = f"---\ntitle: {note.title}\ntags: [{tags}]\n---\n\n"
+            archive.writestr(
+                _vault_filename(note.title, index, used),
+                frontmatter + blocks_md(note.body),
+            )
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="vault-{course_id}.zip"'},
+    )
 
 
 @router.get("/{note_id}", response_model=NoteDetail)

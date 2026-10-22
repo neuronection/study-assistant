@@ -3317,6 +3317,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notes/vault.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Course Vault */
+        get: operations["export_course_vault_api_v1_notes_vault_zip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notes/{note_id}": {
         parameters: {
             query?: never;
@@ -3399,6 +3416,23 @@ export interface paths {
         put?: never;
         /** Reocr Drawing */
         post: operations["reocr_drawing_api_v1_notes__note_id__drawings__drawing_id__reocr_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notes/{note_id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Note Links */
+        get: operations["get_note_links_api_v1_notes__note_id__links_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7563,6 +7597,29 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** NoteLinkOut */
+        NoteLinkOut: {
+            /**
+             * Broken
+             * @default false
+             */
+            broken: boolean;
+            /** Id */
+            id: string;
+            /** Note Id */
+            note_id: string | null;
+            /** Target */
+            target: string;
+            /** Title */
+            title: string | null;
+        };
+        /** NoteLinksOut */
+        NoteLinksOut: {
+            /** Backlinks */
+            backlinks: components["schemas"]["NoteLinkOut"][];
+            /** Outbound */
+            outbound: components["schemas"]["NoteLinkOut"][];
+        };
         /** NoteMove */
         NoteMove: {
             /** Node Id */
@@ -9043,6 +9100,8 @@ export interface components {
             mirror_subdirs: boolean;
             /** Path */
             path: string;
+            /** @default folder */
+            preset: components["schemas"]["SourcePreset"];
             /**
              * Recursive
              * @default true
@@ -9087,13 +9146,25 @@ export interface components {
              * @default false
              */
             mirror_subdirs: boolean;
+            /**
+             * Note Count
+             * @default 0
+             */
+            note_count: number;
             /** Path */
             path: string;
+            /** @default folder */
+            preset: components["schemas"]["SourcePreset"];
             /** Recursive */
             recursive: boolean;
             /** Scan Interval Sec */
             scan_interval_sec?: number | null;
         };
+        /**
+         * SourcePreset
+         * @enum {string}
+         */
+        SourcePreset: "folder" | "vault";
         /** SourceSubdirOut */
         SourceSubdirOut: {
             /** Name */
@@ -17112,6 +17183,37 @@ export interface operations {
             };
         };
     };
+    export_course_vault_api_v1_notes_vault_zip_get: {
+        parameters: {
+            query: {
+                course_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_note_api_v1_notes__note_id__get: {
         parameters: {
             query?: never;
@@ -17366,6 +17468,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoteDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_note_links_api_v1_notes__note_id__links_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteLinksOut"];
                 };
             };
             /** @description Validation Error */

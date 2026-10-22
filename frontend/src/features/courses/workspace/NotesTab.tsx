@@ -1,5 +1,5 @@
 import {useInfiniteQuery, useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
-import {Loader2, NotebookPen, Plus, Sparkles} from 'lucide-react'
+import {FolderTree, Loader2, NotebookPen, Plus, Sparkles} from 'lucide-react'
 import {useEffect, useMemo, useRef, useState} from 'react'
 import {useTranslation} from 'react-i18next'
 import {Button} from '@/components/ui/button'
@@ -22,6 +22,7 @@ import {formatDate} from '@/lib/format'
 import {cn} from '@/lib/utils'
 import {buildDragPayload} from '@/lib/dragPayload'
 import {storageKeys} from '@/lib/constants'
+import { VaultSourcesDialog } from '@/features/notes/VaultSourcesDialog'
 import { ScopeChip } from './shared'
 
 export function NotesTab({
@@ -43,6 +44,7 @@ export function NotesTab({
   const [view, setView] = useStoredView(storageKeys.notesView, 'list')
   const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null)
   const [undoItem, setUndoItem] = useState<string | null>(null)
+  const [vaultOpen, setVaultOpen] = useState(false)
   const [moveOpen, setMoveOpen] = useState(false)
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number } | null>(null)
   const [confirm, confirmElement] = useConfirm()
@@ -263,6 +265,12 @@ export function NotesTab({
             pending: draft.isPending,
             title: t('chapter.draftNoteHint'),
           },
+          {
+            label: t('notes.vaultMenu'),
+            icon: FolderTree,
+            onAction: () => setVaultOpen(true),
+            title: t('notes.vaultHint'),
+          },
         ]}
       />
       <ErrorBanner
@@ -421,6 +429,11 @@ export function NotesTab({
           onClose={() => setPaneMenu(null)}
         />
       ) : null}
+      <VaultSourcesDialog
+        open={vaultOpen}
+        courseId={courseId}
+        onClose={() => setVaultOpen(false)}
+      />
       {confirmElement}
     </MarqueeSurface>
   )

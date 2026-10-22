@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..core.vocab import MaterialKind, MaterialStatus
-from ..domain.models import Material, MaterialSource
+from ..core.vocab import MaterialKind, MaterialStatus, SourcePreset
+from ..domain.models import Material, MaterialSource, Note
 from ..jobs.runner import JobRunner
 from ..services.content.materials import UnsupportedMaterialError, accepted_suffixes
 from ..services.content.sources import SourcesError, SourcesService
@@ -63,6 +63,7 @@ class SourceIn(BaseModel):
     course_id: str
     scan_interval_sec: int | None = Field(default=None, ge=15)
     mirror_subdirs: bool = False
+    preset: SourcePreset = SourcePreset.FOLDER
 
 
 class SetMirrorIn(BaseModel):
@@ -78,13 +79,17 @@ class SourceOut(BaseModel):
     course_id: str
     enabled: bool
     mirror_subdirs: bool = False
+    preset: SourcePreset = SourcePreset.FOLDER
     scan_interval_sec: int | None = None
     last_scan_error: str | None = None
     material_count: int
+    note_count: int = 0
     last_scanned_at: str | None
 
 
-def _source_out(session: Session, source: MaterialSource, material_count: int = 0) -> SourceOut:
+def _source_out(
+    session: Session, source: MaterialSource, material_count: int = 0, note_count: int = 0
+) -> SourceOut:
     return SourceOut(
         id=source.id,
         label=source.label,
@@ -94,9 +99,11 @@ def _source_out(session: Session, source: MaterialSource, material_count: int = 
         course_id=source.course_id,
         enabled=source.enabled,
         mirror_subdirs=getattr(source, "mirror_subdirs", False) or False,
+        preset=SourcePreset(source.preset),
         scan_interval_sec=source.scan_interval_sec,
         last_scan_error=source.last_scan_error,
         material_count=material_count,
+        note_count=note_count,
         last_scanned_at=(source.last_scanned_at.isoformat() if source.last_scanned_at else None),
     )
 
@@ -117,7 +124,8 @@ def list_sources(request: Request, session: Session = Depends(get_session)) -> l
         count = len(
             session.scalars(select(Material.id).where(Material.source_id == source.id)).all()
         )
-        result.append(_source_out(session, source, count))
+        note_count = len(session.scalars(select(Note.id).where(Note.source_id == source.id)).all())
+        result.append(_source_out(session, source, count, note_count))
     return result
 
 
@@ -139,6 +147,7 @@ def add_source(
             course_id=body.course_id,
             scan_interval_sec=body.scan_interval_sec,
             mirror_subdirs=body.mirror_subdirs,
+            preset=body.preset.value,
         )
     except SourcesError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error

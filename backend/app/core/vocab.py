@@ -159,6 +159,11 @@ class ExternalSourceKind(StrVocab):
     SITE_SEARCH = "site_search"
 
 
+class SourcePreset(StrVocab):
+    FOLDER = "folder"
+    VAULT = "vault"
+
+
 class MaterialKind(StrVocab):
     PDF = "pdf"
     IMAGE = "image"
