@@ -85,6 +85,22 @@ class StudyStateIn(BaseModel):
     progress: float | None = None
 
 
+class DuplicateCourseIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+    copy_materials: bool = True
+
+
+class DuplicateCourseOut(BaseModel):
+    course: CourseOut
+    copy_materials: bool
+    materials_copied: int
+    nodes_copied: int
+    notes_copied: int
+    quizzes_copied: int
+    exercises_copied: int
+    task_assignments_copied: int
+
+
 def _course_out(session: Session, course: Course) -> CourseOut:
     count = len(
         session.scalars(
@@ -252,6 +268,48 @@ def update_course(
             root.summary = course.description or None
     session.commit()
     return _course_out(session, course)
+
+
+@router.post("/courses/{course_id}/duplicate", response_model=DuplicateCourseOut, status_code=201)
+def duplicate(
+    course_id: str,
+    request: Request,
+    body: DuplicateCourseIn | None = None,
+    session: Session = Depends(get_session),
+) -> DuplicateCourseOut:
+    from ..services.content.course_duplicate import duplicate_course
+    from ..services.content.course_validate import BundleError
+
+    profile = ensure_default_profile(session)
+    course = session.get(Course, course_id)
+    if course is None or course.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="course not found")
+    payload = body or DuplicateCourseIn()
+    try:
+        result = duplicate_course(
+            session,
+            course,
+            profile.id,
+            request.app.state.settings.blobs_dir,
+            request.app.state.blobs,
+            title=payload.title,
+            copy_materials=payload.copy_materials,
+        )
+    except BundleError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    clone = session.get(Course, result["course_id"])
+    if clone is None:
+        raise HTTPException(status_code=422, detail="duplicate failed")
+    return DuplicateCourseOut(
+        course=_course_out(session, clone),
+        copy_materials=result["copy_materials"],
+        materials_copied=result["materials_copied"],
+        nodes_copied=result["nodes_copied"],
+        notes_copied=result["notes_copied"],
+        quizzes_copied=result["quizzes_copied"],
+        exercises_copied=result["exercises_copied"],
+        task_assignments_copied=result["task_assignments_copied"],
+    )
 
 
 @router.get("/courses/{course_id}/export")

@@ -31,6 +31,7 @@ PATTERNS_NAME = "patterns.json"
 HISTORY_NAME = "history.json"
 NOTE_VERSIONS_NAME = "note-versions.json"
 EXTERNAL_SOURCES_NAME = "external-sources.json"
+TASK_ASSIGNMENTS_NAME = "task-assignments.json"
 BLOBS_PREFIX = "blobs/"
 
 JSON_NAMES = (
@@ -50,6 +51,7 @@ OPTIONAL_JSON_NAMES = (
     HISTORY_NAME,
     NOTE_VERSIONS_NAME,
     EXTERNAL_SOURCES_NAME,
+    TASK_ASSIGNMENTS_NAME,
 )
 
 
@@ -75,6 +77,7 @@ class BundleData:
     history: dict[str, Any] = field(default_factory=dict)
     note_versions: list[dict[str, Any]] = field(default_factory=list)
     external_sources: list[dict[str, Any]] = field(default_factory=list)
+    task_assignments: list[dict[str, Any]] = field(default_factory=list)
 
 
 def read_course_bundle(data: bytes) -> BundleData:
@@ -140,6 +143,7 @@ def read_course_bundle(data: bytes) -> BundleData:
         history=optional[HISTORY_NAME],
         note_versions=optional[NOTE_VERSIONS_NAME],
         external_sources=optional[EXTERNAL_SOURCES_NAME],
+        task_assignments=optional[TASK_ASSIGNMENTS_NAME],
     )
     _validate_bundle(bundle)
     return bundle

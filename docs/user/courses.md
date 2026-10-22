@@ -49,6 +49,23 @@ workspace header). When you have courses, a **search button** (magnifier icon,
 top right) expands into a search box that filters courses by title, subject or
 description as you type; press **Esc** or clear it to see all again.
 
+## Duplicating a course (semester rollover)
+
+Right-click a course card (or use the **copy** button in its action row) →
+**Duplicate course**. The clone goes through the same `ca-course/v2` bundle
+serializer as export/import, so it carries the full tree, material placements,
+notes, quizzes, exercises, flashcard schedules, concepts and per-course task
+assignments — with **fresh UUIDs** everywhere. The original is untouched: rename
+or edit either side and the other does not change. Material bytes are stored once
+(content-addressed), while every material row, extraction and placement is a real
+copy.
+
+Duplication always copies materials today. The API also accepts
+`copy_materials: false`, which clones the **structure and course content without
+library materials** (materials and their placements are not copied; add them
+again from the Library) — the response reports `materials_copied: 0` so the
+outcome is explicit.
+
 ## Deleting a course
 
 Deleting a course removes **everything in it**: chapters and sections, materials

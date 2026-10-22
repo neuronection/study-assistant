@@ -15,6 +15,8 @@ from ...domain.models import (
     Concept,
     ConceptLink,
     Course,
+    CourseDefaultTaskAssignment,
+    CourseTaskAssignment,
     ErrorPattern,
     Exercise,
     ExerciseSession,
@@ -144,6 +146,32 @@ def import_course_bundle(
         exam_date=exam_date,
     )
     session.add(course)
+    session.flush()
+
+    for entry in bundle.task_assignments:
+        if entry.get("kind") == "default":
+            requires = str(entry.get("requires") or "").strip()
+            if not requires:
+                continue
+            session.add(
+                CourseDefaultTaskAssignment(
+                    course_id=course.id,
+                    requires=requires,
+                    model_id=entry.get("model_id"),
+                )
+            )
+            continue
+        task = str(entry.get("task") or "").strip()
+        if not task:
+            continue
+        session.add(
+            CourseTaskAssignment(
+                course_id=course.id,
+                task=task,
+                model_id=entry.get("model_id"),
+                fallback_model_id=entry.get("fallback_model_id"),
+            )
+        )
     session.flush()
 
     tree = TreeService(session)

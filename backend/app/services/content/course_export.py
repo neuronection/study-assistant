@@ -16,6 +16,8 @@ from ...domain.models import (
     Concept,
     ConceptLink,
     Course,
+    CourseDefaultTaskAssignment,
+    CourseTaskAssignment,
     ErrorPattern,
     Exercise,
     ExerciseSession,
@@ -71,6 +73,7 @@ from .course_validate import (
     PATTERNS_NAME,
     QUIZZES_NAME,
     SKILLS_NAME,
+    TASK_ASSIGNMENTS_NAME,
     TREE_NAME,
 )
 from .drawings import drawing_view
@@ -164,6 +167,33 @@ def _export_patterns(session: Session, course: Course) -> list[dict[str, Any]]:
         }
         for pattern in rows
     ]
+
+
+def _export_task_assignments(session: Session, course_id: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = [
+        {
+            "kind": "task",
+            "task": row.task,
+            "model_id": row.model_id,
+            "fallback_model_id": row.fallback_model_id,
+        }
+        for row in session.scalars(
+            select(CourseTaskAssignment).where(CourseTaskAssignment.course_id == course_id)
+        )
+    ]
+    rows.extend(
+        {
+            "kind": "default",
+            "requires": row.requires,
+            "model_id": row.model_id,
+        }
+        for row in session.scalars(
+            select(CourseDefaultTaskAssignment).where(
+                CourseDefaultTaskAssignment.course_id == course_id
+            )
+        )
+    )
+    return rows
 
 
 def _export_note_versions(session: Session, course_id: str) -> list[dict[str, Any]]:
@@ -730,6 +760,7 @@ def build_course_bundle(
     external_sources = _export_external_sources(session, course.id)
     note_versions = _export_note_versions(session, course.id) if include_note_versions else []
     history = _export_history(session, course.id) if include_history else {}
+    task_assignments = _export_task_assignments(session, course.id)
     shas = {sha for sha in (material_shas | note_shas) if sha}
     warnings: list[str] = list(folder_warnings)
     readable = {sha for sha in shas if blob_path(blobs_root, sha).is_file()}
@@ -784,6 +815,7 @@ def build_course_bundle(
             "attempts": len(history.get("attempts", [])),
             "skill_overrides": len(skills),
             "external_sources": len(external_sources),
+            "task_assignments": len(task_assignments),
             "blobs": len(exportable),
         },
         "warnings": warnings,
@@ -805,6 +837,7 @@ def build_course_bundle(
         archive.writestr(HISTORY_NAME, json.dumps(history))
         archive.writestr(NOTE_VERSIONS_NAME, json.dumps(note_versions))
         archive.writestr(EXTERNAL_SOURCES_NAME, json.dumps(external_sources))
+        archive.writestr(TASK_ASSIGNMENTS_NAME, json.dumps(task_assignments))
         for sha in sorted(exportable):
             data = blob_path(blobs_root, sha).read_bytes()
             archive.writestr(f"{BLOBS_PREFIX}{sha}", data)
