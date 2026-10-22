@@ -1,0 +1,83 @@
+"""Plan 85 schema: discovery-kind widening + citation/planner/vault shapes.
+
+Each slice's revision is exercised at the DB boundary (CHECK acceptance),
+then the whole chain round-trips `base` → `head`.
+"""
+
+import sqlite3
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+import pytest
+from alembic.config import Config
+
+from alembic import command
+
+
+def _cfg(db_path: Path) -> Config:
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+    return config
+
+
+def _insert_suggestion(db_path: Path, kind: str) -> None:
+    stamp = datetime(2026, 10, 22, 12, 0, 0).isoformat(sep=" ")
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO material_suggestions "
+            "(id, profile_id, provider, url, url_norm, title, kind, status, "
+            "created_at, updated_at) "
+            "VALUES (?, ?, 'arxiv', 'https://x.example/a', 'https://x.example/a', 't', ?, "
+            "'suggested', ?, ?)",
+            (uuid.uuid4().hex, uuid.uuid4().hex, kind, stamp, stamp),
+        )
+
+
+def test_discovery_kind_widening_round_trips(tmp_path: Path) -> None:
+    db_path = tmp_path / "kinds.db"
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
+
+    _insert_suggestion(db_path, "paper")
+    _insert_suggestion(db_path, "dataset")
+    _insert_suggestion(db_path, "reference")
+    with pytest.raises(sqlite3.IntegrityError):
+        _insert_suggestion(db_path, "lecture")
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "DELETE FROM material_suggestions WHERE kind IN ('paper', 'dataset', 'reference')"
+        )
+    command.downgrade(config, "0002_vocab_sweep")
+    with pytest.raises(sqlite3.IntegrityError):
+        _insert_suggestion(db_path, "paper")
+
+    command.upgrade(config, "head")
+    _insert_suggestion(db_path, "paper")
+    with sqlite3.connect(db_path) as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM material_suggestions WHERE kind = 'paper'"
+            ).fetchone()[0]
+            == 1
+        )
+
+
+def test_chain_round_trips_from_base(tmp_path: Path) -> None:
+    db_path = tmp_path / "round_trip.db"
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
+    command.downgrade(config, "base")
+    with sqlite3.connect(db_path) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert tables == {"alembic_version"}
+    command.upgrade(config, "head")
+    with sqlite3.connect(db_path) as connection:
+        assert (
+            connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+            == "0003_discovery_kinds"
+        )

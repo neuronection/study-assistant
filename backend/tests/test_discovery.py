@@ -134,7 +134,7 @@ def test_resolve_providers_defaults_and_filtering(db_session: Session, owner: An
     db_session.commit()
 
     providers = resolve_providers(db_session, str(profile.id))
-    assert [provider.id for provider in providers] == ["youtube"]
+    assert [provider.id for provider in providers] == ["youtube", "arxiv", "openalex"]
 
     profile.preferences = {
         "search_provider": {
@@ -169,3 +169,151 @@ def test_resolve_providers_unconfigured_request_is_honest(
 ) -> None:
     with pytest.raises(DiscoveryError, match="not configured"):
         resolve_providers(db_session, str(uuid4()), requested=["web"])
+
+
+ARXIV_ATOM = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <entry>
+    <id>http://arxiv.org/abs/2401.00001v1</id>
+    <published>2024-01-02T10:00:00Z</published>
+    <title>Gradient descent convergence under interpolation</title>
+    <summary>We bound the convergence rate of gradient descent.</summary>
+    <author><name>Ada Lovelace</name></author>
+    <author><name>Alan Turing</name></author>
+    <link rel="alternate" href="https://arxiv.org/abs/2401.00001v1"/>
+    <arxiv:doi>10.1000/abc.123</arxiv:doi>
+    <arxiv:journal_ref>Journal of Optimization 12 (2024)</arxiv:journal_ref>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2401.00002v1</id>
+    <published>2024-02-03T10:00:00Z</published>
+    <title>No link entry</title>
+    <summary>Dropped because the alternate link is missing.</summary>
+  </entry>
+</feed>
+"""
+
+
+def _offline_resolver(host: str) -> list[str]:
+    return ["93.184.216.34"]
+
+
+def test_arxiv_provider_parses_atom_and_citation_meta() -> None:
+    from app.extensions.search.discovery import ArxivSearchProvider
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["host"] == "export.arxiv.org"
+        assert "search_query=all:gradient" in str(request.url)
+        return httpx.Response(200, text=ARXIV_ATOM)
+
+    provider = ArxivSearchProvider()
+    rows = provider.search(
+        "gradient",
+        cap=5,
+        transport=httpx.MockTransport(handler),
+        resolver=_offline_resolver,
+    )
+    assert len(rows) == 2
+    row = rows[0]
+    assert row.provider == "arxiv"
+    assert row.kind == "paper"
+    assert row.url == "https://arxiv.org/abs/2401.00001v1"
+    assert row.meta["doi"] == "10.1000/abc.123"
+    assert row.meta["authors"] == ["Ada Lovelace", "Alan Turing"]
+    assert row.meta["year"] == 2024
+    assert row.meta["citation_kind"] == "preprint"
+    assert "convergence" in row.description
+
+
+def test_arxiv_provider_rejects_malformed_atom() -> None:
+    from app.extensions.search.discovery import ArxivSearchProvider, DiscoveryError
+
+    provider = ArxivSearchProvider()
+    with pytest.raises(DiscoveryError, match="malformed Atom"):
+        provider.search(
+            "gradient",
+            cap=3,
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text="<feed>")),
+            resolver=_offline_resolver,
+        )
+
+
+def test_openalex_provider_parses_doi_and_abstract() -> None:
+    from app.extensions.search.discovery import OpenAlexSearchProvider
+
+    payload = {
+        "results": [
+            {
+                "id": "https://openalex.org/W1",
+                "doi": "https://doi.org/10.1000/openalex.1",
+                "display_name": "Convergence of gradient descent",
+                "publication_year": 2023,
+                "type": "article",
+                "authorships": [
+                    {"author": {"display_name": "Grace Hopper"}},
+                    {"author": {"display_name": "Ada Lovelace"}},
+                ],
+                "primary_location": {
+                    "landing_page_url": "https://example.org/paper",
+                    "source": {"display_name": "Optimization Letters"},
+                },
+                "abstract_inverted_index": {"Fast": [0], "convergence": [1], "proved": [2]},
+            },
+            {"display_name": "No DOI or landing page"},
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["host"] == "api.openalex.org"
+        return httpx.Response(200, json=payload)
+
+    rows = OpenAlexSearchProvider().search(
+        "gradient descent",
+        cap=5,
+        transport=httpx.MockTransport(handler),
+        resolver=_offline_resolver,
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.kind == "paper"
+    assert row.url == "https://doi.org/10.1000/openalex.1"
+    assert row.meta["container"] == "Optimization Letters"
+    assert row.meta["authors"] == ["Grace Hopper", "Ada Lovelace"]
+    assert row.description == "Fast convergence proved"
+
+
+def test_crossref_provider_parses_items() -> None:
+    from app.extensions.search.discovery import CrossrefSearchProvider
+
+    payload = {
+        "message": {
+            "items": [
+                {
+                    "DOI": "10.1000/cross.1",
+                    "title": ["A survey of descent methods"],
+                    "author": [{"given": "Katherine", "family": "Johnson"}],
+                    "issued": {"date-parts": [[2022, 5]]},
+                    "container-title": ["SIAM Review"],
+                    "type": "book",
+                },
+                {"title": ["No DOI"], "URL": ""},
+            ]
+        }
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["host"] == "api.crossref.org"
+        return httpx.Response(200, json=payload)
+
+    rows = CrossrefSearchProvider().search(
+        "descent",
+        cap=5,
+        transport=httpx.MockTransport(handler),
+        resolver=_offline_resolver,
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.kind == "reference"
+    assert row.url == "https://doi.org/10.1000/cross.1"
+    assert row.meta["year"] == 2022
+    assert row.meta["citation_kind"] == "book"

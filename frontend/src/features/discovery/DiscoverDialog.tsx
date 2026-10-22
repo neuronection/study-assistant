@@ -61,6 +61,14 @@ function providerOptions(
   if (enabled.includes('web')) options.push({ id: 'web', label: t('discovery.providerWeb') })
   if (enabled.includes('youtube'))
     options.push({ id: 'youtube', label: t('discovery.providerYoutube') })
+  const scholarly: [string, string][] = [
+    ['arxiv', t('discovery.providerArxiv')],
+    ['openalex', t('discovery.providerOpenalex')],
+    ['crossref', t('discovery.providerCrossref')],
+  ]
+  for (const [id, label] of scholarly) {
+    if (enabled.includes(id)) options.push({ id, label })
+  }
   for (const site of prefs?.sites ?? []) {
     const id = `site:${site.site}`
     if (enabled.includes(id)) {

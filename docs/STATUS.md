@@ -18,6 +18,9 @@ typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 85 academic ingest integrations · 86 connected sources · 87 product gap
 closure. ADRs 196–218 reserved.
 
+**In progress:** plan 85 (academic ingest integrations) — slice A (scholarly
+discovery providers) landed; B–E follow in this round.
+
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
 - **84 — structure, test gates & eval corpus (2026-10-22, COMPLETE):**
   `NodeWorkspace` became a tab host (3,395 → 383 lines), planner/node/genesis

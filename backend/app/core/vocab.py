@@ -123,7 +123,27 @@ class DiscoveryKind(StrVocab):
     COURSE = "course"
     ARTICLE = "article"
     EXERCISE = "exercise"
+    PAPER = "paper"
+    DATASET = "dataset"
+    REFERENCE = "reference"
     OTHER = "other"
+
+
+class CitationKind(StrVocab):
+    ARTICLE = "article"
+    BOOK = "book"
+    CHAPTER = "chapter"
+    CONFERENCE = "conference"
+    PREPRINT = "preprint"
+    THESIS = "thesis"
+    REPORT = "report"
+    DATASET = "dataset"
+    OTHER = "other"
+
+
+class BibliographyFormat(StrVocab):
+    BIBTEX = "bibtex"
+    RIS = "ris"
 
 
 class SuggestionStatus(StrVocab):

@@ -268,7 +268,12 @@ def test_search_annotates_known_suggestions(
         label = "Web"
 
         def search(
-            self, query: str, *, cap: int, transport: object | None = None
+            self,
+            query: str,
+            *,
+            cap: int,
+            transport: object | None = None,
+            resolver: object | None = None,
         ) -> list[DiscoveryResult]:
             return [
                 DiscoveryResult(
@@ -312,7 +317,7 @@ def test_discovery_preferences_round_trip_and_validation(
 ) -> None:
     with client:
         defaults = client.get("/api/v1/profiles/preferences").json()
-        assert defaults["discovery"]["enabled"] == ["web", "youtube"]
+        assert defaults["discovery"]["enabled"] == ["web", "youtube", "arxiv", "openalex"]
         assert defaults["discovery"]["sites"] == []
 
         updated = client.put(

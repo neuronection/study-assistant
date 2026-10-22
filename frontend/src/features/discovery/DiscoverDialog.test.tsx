@@ -240,6 +240,18 @@ describe('DiscoverDialog', () => {
     )
   })
 
+  test('scholarly provider chips appear when enabled', async () => {
+    getProfilePreferences.mockResolvedValue({
+      ...PREFS,
+      discovery: { enabled: ['arxiv', 'openalex', 'crossref'], sites: [] },
+    })
+    searchDiscovery.mockResolvedValue({ results: [], errors: [] })
+    renderDialog()
+    expect(await screen.findByRole('button', { name: 'arXiv' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'OpenAlex' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Crossref' })).toBeInTheDocument()
+  })
+
   test('provider chips reflect preferences and toggling narrows the request', async () => {
     searchDiscovery.mockResolvedValue({ results: [], errors: [] })
     renderDialog()

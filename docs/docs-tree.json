@@ -71,6 +71,12 @@
               "description": "Uploads, folders, OCR review, hybrid search and the material detail view."
             },
             {
+              "id": "discovering",
+              "file": "user/discovering.md",
+              "title": "Discovering material",
+              "description": "Find papers, videos and web material; keep suggestions and attach them when ready."
+            },
+            {
               "id": "sources-and-profiles",
               "file": "user/sources-and-profiles.md",
               "title": "Linked folders and profiles",

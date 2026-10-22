@@ -428,6 +428,11 @@ class SuggestionMeta(TypedDict, total=False):
     site: str
     mcp: bool
     published: str | None
+    doi: str
+    authors: list[str]
+    year: int
+    container: str
+    citation_kind: str
 
 
 class DetectionSpec(TypedDict, total=False):

@@ -954,7 +954,14 @@ The chat system prompt teaches single-line tools the model may emit:
   2-per-turn budget. Unconfigured → an honest error line the model can relay.
 - `DISCOVER <query|here>` — external material discovery over the plan-73-C
   provider registry (plan 73-F, ADR-167/170): web + YouTube + site presets
-  with provider badges, up to 5 results, 2-per-turn budget. `DISCOVER here`
+  with provider badges, up to 5 results, 2-per-turn budget. **Plan 85 A
+  (ADR-211)** adds three key-free scholarly providers beside the YouTube
+  class — arXiv (Atom), OpenAlex and Crossref (DOI metadata, OpenAlex
+  preferred, Crossref the fallback) — whose rows carry typed
+  `DiscoveryKind.paper|dataset|reference` values and citation metadata
+  (doi/authors/year/container/kind) in the suggestion's `meta`. Every request
+  crosses the vendored polite perimeter; provider failures are reported per
+  provider, never as a failed search. `DISCOVER here`
   builds its query **deterministically** from the session's study context —
   node title + summary + `ai_hint` + up to 4 node concepts, falling back to
   the course title + description on course-level sessions; a session with no

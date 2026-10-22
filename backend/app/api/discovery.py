@@ -150,7 +150,12 @@ def discovery_search(
     try:
         for provider in providers:
             try:
-                found: list[DiscoveryResult] = provider.search(body.query.strip(), cap=body.cap)
+                found: list[DiscoveryResult] = provider.search(
+                    body.query.strip(),
+                    cap=body.cap,
+                    transport=getattr(request.app.state, "search_transport", None),
+                    resolver=getattr(request.app.state, "search_resolver", None),
+                )
             except Exception as error:
                 errors.append(
                     DiscoveryProviderErrorOut(provider=provider.id, error=str(error)[:300])

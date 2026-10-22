@@ -23,7 +23,7 @@ from .deps import get_session
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
-ENABLED_PROVIDER_PATTERN = r"^(web|youtube|site:.+)$"
+ENABLED_PROVIDER_PATTERN = r"^(web|youtube|arxiv|openalex|crossref|site:.+)$"
 
 
 class DiscoverySitePreset(BaseModel):
@@ -125,8 +125,8 @@ def _validated_discovery(body: DiscoveryPrefsIn) -> dict[str, Any]:
                 raise HTTPException(
                     status_code=422,
                     detail=(
-                        "discovery enabled entries must be 'web', 'youtube' "
-                        f"or 'site:<domain>' — got '{entry}'"
+                        "discovery enabled entries must be 'web', 'youtube', a scholarly "
+                        f"provider or 'site:<domain>' — got '{entry}'"
                     ),
                 )
         section["enabled"] = list(body.enabled)
