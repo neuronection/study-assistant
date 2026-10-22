@@ -21,8 +21,9 @@ from ...core.urls import normalize_url
 from ...core.vocab import BibliographyFormat, CitationKind, MaterialKind
 from ...domain.models import Course, Material, MaterialLink, MaterialSuggestion
 from ...domain.payloads import AuthorList, CitationAuthor
+from ...parsers.base import build_content_registry, resolve_content_parser
 from ..knowledge.tree import TreeError, TreeService
-from .bibliography import BibliographyError, CitationRecord, detect_format, parse_bibliography
+from .bibliography import BibliographyError, CitationRecord, detect_format
 from .materials import MaterialsService
 
 
@@ -160,7 +161,10 @@ def import_bibliography(
     except UnicodeDecodeError as error:
         raise BibliographyError("bibliography must be UTF-8 text") from error
     fmt: BibliographyFormat = detect_format(filename, text)
-    records = parse_bibliography(text, fmt)
+    parser = resolve_content_parser(build_content_registry(), filename, text)
+    if parser is None:
+        raise BibliographyError("unrecognized bibliography format (expected BibTeX or RIS)")
+    records = cast(list[CitationRecord], parser.parse(text))
     placement = None
     if node_id is not None:
         try:

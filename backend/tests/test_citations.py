@@ -209,3 +209,12 @@ def test_saved_scholar_suggestion_fills_link_citation(client: TestClient) -> Non
         assert material["citation_doi"] == "10.1000/scholar.1"
         assert material["citation_year"] == 2024
         assert material["citation_text"] == "Lovelace (2024) — A discovered paper"
+
+
+def test_content_registry_resolves_bibliography_by_content() -> None:
+    from app.parsers.base import build_content_registry, resolve_content_parser
+
+    registry = build_content_registry()
+    assert resolve_content_parser(registry, "upload.txt", BIBTEX) is not None
+    assert resolve_content_parser(registry, "upload.txt", RIS) is not None
+    assert resolve_content_parser(registry, "upload.txt", "plain text") is None

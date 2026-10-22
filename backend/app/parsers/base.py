@@ -35,6 +35,14 @@ class URLParser(Protocol):
     def fetch(self, url: str) -> ParsedDocument: ...
 
 
+class ContentParser(Protocol):
+    id: str
+
+    def matches(self, filename: str, text: str) -> bool: ...
+
+    def parse(self, text: str) -> list[Any]: ...
+
+
 DOWNLOADABLE_SUFFIXES: dict[str, str] = {
     **KIND_BY_SUFFIX,
     **CONVERTIBLE_SUFFIXES,
@@ -70,5 +78,20 @@ def build_registry(
 def resolve_parser(registry: list[URLParser], url: str) -> URLParser | None:
     for parser in registry:
         if parser.matches(url):
+            return parser
+    return None
+
+
+def build_content_registry() -> list[ContentParser]:
+    from .bibliography import BibliographyParser
+
+    return [BibliographyParser()]
+
+
+def resolve_content_parser(
+    registry: list[ContentParser], filename: str, text: str
+) -> ContentParser | None:
+    for parser in registry:
+        if parser.matches(filename, text):
             return parser
     return None
