@@ -73,9 +73,9 @@ the preference row without a migration:
 
 | Field | Values / meaning |
 |---|---|
-| `status` | `ok` · `degraded` (last refresh failed) · `failing` (reserved — study does not yet track consecutive failures) · `stale` (no successful refresh within 24 h) |
+| `status` | `ok` · `degraded` (one failed refresh) · `failing` (two or more consecutive failures — `extensions/instance_status.py`, commit `14d56d2`) · `stale` (no successful refresh within 24 h) |
 | `last_success_at` | RFC3339 of the last successful refresh |
-| `consecutive_failures` | 0, or 1 while `last_error` is set |
+| `consecutive_failures` | `0` without a recorded error; `max(1, stored)` while `last_error` is set (`>= 2` ⇒ `failing`) |
 | `conditions` | `["needs-config"]` when the stored config no longer satisfies the transport rules (stdio without command, remote without url) |
 
 ## Endpoints

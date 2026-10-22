@@ -39,6 +39,7 @@ is the authoritative rule list. If you only want to *use* the app, read the
 | [development.md](development.md) | Prerequisites, bootstrap, run modes, commands, worktrees, verification gates |
 | [testing.md](testing.md) | pytest (xdist, fixtures, isolated keyring), vitest, Playwright e2e, golden evals |
 | [visual-tour.md](visual-tour.md) | Regenerating the README GIF, screenshot gallery and tour manifest from the demo instance |
+| [history.md](history.md) | Project history archive: round as-builts, the dated changelog and incident post-mortems moved out of STATUS (ADR-206) |
 | [data-model.md](data-model.md) | SQLite schema as built: entity map, scoping, tables, derived structures, migration notes |
 | [api.md](api.md) | The `/api/v1` REST surface, profile scoping, errors, pagination, WebSocket, OpenAPI |
 | [ai.md](ai.md) | Gateway-only model access, tasks and capabilities, providers, chat engine, tools, skills, MCP |

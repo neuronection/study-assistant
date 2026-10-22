@@ -401,8 +401,9 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 
 ## Not yet built (planned)
 
-staged_imports (qpkg tier), settings, study_sessions, mastery_estimates (mastery
-signals computed in metrics.py meanwhile). Phase 9B+ (UI work) adds no schema.
+staged_imports (qpkg tier), settings, mastery_estimates (mastery signals are
+computed in `services/platform/metrics.py` meanwhile). `study_sessions` is built —
+see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 

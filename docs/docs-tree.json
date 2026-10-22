@@ -257,6 +257,12 @@
               "description": "pytest with xdist and an isolated keyring, vitest, Playwright e2e, and the golden evals."
             },
             {
+              "id": "history",
+              "file": "dev/history.md",
+              "title": "Project history (archive)",
+              "description": "Round as-builts, the dated changelog and incident post-mortems moved out of STATUS — how the app got here, including the invariants recorded in post-mortems."
+            },
+            {
               "id": "visual-tour",
               "file": "dev/visual-tour.md",
               "title": "Demo tour captures",

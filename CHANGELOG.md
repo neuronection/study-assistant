@@ -11,6 +11,23 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (record — plan 83 / ADR-206/207)
+- **`docs/STATUS.md` is a lean living index.** The phase header, module-status
+  table, open issues and next-round pointers stay; the ~9,200-line narrative
+  (round as-builts, dated changelog, incident post-mortems) moved to
+  `docs/dev/history.md` (9,573 → 237 lines and 9,386 archived).
+- **The STATUS version line is auto-derived.** `scripts/version_manager.py`
+  gained a `check` command and a `[[propagate]]` entry for
+  `docs/STATUS.md`; `scripts/check-status-version.sh` runs in CI, so a version
+  bump cannot leave `v0.8.0` in the header again.
+- **Three contradicting docs corrected:** the data model no longer lists the
+  shipped `study_sessions` as "not yet built", and the SDK reference describes
+  the live two-strikes `failing` status instead of calling it reserved.
+- **Plan corpus hygiene:** seven shipped plans flipped to COMPLETE (as-built),
+  the two stale `HANDOFF-*` files and the duplicate library-placement plan were
+  archived, and a deferred-follow-ups register now lives in the family plans
+  README.
+
 ### Added (quality gates — plan 84 C/D / ADR-210)
 - **Coverage is measured report-only.** CI publishes `pytest --cov=app` and
   vitest v8 coverage artifacts on every PR; no floor is set until a month of
