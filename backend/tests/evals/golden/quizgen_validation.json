@@ -469,6 +469,111 @@
       "expect_problems": [
         "q0: more than 3 concepts (atomic tagging)"
       ]
+    },
+    {
+      "name": "matching valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "matching",
+        "answer": {
+          "pairs": [
+            {
+              "left": "x^2",
+              "right": "2x"
+            },
+            {
+              "left": "sin x",
+              "right": "cos x"
+            }
+          ]
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "ordering valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "ordering",
+        "answer": {
+          "items": [
+            "first",
+            "second",
+            "third"
+          ]
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "cloze valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "cloze",
+        "answer": {
+          "prompt_md": "Derivative of x^2 is {{1}}.",
+          "answers": [
+            [
+              "2x",
+              "2*x"
+            ]
+          ]
+        }
+      },
+      "expect_problems": []
+    },
+    {
+      "name": "essay valid",
+      "draft": {
+        "stem_md": "Stem",
+        "explanation_md": "Because.",
+        "concepts": [
+          "derivatives"
+        ],
+        "skill": "procedural",
+        "bloom": "apply",
+        "difficulty": 3,
+        "expected_time_sec": 60,
+        "type": "essay",
+        "answer": {
+          "prompt_md": "Explain the chain rule.",
+          "rubric": [
+            {
+              "id": "r1",
+              "text": "Mentions composite functions"
+            },
+            {
+              "id": "r2",
+              "text": "Explains the inner derivative"
+            }
+          ]
+        }
+      },
+      "expect_problems": []
     }
   ]
 }

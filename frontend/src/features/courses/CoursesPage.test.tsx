@@ -10,6 +10,7 @@ const listCourses = vi.fn()
 const courseTree = vi.fn()
 const createCourse = vi.fn()
 const deleteCourse = vi.fn()
+const duplicateCourse = vi.fn()
 const importCourseBundle = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
@@ -20,6 +21,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     courseTree: (id: string) => courseTree(id),
     createCourse: (...args: unknown[]) => createCourse(...(args as [object])),
     deleteCourse: (...args: unknown[]) => deleteCourse(...(args as [number])),
+    duplicateCourse: (...args: unknown[]) => duplicateCourse(...(args as [string])),
     importCourseBundle: (...args: unknown[]) =>
       importCourseBundle(...(args as [File, boolean])),
   }
@@ -72,6 +74,7 @@ describe('CoursesPage', () => {
     courseTree.mockReset()
     createCourse.mockReset()
     deleteCourse.mockReset()
+    duplicateCourse.mockReset()
     importCourseBundle.mockReset()
     window.localStorage.removeItem('sa-recent-nodes.default')
     window.localStorage.removeItem('sa-interface-prefs')
@@ -83,6 +86,42 @@ describe('CoursesPage', () => {
         courseCardMeta: true,
       },
     })
+  })
+
+  test('duplicating from the card context menu opens the clone', async () => {
+    listCourses.mockResolvedValue([COURSE])
+    duplicateCourse.mockResolvedValue({
+      course: { ...COURSE, id: '11', title: 'Calculus I (copy)' },
+      copy_materials: true,
+      materials_copied: 5,
+      nodes_copied: 1,
+      notes_copied: 0,
+      quizzes_copied: 0,
+      exercises_copied: 0,
+      task_assignments_copied: 0,
+    })
+    renderCourses()
+    fireEvent.contextMenu(await screen.findByText('Calculus I'))
+    fireEvent.click(await screen.findByText('Duplicate course'))
+    await waitFor(() => expect(duplicateCourse).toHaveBeenCalledWith('3'))
+  })
+
+  test('the card action row exposes the duplicate button', async () => {
+    listCourses.mockResolvedValue([COURSE])
+    duplicateCourse.mockResolvedValue({
+      course: { ...COURSE, id: '11' },
+      copy_materials: true,
+      materials_copied: 5,
+      nodes_copied: 1,
+      notes_copied: 0,
+      quizzes_copied: 0,
+      exercises_copied: 0,
+      task_assignments_copied: 0,
+    })
+    renderCourses()
+    await screen.findByText('Calculus I')
+    fireEvent.click(screen.getByTitle('Duplicate course'))
+    await waitFor(() => expect(duplicateCourse).toHaveBeenCalledWith('3'))
   })
 
   test('lists courses with subject and material count', async () => {

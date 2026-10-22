@@ -40,6 +40,7 @@ export function ReExtractDialog({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<ReExtractMode>('auto')
+  const [enhance, setEnhance] = useState(true)
   const effective = materialId !== null && open
 
   const detail = useQuery({
@@ -54,7 +55,10 @@ export function ReExtractDialog({
       if (!material) {
         throw new Error(t('reextract.hint'))
       }
-      return reingestMaterial(material.id, { mode: selected })
+      return reingestMaterial(material.id, {
+        mode: selected,
+        preprocess: enhance ? 'auto' : 'off',
+      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['material', materialId] })
@@ -103,6 +107,23 @@ export function ReExtractDialog({
               />
             ))}
           </fieldset>
+          {material && ['pdf', 'image'].includes(material.kind) ? (
+            <label className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-xs">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={enhance}
+                onChange={(event) => setEnhance(event.target.checked)}
+                data-testid="reextract-preprocess"
+              />
+              <span>
+                <span className="block font-medium">{t('reextract.preprocess')}</span>
+                <span className="text-muted-foreground block">
+                  {t('reextract.preprocessDesc')}
+                </span>
+              </span>
+            </label>
+          ) : null}
           {busy ? <p className="text-warning text-xs">{t('reextract.busyHint')}</p> : null}
           {run.isError ? (
             <p className="text-danger text-xs">{String(run.error)}</p>

@@ -10,9 +10,14 @@ full-screen runner.
 
 **Practice tab → New practice** opens the practice builder. The **Quiz** group of the
 format picker lets you choose exactly which question types you want (single choice,
-multiple select, true/false, typed answer, numeric, equation — any subset, all by
-default), a question count, and a **Shuffle** toggle (randomizes question order and
-answer options). Below the format picker you control exactly **what the AI sees**:
+multiple select, true/false, typed answer, numeric, equation, number line, table
+fill, composite, graph read, code, **matching**, **ordering**, **fill blanks** and
+**essay** — any subset, all by default), a question count, and a **Shuffle** toggle
+(randomizes question order and answer options). The last four reuse the exercise
+engines: matching/ordering/fill-blanks are graded deterministically, and essay
+answers are graded against a rubric by the AI and clearly labelled **AI-graded**
+with per-criterion feedback. Below the format picker you control exactly **what the
+AI sees**:
 
 - **Scope** — *this node only*, *this node and children* (default), or *whole
   course*.

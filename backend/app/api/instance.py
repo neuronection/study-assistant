@@ -8,9 +8,14 @@ through the auth kit's live instance state (identity-auth §4/§13,
 fail-closed) plus the kit's registration flag — nothing else.
 """
 
+from datetime import UTC, datetime
+
+import httpx
 from fastapi import APIRouter, Request
 from nx_auth.instance import effective_auth_mode
 from pydantic import BaseModel
+
+from .. import __version__
 
 router = APIRouter(prefix="/instance", tags=["instance"])
 
@@ -35,3 +40,83 @@ def get_instance_config(request: Request) -> dict[str, object]:
         # authenticated ("Remove login" is never offered there).
         "identity_mode": kit.config.identity_mode,
     }
+
+
+GITHUB_RELEASES_URL = "https://api.github.com/repos/neuronection/study-assistant/releases/latest"
+RELEASE_PAGE_URL = "https://github.com/neuronection/study-assistant/releases/latest"
+UPDATE_CACHE_SEC = 6 * 60 * 60
+_UPDATE_CACHE: dict[str, object] | None = None
+_UPDATE_CACHE_AT: datetime | None = None
+
+
+class UpdateCheckOut(BaseModel):
+    current_version: str
+    latest_version: str | None = None
+    update_available: bool = False
+    release_url: str = RELEASE_PAGE_URL
+    checked_at: str | None = None
+    error: str | None = None
+
+
+def _version_tuple(value: str) -> tuple[int, int, int] | None:
+    cleaned = value.strip().lstrip("vV").split("-", 1)[0]
+    parts = cleaned.split(".")
+    if len(parts) < 2:
+        return None
+    try:
+        numbers = [int(part) for part in parts[:3]]
+    except ValueError:
+        return None
+    while len(numbers) < 3:
+        numbers.append(0)
+    return (numbers[0], numbers[1], numbers[2])
+
+
+def update_check() -> dict[str, object]:
+    global _UPDATE_CACHE, _UPDATE_CACHE_AT
+
+    now = datetime.now(UTC)
+    if (
+        _UPDATE_CACHE is not None
+        and _UPDATE_CACHE_AT is not None
+        and (now - _UPDATE_CACHE_AT).total_seconds() < UPDATE_CACHE_SEC
+    ):
+        return _UPDATE_CACHE
+    current = __version__
+    payload: dict[str, object] = {
+        "current_version": current,
+        "latest_version": None,
+        "update_available": False,
+        "release_url": RELEASE_PAGE_URL,
+        "checked_at": now.isoformat(),
+        "error": None,
+    }
+    try:
+        response = httpx.get(
+            GITHUB_RELEASES_URL,
+            timeout=5.0,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "study-assistant"},
+        )
+        response.raise_for_status()
+        body = response.json()
+        tag = body.get("tag_name") if isinstance(body, dict) else None
+        latest = str(tag) if tag is not None else None
+        payload["latest_version"] = latest
+        payload["release_url"] = str(
+            (body.get("html_url") if isinstance(body, dict) else None) or RELEASE_PAGE_URL
+        )
+        current_tuple = _version_tuple(current)
+        latest_tuple = _version_tuple(latest) if latest else None
+        payload["update_available"] = bool(
+            current_tuple is not None and latest_tuple is not None and latest_tuple > current_tuple
+        )
+    except (httpx.HTTPError, ValueError) as error:
+        payload["error"] = str(error)
+    _UPDATE_CACHE = payload
+    _UPDATE_CACHE_AT = now
+    return payload
+
+
+@router.get("/update-check", response_model=UpdateCheckOut)
+def get_update_check() -> dict[str, object]:
+    return update_check()

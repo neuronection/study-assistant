@@ -601,10 +601,18 @@ class MaterialsService:
             query = query.where(Material.id != exclude_id)
         return self._session.scalars(query.order_by(Material.created_at, Material.id)).first()
 
-    def queue_ingest(self, material: Material, runner: JobRunner, mode: str | None = None) -> str:
+    def queue_ingest(
+        self,
+        material: Material,
+        runner: JobRunner,
+        mode: str | None = None,
+        preprocess: str | None = None,
+    ) -> str:
         payload: IngestPayload = {"material_id": material.id, "blob_sha": material.blob_sha}
         if mode is not None:
             payload["mode"] = mode
+        if preprocess is not None:
+            payload["preprocess"] = preprocess
         job = JobRunner.enqueue(self._session, "ingest", payload)
         runner.wake()
         return job.id

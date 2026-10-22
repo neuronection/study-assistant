@@ -32,6 +32,7 @@ import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
 import { FileDock, fileDockOpen } from './FileDock'
 import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
+import { UpdateBanner } from './UpdateBanner'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
@@ -706,6 +707,7 @@ export function AppShell() {
         />
       </aside>
       <main className="flex-1 overflow-y-auto">
+        <UpdateBanner />
         <RouteFade />
       </main>
       <FileDock />

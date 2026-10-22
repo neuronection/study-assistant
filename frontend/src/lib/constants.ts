@@ -24,6 +24,7 @@ export const storageKeys = {
   plannerView: 'sa-planner-view',
   reviewNudges: 'sa-review-nudges',
   notificationsSeen: 'sa-notifications-seen',
+  updateDismissed: 'sa-update-dismissed',
   recentNodesPrefix: 'sa-recent-nodes',
   interfacePrefs: 'sa-interface-prefs',
   treeWidth: 'sa-tree-width',

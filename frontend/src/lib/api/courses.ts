@@ -32,9 +32,25 @@ export type OutlineDraftSection = Schemas['OutlineSectionOut']
 export type OutlineDraftChapter = Schemas['OutlineChapterOut']
 export type OutlineDraft = Schemas['OutlineDraftOut']
 export type CourseTypeInfo = Schemas['CourseTypeOut']
+export type CourseDuplicate = Schemas['DuplicateCourseOut']
 
 export type GenesisDraft = Schemas['GenesisDraftOut']
 export type GenesisCommitResult = Schemas['GenesisCommitOut']
+
+export async function duplicateCourse(
+  courseId: string,
+  options: { title?: string; copyMaterials?: boolean } = {}
+): Promise<CourseDuplicate> {
+  const response = await apiFetch(`/api/v1/courses/${courseId}/duplicate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...(options.title ? { title: options.title } : {}),
+      copy_materials: options.copyMaterials ?? true,
+    }),
+  })
+  return json<CourseDuplicate>(response)
+}
 
 export async function listCourseTasks(courseId: string): Promise<CourseTaskInfo[]> {
   const response = await apiFetch(`/api/v1/courses/${courseId}/tasks`)

@@ -99,6 +99,32 @@ def answer_key_text(question: Question) -> str:
         if answer.get("expression") is not None:
             return str(answer["expression"])
         return "?"
+    if qtype == "matching":
+        pairs = answer.get("pairs", [])
+        rendered_pairs = [
+            f"{pair.get('left', '')} → {pair.get('right', '')}"
+            for pair in pairs
+            if isinstance(pair, dict)
+        ]
+        return "; ".join(rendered_pairs) if rendered_pairs else "?"
+    if qtype == "ordering":
+        items = answer.get("items", [])
+        return " → ".join(str(item) for item in items) if items else "?"
+    if qtype == "cloze":
+        answers = answer.get("answers", [])
+        rendered_blanks = []
+        for index, values in enumerate(answers, start=1):
+            accepted = values if isinstance(values, list) else [values]
+            rendered_blanks.append(f"({index}) " + " / ".join(str(entry) for entry in accepted))
+        return "; ".join(rendered_blanks) if rendered_blanks else "?"
+    if qtype == "essay":
+        rubric = answer.get("rubric", [])
+        rendered_rows = [
+            str(row.get("text", ""))
+            for row in rubric
+            if isinstance(row, dict) and str(row.get("text", "")).strip()
+        ]
+        return "Rubric: " + "; ".join(rendered_rows) if rendered_rows else "Open response"
     if qtype == "code":
         tests = answer.get("tests", [])
         rendered_cases: list[str] = []

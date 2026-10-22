@@ -136,7 +136,7 @@ class RubricGrader:
 
     def grade(
         self,
-        step: ExerciseStep,
+        step: ExerciseStep | None,
         payload: Mapping[str, Any],
         response: str,
         course_id: str | None = None,

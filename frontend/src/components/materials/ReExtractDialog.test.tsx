@@ -105,7 +105,7 @@ describe('ReExtractDialog', () => {
     renderDialog('42')
     fireEvent.click(await screen.findByTestId('reextract-mode-ocr'))
     fireEvent.click(screen.getByRole('button', { name: 'Re-extract' }))
-    await waitFor(() => expect(reingestMaterial).toHaveBeenCalledWith('42', { mode: 'ocr' }))
+    await waitFor(() => expect(reingestMaterial).toHaveBeenCalledWith('42', { mode: 'ocr', preprocess: 'auto' }))
     await waitFor(() => expect(onCloseMock).toHaveBeenCalled())
   })
 

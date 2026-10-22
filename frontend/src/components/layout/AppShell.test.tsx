@@ -34,6 +34,15 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listProfiles: () => listProfiles(),
     createProfile: (name: string) => createProfileFn(name),
     getInstanceConfig: () => getInstanceConfigFn(),
+    getUpdateCheck: () =>
+      Promise.resolve({
+        current_version: '0.12.1',
+        latest_version: '0.12.1',
+        update_available: false,
+        release_url: 'https://example.invalid',
+        checked_at: null,
+        error: null,
+      }),
   }
 })
 

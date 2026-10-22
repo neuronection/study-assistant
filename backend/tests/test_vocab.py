@@ -60,6 +60,10 @@ def test_question_type_members_are_stable() -> None:
         "composite",
         "graph_read",
         "code",
+        "matching",
+        "ordering",
+        "cloze",
+        "essay",
     )
 
 

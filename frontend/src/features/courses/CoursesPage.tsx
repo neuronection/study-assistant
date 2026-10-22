@@ -1,11 +1,12 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Download, GraduationCap, History, Loader2, Plus, Trash2, Upload } from 'lucide-react'
+import { BookOpen, Copy, Download, GraduationCap, History, Loader2, Plus, Trash2, Upload } from 'lucide-react'
 import { useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { ExpandableSearch } from '@/components/ui/ExpandableSearch'
 import { fuzzyScore } from '@/lib/fuzzy'
 import { formatRelativeTime } from '@/lib/format'
@@ -15,6 +16,7 @@ import {
   courseTree,
   createCourse,
   deleteCourse,
+  duplicateCourse,
   importCourseBundle,
   listCourses,
   type CourseBundlePreview,
@@ -89,6 +91,7 @@ export function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const importInput = useRef<HTMLInputElement>(null)
   const [confirm, confirmElement] = useConfirm()
+  const [menu, setMenu] = useState<{ x: number; y: number; courseId: string } | null>(null)
 
   const normalizedQuery = searchQuery.trim()
   const visibleCourses = useMemo(() => {
@@ -117,6 +120,19 @@ export function CoursesPage() {
   const remove = useMutation({
     mutationFn: (id: string) => deleteCourse(id, true),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['courses'] }),
+  })
+
+  const duplicate = useMutation({
+    mutationFn: (id: string) => duplicateCourse(id),
+    onSuccess: async (result) => {
+      setMenu(null)
+      await queryClient.invalidateQueries({ queryKey: ['courses'] })
+      void navigate({
+        to: '/courses/$courseId',
+        params: { courseId: String(result.course.id) },
+      })
+    },
+    onError: (err: Error) => setError(err.message),
   })
 
   const startImport = useMutation({
@@ -281,7 +297,13 @@ export function CoursesPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {visibleCourses.map((course) => (
-          <Card key={course.id}>
+          <Card
+            key={course.id}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setMenu({ x: event.clientX, y: event.clientY, courseId: course.id })
+            }}
+          >
             <CardContent className="flex items-start gap-3 p-5">
               <span
                 className="mt-1 inline-flex size-9 items-center justify-center rounded-lg"
@@ -332,6 +354,19 @@ export function CoursesPage() {
                 ) : null}
               </div>
               <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title={t('courses.duplicate')}
+                  disabled={duplicate.isPending}
+                  onClick={() => duplicate.mutate(course.id)}
+                >
+                  {duplicate.isPending ? (
+                    <Loader2 className="animate-spin" aria-hidden />
+                  ) : (
+                    <Copy className="size-4" aria-hidden />
+                  )}
+                </Button>
                 <a
                   href={courseExportUrl(course.id)}
                   download
@@ -372,6 +407,23 @@ export function CoursesPage() {
 
       {courses.data && courses.data.length > 0 && visibleCourses.length === 0 ? (
         <p className="text-muted-foreground py-16 text-center text-sm">{t('courses.noMatch')}</p>
+      ) : null}
+      {menu ? (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={
+            [
+              {
+                key: 'duplicate',
+                label: t('courses.duplicate'),
+                icon: Copy,
+                onSelect: () => duplicate.mutate(menu.courseId),
+              },
+            ] satisfies ContextMenuItem[]
+          }
+          onClose={() => setMenu(null)}
+        />
       ) : null}
       {confirmElement}
     </div>

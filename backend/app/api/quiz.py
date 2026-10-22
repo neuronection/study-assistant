@@ -23,6 +23,7 @@ from ..domain.models import (
     Mistake,
     Question,
     QuizHelpEvent,
+    TreeNode,
     utcnow,
 )
 from ..math.code import code_public_input
@@ -45,7 +46,13 @@ from ..services.knowledge.tree import TreeError, TreeService
 from ..services.platform.chat import ChatService
 from ..services.platform.profiles import ensure_default_profile
 from ..services.study.elo import EloService, rating_to_difficulty
-from ..services.study.grading import grade
+from ..services.study.exercise_rubric import (
+    RubricError,
+    RubricGrader,
+    rubric_public_input,
+)
+from ..services.study.exercise_structs import public_input
+from ..services.study.grading import GradeResult, grade
 from ..services.study.inbox import InboxService
 from ..services.study.patterns import ErrorPatternService
 from ..services.study.tutor import TutorError, TutorService
@@ -132,6 +139,9 @@ class MistakeListItemOut(BaseModel):
     question_id: str
     activity_id: str
     activity_title: str
+    course_id: str
+    node_id: str | None = None
+    node_title: str | None = None
     stem_excerpt: str
     error_tags: list[str]
     created_at: str
@@ -213,6 +223,14 @@ def _question_input(question: Question) -> dict[str, Any] | None:
         return None
     if question.type == "code":
         return code_public_input(question.answer or {})
+    if question.type == "matching":
+        return public_input("matching", question.answer or {}, question.id)
+    if question.type == "ordering":
+        return public_input("ordering", question.answer or {}, question.id)
+    if question.type == "cloze":
+        return public_input("fill_blank", question.answer or {}, question.id)
+    if question.type == "essay":
+        return rubric_public_input("explain", question.answer or {})
     return None
 
 
@@ -360,18 +378,24 @@ def list_mistakes(
     rows = session.execute(
         statement.order_by(Mistake.created_at.desc(), Mistake.id.desc()).limit(100)
     ).all()
-    return [
-        {
-            "id": mistake.id,
-            "question_id": mistake.question_id,
-            "activity_id": activity.id,
-            "activity_title": activity.title,
-            "stem_excerpt": (question.stem[0].get("md", "")[:100] if question.stem else ""),
-            "error_tags": mistake.error_tags or [],
-            "created_at": mistake.created_at.isoformat(),
-        }
-        for mistake, question, activity in rows
-    ]
+    result: list[dict[str, Any]] = []
+    for mistake, question, activity in rows:
+        node = session.get(TreeNode, activity.node_id) if activity.node_id is not None else None
+        result.append(
+            {
+                "id": mistake.id,
+                "question_id": mistake.question_id,
+                "activity_id": activity.id,
+                "activity_title": activity.title,
+                "course_id": activity.course_id,
+                "node_id": activity.node_id,
+                "node_title": node.title if node is not None else None,
+                "stem_excerpt": (question.stem[0].get("md", "")[:100] if question.stem else ""),
+                "error_tags": mistake.error_tags or [],
+                "created_at": mistake.created_at.isoformat(),
+            }
+        )
+    return result
 
 
 def _blocks_to_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
@@ -391,7 +415,16 @@ def _answer_to_caq(qtype: str, answer: Mapping[str, Any]) -> Any:
         return answer.get("index")
     if qtype == "multi":
         return answer.get("indices")
-    if qtype in ("numberline", "table_fill", "composite", "graph_read"):
+    if qtype in (
+        "numberline",
+        "table_fill",
+        "composite",
+        "graph_read",
+        "matching",
+        "ordering",
+        "cloze",
+        "essay",
+    ):
         return answer
     if qtype == "code":
         return {
@@ -873,7 +906,42 @@ def submit_answer(
     if question is None or question.activity_id != activity.id:
         raise HTTPException(status_code=404, detail="question not in this quiz")
 
-    result = grade(question, body.response)
+    if question.type == "essay":
+        if not isinstance(body.response, str) or not body.response.strip():
+            raise HTTPException(status_code=422, detail="string response required")
+        grader = RubricGrader(session, request.app.state.gateway)
+        try:
+            assessment = grader.grade(
+                None,
+                question.answer or {},
+                body.response.strip(),
+                course_id=activity.course_id,
+            )
+        except (RubricError, TaskUnassigned, ProviderError) as error:
+            session.rollback()
+            raise HTTPException(
+                status_code=502 if isinstance(error, (TaskUnassigned, ProviderError)) else 422,
+                detail=str(error),
+            ) from error
+        verdict = str(assessment["verdict"])
+        feedback = [
+            {"type": "text", "md": f"essay: {verdict} (AI-graded)"},
+            *[
+                {
+                    "type": "text",
+                    "md": f"- **{row.get('rubric_id', '')}**: {row.get('reason', '')}",
+                }
+                for row in assessment.get("rationale", [])
+            ],
+        ]
+        result = GradeResult(
+            correct=verdict == "correct",
+            partial_credit=float(assessment["score"]),
+            graded_by="rubric",
+            feedback=feedback,
+        )
+    else:
+        result = grade(question, body.response)
     error_tags = list(result.error_tags)
     if not result.correct and question.distractor_misconceptions:
         misconceptions = {

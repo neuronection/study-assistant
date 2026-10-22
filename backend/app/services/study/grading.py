@@ -10,6 +10,7 @@ from ...math.equivalence import equivalent
 from ...math.graphs import grade_graph_read
 from ...math.regions import grade_regions
 from ...math.tables import grade_table_fill
+from .exercise_structs import check_structural
 
 _WHITESPACE_RE = re.compile(r"\s+")
 
@@ -181,6 +182,19 @@ def grade_code_question(response: Any, answer: Mapping[str, Any]) -> GradeResult
     )
 
 
+STRUCTURAL_GRADERS = {
+    "matching": "matching",
+    "ordering": "ordering",
+    "cloze": "fill_blank",
+}
+
+
+def grade_structural(question_type: str, response: Any, answer: Mapping[str, Any]) -> GradeResult:
+    kind = STRUCTURAL_GRADERS[question_type]
+    correct, detail = check_structural(kind, answer, response)
+    return _text_result(correct, detail, "deterministic")
+
+
 def grade(question: Question, response: Any) -> GradeResult:
     answer = question.answer or {}
     graders = {
@@ -195,6 +209,9 @@ def grade(question: Question, response: Any) -> GradeResult:
         "composite": lambda: grade_composite_question(response, answer),
         "graph_read": lambda: grade_graph(response, answer),
         "code": lambda: grade_code_question(response, answer),
+        "matching": lambda: grade_structural("matching", response, answer),
+        "ordering": lambda: grade_structural("ordering", response, answer),
+        "cloze": lambda: grade_structural("cloze", response, answer),
     }
     grader = graders.get(question.type)
     if grader is None:

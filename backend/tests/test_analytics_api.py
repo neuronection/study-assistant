@@ -287,3 +287,81 @@ def test_exam_answers_excluded_from_mastery() -> None:
         proc = next(c for c in diagnostics["weakness_matrix"] if c["concept"] == "derivatives")
         assert proc["n"] == 1
         assert proc["accuracy"] == 1.0
+
+
+def test_item_analysis_exposes_discrimination_and_distractor_efficiency() -> None:
+    client = make_client()
+    with client:
+        course_id = make_course(client)
+        seed = seed_answers(client, course_id, [(0, 0, 10000), (1, True, 20000)])
+        items = {
+            entry["question_id"]: entry for entry in client.get("/api/v1/analytics/items").json()
+        }
+        single = items[seed["questions"][0]["id"]]
+        assert single["discrimination"] is None
+        assert single["distractor_efficiency"] == 0.0
+        assert single["elo_outlier"] is False
+
+        assert client.get(
+            "/api/v1/analytics/items", params={"course_id": course_id}
+        ).json() == list(items.values())
+
+
+def test_analytics_export_json_and_csv_shapes() -> None:
+    client = make_client()
+    with client:
+        course_id = make_course(client)
+        seed = seed_answers(client, course_id, [(0, 0, 10000), (1, True, 20000)])
+
+        exported = client.get("/api/v1/analytics/export", params={"format": "json"})
+        assert exported.status_code == 200, exported.text
+        payload = exported.json()
+        assert payload["version"] == 1
+        assert payload["course_id"] is None
+        assert payload["daily"] and payload["daily"][0]["answers_n"] >= 2
+        assert payload["concepts"] and "weakness_score" in payload["concepts"][0]
+        assert {entry["question_id"] for entry in payload["items"]} == {
+            question["id"] for question in seed["questions"]
+        }
+
+        scoped = client.get(
+            "/api/v1/analytics/export", params={"format": "json", "course_id": course_id}
+        ).json()
+        assert scoped["course_id"] == course_id
+        assert len(scoped["items"]) == 2
+
+        csv_response = client.get("/api/v1/analytics/export", params={"format": "csv"})
+        assert csv_response.status_code == 200, csv_response.text
+        assert csv_response.headers["content-type"].startswith("text/csv")
+        lines = csv_response.text.splitlines()
+        assert lines[0].split(",") == [
+            "section",
+            "day",
+            "answers_n",
+            "correct_n",
+            "cards_reviewed",
+            "minutes",
+            "study_seconds",
+            "xp",
+            "concept",
+            "concept_id",
+            "skill",
+            "n",
+            "accuracy",
+            "avg_time_ratio",
+            "weakness_score",
+            "enough_data",
+            "question_id",
+            "p_correct",
+            "discrimination",
+            "distractor_efficiency",
+            "avg_time_ms",
+            "flag",
+            "elo_outlier",
+            "stem_excerpt",
+        ]
+        sections = {line.split(",")[0] for line in lines[1:]}
+        assert {"daily", "concept", "item"} <= sections
+
+        bad = client.get("/api/v1/analytics/export", params={"format": "xml"})
+        assert bad.status_code == 422

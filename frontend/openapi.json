@@ -246,6 +246,67 @@
         "title": "AllocationIn",
         "type": "object"
       },
+      "AnalyticsExportFormat": {
+        "enum": [
+          "csv",
+          "json"
+        ],
+        "title": "AnalyticsExportFormat",
+        "type": "string"
+      },
+      "AnalyticsExportOut": {
+        "properties": {
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/WeaknessCellOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DayActivityOut"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemStatOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "version": {
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generated_at",
+          "daily",
+          "concepts",
+          "items"
+        ],
+        "title": "AnalyticsExportOut",
+        "type": "object"
+      },
       "AnkiImportOut": {
         "properties": {
           "deck_name": {
@@ -3410,6 +3471,77 @@
         "title": "DueReviewEntryOut",
         "type": "object"
       },
+      "DuplicateCourseIn": {
+        "properties": {
+          "copy_materials": {
+            "default": true,
+            "title": "Copy Materials",
+            "type": "boolean"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "DuplicateCourseIn",
+        "type": "object"
+      },
+      "DuplicateCourseOut": {
+        "properties": {
+          "copy_materials": {
+            "title": "Copy Materials",
+            "type": "boolean"
+          },
+          "course": {
+            "$ref": "#/components/schemas/CourseOut"
+          },
+          "exercises_copied": {
+            "title": "Exercises Copied",
+            "type": "integer"
+          },
+          "materials_copied": {
+            "title": "Materials Copied",
+            "type": "integer"
+          },
+          "nodes_copied": {
+            "title": "Nodes Copied",
+            "type": "integer"
+          },
+          "notes_copied": {
+            "title": "Notes Copied",
+            "type": "integer"
+          },
+          "quizzes_copied": {
+            "title": "Quizzes Copied",
+            "type": "integer"
+          },
+          "task_assignments_copied": {
+            "title": "Task Assignments Copied",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "course",
+          "copy_materials",
+          "materials_copied",
+          "nodes_copied",
+          "notes_copied",
+          "quizzes_copied",
+          "exercises_copied",
+          "task_assignments_copied"
+        ],
+        "title": "DuplicateCourseOut",
+        "type": "object"
+      },
       "EditIn": {
         "properties": {
           "content": {
@@ -5603,6 +5735,10 @@
       },
       "ItemStatOut": {
         "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "string"
+          },
           "avg_time_ms": {
             "anyOf": [
               {
@@ -5625,6 +5761,28 @@
             ],
             "title": "Avg Time Ratio"
           },
+          "discrimination": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discrimination"
+          },
+          "distractor_efficiency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distractor Efficiency"
+          },
           "distractor_selection": {
             "anyOf": [
               {
@@ -5638,6 +5796,11 @@
               }
             ],
             "title": "Distractor Selection"
+          },
+          "elo_outlier": {
+            "default": false,
+            "title": "Elo Outlier",
+            "type": "boolean"
           },
           "flag": {
             "$ref": "#/components/schemas/ItemFlag"
@@ -5661,6 +5824,7 @@
         },
         "required": [
           "question_id",
+          "activity_id",
           "n_attempts",
           "p_correct",
           "avg_time_ms",
@@ -7569,6 +7733,10 @@
             "title": "Activity Title",
             "type": "string"
           },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -7584,6 +7752,28 @@
             "title": "Id",
             "type": "string"
           },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "node_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Title"
+          },
           "question_id": {
             "title": "Question Id",
             "type": "string"
@@ -7598,6 +7788,7 @@
           "question_id",
           "activity_id",
           "activity_title",
+          "course_id",
           "stem_excerpt",
           "error_tags",
           "created_at"
@@ -10012,6 +10203,14 @@
         "title": "PreferencesOut",
         "type": "object"
       },
+      "PreprocessMode": {
+        "enum": [
+          "auto",
+          "off"
+        ],
+        "title": "PreprocessMode",
+        "type": "string"
+      },
       "PresetDecisionModel": {
         "properties": {
           "caps": {
@@ -11326,7 +11525,11 @@
           "table_fill",
           "composite",
           "graph_read",
-          "code"
+          "code",
+          "matching",
+          "ordering",
+          "cloze",
+          "essay"
         ],
         "title": "QuestionType",
         "type": "string"
@@ -11792,6 +11995,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ExtractionMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preprocess": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreprocessMode"
               },
               {
                 "type": "null"
@@ -15818,6 +16031,62 @@
         "title": "UpcomingItemOut",
         "type": "object"
       },
+      "UpdateCheckOut": {
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version"
+          },
+          "release_url": {
+            "default": "https://github.com/neuronection/study-assistant/releases/latest",
+            "title": "Release Url",
+            "type": "string"
+          },
+          "update_available": {
+            "default": false,
+            "title": "Update Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "current_version"
+        ],
+        "title": "UpdateCheckOut",
+        "type": "object"
+      },
       "UploadWarningOut": {
         "properties": {
           "code": {
@@ -17908,6 +18177,64 @@
         ]
       }
     },
+    "/api/v1/analytics/export": {
+      "get": {
+        "operationId": "export_analytics_api_v1_analytics_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsExportFormat",
+              "default": "csv"
+            }
+          },
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsExportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Analytics",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/analytics/goal": {
       "put": {
         "operationId": "set_goal_api_v1_analytics_goal_put",
@@ -17952,6 +18279,24 @@
     "/api/v1/analytics/items": {
       "get": {
         "operationId": "items_api_v1_analytics_items_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -17966,6 +18311,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Items",
@@ -19950,6 +20305,65 @@
           }
         },
         "summary": "Extract Course Concepts",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/v1/courses/{course_id}/duplicate": {
+      "post": {
+        "operationId": "duplicate_api_v1_courses__course_id__duplicate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DuplicateCourseIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateCourseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate",
         "tags": [
           "courses"
         ]
@@ -24295,6 +24709,27 @@
           }
         },
         "summary": "Get Instance Config",
+        "tags": [
+          "instance"
+        ]
+      }
+    },
+    "/api/v1/instance/update-check": {
+      "get": {
+        "operationId": "get_update_check_api_v1_instance_update_check_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Update Check",
         "tags": [
           "instance"
         ]

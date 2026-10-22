@@ -27,6 +27,15 @@ from ..services.study.answer_validation import (
     validate_answer_shape,
     validate_distractor_equivalence,
 )
+from ..services.study.exercise_rubric import validate_rubric_payload
+from ..services.study.exercise_structs import validate_structural_payload
+
+STRUCTURAL_QUESTION_KINDS = {
+    "matching": "matching",
+    "ordering": "ordering",
+    "cloze": "fill_blank",
+}
+ESSAY_QUESTION_KIND = "essay"
 
 QUIZGEN_TASK = "quizgen"
 QUIZGEN_SKILL = "quiz.generate"
@@ -77,6 +86,15 @@ def validate_question(draft: dict[str, Any], index: int) -> list[str]:
         problems.extend(f"q{index}: {problem}" for problem in validate_graph_answer(answer))
     elif qtype == "code":
         problems.extend(f"q{index}: {problem}" for problem in validate_code_answer(answer))
+    elif qtype in STRUCTURAL_QUESTION_KINDS:
+        problems.extend(
+            f"q{index}: {problem}"
+            for problem in validate_structural_payload(STRUCTURAL_QUESTION_KINDS[qtype], answer)
+        )
+    elif qtype == ESSAY_QUESTION_KIND:
+        problems.extend(
+            f"q{index}: {problem}" for problem in validate_rubric_payload("explain", answer)
+        )
 
     if not str(draft.get("explanation_md", "")).strip():
         problems.append(f"q{index}: missing explanation")

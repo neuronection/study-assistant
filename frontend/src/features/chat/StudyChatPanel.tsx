@@ -36,6 +36,7 @@ import { ChatPanel as ChatPanelHost } from '@/components/ui/chat-panel'
 import { Button } from '@/components/ui/button'
 import { Popover } from '@/components/ui/popover'
 import { ChatReasoning } from '@/components/ui/chat-reasoning'
+import { ChatSuggestionCard } from '@/components/ui/chat-suggestion-card'
 import { ChatToolCard } from '@/components/ui/chat-tool-card'
 import { ChatTurnStatus } from '@/components/ui/chat-turn-status'
 import { MarkdownSurface } from '@/components/ui/chat-markdown'
@@ -794,14 +795,14 @@ export function StudyChatPanel({
               </p>
               <div className="flex flex-col gap-1.5">
                 {suggestions.map((suggestion) => (
-                  <button
+                  <ChatSuggestionCard
                     key={suggestion}
                     type="button"
+                    icon={Sparkles}
                     onClick={() => setDraft(suggestion)}
-                    className="border-border hover:bg-subtle rounded-full border px-3 py-1.5 text-xs transition-colors"
                   >
                     {suggestion}
-                  </button>
+                  </ChatSuggestionCard>
                 ))}
               </div>
             </div>

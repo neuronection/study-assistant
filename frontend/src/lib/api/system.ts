@@ -22,6 +22,7 @@ export type SearchProviderProbe = Schemas['SearchProviderProbeOut']
 export type OnboardingState = Schemas['OnboardingStateOut']
 export type WorkingDirInfo = Schemas['WorkingDirOut']
 export type WorkingDirValidation = Schemas['ValidateWorkingDirOut']
+export type UpdateCheck = Schemas['UpdateCheckOut']
 
 export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> {
   const response = await fetchFn('/api/v1/health')
@@ -29,6 +30,11 @@ export async function getHealth(fetchFn: typeof fetch = fetch): Promise<Health> 
     throw new Error(`health check failed: ${response.status}`)
   }
   return (await response.json()) as Health
+}
+
+export async function getUpdateCheck(): Promise<UpdateCheck> {
+  const response = await apiFetch('/api/v1/instance/update-check')
+  return json<UpdateCheck>(response)
 }
 
 export async function listFsDirs(path?: string): Promise<FsDirs> {

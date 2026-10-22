@@ -5,6 +5,7 @@ class IngestPayload(TypedDict, total=False):
     material_id: Required[str]
     blob_sha: str | None
     mode: str
+    preprocess: str
 
 
 class PostprocessPayload(TypedDict, total=False):

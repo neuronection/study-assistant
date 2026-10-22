@@ -46,7 +46,15 @@ def _encode(img: Image.Image, fmt: str) -> bytes | None:
     return buffer.getvalue()
 
 
-def prepare_ocr_image(data: bytes, mime: str, max_edge: int) -> tuple[bytes, str]:
+def prepare_ocr_image(
+    data: bytes, mime: str, max_edge: int, preprocess: str = "auto"
+) -> tuple[bytes, str]:
+    if preprocess == "auto":
+        from .preprocess import preprocess_ocr_image
+
+        processed = preprocess_ocr_image(data)
+        if processed is not None:
+            data, mime = processed, "image/png"
     if max_edge == 0 and mime != "image/png":
         return data, mime
     try:

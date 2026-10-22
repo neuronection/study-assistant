@@ -16,6 +16,7 @@ const listQuizAttempts = vi.fn()
 const listMistakes = vi.fn()
 const getDiagnostics = vi.fn()
 const getRecommendations = vi.fn()
+const getItems = vi.fn()
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>()
@@ -25,6 +26,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     listMistakes: () => listMistakes(),
     getDiagnostics: () => getDiagnostics(),
     getRecommendations: () => getRecommendations(),
+    getItems: () => getItems(),
   }
 })
 
@@ -97,6 +99,8 @@ describe('ScoresPage', () => {
     listMistakes.mockReset()
     getDiagnostics.mockReset()
     getRecommendations.mockReset()
+    getItems.mockReset()
+    getItems.mockResolvedValue([])
     listQuizAttempts.mockResolvedValue([])
     listMistakes.mockResolvedValue([])
     getDiagnostics.mockResolvedValue(DIAGNOSTICS)
@@ -145,5 +149,99 @@ describe('ScoresPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /tips/i }))
     expect(await screen.findByText(/derivatives/)).toBeInTheDocument()
     expect(screen.getByText(/4 misses out of 9/)).toBeInTheDocument()
+  })
+})
+
+describe('ScoresPage item analysis (plan 87 C)', () => {
+  test('renders difficulty, discrimination, distractor efficiency and flags', async () => {
+    getItems.mockResolvedValue([
+      {
+        question_id: 'q1',
+        activity_id: '2',
+        n_attempts: 24,
+        p_correct: 0.42,
+        discrimination: 0.11,
+        distractor_efficiency: 0.67,
+        avg_time_ms: 42000,
+        avg_time_ratio: 1.1,
+        distractor_selection: { '1': 9 },
+        flag: 'review',
+        elo_outlier: false,
+        stem_excerpt: 'Derivative of x^2?',
+      },
+      {
+        question_id: 'q2',
+        activity_id: '2',
+        n_attempts: 24,
+        p_correct: 0.8,
+        discrimination: 0.55,
+        distractor_efficiency: 1,
+        avg_time_ms: 30000,
+        avg_time_ratio: 0.9,
+        distractor_selection: { '1': 3, '2': 2 },
+        flag: 'elo_outlier',
+        elo_outlier: true,
+        stem_excerpt: 'Limit at a point?',
+      },
+    ])
+    await renderPage('/scores?tab=diagnostics')
+    expect(await screen.findByText('Item analysis')).toBeInTheDocument()
+    expect(await screen.findByText('Derivative of x^2?')).toBeInTheDocument()
+    expect(screen.getByText('0.11')).toBeInTheDocument()
+    expect(screen.getByText('67%')).toBeInTheDocument()
+    expect(screen.getByText('review')).toBeInTheDocument()
+    expect(screen.getByText('Elo outlier')).toBeInTheDocument()
+    const link = screen.getByText('Derivative of x^2?').closest('a')
+    expect(link?.getAttribute('href')).toContain('/quiz/2')
+  })
+
+  test('exports the current scope as CSV and JSON', async () => {
+    await renderPage()
+    expect(screen.getByText('Export CSV').closest('a')?.getAttribute('href')).toBe(
+      '/api/v1/analytics/export?format=csv'
+    )
+    expect(screen.getByText('Export JSON').closest('a')?.getAttribute('href')).toBe(
+      '/api/v1/analytics/export?format=json'
+    )
+  })
+})
+
+describe('ScoresPage mistake notebook node links (plan 87 F)', () => {
+  test('rows deep-link to the node that holds the question', async () => {
+    listMistakes.mockResolvedValue([
+      {
+        id: 'm1',
+        question_id: 'q1',
+        activity_id: '2',
+        activity_title: 'Derivatives quiz',
+        course_id: '3',
+        node_id: '4',
+        node_title: 'Derivatives',
+        stem_excerpt: 'Differentiate x^2',
+        error_tags: ['sign_slip'],
+        created_at: '2026-08-19T09:00:00',
+      },
+      {
+        id: 'm2',
+        question_id: 'q2',
+        activity_id: '2',
+        activity_title: 'Derivatives quiz',
+        course_id: '3',
+        node_id: null,
+        node_title: null,
+        stem_excerpt: 'Course-level warm-up',
+        error_tags: [],
+        created_at: '2026-08-19T09:00:00',
+      },
+    ])
+    await renderPage('/scores?tab=mistakes')
+    expect(await screen.findByText('Differentiate x^2')).toBeInTheDocument()
+    expect(screen.getByText('Derivatives')).toBeInTheDocument()
+    expect(
+      screen.getByText('Differentiate x^2').closest('a')?.getAttribute('href')
+    ).toContain('/courses/3/n/4')
+    expect(
+      screen.getByText('Course-level warm-up').closest('a')?.getAttribute('href')
+    ).toContain('/courses/3')
   })
 })

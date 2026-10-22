@@ -493,3 +493,27 @@ def test_ocr_document_context_threaded_to_gateway() -> None:
 
         wait_until(context_sent, timeout=30.0)
         assert context_sent()
+
+
+def test_reingest_accepts_preprocess_auto_or_off() -> None:
+    gateway = BlockedFakeGateway("board text")
+    with make_client(gateway) as client:
+        course_id = make_course(client)
+        upload = client.post(
+            "/api/v1/materials",
+            params={"course_id": course_id},
+            files={"file": ("board.png", b"\x89PNG-fake", "image/png")},
+        )
+        material_id = upload.json()["material"]["id"]
+        wait_status(client, material_id)
+        for mode in ("auto", "off"):
+            response = client.post(
+                f"/api/v1/materials/{material_id}/reingest",
+                json={"mode": "ocr", "preprocess": mode},
+            )
+            assert response.status_code == 200, response.text
+        invalid = client.post(
+            f"/api/v1/materials/{material_id}/reingest",
+            json={"mode": "ocr", "preprocess": "smash"},
+        )
+        assert invalid.status_code == 422

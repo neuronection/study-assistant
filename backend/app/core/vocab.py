@@ -50,6 +50,10 @@ class QuestionType(StrVocab):
     COMPOSITE = "composite"
     GRAPH_READ = "graph_read"
     CODE = "code"
+    MATCHING = "matching"
+    ORDERING = "ordering"
+    CLOZE = "cloze"
+    ESSAY = "essay"
 
 
 class ExerciseKind(StrVocab):
@@ -347,6 +351,16 @@ class ItemFlag(StrVocab):
     OK = "ok"
     REVIEW = "review"
     ELO_OUTLIER = "elo_outlier"
+
+
+class AnalyticsExportFormat(StrVocab):
+    CSV = "csv"
+    JSON = "json"
+
+
+class PreprocessMode(StrVocab):
+    AUTO = "auto"
+    OFF = "off"
 
 
 class CourseOrigin(StrVocab):

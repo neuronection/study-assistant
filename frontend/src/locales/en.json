@@ -179,7 +179,8 @@
     "timeRemaining": "Time remaining",
     "timeUp": "Time's up",
     "autoSubmitted": "Time's up — the attempt was auto-submitted and graded with the answers given by the deadline.",
-    "timeLimit": "Time limit…"
+    "timeLimit": "Time limit…",
+    "aiGraded": "AI-graded"
   },
   "exercises": {
     "title": "Exercises",
@@ -290,7 +291,22 @@
       "challenge": "Challenge"
     },
     "go": "go",
-    "speedLine": "{{accuracy}}% · ×{{ratio}}"
+    "speedLine": "{{accuracy}}% · ×{{ratio}}",
+    "itemAnalysis": "Item analysis",
+    "noItems": "Answer a few quiz questions to see item analysis.",
+    "itemQuestion": "Question",
+    "itemN": "n",
+    "itemDifficulty": "p",
+    "itemDiscrimination": "disc",
+    "itemDistractor": "distr.",
+    "itemFlag": "flag",
+    "itemFlagOk": "ok",
+    "itemFlagReview": "review",
+    "itemFlagElo": "Elo outlier",
+    "itemUntitled": "Untitled question",
+    "itemLegend": "disc = discrimination (below 0.20 is weak); distr. = share of distractors actually chosen; rows link to the quiz.",
+    "exportCsv": "Export CSV",
+    "exportJson": "Export JSON"
   },
   "print": {
     "generatedBy": "Printed from Study Assistant",
@@ -520,7 +536,8 @@
     "importConfirm": "Import",
     "exportBundle": "Export course bundle",
     "searchPlaceholder": "Search courses…",
-    "noMatch": "No courses match"
+    "noMatch": "No courses match",
+    "duplicate": "Duplicate course"
   },
   "library": {
     "title": "Library",
@@ -2403,7 +2420,11 @@
       "table_fill": "Table fill",
       "composite": "Multi-part",
       "graph_read": "Graph reading",
-      "code": "Code"
+      "code": "Code",
+      "matching": "Matching",
+      "ordering": "Ordering",
+      "cloze": "Fill blanks",
+      "essay": "Essay (AI-graded)"
     },
     "topicLabel": "Topic",
     "topicInfo": "An optional focus topic. When set, every generated question or step targets that concept; leave empty to cover the whole scope.",
@@ -2424,7 +2445,11 @@
       "table_fill": "Complete a grid cell by cell; each cell is graded with its own checker (exact, tolerance or SymPy) for partial credit.",
       "composite": "One multi-part problem; a later part answered correctly from your earlier answer earns follow-through credit.",
       "graph_read": "Read a value off a generated curve or click the point asked for; the curve and the expected reading are computed by the app.",
-      "code": "Write Python code that runs in your browser against visible test cases — nothing is executed on a server."
+      "code": "Write Python code that runs in your browser against visible test cases — nothing is executed on a server.",
+      "matching": "Match left items to right items.",
+      "ordering": "Put items in the correct order.",
+      "cloze": "Fill in the blanks in a short prompt.",
+      "essay": "Write a short free-text answer graded against a rubric (AI-graded, labelled)."
     },
     "exerciseKindInfo": {
       "multi_step": "A guided multi-step problem: the tutor helps you through it with a hint ladder and independence score.",
@@ -2669,7 +2694,9 @@
     "ocrCost_other": "{{count}} vision-model pages",
     "busyHint": "Currently extracting — wait for the running extraction to finish first.",
     "confirm": "Re-extract",
-    "menuEntry": "Re-extract…"
+    "menuEntry": "Re-extract…",
+    "preprocess": "Enhance photo quality (auto)",
+    "preprocessDesc": "Straightens skewed whiteboard photos, boosts faint contrast and trims dark borders before OCR. Turn off to send the original image untouched."
   },
   "focusTimer": {
     "focus": "Focus",
@@ -2922,5 +2949,10 @@
       "user": "For users",
       "dev": "For developers"
     }
+  },
+  "update": {
+    "available": "Study Assistant {{version}} is available.",
+    "download": "Download",
+    "dismiss": "Dismiss update notice"
   }
 }

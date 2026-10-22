@@ -200,6 +200,12 @@ export interface QuizQuestionInput {
   widget: string
   min?: number
   max?: number
+  kind?: string
+  lefts?: string[]
+  rights?: { index: number; label: string }[]
+  items?: unknown[]
+  prompt_md?: string
+  blank_count?: number
   headers?: string[]
   row_labels?: string[]
   cells?: QuizQuestionCell[][]

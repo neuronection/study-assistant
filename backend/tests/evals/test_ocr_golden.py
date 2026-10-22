@@ -263,3 +263,61 @@ def test_live_ocr_half_is_documented_placeholder() -> None:
         "live OCR quality runs against a configured vision model; wire the owner's "
         "real fixtures here when they land (plan 84 C, ADR-210)"
     )
+
+
+def _whiteboard(
+    *, angle: float = 0.0, ink: int = 190, border: bool = False, width: int = 900, height: int = 600
+) -> bytes:
+    import cv2
+    import numpy as np
+    from PIL import ImageDraw
+
+    image = Image.new("L", (width, height), 255)
+    draw = ImageDraw.Draw(image)
+    for row in range(8):
+        y = 80 + row * 55
+        for col in range(5):
+            x = 90 + col * 150
+            draw.rectangle([x, y, x + 110, y + 18], fill=ink)
+    if border:
+        draw.rectangle([0, 0, width - 1, height - 1], outline=20, width=8)
+    array = np.array(image)
+    if angle:
+        matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0)
+        array = cv2.warpAffine(
+            array,
+            matrix,
+            (width, height),
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=255,
+        )
+    return bytes(cv2.imencode(".png", array)[1].tobytes())
+
+
+def test_preprocess_manifest_records_measured_gains() -> None:
+    from app.ocr.preprocess import assess_image, preprocess_ocr_image
+
+    manifest = load_manifest()["preprocess"]
+    fixtures = {
+        "synthetic-skewed-whiteboard": _whiteboard(angle=7.0, ink=190, border=True),
+        "synthetic-low-contrast-whiteboard": _whiteboard(ink=205),
+    }
+    assert {entry["name"] for entry in manifest["fixtures"]} == set(fixtures)
+    for entry in manifest["fixtures"]:
+        data = fixtures[entry["name"]]
+        before = assess_image(data)
+        processed = preprocess_ocr_image(data)
+        assert before is not None and processed is not None
+        after = assess_image(processed)
+        assert after is not None
+        assert abs(before.contrast_range - entry["baseline"]["contrast_range"]) <= 2
+        assert abs(before.skew_deg - entry["baseline"]["skew_deg"]) <= 0.5
+        assert abs(before.score - entry["baseline"]["score"]) <= 0.05
+        assert abs(after.contrast_range - entry["after"]["contrast_range"]) <= 2
+        assert abs(after.skew_deg - entry["after"]["skew_deg"]) <= 0.5
+        assert abs(after.score - entry["after"]["score"]) <= 0.05
+        thresholds = entry["thresholds"]
+        assert after.contrast_range - before.contrast_range >= thresholds["min_contrast_gain"]
+        assert abs(after.skew_deg) <= thresholds["max_residual_skew"]
+        assert after.score - before.score >= thresholds["min_score_gain"]

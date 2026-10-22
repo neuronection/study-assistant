@@ -492,6 +492,166 @@ describe('QuizRunner', () => {
     )
   })
 
+  test('matching: pick a right for each left and submit the index list', async () => {
+    quizQuestions.mockResolvedValue([
+      {
+        id: 'm1',
+        type: 'matching',
+        stem: [{ type: 'text', md: 'Match the derivatives.' }],
+        options: null,
+        difficulty: 2,
+        bloom: 'understand',
+        skill: 'conceptual',
+        expected_time_sec: 60,
+        flag: 'ok',
+        input: {
+          widget: 'matching',
+          lefts: ['x^2', 'sin x'],
+          rights: [
+            { index: 0, label: '2x' },
+            { index: 1, label: 'cos x' },
+          ],
+        },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: '9', score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: true,
+      partial_credit: 1,
+      graded_by: 'deterministic',
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+    })
+    renderRunner()
+    await screen.findByText(/Match the derivatives/)
+    const selects = await screen.findAllByRole('combobox')
+    fireEvent.change(selects[0]!, { target: { value: '0' } })
+    fireEvent.change(selects[1]!, { target: { value: '1' } })
+    const submit = getButton(/submit/i)
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    expect(submitQuizAnswer.mock.calls[0]![2]).toEqual([0, 1])
+  })
+
+  test('ordering: reorder and submit the item order', async () => {
+    quizQuestions.mockResolvedValue([
+      {
+        id: 'o1',
+        type: 'ordering',
+        stem: [{ type: 'text', md: 'Order the steps.' }],
+        options: null,
+        difficulty: 2,
+        bloom: 'apply',
+        skill: 'procedural',
+        expected_time_sec: 60,
+        flag: 'ok',
+        input: {
+          widget: 'ordering',
+          items: [
+            { id: 0, label: 'first' },
+            { id: 1, label: 'second' },
+            { id: 2, label: 'third' },
+          ],
+        },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: '9', score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: false,
+      partial_credit: 0,
+      graded_by: 'deterministic',
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+    })
+    renderRunner()
+    await screen.findByText(/Order the steps/)
+    const down = screen.getAllByRole('button', { name: /move/i })[1]!
+    fireEvent.click(down)
+    const submit = getButton(/submit/i)
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    expect(submitQuizAnswer.mock.calls[0]![2]).toHaveLength(3)
+  })
+
+  test('cloze: fill each blank and submit the values', async () => {
+    quizQuestions.mockResolvedValue([
+      {
+        id: 'c1',
+        type: 'cloze',
+        stem: [{ type: 'text', md: 'Complete the rule.' }],
+        options: null,
+        difficulty: 2,
+        bloom: 'remember',
+        skill: 'conceptual',
+        expected_time_sec: 60,
+        flag: 'ok',
+        input: {
+          widget: 'fill_blank',
+          prompt_md: 'The derivative of x^2 is {{1}} and of sin x is {{2}}.',
+          blank_count: 2,
+        },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: '9', score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: true,
+      partial_credit: 1,
+      graded_by: 'deterministic',
+      feedback: [],
+      error_tags: [],
+      explanation: [],
+    })
+    renderRunner()
+    await screen.findByText(/Complete the rule/)
+    const blanks = await screen.findAllByRole('textbox')
+    fireEvent.change(blanks[0]!, { target: { value: '2x' } })
+    fireEvent.change(blanks[1]!, { target: { value: 'cos x' } })
+    const submit = getButton(/submit/i)
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    expect(submitQuizAnswer.mock.calls[0]![2]).toEqual(['2x', 'cos x'])
+  })
+
+  test('essay: submit free text and show the AI-graded rubric feedback', async () => {
+    quizQuestions.mockResolvedValue([
+      {
+        id: 'e1',
+        type: 'essay',
+        stem: [{ type: 'text', md: 'Explain the chain rule.' }],
+        options: null,
+        difficulty: 3,
+        bloom: 'understand',
+        skill: 'conceptual',
+        expected_time_sec: 180,
+        flag: 'ok',
+        input: { widget: 'essay', kind: 'explain', prompt_md: 'Explain the chain rule.' },
+      },
+    ])
+    startQuizAttempt.mockResolvedValue({ id: '9', score: null })
+    submitQuizAnswer.mockResolvedValueOnce({
+      correct: true,
+      partial_credit: 1,
+      graded_by: 'rubric',
+      feedback: [{ type: 'text', md: 'essay: correct (AI-graded)' }],
+      error_tags: [],
+      explanation: [],
+    })
+    renderRunner()
+    await screen.findByText(/Explain the chain rule/)
+    const textarea = await screen.findByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'Differentiate the outside and multiply.' } })
+    const submit = getButton(/submit/i)
+    await waitFor(() => expect(submit.disabled).toBe(false))
+    fireEvent.click(submit)
+    await waitFor(() => expect(submitQuizAnswer).toHaveBeenCalled())
+    expect(await screen.findByText('AI-graded')).toBeInTheDocument()
+  })
+
   test('close returns to the encoded origin location', async () => {
     quizQuestions.mockResolvedValue([QUESTIONS[0]])
     startQuizAttempt.mockResolvedValue({ id: '14', mode: 'practice', score: null })

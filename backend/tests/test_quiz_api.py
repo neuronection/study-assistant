@@ -394,11 +394,11 @@ def test_quizgen_question_types_rejected_when_unknown(
         json={
             "count": 3,
             "course_id": make_course(quiz_client),
-            "question_types": ["essay"],
+            "question_types": ["not_a_kind"],
         },
     )
     assert response.status_code == 422
-    assert "essay" in response.text
+    assert "not_a_kind" in response.text
 
 
 def test_quizgen_off_type_draft_repairs() -> None:
@@ -515,6 +515,9 @@ def test_quiz_response_shapes(quiz_client: TestClient) -> None:
         "question_id",
         "activity_id",
         "activity_title",
+        "course_id",
+        "node_id",
+        "node_title",
         "stem_excerpt",
         "error_tags",
         "created_at",

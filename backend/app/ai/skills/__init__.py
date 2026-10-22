@@ -59,7 +59,8 @@ QUIZGEN_SYSTEM = (
     '{\n  "questions": [\n'
     "    {\n"
     '      "type": "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" '
-    '| "numberline" | "table_fill" | "composite" | "graph_read" | "code",\n'
+    '| "numberline" | "table_fill" | "composite" | "graph_read" | "code" '
+    '| "matching" | "ordering" | "cloze" | "essay",\n'
     '      "stem_md": str (markdown; LaTeX with $...$),\n'
     '      "options_md": [str] (single/multi only, 4 options; omit otherwise),\n'
     '      "answer": per type — single: {"index": 0-based}, multi: {"indices": [...]}, '
@@ -94,7 +95,13 @@ QUIZGEN_SYSTEM = (
     'is_palindrome(\'abba\')), "expected": <JSON value>, "expected_stdout": '
     'str (optional)}], "timeout_ms": int (optional)} — the student\'s code '
     "runs in an in-page Python sandbox (never on the server); propose code "
-    "questions only when the material or topic is about programming\n"
+    "questions only when the material or topic is about programming, "
+    'matching: {"pairs": [{"left": str, "right": str}]} (2-8 pairs), '
+    'ordering: {"items": [str]} (3-8 items in the correct order), '
+    'cloze: {"prompt_md": str with {{1}}..{{n}} blanks, '
+    '"answers": [[str] (accepted answers per blank)]}, '
+    'essay: {"prompt_md": str, "rubric": [{"id": str, "text": str}]} '
+    "(1-8 rubric rows; graded by the rubric engine)\n"
     '      "explanation_md": str,\n'
     '      "concepts": [str] (1-3),\n'
     '      "skill": "conceptual"|"procedural"|"applied"|"notation",\n'

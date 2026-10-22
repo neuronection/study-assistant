@@ -38,7 +38,18 @@ import {
   isTableFillInput,
   tableGridComplete,
 } from '@/components/answers/TableFillAnswer'
+import {
+  ExerciseStructuralInput,
+  isStructuralInput,
+  structuralResponseComplete,
+  type StructuralResponse,
+} from '@/components/exercise-inputs/ExerciseInput'
+import {
+  RubricStepInput,
+  rubricResponseComplete,
+} from '@/components/exercise-inputs/RubricInputs'
 import type { Block } from '@/components/blocks/types'
+import type { ExerciseStepInput } from '@/lib/api'
 import { CountdownChip } from '@/features/quiz/CountdownChip'
 import { QuizPrintPaper } from '@/features/quiz/QuizPrintPaper'
 import { Button } from '@/components/ui/button'
@@ -113,6 +124,7 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
   const [compositeParts, setCompositeParts] = useState<string[] | null>(null)
   const [graphResponse, setGraphResponse] = useState<GraphReadResponse | null>(null)
   const [codeResponse, setCodeResponse] = useState<CodeRunPayload | null>(null)
+  const [structural, setStructural] = useState<StructuralResponse | null>(null)
   const [feedback, setFeedback] = useState<QuizFeedback | null>(null)
   const [hints, setHints] = useState<HintResult[]>([])
   const [score, setScore] = useState<number | null>(null)
@@ -193,6 +205,9 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
     }
     if (current.type === 'code') {
       return codeResponse
+    }
+    if (['matching', 'ordering', 'cloze'].includes(current.type)) {
+      return structural
     }
     if (current.type === 'single' || current.type === 'truefalse' || current.type === 'multi') {
       if (current.type === 'multi' && Array.isArray(choice)) {
@@ -374,6 +389,15 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
       (question.type === 'code' &&
         isCodeInput(question.input) &&
         codeResponseComplete(codeResponse, question.input)) ||
+      (['matching', 'ordering', 'cloze'].includes(question.type) &&
+        isStructuralInput(question.input as ExerciseStepInput | null) &&
+        structuralResponseComplete(
+          question.input as ExerciseStepInput,
+          structural
+        )) ||
+      (question.type === 'essay' &&
+        question.input?.widget === 'essay' &&
+        rubricResponseComplete(question.input as ExerciseStepInput, typed)) ||
       ((question.type === 'text' || question.type === 'numeric' || question.type === 'equation') &&
         typed.trim().length > 0))
 
@@ -582,6 +606,25 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
                 />
               ) : null}
 
+              {['matching', 'ordering', 'cloze'].includes(question.type) &&
+              isStructuralInput(question.input as ExerciseStepInput | null) ? (
+                <ExerciseStructuralInput
+                  input={question.input as ExerciseStepInput}
+                  value={structural}
+                  onChange={setStructural}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
+              {question.type === 'essay' && question.input?.widget === 'essay' ? (
+                <RubricStepInput
+                  input={question.input as ExerciseStepInput}
+                  value={typed}
+                  onChange={setTyped}
+                  disabled={feedback !== null}
+                />
+              ) : null}
+
               {question.type === 'equation' ? (
                 <div
                   className={cn(
@@ -728,6 +771,11 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
                         {t('quiz.verifiedBySymPy')}
                       </span>
                     ) : null}
+                    {feedback.graded_by === 'rubric' ? (
+                      <span className="text-muted-foreground ml-auto text-[11px]">
+                        {t('quiz.aiGraded')}
+                      </span>
+                    ) : null}
                   </p>
                   <div className="text-sm">
                     <BlockRenderer blocks={feedback.explanation as Block[]} />
@@ -791,6 +839,7 @@ function QuizRunnerInner({ activityId }: { activityId: string }) {
                       setIndex(index + 1)
                       setChoice(null)
                       setTyped('')
+                      setStructural(null)
                       setNumberline(null)
                       setTableGrid(null)
                       setCompositeParts(null)

@@ -4,7 +4,13 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, TaskUnassigned
-from ..core.vocab import ExtractionMode, MaterialKind, MaterialStatus, ProvenanceKind
+from ..core.vocab import (
+    ExtractionMode,
+    MaterialKind,
+    MaterialStatus,
+    PreprocessMode,
+    ProvenanceKind,
+)
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..domain.payloads import MaterialProvenance
 from ..jobs.cancellation import (
@@ -151,6 +157,10 @@ def make_ingest_handler(
             mode = ExtractionMode(payload.get("mode") or ExtractionMode.AUTO.value)
         except ValueError as error:
             raise JobError(f"ingest payload has invalid mode: {error}") from error
+        try:
+            preprocess = PreprocessMode(payload.get("preprocess") or PreprocessMode.AUTO.value)
+        except ValueError as error:
+            raise JobError(f"ingest payload has invalid preprocess mode: {error}") from error
 
         material.status = MaterialStatus.PROCESSING
         session.commit()
@@ -184,6 +194,7 @@ def make_ingest_handler(
                         context=document_context,
                         instruction=page_instruction,
                         session=session,
+                        preprocess=preprocess.value,
                     )
                 except TaskUnassigned as error:
                     raise JobError(str(error)) from error
@@ -270,6 +281,7 @@ def make_ingest_handler(
                                         context=document_context,
                                         instruction=page_instruction,
                                         session=session,
+                                        preprocess=preprocess.value,
                                     )
                                 except TaskUnassigned:
                                     degraded = True

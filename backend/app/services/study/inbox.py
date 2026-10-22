@@ -40,8 +40,11 @@ inbox scan. The minimal schema:
 Required per question: type, stem_md, answer, explanation_md, concepts (1-3),
 skill (conceptual|procedural|applied|notation), bloom (remember|understand|apply|
 analyze|evaluate|create), difficulty 1-5, expected_time_sec. Types: single, multi,
-truefalse, text, numeric, equation. Math MUST be LaTeX in $...$; for equation
-questions the answer value must parse (sympy-compatible). Files are validated with
+truefalse, text, numeric, equation, matching, ordering, cloze, essay. Matching
+takes {"pairs":[{"left","right"}]}; ordering {"items":[str]}; cloze
+{"prompt_md":"... {{1}} ...","answers":[[accepted]]}; essay
+{"prompt_md":str,"rubric":[{"id","text"}]}. Math MUST be LaTeX in $...$; for
+equation questions the answer value must parse (sympy-compatible). Files are validated with
 the same rules the app applies to its own generated quizzes — invalid files are
 renamed `.rejected` with a report next to them.
 """

@@ -16,6 +16,8 @@ export type Overview = Schemas['OverviewOut']
 export type DailyGoal = Schemas['GoalOut']
 export type TaskCost = Schemas['CostTaskOut']
 export type CostsSummary = Schemas['CostsOut']
+export type ItemStat = Schemas['ItemStatOut']
+export type AnalyticsExport = Schemas['AnalyticsExportOut']
 
 export async function getExamStatus(): Promise<ExamStatusEntry[]> {
   const response = await apiFetch('/api/v1/analytics/exams')
@@ -50,6 +52,23 @@ export async function setDailyGoal(body: {
     body: JSON.stringify(body),
   })
   return json<DailyGoal>(response)
+}
+
+export async function getItems(courseId?: string): Promise<ItemStat[]> {
+  const params = courseId !== undefined ? `?course_id=${courseId}` : ''
+  const response = await apiFetch(`/api/v1/analytics/items${params}`)
+  return json<ItemStat[]>(response)
+}
+
+export function analyticsExportUrl(
+  format: 'csv' | 'json',
+  courseId?: string
+): string {
+  const params = new URLSearchParams({ format })
+  if (courseId !== undefined) {
+    params.set('course_id', courseId)
+  }
+  return `/api/v1/analytics/export?${params.toString()}`
 }
 
 export async function getCosts(): Promise<CostsSummary> {

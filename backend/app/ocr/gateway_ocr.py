@@ -29,8 +29,11 @@ class GatewayOcr(OcrEngine):
         context: str = "",
         instruction: str | None = None,
         session: Session | None = None,
+        preprocess: str = "auto",
     ) -> OcrPageResult:
-        payload, payload_mime = prepare_ocr_image(data, mime, ocr_image_max_edge(session))
+        payload, payload_mime = prepare_ocr_image(
+            data, mime, ocr_image_max_edge(session), preprocess=preprocess
+        )
         prompt = f"Transcribe this page. {context}".strip() if context else "Transcribe this page."
         text = self._gateway.generate(
             OCR_TASK,

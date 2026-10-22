@@ -128,7 +128,8 @@
     "timeRemaining": "Verbleibende Zeit",
     "timeUp": "Zeit abgelaufen",
     "autoSubmitted": "Zeit abgelaufen — der Versuch wurde automatisch abgegeben und mit den bis zum Limit gegebenen Antworten gewertet.",
-    "timeLimit": "Zeitlimit…"
+    "timeLimit": "Zeitlimit…",
+    "aiGraded": "KI-bewertet"
   },
   "app": {
     "name": "Study Assistant"
@@ -290,7 +291,22 @@
     "weaknessMatrix": "Schwächenmatrix — Konzepte × Fähigkeiten",
     "matrixLegend": "Prozent = Trefferquote; blass dargestellte Zellen enthalten weniger als 3 Antworten (noch nicht genügend Daten).",
     "go": "los",
-    "speedLine": "{{accuracy}}% · ×{{ratio}}"
+    "speedLine": "{{accuracy}}% · ×{{ratio}}",
+    "itemAnalysis": "Item-Analyse",
+    "noItems": "Beantworte ein paar Quizfragen, um die Item-Analyse zu sehen.",
+    "itemQuestion": "Frage",
+    "itemN": "n",
+    "itemDifficulty": "p",
+    "itemDiscrimination": "Diskr.",
+    "itemDistractor": "Distr.",
+    "itemFlag": "Flag",
+    "itemFlagOk": "ok",
+    "itemFlagReview": "prüfen",
+    "itemFlagElo": "Elo-Ausreißer",
+    "itemUntitled": "Unbenannte Frage",
+    "itemLegend": "Diskr. = Trennschärfe (unter 0,20 schwach); Distr. = Anteil tatsächlich gewählter Distraktoren; Zeilen öffnen das Quiz.",
+    "exportCsv": "CSV exportieren",
+    "exportJson": "JSON exportieren"
   },
   "dock": {
     "expand": "Vollseite öffnen",
@@ -520,7 +536,8 @@
     "confirmDeleteNode": "Diesen Abschnitt löschen? Seine Unterabschnitte und Materialzuordnungen werden in den übergeordneten Abschnitt verschoben.",
     "deallocate": "Aus Abschnitt entfernen",
     "outlineDraftTitle": "Gliederungsentwurf",
-    "outlineDraftHint": "Prüfe ihn vor dem Übernehmen — entferne alles, was du nicht möchtest. Erst beim Übernehmen wird etwas gespeichert."
+    "outlineDraftHint": "Prüfe ihn vor dem Übernehmen — entferne alles, was du nicht möchtest. Erst beim Übernehmen wird etwas gespeichert.",
+    "duplicate": "Kurs duplizieren"
   },
   "library": {
     "title": "Bibliothek",
@@ -2403,7 +2420,11 @@
       "table_fill": "Tabelle ausfüllen",
       "composite": "Mehrteilig",
       "graph_read": "Graph ablesen",
-      "code": "Code"
+      "code": "Code",
+      "matching": "Zuordnen",
+      "ordering": "Reihenfolge",
+      "cloze": "Lücken füllen",
+      "essay": "Aufsatz (KI-bewertet)"
     },
     "questionTypeInfo": {
       "table_fill": "Vervollständige ein Raster Zelle für Zelle; jede Zelle wird separat geprüft – exakt, mit Toleranz oder per SymPy –, sodass du Teilpunkte erhalten kannst.",
@@ -2416,7 +2437,11 @@
       "text": "Eine eingegebene kurze Antwort, die (nach der Normalisierung) exakt verglichen wird.",
       "numeric": "Eine numerische Antwort, die mit einer Toleranz bewertet wird.",
       "equation": "Ein mathematischer Ausdruck, der mit SymPy auf Äquivalenz geprüft wird, sodass 2x und x*2 beide richtig sind.",
-      "numberline": "Schattiere Intervalle und platziere Punkte auf einem interaktiven Zahlenstrahl; die Bewertung erfolgt deterministisch anhand von Grenz- und Toleranzprüfungen."
+      "numberline": "Schattiere Intervalle und platziere Punkte auf einem interaktiven Zahlenstrahl; die Bewertung erfolgt deterministisch anhand von Grenz- und Toleranzprüfungen.",
+      "matching": "Ordne linke Einträge rechten zu.",
+      "ordering": "Bringe die Einträge in die richtige Reihenfolge.",
+      "cloze": "Fülle die Lücken in einem kurzen Text.",
+      "essay": "Schreibe eine kurze Freitextantwort, die anhand eines Rasters bewertet wird (KI-bewertet, gekennzeichnet)."
     },
     "exerciseKindInfo": {
       "multi_step": "Eine angeleitete mehrstufige Aufgabe: Der Tutor unterstützt dich mit gestuften Hinweisen und bewertet deine Selbstständigkeit.",
@@ -2669,7 +2694,9 @@
     "ocrCost_other": "{{count}} Vision-Modell-Seiten",
     "busyHint": "Extraktion läuft bereits — warte zuerst auf den laufenden Durchlauf.",
     "confirm": "Erneut extrahieren",
-    "menuEntry": "Erneut extrahieren…"
+    "menuEntry": "Erneut extrahieren…",
+    "preprocess": "Fotoqualität verbessern (automatisch)",
+    "preprocessDesc": "Begradigt schräge Whiteboard-Fotos, verstärkt schwachen Kontrast und schneidet dunkle Ränder vor der OCR ab. Ausschalten, um das Original zu senden."
   },
   "focusTimer": {
     "focus": "Fokus",
@@ -2887,5 +2914,10 @@
       "user": "Für Nutzer",
       "dev": "Für Entwickler"
     }
+  },
+  "update": {
+    "available": "Study Assistant {{version}} ist verfügbar.",
+    "download": "Herunterladen",
+    "dismiss": "Update-Hinweis ausblenden"
   }
 }

@@ -62,6 +62,10 @@ const QUIZ_TYPES = [
   'composite',
   'graph_read',
   'code',
+  'matching',
+  'ordering',
+  'cloze',
+  'essay',
 ] as const
 
 type ExerciseKind = (typeof EXERCISE_KINDS)[number]

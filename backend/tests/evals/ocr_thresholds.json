@@ -47,5 +47,50 @@
         "numeric_fidelity": 1.0
       }
     }
-  ]
+  ],
+  "preprocess": {
+    "conventions": "Plan 87 E whiteboard preprocessing: deterministic grayscale -> CLAHE -> deskew -> border crop, applied only when the quality score flags the image. Baseline/after values are measured on the synthetic fixtures below (no user photos in the default suite); the real-scan corpus remains the owner-supplied eval.",
+    "fixtures": [
+      {
+        "name": "synthetic-skewed-whiteboard",
+        "baseline": {
+          "contrast_range": 65.0,
+          "skew_deg": -6.864,
+          "border_ratio": 0.1047,
+          "score": 0.331
+        },
+        "after": {
+          "contrast_range": 255.0,
+          "skew_deg": 0.0,
+          "border_ratio": 0.0,
+          "score": 1.0
+        },
+        "thresholds": {
+          "min_contrast_gain": 100.0,
+          "max_residual_skew": 1.5,
+          "min_score_gain": 0.3
+        }
+      },
+      {
+        "name": "synthetic-low-contrast-whiteboard",
+        "baseline": {
+          "contrast_range": 50.0,
+          "skew_deg": 0.0,
+          "border_ratio": 0.0,
+          "score": 0.708
+        },
+        "after": {
+          "contrast_range": 255.0,
+          "skew_deg": 0.0,
+          "border_ratio": 0.0,
+          "score": 1.0
+        },
+        "thresholds": {
+          "min_contrast_gain": 100.0,
+          "max_residual_skew": 1.5,
+          "min_score_gain": 0.2
+        }
+      }
+    ]
+  }
 }

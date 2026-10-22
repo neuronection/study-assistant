@@ -479,6 +479,11 @@ class QuestionAnswer(TypedDict, total=False):
     point_x: float
     expression: str
     accept: list[str]
+    pairs: list[dict[str, str]]
+    items: list[str]
+    answers: list[list[str]]
+    prompt_md: str
+    rubric: list[dict[str, str]]
 
 
 class QuestionProvenance(TypedDict, total=False):

@@ -118,6 +118,14 @@ cards; entering one scopes everything to it.
   old ones); the version meta shows which engine ran (`pymupdf`, `hybrid`,
   `ocr`, or a `:forced`/`:degraded` variant — degraded = no vision model was
   connected, so weak pages kept their (imperfect) text).
+- **Whiteboard photo enhancement** — PDFs and images get an **Enhance photo
+  quality (auto)** toggle in the re-extract dialog. Auto is deterministic and
+  only engages when the quality score sees a problem: it converts to
+  grayscale, boosts faint contrast, straightens skew and trims dark borders
+  before OCR, then re-encodes within the usual long-edge cap. Turn it off to
+  send the original bytes unchanged. The measured before/after deltas for the
+  synthetic skew and low-contrast fixtures live in the OCR eval manifest
+  (`backend/tests/evals/ocr_thresholds.json`).
 - **Anything else is refused at the door** — uploading an unsupported type
   (`.doc`, `.rtf`, `.pages`, …) shows an instant "unsupported file type"
   message instead of creating a broken file. Legacy binary formats are not

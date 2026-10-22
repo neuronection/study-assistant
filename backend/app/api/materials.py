@@ -17,6 +17,7 @@ from ..core.vocab import (
     ExtractionMode,
     MaterialKind,
     MaterialStatus,
+    PreprocessMode,
     applicable_extraction_modes,
 )
 from ..domain.models import (
@@ -138,6 +139,7 @@ REINGESTABLE_KINDS = frozenset(
 
 class ReingestOptionsIn(BaseModel):
     mode: ExtractionMode | None = None
+    preprocess: PreprocessMode | None = None
 
 
 def _service(request: Request, session: Session) -> MaterialsService:
@@ -1071,7 +1073,15 @@ def reingest_material(
                 f"(allowed: {allowed})"
             ),
         )
-    job_id = service.queue_ingest(material, request.app.state.jobs, mode=mode.value)
+    preprocess = (
+        PreprocessMode.AUTO if options is None or options.preprocess is None else options.preprocess
+    )
+    job_id = service.queue_ingest(
+        material,
+        request.app.state.jobs,
+        mode=mode.value,
+        preprocess=preprocess.value,
+    )
     session.commit()
     return MaterialUploadOut(
         material=_to_out(

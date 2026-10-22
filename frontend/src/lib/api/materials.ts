@@ -221,7 +221,10 @@ export async function updateTextMaterial(params: {
 
 export async function reingestMaterial(
   materialId: string,
-  options?: { mode: components['schemas']['ExtractionMode'] },
+  options?: {
+    mode: components['schemas']['ExtractionMode']
+    preprocess?: components['schemas']['PreprocessMode']
+  },
 ): Promise<UploadResult> {
   const response = await apiFetch(`/api/v1/materials/${materialId}/reingest`, {
     method: 'POST',

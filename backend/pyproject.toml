@@ -45,6 +45,8 @@ dependencies = [
     "feedparser>=6.0",
     "psycopg[binary]>=3.2",
     "typesafe-sdk>=0.7,<0.8",
+    "opencv-python-headless>=5.0.0.93",
+    "numpy>=2.5.4",
 ]
 dynamic = ["version"]
 

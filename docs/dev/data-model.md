@@ -425,6 +425,12 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0008_quiz_question_kinds (plan 87 B, ADR-217)**: the `questions.type`
+  CHECK twin widens with the exercise-engine kinds (`matching`, `ordering`,
+  `cloze`, `essay`); answer payloads reuse the existing JSON column (no new
+  typed columns). SQLite rebuilds the table through batch mode; downgrade
+  restores the 11-member CHECK and fails loudly if a new-kind row still
+  exists.
 - **0007_source_providers (plan 86 A/B/E, ADR-214/215/216)**:
   `external_sources` gains the open, registry-validated `provider` string
   (default `rss`), the `auth_kind` CHECK twin (`token|oauth2|none`), the

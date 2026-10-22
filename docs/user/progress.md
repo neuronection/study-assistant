@@ -50,12 +50,23 @@ Four tabs:
   - *Speed vs accuracy*: per concept — *rushing* (fast + wrong), *struggling*
     (slow + wrong), *effortful* (slow + right), *fluent* (fast + right), measured
     against each question's expected time.
+  - *Item analysis*: per-question difficulty (p-correct), discrimination
+    (how well the question separates strong from weak attempts; below 0.20 is
+    weak), distractor efficiency (share of wrong options students actually
+    choose) and the automatic `review` / `elo_outlier` flags. Weak rows are
+    tinted; click one to open the quiz that contains the question.
 - **Tips** — the same recommendations the Today screen uses, with their evidence.
 - **Mistakes** — your mistake notebook.
 
 Diagnostics quality grows with volume: answer more practice questions and the
 matrix sharpens. Items that nearly everyone gets wrong (or right) are flagged for
 review in the question bank automatically.
+
+**Export** — the Scores header has **Export CSV** and **Export JSON** buttons
+for the current course scope (or all courses). The CSV is one stable,
+spreadsheet-friendly table with a `section` column (`daily`, `concept`, `item`)
+so you can pivot progress history, mastery cells and item statistics in one
+file; JSON carries the same three typed lists plus a version and timestamp.
 
 ## Planner
 

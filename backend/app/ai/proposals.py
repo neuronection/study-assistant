@@ -328,7 +328,8 @@ PROPOSAL_ACTIONS: dict[str, ProposalActionSpec] = {
             '"difficulty": 1-5|null, "node_id": str|null, "material_ids": [int], '
             '"note_ids": [int], "instructions": str|null, '
             '"question_types": ["single"|"multi"|"truefalse"|"text"|"numeric"|'
-            '"equation"|"numberline"|"table_fill"|"composite"|"graph_read"|"code"], '
+            '"equation"|"numberline"|"table_fill"|"composite"|"graph_read"|"code"|'
+            '"matching"|"ordering"|"cloze"|"essay"], '
             '"shuffle": bool}'
         ),
         api_executed=True,

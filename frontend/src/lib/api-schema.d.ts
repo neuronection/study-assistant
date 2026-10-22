@@ -307,6 +307,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Analytics */
+        get: operations["export_analytics_api_v1_analytics_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/goal": {
         parameters: {
             query?: never;
@@ -1078,6 +1095,23 @@ export interface paths {
         put?: never;
         /** Extract Course Concepts */
         post: operations["extract_course_concepts_api_v1_courses__course_id__concepts_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses/{course_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duplicate */
+        post: operations["duplicate_api_v1_courses__course_id__duplicate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2442,6 +2476,23 @@ export interface paths {
         };
         /** Get Instance Config */
         get: operations["get_instance_config_api_v1_instance_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/instance/update-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Update Check */
+        get: operations["get_update_check_api_v1_instance_update_check_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5168,6 +5219,29 @@ export interface components {
             /** Rationale */
             rationale?: string | null;
         };
+        /**
+         * AnalyticsExportFormat
+         * @enum {string}
+         */
+        AnalyticsExportFormat: "csv" | "json";
+        /** AnalyticsExportOut */
+        AnalyticsExportOut: {
+            /** Concepts */
+            concepts: components["schemas"]["WeaknessCellOut"][];
+            /** Course Id */
+            course_id?: string | null;
+            /** Daily */
+            daily: components["schemas"]["DayActivityOut"][];
+            /** Generated At */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["ItemStatOut"][];
+            /**
+             * Version
+             * @default 1
+             */
+            version: number;
+        };
         /** AnkiImportOut */
         AnkiImportOut: {
             /** Deck Name */
@@ -6157,6 +6231,34 @@ export interface components {
             /** Kind */
             kind: string;
         };
+        /** DuplicateCourseIn */
+        DuplicateCourseIn: {
+            /**
+             * Copy Materials
+             * @default true
+             */
+            copy_materials: boolean;
+            /** Title */
+            title?: string | null;
+        };
+        /** DuplicateCourseOut */
+        DuplicateCourseOut: {
+            /** Copy Materials */
+            copy_materials: boolean;
+            course: components["schemas"]["CourseOut"];
+            /** Exercises Copied */
+            exercises_copied: number;
+            /** Materials Copied */
+            materials_copied: number;
+            /** Nodes Copied */
+            nodes_copied: number;
+            /** Notes Copied */
+            notes_copied: number;
+            /** Quizzes Copied */
+            quizzes_copied: number;
+            /** Task Assignments Copied */
+            task_assignments_copied: number;
+        };
         /** EditIn */
         EditIn: {
             /** Content */
@@ -6930,14 +7032,25 @@ export interface components {
         ItemFlag: "ok" | "review" | "elo_outlier";
         /** ItemStatOut */
         ItemStatOut: {
+            /** Activity Id */
+            activity_id: string;
             /** Avg Time Ms */
             avg_time_ms: number | null;
             /** Avg Time Ratio */
             avg_time_ratio: number | null;
+            /** Discrimination */
+            discrimination?: number | null;
+            /** Distractor Efficiency */
+            distractor_efficiency?: number | null;
             /** Distractor Selection */
             distractor_selection: {
                 [key: string]: number;
             } | null;
+            /**
+             * Elo Outlier
+             * @default false
+             */
+            elo_outlier: boolean;
             flag: components["schemas"]["ItemFlag"];
             /** N Attempts */
             n_attempts: number;
@@ -7534,12 +7647,18 @@ export interface components {
             activity_id: string;
             /** Activity Title */
             activity_title: string;
+            /** Course Id */
+            course_id: string;
             /** Created At */
             created_at: string;
             /** Error Tags */
             error_tags: string[];
             /** Id */
             id: string;
+            /** Node Id */
+            node_id?: string | null;
+            /** Node Title */
+            node_title?: string | null;
             /** Question Id */
             question_id: string;
             /** Stem Excerpt */
@@ -8300,6 +8419,11 @@ export interface components {
              */
             use_embeddings: boolean;
         };
+        /**
+         * PreprocessMode
+         * @enum {string}
+         */
+        PreprocessMode: "auto" | "off";
         /** PresetDecisionModel */
         PresetDecisionModel: {
             /** Caps */
@@ -8671,7 +8795,7 @@ export interface components {
          * QuestionType
          * @enum {string}
          */
-        QuestionType: "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" | "numberline" | "table_fill" | "composite" | "graph_read" | "code";
+        QuestionType: "single" | "multi" | "truefalse" | "text" | "numeric" | "equation" | "numberline" | "table_fill" | "composite" | "graph_read" | "code" | "matching" | "ordering" | "cloze" | "essay";
         /** QuizAnswerIn */
         QuizAnswerIn: {
             /** Answer */
@@ -8818,6 +8942,7 @@ export interface components {
         /** ReingestOptionsIn */
         ReingestOptionsIn: {
             mode?: components["schemas"]["ExtractionMode"] | null;
+            preprocess?: components["schemas"]["PreprocessMode"] | null;
         };
         /** RelinkIn */
         RelinkIn: {
@@ -10157,6 +10282,27 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** UpdateCheckOut */
+        UpdateCheckOut: {
+            /** Checked At */
+            checked_at?: string | null;
+            /** Current Version */
+            current_version: string;
+            /** Error */
+            error?: string | null;
+            /** Latest Version */
+            latest_version?: string | null;
+            /**
+             * Release Url
+             * @default https://github.com/neuronection/study-assistant/releases/latest
+             */
+            release_url: string;
+            /**
+             * Update Available
+             * @default false
+             */
+            update_available: boolean;
+        };
         /** UploadWarningOut */
         UploadWarningOut: {
             /** Code */
@@ -11097,6 +11243,38 @@ export interface operations {
             };
         };
     };
+    export_analytics_api_v1_analytics_export_get: {
+        parameters: {
+            query?: {
+                format?: components["schemas"]["AnalyticsExportFormat"];
+                course_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsExportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     set_goal_api_v1_analytics_goal_put: {
         parameters: {
             query?: never;
@@ -11132,7 +11310,9 @@ export interface operations {
     };
     items_api_v1_analytics_items_get: {
         parameters: {
-            query?: never;
+            query?: {
+                course_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -11146,6 +11326,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemStatOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -12629,6 +12818,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConceptDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicate_api_v1_courses__course_id__duplicate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DuplicateCourseIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateCourseOut"];
                 };
             };
             /** @description Validation Error */
@@ -15571,6 +15795,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceConfigOut"];
+                };
+            };
+        };
+    };
+    get_update_check_api_v1_instance_update_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateCheckOut"];
                 };
             };
         };
