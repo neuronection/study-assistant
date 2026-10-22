@@ -1324,6 +1324,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/courses/{course_id}/plan/import-ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Course Ics */
+        post: operations["import_course_ics_api_v1_courses__course_id__plan_import_ics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses/{course_id}/plan/import-ics/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Course Ics */
+        post: operations["preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/courses/{course_id}/plan/{item_id}": {
         parameters: {
             query?: never;
@@ -5049,8 +5083,18 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_import_course_ics_api_v1_courses__course_id__plan_import_ics_post */
+        Body_import_course_ics_api_v1_courses__course_id__plan_import_ics_post: {
+            /** File */
+            file: string;
+        };
         /** Body_import_qpkg_api_v1_quiz_import_qpkg_post */
         Body_import_qpkg_api_v1_quiz_import_qpkg_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post */
+        Body_preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post: {
             /** File */
             file: string;
         };
@@ -6463,6 +6507,55 @@ export interface components {
             markdown: string;
             /** Violations */
             violations: string | null;
+        };
+        /** IcsEventOut */
+        IcsEventOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Detail */
+            detail: string;
+            kind: components["schemas"]["PlanItemKind"];
+            /** Time */
+            time: string | null;
+            /** Title */
+            title: string;
+            /** Uid */
+            uid: string;
+        };
+        /** IcsExamCandidateOut */
+        IcsExamCandidateOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Title */
+            title: string;
+            /** Uid */
+            uid: string;
+        };
+        /** IcsImportOut */
+        IcsImportOut: {
+            /** Created */
+            created: number;
+            /** Exam Date */
+            exam_date?: string | null;
+            /** Updated */
+            updated: number;
+        };
+        /** IcsPreviewOut */
+        IcsPreviewOut: {
+            /** Events */
+            events: components["schemas"]["IcsEventOut"][];
+            /** Exam Candidates */
+            exam_candidates: components["schemas"]["IcsExamCandidateOut"][];
+            /** Skipped */
+            skipped: number;
+            /** Total Events */
+            total_events: number;
         };
         /** ImportedCourseOut */
         ImportedCourseOut: {
@@ -12624,6 +12717,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanGenerateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_course_ics_api_v1_courses__course_id__plan_import_ics_post: {
+        parameters: {
+            query?: {
+                confirm_exam?: boolean;
+            };
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_course_ics_api_v1_courses__course_id__plan_import_ics_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IcsImportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IcsPreviewOut"];
                 };
             };
             /** @description Validation Error */

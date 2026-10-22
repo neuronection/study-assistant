@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Download, Loader2, Plus, Printer, Sparkles, Trash2, TrendingDown, TrendingUp, Minus, CalendarDays, List } from 'lucide-react'
+import { CalendarClock, CalendarPlus, Check, Download, Loader2, Plus, Printer, Sparkles, Trash2, TrendingDown, TrendingUp, Minus, CalendarDays, List } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { getExamStatus } from '@/lib/api'
 import { Stagger, StaggerItem } from '@/components/motion/Stagger'
+import { IcsImportDialog } from './IcsImportDialog'
 import { PlannerWeekSheet } from './PlannerWeekSheet'
 import { PlannerWeekView } from './PlannerWeekView'
 import {
@@ -75,6 +76,7 @@ export function PlannerTab({ courseId }: { courseId: string }) {
   const [newDate, setNewDate] = useState(todayIso())
   const [error, setError] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
+  const [icsOpen, setIcsOpen] = useState(false)
   const [view, setView] = useState<PlannerView>(readPlannerView)
 
   useEffect(() => {
@@ -202,6 +204,15 @@ export function PlannerTab({ courseId }: { courseId: string }) {
             value={view}
             onChange={(next) => setView(next as PlannerView)}
           />
+          <Button
+            variant="outline"
+            size="sm"
+            title={t('planner.importIcs')}
+            onClick={() => setIcsOpen(true)}
+          >
+            <CalendarPlus aria-hidden />
+            {t('planner.importIcs')}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -401,6 +412,11 @@ export function PlannerTab({ courseId }: { courseId: string }) {
           {t('planner.generating')}
         </p>
       ) : null}
+      <IcsImportDialog
+        open={icsOpen}
+        courseId={courseId}
+        onClose={() => setIcsOpen(false)}
+      />
     </div>
   )
 }

@@ -97,6 +97,21 @@ The file carries stable event IDs, so re-importing after moving items *updates*
 the existing events instead of duplicating them — import it into Google
 Calendar, GNOME Calendar, Outlook or anything that reads ICS.
 
+### Calendar import (ICS)
+
+**Import calendar** in the tab header reads a university timetable `.ics` and
+stages it before writing anything: the preview lists the events it will create,
+how many were skipped (outside the planner window), and any exam-looking event
+(title/categories matching exam, final, midterm, test, quiz, Prüfung, Klausur,
+εξέταση…). Recurring events expand per their `RRULE` into bounded occurrences
+(planner horizon, hard per-event cap), and times normalize to naive UTC.
+
+Committing creates normal planner items; each carries the calendar UID, so
+re-importing the same timetable updates the existing rows instead of
+duplicating the week. The exam date is **never** set implicitly — tick the
+confirmation in the preview to fill `exam_date` from the earliest exam-looking
+event. Import is file-only: no calendar account, no OAuth.
+
 Tips:
 - Set the exam date in the course's **Settings** tab first — the planner paces
   toward it and refuses dates in the past.

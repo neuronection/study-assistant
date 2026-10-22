@@ -79,7 +79,7 @@ def test_chain_round_trips_from_base(tmp_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         assert (
             connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            == "0004_citation_metadata"
+            == "0005_plan_item_external_uid"
         )
 
 
@@ -103,3 +103,27 @@ def test_citation_kind_check_accepts_members_and_null(tmp_path: Path) -> None:
     _insert_material(db_path, "dataset")
     with pytest.raises(sqlite3.IntegrityError):
         _insert_material(db_path, "lecture")
+
+
+def _insert_plan_item(db_path: Path, course_id: str, external_uid: str | None) -> None:
+    stamp = datetime(2026, 10, 22, 12, 0, 0).isoformat(sep=" ")
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO plan_items "
+            "(id, profile_id, course_id, title, kind, due_date, origin, sort_key, "
+            "external_uid, created_at) "
+            "VALUES (?, ?, ?, 'Lecture', 'study', '2026-10-23', 'manual', 0, ?, ?)",
+            (uuid.uuid4().hex, uuid.uuid4().hex, course_id, external_uid, stamp),
+        )
+
+
+def test_plan_item_external_uid_is_unique_per_course(tmp_path: Path) -> None:
+    db_path = tmp_path / "plan_uid.db"
+    command.upgrade(_cfg(db_path), "head")
+    course_id = uuid.uuid4().hex
+    _insert_plan_item(db_path, course_id, None)
+    _insert_plan_item(db_path, course_id, None)
+    _insert_plan_item(db_path, course_id, "lecture-1")
+    with pytest.raises(sqlite3.IntegrityError):
+        _insert_plan_item(db_path, course_id, "lecture-1")
+    _insert_plan_item(db_path, uuid.uuid4().hex, "lecture-1")

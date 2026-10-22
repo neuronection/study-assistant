@@ -106,6 +106,9 @@ from .core import (
     relationship as relationship,
 )
 from .core import (
+    text as text,
+)
+from .core import (
     utcnow as utcnow,
 )
 
@@ -440,6 +443,14 @@ class PlanItem(Base):
         ),
         Index("ix_plan_items_course_due", "course_id", "due_date"),
         Index("ix_plan_items_profile_due", "profile_id", "due_date"),
+        Index(
+            "uq_plan_items_course_external_uid",
+            "course_id",
+            "external_uid",
+            unique=True,
+            sqlite_where=text("external_uid IS NOT NULL"),
+            postgresql_where=text("external_uid IS NOT NULL"),
+        ),
         vocab_check("kind", PlanItemKind),
         vocab_check("origin", PlanItemOrigin),
     )
@@ -459,4 +470,5 @@ class PlanItem(Base):
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
     sort_key: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    external_uid: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

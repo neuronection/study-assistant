@@ -64,3 +64,33 @@ export async function listUpcomingItems(days = 7): Promise<UpcomingItem[]> {
 export function planIcsUrl(courseId: string): string {
   return `/api/v1/courses/${courseId}/plan.ics`
 }
+
+export type IcsPreview = Schemas['IcsPreviewOut']
+export type IcsImportResult = Schemas['IcsImportOut']
+
+export async function previewIcsImport(
+  courseId: string,
+  file: File
+): Promise<IcsPreview> {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await apiFetch(`/api/v1/courses/${courseId}/plan/import-ics/preview`, {
+    method: 'POST',
+    body: form,
+  })
+  return json<IcsPreview>(response)
+}
+
+export async function importIcs(
+  courseId: string,
+  file: File,
+  confirmExam: boolean
+): Promise<IcsImportResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await apiFetch(
+    `/api/v1/courses/${courseId}/plan/import-ics?confirm_exam=${confirmExam}`,
+    { method: 'POST', body: form }
+  )
+  return json<IcsImportResult>(response)
+}

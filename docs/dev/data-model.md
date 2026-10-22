@@ -414,6 +414,10 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0005_plan_item_external_uid (plan 85 C, ADR-213)**: `plan_items` gains the
+  nullable `external_uid` column and the partial unique index
+  `uq_plan_items_course_external_uid` (`WHERE external_uid IS NOT NULL`).
+  Downgrade drops the index and the column.
 - **0004_citation_metadata (plan 85 B, ADR-212)**: `materials` gains the
   nullable citation columns (`citation_title`, `citation_authors` JSON,
   `citation_year`, `citation_doi`, `citation_container`, `citation_kind`) and
@@ -657,6 +661,11 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   (course_id, due_date) and (profile_id, due_date). Draft items are
   regenerable suggestions; re-generating deletes only future undone drafts.
   Course purge removes items. Downgrade drops the table.
+- **plan_items** — calendar provenance (0005, plan 85 C, ADR-213):
+  `external_uid` (nullable, ≤200) is the source ICS occurrence UID; a partial
+  unique index on `(course_id, external_uid) WHERE external_uid IS NOT NULL`
+  makes a re-import update rows instead of duplicating the week, while
+  hand-made items (NULL) stay NULL-distinct (family data-model §9)
 - **0053 (plan 52-A, Scratchpad)**: `courses.origin`
   (`manual | genesis | import | scratch`, default `manual`, `CourseOrigin`
   StrEnum) + `courses.hidden` (bool, default false) — the per-profile

@@ -406,12 +406,16 @@ export {
   createPlanItem,
   deletePlanItem,
   generatePlan,
+  importIcs,
   listPlanItems,
   listUpcomingItems,
+  previewIcsImport,
   updatePlanItem,
 } from './plan'
 
 export type {
+  IcsImportResult,
+  IcsPreview,
   PlanItem,
   PlanItemKind,
   UpcomingItem,

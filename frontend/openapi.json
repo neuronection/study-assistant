@@ -754,6 +754,20 @@
         "title": "Body_import_bibliography_file_api_v1_materials_import_bibliography_post",
         "type": "object"
       },
+      "Body_import_course_ics_api_v1_courses__course_id__plan_import_ics_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_course_ics_api_v1_courses__course_id__plan_import_ics_post",
+        "type": "object"
+      },
       "Body_import_qpkg_api_v1_quiz_import_qpkg_post": {
         "properties": {
           "file": {
@@ -766,6 +780,20 @@
           "file"
         ],
         "title": "Body_import_qpkg_api_v1_quiz_import_qpkg_post",
+        "type": "object"
+      },
+      "Body_preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post",
         "type": "object"
       },
       "Body_restore_backup_api_v1_backup_restore_post": {
@@ -5049,6 +5077,139 @@
           "violations"
         ],
         "title": "HintOut",
+        "type": "object"
+      },
+      "IcsEventOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PlanItemKind"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "title",
+          "date",
+          "time",
+          "detail",
+          "kind"
+        ],
+        "title": "IcsEventOut",
+        "type": "object"
+      },
+      "IcsExamCandidateOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "title",
+          "date"
+        ],
+        "title": "IcsExamCandidateOut",
+        "type": "object"
+      },
+      "IcsImportOut": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "updated"
+        ],
+        "title": "IcsImportOut",
+        "type": "object"
+      },
+      "IcsPreviewOut": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/IcsEventOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "exam_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/IcsExamCandidateOut"
+            },
+            "title": "Exam Candidates",
+            "type": "array"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "total_events": {
+            "title": "Total Events",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "events",
+          "exam_candidates",
+          "total_events",
+          "skipped"
+        ],
+        "title": "IcsPreviewOut",
         "type": "object"
       },
       "ImportedCourseOut": {
@@ -20013,6 +20174,120 @@
           }
         },
         "summary": "Generate Course Plan",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/v1/courses/{course_id}/plan/import-ics": {
+      "post": {
+        "operationId": "import_course_ics_api_v1_courses__course_id__plan_import_ics_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm_exam",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Confirm Exam",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_course_ics_api_v1_courses__course_id__plan_import_ics_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IcsImportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Course Ics",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/v1/courses/{course_id}/plan/import-ics/preview": {
+      "post": {
+        "operationId": "preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_course_ics_api_v1_courses__course_id__plan_import_ics_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IcsPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Course Ics",
         "tags": [
           "courses"
         ]

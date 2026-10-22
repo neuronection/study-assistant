@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,6 +9,13 @@ from ..core.vocab import PlanItemKind, PlanItemOrigin
 from ..domain.models import Course, PlanItem, utcnow
 from ..services.knowledge.tree import TreeService
 from ..services.platform.profiles import ensure_default_profile
+from ..services.study.ics_import import (
+    IcsEvent,
+    IcsImportError,
+    IcsPreview,
+    apply_preview,
+    parse_ics,
+)
 from ..services.study.planner import (
     PlannerError,
     build_course_ics,
@@ -57,6 +64,34 @@ class PlanGenerateOut(BaseModel):
     items: list[PlanItemOut]
 
 
+class IcsEventOut(BaseModel):
+    uid: str
+    title: str
+    date: date
+    time: str | None
+    detail: str
+    kind: PlanItemKind
+
+
+class IcsExamCandidateOut(BaseModel):
+    uid: str
+    title: str
+    date: date
+
+
+class IcsPreviewOut(BaseModel):
+    events: list[IcsEventOut]
+    exam_candidates: list[IcsExamCandidateOut]
+    total_events: int
+    skipped: int
+
+
+class IcsImportOut(BaseModel):
+    created: int
+    updated: int
+    exam_date: date | None = None
+
+
 class UpcomingItemOut(BaseModel):
     id: str
     course_id: str
@@ -88,6 +123,91 @@ def _item_out(item: PlanItem) -> PlanItemOut:
 def plan_upcoming(days: int = 7, session: Session = Depends(get_session)) -> list[UpcomingItemOut]:
     profile = ensure_default_profile(session)
     return [UpcomingItemOut(**entry) for entry in upcoming_items(session, profile.id, days)]
+
+
+async def _read_calendar(file: UploadFile) -> str:
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="the calendar file is empty")
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="calendar exceeds the 2 MB limit")
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise HTTPException(status_code=422, detail="calendar must be UTF-8 text") from error
+
+
+def _owned_course(session: Session, course_id: str) -> Course:
+    profile = ensure_default_profile(session)
+    course = session.get(Course, course_id)
+    if course is None or course.profile_id != profile.id:
+        raise HTTPException(status_code=404, detail="course not found")
+    return course
+
+
+def _event_out(event: IcsEvent) -> IcsEventOut:
+    detail_parts = [
+        part
+        for part in (event.start.strftime("%H:%M") if event.start else None, event.location)
+        if part
+    ]
+    return IcsEventOut(
+        uid=event.uid,
+        title=event.summary,
+        date=event.day,
+        time=event.start.strftime("%H:%M") if event.start else None,
+        detail=" · ".join(detail_parts),
+        kind=PlanItemKind.MILESTONE if event.exam else PlanItemKind.STUDY,
+    )
+
+
+def _preview_out(preview: IcsPreview) -> IcsPreviewOut:
+    return IcsPreviewOut(
+        events=[_event_out(event) for event in preview.events],
+        exam_candidates=[
+            IcsExamCandidateOut(uid=event.uid, title=event.summary, date=event.day)
+            for event in preview.exam_candidates
+        ],
+        total_events=preview.total_events,
+        skipped=preview.skipped,
+    )
+
+
+@courses_plan_router.post(
+    "/courses/{course_id}/plan/import-ics/preview", response_model=IcsPreviewOut
+)
+async def preview_course_ics(
+    course_id: str,
+    file: UploadFile,
+    session: Session = Depends(get_session),
+) -> IcsPreviewOut:
+    _owned_course(session, course_id)
+    text = await _read_calendar(file)
+    try:
+        return _preview_out(parse_ics(text))
+    except IcsImportError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@courses_plan_router.post("/courses/{course_id}/plan/import-ics", response_model=IcsImportOut)
+async def import_course_ics(
+    course_id: str,
+    file: UploadFile,
+    confirm_exam: bool = False,
+    session: Session = Depends(get_session),
+) -> IcsImportOut:
+    course = _owned_course(session, course_id)
+    text = await _read_calendar(file)
+    try:
+        preview = parse_ics(text)
+        created, updated, exam_date = apply_preview(
+            session, course, preview, confirm_exam=confirm_exam
+        )
+    except IcsImportError as error:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    return IcsImportOut(created=created, updated=updated, exam_date=exam_date)
 
 
 @courses_plan_router.get("/courses/{course_id}/plan.ics")
