@@ -24,8 +24,10 @@ Release history from before the public launch lives in the
   the OS keyring, refresh stays inside the adapter layer, and disconnecting
   wipes the slots (ADR-215; supersedes plan 73's external-MCP-only OAuth
   ruling for loopback-capable providers).
-- **WebDAV backup destination.** A WebDAV source can hold `sa-backup/v1`
-  archives: upload, list, download and restore round-trip from the source row.
+- **WebDAV backup destination.** A WebDAV source (and a Dropbox connection)
+  can hold `sa-backup/v1` archives: upload, list, download and restore
+  round-trip from the source row. Google Drive and OneDrive stay read-only and
+  request no write scopes.
 - **Zotero and Anki bridges.** Zotero items arrive as citation-complete
   suggestions (DOI/authors/year/container) with attachment import; Anki
   reviews union-merge into `external_review_events` and deterministically

@@ -77,7 +77,7 @@ cap. Save, then press **Scan now** to see items immediately
 
 ## Backup destinations
 
-A WebDAV, Drive, Dropbox or OneDrive source can hold app backups:
+A WebDAV (and Dropbox) source can hold app backups; read-only Drive/OneDrive connections do not request write scopes:
 
 - **Back up now** builds a normal `sa-backup/v1` archive and uploads it to
   the configured remote folder.

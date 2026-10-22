@@ -2,7 +2,7 @@
   "schema": 1,
   "contract": "source-providers",
   "updated": "2026-10-22",
-  "purpose": "Study source-provider catalog (plan 86, ADR-214). One row per adapter family member: provider id, semantic kind(s), auth kind, declared fields, secret slots and — for OAuth providers — the loopback/PKCE endpoints and minimal scopes. Adding a provider of an existing kind is a catalog row plus an adapter class, never a migration.",
+  "purpose": "Study source-provider catalog (plan 86, ADR-214). One row per adapter family member: provider id, semantic kind(s), auth kind, declared fields, secret slots and \u2014 for OAuth providers \u2014 the loopback/PKCE endpoints and minimal scopes. Adding a provider of an existing kind is a catalog row plus an adapter class, never a migration.",
   "secretDisclosure": "Secret values are stored only in your operating system's keyring. They never enter the database, a config file, an environment block or a model prompt.",
   "providerOrder": [
     "rss",
@@ -18,41 +18,64 @@
   "providers": {
     "rss": {
       "label": "RSS / Atom feed",
-      "kinds": ["rss"],
+      "kinds": [
+        "rss"
+      ],
       "defaultKind": "rss",
       "authKind": "none",
       "urlRequired": true,
-      "fields": ["url", "max_items"],
+      "fields": [
+        "url",
+        "max_items"
+      ],
       "supportsBackup": false,
       "adapter": "rss"
     },
     "youtube": {
       "label": "YouTube channel / playlist",
-      "kinds": ["youtube_channel", "youtube_playlist"],
+      "kinds": [
+        "youtube_channel",
+        "youtube_playlist"
+      ],
       "defaultKind": "youtube_channel",
       "authKind": "none",
       "urlRequired": true,
-      "fields": ["url", "max_items"],
+      "fields": [
+        "url",
+        "max_items"
+      ],
       "supportsBackup": false,
       "adapter": "youtube"
     },
     "site-search": {
       "label": "Site search",
-      "kinds": ["site_search"],
+      "kinds": [
+        "site_search"
+      ],
       "defaultKind": "site_search",
       "authKind": "none",
       "urlRequired": true,
-      "fields": ["url", "query", "site"],
+      "fields": [
+        "url",
+        "query",
+        "site"
+      ],
       "supportsBackup": false,
       "adapter": "site-search"
     },
     "webdav": {
       "label": "WebDAV / Nextcloud",
-      "kinds": ["webdav_folder"],
+      "kinds": [
+        "webdav_folder"
+      ],
       "defaultKind": "webdav_folder",
       "authKind": "token",
       "urlRequired": true,
-      "fields": ["url", "username", "max_items"],
+      "fields": [
+        "url",
+        "username",
+        "max_items"
+      ],
       "secretSlots": [
         {
           "name": "password",
@@ -65,17 +88,24 @@
     },
     "google-drive": {
       "label": "Google Drive",
-      "kinds": ["cloud_folder"],
+      "kinds": [
+        "cloud_folder"
+      ],
       "defaultKind": "cloud_folder",
       "authKind": "oauth2",
       "urlRequired": false,
-      "fields": ["folder_id", "max_items"],
-      "supportsBackup": true,
+      "fields": [
+        "folder_id",
+        "max_items"
+      ],
+      "supportsBackup": false,
       "adapter": "google-drive",
       "oauth": {
         "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth",
         "tokenUrl": "https://oauth2.googleapis.com/token",
-        "scopes": ["https://www.googleapis.com/auth/drive.readonly"],
+        "scopes": [
+          "https://www.googleapis.com/auth/drive.readonly"
+        ],
         "redirectPort": 53682,
         "clientIdEnv": "SA_GOOGLE_CLIENT_ID",
         "clientSecretEnv": "SA_GOOGLE_CLIENT_SECRET",
@@ -88,17 +118,25 @@
     },
     "dropbox": {
       "label": "Dropbox",
-      "kinds": ["cloud_folder"],
+      "kinds": [
+        "cloud_folder"
+      ],
       "defaultKind": "cloud_folder",
       "authKind": "oauth2",
       "urlRequired": false,
-      "fields": ["folder_path", "max_items"],
+      "fields": [
+        "folder_path",
+        "max_items"
+      ],
       "supportsBackup": true,
       "adapter": "dropbox",
       "oauth": {
         "authorizeUrl": "https://www.dropbox.com/oauth2/authorize",
         "tokenUrl": "https://api.dropboxapi.com/oauth2/token",
-        "scopes": ["files.content.read", "files.content.write"],
+        "scopes": [
+          "files.content.read",
+          "files.content.write"
+        ],
         "redirectPort": 53683,
         "clientIdEnv": "SA_DROPBOX_CLIENT_ID",
         "clientSecretEnv": "SA_DROPBOX_CLIENT_SECRET",
@@ -111,17 +149,25 @@
     },
     "onedrive": {
       "label": "OneDrive",
-      "kinds": ["cloud_folder"],
+      "kinds": [
+        "cloud_folder"
+      ],
       "defaultKind": "cloud_folder",
       "authKind": "oauth2",
       "urlRequired": false,
-      "fields": ["folder_path", "max_items"],
-      "supportsBackup": true,
+      "fields": [
+        "folder_path",
+        "max_items"
+      ],
+      "supportsBackup": false,
       "adapter": "onedrive",
       "oauth": {
         "authorizeUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
         "tokenUrl": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-        "scopes": ["Files.Read.All", "offline_access"],
+        "scopes": [
+          "Files.Read.All",
+          "offline_access"
+        ],
         "redirectPort": 53684,
         "clientIdEnv": "SA_ONEDRIVE_CLIENT_ID",
         "clientSecretEnv": "SA_ONEDRIVE_CLIENT_SECRET",
@@ -131,22 +177,32 @@
     },
     "zotero": {
       "label": "Zotero (local)",
-      "kinds": ["zotero_collection"],
+      "kinds": [
+        "zotero_collection"
+      ],
       "defaultKind": "zotero_collection",
       "authKind": "none",
       "urlRequired": false,
-      "fields": ["collection", "max_items"],
+      "fields": [
+        "collection",
+        "max_items"
+      ],
       "supportsBackup": false,
       "adapter": "zotero",
       "apiBase": "http://127.0.0.1:23119"
     },
     "anki": {
       "label": "AnkiConnect (local)",
-      "kinds": ["anki_deck"],
+      "kinds": [
+        "anki_deck"
+      ],
       "defaultKind": "anki_deck",
       "authKind": "none",
       "urlRequired": false,
-      "fields": ["decks", "max_items"],
+      "fields": [
+        "decks",
+        "max_items"
+      ],
       "supportsBackup": false,
       "adapter": "anki",
       "apiBase": "http://127.0.0.1:8765"
