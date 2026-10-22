@@ -401,6 +401,8 @@ def test_external_sources_ride_course_bundles(client: TestClient) -> None:
     assert payload == [
         {
             "kind": "youtube_channel",
+            "provider": "youtube",
+            "auth_kind": "none",
             "url": "https://youtube.com/@3blue1brown",
             "label": None,
             "options": {"max_items": 5},

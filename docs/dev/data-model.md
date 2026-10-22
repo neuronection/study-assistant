@@ -425,6 +425,19 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0007_source_providers (plan 86 A/B/E, ADR-214/215/216)**:
+  `external_sources` gains the open, registry-validated `provider` string
+  (default `rss`), the `auth_kind` CHECK twin (`token|oauth2|none`), the
+  nullable keyring-slot pointer `account_ref`, and `consecutive_failures`
+  for the family `degraded|failing` status; the `kind` CHECK widens with the
+  adapter-shaped members (`webdav_folder`, `cloud_folder`,
+  `zotero_collection`, `anki_deck`). Existing rows are backfilled to their
+  catalog provider. `exercises` gains nullable `external_uid` (the remote
+  SRS card key), and `external_review_events` stores the union-merged
+  localhost review log keyed by `(source_id, remote_card_id, reviewed_at)`.
+  SQLite rebuilds both altered tables through batch mode; downgrade drops
+  the columns/table and restores the four-member `kind` CHECK (fails loudly
+  if adapter-kind rows still exist).
 - **0006_vault_notes (plan 85 D, ADR-213)**: `material_sources` gains
   `preset` (`folder|vault`, CHECK twin, default `folder`); `notes` gains the
   linked-file provenance (`source_id` → `material_sources` `SET NULL`,

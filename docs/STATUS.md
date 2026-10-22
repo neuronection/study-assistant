@@ -15,14 +15,22 @@ GitHub Releases).
 81 schema baseline & hardening — COMPLETE 2026-10-21 · 82 no-legacy code &
 typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 2026-10-22 · 84 structure, test gates & eval corpus — COMPLETE 2026-10-22 ·
-85 academic ingest integrations — COMPLETE 2026-10-22 · 86 connected sources ·
-87 product gap closure. ADRs 196–218 reserved.
+85 academic ingest integrations — COMPLETE 2026-10-22 · 86 modular source
+providers & connected accounts — COMPLETE 2026-10-22 · 87 product gap
+closure. ADRs 196–218 reserved.
 
-**Recent round:** 85 academic ingest integrations (2026-10-22, COMPLETE) —
-scholarly discovery providers, typed citation metadata with BibTeX/RIS
-import/export, ICS import into the planner, and a markdown-vault notes preset.
+**Recent round:** 86 modular source providers & connected accounts
+(2026-10-22, COMPLETE) — one SourceAdapter seam for WebDAV/Nextcloud, Google
+Drive, Dropbox, OneDrive, Zotero and AnkiConnect, an OAuth2 loopback/PKCE
+auth layer over keyring-sealed tokens, provider catalog data (zero migration
+per provider), and RSS media enclosures into the transcribe path.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
+- **86 — modular source providers & connected accounts (2026-10-22, COMPLETE):**
+  one SourceAdapter family (`providers.json` catalog + WebDAV/Nextcloud, Google
+  Drive, Dropbox, OneDrive, Zotero, AnkiConnect adapters + a shared reconcile
+  engine), OAuth2 loopback/PKCE with keyring-sealed tokens (ADR-214/215/216),
+  WebDAV backup destination, and RSS media enclosures into `transcribe`.
 - **85 — academic ingest integrations (2026-10-22, COMPLETE):** arXiv/OpenAlex/
   Crossref discovery, typed citation metadata + `.bib`/`.ris` import/export +
   cite chips, `.ics` planner import with exam-date confirmation, and a
@@ -53,6 +61,7 @@ deferred-follow-ups register.
 
 | Module | Status | Notes |
 |---|---|---|
+| **Connected sources (plan 86)** | done | **A/B (ADR-214/215):** `external_sources` gains open registry-validated `provider`, `auth_kind` CHECK twin, keyring `account_ref` and `consecutive_failures` (0007); the bundled `external-sources` connector hosts `providers.json` + `providers.py` (catalog data, typed unknown-provider error) and the shared `engine.py` reconcile loop. `app/core/oauth.py` is the authorization-code + PKCE state machine with a one-shot `127.0.0.1` receiver; tokens seal through `core/secrets.py`, refresh stays adapter-side, disconnect wipes. **C (ADR-214/215):** WebDAV/Nextcloud (PROPFIND/ETag, app-password slot, backup upload/list/download/restore) and Google Drive (changes cursor, Google-native docx/pptx/csv export) adapters. **D:** thin Dropbox + OneDrive adapters on the same seam. **E (ADR-216):** Zotero local API (citation-complete suggestions + attachment ingest) and AnkiConnect (per-deck opt-in, union-merged `external_review_events`, deterministic FSRS recompute via `exercises.external_uid`). **F:** RSS media enclosures (MIME allowlist + size cap) accept through `url_import`/`transcribe_audio`. Sources report `ok\|degraded\|failing\|stale` + needs-setup/reconnect; every provider lands suggestions only. Tests: `test_source_providers.py`, `test_oauth_flow.py`, `test_source_providers_migration.py`, `WebSourcesCard.test.tsx` |
 | **Review nudges (plan 68-C)** | done | Home strip ("N cards due · M overdue tasks" → /review, hidden at zero) over the shared `/notifications` query + opt-in browser notifications (`lib/review-nudges.ts`: `useReviewNudgeSetting` permission handshake + persisted `ca-review-nudges` flag in Settings → General; `useReviewNudgeInterval` 30-min single summary while visible/focused, click → focus + /review; unsupported/denied honest states, ADR-153). Tests: `review-nudges.test.tsx` |
 | **Academic ingest (plan 85)** | done | **A (ADR-211):** arXiv (Atom), OpenAlex and Crossref discovery providers beside the YouTube class — key-free, polite-perimeter fetches, citation metadata in the suggestion `meta`, `DiscoveryKind.paper\|dataset\|reference` (0003 CHECK widen). **B (ADR-212):** typed citation columns on `materials` (0004), content-keyed `.bib`/`.ris` import with DOI-first dedupe, BibTeX export of a selection, `[[cite:<id>]]` note chip rendered as `Author (Year) — Title`. C (ADR-213): file-only `.ics` import with bounded RRULE expansion, staged preview, `plan_items.external_uid` re-import dedupe (0005) and an explicit exam-date confirmation. D (ADR-213): `material_sources.preset=vault` ingests `.md` as notes (frontmatter title/tags), `note_links` resolve `[[wikilinks]]` (0006), rescan versions edits, and “download as vault” exports Markdown+frontmatter. E (ADR-211 data only): Wikipedia, MIT OCW and OpenStax join Khan Academy as default site presets, selectable per search. Tests: `test_discovery.py`, `test_citations.py`, `test_ics_import.py`, `test_vault_source.py`, `test_academic_ingest_migration.py`, `CitationChip.test.tsx`, `BibliographyImportDialog.test.tsx`, `IcsImportDialog.test.tsx`, `NoteLinks.test.tsx`, `VaultSourcesDialog.test.tsx` |
 | **Planner week view + ICS (plan 68-B)** | done | List⇄Week segmented toggle (`features/planner/PlannerWeekView.tsx`: Mon–Sun grid, today highlight, drag-between-days, overdue/done styling, layout re-flow) + `GET /courses/{id}/plan.ics` (`build_course_ics` in `services/study/planner.py`: all-day VEVENTs, stable UIDs, STATUS:CANCELLED for week-fresh done items, exam event, CRLF + folding + escaping, ADR-152). Tests: `test_plan_ics.py`, `PlannerWeekView.test.tsx` |

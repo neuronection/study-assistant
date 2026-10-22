@@ -107,6 +107,7 @@ class ExternalSourceScheduler:
                         if dead is not None:
                             dead.last_scan_error = str(error)[:500]
                             dead.last_scanned_at = utcnow()
+                            dead.consecutive_failures = int(dead.consecutive_failures or 0) + 1
                             session.commit()
                     self._publish(
                         WsTopic.externalsource(source_id),

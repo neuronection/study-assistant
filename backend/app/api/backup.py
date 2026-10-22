@@ -182,7 +182,7 @@ def export_backup(request: Request) -> Response:
     )
 
 
-def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
+def apply_restore(request: Request, data: bytes) -> dict[str, Any]:
     if len(data) > MAX_UPLOAD:
         raise HTTPException(status_code=422, detail="backup too large")
     try:
@@ -254,7 +254,7 @@ def _apply_restore(request: Request, data: bytes) -> dict[str, Any]:
 
 @router.post("/restore", status_code=200, response_model=RestoreOut)
 async def restore_backup(request: Request, file: UploadFile) -> dict[str, Any]:
-    return _apply_restore(request, await file.read())
+    return apply_restore(request, await file.read())
 
 
 @router.post("/{name}/restore", status_code=200, response_model=RestoreOut)
@@ -265,4 +265,4 @@ def restore_backup_by_name(name: str, request: Request) -> dict[str, Any]:
     path = settings.backups_dir / name
     if not path.is_file():
         raise HTTPException(status_code=404, detail="backup not found")
-    return _apply_restore(request, path.read_bytes())
+    return apply_restore(request, path.read_bytes())

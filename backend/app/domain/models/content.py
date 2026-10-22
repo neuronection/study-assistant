@@ -1,4 +1,7 @@
 from ...core.vocab import (
+    AuthKind as AuthKind,
+)
+from ...core.vocab import (
     CitationKind as CitationKind,
 )
 from ...core.vocab import (
@@ -639,7 +642,10 @@ class MaterialSource(Base):
 
 class ExternalSource(Base):
     __tablename__ = "external_sources"
-    __table_args__ = (vocab_check("kind", ExternalSourceKind),)
+    __table_args__ = (
+        vocab_check("kind", ExternalSourceKind),
+        vocab_check("auth_kind", AuthKind),
+    )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
     profile_id: Mapped[str] = mapped_column(
@@ -649,6 +655,9 @@ class ExternalSource(Base):
         _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
     )
     kind: Mapped[str] = mapped_column(String(30))
+    provider: Mapped[str] = mapped_column(String(64), default="")
+    auth_kind: Mapped[str] = mapped_column(String(20), default="none")
+    account_ref: Mapped[str | None] = mapped_column(String(200))
     url: Mapped[str] = mapped_column(String(2048))
     label: Mapped[str | None] = mapped_column(String(200))
     options: Mapped[ExternalSourceOptions | None] = mapped_column(JSON)
@@ -656,7 +665,33 @@ class ExternalSource(Base):
     scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     cursor: Mapped[ExternalSourceCursorDocument | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ExternalReviewEvent(Base):
+    __tablename__ = "external_review_events"
+    __table_args__ = (
+        Index(
+            "uq_external_review_events_source_card_time",
+            "source_id",
+            "remote_card_id",
+            "reviewed_at",
+            unique=True,
+        ),
+        Index("ix_external_review_events_remote_card", "remote_card_id"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    source_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("external_sources.id", ondelete="CASCADE"), index=True
+    )
+    remote_card_id: Mapped[str] = mapped_column(String(64))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    rating: Mapped[int] = mapped_column(Integer)
+    interval_days: Mapped[float] = mapped_column(Float, default=0.0)
+    elapsed_days: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

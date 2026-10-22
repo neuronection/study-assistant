@@ -641,14 +641,31 @@ export {
 export type {
   ExternalSourceKind,
   ExternalSourceRow,
+  SourceAcceptResult,
+  SourceBackupUpload,
+  SourceOAuthStatus,
+  SourceProvider,
+  SourceProviderCatalog,
+  SourceRemoteBackup,
+  SourceRemoteBackupList,
+  SourceSecretStatus,
 } from './external-sources'
 
 export {
+  acceptExternalSuggestion,
+  connectExternalSource,
   createExternalSource,
   deleteExternalSource,
+  deleteExternalSourceSecret,
+  disconnectExternalSource,
+  listExternalBackups,
   listExternalSources,
+  listSourceProviders,
+  restoreExternalBackup,
   scanExternalSource,
+  setExternalSourceSecret,
   updateExternalSource,
+  uploadExternalBackup,
 } from './external-sources'
 
 export type { ExtensionDocs } from './extensions'

@@ -11,6 +11,29 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (connected sources — plan 86 / ADR-214–216)
+- **One adapter family for source providers.** WebDAV/Nextcloud, Google
+  Drive, Dropbox, OneDrive, a local Zotero collection and local Anki decks
+  join RSS/YouTube/site search behind one reconciliation seam. Provider
+  identity is catalog data (`providers.json`) validated at registration, so a
+  new provider of an existing kind is a catalog row plus an adapter class —
+  no migration (ADR-214).
+- **OAuth2 loopback accounts.** Google Drive, Dropbox and OneDrive connect
+  through an authorization-code + PKCE flow with a one-shot `127.0.0.1`
+  listener; access/refresh tokens and token-provider passwords are sealed in
+  the OS keyring, refresh stays inside the adapter layer, and disconnecting
+  wipes the slots (ADR-215; supersedes plan 73's external-MCP-only OAuth
+  ruling for loopback-capable providers).
+- **WebDAV backup destination.** A WebDAV source can hold `sa-backup/v1`
+  archives: upload, list, download and restore round-trip from the source row.
+- **Zotero and Anki bridges.** Zotero items arrive as citation-complete
+  suggestions (DOI/authors/year/container) with attachment import; Anki
+  reviews union-merge into `external_review_events` and deterministically
+  recompute mapped cards' FSRS state (ADR-216).
+- **RSS media enclosures.** Allowlisted audio/video enclosures become
+  audio/video suggestions with a size cap; accepting one downloads it and
+  feeds the existing transcribe job.
+
 ### Added (academic ingest — plan 85 / ADR-211–213)
 - **Scholarly discovery providers.** arXiv (Atom), OpenAlex and Crossref join
   the Discover dialog beside web/YouTube/site presets — key-free, behind the

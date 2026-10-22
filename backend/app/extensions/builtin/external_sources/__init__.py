@@ -33,6 +33,9 @@ from ....domain.models import ExternalSource, utcnow
 from ...errors import ExtensionError
 from ...registry import extension_registry
 from ...search.provider import search_with_fallback
+from . import providers as provider_catalog
+from .adapters.base import MEDIA_EXTENSIONS, MEDIA_MIME_ALLOWLIST
+from .engine import fetch_entry, reconcile
 
 MIN_SCAN_INTERVAL_SEC = 900
 DEFAULT_SCAN_INTERVAL_SEC = 6 * 3600
@@ -41,6 +44,12 @@ YTDLP_SOCKET_TIMEOUT_SEC = 120
 DEFAULT_MAX_ITEMS = 20
 MAX_SEEN_IDS = 1000
 SNIPPET_LIMIT = 2000
+MEDIA_SIZE_CAP = 200 * 1024 * 1024
+
+CORE_PROVIDERS = {"rss", "youtube", "site-search"}
+MEDIA_PROVIDER_FIELDS = frozenset(
+    {"max_items", "query", "site", "username", "folder_id", "folder_path", "collection", "decks"}
+)
 
 RecordFn = Any
 
@@ -98,7 +107,9 @@ def _validated_source_url(kind: str, url: str) -> str:
     return text[:2048]
 
 
-def _validated_options(kind: str, options: dict[str, Any] | None) -> dict[str, Any]:
+def _validated_options(
+    kind: str, options: dict[str, Any] | None, provider: str | None = None
+) -> dict[str, Any]:
     if options is None:
         options = {}
     if not isinstance(options, dict):
@@ -109,6 +120,8 @@ def _validated_options(kind: str, options: dict[str, Any] | None) -> dict[str, A
         if not isinstance(max_items, int) or not 1 <= max_items <= 100:
             raise ExtensionError("invalid", "max_items must be 1-100")
         cleaned["max_items"] = max_items
+    provider_row = provider_catalog.get_provider(provider) if provider else None
+    allowed = set(provider_row.fields) if provider_row is not None else set()
     if kind == ExternalSourceKind.SITE_SEARCH.value:
         query = str(options.get("query", "")).strip()
         if not query:
@@ -117,22 +130,107 @@ def _validated_options(kind: str, options: dict[str, Any] | None) -> dict[str, A
         site = str(options.get("site", "")).strip()
         if site:
             cleaned["site"] = site[:200]
+        return cleaned
+    if provider_row is None:
+        return cleaned
+    for field in ("username", "folder_id", "folder_path", "collection"):
+        if field not in allowed:
+            continue
+        value = str(options.get(field, "")).strip()
+        if value:
+            cleaned[field] = value[:300]
+    if "decks" in allowed:
+        raw = options.get("decks")
+        if isinstance(raw, str):
+            decks = [part.strip() for part in raw.split(",") if part.strip()]
+        elif isinstance(raw, list):
+            decks = [str(part).strip() for part in raw if str(part).strip()]
+        else:
+            decks = []
+        if decks:
+            cleaned["decks"] = decks[:20]
     return cleaned
 
 
+def resolve_provider(kind: str, provider: str | None) -> str:
+    if provider is None or provider == "":
+        return provider_catalog.provider_for_kind(kind)
+    try:
+        provider_catalog.validate_registration(provider, kind)
+    except ExtensionError:
+        raise
+    return provider
+
+
 def validate_source(
-    kind: str, url: str, options: dict[str, Any] | None
+    kind: str,
+    url: str,
+    options: dict[str, Any] | None,
+    provider: str | None = None,
 ) -> tuple[str, str, dict[str, Any]]:
     try:
         kind_value = ExternalSourceKind.parse(kind)
     except ValueError as error:
         raise ExtensionError("invalid", str(error)) from error
-    clean_url = _validated_source_url(kind_value.value, url)
-    clean_options = _validated_options(kind_value.value, options)
+    provider_id = resolve_provider(kind_value.value, provider)
+    provider_row = provider_catalog.validate_registration(provider_id, kind_value.value)
+    clean_url = ""
+    if provider_row.url_required:
+        clean_url = _validated_source_url(kind_value.value, url)
+    else:
+        raw_url = (url or "").strip()
+        if raw_url:
+            clean_url = _validated_source_url(kind_value.value, raw_url)
+    clean_options = _validated_options(kind_value.value, options, provider_id)
     if kind_value is ExternalSourceKind.SITE_SEARCH and "site" not in clean_options:
         parsed = urlparse(clean_url)
         clean_options["site"] = parsed.netloc.lower().split(":")[0][:200]
     return kind_value.value, clean_url, clean_options
+
+
+def _media_meta(entry: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
+    for enclosure in entry.get("enclosures") or []:
+        if not isinstance(enclosure, dict):
+            continue
+        url = str(enclosure.get("href") or enclosure.get("url") or "").strip()
+        mime = str(enclosure.get("type") or "").split(";")[0].strip().lower()
+        if not url.startswith(("http://", "https://")):
+            continue
+        extension = "." + url.rsplit(".", 1)[-1].lower() if "." in url.rsplit("/", 1)[-1] else ""
+        if mime not in MEDIA_MIME_ALLOWLIST and extension not in MEDIA_EXTENSIONS:
+            continue
+        length_raw = enclosure.get("length")
+        size = (
+            int(length_raw)
+            if isinstance(length_raw, (int, str)) and str(length_raw).isdigit()
+            else None
+        )
+        if size is not None and size > MEDIA_SIZE_CAP:
+            return {"enclosure_type": mime or None, "enclosure_oversize": True}, None
+        material_kind = (
+            "audio"
+            if mime.startswith("audio")
+            or extension
+            in {
+                ".mp3",
+                ".m4a",
+                ".wav",
+                ".ogg",
+                ".opus",
+                ".mpga",
+            }
+            else "video"
+        )
+        return (
+            {
+                "enclosure_url": url,
+                "enclosure_type": mime or None,
+                "size": size,
+                "material_kind": material_kind,
+            },
+            material_kind,
+        )
+    return {}, None
 
 
 def fetch_url(url: str, headers: dict[str, str] | None = None) -> httpx.Response:
@@ -248,6 +346,9 @@ def _scan_rss(
             continue
         if entry_id and entry_id in seen_set:
             continue
+        entry_meta, _media_kind = _media_meta(entry)
+        meta: dict[str, Any] = {"published": _entry_published(entry), "source_id": source.id}
+        meta.update(entry_meta)
         outcome = record(
             session,
             source.profile_id,
@@ -256,7 +357,7 @@ def _scan_rss(
             title=_strip_html(str(entry.get("title") or url)),
             snippet=_strip_html(str(entry.get("summary") or ""))[:SNIPPET_LIMIT],
             kind=_entry_kind(entry),
-            meta={"published": _entry_published(entry)},
+            meta=meta,
             course_id=source.course_id,
         )
         if outcome == "created":
@@ -304,7 +405,7 @@ def _scan_youtube(
             continue
         if video_id:
             fresh_ids.append(video_id)
-        meta: dict[str, Any] = {}
+        meta: dict[str, Any] = {"source_id": source.id}
         duration = entry.get("duration")
         if isinstance(duration, (int, float)) and duration > 0:
             minutes, seconds = divmod(int(duration), 60)
@@ -361,7 +462,7 @@ def _scan_site_search(
             title=_strip_html(hit.get("title", "")),
             snippet=_strip_html(hit.get("content", ""))[:SNIPPET_LIMIT],
             kind=DiscoveryKind.ARTICLE.value,
-            meta={"site": site} if site else None,
+            meta={"site": site, "source_id": source.id} if site else {"source_id": source.id},
             course_id=source.course_id,
         )
         if outcome == "created":
@@ -381,12 +482,17 @@ def run_scan(
     ``record`` is the HOST's suggestion funnel — injected, never imported
     (the dependency direction is host → extensions). Enable state, URL
     normalization and the declared-capability gate are checked here;
-    cadence and scheduling stay host policy (D24 rule 4).
+    cadence and scheduling stay host policy (D24 rule 4). Catalog-known
+    providers outside the core trio reconcile through the shared engine.
     """
     if not extension_registry.has_capability("external-sources", "sync"):
         raise ExtensionError("not-ready", "the external-sources bundle does not declare 'sync'")
     if not source.enabled:
         raise ExtensionError("not-ready", "source is disabled")
+    provider_id = source.provider or provider_catalog.provider_for_kind(source.kind)
+    provider_catalog.validate_registration(provider_id, source.kind, source.auth_kind)
+    if provider_id not in CORE_PROVIDERS:
+        return reconcile(session, source, record)
     normalized = normalize_url(source.url)
     if not normalized.startswith(("http://", "https://")):
         raise ExtensionError("invalid", "expecting an http(s) URL")
@@ -402,4 +508,33 @@ def run_scan(
         stats = _scan_site_search(session, source, record)
     source.last_scan_error = None
     source.last_scanned_at = utcnow()
+    source.consecutive_failures = 0
     return stats
+
+
+def provider_entry(source: ExternalSource, meta: dict[str, Any], url: str, title: str) -> Any:
+    from .adapters.base import RemoteEntry
+
+    return RemoteEntry(
+        remote_id=str(meta.get("remote_id") or url),
+        name=str(meta.get("remote_name") or title),
+        url=str(meta.get("enclosure_url") or meta.get("attachment_url") or url),
+        mime=str(meta.get("mime") or meta.get("enclosure_type") or "") or None,
+        size=meta.get("size") if isinstance(meta.get("size"), int) else None,
+        kind=str(meta.get("discovery_kind") or "") or None,
+        meta=meta,
+    )
+
+
+__all__ = [
+    "DEFAULT_MAX_ITEMS",
+    "DEFAULT_SCAN_INTERVAL_SEC",
+    "MIN_SCAN_INTERVAL_SEC",
+    "effective_interval",
+    "fetch_entry",
+    "next_due_at",
+    "provider_entry",
+    "reconcile",
+    "run_scan",
+    "validate_source",
+]

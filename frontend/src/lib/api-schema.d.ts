@@ -1920,6 +1920,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/external-sources/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Provider Catalog */
+        get: operations["provider_catalog_api_v1_external_sources_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/external-sources/{source_id}": {
         parameters: {
             query?: never;
@@ -1938,6 +1955,159 @@ export interface paths {
         patch: operations["patch_source_api_v1_external_sources__source_id__patch"];
         trace?: never;
     };
+    "/api/v1/external-sources/{source_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Suggestion */
+        post: operations["accept_suggestion_api_v1_external_sources__source_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Backup */
+        post: operations["upload_backup_api_v1_external_sources__source_id__backup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Remote Backups */
+        get: operations["list_remote_backups_api_v1_external_sources__source_id__backups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/backups/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Remote Backup */
+        get: operations["download_remote_backup_api_v1_external_sources__source_id__backups__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/backups/{name}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Remote Backup */
+        post: operations["restore_remote_backup_api_v1_external_sources__source_id__backups__name__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/oauth/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Complete */
+        post: operations["oauth_complete_api_v1_external_sources__source_id__oauth_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/oauth/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Connect */
+        post: operations["oauth_connect_api_v1_external_sources__source_id__oauth_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/oauth/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Disconnect */
+        post: operations["oauth_disconnect_api_v1_external_sources__source_id__oauth_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Start */
+        post: operations["oauth_start_api_v1_external_sources__source_id__oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/external-sources/{source_id}/scan": {
         parameters: {
             query?: never;
@@ -1950,6 +2120,40 @@ export interface paths {
         /** Scan Source */
         post: operations["scan_source_api_v1_external_sources__source_id__scan_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Secret */
+        put: operations["set_secret_api_v1_external_sources__source_id__secret_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/external-sources/{source_id}/secret/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Secret */
+        delete: operations["delete_secret_api_v1_external_sources__source_id__secret__slot__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4888,6 +5092,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptIn */
+        AcceptIn: {
+            /** Suggestion Id */
+            suggestion_id: string;
+        };
+        /** AcceptOut */
+        AcceptOut: {
+            /** Deduped */
+            deduped: boolean;
+            /** Job Kind */
+            job_kind: string;
+            /** Material Id */
+            material_id: string;
+        };
         /** AcceptedTypesOut */
         AcceptedTypesOut: {
             /** Accept */
@@ -5095,6 +5313,15 @@ export interface components {
             backups: components["schemas"]["BackupEntryOut"][];
             last_recovery: components["schemas"]["BackupRecoveryInfoOut"] | null;
             settings: components["schemas"]["BackupSettingsInfoOut"];
+        };
+        /** BackupUploadOut */
+        BackupUploadOut: {
+            /** Location */
+            location: string;
+            /** Name */
+            name: string;
+            /** Size */
+            size: number;
         };
         /** BibliographyImportOut */
         BibliographyImportOut: {
@@ -6148,7 +6375,10 @@ export interface components {
              * @default true
              */
             enabled: boolean;
-            /** Kind */
+            /**
+             * Kind
+             * @default
+             */
             kind: string;
             /** Label */
             label?: string | null;
@@ -6156,13 +6386,26 @@ export interface components {
             options?: {
                 [key: string]: unknown;
             } | null;
+            /** Provider */
+            provider?: string | null;
             /** Scan Interval Sec */
             scan_interval_sec?: number | null;
-            /** Url */
+            /**
+             * Url
+             * @default
+             */
             url: string;
         };
         /** ExternalSourceOut */
         ExternalSourceOut: {
+            /** Account Ref */
+            account_ref: string | null;
+            /** Auth Kind */
+            auth_kind: string;
+            /** Conditions */
+            conditions?: string[];
+            /** Consecutive Failures */
+            consecutive_failures: number;
             /** Course Id */
             course_id: string;
             /** Enabled */
@@ -6177,12 +6420,22 @@ export interface components {
             last_scan_error: string | null;
             /** Last Scanned At */
             last_scanned_at: string | null;
+            /** Last Success At */
+            last_success_at: string | null;
             /** Options */
             options?: {
                 [key: string]: unknown;
             };
+            /** Provider */
+            provider: string;
             /** Scan Interval Sec */
             scan_interval_sec: number | null;
+            /** Secrets Configured */
+            secrets_configured?: {
+                [key: string]: boolean;
+            };
+            /** Status */
+            status: string;
             /** Url */
             url: string;
         };
@@ -7748,6 +8001,27 @@ export interface components {
             /** Plan Today */
             plan_today: components["schemas"]["PlanEntryOut"][];
         };
+        /** OAuthCompleteIn */
+        OAuthCompleteIn: {
+            /** Code */
+            code: string;
+            /** State */
+            state: string;
+        };
+        /** OAuthStartOut */
+        OAuthStartOut: {
+            /** Authorize Url */
+            authorize_url: string;
+            /** Redirect Uri */
+            redirect_uri: string;
+            /** State */
+            state: string;
+        };
+        /** OAuthStatusOut */
+        OAuthStatusOut: {
+            /** Status */
+            status: string;
+        };
         /** OnboardingStateOut */
         OnboardingStateOut: {
             /** Defaults Set */
@@ -8545,6 +8819,22 @@ export interface components {
             /** Path */
             path: string;
         };
+        /** RemoteBackupListOut */
+        RemoteBackupListOut: {
+            /** Backups */
+            backups: components["schemas"]["RemoteBackupOut"][];
+        };
+        /** RemoteBackupOut */
+        RemoteBackupOut: {
+            /** Created At */
+            created_at: string | null;
+            /** Name */
+            name: string;
+            /** Remote Id */
+            remote_id: string;
+            /** Size */
+            size: number | null;
+        };
         /** RemoteModelOut */
         RemoteModelOut: {
             /** Caps */
@@ -8836,6 +9126,29 @@ export interface components {
         SearchProvidersOut: {
             /** Providers */
             providers: components["schemas"]["SearchProviderOut"][];
+        };
+        /** SecretIn */
+        SecretIn: {
+            /** Slot */
+            slot: string;
+            /** Value */
+            value: string;
+        };
+        /** SecretSlotOut */
+        SecretSlotOut: {
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /** Required */
+            required: boolean;
+        };
+        /** SecretStatusOut */
+        SecretStatusOut: {
+            /** Secrets Configured */
+            secrets_configured: {
+                [key: string]: boolean;
+            };
         };
         /** SessionContextOut */
         SessionContextOut: {
@@ -9165,6 +9478,42 @@ export interface components {
          * @enum {string}
          */
         SourcePreset: "folder" | "vault";
+        /** SourceProviderCatalogOut */
+        SourceProviderCatalogOut: {
+            /** Providers */
+            providers: components["schemas"]["SourceProviderOut"][];
+            /** Secret Disclosure */
+            secret_disclosure: string;
+        };
+        /** SourceProviderOAuthOut */
+        SourceProviderOAuthOut: {
+            /** Client Id Env */
+            client_id_env: string;
+            /** Scopes */
+            scopes: string[];
+        };
+        /** SourceProviderOut */
+        SourceProviderOut: {
+            /** Auth Kind */
+            auth_kind: string;
+            /** Default Kind */
+            default_kind: string;
+            /** Fields */
+            fields: string[];
+            /** Id */
+            id: string;
+            /** Kinds */
+            kinds: string[];
+            /** Label */
+            label: string;
+            oauth?: components["schemas"]["SourceProviderOAuthOut"] | null;
+            /** Secret Slots */
+            secret_slots: components["schemas"]["SecretSlotOut"][];
+            /** Supports Backup */
+            supports_backup: boolean;
+            /** Url Required */
+            url_required: boolean;
+        };
         /** SourceSubdirOut */
         SourceSubdirOut: {
             /** Name */
@@ -14145,6 +14494,26 @@ export interface operations {
             };
         };
     };
+    provider_catalog_api_v1_external_sources_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceProviderCatalogOut"];
+                };
+            };
+        };
+    };
     delete_source_api_v1_external_sources__source_id__delete: {
         parameters: {
             query?: never;
@@ -14209,6 +14578,295 @@ export interface operations {
             };
         };
     };
+    accept_suggestion_api_v1_external_sources__source_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_backup_api_v1_external_sources__source_id__backup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupUploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_remote_backups_api_v1_external_sources__source_id__backups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteBackupListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_remote_backup_api_v1_external_sources__source_id__backups__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_remote_backup_api_v1_external_sources__source_id__backups__name__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_complete_api_v1_external_sources__source_id__oauth_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthCompleteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_connect_api_v1_external_sources__source_id__oauth_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_disconnect_api_v1_external_sources__source_id__oauth_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_start_api_v1_external_sources__source_id__oauth_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthStartOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     scan_source_api_v1_external_sources__source_id__scan_post: {
         parameters: {
             query?: never;
@@ -14229,6 +14887,73 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_secret_api_v1_external_sources__source_id__secret_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecretIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecretStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_secret_api_v1_external_sources__source_id__secret__slot__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+                slot: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecretStatusOut"];
                 };
             };
             /** @description Validation Error */

@@ -66,11 +66,18 @@ Three long-lived threads start with the app (`main.py` lifespan):
 - **`ScanScheduler`** — re-scans linked folders on
   `SA_SOURCE_SCAN_INTERVAL_SEC` (default 300 s) and enqueues `ingest` for new
   files.
-- **`ExternalSourceScheduler`** — polls enabled `external_sources` (RSS/Atom,
-  YouTube channel/playlist, site-filtered search) on per-source due times
-  (minimum 15 min). New items land as `suggested` suggestions — never materials,
-  never LLM calls. Errors isolate per source into `last_scan_error` and publish
-  on `externalsource:{id}`.
+- **`ExternalSourceScheduler`** — polls enabled `external_sources` on per-source
+  due times (minimum 15 min). Since plan 86 the same loop dispatches through
+  the provider seam: RSS/Atom, YouTube and site search keep their legs, while
+  WebDAV/Nextcloud, Google Drive, Dropbox, OneDrive, Zotero and AnkiConnect
+  reconcile through the `SourceAdapter` engine. New items land as `suggested`
+  suggestions — never materials, never LLM calls; provider failures are typed
+  and tracked as `consecutive_failures` (`degraded` then `failing`), isolated
+  per source into `last_scan_error` and published on `externalsource:{id}`.
+  Anki scans union-merge review events (unique by source + remote card +
+  reviewed time) and deterministically recompute the mapped cards' FSRS state;
+  RSS media-enclosure acceptance enqueues the existing `url_import`
+  `transcribe_audio` path.
 - **`BackupScheduler`** — writes a validated full archive shortly after startup
   and every `SA_BACKUP_INTERVAL_HOURS` (default 24), retaining 14 dailies + 8
   weeklies, with an optional `SA_BACKUP_SYNC_DIR` copy.

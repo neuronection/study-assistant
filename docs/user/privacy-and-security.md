@@ -33,7 +33,7 @@ If you want **zero** external traffic, run a local provider (Ollama, LM Studio,
 llama.cpp) and assign local models to every task. See
 [Local AI — fully offline setup](local-ai.md).
 
-## How API keys are protected
+## How API keys and connected accounts are protected
 
 - Keys are stored in your **operating system's keyring** (the same secure store
   your desktop uses for passwords) — never in the database, a config file or an
@@ -42,6 +42,24 @@ llama.cpp) and assign local models to every task. See
   value is used only for the outbound provider call.
 - If your keyring is unavailable, the app refuses to save the key rather than
   falling back to an insecure store.
+
+Connected sources follow the same rule. Token-auth sources (for example
+WebDAV/Nextcloud) store their app password in the keyring slot the source
+declares. OAuth sources (Google Drive, Dropbox, OneDrive) use a loopback
+authorization-code flow with PKCE: your browser opens the provider's consent
+page, the app listens once on `127.0.0.1` for the callback, and the access and
+refresh tokens are sealed (`enc::`) in the keyring through the same at-rest
+cipher as API keys. Disconnecting a source wipes its slots.
+
+The connect screen renders the source charter's secret-slot disclosure
+verbatim:
+
+> Secret values are stored only in your operating system's keyring. They never
+> enter the database, a config file, an environment block or a model prompt.
+
+OAuth has one honest limit: because the redirect is loopback-only, the browser
+and the app must run on the same machine. Providers that cannot meet that bar
+stay out-of-process connector recipes rather than in-app accounts.
 
 ## The AI trust boundary
 

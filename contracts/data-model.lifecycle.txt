@@ -43,6 +43,7 @@ error_patterns :: record
 exercise_sessions :: record
 exercise_steps :: record
 exercises :: record
+external_review_events :: operational
 external_sources :: record
 extractions :: record
 fsrs_states :: record

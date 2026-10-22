@@ -441,6 +441,18 @@ class SuggestionMeta(TypedDict, total=False):
     year: int
     container: str
     citation_kind: str
+    source_id: str
+    remote_id: str
+    remote_name: str
+    remote_state: str
+    mime: str | None
+    size: int
+    attachment_url: str
+    discovery_kind: str
+    material_kind: str
+    enclosure_url: str
+    enclosure_type: str | None
+    enclosure_oversize: bool
 
 
 class DetectionSpec(TypedDict, total=False):

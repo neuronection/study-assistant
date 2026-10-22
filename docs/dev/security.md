@@ -33,6 +33,13 @@ page's sections below in sync with it when security behavior changes.
   verify under the key ring reads as `None` — never a guess.
 - Secrets are masked in every API response (for example `••••1234`); the full
   value never leaves the keyring except on the outbound provider call.
+- **Connected-source credentials use the same store** (plan 86, ADR-215):
+  token providers declare keyring slots (`source:<id>:<slot>`); OAuth
+  providers run an authorization-code + PKCE flow whose redirect is
+  loopback-only (`http://127.0.0.1:<port>/oauth/callback`) and seal the token
+  response in `app.core.oauth` via `core/secrets.py`. No client secret, refresh
+  token or provider password is ever persisted outside the keyring, and the
+  provider catalog declares only scopes and the client-id env name.
 - **Token material is separate**: three independent per-instance keys
   (`nx_auth.keys.KeyRing`) — `SA_SESSION_KEY` (session JWTs), `SA_REFRESH_KEY`
   (refresh JWTs), `SA_DATA_KEY` (Fernet at-rest sealing) — env-first, else a

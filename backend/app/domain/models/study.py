@@ -268,6 +268,7 @@ class Exercise(Base):
     title: Mapped[str] = mapped_column(String(300))
     kind: Mapped[str] = mapped_column(String(30), default="multi_step")
     deck_ref: Mapped[str | None] = mapped_column(String(200))
+    external_uid: Mapped[str | None] = mapped_column(String(200), index=True)
     context: Mapped[ExerciseContextList | None] = mapped_column(JSON)
     difficulty: Mapped[float | None] = mapped_column(Float)
     created_from: Mapped[ExerciseCreatedFrom | None] = mapped_column(JSON)

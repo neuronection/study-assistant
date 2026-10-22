@@ -50,6 +50,7 @@ def create_card_exercise(
     source: str,
     source_ref: str | None = None,
     deck_ref: str | None = None,
+    external_uid: str | None = None,
 ) -> Exercise:
     if not is_card_kind(kind):
         raise ValueError(f"unknown card kind: {kind}")
@@ -60,6 +61,7 @@ def create_card_exercise(
         title=front_title(front),
         kind=kind,
         deck_ref=deck_ref,
+        external_uid=external_uid,
         created_from={"source": source, "source_ref": source_ref},
     )
     exercise.steps = [

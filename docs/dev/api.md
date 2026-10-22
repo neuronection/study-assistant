@@ -43,6 +43,22 @@ background work.
 DTOs are Pydantic models; shared schemas live in `api/schemas.py` and
 `api/courses_schemas.py`, area-specific shapes in their router module.
 
+### Connected-source surface (plan 86)
+
+`/external-sources` keeps the original CRUD and adds the provider seam:
+`GET /external-sources/providers` returns the catalog (labels, kinds,
+auth kind, fields, secret slots, the verbatim secret-slot disclosure);
+`PUT|DELETE /{id}/secret` set/clear one keyring slot; OAuth providers use
+`POST /{id}/oauth/start` (authorize URL + state), `POST /{id}/oauth/complete`
+(code + state), `POST /{id}/oauth/connect` (one-shot loopback flow) and
+`POST /{id}/oauth/disconnect`; `POST /{id}/accept` imports a suggestion
+through the adapter fetch; `POST /{id}/backup`, `GET /{id}/backups`,
+`GET /{id}/backups/{name}` and `POST /{id}/backups/{name}/restore` are the
+backup-destination verbs. Scan responses carry provider-specific integer
+stats (`new`, `updated`, `missing`, plus Anki's `merged`/`recomputed`/
+`unmatched`); provider failures are typed `ExtensionError`s projected to
+422 (configuration) or 502 (remote/network), never a 500.
+
 ## Profile scoping
 
 Every domain call is bound to a **profile owned by the session user**

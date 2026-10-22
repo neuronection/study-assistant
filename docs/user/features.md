@@ -277,6 +277,22 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   propose **attach_link** {url, title, node}: approving creates a real link
   reference at the chosen topic (deduped on the normalized URL), previewed on
   the proposal card — approval is the only path from chat to material
+- ✅ **Connected sources: one adapter family (plan 86, ADR-214/215/216,
+  2026-10-22)**: every source provider rides one reconciliation seam. Beside
+  RSS/Atom, YouTube and site searches, the Web sources card now connects
+  **WebDAV/Nextcloud** (app password, PROPFIND/ETag change detection, and a
+  backup destination with upload/restore), **Google Drive** (OAuth2 with a
+  loopback/PKCE browser flow, changes-API cursor, Google Docs/Slides/Sheets
+  exported through the existing converter pipeline), **Dropbox** and
+  **OneDrive** (same OAuth seam), a local **Zotero** collection (citation-
+  complete link suggestions plus attachments) and local **Anki** decks
+  (union-merged review logs recomputed deterministically into FSRS due
+  states). Providers are catalog data: adding one is a catalog row plus an
+  adapter class, never a migration. Sources report the family status
+  vocabulary (`ok | degraded | failing | stale`, with needs-setup/reconnect
+  conditions), and every item still lands as a suggestion — never an
+  automatic import. RSS media enclosures become audio/video suggestions that
+  accept through the existing transcribe path.
 - ✅ **External web sources (plan 73-E, ADR-167/170, 2026-09-16)**: standing
   web sources that surface new material on their own — **RSS/Atom feeds**
   (feedparser over httpx with etag/last-modified resume), **YouTube channels
@@ -290,8 +306,8 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   last error), overlap guard so slow scans never stack, and untrusted
   feed/yt-dlp metadata is HTML-stripped and http(s)-validated before
   storage. Settings → Tools → Web sources hosts the
-  **Web sources** card with add/edit dialog (kind, URL, label, course,
-  interval, per-kind options); sources are course-owned config that rides
+  **Web sources** card with add/edit dialog (provider, URL, label, course,
+  interval, per-provider options); sources are course-owned config that rides
   `sa-course/v2` bundles with fresh cursors on import
 - ✅ **Suggestions: keep track + Discover UI (plan 73-D, 2026-09-16)**: found
   material no longer vanishes. Every discovery result row is annotated with its

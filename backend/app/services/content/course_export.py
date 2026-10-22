@@ -697,6 +697,8 @@ def _export_external_sources(session: Session, course_id: str) -> list[dict[str,
         out.append(
             {
                 "kind": source.kind,
+                "provider": source.provider,
+                "auth_kind": source.auth_kind,
                 "url": source.url,
                 "label": source.label,
                 "options": source.options,

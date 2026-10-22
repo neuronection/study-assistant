@@ -9,6 +9,22 @@ only in the post-mortems below — read them before touching those paths.
 
 ## Round as-builts (newest first)
 
+**Plan 86 — modular source providers & connected accounts (2026-10-22, COMPLETE):**
+A — one SourceAdapter family: `providers.json` catalog data + registration
+validation, adapters (WebDAV/Nextcloud, Google Drive, Dropbox, OneDrive,
+Zotero, AnkiConnect) and a shared reconcile/suggestion engine, with migration
+`0007_source_providers` (open provider, auth CHECK twin, review-event table)
+(ADR-214). B — OAuth2 loopback/PKCE state machine with `enc::`-sealed tokens
+and adapter-side refresh (ADR-215, superseding plan 73's OAuth non-goal for
+loopback-capable providers). C — PROPFIND/ETag reconciliation, Drive changes
+cursor + Google-native export, and the WebDAV backup destination. D — thin
+Dropbox/OneDrive adapters. E — Zotero citation suggestions and AnkiConnect
+union-merged reviews → deterministic FSRS recompute (ADR-216). F — RSS media
+enclosures into the existing transcribe path. Residuals (client registration,
+live Dropbox/OneDrive verification, Anki mapping cardinality, Sheets export,
+loopback bar for remote deployments) sit in the plans deferred register
+(rows 21–26).
+
 **Plan 82 — no-legacy code & typed contracts (2026-10-21, COMPLETE):**
 A — library promotion (ADR-202): the mermaid fork is deleted and the study
 `ProposalCard` swap is the one residual waiting on the library release; the

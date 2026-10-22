@@ -1,3 +1,4 @@
+import mimetypes
 import tempfile
 from pathlib import Path
 from typing import Any, cast
@@ -102,32 +103,43 @@ def _transcribe_audio(
     if source_url is None:
         raise JobError("material has no source URL")
     report(30, "download")
-    from app.parsers.youtube import download_audio
+    from app.parsers.youtube import download_audio, is_youtube_url
 
     with tempfile.TemporaryDirectory(prefix="sa-audio-") as target_dir:
-        try:
-            path, _title = download_audio(source_url, target_dir)
-        except Exception as error:
-            raise JobError(
-                f"audio download failed for {source_url} ({error}). "
-                "YouTube may have changed; try updating yt-dlp."
-            ) from error
+        if is_youtube_url(source_url):
+            try:
+                path, _title = download_audio(source_url, target_dir)
+            except Exception as error:
+                raise JobError(
+                    f"audio download failed for {source_url} ({error}). "
+                    "YouTube may have changed; try updating yt-dlp."
+                ) from error
+            data = Path(path).read_bytes()
+            suffix = Path(path).suffix.lower() or ".m4a"
+            mime = None
+        else:
+            try:
+                data, mime = download_media(source_url)
+            except Exception as error:
+                raise JobError(f"media download failed for {source_url} ({error})") from error
+            suffix = mimetypes.guess_extension(mime.split(";")[0].strip()) or ".m4a"
         if is_cancel_requested(job.id):
             raise JobCancelled()
         report(80, "transcribe-queue")
-        data = Path(path).read_bytes()
-        suffix = Path(path).suffix.lower() or ".m4a"
-        mime = {
-            ".mp3": "audio/mpeg",
-            ".m4a": "audio/mp4",
-            ".wav": "audio/wav",
-            ".ogg": "audio/ogg",
-            ".opus": "audio/opus",
-            ".webm": "video/webm",
-        }.get(suffix, "audio/mp4")
+        if mime is None:
+            mime = {
+                ".mp3": "audio/mpeg",
+                ".m4a": "audio/mp4",
+                ".wav": "audio/wav",
+                ".ogg": "audio/ogg",
+                ".opus": "audio/opus",
+                ".webm": "video/webm",
+                ".mp4": "video/mp4",
+                ".mov": "video/quicktime",
+            }.get(suffix, "audio/mp4")
         stored = blobs.put(data, mime=mime, session=session)
         material.blob_sha = stored.sha256
-        material.kind = "audio"
+        material.kind = "video" if mime.startswith("video/") else "audio"
         material.mime = mime
         material.status = "pending"
         session.commit()
@@ -138,3 +150,14 @@ def _transcribe_audio(
         )
         session.commit()
         report(100, "done")
+
+
+def download_media(url: str) -> tuple[bytes, str]:
+    import httpx
+
+    with httpx.Client(timeout=120.0, follow_redirects=True) as client:
+        response = client.get(url)
+    if response.status_code >= 400:
+        raise JobError(f"media download returned {response.status_code}")
+    mime = response.headers.get("Content-Type", "application/octet-stream")
+    return response.content, mime

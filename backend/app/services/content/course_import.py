@@ -632,10 +632,12 @@ def import_course_bundle(
 
     for entry in bundle.external_sources:
         try:
+            provider_raw = str(entry.get("provider") or "").strip() or None
             kind, url, options = validate_external_source(
                 str(entry.get("kind") or ""),
                 str(entry.get("url") or ""),
                 entry.get("options"),
+                provider_raw,
             )
         except ExtensionError:
             continue
@@ -643,6 +645,7 @@ def import_course_bundle(
             ExternalSource(
                 profile_id=profile_id,
                 course_id=course.id,
+                provider=provider_raw or kind,
                 kind=kind,
                 url=url,
                 label=entry.get("label"),

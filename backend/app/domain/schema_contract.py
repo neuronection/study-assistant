@@ -16,6 +16,7 @@ from sqlalchemy import CheckConstraint
 
 from ..core.vocab import (
     AttemptMode,
+    AuthKind,
     ChatProposalStatus,
     CitationKind,
     ConceptRelation,
@@ -60,6 +61,7 @@ CLOSED_SETS: dict[str, type[StrVocab]] = {
     "concept_links.relation": ConceptRelation,
     "courses.origin": CourseOrigin,
     "exercises.kind": ExerciseKind,
+    "external_sources.auth_kind": AuthKind,
     "external_sources.kind": ExternalSourceKind,
     "item_stats.flag": ItemFlag,
     "jobs.status": JobStatus,
@@ -193,6 +195,7 @@ PROFILE_SCOPE: dict[str, str] = {
     "exercise_steps": "exercise_id → exercises.profile_id",
     "exercises": "profile_id",
     "external_sources": "profile_id",
+    "external_review_events": "source_id → external_sources.profile_id",
     "extractions": "material_id → materials.profile_id",
     "fsrs_states": "card_id → exercises.profile_id",
     "instance_settings": IDENTITY,

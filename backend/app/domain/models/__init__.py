@@ -32,6 +32,9 @@ from .content import (
     ConceptLink as ConceptLink,
 )
 from .content import (
+    ExternalReviewEvent as ExternalReviewEvent,
+)
+from .content import (
     ExternalSource as ExternalSource,
 )
 from .content import (

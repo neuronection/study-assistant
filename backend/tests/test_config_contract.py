@@ -78,6 +78,8 @@ READ_ELSEWHERE = {
     "XDG_DATA_HOME": ("app/core/config.py",),
     "HOME": ("app/core/config.py",),
     "APPDATA": ("app/core/config.py",),
+    "SA_GOOGLE_CLIENT_ID": ("app/extensions/builtin/external_sources/providers.json",),
+    "SA_GOOGLE_CLIENT_SECRET": ("app/extensions/builtin/external_sources/providers.json",),
 }
 
 # (b) env names set by tests specifically to prove they are IGNORED —

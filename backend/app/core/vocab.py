@@ -157,6 +157,16 @@ class ExternalSourceKind(StrVocab):
     YOUTUBE_CHANNEL = "youtube_channel"
     YOUTUBE_PLAYLIST = "youtube_playlist"
     SITE_SEARCH = "site_search"
+    WEBDAV_FOLDER = "webdav_folder"
+    CLOUD_FOLDER = "cloud_folder"
+    ZOTERO_COLLECTION = "zotero_collection"
+    ANKI_DECK = "anki_deck"
+
+
+class AuthKind(StrVocab):
+    TOKEN = "token"
+    OAUTH2 = "oauth2"
+    NONE = "none"
 
 
 class SourcePreset(StrVocab):

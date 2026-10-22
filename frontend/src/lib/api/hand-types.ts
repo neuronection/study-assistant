@@ -130,6 +130,10 @@ export type ExternalSourceKind =
   | 'youtube_channel'
   | 'youtube_playlist'
   | 'site_search'
+  | 'webdav_folder'
+  | 'cloud_folder'
+  | 'zotero_collection'
+  | 'anki_deck'
 
 /** A configured MCP server's tool row (list endpoint returns the raw row). */
 export interface McpServerToolInfo {

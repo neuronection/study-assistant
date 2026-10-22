@@ -1,6 +1,42 @@
 {
   "components": {
     "schemas": {
+      "AcceptIn": {
+        "properties": {
+          "suggestion_id": {
+            "title": "Suggestion Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestion_id"
+        ],
+        "title": "AcceptIn",
+        "type": "object"
+      },
+      "AcceptOut": {
+        "properties": {
+          "deduped": {
+            "title": "Deduped",
+            "type": "boolean"
+          },
+          "job_kind": {
+            "title": "Job Kind",
+            "type": "string"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "deduped",
+          "job_kind"
+        ],
+        "title": "AcceptOut",
+        "type": "object"
+      },
       "AcceptedTypesOut": {
         "properties": {
           "accept": {
@@ -692,6 +728,29 @@
           "last_recovery"
         ],
         "title": "BackupStatusOut",
+        "type": "object"
+      },
+      "BackupUploadOut": {
+        "properties": {
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "size",
+          "location"
+        ],
+        "title": "BackupUploadOut",
         "type": "object"
       },
       "BibliographyImportOut": {
@@ -3928,8 +3987,8 @@
             "type": "boolean"
           },
           "kind": {
+            "default": "",
             "maxLength": 30,
-            "minLength": 1,
             "title": "Kind",
             "type": "string"
           },
@@ -3957,6 +4016,18 @@
             ],
             "title": "Options"
           },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
           "scan_interval_sec": {
             "anyOf": [
               {
@@ -3970,22 +4041,46 @@
             "title": "Scan Interval Sec"
           },
           "url": {
+            "default": "",
             "maxLength": 2048,
-            "minLength": 1,
             "title": "Url",
             "type": "string"
           }
         },
         "required": [
-          "course_id",
-          "kind",
-          "url"
+          "course_id"
         ],
         "title": "ExternalSourceIn",
         "type": "object"
       },
       "ExternalSourceOut": {
         "properties": {
+          "account_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Ref"
+          },
+          "auth_kind": {
+            "title": "Auth Kind",
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conditions",
+            "type": "array"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
           "course_id": {
             "title": "Course Id",
             "type": "string"
@@ -4035,10 +4130,25 @@
             ],
             "title": "Last Scanned At"
           },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
           "options": {
             "additionalProperties": true,
             "title": "Options",
             "type": "object"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
           },
           "scan_interval_sec": {
             "anyOf": [
@@ -4051,6 +4161,17 @@
             ],
             "title": "Scan Interval Sec"
           },
+          "secrets_configured": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Secrets Configured",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -4059,13 +4180,19 @@
         "required": [
           "id",
           "course_id",
+          "provider",
           "kind",
+          "auth_kind",
+          "account_ref",
           "url",
           "label",
           "enabled",
           "scan_interval_sec",
           "last_scan_error",
-          "last_scanned_at"
+          "last_scanned_at",
+          "status",
+          "last_success_at",
+          "consecutive_failures"
         ],
         "title": "ExternalSourceOut",
         "type": "object"
@@ -9014,6 +9141,64 @@
         "title": "NotificationsOut",
         "type": "object"
       },
+      "OAuthCompleteIn": {
+        "properties": {
+          "code": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "state": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state"
+        ],
+        "title": "OAuthCompleteIn",
+        "type": "object"
+      },
+      "OAuthStartOut": {
+        "properties": {
+          "authorize_url": {
+            "title": "Authorize Url",
+            "type": "string"
+          },
+          "redirect_uri": {
+            "title": "Redirect Uri",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorize_url",
+          "redirect_uri",
+          "state"
+        ],
+        "title": "OAuthStartOut",
+        "type": "object"
+      },
+      "OAuthStatusOut": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "OAuthStatusOut",
+        "type": "object"
+      },
       "OnboardingStateOut": {
         "properties": {
           "defaults_set": {
@@ -11624,6 +11809,64 @@
         "title": "RelinkIn",
         "type": "object"
       },
+      "RemoteBackupListOut": {
+        "properties": {
+          "backups": {
+            "items": {
+              "$ref": "#/components/schemas/RemoteBackupOut"
+            },
+            "title": "Backups",
+            "type": "array"
+          }
+        },
+        "required": [
+          "backups"
+        ],
+        "title": "RemoteBackupListOut",
+        "type": "object"
+      },
+      "RemoteBackupOut": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "remote_id": {
+            "title": "Remote Id",
+            "type": "string"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          }
+        },
+        "required": [
+          "name",
+          "size",
+          "created_at",
+          "remote_id"
+        ],
+        "title": "RemoteBackupOut",
+        "type": "object"
+      },
       "RemoteModelOut": {
         "properties": {
           "caps": {
@@ -12483,6 +12726,67 @@
           "providers"
         ],
         "title": "SearchProvidersOut",
+        "type": "object"
+      },
+      "SecretIn": {
+        "properties": {
+          "slot": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Slot",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot",
+          "value"
+        ],
+        "title": "SecretIn",
+        "type": "object"
+      },
+      "SecretSlotOut": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "required"
+        ],
+        "title": "SecretSlotOut",
+        "type": "object"
+      },
+      "SecretStatusOut": {
+        "properties": {
+          "secrets_configured": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Secrets Configured",
+            "type": "object"
+          }
+        },
+        "required": [
+          "secrets_configured"
+        ],
+        "title": "SecretStatusOut",
         "type": "object"
       },
       "SessionContextOut": {
@@ -13454,6 +13758,120 @@
         ],
         "title": "SourcePreset",
         "type": "string"
+      },
+      "SourceProviderCatalogOut": {
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/SourceProviderOut"
+            },
+            "title": "Providers",
+            "type": "array"
+          },
+          "secret_disclosure": {
+            "title": "Secret Disclosure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "providers",
+          "secret_disclosure"
+        ],
+        "title": "SourceProviderCatalogOut",
+        "type": "object"
+      },
+      "SourceProviderOAuthOut": {
+        "properties": {
+          "client_id_env": {
+            "title": "Client Id Env",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scopes",
+          "client_id_env"
+        ],
+        "title": "SourceProviderOAuthOut",
+        "type": "object"
+      },
+      "SourceProviderOut": {
+        "properties": {
+          "auth_kind": {
+            "title": "Auth Kind",
+            "type": "string"
+          },
+          "default_kind": {
+            "title": "Default Kind",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "oauth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceProviderOAuthOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secret_slots": {
+            "items": {
+              "$ref": "#/components/schemas/SecretSlotOut"
+            },
+            "title": "Secret Slots",
+            "type": "array"
+          },
+          "supports_backup": {
+            "title": "Supports Backup",
+            "type": "boolean"
+          },
+          "url_required": {
+            "title": "Url Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kinds",
+          "default_kind",
+          "auth_kind",
+          "url_required",
+          "fields",
+          "supports_backup",
+          "secret_slots"
+        ],
+        "title": "SourceProviderOut",
+        "type": "object"
       },
       "SourceSubdirOut": {
         "properties": {
@@ -22279,6 +22697,27 @@
         ]
       }
     },
+    "/api/v1/external-sources/providers": {
+      "get": {
+        "operationId": "provider_catalog_api_v1_external_sources_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceProviderCatalogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Provider Catalog",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
     "/api/v1/external-sources/{source_id}": {
       "delete": {
         "operationId": "delete_source_api_v1_external_sources__source_id__delete",
@@ -22364,6 +22803,420 @@
         ]
       }
     },
+    "/api/v1/external-sources/{source_id}/accept": {
+      "post": {
+        "operationId": "accept_suggestion_api_v1_external_sources__source_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Suggestion",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/backup": {
+      "post": {
+        "operationId": "upload_backup_api_v1_external_sources__source_id__backup_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupUploadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Backup",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/backups": {
+      "get": {
+        "operationId": "list_remote_backups_api_v1_external_sources__source_id__backups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteBackupListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Remote Backups",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/backups/{name}": {
+      "get": {
+        "operationId": "download_remote_backup_api_v1_external_sources__source_id__backups__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Remote Backup",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/backups/{name}/restore": {
+      "post": {
+        "operationId": "restore_remote_backup_api_v1_external_sources__source_id__backups__name__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Remote Backup",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/oauth/complete": {
+      "post": {
+        "operationId": "oauth_complete_api_v1_external_sources__source_id__oauth_complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthCompleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Complete",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/oauth/connect": {
+      "post": {
+        "operationId": "oauth_connect_api_v1_external_sources__source_id__oauth_connect_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Connect",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/oauth/disconnect": {
+      "post": {
+        "operationId": "oauth_disconnect_api_v1_external_sources__source_id__oauth_disconnect_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Disconnect",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/oauth/start": {
+      "post": {
+        "operationId": "oauth_start_api_v1_external_sources__source_id__oauth_start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStartOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Start",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
     "/api/v1/external-sources/{source_id}/scan": {
       "post": {
         "operationId": "scan_source_api_v1_external_sources__source_id__scan_post",
@@ -22405,6 +23258,109 @@
           }
         },
         "summary": "Scan Source",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/secret": {
+      "put": {
+        "operationId": "set_secret_api_v1_external_sources__source_id__secret_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Secret",
+        "tags": [
+          "external-sources"
+        ]
+      }
+    },
+    "/api/v1/external-sources/{source_id}/secret/{slot}": {
+      "delete": {
+        "operationId": "delete_secret_api_v1_external_sources__source_id__secret__slot__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "title": "Slot",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Secret",
         "tags": [
           "external-sources"
         ]
