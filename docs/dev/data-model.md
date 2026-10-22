@@ -166,6 +166,13 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   user-written summary of the file, set at text-file creation or via the
   material PATCH (whitespace-only normalizes to NULL); shown on the material
   page's Description tab
+- **materials** — citation metadata (0004, plan 85 B, ADR-212): `citation_title`
+  (500), `citation_authors` JSON (`AuthorList` — ordered `{name, affiliation?}`
+  rows, keep-open), `citation_year`, `citation_doi` (255), `citation_container`
+  (300) and `citation_kind` (`CitationKind` CHECK twin, nullable — ordinary
+  materials have no citation). DOI-first dedupe in the import path; BibTeX
+  export serializes the same columns and `citation_text` renders one
+  deterministic style (`Author (Year) — Title`)
 - **extractions**: id, material_id, version (append-only; latest = current),
   extractor (pymupdf | ocr | native | manual), model, blocks JSON
   (+ `blocks_schema_version`, ADR-200), markdown, confidence, tokens/cost,
@@ -407,6 +414,16 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0004_citation_metadata (plan 85 B, ADR-212)**: `materials` gains the
+  nullable citation columns (`citation_title`, `citation_authors` JSON,
+  `citation_year`, `citation_doi`, `citation_container`, `citation_kind`) and
+  the `CitationKind` CHECK twin (`citation_kind IS NULL OR …`). SQLite rebuilds
+  the table through `batch_alter_table(recreate="always")`; downgrade drops the
+  CHECK and the six columns, restoring the previous shape.
+- **0003_discovery_kinds (plan 85 A, ADR-211)**: `material_suggestions.kind`
+  widens to the scholarly `DiscoveryKind` members (`paper`, `dataset`,
+  `reference`). The CHECK swaps through a batch rebuild; downgrade restores the
+  four-member vocabulary and fails loudly if a scholarly-kind row still exists.
 - **0002_vocab_sweep (plan 82 C, ADR-204)**: `questions.type` and
   `exercises.kind` gain their CHECK twins now that the vocabularies are
   StrEnums (`QuestionType`, `ExerciseKind`; `exercises.kind` also carries the

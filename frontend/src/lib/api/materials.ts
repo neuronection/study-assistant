@@ -619,3 +619,35 @@ export async function diffExtractionVersions(
   )
   return json<ExtractionDiffInfo>(response)
 }
+
+export async function importBibliography(
+  courseId: string,
+  file: File,
+  nodeId?: string | null
+): Promise<Schemas['BibliographyImportOut']> {
+  const form = new FormData()
+  form.append('file', file)
+  const params = new URLSearchParams({ course_id: courseId })
+  if (nodeId) params.set('node_id', nodeId)
+  const response = await apiFetch(`/api/v1/materials/import-bibliography?${params.toString()}`, {
+    method: 'POST',
+    body: form,
+  })
+  return json<Schemas['BibliographyImportOut']>(response)
+}
+
+export async function downloadBibliography(materialIds: string[]): Promise<void> {
+  const params = new URLSearchParams()
+  for (const id of materialIds) params.append('ids', id)
+  const response = await apiFetch(`/api/v1/materials/bibliography.bib?${params.toString()}`)
+  if (!response.ok) {
+    throw new Error(`export failed: ${response.status}`)
+  }
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'citations.bib'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}

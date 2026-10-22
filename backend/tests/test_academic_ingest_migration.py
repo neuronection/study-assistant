@@ -79,5 +79,27 @@ def test_chain_round_trips_from_base(tmp_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         assert (
             connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            == "0003_discovery_kinds"
+            == "0004_citation_metadata"
         )
+
+
+def _insert_material(db_path: Path, citation_kind: str | None) -> None:
+    stamp = datetime(2026, 10, 22, 12, 0, 0).isoformat(sep=" ")
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO materials "
+            "(id, profile_id, course_id, kind, title, filename, status, starred, "
+            "created_at, citation_kind) "
+            "VALUES (?, ?, ?, 'link', 'Paper', 'paper', 'ready', 0, ?, ?)",
+            (uuid.uuid4().hex, uuid.uuid4().hex, uuid.uuid4().hex, stamp, citation_kind),
+        )
+
+
+def test_citation_kind_check_accepts_members_and_null(tmp_path: Path) -> None:
+    db_path = tmp_path / "citations.db"
+    command.upgrade(_cfg(db_path), "head")
+    _insert_material(db_path, None)
+    _insert_material(db_path, "article")
+    _insert_material(db_path, "dataset")
+    with pytest.raises(sqlite3.IntegrityError):
+        _insert_material(db_path, "lecture")

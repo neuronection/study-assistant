@@ -1,4 +1,7 @@
 from ...core.vocab import (
+    CitationKind as CitationKind,
+)
+from ...core.vocab import (
     ConceptRelation as ConceptRelation,
 )
 from ...core.vocab import (
@@ -26,6 +29,7 @@ from ..documents import (
     validate_document as validate_document,
 )
 from ..payloads import (
+    AuthorList,
     BlockList,
     ExternalSourceCursorDocument,
     ExternalSourceOptions,
@@ -302,6 +306,7 @@ class Material(Base):
         ),
         vocab_check("kind", MaterialKind),
         vocab_check("status", MaterialStatus),
+        vocab_check("citation_kind", CitationKind, nullable=True),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
@@ -327,6 +332,12 @@ class Material(Base):
     phash: Mapped[str | None] = mapped_column(String(24))
     provenance: Mapped[MaterialProvenance | None] = mapped_column(JSON)
     tags: Mapped[StringList | None] = mapped_column(JSON)
+    citation_title: Mapped[str | None] = mapped_column(String(500))
+    citation_authors: Mapped[AuthorList | None] = mapped_column(JSON)
+    citation_year: Mapped[int | None] = mapped_column(Integer)
+    citation_doi: Mapped[str | None] = mapped_column(String(255))
+    citation_container: Mapped[str | None] = mapped_column(String(300))
+    citation_kind: Mapped[str | None] = mapped_column(String(30))
     starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     source_url: Mapped[str | None] = mapped_column(String(2048))

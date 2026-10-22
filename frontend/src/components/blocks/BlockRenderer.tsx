@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { EntityMention } from '@/features/ai/EntityMention'
 import type { MentionRef } from '@/lib/api'
 import { CopyButton } from '@/components/ui/copy-button'
+import { CitationChip } from './CitationChip'
 import { normalizeMathFences } from '@/components/editor/markdownFidelity'
 import { MermaidDiagram } from '@/components/ui/chat-markdown'
 import { PlotlyChart } from './PlotlyChart'
@@ -44,6 +45,11 @@ export type DrawingResolver = (id: string) => DrawingMeta | undefined
 
 
 const MENTION_TOKEN_RE = /\[(M|N|C|T|Q|E)([0-9a-zA-Z-]+)\]/g
+const CITE_TOKEN_RE = /\[\[cite:([0-9a-zA-Z-]+)\]\]/g
+
+export function citationsToMarkdownLinks(md: string): string {
+  return md.replace(CITE_TOKEN_RE, (_token, id: string) => `[cite](sa-cite:${id})`)
+}
 
 export function mentionsToMarkdownLinks(md: string, mentions: MentionRef[]): string {
   const known = new Map(mentions.map((mention) => [mention.ref, mention]))
@@ -72,10 +78,14 @@ function MentionLink({
 }
 
 export function mentionUrlTransform(url: string) {
-  if (url.startsWith('mention:')) {
+  if (url.startsWith('mention:') || url.startsWith('sa-cite:')) {
     return url
   }
   return defaultUrlTransform(url)
+}
+
+function CitationLink({ href }: { href: string }) {
+  return <CitationChip materialId={href.slice('sa-cite:'.length)} />
 }
 
 export function mentionComponents(mentions: MentionRef[]): Components {
@@ -135,17 +145,20 @@ function FenceAwarePre({ children }: { children?: ReactNode }) {
 function TextBlockView({ block }: { block: TextBlock }) {
   const mentions = block.mentions ?? []
   const markdown = normalizeMathFences(
-    mentions.length ? mentionsToMarkdownLinks(block.md, mentions) : block.md
+    citationsToMarkdownLinks(
+      mentions.length ? mentionsToMarkdownLinks(block.md, mentions) : block.md
+    )
   )
   const components: Components = {
     pre: ({ children }) => <FenceAwarePre>{children}</FenceAwarePre>,
-  }
-  if (mentions.length) {
-    components.a = ({ href, children }) => (
-      <MentionLink href={href} mentions={mentions}>
-        {children}
-      </MentionLink>
-    )
+    a: ({ href, children }) =>
+      href?.startsWith('sa-cite:') ? (
+        <CitationLink href={href} />
+      ) : (
+        <MentionLink href={href} mentions={mentions}>
+          {children}
+        </MentionLink>
+      ),
   }
   return (
     <div className="text-sm leading-relaxed">

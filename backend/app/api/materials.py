@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..core.profile_context import active_user_id
 from ..core.vocab import (
+    CitationKind,
     DeriveOutcome,
     ExtractionMode,
     MaterialKind,
@@ -32,6 +33,13 @@ from ..domain.models import (
 from ..domain.payloads import StrokeList
 from ..jobs.payloads import UrlImportPayload
 from ..jobs.runner import JobRunner
+from ..services.content.bibliography import BibliographyError
+from ..services.content.citations import (
+    CitationError,
+    citation_text,
+    export_bibtex,
+    import_bibliography,
+)
 from ..services.content.diffs import unified_text_diff
 from ..services.content.drawings import (
     apply_drawing_view,
@@ -52,6 +60,7 @@ from ..services.platform.profiles import ensure_default_profile
 from .courses_schemas import ViaFolderOut
 from .deps import content_disposition, get_session
 from .schemas import (
+    CitationAuthorOut,
     DrawingIn,
     DrawingOut,
     ExtractionEdit,
@@ -155,6 +164,20 @@ def _to_out(material: Material, has_extraction: bool = False, link_count: int = 
         tags=list(material.tags or []),
         starred=material.starred,
         link_count=link_count,
+        citation_title=material.citation_title,
+        citation_authors=[
+            CitationAuthorOut(
+                name=str(entry.get("name", "")),
+                affiliation=entry.get("affiliation"),
+            )
+            for entry in material.citation_authors or []
+        ]
+        or None,
+        citation_year=material.citation_year,
+        citation_doi=material.citation_doi,
+        citation_container=material.citation_container,
+        citation_kind=CitationKind(material.citation_kind) if material.citation_kind else None,
+        citation_text=citation_text(material),
     )
 
 
@@ -912,6 +935,82 @@ def create_text_file(
         job_id = service.queue_ingest(material, request.app.state.jobs)
     session.commit()
     return MaterialUploadOut(material=_to_out(material), job_id=job_id, deduped=deduped)
+
+
+class BibliographyImportOut(BaseModel):
+    created: int
+    deduped: int
+    skipped: list[str] = Field(default_factory=list)
+    materials: list[MaterialOut] = Field(default_factory=list)
+
+
+@router.post("/import-bibliography", response_model=BibliographyImportOut)
+async def import_bibliography_file(
+    request: Request,
+    file: UploadFile,
+    course_id: str,
+    node_id: str | None = None,
+    session: Session = Depends(get_session),
+) -> BibliographyImportOut:
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="bibliography file is empty")
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="bibliography exceeds the 5 MB limit")
+    service = _service(request, session)
+    profile = ensure_default_profile(session)
+    try:
+        report = import_bibliography(
+            session,
+            service,
+            profile_id=profile.id,
+            course_id=course_id,
+            filename=file.filename or "bibliography.bib",
+            data=data,
+            node_id=node_id,
+        )
+    except (BibliographyError, CitationError) as error:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    session.commit()
+    rows = [
+        session.get(Material, material_id) for material_id in dict.fromkeys(report.material_ids)
+    ]
+    return BibliographyImportOut(
+        created=report.created,
+        deduped=report.deduped,
+        skipped=report.skipped,
+        materials=[_to_out(row) for row in rows if row is not None],
+    )
+
+
+@router.get("/bibliography.bib")
+def export_bibliography(
+    ids: list[str] | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> Response:
+    ids = ids or []
+    if not ids:
+        raise HTTPException(status_code=422, detail="select at least one material")
+    if len(ids) > 500:
+        raise HTTPException(status_code=422, detail="at most 500 materials per export")
+    profile = ensure_default_profile(session)
+    rows = list(
+        session.scalars(
+            select(Material).where(
+                Material.profile_id == profile.id,
+                Material.id.in_(ids),
+            )
+        )
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="no matching materials")
+    text = export_bibtex(rows)
+    return Response(
+        content=text,
+        media_type="application/x-bibtex",
+        headers={"Content-Disposition": 'attachment; filename="citations.bib"'},
+    )
 
 
 @router.patch("/{material_id}", response_model=MaterialOut)

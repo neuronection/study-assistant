@@ -694,6 +694,38 @@
         "title": "BackupStatusOut",
         "type": "object"
       },
+      "BibliographyImportOut": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "deduped": {
+            "title": "Deduped",
+            "type": "integer"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialOut"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "created",
+          "deduped"
+        ],
+        "title": "BibliographyImportOut",
+        "type": "object"
+      },
       "Body_import_anki_api_v1_flashcards_import_anki_post": {
         "properties": {
           "file": {
@@ -706,6 +738,20 @@
           "file"
         ],
         "title": "Body_import_anki_api_v1_flashcards_import_anki_post",
+        "type": "object"
+      },
+      "Body_import_bibliography_file_api_v1_materials_import_bibliography_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_bibliography_file_api_v1_materials_import_bibliography_post",
         "type": "object"
       },
       "Body_import_qpkg_api_v1_quiz_import_qpkg_post": {
@@ -1272,6 +1318,45 @@
         ],
         "title": "CheckOut",
         "type": "object"
+      },
+      "CitationAuthorOut": {
+        "properties": {
+          "affiliation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affiliation"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CitationAuthorOut",
+        "type": "object"
+      },
+      "CitationKind": {
+        "enum": [
+          "article",
+          "book",
+          "chapter",
+          "conference",
+          "preprint",
+          "thesis",
+          "report",
+          "dataset",
+          "other"
+        ],
+        "title": "CitationKind",
+        "type": "string"
       },
       "CitationOut": {
         "properties": {
@@ -5988,6 +6073,85 @@
               }
             ],
             "title": "Blob Sha"
+          },
+          "citation_authors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CitationAuthorOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Authors"
+          },
+          "citation_container": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Container"
+          },
+          "citation_doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Doi"
+          },
+          "citation_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CitationKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "citation_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Text"
+          },
+          "citation_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Title"
+          },
+          "citation_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Year"
           },
           "course_id": {
             "title": "Course Id",
@@ -23346,6 +23510,56 @@
         ]
       }
     },
+    "/api/v1/materials/bibliography.bib": {
+      "get": {
+        "operationId": "export_bibliography_api_v1_materials_bibliography_bib_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ids"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Bibliography",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
     "/api/v1/materials/compose": {
       "post": {
         "operationId": "compose_material_api_v1_materials_compose_post",
@@ -23464,6 +23678,74 @@
           }
         },
         "summary": "Derive Materials Batch",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/import-bibliography": {
+      "post": {
+        "operationId": "import_bibliography_file_api_v1_materials_import_bibliography_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Node Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_bibliography_file_api_v1_materials_import_bibliography_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BibliographyImportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Bibliography File",
         "tags": [
           "materials"
         ]

@@ -18,8 +18,9 @@ typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 85 academic ingest integrations · 86 connected sources · 87 product gap
 closure. ADRs 196–218 reserved.
 
-**In progress:** plan 85 (academic ingest integrations) — slice A (scholarly
-discovery providers) landed; B–E follow in this round.
+**In progress:** plan 85 (academic ingest integrations) — slices A (scholarly
+discovery providers) and B (citation metadata + BibTeX/RIS import/export + cite
+chip) landed; C–E follow in this round.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
 - **84 — structure, test gates & eval corpus (2026-10-22, COMPLETE):**
@@ -49,6 +50,7 @@ deferred-follow-ups register.
 | Module | Status | Notes |
 |---|---|---|
 | **Review nudges (plan 68-C)** | done | Home strip ("N cards due · M overdue tasks" → /review, hidden at zero) over the shared `/notifications` query + opt-in browser notifications (`lib/review-nudges.ts`: `useReviewNudgeSetting` permission handshake + persisted `ca-review-nudges` flag in Settings → General; `useReviewNudgeInterval` 30-min single summary while visible/focused, click → focus + /review; unsupported/denied honest states, ADR-153). Tests: `review-nudges.test.tsx` |
+| **Academic ingest (plan 85)** | in progress | **A (ADR-211):** arXiv (Atom), OpenAlex and Crossref discovery providers beside the YouTube class — key-free, polite-perimeter fetches, citation metadata in the suggestion `meta`, `DiscoveryKind.paper\|dataset\|reference` (0003 CHECK widen). **B (ADR-212):** typed citation columns on `materials` (0004), content-keyed `.bib`/`.ris` import with DOI-first dedupe, BibTeX export of a selection, `[[cite:<id>]]` note chip rendered as `Author (Year) — Title`. C–E pending. Tests: `test_discovery.py`, `test_citations.py`, `test_academic_ingest_migration.py`, `CitationChip.test.tsx`, `BibliographyImportDialog.test.tsx` |
 | **Planner week view + ICS (plan 68-B)** | done | List⇄Week segmented toggle (`features/planner/PlannerWeekView.tsx`: Mon–Sun grid, today highlight, drag-between-days, overdue/done styling, layout re-flow) + `GET /courses/{id}/plan.ics` (`build_course_ics` in `services/study/planner.py`: all-day VEVENTs, stable UIDs, STATUS:CANCELLED for week-fresh done items, exam event, CRLF + folding + escaping, ADR-152). Tests: `test_plan_ics.py`, `PlannerWeekView.test.tsx` |
 | **Notification center (plan 68-A)** | done | `GET /notifications` computed aggregate (no table, ADR-151: due cards + ≤10 due reviews + today/overdue plan rows + ≤3 exam countdowns) + `NotificationBell` in the rail footer (library PopoverButton/Badge/EmptyState; animated count dot; localStorage seen-marker `ca-notifications-seen`; focus + 5-min polling; mark-seen on close). Tests: `test_notifications_api.py`, `NotificationBell.test.tsx` |
 | **Exam timing (plan 49-C)** | done | `activities.time_limit_sec` + `attempts.deadline_at` (0060, ADR-108); generate picker + Practice-tab Time-limit editor (`features/quiz/TimeLimitDialog.tsx`, `PATCH /quiz/activities/{id}/time-limit`); server enforcement in `api/quiz.py` (`_auto_submit_if_expired` + shared `_finish_attempt`, 422 `attempt_closed`, lazy sweep on report/finish); `CountdownChip` in FocusShell's new `chip` slot with server-offset correction; auto-submit summary banner. Tests: `test_quiz_time_limits.py`, `CountdownChip.test.tsx`, `TimeLimitDialog.test.tsx` |

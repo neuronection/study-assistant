@@ -4,6 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from ..core.vocab import (
+    CitationKind,
     DecisionTransport,
     MaterialKind,
     MaterialStatus,
@@ -215,6 +216,11 @@ class CourseDefaultTaskOut(BaseModel):
     global_model_label: str | None
 
 
+class CitationAuthorOut(BaseModel):
+    name: str
+    affiliation: str | None = None
+
+
 class MaterialOut(BaseModel):
     id: str
     title: str
@@ -234,6 +240,13 @@ class MaterialOut(BaseModel):
     tags: list[str] = []
     starred: bool = False
     link_count: int = 0
+    citation_title: str | None = None
+    citation_authors: list[CitationAuthorOut] | None = None
+    citation_year: int | None = None
+    citation_doi: str | None = None
+    citation_container: str | None = None
+    citation_kind: CitationKind | None = None
+    citation_text: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

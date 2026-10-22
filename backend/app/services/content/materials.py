@@ -295,6 +295,9 @@ class MaterialsService:
         )
         self._session.add(material)
         self._session.flush()
+        from .citations import attach_suggestion_citation
+
+        attach_suggestion_citation(self._session, profile_id, material, url_norm)
         if node_id is not None:
             from ..knowledge.tree import TreeService
 

@@ -29,6 +29,7 @@ import {
   createTextMaterial,
   deleteFolder,
   deleteMaterial,
+  downloadBibliography,
   deriveMaterials,
   getFolderDeleteInfo,
   ingestSourceFile,
@@ -85,6 +86,7 @@ import { LinkRefBadge } from './LinkRefBadge'
 import { LinkedLocationsDialog } from './LinkedLocationsDialog'
 import type { LinkedLocationsTarget } from './LinkedLocationsDialog'
 import { NameEditor, normalizeName } from './NameEditor'
+import { BibliographyImportDialog } from './BibliographyImportDialog'
 import { NewTextFileDialog, type TextFileCreateInput, type TextFileSaveInput } from './NewTextFileDialog'
 import { ViewToggle, type LibraryView } from '@/components/ui/ViewToggle'
 import {
@@ -164,6 +166,7 @@ export function LibraryPage() {
   const [newName, setNewName] = useState('')
   const [textDialog, setTextDialog] = useState<'txt' | 'md' | null>(null)
   const [linkPicker, setLinkPicker] = useState(false)
+  const [bibliographyOpen, setBibliographyOpen] = useState(false)
   const [discoverOpen, setDiscoverOpen] = useState(false)
   const [relinkSourceId, setRelinkSourceId] = useState<string | null>(null)
   const [linkState, setLinkState] = useState<LinkState | null>(null)
@@ -1237,6 +1240,11 @@ export function LibraryPage() {
         label: t('library.addLinkedFolder'),
         onSelect: () => setLinkPicker(true),
       },
+      {
+        key: 'import-bibliography',
+        label: t('library.importBibliography'),
+        onSelect: () => setBibliographyOpen(true),
+      },
     ],
   })
 
@@ -2046,6 +2054,19 @@ className={cn(
                 {t('library.selectedCount', { count: selection.selected.size })}
               </button>
             ) : null}
+            {selectedMaterialIds.length > 0 ? (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground hover:underline"
+                onClick={() => {
+                  downloadBibliography(selectedMaterialIds).catch((error: Error) =>
+                    setNotice(error.message)
+                  )
+                }}
+              >
+                {t('library.exportCitations')}
+              </button>
+            ) : null}
             {searching
               ? t('library.searchResults', { count: searchResults.data?.hits.length ?? 0 })
               : courseId === null
@@ -2153,6 +2174,11 @@ className={cn(
           onCancel={() => setTextDialog(null)}
         />
       ) : null}
+      <BibliographyImportDialog
+        open={bibliographyOpen}
+        courseId={courseId}
+        onClose={() => setBibliographyOpen(false)}
+      />
       {linkPicker ? (
         <FolderPickerDialog
           title={t('library.addLinkedFolder')}

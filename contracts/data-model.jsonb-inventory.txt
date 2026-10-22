@@ -60,6 +60,7 @@ material_index_cards.key_terms :: keep-open key-term list
 material_index_cards.topics :: keep-open topic list
 material_sources.include_globs :: keep-open glob list
 material_suggestions.meta :: keep-open discovery metadata
+materials.citation_authors :: keep-open ordered author list (AuthorList)
 materials.provenance :: keep-open provenance document
 materials.tags :: keep-open tag list
 mistakes.concept_ids :: keep-open concept id list

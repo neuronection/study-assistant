@@ -424,6 +424,14 @@ class ExtractionConfidence(TypedDict, total=False):
 type ExternalSourceCursorDocument = dict[str, Any]
 
 
+class CitationAuthor(TypedDict, total=False):
+    name: str
+    affiliation: str
+
+
+type AuthorList = list[CitationAuthor]
+
+
 class SuggestionMeta(TypedDict, total=False):
     site: str
     mcp: bool
@@ -634,6 +642,7 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "material_index_cards.topics": "StringList",
     "material_sources.include_globs": "StringList",
     "material_suggestions.meta": "SuggestionMeta",
+    "materials.citation_authors": "AuthorList",
     "materials.provenance": "MaterialProvenance",
     "materials.tags": "StringList",
     "mistakes.concept_ids": "StringList",

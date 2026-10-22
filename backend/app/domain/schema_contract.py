@@ -17,6 +17,7 @@ from sqlalchemy import CheckConstraint
 from ..core.vocab import (
     AttemptMode,
     ChatProposalStatus,
+    CitationKind,
     ConceptRelation,
     CourseOrigin,
     DiscoveryKind,
@@ -67,6 +68,7 @@ CLOSED_SETS: dict[str, type[StrVocab]] = {
     "material_suggestions.status": SuggestionStatus,
     "materials.kind": MaterialKind,
     "materials.status": MaterialStatus,
+    "materials.citation_kind": CitationKind,
     "plan_items.kind": PlanItemKind,
     "plan_items.origin": PlanItemOrigin,
     "questions.flag": ItemFlag,
@@ -122,6 +124,7 @@ JSON_SPECIES: dict[str, str] = {
     "material_index_cards.topics": LIST,
     "material_sources.include_globs": LIST,
     "material_suggestions.meta": STATE,
+    "materials.citation_authors": LIST,
     "materials.provenance": STATE,
     "materials.tags": LIST,
     "mistakes.concept_ids": LIST,

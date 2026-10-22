@@ -2384,6 +2384,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/materials/bibliography.bib": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Bibliography */
+        get: operations["export_bibliography_api_v1_materials_bibliography_bib_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials/compose": {
         parameters: {
             query?: never;
@@ -2429,6 +2446,23 @@ export interface paths {
         put?: never;
         /** Derive Materials Batch */
         post: operations["derive_materials_batch_api_v1_materials_derive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/import-bibliography": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Bibliography File */
+        post: operations["import_bibliography_file_api_v1_materials_import_bibliography_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4994,8 +5028,24 @@ export interface components {
             last_recovery: components["schemas"]["BackupRecoveryInfoOut"] | null;
             settings: components["schemas"]["BackupSettingsInfoOut"];
         };
+        /** BibliographyImportOut */
+        BibliographyImportOut: {
+            /** Created */
+            created: number;
+            /** Deduped */
+            deduped: number;
+            /** Materials */
+            materials?: components["schemas"]["MaterialOut"][];
+            /** Skipped */
+            skipped?: string[];
+        };
         /** Body_import_anki_api_v1_flashcards_import_anki_post */
         Body_import_anki_api_v1_flashcards_import_anki_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_import_bibliography_file_api_v1_materials_import_bibliography_post */
+        Body_import_bibliography_file_api_v1_materials_import_bibliography_post: {
             /** File */
             file: string;
         };
@@ -5181,6 +5231,18 @@ export interface components {
             /** Stage */
             stage: string;
         };
+        /** CitationAuthorOut */
+        CitationAuthorOut: {
+            /** Affiliation */
+            affiliation?: string | null;
+            /** Name */
+            name: string;
+        };
+        /**
+         * CitationKind
+         * @enum {string}
+         */
+        CitationKind: "article" | "book" | "chapter" | "conference" | "preprint" | "thesis" | "report" | "dataset" | "other";
         /** CitationOut */
         CitationOut: {
             /** Chunk Id */
@@ -6718,6 +6780,19 @@ export interface components {
         MaterialOut: {
             /** Blob Sha */
             blob_sha: string | null;
+            /** Citation Authors */
+            citation_authors?: components["schemas"]["CitationAuthorOut"][] | null;
+            /** Citation Container */
+            citation_container?: string | null;
+            /** Citation Doi */
+            citation_doi?: string | null;
+            citation_kind?: components["schemas"]["CitationKind"] | null;
+            /** Citation Text */
+            citation_text?: string | null;
+            /** Citation Title */
+            citation_title?: string | null;
+            /** Citation Year */
+            citation_year?: number | null;
             /** Course Id */
             course_id: string;
             /**
@@ -14874,6 +14949,37 @@ export interface operations {
             };
         };
     };
+    export_bibliography_api_v1_materials_bibliography_bib_get: {
+        parameters: {
+            query?: {
+                ids?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compose_material_api_v1_materials_compose_post: {
         parameters: {
             query?: never;
@@ -14960,6 +15066,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialBatchDeriveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_bibliography_file_api_v1_materials_import_bibliography_post: {
+        parameters: {
+            query: {
+                course_id: string;
+                node_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_bibliography_file_api_v1_materials_import_bibliography_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BibliographyImportOut"];
                 };
             };
             /** @description Validation Error */
