@@ -11,6 +11,25 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (academic ingest — plan 85 / ADR-211–213)
+- **Scholarly discovery providers.** arXiv (Atom), OpenAlex and Crossref join
+  the Discover dialog beside web/YouTube/site presets — key-free, behind the
+  polite perimeter, with `paper | dataset | reference` kinds and DOI metadata
+  carried into saved suggestions (ADR-211).
+- **Citations as schema.** Materials gain nullable citation columns
+  (title/authors/year/DOI/container/kind); a `.bib`/`.ris` upload imports
+  entries as link materials with DOI-first dedupe, a selection exports back to
+  BibTeX, and notes render `[[cite:<id>]]` as an `Author (Year) — Title` chip
+  (ADR-212).
+- **Calendar import.** A `.ics` timetable stages a preview, expands recurring
+  events into bounded planner items, dedupes re-imports by calendar UID, and
+  fills `exam_date` only after an explicit confirmation (ADR-213).
+- **Markdown-vault preset.** Link a folder of Markdown notes: frontmatter
+  titles/tags, resolvable `[[wikilinks]]` with backlinks, versioned rescans, and
+  a "download as vault" export (ADR-213).
+- **Site presets.** Wikipedia, MIT OpenCourseWare and OpenStax join Khan
+  Academy as default discovery site presets (data only).
+
 ### Changed (record — plan 83 / ADR-206/207)
 - **`docs/STATUS.md` is a lean living index.** The phase header, module-status
   table, open issues and next-round pointers stay; the ~9,200-line narrative
