@@ -122,9 +122,12 @@ Quizzes are portable in two tiers:
 - **Import — package** — the **Package** tab selects a `.qpkg` file; its integrity
   is verified (tampered archives are rejected) before the same validation preview.
 - **Import — inbox folder** — the **Inbox** tab shows files waiting in the app's
-  import-inbox folder (path shown on screen). Anything can drop files there —
-  you, a script, or an external AI agent. `AUTHORING.md` and `schema.json` inside
-  the folder explain the format to agents. Files import with one tap; imported
+  import-inbox folder (path shown on screen). The folder is **watched**: the
+  background scanner checks it on the same cadence as linked material folders,
+  so a dropped file appears in the notification bell (and in the Inbox tab)
+  without opening this page first. Anything can drop files there — you, a
+  script, or an external AI agent. `AUTHORING.md` and `schema.json` inside the
+  folder explain the format to agents. Files import with one tap; imported
   files are renamed `.imported`, invalid ones `.rejected` with a report beside
   them.
 - **Author with AI** — the **Author with AI** tab builds a ready-to-paste prompt

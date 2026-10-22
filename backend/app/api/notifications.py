@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -53,6 +54,14 @@ class ExamEntryOut(BaseModel):
     days_left: int
 
 
+class StagedImportOut(BaseModel):
+    filename: str
+    kind: str
+    title: str
+    ok: bool
+    question_count: int
+
+
 class NotificationsOut(BaseModel):
     due_cards: int
     due_reviews: list[DueReviewEntryOut]
@@ -60,11 +69,31 @@ class NotificationsOut(BaseModel):
     plan_overdue_count: int
     exams: list[ExamEntryOut]
     pending_proposals: int
+    staged_imports: list[StagedImportOut] = []
     generated_at: str
 
 
+def _staged_imports(inbox_dir: Path) -> list[StagedImportOut]:
+    from ..services.study.inbox import InboxService
+
+    try:
+        entries = InboxService(inbox_dir).scan()
+    except (OSError, ValueError):
+        return []
+    return [
+        StagedImportOut(
+            filename=entry.filename,
+            kind=entry.kind,
+            title=entry.title,
+            ok=entry.ok,
+            question_count=entry.question_count,
+        )
+        for entry in entries
+    ]
+
+
 @router.get("", response_model=NotificationsOut)
-def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
+def notifications(request: Request, session: Session = Depends(get_session)) -> dict[str, Any]:
     profile = ensure_default_profile(session)
     now = utcnow()
     today = now.date()
@@ -158,5 +187,6 @@ def notifications(session: Session = Depends(get_session)) -> dict[str, Any]:
         "plan_overdue_count": plan_overdue_count,
         "exams": exams,
         "pending_proposals": pending_proposals,
+        "staged_imports": _staged_imports(request.app.state.settings.inbox_dir),
         "generated_at": generated_at,
     }

@@ -23,6 +23,7 @@ class ScanScheduler:
         publish: Callable[[str, dict[str, Any]], None],
         interval_sec: int = 300,
         startup_delay_sec: float = 5.0,
+        inbox_dir: Path | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._blobs_dir = Path(blobs_dir)
@@ -30,6 +31,9 @@ class ScanScheduler:
         self._publish = publish
         self._interval = interval_sec
         self._startup_delay = startup_delay_sec
+        self._inbox_dir = Path(inbox_dir) if inbox_dir is not None else None
+        self._inbox_last_scan: datetime | None = None
+        self._inbox_signature: tuple[tuple[str, int], ...] = ()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._cycle = threading.Event()
@@ -76,7 +80,57 @@ class ScanScheduler:
             stats = self._scan_one(profile_id, source_id)
             if stats is not None:
                 results[source_id] = stats
+        self.scan_inbox(force=force)
         return results
+
+    def scan_inbox(self, *, force: bool = False) -> list[dict[str, Any]]:
+        if self._inbox_dir is None:
+            return []
+        now = datetime.now(UTC)
+        if (
+            not force
+            and self._inbox_last_scan is not None
+            and self._inbox_last_scan + timedelta(seconds=self._interval) > now
+        ):
+            return []
+        self._inbox_last_scan = now
+        try:
+            from ..study.inbox import InboxService
+
+            entries = InboxService(self._inbox_dir).scan()
+        except (OSError, ValueError):
+            return []
+        signature = tuple((entry.filename, entry.modified_at) for entry in entries)
+        if signature != self._inbox_signature:
+            self._inbox_signature = signature
+            self._publish(
+                WsTopic.inbox(),
+                {
+                    "event": "staged",
+                    "count": len(entries),
+                    "entries": [
+                        {
+                            "filename": entry.filename,
+                            "kind": entry.kind,
+                            "title": entry.title,
+                            "ok": entry.ok,
+                            "question_count": entry.question_count,
+                        }
+                        for entry in entries
+                    ],
+                },
+            )
+        return [
+            {
+                "filename": entry.filename,
+                "kind": entry.kind,
+                "title": entry.title,
+                "ok": entry.ok,
+                "question_count": entry.question_count,
+                "problems": entry.problems,
+            }
+            for entry in entries
+        ]
 
     def _scan_one(self, profile_id: str, source_id: str) -> dict[str, int] | None:
         try:

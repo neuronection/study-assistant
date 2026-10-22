@@ -395,3 +395,7 @@ class WsTopic:
     @staticmethod
     def material(material_id: str) -> str:
         return f"material:{material_id}"
+
+    @staticmethod
+    def inbox() -> str:
+        return "inbox"

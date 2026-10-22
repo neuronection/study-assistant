@@ -8000,6 +8000,11 @@ export interface components {
             plan_overdue_count: number;
             /** Plan Today */
             plan_today: components["schemas"]["PlanEntryOut"][];
+            /**
+             * Staged Imports
+             * @default []
+             */
+            staged_imports: components["schemas"]["StagedImportOut"][];
         };
         /** OAuthCompleteIn */
         OAuthCompleteIn: {
@@ -9549,6 +9554,19 @@ export interface components {
          * @enum {string}
          */
         SpeedQuadrant: "fluent" | "rushing" | "effortful" | "struggling";
+        /** StagedImportOut */
+        StagedImportOut: {
+            /** Filename */
+            filename: string;
+            /** Kind */
+            kind: string;
+            /** Ok */
+            ok: boolean;
+            /** Question Count */
+            question_count: number;
+            /** Title */
+            title: string;
+        };
         /** StatePatchIn */
         StatePatchIn: {
             /** Delta */

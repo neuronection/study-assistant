@@ -210,6 +210,7 @@ def create_app(
         app.state.jobs,
         app.state.bus.publish_threadsafe,
         interval_sec=settings.source_scan_interval_sec,
+        inbox_dir=settings.inbox_dir,
     )
     app.state.external_scans = ExternalSourceScheduler(
         app.state.session_factory,

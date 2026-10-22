@@ -2749,7 +2749,10 @@
     "moreOverdue": "+{{count}} more overdue",
     "pendingProposals": "Waiting for you",
     "pendingProposalsCount_one": "{{count}} tutor suggestion to review",
-    "pendingProposalsCount_other": "{{count}} tutor suggestions to review"
+    "pendingProposalsCount_other": "{{count}} tutor suggestions to review",
+    "stagedImports": "Staged imports",
+    "stagedImportReady": "{{count}} questions",
+    "stagedImportInvalid": "Needs fixes"
   },
   "nudges": {
     "title": "{{count}} cards due",

@@ -2749,7 +2749,10 @@
     "moreOverdue": "+{{count}} weitere überfällig",
     "pendingProposals": "Warten auf dich",
     "pendingProposalsCount_one": "{{count}} Tutor-Vorschlag zur Überprüfung",
-    "pendingProposalsCount_other": "{{count}} Tutor-Vorschläge zur Überprüfung"
+    "pendingProposalsCount_other": "{{count}} Tutor-Vorschläge zur Überprüfung",
+    "stagedImports": "Bereitliegende Importe",
+    "stagedImportReady": "{{count}} Fragen",
+    "stagedImportInvalid": "Prüfung nötig"
   },
   "nudges": {
     "title": "{{count}} Karten fällig",

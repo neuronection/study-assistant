@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
 import {
   AlarmClock,
   Bell,
   CalendarClock,
+  Inbox,
   Layers,
   MessagesSquare,
 } from 'lucide-react'
@@ -19,7 +20,8 @@ import {
   type Notifications,
   type PlanEntry,
 } from '@/lib/api'
-import { storageKeys } from '@/lib/constants'
+import { storageKeys, WsTopic } from '@/lib/constants'
+import { getWsClient } from '@/lib/ws-client'
 import { useNavigate } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
@@ -69,7 +71,12 @@ export function actionableTotal(data: Notifications | undefined): number | null 
   if (!data) {
     return null
   }
-  return data.due_cards + data.plan_today.length + data.pending_proposals
+  return (
+    data.due_cards +
+    data.plan_today.length +
+    data.pending_proposals +
+    (data.staged_imports?.length ?? 0)
+  )
 }
 
 function SectionLabel({ icon: Icon, label }: { icon: typeof Bell; label: string }) {
@@ -85,10 +92,19 @@ export function NotificationBell() {
   const { t } = useTranslation()
   const presets = useMotionPresets()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data } = useNotifications()
   const total = actionableTotal(data)
   const { seen, markSeen } = useNotificationSeen(total)
   const showDot = total !== null && total > seen
+
+  useEffect(
+    () =>
+      getWsClient().subscribe(WsTopic.inbox(), () => {
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      }),
+    [queryClient]
+  )
 
   const handleOpenChange = (open: boolean) => {
     if (!open && total !== null) {
@@ -110,7 +126,8 @@ export function NotificationBell() {
     data.due_cards === 0 &&
     data.plan_today.length === 0 &&
     data.exams.length === 0 &&
-    data.pending_proposals === 0
+    data.pending_proposals === 0 &&
+    (data.staged_imports?.length ?? 0) === 0
 
   return (
     <Popover
@@ -231,6 +248,36 @@ export function NotificationBell() {
                   })}
                 </span>
               </button>
+            </motion.section>
+          ) : null}
+
+          {data && (data.staged_imports?.length ?? 0) > 0 ? (
+            <motion.section {...presets.enter} className="space-y-1.5">
+              <SectionLabel icon={Inbox} label={t('notifications.stagedImports')} />
+              {data.staged_imports.map((entry) => (
+                <button
+                  key={entry.filename}
+                  type="button"
+                  className="hover:bg-subtle flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                  onClick={() => void navigate({ to: '/courses' })}
+                >
+                  <Inbox
+                    className={cn(
+                      'size-3.5 shrink-0',
+                      entry.ok ? 'text-primary' : 'text-danger'
+                    )}
+                    aria-hidden
+                  />
+                  <span className="text-foreground flex-1 truncate">{entry.filename}</span>
+                  <span className="text-muted-foreground shrink-0 text-[10px]">
+                    {entry.ok
+                      ? t('notifications.stagedImportReady', {
+                          count: entry.question_count,
+                        })
+                      : t('notifications.stagedImportInvalid')}
+                  </span>
+                </button>
+              ))}
             </motion.section>
           ) : null}
 

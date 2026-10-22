@@ -16,6 +16,10 @@ vi.mock('@/lib/api', async (importOriginal) => {
   }
 })
 
+vi.mock('@/lib/ws-client', () => ({
+  getWsClient: () => ({ subscribe: () => () => undefined }),
+}))
+
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
   Link: ({ children }: { children: React.ReactNode }) => <a href="#">{children}</a>,
@@ -57,6 +61,7 @@ const AGGREGATE: Notifications = {
     },
   ],
   pending_proposals: 0,
+  staged_imports: [],
   generated_at: '2026-09-15T00:00:00Z',
 }
 
@@ -114,6 +119,56 @@ describe('NotificationBell', () => {
   test('actionableTotal is null while loading, counts rows when loaded', () => {
     expect(actionableTotal(undefined)).toBeNull()
     expect(actionableTotal(AGGREGATE)).toBe(4)
+  })
+})
+
+describe('NotificationBell staged imports (plan 87 D)', () => {
+  test('lists watched-inbox files without opening the quiz page', async () => {
+    getNotifications.mockResolvedValue({
+      ...AGGREGATE,
+      staged_imports: [
+        {
+          filename: 'chapter-4.caq.json',
+          kind: 'caq',
+          title: 'Chapter 4',
+          ok: true,
+          question_count: 6,
+        },
+        {
+          filename: 'broken.json',
+          kind: 'caq',
+          title: '',
+          ok: false,
+          question_count: 0,
+        },
+      ],
+    })
+    renderBell()
+    const trigger = await screen.findByRole('button', { name: /notifications/i })
+    expect(await screen.findByText('6')).toBeInTheDocument()
+    fireEvent.click(trigger)
+    expect(await screen.findByText('Staged imports')).toBeInTheDocument()
+    expect(screen.getByText('chapter-4.caq.json')).toBeInTheDocument()
+    expect(screen.getByText('6 questions')).toBeInTheDocument()
+    expect(screen.getByText('broken.json')).toBeInTheDocument()
+    expect(screen.getByText('Needs fixes')).toBeInTheDocument()
+  })
+
+  test('actionableTotal counts staged imports', () => {
+    expect(
+      actionableTotal({
+        ...AGGREGATE,
+        staged_imports: [
+          {
+            filename: 'one.caq.json',
+            kind: 'caq',
+            title: '',
+            ok: true,
+            question_count: 1,
+          },
+        ],
+      })
+    ).toBe(5)
   })
 })
 

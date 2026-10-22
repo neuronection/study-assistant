@@ -58,6 +58,7 @@ class InboxEntry:
     ok: bool
     problems: list[str] = field(default_factory=list)
     question_count: int = 0
+    modified_at: int = 0
 
 
 def _validate_document(document: dict[str, Any]) -> tuple[list[str], int, str]:
@@ -118,6 +119,7 @@ class InboxService:
         return entries
 
     def _validate_caq(self, path: Path) -> InboxEntry:
+        modified_at = path.stat().st_mtime_ns
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(document, dict):
@@ -129,6 +131,7 @@ class InboxService:
                 title="",
                 ok=False,
                 problems=[f"invalid JSON: {error}"],
+                modified_at=modified_at,
             )
         problems, count, title = _validate_document(document)
         return InboxEntry(
@@ -138,9 +141,11 @@ class InboxService:
             ok=not problems,
             problems=problems,
             question_count=count,
+            modified_at=modified_at,
         )
 
     def _validate_qpkg(self, path: Path) -> InboxEntry:
+        modified_at = path.stat().st_mtime_ns
         try:
             content = read_qpkg(path.read_bytes())
         except Exception as error:
@@ -151,6 +156,7 @@ class InboxService:
                 title="",
                 ok=False,
                 problems=[f"package error: {detail}"],
+                modified_at=modified_at,
             )
         problems, count, title = _validate_document(content.document)
         return InboxEntry(
@@ -160,6 +166,7 @@ class InboxService:
             ok=not problems,
             problems=problems,
             question_count=count,
+            modified_at=modified_at,
         )
 
     def load_document(self, filename: str) -> dict[str, Any]:

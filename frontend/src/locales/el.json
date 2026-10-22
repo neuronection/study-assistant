@@ -2749,7 +2749,10 @@
     "moreOverdue": "+{{count}} ακόμη εκτός χρόνου",
     "pendingProposals": "Περιμένουν εσένα",
     "pendingProposalsCount_one": "{{count}} πρόταση του βοηθού προς αναθεώρηση",
-    "pendingProposalsCount_other": "{{count}} προτάσεις του βοηθού προς αναθεώρηση"
+    "pendingProposalsCount_other": "{{count}} προτάσεις του βοηθού προς αναθεώρηση",
+    "stagedImports": "Εισαγωγές σε αναμονή",
+    "stagedImportReady": "{{count}} ερωτήσεις",
+    "stagedImportInvalid": "Χρειάζεται διόρθωση"
   },
   "nudges": {
     "title": "{{count}} κάρτες προς εξέταση",

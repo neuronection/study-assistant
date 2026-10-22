@@ -4,6 +4,7 @@ export const WsTopic = {
   source: (sourceId: string): string => `source:${sourceId}`,
   note: (noteId: string): string => `note:${noteId}`,
   material: (materialId: string): string => `material:${materialId}`,
+  inbox: (): string => 'inbox',
 } as const
 
 export const storageKeys = {

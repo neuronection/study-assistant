@@ -9127,6 +9127,14 @@
             },
             "title": "Plan Today",
             "type": "array"
+          },
+          "staged_imports": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StagedImportOut"
+            },
+            "title": "Staged Imports",
+            "type": "array"
           }
         },
         "required": [
@@ -13967,6 +13975,39 @@
         ],
         "title": "SpeedQuadrant",
         "type": "string"
+      },
+      "StagedImportOut": {
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "question_count": {
+            "title": "Question Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "kind",
+          "title",
+          "ok",
+          "question_count"
+        ],
+        "title": "StagedImportOut",
+        "type": "object"
       },
       "StatePatchIn": {
         "properties": {
