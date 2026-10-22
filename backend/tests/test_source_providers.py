@@ -36,6 +36,7 @@ from app.extensions.builtin.external_sources.providers import (
     ProviderCatalog,
 )
 from app.services.content import external_sources as ext
+from app.services.platform.backup import build_backup, database_is_healthy, read_archive
 from app.services.study.cards import create_card_exercise
 
 PROPFIND_XML = b"""<?xml version="1.0" encoding="utf-8"?>
@@ -324,11 +325,14 @@ def test_webdav_backup_destination_round_trip(
         assert listed.status_code == 200, listed.text
         assert listed.json()["backups"][0]["name"] == "manual-20261022-120000.zip"
 
-    assert remote == {}
     source_obj = _load_source(client, source["id"])
-    result = ext.upload_backup(source_obj, "manual-20261022-120000.zip", b"data")
+    settings = cast(Any, client.app).state.settings
+    package = build_backup(settings.db_path, settings.blobs_dir, database_url=settings.db_url)
+    result = ext.upload_backup(source_obj, "manual-20261022-120000.zip", package)
     assert result["location"].endswith("manual-20261022-120000.zip")
-    assert ext.remote_backup_data(source_obj, "manual-20261022-120000.zip") == b"data"
+    fetched = ext.remote_backup_data(source_obj, "manual-20261022-120000.zip")
+    database, _blobs = read_archive(fetched)
+    assert database_is_healthy(database)
 
 
 def _load_source(client: TestClient, source_id: str) -> ExternalSource:
