@@ -17,15 +17,25 @@ typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 2026-10-22 · 84 structure, test gates & eval corpus — COMPLETE 2026-10-22 ·
 85 academic ingest integrations — COMPLETE 2026-10-22 · 86 modular source
 providers & connected accounts — COMPLETE 2026-10-22 · 87 product gap
-closure — IN PROGRESS 2026-10-22. ADRs 196–218 reserved.
+closure — COMPLETE 2026-10-22. ADRs 196–218 recorded.
 
-**Recent round:** 86 modular source providers & connected accounts
+**Recent round:** 87 product gap closure (2026-10-22, COMPLETE) — watched
+import inbox, course duplication, item-analysis + export, quiz kinds through
+the exercise engines, whiteboard preprocessing and the residual polish batch.
+
+**Previous round:** 86 modular source providers & connected accounts
 (2026-10-22, COMPLETE) — one SourceAdapter seam for WebDAV/Nextcloud, Google
 Drive, Dropbox, OneDrive, Zotero and AnkiConnect, an OAuth2 loopback/PKCE
 auth layer over keyring-sealed tokens, provider catalog data (zero migration
 per provider), and RSS media enclosures into the transcribe path.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
+- **87 — product gap closure (2026-10-22, COMPLETE):** the import inbox joins the
+  `ScanScheduler`; `POST /courses/{id}/duplicate` clones through the bundle
+  serializer; Scores gains item analysis + CSV/JSON export; quiz kinds
+  matching/ordering/cloze/essay reuse the exercise engines (ADR-217);
+  OpenCV whiteboard preprocessing at the OCR seam; mistake node links,
+  update banner and the catalog-truth re-scopes (ADR-218).
 - **86 — modular source providers & connected accounts (2026-10-22, COMPLETE):**
   one SourceAdapter family (`providers.json` catalog + WebDAV/Nextcloud, Google
   Drive, Dropbox, OneDrive, Zotero, AnkiConnect adapters + a shared reconcile
