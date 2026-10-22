@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 import re
 from typing import Any
 
@@ -104,18 +105,21 @@ def _entry_from_item(item: dict[str, Any]) -> RemoteEntry | None:
     if container:
         meta["container"] = container
     attachment = _attachment_url(item)
+    entry_mime = "text/html"
     if attachment:
         meta["attachment_url"] = attachment
         from .base import material_kind_for
 
-        detected = material_kind_for(attachment.rsplit("/", 1)[-1].split("?")[0], None)
+        attachment_name = attachment.rsplit("/", 1)[-1].split("?")[0]
+        detected = material_kind_for(attachment_name, None)
         if detected:
             meta["material_kind"] = detected
+        entry_mime = mimetypes.guess_type(attachment_name)[0] or "application/octet-stream"
     return RemoteEntry(
         remote_id=key,
         name=title,
         url=target,
-        mime="text/html",
+        mime=entry_mime,
         mtime=None,
         etag=str(item.get("version") or "") or None,
         title=title,

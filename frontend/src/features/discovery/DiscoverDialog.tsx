@@ -23,6 +23,7 @@ import {
   ModalTitle,
 } from '@neuronection/assistant-ui'
 import {
+  acceptExternalSuggestion,
   createLinkMaterial,
   deleteDiscoverySuggestion,
   getJob,
@@ -350,6 +351,27 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
     )
   }
 
+  const remoteImportable = (row: DiscoverySuggestion) => {
+    const meta = row.meta ?? {}
+    if (typeof meta.source_id !== 'string' || meta.source_id === '') return false
+    if (typeof meta.enclosure_url === 'string' && meta.enclosure_url !== '') return true
+    return !['rss:', 'youtube:', 'site:'].some((prefix) => row.provider.startsWith(prefix))
+  }
+
+  const acceptRemote = useMutation({
+    mutationFn: (row: DiscoverySuggestion) => {
+      const meta = row.meta ?? {}
+      const sourceId = typeof meta.source_id === 'string' ? meta.source_id : ''
+      if (!sourceId) throw new Error(t('discovery.importFailed'))
+      return acceptExternalSuggestion(sourceId, row.id)
+    },
+    onSuccess: async () => {
+      setNotice(null)
+      await refresh()
+    },
+    onError: (error: Error) => setNotice(error.message),
+  })
+
   const savedRowActions = (row: DiscoverySuggestion) => (
     <div className="flex shrink-0 flex-wrap items-center gap-1">
       <Button
@@ -360,6 +382,21 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
         <ExternalLink aria-hidden />
         {t('discovery.open')}
       </Button>
+      {remoteImportable(row) ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy(`saved-import-${row.id}`)}
+          onClick={markBusy(`saved-import-${row.id}`, () => acceptRemote.mutateAsync(row))}
+        >
+          {busy(`saved-import-${row.id}`) ? (
+            <Loader2 className="animate-spin" aria-hidden />
+          ) : (
+            <Download aria-hidden />
+          )}
+          {t('discovery.importParse')}
+        </Button>
+      ) : null}
       {row.material_id ? (
         <Button
           size="sm"

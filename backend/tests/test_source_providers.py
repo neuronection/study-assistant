@@ -64,6 +64,17 @@ PROPFIND_XML = b"""<?xml version="1.0" encoding="utf-8"?>
   </d:response>
 </d:multistatus>"""
 
+NOTES_BLOCK = b"""  <d:response>
+    <d:href>/remote.php/dav/files/me/notes/notes.md</d:href>
+    <d:propstat><d:prop>
+      <d:getcontenttype>text/markdown</d:getcontenttype>
+      <d:getcontentlength>120</d:getcontentlength>
+      <d:getlastmodified>Mon, 20 Oct 2026 10:05:00 GMT</d:getlastmodified>
+      <d:getetag>"v2"</d:getetag>
+    </d:prop></d:propstat>
+  </d:response>
+"""
+
 RSS_WITH_ENCLOSURES = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel><title>Lectures</title>
 <item>
@@ -252,18 +263,18 @@ def test_webdav_scan_change_detection_and_vanished(
         assert second.json()["new"] == 0
         assert second.json()["updated"] == 0
 
-        state["body"] = PROPFIND_XML.replace(b'"v1"', b'"v9"').replace(
-            b"<d:response>\n    <d:href>/remote.php/dav/files/me/notes/notes.md</d:href>",
-            b"<d:response>\n    <d:href>/remote.php/dav/files/me/notes/notes.md</d:href>",
-        )
+        state["body"] = PROPFIND_XML.replace(b'"v1"', b'"v9"').replace(NOTES_BLOCK, b"")
         third = client.post(f"/api/v1/external-sources/{source['id']}/scan")
         assert third.json()["updated"] == 1
+        assert third.json()["missing"] == 1
 
     rows = list(db_session.scalars(select(MaterialSuggestion)))
     lecture = next(row for row in rows if "lecture" in row.url)
     assert lecture.kind == "paper"
     assert (lecture.meta or {}).get("material_kind") == "pdf"
     assert (lecture.meta or {}).get("source_id") == source["id"]
+    vanished = next(row for row in rows if row.url.endswith("notes.md"))
+    assert (vanished.meta or {}).get("remote_state") == "vanished"
 
 
 def test_webdav_backup_destination_round_trip(

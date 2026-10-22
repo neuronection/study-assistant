@@ -125,7 +125,11 @@ def reconcile(
     upserted = changes.upserted[:max_items] if max_items else changes.upserted
     next_cursor = dict(changes.cursor)
     known_raw = next_cursor.get("known")
-    known: dict[str, dict[str, Any]] = known_raw if isinstance(known_raw, dict) else {}
+    if isinstance(known_raw, dict):
+        known: dict[str, dict[str, Any]] = dict(known_raw)
+    else:
+        prior_raw = cursor.get("known")
+        known = dict(prior_raw) if isinstance(prior_raw, dict) else {}
     for entry in upserted:
         if (
             entry.size is not None
@@ -243,7 +247,7 @@ def sync_anki_reviews(
             stats["unmatched"] += 1
             continue
         for card in cards:
-            recompute_card(session, card, remote_id)
+            recompute_card(session, card, remote_id, source.id)
             stats["recomputed"] += 1
     stats["merged"] = stats["new"]
     source.last_scanned_at = utcnow()
@@ -252,13 +256,14 @@ def sync_anki_reviews(
     return stats
 
 
-def recompute_card(session: Session, card: Exercise, remote_id: str) -> FsrsState:
+def recompute_card(
+    session: Session, card: Exercise, remote_id: str, source_id: str | None = None
+) -> FsrsState:
+    statement = select(ExternalReviewEvent).where(ExternalReviewEvent.remote_card_id == remote_id)
+    if source_id is not None:
+        statement = statement.where(ExternalReviewEvent.source_id == source_id)
     events = list(
-        session.scalars(
-            select(ExternalReviewEvent)
-            .where(ExternalReviewEvent.remote_card_id == remote_id)
-            .order_by(ExternalReviewEvent.reviewed_at, ExternalReviewEvent.id)
-        )
+        session.scalars(statement.order_by(ExternalReviewEvent.reviewed_at, ExternalReviewEvent.id))
     )
     stability: float | None = None
     difficulty: float | None = None

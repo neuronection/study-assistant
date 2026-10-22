@@ -34,6 +34,11 @@ Release history from before the public launch lives in the
   audio/video suggestions with a size cap; accepting one downloads it and
   feeds the existing transcribe job.
 
+- **Discover integrates connected sources.** Saved suggestion rows from
+  adapter-backed providers gain an **Import & parse** action that fetches
+  through the source adapter (remote files never need to be publicly
+  reachable), and a vanished remote file is marked missing on the next scan.
+
 ### Added (academic ingest — plan 85 / ADR-211–213)
 - **Scholarly discovery providers.** arXiv (Atom), OpenAlex and Crossref join
   the Discover dialog beside web/YouTube/site presets — key-free, behind the

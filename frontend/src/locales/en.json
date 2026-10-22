@@ -2790,7 +2790,8 @@
     "kindCourse": "Course",
     "kindArticle": "Article",
     "kindExercise": "Exercise",
-    "kindOther": "Other"
+    "kindOther": "Other",
+    "importFailed": "This suggestion has no connected source to import from."
   },
   "webSources": {
     "title": "Web sources",
