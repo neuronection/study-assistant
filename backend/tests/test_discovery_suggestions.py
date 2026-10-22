@@ -318,7 +318,12 @@ def test_discovery_preferences_round_trip_and_validation(
     with client:
         defaults = client.get("/api/v1/profiles/preferences").json()
         assert defaults["discovery"]["enabled"] == ["web", "youtube", "arxiv", "openalex"]
-        assert defaults["discovery"]["sites"] == []
+        assert defaults["discovery"]["sites"] == [
+            {"site": "khanacademy.org", "label": "Khan Academy", "kind": "course"},
+            {"site": "en.wikipedia.org", "label": "Wikipedia", "kind": "reference"},
+            {"site": "ocw.mit.edu", "label": "MIT OpenCourseWare", "kind": "course"},
+            {"site": "openstax.org", "label": "OpenStax", "kind": "reference"},
+        ]
 
         updated = client.put(
             "/api/v1/profiles/preferences",

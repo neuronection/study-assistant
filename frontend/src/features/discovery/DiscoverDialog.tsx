@@ -55,25 +55,24 @@ async function pollJob(jobId: string): Promise<void> {
 function providerOptions(
   prefs: { enabled: string[]; sites: { site: string; label: string | null }[] } | undefined,
   t: (key: string) => string
-): { id: string; label: string }[] {
+): { id: string; label: string; enabled: boolean }[] {
   const enabled = prefs?.enabled ?? ['web', 'youtube']
-  const options: { id: string; label: string }[] = []
-  if (enabled.includes('web')) options.push({ id: 'web', label: t('discovery.providerWeb') })
+  const options: { id: string; label: string; enabled: boolean }[] = []
+  if (enabled.includes('web'))
+    options.push({ id: 'web', label: t('discovery.providerWeb'), enabled: true })
   if (enabled.includes('youtube'))
-    options.push({ id: 'youtube', label: t('discovery.providerYoutube') })
+    options.push({ id: 'youtube', label: t('discovery.providerYoutube'), enabled: true })
   const scholarly: [string, string][] = [
     ['arxiv', t('discovery.providerArxiv')],
     ['openalex', t('discovery.providerOpenalex')],
     ['crossref', t('discovery.providerCrossref')],
   ]
   for (const [id, label] of scholarly) {
-    if (enabled.includes(id)) options.push({ id, label })
+    if (enabled.includes(id)) options.push({ id, label, enabled: true })
   }
   for (const site of prefs?.sites ?? []) {
     const id = `site:${site.site}`
-    if (enabled.includes(id)) {
-      options.push({ id, label: site.label || site.site })
-    }
+    options.push({ id, label: site.label || site.site, enabled: enabled.includes(id) })
   }
   return options
 }
@@ -459,7 +458,9 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
             <div className="flex flex-wrap gap-1" role="group" aria-label={t('discovery.providersLabel')}>
               {providers.map((provider) => {
                 const active =
-                  selectedProviders === null || selectedProviders.includes(provider.id)
+                  selectedProviders === null
+                    ? provider.enabled
+                    : selectedProviders.includes(provider.id)
                 return (
                   <button
                     key={provider.id}
@@ -473,7 +474,8 @@ export function DiscoverDialog({ open, onClose, courseId, nodeId, defaultQuery }
                     )}
                     onClick={() => {
                       const current =
-                        selectedProviders ?? providers.map((entry) => entry.id)
+                        selectedProviders ??
+                        providers.filter((entry) => entry.enabled).map((entry) => entry.id)
                       const next = current.includes(provider.id)
                         ? current.filter((entry) => entry !== provider.id)
                         : [...current, provider.id]

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..core.vocab import DiscoveryKind
 from ..domain.preferences import PreferencesError, validate_preferences
-from ..extensions.search.discovery import DEFAULT_ENABLED
+from ..extensions.search.discovery import DEFAULT_ENABLED, DEFAULT_SITE_PRESETS
 from ..ocr.imaging import ALLOWED_IMAGE_MAX_EDGE, DEFAULT_IMAGE_MAX_EDGE
 from ..services.platform.profiles import (
     create_profile,
@@ -34,7 +34,9 @@ class DiscoverySitePreset(BaseModel):
 
 class DiscoveryPrefsOut(BaseModel):
     enabled: list[str] = Field(default_factory=lambda: list(DEFAULT_ENABLED))
-    sites: list[DiscoverySitePreset] = Field(default_factory=list)
+    sites: list[DiscoverySitePreset] = Field(
+        default_factory=lambda: [DiscoverySitePreset(**entry) for entry in DEFAULT_SITE_PRESETS]
+    )
 
 
 class DiscoveryPrefsIn(BaseModel):
@@ -84,7 +86,9 @@ def _discovery_prefs(prefs: dict[str, Any]) -> DiscoveryPrefsOut:
     )
     sites: list[DiscoverySitePreset] = []
     sites_raw = raw.get("sites")
-    if isinstance(sites_raw, list):
+    if sites_raw is None:
+        sites = [DiscoverySitePreset(**entry) for entry in DEFAULT_SITE_PRESETS]
+    elif isinstance(sites_raw, list):
         for entry in sites_raw:
             if not isinstance(entry, dict):
                 continue

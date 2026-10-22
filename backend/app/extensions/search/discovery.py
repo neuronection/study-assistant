@@ -34,6 +34,16 @@ logger = structlog.get_logger(__name__)
 
 DEFAULT_ENABLED = ("web", "youtube", "arxiv", "openalex")
 KHAN_ACADEMY_SITE = "khanacademy.org"
+DEFAULT_SITE_PRESETS: tuple[dict[str, str], ...] = (
+    {"site": KHAN_ACADEMY_SITE, "label": "Khan Academy", "kind": DiscoveryKind.COURSE.value},
+    {
+        "site": "en.wikipedia.org",
+        "label": "Wikipedia",
+        "kind": DiscoveryKind.REFERENCE.value,
+    },
+    {"site": "ocw.mit.edu", "label": "MIT OpenCourseWare", "kind": DiscoveryKind.COURSE.value},
+    {"site": "openstax.org", "label": "OpenStax", "kind": DiscoveryKind.REFERENCE.value},
+)
 SCHOLARLY_PROVIDER_IDS = ("arxiv", "openalex", "crossref")
 
 ARXIV_ENDPOINT = "https://export.arxiv.org/api/query"
@@ -690,16 +700,15 @@ def resolve_providers(
     )
     if search_providers:
         if not sites:
-            sites = [
-                {
-                    "site": KHAN_ACADEMY_SITE,
-                    "label": "Khan Academy",
-                    "kind": DiscoveryKind.COURSE.value,
-                }
-            ]
+            sites = [dict(entry) for entry in DEFAULT_SITE_PRESETS]
         for entry in sites:
             site = str(entry.get("site", "")).strip()
-            if not site or f"site:{site}" not in enabled:
+            provider_id = f"site:{site}"
+            if not site:
+                continue
+            if provider_id not in enabled and not (
+                requested is not None and provider_id in requested
+            ):
                 continue
             providers.append(
                 SiteSearchProvider(
@@ -710,6 +719,20 @@ def resolve_providers(
                     default_kind=str(entry.get("kind") or DiscoveryKind.COURSE.value),
                 )
             )
+        if requested is not None:
+            covered = {f"site:{entry.get('site', '')}" for entry in sites}
+            for entry in DEFAULT_SITE_PRESETS:
+                provider_id = f"site:{entry['site']}"
+                if provider_id in requested and provider_id not in covered:
+                    providers.append(
+                        SiteSearchProvider(
+                            entry["site"],
+                            search_providers,
+                            keys,
+                            label=entry["label"],
+                            default_kind=entry["kind"],
+                        )
+                    )
 
     from ..mcp_servers import enabled_tools
 

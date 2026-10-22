@@ -163,6 +163,9 @@ def test_resolve_providers_defaults_and_filtering(db_session: Session, owner: An
     filtered = resolve_providers(db_session, str(profile.id), requested=["youtube"])
     assert [provider.id for provider in filtered] == ["youtube"]
 
+    preset = resolve_providers(db_session, str(profile.id), requested=["site:openstax.org"])
+    assert [provider.id for provider in preset] == ["site:openstax.org"]
+
 
 def test_resolve_providers_unconfigured_request_is_honest(
     db_session: Session,
@@ -317,3 +320,36 @@ def test_crossref_provider_parses_items() -> None:
     assert row.url == "https://doi.org/10.1000/cross.1"
     assert row.meta["year"] == 2022
     assert row.meta["citation_kind"] == "book"
+
+
+def test_default_site_presets_are_well_formed_and_usable() -> None:
+    from app.core.vocab import DiscoveryKind
+    from app.extensions.search.discovery import DEFAULT_SITE_PRESETS, SiteSearchProvider
+
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(str(request.url))
+        seen.extend(parse_qs(parsed.query).get("q", []))
+        return httpx.Response(200, json={"results": []})
+
+    assert {entry["site"] for entry in DEFAULT_SITE_PRESETS} == {
+        "khanacademy.org",
+        "en.wikipedia.org",
+        "ocw.mit.edu",
+        "openstax.org",
+    }
+    for entry in DEFAULT_SITE_PRESETS:
+        assert entry["kind"] in {kind.value for kind in DiscoveryKind}
+        provider = SiteSearchProvider(
+            entry["site"],
+            [{"id": "sp", "type": "searxng", "base_url": "https://searxng.example"}],
+            {},
+            label=entry["label"],
+            default_kind=entry["kind"],
+        )
+        rows = provider.search("limits", cap=3, transport=httpx.MockTransport(handler))
+        assert rows == []
+        assert seen[-1] == f"limits site:{entry['site']}"

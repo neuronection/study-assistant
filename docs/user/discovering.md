@@ -16,14 +16,16 @@ then narrow the providers with the chips above the results.
 | **arXiv** | preprints and papers (Atom API) | no |
 | **OpenAlex** | papers, books and datasets with DOI metadata | no |
 | **Crossref** | DOI metadata (fallback when OpenAlex is unavailable) | no |
-| **Site presets** | results restricted to a domain (Khan Academy, Wikipedia, MIT OCW, OpenStax) | your search provider |
+| **Site presets** | results restricted to a domain — Khan Academy, Wikipedia, MIT OpenCourseWare and OpenStax are preloaded; select one to scope the search | your search provider |
 | **MCP connectors** | tools you connected that speak the discovery contract | per connector |
 
 Scholar results carry their citation metadata (authors, year, DOI, container,
 kind) into the saved suggestion, so attaching one creates a link material with
 that metadata already filled in. The three scholarly providers are key-free and
 enabled by default; choose them in **Settings → Tools → Discovery** like any
-other provider.
+other provider. The site presets are listed in the provider row even when they
+are not part of the default set — clicking one adds its `site:` filter to the
+next search.
 
 ## Suggested, saved, dismissed
 

@@ -15,15 +15,18 @@ GitHub Releases).
 81 schema baseline & hardening — COMPLETE 2026-10-21 · 82 no-legacy code &
 typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 2026-10-22 · 84 structure, test gates & eval corpus — COMPLETE 2026-10-22 ·
-85 academic ingest integrations · 86 connected sources · 87 product gap
-closure. ADRs 196–218 reserved.
+85 academic ingest integrations — COMPLETE 2026-10-22 · 86 connected sources ·
+87 product gap closure. ADRs 196–218 reserved.
 
-**In progress:** plan 85 (academic ingest integrations) — slices A (scholarly
-discovery providers), B (citation metadata + BibTeX/RIS import/export + cite
-chip), C (ICS import → planner + exam-date confirm) and D (markdown-vault preset)
-landed; E follows in this round.
+**Recent round:** 85 academic ingest integrations (2026-10-22, COMPLETE) —
+scholarly discovery providers, typed citation metadata with BibTeX/RIS
+import/export, ICS import into the planner, and a markdown-vault notes preset.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
+- **85 — academic ingest integrations (2026-10-22, COMPLETE):** arXiv/OpenAlex/
+  Crossref discovery, typed citation metadata + `.bib`/`.ris` import/export +
+  cite chips, `.ics` planner import with exam-date confirmation, and a
+  markdown-vault notes preset with wikilinks (ADR-211–213).
 - **84 — structure, test gates & eval corpus (2026-10-22, COMPLETE):**
   `NodeWorkspace` became a tab host (3,395 → 383 lines), planner/node/genesis
   and course-bundle routers split with an empty OpenAPI diff, and the golden
@@ -51,7 +54,7 @@ deferred-follow-ups register.
 | Module | Status | Notes |
 |---|---|---|
 | **Review nudges (plan 68-C)** | done | Home strip ("N cards due · M overdue tasks" → /review, hidden at zero) over the shared `/notifications` query + opt-in browser notifications (`lib/review-nudges.ts`: `useReviewNudgeSetting` permission handshake + persisted `ca-review-nudges` flag in Settings → General; `useReviewNudgeInterval` 30-min single summary while visible/focused, click → focus + /review; unsupported/denied honest states, ADR-153). Tests: `review-nudges.test.tsx` |
-| **Academic ingest (plan 85)** | in progress | **A (ADR-211):** arXiv (Atom), OpenAlex and Crossref discovery providers beside the YouTube class — key-free, polite-perimeter fetches, citation metadata in the suggestion `meta`, `DiscoveryKind.paper\|dataset\|reference` (0003 CHECK widen). **B (ADR-212):** typed citation columns on `materials` (0004), content-keyed `.bib`/`.ris` import with DOI-first dedupe, BibTeX export of a selection, `[[cite:<id>]]` note chip rendered as `Author (Year) — Title`. C (ADR-213): file-only `.ics` import with bounded RRULE expansion, staged preview, `plan_items.external_uid` re-import dedupe (0005) and an explicit exam-date confirmation. D (ADR-213): `material_sources.preset=vault` ingests `.md` as notes (frontmatter title/tags), `note_links` resolve `[[wikilinks]]` (0006), rescan versions edits, and “download as vault” exports Markdown+frontmatter. E pending. Tests: `test_discovery.py`, `test_citations.py`, `test_ics_import.py`, `test_vault_source.py`, `test_academic_ingest_migration.py`, `CitationChip.test.tsx`, `BibliographyImportDialog.test.tsx`, `IcsImportDialog.test.tsx`, `NoteLinks.test.tsx`, `VaultSourcesDialog.test.tsx` |
+| **Academic ingest (plan 85)** | done | **A (ADR-211):** arXiv (Atom), OpenAlex and Crossref discovery providers beside the YouTube class — key-free, polite-perimeter fetches, citation metadata in the suggestion `meta`, `DiscoveryKind.paper\|dataset\|reference` (0003 CHECK widen). **B (ADR-212):** typed citation columns on `materials` (0004), content-keyed `.bib`/`.ris` import with DOI-first dedupe, BibTeX export of a selection, `[[cite:<id>]]` note chip rendered as `Author (Year) — Title`. C (ADR-213): file-only `.ics` import with bounded RRULE expansion, staged preview, `plan_items.external_uid` re-import dedupe (0005) and an explicit exam-date confirmation. D (ADR-213): `material_sources.preset=vault` ingests `.md` as notes (frontmatter title/tags), `note_links` resolve `[[wikilinks]]` (0006), rescan versions edits, and “download as vault” exports Markdown+frontmatter. E (ADR-211 data only): Wikipedia, MIT OCW and OpenStax join Khan Academy as default site presets, selectable per search. Tests: `test_discovery.py`, `test_citations.py`, `test_ics_import.py`, `test_vault_source.py`, `test_academic_ingest_migration.py`, `CitationChip.test.tsx`, `BibliographyImportDialog.test.tsx`, `IcsImportDialog.test.tsx`, `NoteLinks.test.tsx`, `VaultSourcesDialog.test.tsx` |
 | **Planner week view + ICS (plan 68-B)** | done | List⇄Week segmented toggle (`features/planner/PlannerWeekView.tsx`: Mon–Sun grid, today highlight, drag-between-days, overdue/done styling, layout re-flow) + `GET /courses/{id}/plan.ics` (`build_course_ics` in `services/study/planner.py`: all-day VEVENTs, stable UIDs, STATUS:CANCELLED for week-fresh done items, exam event, CRLF + folding + escaping, ADR-152). Tests: `test_plan_ics.py`, `PlannerWeekView.test.tsx` |
 | **Notification center (plan 68-A)** | done | `GET /notifications` computed aggregate (no table, ADR-151: due cards + ≤10 due reviews + today/overdue plan rows + ≤3 exam countdowns) + `NotificationBell` in the rail footer (library PopoverButton/Badge/EmptyState; animated count dot; localStorage seen-marker `ca-notifications-seen`; focus + 5-min polling; mark-seen on close). Tests: `test_notifications_api.py`, `NotificationBell.test.tsx` |
 | **Exam timing (plan 49-C)** | done | `activities.time_limit_sec` + `attempts.deadline_at` (0060, ADR-108); generate picker + Practice-tab Time-limit editor (`features/quiz/TimeLimitDialog.tsx`, `PATCH /quiz/activities/{id}/time-limit`); server enforcement in `api/quiz.py` (`_auto_submit_if_expired` + shared `_finish_attempt`, 422 `attempt_closed`, lazy sweep on report/finish); `CountdownChip` in FocusShell's new `chip` slot with server-offset correction; auto-submit summary banner. Tests: `test_quiz_time_limits.py`, `CountdownChip.test.tsx`, `TimeLimitDialog.test.tsx` |

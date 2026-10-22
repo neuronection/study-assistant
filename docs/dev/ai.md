@@ -961,7 +961,12 @@ The chat system prompt teaches single-line tools the model may emit:
   `DiscoveryKind.paper|dataset|reference` values and citation metadata
   (doi/authors/year/container/kind) in the suggestion's `meta`. Every request
   crosses the vendored polite perimeter; provider failures are reported per
-  provider, never as a failed search. `DISCOVER here`
+  provider, never as a failed search. **Plan 85 E** adds the key-free site
+  presets Wikipedia (`en.wikipedia.org`), MIT OpenCourseWare (`ocw.mit.edu`)
+  and OpenStax (`openstax.org`) beside Khan Academy — data in
+  `DEFAULT_SITE_PRESETS`, exposed as profile defaults and selectable per
+  search (they ride the configured web-search provider; zero new runtime
+  path). `DISCOVER here`
   builds its query **deterministically** from the session's study context —
   node title + summary + `ai_hint` + up to 4 node concepts, falling back to
   the course title + description on course-level sessions; a session with no

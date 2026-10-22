@@ -252,6 +252,34 @@ describe('DiscoverDialog', () => {
     expect(screen.getByRole('button', { name: 'Crossref' })).toBeInTheDocument()
   })
 
+  test('site presets are listed and selectable even when not enabled', async () => {
+    getProfilePreferences.mockResolvedValue({
+      ...PREFS,
+      discovery: {
+        enabled: ['web', 'youtube'],
+        sites: [
+          { site: 'en.wikipedia.org', label: 'Wikipedia', kind: 'reference' },
+          { site: 'ocw.mit.edu', label: 'MIT OpenCourseWare', kind: 'course' },
+          { site: 'openstax.org', label: 'OpenStax', kind: 'reference' },
+        ],
+      },
+    })
+    searchDiscovery.mockResolvedValue({ results: [], errors: [] })
+    renderDialog()
+    const wikipedia = await screen.findByRole('button', { name: 'Wikipedia' })
+    expect(screen.getByRole('button', { name: 'MIT OpenCourseWare' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'OpenStax' })).toBeInTheDocument()
+    fireEvent.click(wikipedia)
+    await runSearch()
+    await waitFor(() =>
+      expect(searchDiscovery).toHaveBeenLastCalledWith({
+        query: 'chain rule',
+        providers: ['web', 'youtube', 'site:en.wikipedia.org'],
+        cap: 10,
+      }),
+    )
+  })
+
   test('provider chips reflect preferences and toggling narrows the request', async () => {
     searchDiscovery.mockResolvedValue({ results: [], errors: [] })
     renderDialog()
