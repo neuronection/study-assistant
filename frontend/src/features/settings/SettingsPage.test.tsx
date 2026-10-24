@@ -801,7 +801,9 @@ describe('SettingsPage', () => {
     // step 1 — pick the LLM kind so the add-all footer action appears
     fireEvent.click(within(dialog).getByRole('button', { name: /^LLM/ }))
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /add all \(3\)/i }))
+    // query-backed count — the settled-DOM wait is the contract; a sync
+    // lookup races the remote-models flush and sees "(0)" under load
+    fireEvent.click(await within(dialog).findByRole('button', { name: /add all \(3\)/i }))
 
     await waitFor(() => expect(createModel).toHaveBeenCalledTimes(3))
     expect(createModel).toHaveBeenCalledWith(
