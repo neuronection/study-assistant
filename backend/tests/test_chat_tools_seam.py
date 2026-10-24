@@ -10,7 +10,7 @@ from app.ai.mentions import MentionRegistry
 from app.domain.models import ChatMessage, ChatQuizPending, ChatSession, Profile
 from app.extensions.registry import extension_registry
 from app.extensions.search.provider import SearchError
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 
 
 class NoGateway(LLMGateway):
@@ -161,7 +161,7 @@ def test_search_web_lists_hits_with_content(
         {"title": "Khan", "url": "https://b.example/2", "content": ""},
     ]
     monkeypatch.setattr(
-        "app.services.platform.chat.search_with_fallback",
+        "app.services.platform.chat.tools.search_with_fallback",
         lambda session, profile_id, query, transport: hits,
     )
     service = ChatService(db_session, NoGateway(), NoEmbedder())
@@ -182,7 +182,7 @@ def test_search_web_reports_provider_errors(
     def boom(session: Any, profile_id: str, query: str, transport: Any) -> Any:
         raise SearchError("protocol", "key rejected")
 
-    monkeypatch.setattr("app.services.platform.chat.search_with_fallback", boom)
+    monkeypatch.setattr("app.services.platform.chat.tools.search_with_fallback", boom)
     service = ChatService(db_session, NoGateway(), NoEmbedder())
 
     result, urls = service._search_web("chain rule")
@@ -195,7 +195,7 @@ def test_fetch_url_passes_through_content(
     db_session: Session, owner: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        "app.services.platform.chat.perform_fetch",
+        "app.services.platform.chat.tools.perform_fetch",
         lambda url, transport: "<html>page</html>",
     )
     service = ChatService(db_session, NoGateway(), NoEmbedder())
@@ -210,7 +210,7 @@ def test_fetch_url_reports_errors(
     def boom(url: str, transport: Any) -> Any:
         raise SearchError("unreachable", "blocked by robots")
 
-    monkeypatch.setattr("app.services.platform.chat.perform_fetch", boom)
+    monkeypatch.setattr("app.services.platform.chat.tools.perform_fetch", boom)
     service = ChatService(db_session, NoGateway(), NoEmbedder())
 
     assert service._fetch_url("https://a.example") == "error: blocked by robots"

@@ -32,7 +32,8 @@ from ..domain.payloads import ChatTrace, ProposalPayload, ProposalResult, TurnFa
 from ..domain.proposal_contract import ProposalPayloadError, validate_proposal_payload
 from ..jobs.runner import JobError, JobHandler, JobRunner
 from ..services.knowledge.tree import TreeError, TreeService
-from ..services.platform.chat import ChatError, ChatService, proposal_out
+from ..services.platform.chat.errors import ChatError
+from ..services.platform.chat.service import ChatService, proposal_out
 from ..services.platform.profiles import ensure_default_profile
 from ..services.platform.proposal_actions import (
     POSTPROCESS_ACTIONS,

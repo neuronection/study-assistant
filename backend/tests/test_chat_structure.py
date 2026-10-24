@@ -8,7 +8,7 @@ from app.ai.gateway import LLMGateway
 from app.ai.mentions import MentionRegistry
 from app.domain.models import ChatMessage, ChatSession, Course, Profile
 from app.services.knowledge.tree import TreeService
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 
 
 def build_course(db_session: Session, owner: Any, title: str = "Calculus I") -> tuple[Course, Any]:

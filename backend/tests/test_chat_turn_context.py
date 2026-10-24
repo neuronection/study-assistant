@@ -23,7 +23,7 @@ from app.domain.models import (
     utcnow,
 )
 from app.services.knowledge.tree import TreeService
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 
 
 class NoGateway(LLMGateway):

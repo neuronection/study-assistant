@@ -113,7 +113,7 @@ def test_chat_turn_uses_per_chat_override(db_session: Session, owner: Any) -> No
     db_session.flush()
 
     from app.ai.gateway import LLMGateway
-    from app.services.platform.chat import ChatService
+    from app.services.platform.chat.service import ChatService
 
     service = ChatService(db_session, LLMGateway(None), None)
     session = db_session.query(ChatSession).first()

@@ -31,10 +31,12 @@ the callback context that feeds the `messages` stream).
 
 import asyncio
 import json
+import re
 import threading
 import time
 from collections.abc import Callable
 from typing import Any, cast
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 import httpx
@@ -44,7 +46,7 @@ from langgraph.types import RetryPolicy, TimeoutPolicy
 from typing_extensions import TypedDict
 
 from ...domain.models import ChatMessage, ChatSession
-from ...services.platform.chat import (
+from ...services.platform.chat.service import (
     CHAT_TASK,
     MAX_DISCOVER_ROUNDS,
     MAX_FETCH_ROUNDS,
@@ -60,9 +62,6 @@ from ...services.platform.chat import (
     ChatService,
     Emitter,
     TurnPrep,
-    _native_call_args,
-    _tool_result_summary,
-    flatten_prompt,
 )
 from ..chat_models import degrade_native_tools
 from ..contracts.contracts import ValidationResult, validate
@@ -77,6 +76,49 @@ MAX_ROUND_BUDGET = MAX_TOOL_ROUNDS + MAX_READ_ROUNDS + 1
 NODE_RUN_TIMEOUT_SEC = 600
 
 DEGRADED = "@degraded"
+
+_URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
+
+
+def flatten_prompt(messages: list[Message]) -> str:
+    return "\n".join(f"{message.role}: {message.content}" for message in messages)
+
+
+def _native_call_args(name: str, arguments: dict[str, Any]) -> str:
+    if name == "SYMPY":
+        return f"{arguments.get('action', '')} {arguments.get('expression', '')}".strip()
+    if name in ("CALC", "PLOT"):
+        return str(arguments.get("expression", ""))
+    if name == "READ":
+        return str(arguments.get("handle", ""))
+    if name == "STATE":
+        return str(arguments.get("widget_id", ""))
+    if name == "SEARCH":
+        return str(arguments.get("query", ""))
+    if name == "FETCH":
+        return str(arguments.get("url", ""))
+    if name in RESOURCE_TOOL_BY_KEYWORD:
+        return str(arguments.get("node", ""))
+    return json.dumps(arguments, ensure_ascii=False)
+
+
+def _tool_result_summary(kind: str, raw: str) -> str | None:
+    if kind == "READ":
+        return f"read {len(raw)} chars"
+    if kind == "PLOT":
+        return "chart data"
+    if kind == "STATE":
+        return None
+    if kind in ("SEARCH", "DISCOVER"):
+        urls = _URL_RE.findall(raw)
+        domains = sorted({urlsplit(url).netloc for url in urls})
+        if domains:
+            return f"{len(urls)} results: {', '.join(domains[:4])}"
+        return raw[:200]
+    if kind == "FETCH":
+        return f"fetched {len(raw)} chars"
+    return raw[:500]
+
 
 READISH_TOOLS = frozenset(
     {

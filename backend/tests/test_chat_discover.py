@@ -17,7 +17,7 @@ from app.ai.proposals import PROPOSAL_ACTIONS, AttachLinkPayload
 from app.core.config import Settings
 from app.domain.models import Material, MaterialLink
 from app.main import create_app
-from app.services.platform.chat import MAX_DISCOVER_ROUNDS
+from app.services.platform.chat.service import MAX_DISCOVER_ROUNDS
 
 seen_queries: list[str] = []
 

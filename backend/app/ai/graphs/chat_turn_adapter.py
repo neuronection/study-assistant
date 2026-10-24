@@ -32,7 +32,8 @@ from langchain_core.messages import AIMessageChunk
 
 from ...core.events import EventBus
 from ...domain.models import ChatMessage, ChatSession
-from ...services.platform.chat import ChatError, ChatService, Emitter
+from ...services.platform.chat.errors import ChatError
+from ...services.platform.chat.service import ChatService, Emitter
 from ..chat_models import reasoning_from_message, text_from_content
 from ..flow_events_chat import delta_event
 from ..gateway import LLMGateway

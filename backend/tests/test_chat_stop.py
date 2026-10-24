@@ -11,7 +11,7 @@ from test_chat_branches import harness
 from app.ai.gateway import LLMGateway, ResolvedModel, StreamChunk
 from app.ai.graphs.chat_turn_adapter import ChatTurnEngine
 from app.domain.models import ChatMessage, ChatSession
-from app.services.platform.chat import ChatService
+from app.services.platform.chat.service import ChatService
 from app.services.platform.profiles import ensure_default_profile
 
 

@@ -43,7 +43,7 @@ from ..services.knowledge.context import (
     ContextResolver,
 )
 from ..services.knowledge.tree import TreeError, TreeService
-from ..services.platform.chat import ChatService
+from ..services.platform.chat.service import ChatService
 from ..services.platform.profiles import ensure_default_profile
 from ..services.study.elo import EloService, rating_to_difficulty
 from ..services.study.exercise_rubric import (

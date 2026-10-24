@@ -106,7 +106,7 @@ def test_turn_does_not_hold_the_write_lock_across_the_model_call(tmp_path: Path)
 
 
 def test_turn_does_not_hold_the_write_lock_during_prepare(tmp_path: Path) -> None:
-    from app.services.platform.chat import ChatService
+    from app.services.platform.chat.service import ChatService
 
     original_prepare = ChatService.prepare_turn_context
     entered = threading.Event()

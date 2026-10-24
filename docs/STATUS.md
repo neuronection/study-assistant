@@ -19,7 +19,13 @@ typed contracts — COMPLETE 2026-10-21 · 83 ledger & docs truth — COMPLETE
 providers & connected accounts — COMPLETE 2026-10-22 · 87 product gap
 closure — COMPLETE 2026-10-22. ADRs 196–218 recorded.
 
-**Recent round:** 87 product gap closure (2026-10-22, COMPLETE) — watched
+**Recent round:** family plan 40 W1 — chat service split (2026-10-24,
+COMPLETE) — the 1,649-line `services/platform/chat.py` became the
+`services/platform/chat/` package (`service` / `turn_context` / `tools` /
+`errors`), coverage-first with a no-facade hard cut; the deferred-register
+item 13 is closed.
+
+**Previous round:** 87 product gap closure (2026-10-22, COMPLETE) — watched
 import inbox, course duplication, item-analysis + export, quiz kinds through
 the exercise engines, whiteboard preprocessing and the residual polish batch.
 
@@ -30,6 +36,12 @@ auth layer over keyring-sealed tokens, provider catalog data (zero migration
 per provider), and RSS media enclosures into the transcribe path.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
+- **family plan 40 W1 — chat service split (2026-10-24, COMPLETE):**
+  `platform/chat.py` split into the `chat/` package (CRUD + orchestration,
+  turn-context assembly, tools seam, shared error) as a pure move — coverage
+  tranche first, the engine-only helpers homed in `ai/graphs/chat_turn.py`,
+  proposal glue kept thin over `proposal_actions.py`; empty regenerated-OpenAPI
+  diff and test-count invariance are the proofs (register item 13 closed).
 - **87 — product gap closure (2026-10-22, COMPLETE):** the import inbox joins the
   `ScanScheduler`; `POST /courses/{id}/duplicate` clones through the bundle
   serializer; Scores gains item analysis + CSV/JSON export; quiz kinds
@@ -71,6 +83,7 @@ deferred-follow-ups register.
 
 | Module | Status | Notes |
 |---|---|---|
+| **Chat service package (family plan 40 W1)** | done | `services/platform/chat.py` (1,649 lines) split into the `chat/` package: `service.py` (CRUD + turn orchestration + thin proposal glue over `proposal_actions.py`), `turn_context.py` (guards/notes/structure/registry as `TurnContextMixin`), `tools.py` (the tool seam as `ToolsMixin`), `errors.py` (`ChatError`). No facade — callers import submodules; the engine-only helpers (`flatten_prompt`, `_native_call_args`, `_tool_result_summary`) moved to their sole consumer `ai/graphs/chat_turn.py`; the dead `STREAM_DELTA_INTERVAL` copy (the adapter defines its own) was dropped. Pure move: empty regenerated-OpenAPI diff; suite 1934+6 at HEAD → 1975+6 after the 41-test coverage tranche → 1975+6 after the split (no test deleted or weakened); one seam deviation recorded — `_read_widget_state` landed in `service.py` (it walks the message path, a CRUD capability). Tests: `test_chat_turn_context.py`, `test_chat_tools_seam.py` |
 | **Watched import inbox (plan 87 D)** | done | The `ScanScheduler` now owns an inbox leg on the linked-folder cadence (`scan_inbox`, per-pass error isolation, mtime signature, `inbox` WS topic), so a dropped `caq`/`qpkg` is discovered without `GET /quiz/inbox`; `GET /notifications` carries `staged_imports` and the bell renders them (with an unread dot) while `.imported`/`.rejected` disposition is unchanged. Tests: `test_inbox_scheduler.py`, `NotificationBell.test.tsx` |
 | **Course duplication (plan 87 A)** | done | `POST /courses/{id}/duplicate` clones through the `ca-course/v2` serializer (fresh UUIDs in `import_course_bundle`), with an optional `title` and `copy_materials` (true deep-copies materials/extractions/placements; false keeps structure, notes, quizzes, exercises and task assignments, copies no materials and says so in the response). The bundle gains an optional `task-assignments.json` (`course_task_assignments` + `course_default_task_assignments`) so clones carry per-course overrides. Courses grid gets a right-click **Duplicate course** action + card button; plan 01 A8's "templates" is re-scoped to P2. Tests: `test_course_duplicate.py`, `CoursesPage.test.tsx` |
 | **Analytics item analysis + export (plan 87 C)** | done | `GET /analytics/items` gains `discrimination` (point-biserial), `distractor_efficiency`, `elo_outlier` and `activity_id` (plus a `course_id` filter); the Scores → Diagnostics tab renders an **Item analysis** segment with weak-row tinting and per-question drill-down to the quiz. `GET /analytics/export?format=csv\|json` serializes the existing daily/concept/item computations into one stable union CSV (`section` column, fixed header) or typed JSON (`AnalyticsExportOut`), with the same `course_id` scope. Tests: `test_analytics_api.py`, `ScoresPage.test.tsx` |
