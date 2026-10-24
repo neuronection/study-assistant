@@ -20,6 +20,14 @@ errors: every entry carries ``code``/``detail``/``retryable``), and
         connector = MyConnector()
         config = {"url": "https://example.com/feed"}
         body = FIXTURE_PAYLOAD
+
+    Contract changelog (provenance only — ADR-0031 byte-identity stays the
+    enforcement; CONTRACT_VERSION carries no scheme or resolution): v1 —
+    the floors got teeth: statelessness asserts fetch never mutates
+    config/state, the conditional-GET probe fails when the spy transport
+    is never called, a 304 must yield a success-shaped result (the
+    treat-"no-data"-as-error bug class), and validate_config must reject
+    ``invalid_config`` (default: the empty config).
 """
 
 from __future__ import annotations
@@ -30,7 +38,9 @@ from typing import Any, ClassVar
 
 import pytest
 
-__all__ = ["ConnectorConformanceTests", "FakeTransportResponse"]
+__all__ = ["CONTRACT_VERSION", "ConnectorConformanceTests", "FakeTransportResponse"]
+
+CONTRACT_VERSION = "1"
 
 
 @dataclass
@@ -68,10 +78,20 @@ class ConnectorConformanceTests:
     body: ClassVar[str]
     etag: ClassVar[str | None] = '"test-etag"'
     initial_state: ClassVar[dict[str, Any]] = {}
+    # A config the connector's config model must REJECT (None → the empty
+    # config: a validating model never accepts ``{}``). Set a targeted
+    # invalid config only when the model legitimately defaults every field.
+    invalid_config: ClassVar[dict[str, Any] | None] = None
 
     def transport_200(self) -> HttpTransport:
         async def _transport(url: str, headers: dict[str, str]) -> Any:
             return FakeTransportResponse(200, self.body, self.etag)
+
+        return _transport
+
+    def transport_304(self) -> HttpTransport:
+        async def _transport(url: str, headers: dict[str, str]) -> Any:
+            return FakeTransportResponse(304, "")
 
         return _transport
 
@@ -91,6 +111,11 @@ class ConnectorConformanceTests:
     def test_config_round_trip(self) -> None:
         validated = self.connector.validate_config(self.config)
         assert validated == self.connector.validate_config(validated)
+
+    def test_invalid_config_rejected(self) -> None:
+        candidate = self.invalid_config if self.invalid_config is not None else {}
+        with pytest.raises(Exception):
+            self.connector.validate_config(candidate)
 
     def test_items_present_and_valid(self, first_result: Any) -> None:
         assert not _typed_errors(first_result)
@@ -114,15 +139,27 @@ class ConnectorConformanceTests:
         import asyncio
 
         again = asyncio.run(
-            self.connector.fetch(dict(self.config), {}, transport=self.transport_200(), secrets={})
+            self.connector.fetch(
+                dict(self.config), {}, transport=self.transport_200(), secrets={}
+            )
         )
         assert [getattr(p, "external_id", None) for p in getattr(again, "items", [])] == [
             getattr(p, "external_id", None) for p in getattr(first_result, "items", [])
         ]
 
     def test_fetch_is_stateless_and_idempotent(self, first_result: Any) -> None:
-        ids = {getattr(p, "external_id", None) for p in getattr(first_result, "items", [])}
-        assert ids == {getattr(p, "external_id", None) for p in getattr(first_result, "items", [])}
+        import asyncio
+        import copy
+
+        config_arg = copy.deepcopy(self.config)
+        state_arg = copy.deepcopy(dict(self.initial_state))
+        config_ref = copy.deepcopy(config_arg)
+        state_ref = copy.deepcopy(state_arg)
+        asyncio.run(
+            self.connector.fetch(config_arg, state_arg, transport=self.transport_200(), secrets={})
+        )
+        assert config_arg == config_ref, "fetch must not mutate its config"
+        assert state_arg == state_ref, "fetch must not mutate its state"
         assert not getattr(self.connector, "key", "") == ""
 
     def test_capability_honesty_incremental(self) -> None:
@@ -146,6 +183,20 @@ class ConnectorConformanceTests:
         )
         assert getattr(second, "items", []) is not None
 
+    def test_not_modified_yields_success_result(self) -> None:
+        import asyncio
+
+        result = asyncio.run(
+            self.connector.fetch(
+                dict(self.config),
+                dict(self.initial_state),
+                transport=self.transport_304(),
+                secrets={},
+            )
+        )
+        assert not _typed_errors(result), "304 must not surface as typed partial errors"
+        assert getattr(result, "items", None) is not None, "304 must yield a success shape"
+
     def test_conditional_get_validators_forwarded(self) -> None:
         import asyncio
 
@@ -155,8 +206,6 @@ class ConnectorConformanceTests:
             seen.update(headers)
             return FakeTransportResponse(200, self.body, self.etag)
 
-        asyncio.run(
-            self.connector.fetch(dict(self.config), {"etag": '"abc"'}, transport=_spy, secrets={})
-        )
-        if seen:
-            assert seen.get("If-None-Match") == '"abc"'
+        asyncio.run(self.connector.fetch(dict(self.config), {"etag": '"abc"'}, transport=_spy, secrets={}))
+        assert seen, "connector made no transport call — conditional-GET passthrough unverified"
+        assert seen.get("If-None-Match") == '"abc"'
