@@ -9198,6 +9198,8 @@ export interface components {
             max_results?: number | null;
             /** Name */
             name?: string | null;
+            /** Timeout Ms */
+            timeout_ms?: number | null;
             /** Type */
             type?: string | null;
         };

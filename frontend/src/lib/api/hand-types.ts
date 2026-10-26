@@ -87,6 +87,9 @@ export interface SearchProviderCatalogField {
   label: string
   required: boolean
   placeholder?: string
+  type?: 'text' | 'number'
+  advanced?: boolean
+  hint?: string | null
 }
 
 export interface SearchProviderCatalogEntry {
@@ -97,6 +100,7 @@ export interface SearchProviderCatalogEntry {
   baseUrlRequired: boolean
   baseUrlHint?: string
   notes?: string | null
+  hosting?: 'cloud' | 'self-hosted'
   fields?: SearchProviderCatalogField[]
 }
 

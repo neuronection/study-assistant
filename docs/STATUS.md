@@ -36,6 +36,16 @@ auth layer over keyring-sealed tokens, provider catalog data (zero migration
 per provider), and RSS media enclosures into the transcribe path.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
+- **provider-settings family adoption (2026-10-26):** Settings → Tools → Web
+  search re-rendered through the assistant-ui `web-search-providers` family
+  (^0.74.0) in the AI-providers pattern — ProviderCards with the `⋯`
+  management menu, add = tiles → settings-form wizard in a modal with
+  auto-seeded connection names, minimal main form (key/core base URL only)
+  with name, endpoint overrides and timeout/result tuning under **Advanced**
+  (`timeout_ms` now accepted on the search-provider input; overrides persist
+  only when they deviate from the catalog default); edit dialog with
+  clear-stored-key. AI providers already render the family assembly;
+  translation providers don't exist in study — nothing to adopt there.
 - **family plan 40 W1 — chat service split (2026-10-24, COMPLETE):**
   `platform/chat.py` split into the `chat/` package (CRUD + orchestration,
   turn-context assembly, tools seam, shared error) as a pure move — coverage

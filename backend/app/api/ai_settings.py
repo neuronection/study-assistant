@@ -99,6 +99,7 @@ class SearchProviderIn(BaseModel):
     google_cx: str | None = Field(default=None, max_length=120)
     enabled: bool | None = None
     max_results: int | None = Field(default=None, ge=1, le=10)
+    timeout_ms: int | None = Field(default=None, ge=500, le=30000)
     # absent = keep the stored key, "" = clear it, value = store it
     api_key: str | None = Field(default=None, max_length=500)
 

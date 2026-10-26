@@ -12788,6 +12788,19 @@
             ],
             "title": "Name"
           },
+          "timeout_ms": {
+            "anyOf": [
+              {
+                "maximum": 30000.0,
+                "minimum": 500.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Ms"
+          },
           "type": {
             "anyOf": [
               {

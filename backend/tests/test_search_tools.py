@@ -154,6 +154,15 @@ def test_search_providers_crud_roundtrip(
         assert provider["key_hint"] == "••••cret"
         assert get_secret(provider_key_ref(provider["id"])) == "tvly-secret"
 
+        # tuning fields persist (catalog limits: maxResults 1..10, timeoutMs 500..30000)
+        tuned = test_client.put(
+            f"/api/v1/search-providers/{provider['id']}",
+            json={"max_results": 8, "timeout_ms": 12000},
+        )
+        assert tuned.status_code == 200, tuned.text
+        assert tuned.json()["max_results"] == 8
+        assert tuned.json()["timeout_ms"] == 12000
+
         # key semantics (desktop): absent keeps the stored key, "" clears it
         kept = test_client.put(
             f"/api/v1/search-providers/{provider['id']}",
@@ -205,6 +214,11 @@ def test_search_provider_settings_reject_bad_input(
             json={"type": "tavily", "base_url": "api.tavily.com"},
         )
         assert bad_url.status_code == 422
+        bad_timeout = test_client.post(
+            "/api/v1/search-providers",
+            json={"type": "tavily", "timeout_ms": 100},
+        )
+        assert bad_timeout.status_code == 422
         unknown = test_client.put("/api/v1/search-providers/nope", json={"name": "x"})
         assert unknown.status_code == 404
 

@@ -11,6 +11,21 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (provider settings — family adoption)
+- **Web search providers render through the family `web-search-providers`
+  modules** (assistant-ui ^0.74.0), in the AI-providers pattern: configured
+  providers are cards with all management actions in the `⋯` menu (enable,
+  reorder, test, edit, delete), adding a provider is a two-step wizard
+  (provider tiles → settings form) in a modal with the connection name
+  auto-seeded from the provider label (numbered when taken), and the form
+  keeps the main page minimal — the API key (or the required instance URL)
+  plus the get-key link, with the name, endpoint overrides and the
+  timeout/result-count tuning under **Advanced**. Endpoint overrides persist
+  only when they deviate from the catalog default; editing keeps the stored
+  key unless a new one is typed, and a **Clear stored key** action removes
+  it. The search-provider API now accepts `timeout_ms` (500–30000, the
+  catalog limit) alongside `max_results`.
+
 ### Added (connected sources — plan 86 / ADR-214–216)
 - **One adapter family for source providers.** WebDAV/Nextcloud, Google
   Drive, Dropbox, OneDrive, a local Zotero collection and local Anki decks

@@ -154,13 +154,7 @@ export async function getSearchProviderCatalog(): Promise<SearchProviderCatalog>
   return json<SearchProviderCatalog>(response)
 }
 
-export async function createSearchProvider(body: {
-  type: string
-  name?: string | null
-  base_url?: string | null
-  google_cx?: string | null
-  api_key?: string | null
-}): Promise<SearchProvider> {
+export async function createSearchProvider(body: Schemas['SearchProviderIn']): Promise<SearchProvider> {
   const response = await apiFetch('/api/v1/search-providers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -171,14 +165,7 @@ export async function createSearchProvider(body: {
 
 export async function updateSearchProvider(
   providerId: string,
-  body: {
-    name?: string | null
-    type?: string | null
-    base_url?: string | null
-    google_cx?: string | null
-    enabled?: boolean | null
-    api_key?: string | null
-  },
+  body: Schemas['SearchProviderIn'],
 ): Promise<SearchProvider> {
   const response = await apiFetch(`/api/v1/search-providers/${providerId}`, {
     method: 'PUT',
