@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "project": "study",
+  "updated": "2026-10-27",
+  "capabilities": [
+    {
+      "id": "material-to-practice",
+      "verb": "Turn any PDF, scan or photo into practice that grades itself",
+      "summary": "Upload course material and the pipeline OCRs scans into searchable markdown, then builds quizzes, exercises and flashcards grounded in your own files.",
+      "category": "ai",
+      "status": "shipped",
+      "order": 10,
+      "metric": {
+        "value": "15",
+        "label": "question types"
+      },
+      "proofs": [
+        "Scanned pages OCR into searchable markdown with LaTeX math",
+        "Quizzes, exercises and flashcards are generated from your own material",
+        "Whiteboard photos get contrast, skew and border preprocessing before OCR",
+        "Typed math answers grade through a deterministic equivalence chain (2x = x*2)",
+        "Hint-ladder levels 1-4 are code-proven not to reveal the answer; level 5 shows the worked solution"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        },
+        {
+          "kind": "source",
+          "href": "https://github.com/neuronection/study-assistant",
+          "label": "GitHub"
+        }
+      ],
+      "shot": "images/material-detail-desktop.png",
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "form"
+    },
+    {
+      "id": "tutor-chat",
+      "verb": "Chat with a tutor that has read your course",
+      "summary": "Ask about any node and get answers grounded in your materials with numbered citations; the tutor calls SymPy mid-answer and shows every tool call.",
+      "category": "ai",
+      "status": "shipped",
+      "order": 20,
+      "proofs": [
+        "Answers cite your own materials with numbered sources",
+        "A sandboxed calculator and SymPy (solve, diff, integrate) run mid-answer",
+        "Mid-answer tools search your library and read your mistakes and due cards",
+        "Note edits and study actions apply only through proposal cards you approve"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/chat"
+        }
+      ],
+      "shot": "images/chat-desktop.png",
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "chat"
+    },
+    {
+      "id": "local-first",
+      "verb": "Keep your studying on your own machine",
+      "summary": "One local process with a loopback-bound API and keys sealed in the OS keyring; desktop needs no account, self-hosted web adds a login gate.",
+      "category": "privacy",
+      "status": "shipped",
+      "order": 30,
+      "proofs": [
+        "The API binds 127.0.0.1 by default; exposure is an explicit choice",
+        "API keys live in the OS keyring, never in files, env or the database",
+        "Runs fully offline with Ollama, LM Studio or any llama.cpp engine",
+        "Scheduled full-archive backups with integrity checks and auto-recovery"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/privacy-and-security"
+        },
+        {
+          "kind": "guide",
+          "href": "docs/study/user/local-ai"
+        }
+      ],
+      "shot": "images/settings-desktop.png",
+      "platforms": [
+        "desktop",
+        "selfhosted"
+      ],
+      "preview": "list"
+    },
+    {
+      "id": "scheduled-recall",
+      "verb": "Remember more with review scheduled for you",
+      "summary": "Flashcards follow an FSRS schedule; due counts surface in the course tree and one global review queue batches everything due today.",
+      "category": "automate",
+      "status": "shipped",
+      "order": 40,
+      "proofs": [
+        "FSRS schedules every card; due counts show per course and node",
+        "A keyboard-first review queue runs the whole library, not one deck",
+        "Exports to Anki (.apkg) and prints review sheets"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/flashcards"
+        }
+      ],
+      "shot": "images/review-desktop.png",
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "form"
+    },
+    {
+      "id": "capture-and-search",
+      "verb": "Capture notes, handwriting and speech that stay searchable",
+      "summary": "Markdown notes with KaTeX and mermaid plus an infinite handwriting canvas join one library; hybrid keyword and semantic search indexes every note, transcript and drawing.",
+      "category": "discover",
+      "status": "shipped",
+      "order": 50,
+      "proofs": [
+        "An infinite handwriting canvas saves crops and its OCR joins the search index",
+        "Search fuses FTS5 keyword and vector results, with a typo-tolerant fuzzy tier",
+        "Dictate at the cursor; your provider's speech-to-text transcribes into editors and chat",
+        "Ctrl/Cmd+Shift+K quick capture files a markdown thought from anywhere",
+        "A command palette (Ctrl/Cmd+K) jumps anywhere and runs full-text search"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/notes"
+        },
+        {
+          "kind": "guide",
+          "href": "docs/study/user/library"
+        }
+      ],
+      "shot": "images/library-desktop.png",
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "form"
+    },
+    {
+      "id": "study-planner",
+      "verb": "Plan your studying around exams and focus time",
+      "summary": "Import a course timetable from .ics, export any course plan back to calendar files, and track study time with goals, streaks, a focus timer and exam countdowns.",
+      "category": "automate",
+      "status": "shipped",
+      "order": 60,
+      "proofs": [
+        ".ics timetables import as planner items with an explicit exam-date confirmation",
+        "Every course plan exports as plan.ics with stable event IDs",
+        "A focus timer offers 25/5 and 50/10 presets with a break flow",
+        "Daily goals count minutes or answers; streaks and a 90-day heatmap track them",
+        "Attempts honor server-enforced time limits with auto-submit"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/progress"
+        },
+        {
+          "kind": "guide",
+          "href": "docs/study/user/features"
+        }
+      ],
+      "shot": "images/today-desktop.png",
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "kanban"
+    },
+    {
+      "id": "connected-sources",
+      "verb": "Pull material in from the web, your cloud and your reference manager",
+      "summary": "Discover papers on arXiv, OpenAlex and Crossref, connect WebDAV, Google Drive, Dropbox, OneDrive, Zotero and Anki; every import lands as a suggestion you review.",
+      "category": "integrate",
+      "status": "shipped",
+      "order": 70,
+      "metric": {
+        "value": "9",
+        "label": "connected source kinds"
+      },
+      "proofs": [
+        "arXiv, OpenAlex and Crossref discovery needs no API key",
+        ".bib and .ris imports dedupe by DOI; selections export back to BibTeX",
+        "OAuth sources use a loopback PKCE flow; tokens are sealed in the OS keyring",
+        "Anki reviews merge into the due queue and recompute FSRS deterministically",
+        "A WebDAV (or Dropbox) source doubles as a remote backup destination"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/manage-web-sources"
+        },
+        {
+          "kind": "source",
+          "href": "https://github.com/neuronection/study-assistant",
+          "label": "GitHub"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "list"
+    },
+    {
+      "id": "progress-diagnostics",
+      "verb": "See exactly where your understanding breaks",
+      "summary": "A weakness matrix links concepts to skills, item analysis flags weak questions, and tagged mistakes feed an error-pattern drill generator.",
+      "category": "analyze",
+      "status": "shipped",
+      "order": 80,
+      "proofs": [
+        "Weakness matrix maps concepts × skills with coverage per node",
+        "Item analysis reports discrimination and distractor efficiency",
+        "Tagged mistakes grow error-pattern drills from your own record",
+        "Daily, concept and item analytics export to CSV or JSON"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/progress"
+        }
+      ],
+      "shot": "images/scores-desktop.png",
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "chart"
+    },
+    {
+      "id": "connector-sdk",
+      "verb": "Extend the app with your own connectors",
+      "summary": "Author source connectors against a versioned manifest contract; external code runs out-of-process and lands only as suggestions you review.",
+      "category": "developer",
+      "audience": "dev",
+      "status": "shipped",
+      "order": 90,
+      "proofs": [
+        "One validated manifest envelope gates what a connector may do",
+        "External connector code runs in its own process (T3), never in-app",
+        "A built-in read-only MCP server exposes courses to external AI agents"
+      ],
+      "links": [
+        {
+          "kind": "api",
+          "href": "docs/study/sdk/overview"
+        },
+        {
+          "kind": "source",
+          "href": "https://github.com/neuronection/study-assistant",
+          "label": "GitHub"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ],
+      "preview": "list"
+    }
+  ],
+  "matrix": [
+    {
+      "row": "offline",
+      "value": true,
+      "note": "needs a local AI engine (Ollama, LM Studio, llama.cpp)"
+    },
+    {
+      "row": "self-host",
+      "value": "Docker",
+      "note": "standalone compose stack, PostgreSQL 16"
+    },
+    {
+      "row": "extension-sdk",
+      "value": "connectors",
+      "note": "family charter host; T3 processes"
+    },
+    {
+      "row": "platforms",
+      "value": "Linux, Windows, Web, Docker"
+    },
+    {
+      "row": "license",
+      "value": "Apache-2.0"
+    }
+  ],
+  "useCases": [
+    "Turn a photographed lecture into a graded quiz — snap the whiteboard, OCR it to searchable markdown, generate a quiz with deterministic math grading.",
+    "Prepare for an exam from a timetable — import the .ics syllabus, work the global due-queue, then sit a time-limited mock quiz with auto-submit.",
+    "Collect thesis sources without leaving the app — discover preprints on arXiv, import .bib with DOI dedupe, connect Zotero, cite from notes.",
+    "Study fully offline — point the app at Ollama or LM Studio; OCR, chat, search and dictation run keyless on the machine, nothing leaves it.",
+    "Fix recurring mistakes before the retake — the mistake notebook feeds error-pattern drills, and item analysis says what to re-study."
+  ]
+}
