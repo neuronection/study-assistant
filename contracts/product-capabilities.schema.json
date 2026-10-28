@@ -2,9 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://neuronection.dev/contracts/product-capabilities.schema.json",
   "title": "Product capability showcase (docs/capabilities.json)",
-  "$comment": "The family capability-showcase contract (plan 43). One per product repo, at docs/capabilities.json: WHAT THE PRODUCT CAN DO, codified so the hub site can render it (compact strip, detail view, family matrix) and every agent that ships a feature updates it in the same change. NOT the extension-manifest `capabilities` flags (net/sync/…, extension-manifest.schema.json) and NOT the capability RPC (capability-rpc.schema.json) — those describe extension runtime surface; this file describes product-level user-facing capabilities. Discipline mirrors docs-tree.schema.json: draft 2020-12, only the keyword subset scripts/lib/docs-tree-validate.mjs implements, closed vocabularies as enums with $comment rationales, additionalProperties:false everywhere. Content is verifiable FACTS + short English labels (plan 43 §1.4): persuasion copy lives on the website; per-locale prose rides the optional i18n map. A field that cannot be verified does not belong here.",
+  "$comment": "The family capability-showcase contract (plan 43). One per product repo, at docs/capabilities.json: WHAT THE PRODUCT CAN DO, codified so the hub site can render it (compact strip, detail view, capability page) and every agent that ships a feature updates it in the same change. v1.3 (plan 46) removed the family matrix and the preview-widget hints. v1.4 (plan 47) removed `shot`: the hub shows product captures on ONE surface only (the visual tour) — repeating them in feature rows and capability pages read as filler. NOT the extension-manifest `capabilities` flags (net/sync/…, extension-manifest.schema.json) and NOT the capability RPC (capability-rpc.schema.json) — those describe extension runtime surface; this file describes product-level user-facing capabilities. Discipline mirrors docs-tree.schema.json: draft 2020-12, only the keyword subset scripts/lib/docs-tree-validate.mjs implements, closed vocabularies as enums with $comment rationales, additionalProperties:false everywhere. Content is verifiable FACTS + short English labels (plan 43 §1.4): persuasion copy lives on the website; per-locale prose rides the optional i18n map. A field that cannot be verified does not belong here.",
   "type": "object",
-  "required": ["version", "project", "capabilities"],
+  "required": [
+    "version",
+    "project",
+    "capabilities"
+  ],
   "additionalProperties": false,
   "properties": {
     "version": {
@@ -24,7 +28,9 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 40,
-      "items": { "$ref": "#/$defs/capability" }
+      "items": {
+        "$ref": "#/$defs/capability"
+      }
     },
     "useCases": {
       "type": "array",
@@ -36,17 +42,16 @@
         "maxLength": 160
       },
       "$comment": "Concrete scenarios a visitor recognizes themselves in ('Compare cholesterol across two labs after switching providers — …'), verb-first, one per line. Optional; when present the hub renders them as the 'what you can do with it' section on the capability page. These are REPRESENTATIVE, not exhaustive — pick the five that best say what the product is for."
-    },
-    "matrix": {
-      "type": "array",
-      "maxItems": 24,
-      "items": { "$ref": "#/$defs/matrixRow" },
-      "$comment": "This product's cells in the family comparison matrix. Rows are a closed family vocabulary ($defs/matrixRowId); the hub renders the union across products and '—' where a product is silent. Optional: a product that answers nothing simply shows no column data."
     }
   },
   "$defs": {
     "projectSlug": {
-      "enum": ["health", "career", "study", "desktop"],
+      "enum": [
+        "health",
+        "career",
+        "study",
+        "desktop"
+      ],
       "$comment": "Closed family roster. A new product ADDS a slug here (canonical-first + re-vendor) — it never forks the vocabulary. Mirrors src/data/projects.ts on the hub."
     },
     "id": {
@@ -69,15 +74,30 @@
       "$comment": "One sentence, how it works for the user. Facts only — no marketing adjectives, no superlatives."
     },
     "category": {
-      "enum": ["discover", "analyze", "automate", "integrate", "ai", "privacy", "developer"],
+      "enum": [
+        "discover",
+        "analyze",
+        "automate",
+        "integrate",
+        "ai",
+        "privacy",
+        "developer"
+      ],
       "$comment": "Closed grouping vocabulary for the detail view and filter chips. discover = find/explore things; analyze = insights, charts, understanding; automate = flows, background jobs, shortcuts; integrate = connectors, import/export, extensions; ai = chat/LLM-powered; privacy = local-first, security, data control; developer = SDK/API/scripting. A capability that fits none of these EXTENDS this enum (family decision, canonical-first)."
     },
     "audience": {
-      "enum": ["user", "dev"],
+      "enum": [
+        "user",
+        "dev"
+      ],
       "$comment": "Mirrors the docs.md audience split, closed. Absent = 'user'."
     },
     "status": {
-      "enum": ["shipped", "beta", "planned"],
+      "enum": [
+        "shipped",
+        "beta",
+        "planned"
+      ],
       "$comment": "Closed lifecycle. Only 'shipped' capabilities may claim metrics/proofs; 'planned' ones render dimmed and must not be counted in the headline strip. (A structure gate is not a truth gate — pin the semantics repo-side.)"
     },
     "proof": {
@@ -99,24 +119,45 @@
     },
     "metric": {
       "type": "object",
-      "required": ["value", "label"],
+      "required": [
+        "value",
+        "label"
+      ],
       "additionalProperties": false,
       "properties": {
-        "value": { "$ref": "#/$defs/metricValue" },
-        "label": { "$ref": "#/$defs/metricLabel" }
+        "value": {
+          "$ref": "#/$defs/metricValue"
+        },
+        "label": {
+          "$ref": "#/$defs/metricLabel"
+        }
       },
       "$comment": "At most one proof number per capability, shown as a chip. Absent = no chip (never invent a metric to fill the slot)."
     },
     "linkKind": {
-      "enum": ["guide", "api", "screenshots", "source", "demo", "download", "website", "blog"],
+      "enum": [
+        "guide",
+        "api",
+        "screenshots",
+        "source",
+        "demo",
+        "download",
+        "website",
+        "blog"
+      ],
       "$comment": "Closed door vocabulary. 'guide'/'api' hrefs point at hub docs routes or upstream docs; 'source' at the repository. The hub maps unknown-to-it targets through the same tolerant rules as extension links — a link that cannot resolve is a gate failure, never a dead door."
     },
     "link": {
       "type": "object",
-      "required": ["kind", "href"],
+      "required": [
+        "kind",
+        "href"
+      ],
       "additionalProperties": false,
       "properties": {
-        "kind": { "$ref": "#/$defs/linkKind" },
+        "kind": {
+          "$ref": "#/$defs/linkKind"
+        },
         "href": {
           "type": "string",
           "pattern": "^(https://[^\\s]+|docs/[a-z][a-z0-9-]*/(user|dev|sdk)/[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)*)$",
@@ -132,14 +173,15 @@
         }
       }
     },
-    "shot": {
-      "type": "string",
-      "pattern": "^(?!.*\\.\\.)[^/\\\\].+\\.(png|jpe?g|webp|gif)$",
-      "maxLength": 200,
-      "$comment": "Screenshot path RELATIVE to this manifest (docs/capabilities.json) — conventionally images/caps/<id>.png under docs/, reusing the repo's existing captured UI. Absolute paths, backslashes and `..` traversal are rejected: the path must stay inside the manifest's directory. The hub sync vendors it with sharp-stamped intrinsic dimensions (the stamped-image law). Optional: a capability without a shot renders as a text card."
-    },
     "platform": {
-      "enum": ["selfhosted", "local", "web", "desktop", "hotkey", "ai"],
+      "enum": [
+        "selfhosted",
+        "local",
+        "web",
+        "desktop",
+        "hotkey",
+        "ai"
+      ],
       "$comment": "Mirrors the hub's PlatformIcon vocabulary (src/data/projects.ts), closed. Where the capability actually runs — not the product's whole platform list."
     },
     "localeCode": {
@@ -152,13 +194,19 @@
       "additionalProperties": false,
       "maxProperties": 4,
       "properties": {
-        "verb": { "$ref": "#/$defs/verb" },
-        "summary": { "$ref": "#/$defs/summary" },
+        "verb": {
+          "$ref": "#/$defs/verb"
+        },
+        "summary": {
+          "$ref": "#/$defs/summary"
+        },
         "proofs": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "items": { "$ref": "#/$defs/proof" },
+          "items": {
+            "$ref": "#/$defs/proof"
+          },
           "$comment": "When present, replaces the English proofs 1:1 (same length, same order)."
         }
       },
@@ -167,46 +215,71 @@
     "i18n": {
       "type": "object",
       "maxProperties": 16,
-      "propertyNames": { "$ref": "#/$defs/localeCode" },
-      "additionalProperties": { "$ref": "#/$defs/capStrings" }
-    },
-    "preview": {
-      "enum": ["chat", "chart", "timeline", "kanban", "approvals", "form", "list"],
-      "$comment": "Which mini-UI mockup the hub draws for this capability — a static HTML/SVG screen with dummy data, styled to echo the product's real interface. Presentation ONLY: dummy values live on the hub (like use cases), facts live in this manifest. Optional; absent = the card renders without a preview. The vocabulary is closed: a product whose UI fits none of these EXTENDS this enum (family decision, canonical-first)."
+      "propertyNames": {
+        "$ref": "#/$defs/localeCode"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/capStrings"
+      }
     },
     "capability": {
       "type": "object",
-      "required": ["id", "verb", "summary", "category", "status", "order"],
+      "required": [
+        "id",
+        "verb",
+        "summary",
+        "category",
+        "status",
+        "order"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "verb": { "$ref": "#/$defs/verb" },
-        "summary": { "$ref": "#/$defs/summary" },
-        "category": { "$ref": "#/$defs/category" },
-        "audience": { "$ref": "#/$defs/audience" },
-        "status": { "$ref": "#/$defs/status" },
-        "preview": { "$ref": "#/$defs/preview" },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "verb": {
+          "$ref": "#/$defs/verb"
+        },
+        "summary": {
+          "$ref": "#/$defs/summary"
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        },
+        "audience": {
+          "$ref": "#/$defs/audience"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
         "proofs": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "items": { "$ref": "#/$defs/proof" }
+          "items": {
+            "$ref": "#/$defs/proof"
+          }
         },
-        "metric": { "$ref": "#/$defs/metric" },
+        "metric": {
+          "$ref": "#/$defs/metric"
+        },
         "links": {
           "type": "array",
           "minItems": 1,
           "maxItems": 6,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/link" }
+          "items": {
+            "$ref": "#/$defs/link"
+          }
         },
-        "shot": { "$ref": "#/$defs/shot" },
         "platforms": {
           "type": "array",
           "minItems": 1,
           "maxItems": 6,
           "uniqueItems": true,
-          "items": { "$ref": "#/$defs/platform" }
+          "items": {
+            "$ref": "#/$defs/platform"
+          }
         },
         "order": {
           "type": "integer",
@@ -214,32 +287,8 @@
           "maximum": 999,
           "$comment": "Sort weight, ascending; ties break on id. The FIRST-MINUTE STRIP takes the lowest-order shipped capabilities (the hub asks for 3). Write them in the order you would tell a new user about them."
         },
-        "i18n": { "$ref": "#/$defs/i18n" }
-      }
-    },
-    "matrixRowId": {
-      "enum": ["offline", "self-host", "extension-sdk", "platforms", "license"],
-      "$comment": "Closed family matrix vocabulary. offline = runs fully without network; self-host = deployable on your own hardware (value may name the mode, 'Docker'); extension-sdk = third-party extension surface (value may name it, 'packs'); platforms = short platform list; license = SPDX id. A new row ADDS a slug here AND a label key in the hub's capabilities-manifest.json + i18n ×9 (family decision, canonical-first). The row polarity (presence vs fact) lives in the hub manifest, never in the cell."
-    },
-    "matrixCell": {
-      "oneOf": [
-        { "type": "boolean" },
-        { "type": "string", "minLength": 1, "maxLength": 40 }
-      ],
-      "$comment": "true = present (renders ✓), false = absent (renders —), string = the fact verbatim ('Docker', 'Apache-2.0', 'packs'). Never prose, never a claim."
-    },
-    "matrixRow": {
-      "type": "object",
-      "required": ["row", "value"],
-      "additionalProperties": false,
-      "properties": {
-        "row": { "$ref": "#/$defs/matrixRowId" },
-        "value": { "$ref": "#/$defs/matrixCell" },
-        "note": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 60,
-          "$comment": "Optional qualifier under the cell ('opt-in AI only'). Short fact, not a sentence."
+        "i18n": {
+          "$ref": "#/$defs/i18n"
         }
       }
     }

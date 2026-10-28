@@ -20,7 +20,7 @@
       }
     },
     {
-      "name": "full-with-metric-links-shot",
+      "name": "full-with-metric-links",
       "doc": {
         "version": 1,
         "project": "health",
@@ -33,18 +33,29 @@
             "category": "analyze",
             "audience": "user",
             "status": "shipped",
-            "preview": "chart",
             "proofs": [
               "Checks drug-drug, drug-food and duplicate-therapy conflicts",
               "Severity-ranked, with the source guideline linked per finding"
             ],
-            "metric": { "value": "2s", "label": "per check" },
+            "metric": {
+              "value": "2s",
+              "label": "per check"
+            },
             "links": [
-              { "kind": "guide", "href": "docs/health/user/features" },
-              { "kind": "source", "href": "https://github.com/health-assistant-io/health-assistant", "label": "GitHub" }
+              {
+                "kind": "guide",
+                "href": "docs/health/user/features"
+              },
+              {
+                "kind": "source",
+                "href": "https://github.com/health-assistant-io/health-assistant",
+                "label": "GitHub"
+              }
             ],
-            "shot": "images/caps/interaction-check.png",
-            "platforms": ["selfhosted", "local"],
+            "platforms": [
+              "selfhosted",
+              "local"
+            ],
             "order": 1
           },
           {
@@ -54,15 +65,17 @@
             "category": "developer",
             "audience": "dev",
             "status": "beta",
-            "links": [{ "kind": "api", "href": "docs/health/sdk/overview" }],
-            "platforms": ["selfhosted"],
+            "links": [
+              {
+                "kind": "api",
+                "href": "docs/health/sdk/overview"
+              }
+            ],
+            "platforms": [
+              "selfhosted"
+            ],
             "order": 90
           }
-        ],
-        "matrix": [
-          { "row": "offline", "value": true },
-          { "row": "self-host", "value": "Docker" },
-          { "row": "license", "value": "Apache-2.0", "note": "core" }
         ],
         "useCases": [
           "Compare cholesterol across two labs — drop both PDFs, read one normalized trend",
@@ -87,7 +100,9 @@
               "de": {
                 "verb": "Aus jedem PDF einen Lernplan machen",
                 "summary": "Lade Kursmaterial hoch und erhalte einen terminierten Wiederholungsplan.",
-                "proofs": ["Aus jeder Hochgeladenen Datei wird ein Terminplan"]
+                "proofs": [
+                  "Aus jeder Hochgeladenen Datei wird ein Terminplan"
+                ]
               },
               "el": {
                 "verb": "Μετατρέψτε οποιοδήποτε PDF σε πλάνο μελέτης"
@@ -134,44 +149,6 @@
       }
     },
     {
-      "name": "unknown-matrix-row",
-      "doc": {
-        "version": 1,
-        "project": "career",
-        "capabilities": [
-          {
-            "id": "explore-careers",
-            "verb": "Discover careers you didn't know exist",
-            "summary": "A structured job catalog you can browse by field and skill.",
-            "category": "discover",
-            "status": "shipped",
-            "order": 10
-          }
-        ],
-        "matrix": [{ "row": "has-dark-mode", "value": true }]
-      }
-    },
-    {
-      "name": "matrix-cell-is-prose",
-      "doc": {
-        "version": 1,
-        "project": "career",
-        "capabilities": [
-          {
-            "id": "explore-careers",
-            "verb": "Discover careers you didn't know exist",
-            "summary": "A structured job catalog you can browse by field and skill.",
-            "category": "discover",
-            "status": "shipped",
-            "order": 10
-          }
-        ],
-        "matrix": [
-          { "row": "self-host", "value": "yes, very easily, just follow the guide and it will work" }
-        ]
-      }
-    },
-    {
       "name": "extra-property-on-capability",
       "doc": {
         "version": 1,
@@ -201,25 +178,12 @@
             "summary": "A structured job catalog you can browse by field and skill.",
             "category": "discover",
             "status": "shipped",
-            "links": [{ "kind": "guide", "href": "http://example.com/guide" }],
-            "order": 10
-          }
-        ]
-      }
-    },
-    {
-      "name": "shot-outside-relative-convention",
-      "doc": {
-        "version": 1,
-        "project": "career",
-        "capabilities": [
-          {
-            "id": "explore-careers",
-            "verb": "Discover careers you didn't know exist",
-            "summary": "A structured job catalog you can browse by field and skill.",
-            "category": "discover",
-            "status": "shipped",
-            "shot": "/etc/passwd.png",
+            "links": [
+              {
+                "kind": "guide",
+                "href": "http://example.com/guide"
+              }
+            ],
             "order": 10
           }
         ]
@@ -238,7 +202,11 @@
             "category": "discover",
             "status": "shipped",
             "order": 10,
-            "i18n": { "english please": { "verb": "…" } }
+            "i18n": {
+              "english please": {
+                "verb": "…"
+              }
+            }
           }
         ]
       }
@@ -279,25 +247,9 @@
             "summary": "A structured job catalog you can browse by field and skill.",
             "category": "discover",
             "status": "beta",
-            "proofs": ["Only shipped capabilities may claim proofs"],
-            "order": 10
-          }
-        ]
-      }
-    },
-    {
-      "name": "shot-path-traversal",
-      "doc": {
-        "version": 1,
-        "project": "career",
-        "capabilities": [
-          {
-            "id": "explore-careers",
-            "verb": "Discover careers you didn't know exist",
-            "summary": "A structured job catalog you can browse by field and skill.",
-            "category": "discover",
-            "status": "shipped",
-            "shot": "../backend/secret.png",
+            "proofs": [
+              "Only shipped capabilities may claim proofs"
+            ],
             "order": 10
           }
         ]
@@ -329,24 +281,6 @@
       }
     },
     {
-      "name": "unknown-preview-kind",
-      "doc": {
-        "version": 1,
-        "project": "career",
-        "capabilities": [
-          {
-            "id": "explore-careers",
-            "verb": "Discover careers you didn't know exist",
-            "summary": "A structured job catalog you can browse by field and skill.",
-            "category": "discover",
-            "status": "shipped",
-            "preview": "hologram",
-            "order": 10
-          }
-        ]
-      }
-    },
-    {
       "name": "use-case-too-short",
       "doc": {
         "version": 1,
@@ -361,7 +295,9 @@
             "order": 10
           }
         ],
-        "useCases": ["Too short"]
+        "useCases": [
+          "Too short"
+        ]
       }
     },
     {
@@ -386,27 +322,6 @@
             "status": "shipped",
             "order": 20
           }
-        ]
-      }
-    },
-    {
-      "name": "duplicate-matrix-row",
-      "doc": {
-        "version": 1,
-        "project": "career",
-        "capabilities": [
-          {
-            "id": "explore-careers",
-            "verb": "Discover careers you didn't know exist",
-            "summary": "A structured job catalog you can browse by field and skill.",
-            "category": "discover",
-            "status": "shipped",
-            "order": 10
-          }
-        ],
-        "matrix": [
-          { "row": "offline", "value": true },
-          { "row": "offline", "value": false }
         ]
       }
     },
