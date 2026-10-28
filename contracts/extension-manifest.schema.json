@@ -215,7 +215,8 @@
       "maxProperties": 8,
       "additionalProperties": true,
       "$comment": "Slot contributions (mini-app kind) — imported T2 packs map them to sandboxed ops; T0/T1 hosts render/execute according to their profile. This is declarative metadata, never code."
-    },    "itemSchema": {
+    },
+    "itemSchema": {
       "$ref": "#/$defs/configSchema",
       "$comment": "connector refinement: the item contract for emitted items (the per-kind payload schema — RawPosting etc. are domain contracts instantiated through this shape)."
     },
@@ -560,6 +561,33 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9_-]{0,63}$"
           }
+        },
+        "x-presets": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "values": {
+                "type": "object",
+                "maxProperties": 16,
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              }
+            },
+            "required": [
+              "label",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "$comment": "One-click starting points rendered above the fields (the host form merges these values)."
         }
       },
       "required": [
@@ -643,6 +671,40 @@
             true
           ],
           "$comment": "Marks this field as a secret: the value lives only in the settings-map-declared secret store — a plaintext value in stored config is a conformance failure and a registration-time throw (D19)."
+        },
+        "x-choices": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "value",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "$comment": "Rendering choices for the field (toggle chips). With x-csv, the stored value is the comma-separated string of the selected values in choices order."
+        },
+        "x-csv": {
+          "enum": [
+            true
+          ],
+          "$comment": "The field value is the comma-separated string of the selected x-choices values."
+        },
+        "x-section": {
+          "type": "string",
+          "maxLength": 40,
+          "$comment": "Groups the field under a collapsed section ('advanced')."
         }
       },
       "required": [
