@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "contract": "settings-map",
-  "updated": "2026-10-27",
+  "updated": "2026-10-29",
   "purpose": "One family taxonomy for settings surfaces: what a setting IS decides where it LIVES. Canonical per ADR-0033 / ADR-0031 (sync-and-gate): this file is the master; product repos vendor it byte-identical under contracts/ and scripts/verify-wiring.sh flags drift. A setting may not ship (or move) in any product without a domain entry (or adopter line) here.",
   "groups": {
     "ai": {
@@ -514,6 +514,11 @@
           "note": "plan 129 phase 4a: the profile's saved job-search configuration (keywords/locations/work mode/salary floor on the normalized annual basis + match cadence) — consumed by Explore integration and, from 4b, the post-sync notification digests"
         },
         {
+          "id": "notifications",
+          "group": "app",
+          "note": "plan 117: email + webhook channel configs (sealed secrets, double opt-in / test delivery), feed tokens (.ics/RSS lifecycle), per-kind routing + quiet hours, follow-up channel overrides (plan 116). Plan 148 moved the tab next to radar: the app rail groups tabs into display sections and notifications belongs to the personal block"
+        },
+        {
           "id": "ai",
           "group": "ai",
           "sections": [
@@ -565,11 +570,6 @@
             "automations.runs"
           ],
           "note": "renamed from 'scheduler' in plan 27 Phase 3; legacy route redirects"
-        },
-        {
-          "id": "notifications",
-          "group": "app",
-          "note": "plan 117: email + webhook channel configs (sealed secrets, double opt-in / test delivery), feed tokens (.ics/RSS lifecycle), per-kind routing + quiet hours, follow-up channel overrides (plan 116)"
         },
         {
           "id": "taxonomy",
