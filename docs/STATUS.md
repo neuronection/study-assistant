@@ -36,6 +36,11 @@ auth layer over keyring-sealed tokens, provider catalog data (zero migration
 per provider), and RSS media enclosures into the transcribe path.
 
 **Recent rounds (one line each; as-builts in [dev/history.md](dev/history.md)):**
+- **update checks → family version API (2026-10-30):** `/api/v1/instance/update-check`
+  migrated onto the synced `version_check.py` family contract (plan 48 W6 /
+  ADR-0048) — semver + channel law against neuronection.com, same response
+  shape, fixture wall in `tests/test_version_check_contract.py`; the banner
+  became a discreet sidebar-footer badge (dot + popover).
 - **provider-settings family adoption (2026-10-26):** Settings → Tools → Web
   search re-rendered through the assistant-ui `web-search-providers` family
   (^0.74.0) in the AI-providers pattern — ProviderCards with the `⋯`

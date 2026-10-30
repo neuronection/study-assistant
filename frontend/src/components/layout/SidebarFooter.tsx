@@ -16,6 +16,7 @@ import packageJson from '../../../package.json'
 
 import { Modal, ModalContent } from '@/components/ui/modal'
 import { NEURONECTION_URL, SPONSOR_CHANNELS } from '@/config/funding'
+import { UpdateBadge } from './UpdateBadge'
 
 const fundPillClass =
   'focus-visible:outline-ring inline-flex h-8 items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-4 text-[13px] font-medium text-rose-600 transition-colors hover:bg-rose-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 [&_svg]:size-4 dark:text-rose-400'
@@ -111,9 +112,11 @@ export function SidebarFooter({ compact = false }: { compact?: boolean }) {
               <NeuronectionMark size={20} />
               <NeuronectionWordmark height={7} />
             </a>
-            <span className="text-muted-foreground text-xs font-medium">
-              {t('footer.version', { version: packageJson.version })}
-            </span>
+            <UpdateBadge
+              version={packageJson.version}
+              label={t('footer.version', { version: packageJson.version })}
+              className="text-xs font-medium"
+            />
           </div>
           <div className="flex items-center justify-center gap-2">
             <button
@@ -153,9 +156,11 @@ export function SidebarFooter({ compact = false }: { compact?: boolean }) {
         </div>
       )}
       {!compact && (
-        <p className="text-muted-foreground text-xs font-medium">
-          {t('footer.version', { version: packageJson.version })}
-        </p>
+        <UpdateBadge
+          version={packageJson.version}
+          label={t('footer.version', { version: packageJson.version })}
+          className="text-xs font-medium"
+        />
       )}
 
       <Modal open={fundOpen} onOpenChange={setFundOpen}>

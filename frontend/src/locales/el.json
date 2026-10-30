@@ -2928,6 +2928,8 @@
   "update": {
     "available": "Το Study Assistant {{version}} είναι διαθέσιμο.",
     "download": "Λήψη",
-    "dismiss": "Απόκρυψη ειδοποίησης ενημέρωσης"
+    "dismiss": "Απόκρυψη ειδοποίησης ενημέρωσης",
+    "releaseNotes": "Σημειώσεις έκδοσης",
+    "allReleases": "Όλες οι εκδόσεις"
   }
 }

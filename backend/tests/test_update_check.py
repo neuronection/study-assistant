@@ -1,26 +1,36 @@
-import httpx
+"""Update-check endpoint (plan 87 F; plan 48 W6 moved the law into the
+synced family contract ``version_check.py`` — GitHub Releases polling and
+the crude version tuples are gone, the endpoint is a caching wrapper)."""
+
+from typing import Any
+
 import pytest
 
 from app import __version__
 from app.api import instance
+from app.services.platform import version_check
 
 
-class FakeResponse:
-    def __init__(self, payload: dict[str, object], status: int = 200) -> None:
-        self._payload = payload
-        self.status_code = status
+def make_doc(latest_stable: str, latest_beta: str | None = None) -> dict[str, Any]:
+    def release(version: str) -> dict[str, Any]:
+        return {
+            "version": version,
+            "tag": f"v{version}",
+            "channel": "beta" if "-" in version else "stable",
+            "publishedAt": "2026-10-30T00:00:00Z",
+            "url": f"https://github.com/neuronection/study-assistant/releases/tag/v{version}",
+        }
 
-    def raise_for_status(self) -> None:
-        if self.status_code >= 400:
-            request = httpx.Request("GET", "https://example.invalid")
-            raise httpx.HTTPStatusError(
-                "boom",
-                request=request,
-                response=httpx.Response(500, request=request),
-            )
-
-    def json(self) -> dict[str, object]:
-        return self._payload
+    return {
+        "schemaVersion": 1,
+        "project": "study-assistant",
+        "repo": "neuronection/study-assistant",
+        "generatedAt": "2026-10-30T04:40:11Z",
+        "checkIntervalSec": 21600,
+        "latestStable": release(latest_stable),
+        "latestBeta": release(latest_beta) if latest_beta else None,
+        "history": [],
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -32,16 +42,11 @@ def reset_cache() -> None:
 def test_newer_release_is_an_available_update(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
-    def fake_get(url: str, **kwargs: object) -> FakeResponse:
+    def fake_fetch(url: str) -> dict[str, Any]:
         calls.append(url)
-        return FakeResponse(
-            {
-                "tag_name": "v99.0.0",
-                "html_url": "https://github.com/neuronection/study-assistant/releases/tag/v99.0.0",
-            }
-        )
+        return make_doc("99.0.0")
 
-    monkeypatch.setattr(httpx, "get", fake_get)
+    monkeypatch.setattr(version_check, "_default_fetch_json", fake_fetch)
     payload = instance.update_check()
     assert payload["current_version"] == __version__
     assert payload["latest_version"] == "v99.0.0"
@@ -54,32 +59,37 @@ def test_newer_release_is_an_available_update(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_same_or_older_release_is_not_an_update(monkeypatch: pytest.MonkeyPatch) -> None:
-    for tag in (f"v{__version__}", "v0.0.1"):
+    for version in (__version__, "0.0.1"):
         instance._UPDATE_CACHE = None
         instance._UPDATE_CACHE_AT = None
         monkeypatch.setattr(
-            httpx,
-            "get",
-            lambda url, tag=tag, **kwargs: FakeResponse({"tag_name": tag}),
+            version_check, "_default_fetch_json", lambda url, version=version: make_doc(version)
         )
         payload = instance.update_check()
         assert payload["update_available"] is False
-        assert payload["latest_version"] == tag
+        assert payload["latest_version"] == f"v{version}"
+
+
+def test_stable_channel_ignores_a_newer_prerelease(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(version_check, "_default_fetch_json", lambda url: make_doc(__version__, "99.0.0-rc.1"))
+    payload = instance.update_check()
+    assert payload["update_available"] is False
+    assert payload["error"] is None
+
+
+def test_invalid_document_is_skipped_not_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(version_check, "_default_fetch_json", lambda url: {"schemaVersion": 2})
+    payload = instance.update_check()
+    assert payload["update_available"] is False
+    assert "invalid version API document" in str(payload["error"])
 
 
 def test_network_failure_is_honest_not_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get(url: str, **kwargs: object) -> FakeResponse:
-        raise httpx.ConnectError("offline")
+    def fake_fetch(url: str) -> dict[str, Any]:
+        raise RuntimeError("offline")
 
-    monkeypatch.setattr(httpx, "get", fake_get)
+    monkeypatch.setattr(version_check, "_default_fetch_json", fake_fetch)
     payload = instance.update_check()
     assert payload["update_available"] is False
     assert payload["latest_version"] is None
     assert payload["error"]
-
-
-def test_version_tuple_handles_prefixes_and_suffixes() -> None:
-    assert instance._version_tuple("v1.2.3") == (1, 2, 3)
-    assert instance._version_tuple("1.2") == (1, 2, 0)
-    assert instance._version_tuple("1.2.3-rc.1") == (1, 2, 3)
-    assert instance._version_tuple("nope") is None

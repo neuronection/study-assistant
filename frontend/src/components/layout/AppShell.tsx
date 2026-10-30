@@ -22,6 +22,7 @@ import {
   Plus,
   Search,
   Settings,
+  Download,
   X,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -32,7 +33,7 @@ import { CommandPalette, useCommandPaletteOpen } from './CommandPalette'
 import { FileDock, fileDockOpen } from './FileDock'
 import { FocusTimer } from './FocusTimer'
 import { RouteFade } from './RouteFade'
-import { UpdateBanner } from './UpdateBanner'
+import { loadUpdateCheck } from './UpdateBadge'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { QuickCapture } from '@/components/capture/QuickCapture'
 import { SnapIntoNote } from '@/components/capture/SnapIntoNote'
@@ -376,6 +377,19 @@ export function AppShell() {
   const user = getCurrentUser()
   const [theme, setTheme] = useThemePreference()
   const [demoMode, setDemoMode] = useState(false)
+  const [updateCheck, setUpdateCheck] = useState<Awaited<
+    ReturnType<typeof loadUpdateCheck>
+  >>(null)
+  useEffect(() => {
+    let alive = true
+    void loadUpdateCheck().then((value) => {
+      if (alive) setUpdateCheck(value)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+  const canSeeUpdateRow = Boolean(getCurrentUser()?.is_admin)
   useEffect(() => {
     let alive = true
     void loadDemoMode().then((value) => {
@@ -661,10 +675,24 @@ export function AppShell() {
                 items={[
                   { id: 'settings', label: t('nav.settings'), icon: Settings },
                   { id: 'about', label: t('nav.about'), icon: Info },
+                  ...(canSeeUpdateRow &&
+                  updateCheck?.update_available &&
+                  updateCheck.latest_version
+                    ? [
+                        {
+                          id: 'update',
+                          label: t('update.releaseNotes'),
+                          icon: Download,
+                        },
+                      ]
+                    : []),
                 ]}
                 onItemSelect={(id) => {
                   if (id === 'settings') void navigate({ to: '/settings' })
                   if (id === 'about') void navigate({ to: '/about' })
+                  if (id === 'update' && updateCheck) {
+                    window.open(updateCheck.release_url, '_blank', 'noreferrer')
+                  }
                 }}
                 onLogout={() => void logoutSession()}
                 logoutLabel={t('auth.signOut')}
@@ -707,7 +735,6 @@ export function AppShell() {
         />
       </aside>
       <main className="flex-1 overflow-y-auto">
-        <UpdateBanner />
         <RouteFade />
       </main>
       <FileDock />

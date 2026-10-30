@@ -11,6 +11,19 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Changed (update checks — family version API, plan 48 W6)
+- **`GET /api/v1/instance/update-check` now runs on the synced family
+  version-check contract** (`backend/app/services/platform/version_check.py`,
+  canonical in `dev/contracts/`): the ad-hoc GitHub-Releases poll and its
+  crude version tuples are replaced by the neuronection.com version API
+  (ADR-0048) with real semver ordering, the stable-channel law (prereleases
+  are never offered to stable clients), document validation before use and
+  the skip-on-failure rule. Response shape is unchanged — the OpenAPI type
+  is untouched. The plan-87 F banner is replaced by a discreet update badge
+  in the sidebar footer (dot + popover with release links, self-clearing);
+  accepted by the shared cross-language fixture wall
+  (`backend/tests/fixtures/version_check.fixtures.json`).
+
 ### Changed (provider settings — family adoption)
 - **Web search providers render through the family `web-search-providers`
   modules** (assistant-ui ^0.74.0), in the AI-providers pattern: configured

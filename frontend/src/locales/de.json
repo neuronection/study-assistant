@@ -2928,6 +2928,8 @@
   "update": {
     "available": "Study Assistant {{version}} ist verfügbar.",
     "download": "Herunterladen",
-    "dismiss": "Update-Hinweis ausblenden"
+    "dismiss": "Update-Hinweis ausblenden",
+    "releaseNotes": "Versionshinweise",
+    "allReleases": "Alle Versionen"
   }
 }

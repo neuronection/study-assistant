@@ -2963,6 +2963,8 @@
   "update": {
     "available": "Study Assistant {{version}} is available.",
     "download": "Download",
-    "dismiss": "Dismiss update notice"
+    "dismiss": "Dismiss update notice",
+    "releaseNotes": "Release notes",
+    "allReleases": "All releases"
   }
 }
