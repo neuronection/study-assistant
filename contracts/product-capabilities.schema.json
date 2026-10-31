@@ -289,8 +289,18 @@
         },
         "i18n": {
           "$ref": "#/$defs/i18n"
+        },
+        "visual": {
+          "$ref": "#/$defs/visualPath",
+          "$comment": "Optional component capture (alpha) shown floating in the feature row. One per capability — it appears exactly once on the whole site."
         }
       }
+    },
+    "visualPath": {
+      "type": "string",
+      "pattern": "^(?!.*\\.\\.)images/components/[a-z0-9][a-z0-9-]*\\.(png|webp)$",
+      "maxLength": 120,
+      "$comment": "COMPONENT CAPTURE: the capability's UI element ISOLATED as it really renders (element crop, never the page — no window chrome, no desktop). PNG or WebP, ~2x density, 480–900 px on the long edge, named after the capability id, path relative to this manifest (docs/images/components/<id>.png). Produced by the product's own capture pipeline; scenes with `tour: false` + `capture: \"element\"` write it (guidelines/component-captures.md). Transparency is optional: floating components capture with alpha (rendered with a drop-shadow), surfaced cards keep their own surface (rendered as a framed card). Rendered ONCE, in the project page feature rows."
     }
   }
 }

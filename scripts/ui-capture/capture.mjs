@@ -621,7 +621,7 @@ async function captureOnPage(page, scene, vpName, opts, tokens, issues) {
   if (beats.length === 0) {
     await page.waitForTimeout(settleMs);
     const filename = `${scene.name}-${vpName}.png`;
-    await shootScene(page, scene, vp, join(opts.out, filename), opts);
+    await shootScene(page, scene, vp, join(opts.out, scene.outDir ?? "", filename), opts);
     captured.push({ viewport: vpName, file: filename });
     console.log(`  ✓ ${scene.name} [${vpName}] → ${filename}`);
     return captured;
@@ -645,7 +645,7 @@ async function captureOnPage(page, scene, vpName, opts, tokens, issues) {
     }
     await page.waitForTimeout(beat.settleMs ?? settleMs);
     const filename = beatFileName(scene, vpName, beat, index);
-    await shootScene(page, scene, vp, join(opts.out, filename), opts);
+    await shootScene(page, scene, vp, join(opts.out, scene.outDir ?? "", filename), opts);
     captured.push({
       viewport: vpName,
       file: filename,

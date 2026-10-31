@@ -8,7 +8,10 @@
     "base": "http://localhost:8200",
     "api": "http://localhost:8200/api/v1",
     "apiPath": "/api/v1",
-    "healthUrls": ["{base}/api/v1/health", "{base}"],
+    "healthUrls": [
+      "{base}/api/v1/health",
+      "{base}"
+    ],
     "env": {
       "basePort": "SA_PORT",
       "apiPort": "SA_PORT",
@@ -25,17 +28,45 @@
   },
   "session": {
     "windowFlag": "__SA_SCREENSHOT_CAPTURE__",
-    "apiHeaders": { "X-Profile-Id": "{profileId}" },
+    "apiHeaders": {
+      "X-Profile-Id": "{profileId}"
+    },
     "apiEntries": [
-      { "key": "ca-profile-id", "path": "/profiles", "match": { "name": "Computer Science BSc" }, "pick": "id" },
-      { "key": "sa-course-id", "path": "/courses", "pick": "[0].id" }
+      {
+        "key": "ca-profile-id",
+        "path": "/profiles",
+        "match": {
+          "name": "Computer Science BSc"
+        },
+        "pick": "id"
+      },
+      {
+        "key": "sa-course-id",
+        "path": "/courses",
+        "pick": "[0].id"
+      }
     ]
   },
   "pathTokens": {
-    "profileId": { "path": "/profiles", "match": { "name": "Computer Science BSc" }, "pick": "id" },
-    "courseId": { "path": "/courses", "pick": "[0].id" },
-    "nodeId": { "path": "/courses/{courseId}/tree", "pick": "[0].children[0].id" },
-    "materialId": { "path": "/materials", "pick": "[0].id" }
+    "profileId": {
+      "path": "/profiles",
+      "match": {
+        "name": "Computer Science BSc"
+      },
+      "pick": "id"
+    },
+    "courseId": {
+      "path": "/courses",
+      "pick": "[0].id"
+    },
+    "nodeId": {
+      "path": "/courses/{courseId}/tree",
+      "pick": "[0].children[0].id"
+    },
+    "materialId": {
+      "path": "/materials",
+      "pick": "[0].id"
+    }
   },
   "capture": {
     "outDir": "docs/images",
@@ -45,18 +76,44 @@
     "headless": true,
     "reducedMotion": true,
     "viewports": {
-      "desktop": { "width": 1440, "height": 1200, "deviceScaleFactor": 1 },
-      "mobile": { "width": 390, "height": 844, "deviceScaleFactor": 2 }
+      "desktop": {
+        "width": 1440,
+        "height": 1200,
+        "deviceScaleFactor": 1
+      },
+      "mobile": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "desktop2x": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 2
+      }
     }
   },
   "gallery": {
-    "title": "Study Assistant — Visual Tour",
-    "mobileTitle": "Study Assistant — Visual Tour (Mobile)",
+    "title": "Study Assistant \u2014 Visual Tour",
+    "mobileTitle": "Study Assistant \u2014 Visual Tour (Mobile)",
     "regenCommand": "./scripts/capture_ui.sh"
   },
   "gif": {
     "output": "docs/images/visual-tour.gif",
-    "order": ["login", "today", "courses", "course-detail", "node-workspace", "library", "material-detail", "review", "review-revealed", "chat", "scores", "settings"],
+    "order": [
+      "login",
+      "today",
+      "courses",
+      "course-detail",
+      "node-workspace",
+      "library",
+      "material-detail",
+      "review",
+      "review-revealed",
+      "chat",
+      "scores",
+      "settings"
+    ],
     "width": 800,
     "frameSeconds": 2,
     "holdLast": 3

@@ -32,12 +32,10 @@
           "label": "GitHub"
         }
       ],
-      "shot": "images/material-detail-desktop.png",
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "form"
+      ]
     },
     {
       "id": "tutor-chat",
@@ -58,12 +56,10 @@
           "href": "docs/study/user/chat"
         }
       ],
-      "shot": "images/chat-desktop.png",
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "chat"
+      ]
     },
     {
       "id": "local-first",
@@ -88,12 +84,10 @@
           "href": "docs/study/user/local-ai"
         }
       ],
-      "shot": "images/settings-desktop.png",
       "platforms": [
         "desktop",
         "selfhosted"
-      ],
-      "preview": "list"
+      ]
     },
     {
       "id": "scheduled-recall",
@@ -113,12 +107,10 @@
           "href": "docs/study/user/flashcards"
         }
       ],
-      "shot": "images/review-desktop.png",
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "form"
+      ]
     },
     {
       "id": "capture-and-search",
@@ -144,12 +136,10 @@
           "href": "docs/study/user/library"
         }
       ],
-      "shot": "images/library-desktop.png",
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "form"
+      ]
     },
     {
       "id": "study-planner",
@@ -175,12 +165,10 @@
           "href": "docs/study/user/features"
         }
       ],
-      "shot": "images/today-desktop.png",
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "kanban"
+      ]
     },
     {
       "id": "connected-sources",
@@ -214,8 +202,7 @@
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "list"
+      ]
     },
     {
       "id": "progress-diagnostics",
@@ -236,12 +223,10 @@
           "href": "docs/study/user/progress"
         }
       ],
-      "shot": "images/scores-desktop.png",
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "chart"
+      ]
     },
     {
       "id": "connector-sdk",
@@ -270,33 +255,7 @@
       "platforms": [
         "web",
         "desktop"
-      ],
-      "preview": "list"
-    }
-  ],
-  "matrix": [
-    {
-      "row": "offline",
-      "value": true,
-      "note": "needs a local AI engine (Ollama, LM Studio, llama.cpp)"
-    },
-    {
-      "row": "self-host",
-      "value": "Docker",
-      "note": "standalone compose stack, PostgreSQL 16"
-    },
-    {
-      "row": "extension-sdk",
-      "value": "connectors",
-      "note": "family charter host; T3 processes"
-    },
-    {
-      "row": "platforms",
-      "value": "Linux, Windows, Web, Docker"
-    },
-    {
-      "row": "license",
-      "value": "Apache-2.0"
+      ]
     }
   ],
   "useCases": [

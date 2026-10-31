@@ -56,7 +56,8 @@
               "selfhosted",
               "local"
             ],
-            "order": 1
+            "order": 1,
+            "visual": "images/components/interaction-check.png"
           },
           {
             "id": "sdk-authoring",
@@ -338,6 +339,24 @@
             "summary": "A structured job catalog you can browse by field and skill.",
             "category": "discover",
             "status": "shipped",
+            "order": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "visual-path-traversal",
+      "doc": {
+        "version": 1,
+        "project": "career",
+        "capabilities": [
+          {
+            "id": "explore-careers",
+            "verb": "Discover careers you didn't know exist",
+            "summary": "A structured job catalog you can browse by field and skill.",
+            "category": "discover",
+            "status": "shipped",
+            "visual": "../backend/secret.png",
             "order": 10
           }
         ]
