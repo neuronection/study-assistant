@@ -110,7 +110,8 @@
       "platforms": [
         "web",
         "desktop"
-      ]
+      ],
+      "visual": "images/components/scheduled-recall-desktop2x.png"
     },
     {
       "id": "capture-and-search",

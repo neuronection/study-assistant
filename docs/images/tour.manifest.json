@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "templateVersion": "1.2.2",
+  "version": 2,
+  "templateVersion": "1.3.0",
   "project": "Study Assistant",
   "generatedBy": "scripts/ui-capture (Neuronection family template)",
   "gallery": {
