@@ -139,7 +139,8 @@
       "platforms": [
         "web",
         "desktop"
-      ]
+      ],
+      "visual": "images/components/capture-and-search-desktop2x.png"
     },
     {
       "id": "study-planner",
