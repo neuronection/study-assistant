@@ -152,6 +152,7 @@ class SyncReportOut(BaseModel):
     conflicts: int = 0
     skipped: int = 0
     suggested: int = 0
+    linked_existing: int = 0
     error: str | None = None
 
 

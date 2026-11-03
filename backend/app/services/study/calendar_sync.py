@@ -107,6 +107,7 @@ class SyncReport:
     conflicts: int = 0
     skipped: int = 0
     suggested: int = 0
+    linked_existing: int = 0
     error: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
@@ -122,6 +123,7 @@ class SyncReport:
             "conflicts": self.conflicts,
             "skipped": self.skipped,
             "suggested": self.suggested,
+            "linked_existing": self.linked_existing,
             "error": self.error,
         }
 
@@ -1228,7 +1230,15 @@ def _upsert_event_link(
     local_id: str,
     event: calendar.CalendarEvent,
     now: datetime,
+    uid: str | None = None,
 ) -> None:
+    """Persist the identity pin.
+
+    ``uid`` is the LOCAL uid (``study:plan-item:<id>``) — the identity
+    authority. The provider may mint its own (Graph's ``iCalUId`` is
+    server-generated), so the remote's uid is only ever a write handle.
+    """
+    identity = uid or event.uid
     row = session.scalars(
         select(CalendarEventLink).where(
             CalendarEventLink.link_id == link.id,
@@ -1239,7 +1249,7 @@ def _upsert_event_link(
         row = CalendarEventLink(
             link_id=link.id,
             local_id=local_id,
-            uid=event.uid,
+            uid=identity,
             remote_id=event.remote_id,
             etag=event.etag,
             local_hash=calendar.event_hash(event),
@@ -1248,7 +1258,7 @@ def _upsert_event_link(
         )
         session.add(row)
         return
-    row.uid = event.uid
+    row.uid = identity
     row.remote_id = event.remote_id
     row.etag = event.etag
     row.local_hash = calendar.event_hash(event)
@@ -1437,13 +1447,23 @@ async def _sync_locked(
                         item.external_uid = written.uid
                         item.updated_at = utcnow()
                     _upsert_event_link(
-                        session, link, local_id=action.local_id or "", event=written, now=at
+                        session,
+                        link,
+                        local_id=action.local_id or "",
+                        event=written,
+                        now=at,
+                        uid=action.uid,
                     )
                     report.created_remote += 1
                 elif action.kind == calendar.ActionKind.UPDATE_REMOTE and action.event:
                     written = await transport.put_event(action.event)
                     _upsert_event_link(
-                        session, link, local_id=action.local_id or "", event=written, now=at
+                        session,
+                        link,
+                        local_id=action.local_id or "",
+                        event=written,
+                        now=at,
+                        uid=action.uid,
                     )
                     report.updated_remote += 1
                 elif action.kind == calendar.ActionKind.DELETE_REMOTE and action.event:
@@ -1493,6 +1513,20 @@ async def _sync_locked(
                     if linked is not None:
                         session.delete(linked)
                     report.unlinked += 1
+                elif action.kind == calendar.ActionKind.LINK_EXISTING and action.event:
+                    # E9 orphan repair: the remote already exists — attach it
+                    # to the local record instead of creating a duplicate.
+                    _upsert_event_link(
+                        session,
+                        link,
+                        local_id=action.local_id or "",
+                        event=action.event,
+                        now=at,
+                        uid=action.uid,
+                    )
+                    report.unlinked += 0
+                    report.updated_local += 0
+                    report.linked_existing += 1
                 elif action.kind == calendar.ActionKind.CONFLICT:
                     report.conflicts += 1
             except calendar.CalendarError as exc:

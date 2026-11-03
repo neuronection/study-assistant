@@ -462,7 +462,11 @@ def test_reconcile_link_rows_carry_no_token(
         db_session.expire_all()
         rows = list(db_session.scalars(select(CalendarEventLink)))
         assert len(rows) == 1
-        assert rows[0].uid.startswith("remote-")
+        # Identity law (E9): the link's uid is the LOCAL uid — the provider
+        # may mint its own (Graph's iCalUId), so the remote handle lives in
+        # remote_id, never in the identity field.
+        assert rows[0].uid.startswith("planitem-") or rows[0].uid.startswith("study:")
+        assert rows[0].remote_id.startswith("remote-")
         assert "app-password-value" not in str(rows[0].__dict__)
 
 
