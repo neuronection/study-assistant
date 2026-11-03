@@ -717,7 +717,6 @@ def test_discover_google_reads_the_calendar_list(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Google discovery runs on the stored token set of the connected link."""
-    from app.core import oauth as oauth_core
 
     class _Response:
         status_code = 200
@@ -762,13 +761,17 @@ def test_discover_google_reads_the_calendar_list(
             },
         )
         link_id = created.json()["id"]
-        oauth_core.seal_tokens(
-            f"calendar:{link_id}:oauth",
-            oauth_core.OAuthTokens(
+        from nx_auth.oauth import TokenSet
+
+        from app.services.study import cloud_oauth
+
+        cloud_oauth.vault_for(link_id).seal(
+            link_id,
+            TokenSet(
                 access_token="secret-access-token",
                 refresh_token=None,
-                token_type="Bearer",
                 expires_at=None,
+                scope="https://www.googleapis.com/auth/calendar.readonly",
             ),
         )
         monkeypatch.setattr(httpx, "AsyncClient", _fake_client)
@@ -836,7 +839,7 @@ def test_oauth_state_is_profile_bound_and_single_use(
                 profile_id="profile-b",
                 transport=_token_exchange_transport(),
             )
-        assert "profile" in error.value.detail
+        assert error.value.code == "invalid"  # foreign principal refused (E12)
         assert secret_store.get_secret(f"calendar:{link.id}:pending") is None
 
         # The failed attempt consumed the flow — a replay cannot try again.

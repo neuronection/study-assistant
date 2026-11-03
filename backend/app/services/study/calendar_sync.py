@@ -26,7 +26,6 @@ is a pointer.
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import re
 from collections.abc import Callable, Mapping
@@ -38,11 +37,11 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 import httpx
+import nx_auth.oauth as nx_oauth
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ...core import oauth as oauth_core
 from ...core import secrets as secret_store
 from ...core.vocab import CalendarDirection, CalendarStatus, PlanItemKind, PlanItemOrigin
 from ...domain import payloads
@@ -62,6 +61,7 @@ from ...extensions.cloud.cloud_providers import (
     default_catalog,
     provider_rows,
 )
+from . import cloud_oauth
 
 CALENDAR_SERVICE = "calendar"
 DEFAULT_REDIRECT_PORT = 53690
@@ -462,6 +462,9 @@ def update_link(
 def delete_link(session: Session, link: CalendarLink) -> None:
     for kind in ("oauth", "password", "token", "pending"):
         secret_store.delete_secret(_secret_slot(link.id, kind))
+    cloud_oauth.vault_for(link.id).clear(link.id)
+    cloud_oauth.KeyringStateStore(cloud_oauth.state_ref(link.id)).discard("")
+    _drop_token_client(link.id)
     session.delete(link)
     session.commit()
 
@@ -495,14 +498,13 @@ def set_secret(session: Session, link: CalendarLink, value: str) -> CalendarLink
 # ---------------------------------------------------------------------------
 
 
-PENDING_STATE_TTL = timedelta(minutes=10)
+def oauth_client(provider_row: Provider, link: _CredentialContext | None = None) -> Any:
+    """The kit's ``OAuthClient`` from the family catalog row.
 
-
-def oauth_config(
-    provider_row: Provider, link: _CredentialContext | None = None
-) -> oauth_core.OAuthConfig:
-    spec = provider_row.oauth
-    if spec is None:
+    Endpoints and provider quirks are catalog data (ADR-0052 §11) — this
+    never branches on a provider name.
+    """
+    if provider_row.oauth is None:
         raise CalendarSyncError("invalid", f"{provider_row.id} does not use OAuth", status=422)
     prefix = f"SA_{provider_row.id.upper().replace('-', '_')}"
     client_id = os.environ.get(f"{prefix}_CLIENT_ID", "")
@@ -514,56 +516,43 @@ def oauth_config(
         )
     pull = link is not None and link.direction == CalendarDirection.PULL.value
     preset = "read" if pull else "write"
-    return oauth_core.OAuthConfig(
-        provider_id=provider_row.id,
-        authorize_url=spec.authorize_url,
-        token_url=spec.token_url,
-        scopes=provider_row.oauth_scopes(CALENDAR_SERVICE, preset),
-        redirect_port=int(os.environ.get("SA_CALENDAR_REDIRECT_PORT", str(DEFAULT_REDIRECT_PORT))),
+    return cloud_oauth.client_for(
+        provider_row,
         client_id=client_id,
+        redirect_uri=_redirect_uri(),
+        scopes=provider_row.oauth_scopes(CALENDAR_SERVICE, preset),
         client_secret=os.environ.get(f"{prefix}_CLIENT_SECRET"),
-        extra_auth_params=dict(spec.extra_auth_params),
     )
+
+
+def _redirect_uri() -> str:
+    port = int(os.environ.get("SA_CALENDAR_REDIRECT_PORT", str(DEFAULT_REDIRECT_PORT)))
+    return f"http://127.0.0.1:{port}/oauth/callback"
 
 
 def oauth_start(link: CalendarLink, *, profile_id: str) -> dict[str, str]:
-    """Begin one bind flow. ``state`` is bound to the profile (Rev 3 E12)."""
+    """Begin one bind flow.
+
+    ``state`` is single-use, expiring and bound to ``profile_id`` — the
+    anti-bind-CSRF law (Rev 3 E12), enforced by the kit's state store.
+    """
     provider_row = provider(link.provider)
-    config = oauth_config(provider_row, link)
-    state = oauth_core.new_state()
-    verifier = oauth_core.pkce_verifier()
-    secret_store.set_secret(
-        _pending_slot(link.id),
-        json.dumps(
-            {
-                "state": state,
-                "verifier": verifier,
-                "profile": profile_id,
-                "created": datetime.now(UTC).isoformat(),
-                "scopes": list(config.scopes),
-            }
-        ),
-    )
-    return {
-        "authorize_url": oauth_core.build_authorize_url(config, state, verifier),
-        "redirect_uri": config.redirect_uri(),
-        "state": state,
-    }
-
-
-def _read_pending(link: CalendarLink) -> dict[str, Any]:
-    raw = secret_store.get_secret(_pending_slot(link.id))
-    if not raw:
-        raise CalendarSyncError("invalid", "no OAuth flow is pending for this link", status=409)
+    client = oauth_client(provider_row, link)
+    store = cloud_oauth.KeyringStateStore(cloud_oauth.state_ref(link.id))
     try:
-        pending = json.loads(raw)
-    except ValueError as exc:
-        secret_store.delete_secret(_pending_slot(link.id))
-        raise CalendarSyncError("invalid", "pending OAuth state is unreadable", status=409) from exc
-    if not isinstance(pending, dict):
-        secret_store.delete_secret(_pending_slot(link.id))
-        raise CalendarSyncError("invalid", "pending OAuth state is unreadable", status=409)
-    return pending
+        offer = nx_oauth.authorize(
+            client,
+            store=store,
+            principal_id=profile_id,
+            extra={"scopes": list(client.scopes)},
+        )
+    except nx_oauth.OAuthError as exc:
+        raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
+    return {
+        "authorize_url": offer.authorize_url,
+        "redirect_uri": client.redirect_uri,
+        "state": offer.record.state,
+    }
 
 
 def oauth_complete(
@@ -575,42 +564,33 @@ def oauth_complete(
     profile_id: str,
     transport: httpx.BaseTransport | None = None,
 ) -> CalendarLink:
-    # Single-use: the pending slot is consumed on every decision below —
-    # success, expiry, mismatch or replay can never complete twice (E12).
-    pending = _read_pending(link)
-    slot = _pending_slot(link.id)
+    """Consume the state, exchange the code once, seal the token set.
 
-    def consume() -> None:
-        secret_store.delete_secret(slot)
-
-    if pending.get("profile") != profile_id:
-        consume()
-        raise CalendarSyncError(
-            "invalid", "OAuth state does not belong to this profile", status=409
-        )
-    if pending.get("state") != state:
-        consume()
-        raise CalendarSyncError("invalid", "OAuth state mismatch", status=409)
-    created = pending.get("created")
-    if created:
-        try:
-            started = datetime.fromisoformat(str(created))
-        except ValueError:
-            started = None
-        if started is None or (datetime.now(UTC) - started) > PENDING_STATE_TTL:
-            consume()
-            raise CalendarSyncError("invalid", "OAuth flow expired; start again", status=409)
+    Consumption is pop-first inside the store: success, expiry, mismatch and
+    replay all burn the flow, so a bind can never complete twice (E12).
+    """
     provider_row = provider(link.provider)
-    config = oauth_config(provider_row, link)
+    client = oauth_client(provider_row, link)
+    store = cloud_oauth.KeyringStateStore(cloud_oauth.state_ref(link.id))
     try:
-        tokens = oauth_core.exchange_code(
-            config, code, str(pending.get("verifier") or ""), transport=transport
-        )
-    except oauth_core.OAuthError as exc:
+        record = store.consume(state, principal_id=profile_id)
+    except nx_oauth.OAuthError as exc:
         raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
-    consume()
-    oauth_core.seal_tokens(_oauth_slot(link.id), tokens)
-    link.scopes = list(config.scopes)
+
+    token_transport = cloud_oauth.HttpxTokenTransport(_token_http(transport))
+    try:
+        tokens = nx_oauth.exchange_code(
+            client,
+            code=code,
+            code_verifier=record.code_verifier,
+            transport=token_transport,
+            redirect_uri=record.redirect_uri,
+        )
+    except nx_oauth.OAuthError as exc:
+        raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
+
+    cloud_oauth.vault_for(link.id).seal(link.id, tokens)
+    link.scopes = list(client.scopes)
     link.status = CalendarStatus.OK.value
     link.last_error = None
     link.consecutive_failures = 0
@@ -618,6 +598,13 @@ def oauth_complete(
     session.commit()
     session.refresh(link)
     return link
+
+
+def _token_http(transport: httpx.BaseTransport | None) -> httpx.Client:
+    """A blocking client for the kit's synchronous token seam."""
+    if transport is not None:
+        return httpx.Client(transport=transport)
+    return httpx.Client(timeout=20.0, follow_redirects=False)
 
 
 # ---------------------------------------------------------------------------
@@ -656,20 +643,14 @@ class _CredentialContext(Protocol):
 def _auth_header_provider(link: _CredentialContext, provider_row: Provider) -> Callable[[], str]:
     def header() -> str:
         if link.auth_kind == "oauth2":
-            tokens = oauth_core.load_tokens(_oauth_slot(link.id))
-            if tokens is None:
-                raise CalendarSyncError("needs-auth", "connect this calendar first", status=409)
-            if tokens.expired():
-                if not tokens.refresh_token:
-                    raise CalendarSyncError(
-                        "needs-auth", "the OAuth token expired; reconnect", status=409
-                    )
-                try:
-                    tokens = oauth_core.refresh_tokens(oauth_config(provider_row, link), tokens)
-                except oauth_core.OAuthError as exc:
-                    raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
-                oauth_core.seal_tokens(_oauth_slot(link.id), tokens)
-            return f"Bearer {tokens.access_token}"
+            try:
+                # Single-flight refresh (the reason this rides the kit): two
+                # concurrent syncs await ONE refresh, so a rotating refresh
+                # token can never be consumed twice.
+                access = _token_client(provider_row, link).access(link.id)
+            except nx_oauth.OAuthError as exc:
+                raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
+            return f"Bearer {access}"
         slot = link.secret_ref or _connection_slot(link.id, link.auth_kind)
         secret = secret_store.get_secret(slot)
         if not secret:
@@ -683,6 +664,34 @@ def _auth_header_provider(link: _CredentialContext, provider_row: Provider) -> C
 
     return header
 
+
+
+#: One :class:`nx_auth.oauth.TokenClient` per bound account. The kit's
+#: single-flight refresh lives on the instance, so it must be SHARED across
+#: concurrent syncs — a fresh client per call would lock nothing.
+_token_clients: dict[str, Any] = {}
+_token_clients_lock = __import__("threading").Lock()
+
+
+def _token_client(provider_row: Provider, link: _CredentialContext) -> Any:
+    with _token_clients_lock:
+        cached = _token_clients.get(link.id)
+        if cached is not None:
+            return cached
+        client = oauth_client(provider_row, link)
+        token_client = nx_oauth.TokenClient(
+            client,
+            vault=cloud_oauth.vault_for(link.id),
+            transport=cloud_oauth.HttpxTokenTransport(_token_http(None)),
+        )
+        _token_clients[link.id] = token_client
+        return token_client
+
+
+def _drop_token_client(link_id: str) -> None:
+    """Forget the cached client on unbind/re-bind (stale grants must not linger)."""
+    with _token_clients_lock:
+        _token_clients.pop(link_id, None)
 
 
 def _allowed_domains(link: _CredentialContext, provider_row: Provider) -> set[str]:

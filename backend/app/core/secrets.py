@@ -36,6 +36,17 @@ def _cipher() -> SecretCipher:
     return SecretCipher(key_ring().data_key, previous=data_key_previous())
 
 
+def cipher() -> SecretCipher:
+    """The at-rest cipher, for callers that seal their own envelopes.
+
+    ``nx_auth.oauth``'s ``TokenVault`` wraps each binding's token set in a
+    ``context="oauth:<binding-id>"`` envelope (ADR-0052 §2) before storage —
+    it needs the same rotation-aware key ring this module uses. Exposed so
+    the vault never reaches for a second key source.
+    """
+    return _cipher()
+
+
 def reset_secret_caches() -> None:
     """Drop the cached cipher (tests swap key material between cases)."""
     _cipher.cache_clear()
