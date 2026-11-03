@@ -470,6 +470,78 @@ def test_reconcile_link_rows_carry_no_token(
         assert "app-password-value" not in str(rows[0].__dict__)
 
 
+def test_delta_cursor_skips_the_reconcile_when_nothing_changed(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, db_session: Session
+) -> None:
+    """M4 fast path: an unchanged delta short-circuits the whole reconcile."""
+    with client:
+        course_id = _course(client)
+        link = _link(client, course_id)
+
+        class _DeltaProbe(FakeTransport):
+            def __init__(self) -> None:
+                super().__init__()
+                self.calls = 0
+
+            async def list_events(self, start, end, *, page_token=None, sync_token=None):
+                self.calls += 1
+                if sync_token:
+                    # nothing changed since the cursor
+                    return cc.CalendarPage(events=[], next_sync_token="cursor-2")
+                page = await super().list_events(start, end, page_token=page_token)
+                # the provider hands back a cursor at the end of a listing
+                return cc.CalendarPage(
+                    events=page.events,
+                    next_page_token=page.next_page_token,
+                    next_sync_token="cursor-1",
+                )
+
+        fake = _DeltaProbe()
+        monkeypatch.setattr(service, "_transport", lambda *args: fake)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _NoopClient())
+
+        first = _sync(client, link["id"])
+        assert first["status"] == "ok"
+
+        db_session.expire_all()
+        row = db_session.get(CalendarLink, link["id"])
+        assert row is not None and row.sync_cursor  # the cursor round-trips
+
+        second = _sync(client, link["id"])
+        assert second["status"] == "ok"
+        # the delta said "nothing changed" — the reconcile never ran
+        assert second["created_local"] == 0 and second["suggested"] == 0
+
+
+def test_stale_cursor_falls_back_to_a_full_sync(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, db_session: Session
+) -> None:
+    """A dead cursor is dropped and the full window resyncs — never a failure."""
+    with client:
+        course_id = _course(client)
+        link = _link(client, course_id)
+
+        class _StaleCursor(FakeTransport):
+            async def list_events(self, start, end, *, page_token=None, sync_token=None):
+                if sync_token:
+                    raise cc.CalendarError("not-ready", "sync token expired")
+                return await super().list_events(start, end, page_token=page_token)
+
+        fake = _StaleCursor()
+        monkeypatch.setattr(service, "_transport", lambda *args: fake)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _NoopClient())
+
+        _sync(client, link["id"])
+        db_session.expire_all()
+        row = db_session.get(CalendarLink, link["id"])
+        assert row is not None
+        row.sync_cursor = "dead-cursor"
+        db_session.commit()
+
+        report = _sync(client, link["id"])
+        assert report["status"] == "ok", report  # a stale cursor is not a failure
+
+
 def test_delete_link_wipes_the_secret(client: TestClient) -> None:
     from app.core import secrets as secret_store
 

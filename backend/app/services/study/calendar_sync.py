@@ -1329,16 +1329,42 @@ def _window(now: datetime | None = None) -> tuple[date, date]:
 
 async def _list_all(
     transport: calendar.CalendarTransport, start: date, end: date
-) -> list[calendar.CalendarEvent]:
+) -> tuple[list[calendar.CalendarEvent], str | None]:
+    """Full-window listing; returns (events, next sync cursor)."""
     events: list[calendar.CalendarEvent] = []
     page_token: str | None = None
+    sync_token: str | None = None
     for _ in range(MAX_PAGES):
         page = await transport.list_events(start, end, page_token=page_token)
         events.extend(page.events)
         page_token = page.next_page_token
+        sync_token = page.next_sync_token or sync_token
         if not page_token:
             break
-    return events
+    return events, sync_token
+
+
+async def _changed_since(
+    transport: calendar.CalendarTransport, cursor: str
+) -> tuple[bool, str | None]:
+    """Has anything changed since ``cursor``? (M4 — the safe delta form.)
+
+    A delta listing returns only CHANGED events, so it must **never** replace
+    the remote view — doing that would read every unchanged event as
+    "vanished" and unlink it. It is used here purely as a fast path: when the
+    provider says nothing changed, the (expensive) full reconcile can be
+    skipped outright. Any change — including a tombstone — falls through to
+    the full window, and a stale cursor is simply discarded.
+    """
+    try:
+        page = await transport.list_events(
+            date.today(), date.today(), sync_token=cursor
+        )
+    except calendar.CalendarError:
+        # A dead/expired cursor is not a failure: drop it and resync fully.
+        return True, None
+    changed = bool(page.events)
+    return changed or page.next_page_token is not None, page.next_sync_token
 
 
 def _mark_failure(session: Session, link: CalendarLink, error: Exception) -> SyncReport:
@@ -1388,7 +1414,22 @@ async def _sync_locked(
     report = SyncReport()
     try:
         transport = _transport(link, provider_row, client)
-        remote = await _list_all(transport, start, end)
+
+        # M4 fast path: nothing has changed since the last sync -> done.
+        if link.sync_cursor:
+            changed, fresh_cursor = await _changed_since(transport, link.sync_cursor)
+            if not changed:
+                if fresh_cursor:
+                    link.sync_cursor = fresh_cursor[:1024]
+                link.last_synced_at = utcnow()
+                link.consecutive_failures = 0
+                link.last_error = None
+                link.status = CalendarStatus.OK.value
+                link.updated_at = utcnow()
+                session.commit()
+                return SyncReport(status=CalendarStatus.OK.value, skipped=0)
+
+        remote, next_cursor = await _list_all(transport, start, end)
         plan = calendar.reconcile(
             local_records,
             remote,
@@ -1534,6 +1575,8 @@ async def _sync_locked(
                 report.status = CalendarStatus.DEGRADED.value
         # E8: keyword lookalikes become draft suggestions, never records.
         report.suggested = _suggest_items(session, link, remote)
+        if next_cursor:
+            link.sync_cursor = next_cursor[:1024]
         link.last_synced_at = utcnow()
         link.consecutive_failures = 0
         link.last_error = report.error
