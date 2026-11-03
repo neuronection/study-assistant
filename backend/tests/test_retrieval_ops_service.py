@@ -236,6 +236,15 @@ def test_maintenance_rejects_unknown_action(db_session: Session) -> None:
         make_vector_maintenance_handler(FakeEmbedder().embed)(db_session, job, no_report)
 
 
+def test_maintenance_vacuum_runs_on_sqlite(db_session: Session, profile_id: str) -> None:
+    seed_chunks(db_session, profile_id, ["alpha"])
+    job = make_job(db_session, JobType.VECTOR_MAINTENANCE, {"action": "vacuum"})
+    make_vector_maintenance_handler(FakeEmbedder().embed)(db_session, job, no_report)
+    payload = cast(dict[str, Any], job.result)
+    assert payload["action"] == "vacuum"
+    assert payload["skipped"] == 1
+
+
 def test_cutover_refuses_honestly(db_session: Session) -> None:
     job = make_job(db_session, JobType.VECTOR_CUTOVER, {})
     with pytest.raises(JobError, match="no vector-space lifecycle"):

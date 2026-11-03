@@ -243,9 +243,10 @@ def _engine(session: Session) -> Engine:
 
 
 def _vacuum(session: Session, table: str) -> None:
+    statement = "VACUUM" if session.get_bind().dialect.name != "postgresql" else f"VACUUM {table}"
     with _engine(session).connect() as connection:
         connection = connection.execution_options(isolation_level="AUTOCOMMIT")
-        connection.execute(text(f"VACUUM {table}"))
+        connection.execute(text(statement))
 
 
 def _rebuild_index(session: Session) -> str:
