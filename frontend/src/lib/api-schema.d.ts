@@ -664,6 +664,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/calendar/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Links */
+        get: operations["list_links_api_v1_calendar_links_get"];
+        put?: never;
+        /** Create Link */
+        post: operations["create_link_api_v1_calendar_links_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/links/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover Calendars
+         * @description List an account's calendars so the bind form offers a picker (M1).
+         */
+        post: operations["discover_calendars_api_v1_calendar_links_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Link */
+        delete: operations["remove_link_api_v1_calendar_links__link_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Link */
+        patch: operations["patch_link_api_v1_calendar_links__link_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/calendar/links/{link_id}/oauth/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Complete */
+        post: operations["oauth_complete_api_v1_calendar_links__link_id__oauth_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/links/{link_id}/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Oauth Start */
+        post: operations["oauth_start_api_v1_calendar_links__link_id__oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/links/{link_id}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Secret */
+        post: operations["set_secret_api_v1_calendar_links__link_id__secret_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/links/{link_id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Link */
+        post: operations["sync_link_api_v1_calendar_links__link_id__sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/links/{link_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Link */
+        post: operations["test_link_api_v1_calendar_links__link_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Provider Catalog */
+        get: operations["provider_catalog_api_v1_calendar_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat/messages/{message_id}/edit": {
         parameters: {
             query?: never;
@@ -5497,6 +5655,176 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** CalendarCatalogOut */
+        CalendarCatalogOut: {
+            /** Providers */
+            providers: components["schemas"]["CalendarProviderOut"][];
+            /** Secret Disclosure */
+            secret_disclosure: string;
+        };
+        /**
+         * CalendarDiscoverIn
+         * @description Bind-form credentials for one discovery call — never persisted.
+         */
+        CalendarDiscoverIn: {
+            /** Auth Kind */
+            auth_kind?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Calendar Url */
+            calendar_url?: string | null;
+            /** Link Id */
+            link_id?: string | null;
+            /** Provider */
+            provider?: string | null;
+            /** Secret */
+            secret?: string | null;
+            /** Username */
+            username?: string | null;
+        };
+        /** CalendarDiscoverOut */
+        CalendarDiscoverOut: {
+            /** Calendars */
+            calendars: components["schemas"]["CalendarDiscoveredOut"][];
+        };
+        /** CalendarDiscoveredOut */
+        CalendarDiscoveredOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Primary
+             * @default false
+             */
+            primary: boolean;
+            /** Url */
+            url?: string | null;
+        };
+        /** CalendarLinkIn */
+        CalendarLinkIn: {
+            /** Auth Kind */
+            auth_kind?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Calendar Id */
+            calendar_id?: string | null;
+            /** Calendar Url */
+            calendar_url?: string | null;
+            /** Course Id */
+            course_id: string;
+            /**
+             * Direction
+             * @default push
+             */
+            direction: string;
+            /** Label */
+            label: string;
+            /** Options */
+            options?: {
+                [key: string]: unknown;
+            } | null;
+            /** Provider */
+            provider: string;
+            /** Secret */
+            secret?: string | null;
+            /** Username */
+            username?: string | null;
+        };
+        /** CalendarLinkOut */
+        CalendarLinkOut: {
+            /** Account Label */
+            account_label: string | null;
+            /** Auth Kind */
+            auth_kind: string;
+            /** Calendar Id */
+            calendar_id: string | null;
+            /** Calendar Url */
+            calendar_url: string | null;
+            /** Consecutive Failures */
+            consecutive_failures: number;
+            /** Course Id */
+            course_id: string;
+            /** Created At */
+            created_at: string | null;
+            /** Direction */
+            direction: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Synced At */
+            last_synced_at: string | null;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            };
+            /** Provider */
+            provider: string;
+            /** Scopes */
+            scopes: string[];
+            /** Secret Configured */
+            secret_configured: boolean;
+            /** Status */
+            status: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** CalendarLinkPatch */
+        CalendarLinkPatch: {
+            /** Calendar Id */
+            calendar_id?: string | null;
+            /** Calendar Url */
+            calendar_url?: string | null;
+            /** Direction */
+            direction?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Label */
+            label?: string | null;
+            /** Options */
+            options?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** CalendarProviderOut */
+        CalendarProviderOut: {
+            /** Auth Kinds */
+            auth_kinds: string[];
+            /** Base Url Required */
+            base_url_required: boolean;
+            /** Consent Notice */
+            consent_notice: string;
+            /** Domains */
+            domains: string[];
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Protocol */
+            protocol: string;
+            /** Scope Presets */
+            scope_presets: {
+                [key: string]: string[];
+            };
+            /** Setup Fields */
+            setup_fields: components["schemas"]["SetupFieldOut"][];
+            /** Supports Delta */
+            supports_delta: boolean;
+            /** Supports Discovery */
+            supports_discovery: boolean;
+            /** Writable */
+            writable: boolean;
+        };
+        /** CalendarSecretIn */
+        CalendarSecretIn: {
+            /** Value */
+            value: string;
+        };
         /** CaqDocument */
         CaqDocument: {
             /** Questions */
@@ -8357,12 +8685,12 @@ export interface components {
          * PlanItemKind
          * @enum {string}
          */
-        PlanItemKind: "study" | "practice" | "review" | "milestone";
+        PlanItemKind: "study" | "practice" | "review" | "milestone" | "exam" | "deadline";
         /**
          * PlanItemOrigin
          * @enum {string}
          */
-        PlanItemOrigin: "manual" | "draft";
+        PlanItemOrigin: "manual" | "draft" | "calendar";
         /** PlanItemOut */
         PlanItemOut: {
             /** Course Id */
@@ -9344,6 +9672,32 @@ export interface components {
             /** Restart Required */
             restart_required: boolean;
         };
+        /**
+         * SetupFieldOut
+         * @description One bind-form field, derived from the catalog row (plan 52 §12).
+         *
+         *     ``kind`` selects the input; ``calendar`` is the discovery-backed picker.
+         *     ``label_key`` is an i18n suffix under ``settings.calendar.`` so the
+         *     backend never ships user copy.
+         */
+        SetupFieldOut: {
+            /** Auth Kind */
+            auth_kind?: string | null;
+            /** Autocomplete */
+            autocomplete?: string | null;
+            /** Key */
+            key: string;
+            /** Kind */
+            kind: string;
+            /** Label Key */
+            label_key: string;
+            /** Manual Key */
+            manual_key?: string | null;
+            /** Placeholder */
+            placeholder?: string | null;
+            /** Required */
+            required: boolean;
+        };
         /** SetupOptionsIn */
         SetupOptionsIn: {
             /**
@@ -9975,6 +10329,58 @@ export interface components {
             node_title: string | null;
             /** Note Id */
             note_id: string;
+        };
+        /** SyncReportOut */
+        SyncReportOut: {
+            /**
+             * Conflicts
+             * @default 0
+             */
+            conflicts: number;
+            /**
+             * Created Local
+             * @default 0
+             */
+            created_local: number;
+            /**
+             * Created Remote
+             * @default 0
+             */
+            created_remote: number;
+            /**
+             * Deleted Local
+             * @default 0
+             */
+            deleted_local: number;
+            /**
+             * Deleted Remote
+             * @default 0
+             */
+            deleted_remote: number;
+            /** Error */
+            error?: string | null;
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
+            /** Status */
+            status: string;
+            /**
+             * Unlinked
+             * @default 0
+             */
+            unlinked: number;
+            /**
+             * Updated Local
+             * @default 0
+             */
+            updated_local: number;
+            /**
+             * Updated Remote
+             * @default 0
+             */
+            updated_remote: number;
         };
         /** TaskAssignmentIn */
         TaskAssignmentIn: {
@@ -11795,6 +12201,350 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_links_api_v1_calendar_links_get: {
+        parameters: {
+            query?: {
+                course_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarLinkOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_link_api_v1_calendar_links_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarLinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarLinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_calendars_api_v1_calendar_links_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarDiscoverIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarDiscoverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_link_api_v1_calendar_links__link_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_link_api_v1_calendar_links__link_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarLinkPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarLinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_complete_api_v1_calendar_links__link_id__oauth_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthCompleteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarLinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_start_api_v1_calendar_links__link_id__oauth_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthStartOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_secret_api_v1_calendar_links__link_id__secret_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSecretIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarLinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_link_api_v1_calendar_links__link_id__sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_link_api_v1_calendar_links__link_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provider_catalog_api_v1_calendar_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarCatalogOut"];
                 };
             };
         };

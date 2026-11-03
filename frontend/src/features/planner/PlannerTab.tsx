@@ -31,6 +31,8 @@ const KIND_STYLES: Record<string, string> = {
   practice: 'bg-warning/15 text-warning',
   review: 'bg-success/15 text-success',
   milestone: 'bg-danger/15 text-danger',
+  exam: 'bg-danger/15 text-danger',
+  deadline: 'bg-warning/15 text-warning',
 }
 
 type PlannerView = 'list' | 'week'
@@ -74,6 +76,7 @@ export function PlannerTab({ courseId }: { courseId: string }) {
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newDate, setNewDate] = useState(todayIso())
+  const [newKind, setNewKind] = useState('study')
   const [error, setError] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const [icsOpen, setIcsOpen] = useState(false)
@@ -138,7 +141,7 @@ export function PlannerTab({ courseId }: { courseId: string }) {
     mutationFn: () =>
       createPlanItem(courseId, {
         title: newTitle.trim(),
-        kind: 'study',
+        kind: newKind,
         due_date: newDate,
       }),
     onSuccess: async () => {
@@ -260,6 +263,19 @@ export function PlannerTab({ courseId }: { courseId: string }) {
                 }
               }}
             />
+            <select
+              className="bg-surface border-border rounded-md border px-2 py-1.5 text-sm"
+              value={newKind}
+              onChange={(event) => setNewKind(event.target.value)}
+              aria-label={t('planner.itemKind')}
+            >
+              <option value="study">{t('planner.kind_study')}</option>
+              <option value="practice">{t('planner.kind_practice')}</option>
+              <option value="review">{t('planner.kind_review')}</option>
+              <option value="milestone">{t('planner.kind_milestone')}</option>
+              <option value="exam">{t('planner.kind_exam')}</option>
+              <option value="deadline">{t('planner.kind_deadline')}</option>
+            </select>
             <input
               type="date"
               className="bg-surface border-border rounded-md border px-2 py-1.5 text-sm"

@@ -375,6 +375,8 @@ class PlanItemKind(StrVocab):
     PRACTICE = "practice"
     REVIEW = "review"
     MILESTONE = "milestone"
+    EXAM = "exam"
+    DEADLINE = "deadline"
 
 
 PLAN_ITEM_KINDS: tuple[str, ...] = tuple(kind.value for kind in PlanItemKind)
@@ -383,6 +385,26 @@ PLAN_ITEM_KINDS: tuple[str, ...] = tuple(kind.value for kind in PlanItemKind)
 class PlanItemOrigin(StrVocab):
     MANUAL = "manual"
     DRAFT = "draft"
+    CALENDAR = "calendar"
+
+
+class CalendarDirection(StrVocab):
+    """How a calendar link moves data (ADR-0052 §6)."""
+
+    PUSH = "push"
+    PULL = "pull"
+    TWO_WAY = "two-way"
+
+
+class CalendarStatus(StrVocab):
+    """Account/sync state; the family vocabulary plus the two auth states."""
+
+    OK = "ok"
+    DEGRADED = "degraded"
+    FAILING = "failing"
+    STALE = "stale"
+    NEEDS_AUTH = "needs-auth"
+    NEEDS_SECRET = "needs-secret"
 
 
 class WsTopic:

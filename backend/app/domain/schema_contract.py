@@ -98,6 +98,8 @@ JSON_SPECIES: dict[str, str] = {
     "chat_messages.tool_calls": STATE,
     "chat_messages.trace": STATE,
     "chat_messages.warnings": LIST,
+    "calendar_links.options": STATE,
+    "calendar_links.scopes": LIST,
     "chat_proposals.payload": STATE,
     "chat_proposals.result": STATE,
     "chat_proposals.target_node_path": LIST,
@@ -171,6 +173,8 @@ PROFILE_SCOPE: dict[str, str] = {
     "audit_events": IDENTITY,
     "auth_sessions": IDENTITY,
     "blobs": "global content-addressed store",
+    "calendar_event_links": "link_id → calendar_links → courses.profile_id",
+    "calendar_links": "course_id → courses.profile_id",
     "chat_messages": "session_id → chat_sessions.profile_id",
     "chat_proposal_anchors": (
         "proposal_id → chat_proposals → chat_messages → chat_sessions.profile_id"
