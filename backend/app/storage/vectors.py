@@ -147,8 +147,22 @@ def delete_for_extraction(session: Session, chunk_ids: list[str]) -> None:
 
 
 def read_meta(session: Session) -> dict[str, str]:
-    """The legacy store's active configuration (``dim``/``model``)."""
-    return _load_meta(session)
+    """The legacy store's active configuration (``dim``/``model``).
+
+    Read-only: unlike ``_load_meta`` this never creates ``vec_meta``, so a
+    status request cannot mutate the database.
+    """
+    if _is_postgres(session):
+        exists = session.execute(text("SELECT to_regclass(:name)"), {"name": VEC_META}).scalar()
+    else:
+        exists = session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name = :name"),
+            {"name": VEC_META},
+        ).first()
+    if exists is None:
+        return {}
+    rows = session.execute(text(f"SELECT key, value FROM {VEC_META}")).mappings()
+    return {row["key"]: row["value"] for row in rows}
 
 
 def table_exists(session: Session) -> bool:
