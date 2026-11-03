@@ -80,6 +80,9 @@ READ_ELSEWHERE = {
     "APPDATA": ("app/core/config.py",),
     "SA_GOOGLE_CLIENT_ID": ("app/extensions/builtin/external_sources/providers.json",),
     "SA_GOOGLE_CLIENT_SECRET": ("app/extensions/builtin/external_sources/providers.json",),
+    # the keyring LIBRARY's own knob (read inside keyring.core.init_backend),
+    # used to simulate a headless host in tests/test_deployment_modes.py
+    "PYTHON_KEYRING_BACKEND": ("app/core/secrets.py", "tests/test_deployment_modes.py"),
 }
 
 # (b) env names set by tests specifically to prove they are IGNORED —

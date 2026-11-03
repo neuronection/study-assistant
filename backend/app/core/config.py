@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     config_dir: Path = Field(default_factory=default_config_dir)
     data_dir: Path = Field(default_factory=resolve_data_dir)
     spa_dist: Path | None = None
+    # The public base URL of THIS deployment (plan 52 web/desktop fix).
+    # Desktop/local leaves it unset and OAuth uses a loopback redirect
+    # (RFC 8252 — browser and app share a machine). A web/server deployment
+    # sets it so the provider redirects to the server's callback route
+    # instead of the user's own localhost.
+    app_url: str | None = None
     source_scan_interval_sec: int = Field(default=300, ge=15)
     auto_backup: bool = True
     backup_interval_hours: int = Field(default=24, ge=1, le=168)

@@ -518,8 +518,29 @@ def oauth_client(provider_row: Provider, link: _CredentialContext | None = None)
 
 
 def _redirect_uri() -> str:
+    """Where the provider sends the user back — deployment-aware.
+
+    * **Desktop/local** (no ``SA_APP_URL``): a loopback redirect
+      (RFC 8252). The browser and the app share a machine, so the
+      one-shot listener on 127.0.0.1 receives the callback.
+    * **Web/server** (``SA_APP_URL`` set): the server's own callback route.
+      The user's browser runs elsewhere, so a loopback redirect would land
+      on *their* localhost and the code would never reach us.
+    """
+    from app.core.config import get_settings
+
+    app_url = (get_settings().app_url or os.environ.get("SA_APP_URL") or "").rstrip("/")
+    if app_url:
+        return f"{app_url}/api/v1/calendar/oauth/callback"
     port = int(os.environ.get("SA_CALENDAR_REDIRECT_PORT", str(DEFAULT_REDIRECT_PORT)))
     return f"http://127.0.0.1:{port}/oauth/callback"
+
+
+def is_web_oauth() -> bool:
+    """True when OAuth must complete through the server callback route."""
+    from app.core.config import get_settings
+
+    return bool((get_settings().app_url or os.environ.get("SA_APP_URL") or "").strip())
 
 
 def oauth_start(link: CalendarLink, *, profile_id: str) -> dict[str, str]:
@@ -536,15 +557,26 @@ def oauth_start(link: CalendarLink, *, profile_id: str) -> dict[str, str]:
             client,
             store=store,
             principal_id=profile_id,
-            extra={"scopes": list(client.scopes)},
+            extra={"scopes": list(client.scopes), "link_id": link.id},
         )
     except nx_oauth.OAuthError as exc:
         raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
+    # The state carries a non-secret link-id prefix so a server callback can
+    # find the binding when the provider echoes only `code`+`state`. The
+    # security comes from the nonce half (single-use, principal-bound), not
+    # from hiding the link id.
+    composite = f"{link.id}.{offer.record.state}"
     return {
         "authorize_url": offer.authorize_url,
         "redirect_uri": client.redirect_uri,
-        "state": offer.record.state,
+        "state": composite,
     }
+
+
+def link_id_from_state(state: str) -> str | None:
+    """The link id a composite state points at (``<link-id>.<nonce>``)."""
+    link_id, sep, _nonce = (state or "").partition(".")
+    return link_id if sep and link_id else None
 
 
 def oauth_complete(
@@ -564,8 +596,11 @@ def oauth_complete(
     provider_row = provider(link.provider)
     client = oauth_client(provider_row, link)
     store = cloud_oauth.KeyringStateStore(cloud_oauth.state_ref(link.id))
+    # The caller holds a composite `<link-id>.<nonce>`; the store keyed the
+    # bare nonce. The prefix is a routing hint only — the nonce is the secret.
+    nonce = state.partition(".")[2] or state
     try:
-        record = store.consume(state, principal_id=profile_id)
+        record = store.consume(nonce, principal_id=profile_id)
     except nx_oauth.OAuthError as exc:
         raise CalendarSyncError(exc.code, exc.detail, status=409) from exc
 

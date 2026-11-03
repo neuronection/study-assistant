@@ -314,6 +314,60 @@ def oauth_start(link_id: str, session: Session = Depends(get_session)) -> OAuthS
     return OAuthStartOut(**payload)
 
 
+@router.get("/oauth/callback")
+def oauth_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    session: Session = Depends(get_session),
+):
+    """Server-side OAuth callback (web deployments).
+
+    Desktop/local never uses this: its loopback listener receives the
+    redirect directly (RFC 8252). A web deployment sets ``SA_APP_URL`` and
+    the provider redirects **here** — the user's browser runs on another
+    machine, so a loopback redirect would land on their own localhost.
+
+    Security: the flow's ``state`` is single-use, expiring and bound to the
+    profile that started it, and this route consumes it with the session's
+    profile. A foreign or replayed state is refused (ADR-0052 Rev 3 E12).
+    """
+    from fastapi.responses import RedirectResponse
+
+    profile = ensure_default_profile(session)
+    landing = _frontend_origin()
+
+    if error or not code or not state:
+        return RedirectResponse(
+            f"{landing}/settings?tab=tools&section=connectors&calendar_status=error",
+            status_code=302,
+        )
+    link_id = service.link_id_from_state(state or "")
+    if not link_id:
+        return RedirectResponse(
+            f"{landing}/settings?tab=tools&section=connectors&calendar_status=error",
+            status_code=302,
+        )
+    try:
+        link = service.get_link(session, profile.id, link_id)
+        service.oauth_complete(session, link, code=code, state=state, profile_id=profile.id)
+    except service.CalendarSyncError:
+        return RedirectResponse(
+            f"{landing}/settings?tab=tools&section=connectors&calendar_status=error",
+            status_code=302,
+        )
+    return RedirectResponse(
+        f"{landing}/settings?tab=tools&section=connectors&calendar_status=connected",
+        status_code=302,
+    )
+
+
+def _frontend_origin() -> str:
+    from app.core.config import get_settings
+
+    return (get_settings().app_url or "").rstrip("/") or ""
+
+
 @router.post("/links/{link_id}/oauth/complete", response_model=CalendarLinkOut)
 def oauth_complete(
     link_id: str, body: OAuthCompleteIn, session: Session = Depends(get_session)
