@@ -11,6 +11,18 @@ vi.mock('@/lib/api', () => ({
   getProfilePreferences: () => getProfilePreferences(),
   updateProfilePreferences: (prefs: Record<string, unknown>) =>
     updateProfilePreferences(prefs),
+  getRetrievalOverview: () =>
+    Promise.resolve({
+      state: 'empty',
+      cold: true,
+      backend: null,
+      backend_label: null,
+      space: null,
+      coverage: { coverage: null },
+      recent_runs: [],
+      query_health: {},
+      notes: [],
+    }),
 }))
 
 function renderTab() {

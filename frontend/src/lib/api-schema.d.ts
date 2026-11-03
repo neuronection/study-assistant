@@ -52,6 +52,91 @@ export interface paths {
         patch: operations["update_instance_api_v1_admin_instance_patch"];
         trace?: never;
     };
+    "/api/v1/admin/retrieval/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Coverage */
+        get: operations["get_coverage_api_v1_admin_retrieval_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Overview */
+        get: operations["get_overview_api_v1_admin_retrieval_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/query-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Query Health */
+        get: operations["get_query_health_api_v1_admin_retrieval_query_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runs */
+        get: operations["get_runs_api_v1_admin_retrieval_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Spaces */
+        get: operations["get_spaces_api_v1_admin_retrieval_spaces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -799,6 +884,35 @@ export interface paths {
         put?: never;
         /** Test Link */
         post: operations["test_link_api_v1_calendar_links__link_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Callback
+         * @description Server-side OAuth callback (web deployments).
+         *
+         *     Desktop/local never uses this: its loopback listener receives the
+         *     redirect directly (RFC 8252). A web deployment sets ``SA_APP_URL`` and
+         *     the provider redirects **here** — the user's browser runs on another
+         *     machine, so a loopback redirect would land on their own localhost.
+         *
+         *     Security: the flow's ``state`` is single-use, expiring and bound to the
+         *     profile that started it, and this route consumes it with the session's
+         *     profile. A foreign or replayed state is refused (ADR-0052 Rev 3 E12).
+         */
+        get: operations["oauth_callback_api_v1_calendar_oauth_callback_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9356,6 +9470,293 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** RetrievalCoverageEnvelopeOut */
+        RetrievalCoverageEnvelopeOut: {
+            /** Cold */
+            cold: boolean;
+            coverage?: components["schemas"]["RetrievalCoverageOut"] | null;
+            /** Notes */
+            notes?: string[];
+            /** Space Id */
+            space_id: string;
+        };
+        /** RetrievalCoverageOut */
+        RetrievalCoverageOut: {
+            /** Ann Recall */
+            ann_recall?: number | null;
+            /** Ann Recall K */
+            ann_recall_k?: number | null;
+            /** As Of */
+            as_of: string | null;
+            /** Coverage */
+            coverage: number | null;
+            /** Embedded */
+            embedded: number;
+            /** Failed */
+            failed: number;
+            /**
+             * Gate
+             * @default unknown
+             */
+            gate: string;
+            /** Missing */
+            missing: number;
+            /** Probe Size */
+            probe_size?: number | null;
+            /** Space Id */
+            space_id: string;
+            /** Stale */
+            stale: number;
+            /** Total */
+            total: number;
+        };
+        /** RetrievalOverviewOut */
+        RetrievalOverviewOut: {
+            /** Backend */
+            backend?: string | null;
+            /** Backend Label */
+            backend_label?: string | null;
+            /** Cold */
+            cold: boolean;
+            coverage: components["schemas"]["RetrievalCoverageOut"];
+            /** Notes */
+            notes?: string[];
+            query_health: components["schemas"]["RetrievalQueryHealthEnvelopeOut"];
+            /** Recent Runs */
+            recent_runs?: components["schemas"]["RetrievalRunDetailOut"][];
+            space?: components["schemas"]["RetrievalSpaceOut"] | null;
+            /** State */
+            state: string;
+        };
+        /** RetrievalQueryHealthEnvelopeOut */
+        RetrievalQueryHealthEnvelopeOut: {
+            /** Candidates Avg */
+            candidates_avg?: number | null;
+            health: components["schemas"]["RetrievalQueryHealthOut"];
+            /** Query Count */
+            query_count: number;
+            /** Window */
+            window: string;
+            /** Window End */
+            window_end: string | null;
+            /** Window Start */
+            window_start: string | null;
+        };
+        /** RetrievalQueryHealthOut */
+        RetrievalQueryHealthOut: {
+            /** Ann Recall */
+            ann_recall?: number | null;
+            /** Ann Recall K */
+            ann_recall_k?: number | null;
+            /** Candidate P50 */
+            candidate_p50?: number | null;
+            /** Candidate P95 */
+            candidate_p95?: number | null;
+            /** Degraded Rate */
+            degraded_rate?: number | null;
+            /** Degraded Reasons */
+            degraded_reasons?: {
+                [key: string]: number;
+            };
+            /** P50 Ms */
+            p50_ms?: number | null;
+            /** P95 Ms */
+            p95_ms?: number | null;
+            /** Per View Hits */
+            per_view_hits?: {
+                [key: string]: number;
+            };
+            /** Probe Size */
+            probe_size?: number | null;
+            /**
+             * Query Count
+             * @default 0
+             */
+            query_count: number;
+            /**
+             * Sample Size
+             * @default 0
+             */
+            sample_size: number;
+            /**
+             * Sampled
+             * @default false
+             */
+            sampled: boolean;
+            /** Space Id */
+            space_id: string;
+            /** Window End */
+            window_end: string;
+            /** Window Start */
+            window_start: string;
+            /** Zero Result Rate */
+            zero_result_rate?: number | null;
+        };
+        /** RetrievalRunDetailOut */
+        RetrievalRunDetailOut: {
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            result?: components["schemas"]["RetrievalRunResultOut"] | null;
+            run: components["schemas"]["RetrievalRunOut"];
+        };
+        /** RetrievalRunOut */
+        RetrievalRunOut: {
+            /** Budget Tokens */
+            budget_tokens?: number | null;
+            /**
+             * Cancel Requested
+             * @default false
+             */
+            cancel_requested: boolean;
+            /** Created At */
+            created_at?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Heartbeat At */
+            heartbeat_at?: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Job Type */
+            job_type: string;
+            /** Lock Key */
+            lock_key?: string | null;
+            /**
+             * Progress
+             * @default 0
+             */
+            progress: number;
+            /** Run Id */
+            run_id: string;
+            scope?: components["schemas"]["RetrievalRunScopeOut"];
+            /** Space Id */
+            space_id: string;
+            /** Stage */
+            stage?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Status */
+            status: string;
+        };
+        /** RetrievalRunResultOut */
+        RetrievalRunResultOut: {
+            /**
+             * Embedded
+             * @default 0
+             */
+            embedded: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+            /** Failed Ids */
+            failed_ids?: string[];
+            /**
+             * Failed Ids Truncated
+             * @default false
+             */
+            failed_ids_truncated: boolean;
+            /**
+             * Gate
+             * @default unknown
+             */
+            gate: string;
+            /**
+             * Scanned
+             * @default 0
+             */
+            scanned: number;
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
+        };
+        /** RetrievalRunScopeOut */
+        RetrievalRunScopeOut: {
+            /** Kind */
+            kind?: string | null;
+            /** Since */
+            since?: string | null;
+            /** View */
+            view?: string | null;
+        };
+        /** RetrievalRunsOut */
+        RetrievalRunsOut: {
+            /** Runs */
+            runs?: components["schemas"]["RetrievalRunDetailOut"][];
+        };
+        /** RetrievalSpaceOut */
+        RetrievalSpaceOut: {
+            /** Activated At */
+            activated_at?: string | null;
+            /** As Of */
+            as_of?: string | null;
+            /** Backend */
+            backend: string;
+            /** Coverage */
+            coverage?: number | null;
+            /** Created At */
+            created_at?: string | null;
+            /** Dim */
+            dim: number;
+            /**
+             * Documents
+             * @default 0
+             */
+            documents: number;
+            /** Failed */
+            failed?: number | null;
+            /**
+             * Gate
+             * @default unknown
+             */
+            gate: string;
+            /** Index Table */
+            index_table?: string | null;
+            /** Last Error */
+            last_error?: string | null;
+            /** Last Reindex At */
+            last_reindex_at?: string | null;
+            /**
+             * Metric
+             * @default cosine
+             */
+            metric: string;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Records
+             * @default 0
+             */
+            records: number;
+            /** Retired At */
+            retired_at?: string | null;
+            /** Space Id */
+            space_id: string;
+            /** Stale */
+            stale?: number | null;
+            /** Status */
+            status: string;
+        };
+        /** RetrievalSpacesOut */
+        RetrievalSpacesOut: {
+            /**
+             * Cold
+             * @default true
+             */
+            cold: boolean;
+            /** Notes */
+            notes?: string[];
+            /** Spaces */
+            spaces?: components["schemas"]["RetrievalSpaceOut"][];
+        };
         /** RetryFailedBody */
         RetryFailedBody: {
             /** Types */
@@ -10360,12 +10761,22 @@ export interface components {
             /** Error */
             error?: string | null;
             /**
+             * Linked Existing
+             * @default 0
+             */
+            linked_existing: number;
+            /**
              * Skipped
              * @default 0
              */
             skipped: number;
             /** Status */
             status: string;
+            /**
+             * Suggested
+             * @default 0
+             */
+            suggested: number;
             /**
              * Unlinked
              * @default 0
@@ -11221,6 +11632,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_coverage_api_v1_admin_retrieval_coverage_get: {
+        parameters: {
+            query?: {
+                space?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalCoverageEnvelopeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_overview_api_v1_admin_retrieval_overview_get: {
+        parameters: {
+            query?: {
+                window?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalOverviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_query_health_api_v1_admin_retrieval_query_health_get: {
+        parameters: {
+            query?: {
+                window?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalQueryHealthEnvelopeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runs_api_v1_admin_retrieval_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalRunsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_spaces_api_v1_admin_retrieval_spaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalSpacesOut"];
                 };
             };
         };
@@ -12516,6 +13071,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_callback_api_v1_calendar_oauth_callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+                error?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

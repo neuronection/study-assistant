@@ -717,3 +717,17 @@ export {
 
 export type { ExerciseOrderingItem } from './hand-types'
 export { HAND_TYPE_REGISTER } from './hand-types'
+
+export type {
+  RetrievalCoverageEnvelope,
+  RetrievalOverview,
+  RetrievalRuns,
+  RetrievalSpaces,
+} from './retrieval'
+
+export {
+  getRetrievalCoverage,
+  getRetrievalOverview,
+  getRetrievalRuns,
+  getRetrievalSpaces,
+} from './retrieval'
