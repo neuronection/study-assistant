@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "contract": "settings-map",
-  "updated": "2026-10-29",
+  "updated": "2026-11-03",
   "purpose": "One family taxonomy for settings surfaces: what a setting IS decides where it LIVES. Canonical per ADR-0033 / ADR-0031 (sync-and-gate): this file is the master; product repos vendor it byte-identical under contracts/ and scripts/verify-wiring.sh flags drift. A setting may not ship (or move) in any product without a domain entry (or adopter line) here.",
   "groups": {
     "ai": {
@@ -206,17 +206,17 @@
     {
       "id": "tools.connectors",
       "group": "tools",
-      "title": "Connectors (MCP client + job sources)",
-      "definition": "External tool servers the assistant can call (MCP client connectors) AND job-source connectors (posting ingestion sources with catalog-driven config; plan 32 Phase 1 / ADR-0040) — one connectors section covers both connector-kind surfaces.",
+      "title": "Connectors — the MCP server surface",
+      "definition": "The MCP server section: endpoint + transport, the write-access switch, client tokens (sealed, shown once), the live tool catalog and the recent-call audit.",
       "home": {
         "tab": "tools",
-        "section": "connectors"
+        "section": "mcp"
       },
       "secrets": "product secret store — never a plaintext column",
       "scope": "user",
       "adopters": {
         "study-assistant": "aligned (connectors section manages MCP server instances — D19 rows with keyring token/env slots, per-tool allowlists, explicit refresh — plus the read-only MCP resource-server info card, ADR-0012; plan 32 Phase 7)",
-        "career-assistant": "aligned (admin tools tab → connectors section: MCP GitHub token + job-source connector instances with x-secret slots and per-source probes, plan 32 Phase 1; extension sources — git import, consent, pins — ride the same section since Phase 3)",
+        "career-assistant": "aligned (plan 148: MCP-only after sources split off)",
         "health-assistant/core": "n/a (data-source connectors — the extension integrations — live in the user-tier Integrations page: config-flow instances with sealed credential slots, not the tools tab; the tools tab hosts only tools.agent)"
       }
     },
@@ -267,18 +267,64 @@
       }
     },
     {
-      "id": "radar",
+      "id": "app.updates",
       "group": "app",
-      "title": "Job radar",
-      "definition": "The profile's saved job-search configuration: keywords, preferred locations, work-mode preference, seniority bands, a salary floor on the normalized annual basis, and the match-digest cadence.",
+      "title": "Update checks",
+      "definition": "Update-channel selection (stable/beta) and manual checks against the family version API (neuronection.com /api/v1/versions). Check-only: apply stays consent-gated and out of scope until plan-48 W5 (ADR-0048).",
       "home": {
-        "tab": "radar",
-        "section": null
+        "tab": "about",
+        "section": "updates"
+      },
+      "scope": "device-local (desktop)",
+      "adopters": {
+        "desktop-assistant": "aligned"
+      }
+    },
+    {
+      "id": "tools.job-sources",
+      "group": "tools",
+      "title": "Job sources — posting ingestion",
+      "definition": "Job-source connector instances (catalog-driven, sealed secrets, probes, query plans, presets).",
+      "home": {
+        "tab": "tools",
+        "section": "job-sources"
+      },
+      "secrets": "product secret store — sealed at rest, shown as hints only",
+      "scope": "instance (admin)",
+      "adopters": {
+        "career-assistant": "aligned (plan 154: split from tools.connectors; plan 186: extension sources split off)"
+      }
+    },
+    {
+      "id": "tools.extensions",
+      "group": "tools",
+      "title": "Extension sources — third-party source bundles",
+      "definition": "Extension sources imported from git (digest-pinned, consent-gated, managed spawns): third-party posting bundles an admin installs onto a running instance.",
+      "home": {
+        "tab": "tools",
+        "section": "extensions"
+      },
+      "secrets": "product secret store — sealed at rest, shown as hints only",
+      "scope": "instance (admin)",
+      "adopters": {
+        "career-assistant": "aligned (plan 186: split from the combined sources domain)"
+      }
+    },
+    {
+      "id": "tools.retrieval",
+      "group": "tools",
+      "title": "Retrieval index",
+      "definition": "Vector-store operations: active space/model/dim, backend, coverage, reindex, cutover, index maintenance. Model assignment stays ai.tasks.",
+      "home": {
+        "tab": "tools",
+        "section": "retrieval"
       },
       "secrets": "none",
-      "scope": "profile",
+      "scope": "instance (admin)",
       "adopters": {
-        "career-assistant": "aligned (plan 129 phase 4a)"
+        "career-assistant": "pending (plan 51 Q2)",
+        "study-assistant": "pending (plan 51 Q3)",
+        "health-assistant/core": "n/a (no vector store yet)"
       }
     }
   ],
@@ -405,7 +451,15 @@
         },
         {
           "id": "about",
-          "group": "app"
+          "group": "app",
+          "sections": [
+            {
+              "id": "updates",
+              "domains": [
+                "app.updates"
+              ]
+            }
+          ]
         }
       ]
     },
@@ -506,14 +560,6 @@
           "note": "Appearance section (plan 121): UI language switcher (en/de/el); admins also set the instance default locale here"
         },
         {
-          "id": "radar",
-          "group": "app",
-          "domains": [
-            "radar"
-          ],
-          "note": "plan 129 phase 4a: the profile's saved job-search configuration (keywords/locations/work mode/salary floor on the normalized annual basis + match cadence) — consumed by Explore integration and, from 4b, the post-sync notification digests"
-        },
-        {
           "id": "notifications",
           "group": "app",
           "note": "plan 117: email + webhook channel configs (sealed secrets, double opt-in / test delivery), feed tokens (.ics/RSS lifecycle), per-kind routing + quiet hours, follow-up channel overrides (plan 116). Plan 148 moved the tab next to radar: the app rail groups tabs into display sections and notifications belongs to the personal block"
@@ -555,13 +601,21 @@
               ]
             },
             {
-              "id": "connectors",
+              "id": "mcp",
               "domains": [
                 "tools.connectors"
               ]
+            },
+            {
+              "id": "sources",
+              "domains": [
+                "tools.job-sources",
+                "tools.extensions"
+              ],
+              "note": "plan 186 split the domains; the section id stays 'sources' until the UI split ships (plan 186 step 3) — one section hosting both domains keeps INV-7 true in the interim"
             }
           ],
-          "note": "plan 27 Phase 3: the former AI-config web tab split into web-search (SearXNG URL) + connectors (GitHub token); plan 32 Phase 1 broadened connectors to also host job-source connector instances (manifest catalog + x-secret slots + probes); plan 119 added the MCP server section (endpoint + token lifecycle, per-scope tool/resource visibility, opt-in write switch)"
+          "note": "plan 27 Phase 3: the former AI-config web tab split into web-search (SearXNG URL) + connectors (GitHub token); plan 32 Phase 1 broadened connectors to also host job-source connector instances (manifest catalog + x-secret slots + probes); plan 119 added the MCP server section (endpoint + token lifecycle, per-scope tool/resource visibility, opt-in write switch); plan 154 split the connectors section into mcp (the MCP server surface) and sources (job-source + extension ingestion); plan 186 split the sources domains into tools.job-sources + tools.extensions (section split pending)"
         },
         {
           "id": "automations",
