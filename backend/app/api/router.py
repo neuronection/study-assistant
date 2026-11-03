@@ -28,6 +28,7 @@ from . import (
     plan,
     profiles,
     quiz,
+    retrieval,
     review,
     search,
     skills,
@@ -67,6 +68,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(backup.router)
 api_router.include_router(calendar.router)
 api_router.include_router(profiles.router)
+api_router.include_router(retrieval.router)
 api_router.include_router(plan.router)
 api_router.include_router(plan.upcoming_router)
 api_router.include_router(config.router)

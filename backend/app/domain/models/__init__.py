@@ -174,6 +174,12 @@ from .ops import (
 from .ops import (
     TaskAssignment as TaskAssignment,
 )
+from .retrieval import (
+    RetrievalCoverageSnapshot as RetrievalCoverageSnapshot,
+)
+from .retrieval import (
+    RetrievalQueryRollup as RetrievalQueryRollup,
+)
 from .study import (
     Activity as Activity,
 )

@@ -131,3 +131,25 @@ def test_pg_trgm_extension_installed(migrated_pg: Engine) -> None:
 def test_profiles_shape(migrated_pg: Engine) -> None:
     columns = _columns(migrated_pg, "profiles")
     assert columns["user_id"]["is_nullable"] == "NO"
+
+
+def test_retrieval_ops_tables_and_job_result(migrated_pg: Engine) -> None:
+    rollups = _columns(migrated_pg, "retrieval_query_rollups")
+    assert rollups["space_id"]["is_nullable"] == "NO"
+    assert rollups["latency_histogram"]["data_type"] == "json"
+    assert rollups["latency_histogram_schema_version"]["is_nullable"] == "NO"
+    snapshots = _columns(migrated_pg, "retrieval_coverage_snapshots")
+    assert snapshots["ann_recall"]["is_nullable"] == "YES"
+    assert snapshots["probe_size"]["is_nullable"] == "YES"
+    jobs = _columns(migrated_pg, "jobs")
+    assert jobs["result"]["data_type"] == "json"
+    with migrated_pg.connect() as conn:
+        check = conn.execute(
+            text(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                "WHERE conname = 'ck_jobs_type_allowed'"
+            )
+        ).scalar_one()
+    assert "VECTOR_REINDEX" in check
+    assert "VECTOR_MAINTENANCE" in check
+    assert "VECTOR_CUTOVER" in check

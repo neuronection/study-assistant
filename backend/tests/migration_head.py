@@ -4,4 +4,4 @@ The chain is one squashed baseline, so every head assertion imports this
 constant instead of carrying a literal (the pre-squash drift this replaces).
 """
 
-HEAD_REVISION = "0009_calendar_links"
+HEAD_REVISION = "0010_retrieval_ops"

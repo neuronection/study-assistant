@@ -1,5 +1,5 @@
 import hashlib
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -144,6 +144,83 @@ def delete_for_extraction(session: Session, chunk_ids: list[str]) -> None:
     session.execute(text(f"DELETE FROM {VEC_TABLE} WHERE rowid IN ({placeholders})"))
     _ensure_ids_table(session)
     session.execute(text(f"DELETE FROM {VEC_IDS} WHERE rowid IN ({placeholders})"))
+
+
+def read_meta(session: Session) -> dict[str, str]:
+    """The legacy store's active configuration (``dim``/``model``)."""
+    return _load_meta(session)
+
+
+def table_exists(session: Session) -> bool:
+    if _is_postgres(session):
+        return (
+            session.execute(text("SELECT to_regclass(:name)"), {"name": VEC_TABLE}).scalar()
+            is not None
+        )
+    return (
+        session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name = :name"),
+            {"name": VEC_TABLE},
+        ).first()
+        is not None
+    )
+
+
+def stored_chunk_ids(session: Session) -> dict[int, str]:
+    """``rowid -> chunk_id`` for every vector row that still has a mapping."""
+    if not table_exists(session):
+        return {}
+    _ensure_ids_table(session)
+    rows = session.execute(
+        text(
+            f"SELECT ids.rowid AS rowid, ids.chunk_id AS chunk_id "
+            f"FROM {VEC_IDS} AS ids JOIN {VEC_TABLE} AS vec ON vec.rowid = ids.rowid"
+        )
+    ).mappings()
+    return {int(row["rowid"]): uuid_str(str(row["chunk_id"])) for row in rows}
+
+
+def orphan_rowids(session: Session, live_chunk_ids: set[str]) -> tuple[list[int], list[int]]:
+    """Rows to sweep: ``(dangling_map, orphan_vector)``.
+
+    ``dangling_map`` is a mapping whose chunk row no longer exists;
+    ``orphan_vector`` is a vector row with no mapping at all.
+    """
+    if not table_exists(session):
+        return ([], [])
+    _ensure_ids_table(session)
+    mapped = {
+        int(row["rowid"]): uuid_str(str(row["chunk_id"]))
+        for row in session.execute(text(f"SELECT rowid, chunk_id FROM {VEC_IDS}")).mappings()
+    }
+    vectors_rows = {
+        int(row["rowid"])
+        for row in session.execute(text(f"SELECT rowid FROM {VEC_TABLE}")).mappings()
+    }
+    dangling = [
+        rowid
+        for rowid, chunk_id in mapped.items()
+        if chunk_id not in live_chunk_ids or rowid not in vectors_rows
+    ]
+    orphan = [rowid for rowid in vectors_rows if rowid not in mapped]
+    return (dangling, orphan)
+
+
+def delete_rowids(session: Session, rowids: list[int]) -> int:
+    """Drop vector + mapping rows in one bounded sweep; returns rows touched."""
+    if not rowids:
+        return 0
+    _ensure_ids_table(session)
+    removed = 0
+    for start in range(0, len(rowids), 500):
+        batch = rowids[start : start + 500]
+        placeholders = ",".join(str(rowid) for rowid in batch)
+        if table_exists(session):
+            statement = text(f"DELETE FROM {VEC_TABLE} WHERE rowid IN ({placeholders})")
+            removed += int(cast(Any, session.execute(statement)).rowcount or 0)
+        session.execute(text(f"DELETE FROM {VEC_IDS} WHERE rowid IN ({placeholders})"))
+    return removed
+
 
 
 def search(session: Session, query_vector: list[float], limit: int = 24) -> list[tuple[str, float]]:

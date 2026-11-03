@@ -174,6 +174,16 @@ ignore_errors = true
 module = ["app.extensions.polite_http"]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+# The family retrieval-operations fixture wall drives the vendored contract
+# with dynamic JSON payloads (same shape as dev's checker); it is a runtime
+# acceptance table, not typed application code.
+module = [
+    "tests.test_retrieval_ops_contract",
+    "test_retrieval_ops_contract",
+]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-n auto"

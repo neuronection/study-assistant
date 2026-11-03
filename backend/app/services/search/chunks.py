@@ -1,3 +1,4 @@
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -5,6 +6,7 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from ...core.ids import hex_id, uuid_str
+from ...services.retrieval.telemetry import degraded_reason_for_warning, record_query
 from ...storage import vectors
 from .fusion import RRF_K
 from .matching import Match, or_terms_match, trigram_match
@@ -191,6 +193,7 @@ def retrieve_chunks_hybrid(
     use_embeddings: bool = True,
     embedding_warning: Callable[[str], None] | None = None,
 ) -> list[dict[str, Any]]:
+    started = time.monotonic()
     fts_rows = retrieve_chunks(
         session,
         query,
@@ -200,6 +203,13 @@ def retrieve_chunks_hybrid(
         limit=limit * 2,
     )
     if not use_embeddings:
+        record_query(
+            latency_ms=max(1, int((time.monotonic() - started) * 1000)),
+            candidates=len(fts_rows),
+            zero_results=not fts_rows,
+            kind="chunk",
+            degraded_reason=None,
+        )
         return fts_rows[:limit]
     vector_rows, warning = _vector_chunk_ranking(
         session,
@@ -212,7 +222,15 @@ def retrieve_chunks_hybrid(
     if warning is not None and embedding_warning is not None:
         embedding_warning(warning)
     if not vector_rows:
-        return fts_rows[:limit]
+        hits = fts_rows[:limit]
+        record_query(
+            latency_ms=max(1, int((time.monotonic() - started) * 1000)),
+            candidates=len(fts_rows),
+            zero_results=not hits,
+            kind="chunk",
+            degraded_reason=degraded_reason_for_warning(warning),
+        )
+        return hits
     scores: dict[str, float] = {}
     entries: dict[str, dict[str, Any]] = {}
     for ranking in (fts_rows, vector_rows):
@@ -221,7 +239,15 @@ def retrieve_chunks_hybrid(
             scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (RRF_K + rank + 1)
             entries.setdefault(chunk_id, row)
     ranked = sorted(scores, key=lambda chunk_id: scores[chunk_id], reverse=True)
-    return [entries[chunk_id] for chunk_id in ranked[:limit]]
+    hits = [entries[chunk_id] for chunk_id in ranked[:limit]]
+    record_query(
+        latency_ms=max(1, int((time.monotonic() - started) * 1000)),
+        candidates=len(fts_rows) + len(vector_rows),
+        zero_results=not hits,
+        kind="chunk",
+        degraded_reason=degraded_reason_for_warning(warning),
+    )
+    return hits
 
 
 def retrieve_chunks(

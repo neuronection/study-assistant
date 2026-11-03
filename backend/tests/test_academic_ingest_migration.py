@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from migration_head import HEAD_REVISION
 
 from alembic import command
 
@@ -79,7 +80,7 @@ def test_chain_round_trips_from_base(tmp_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         assert (
             connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-            == "0009_calendar_links"
+            == HEAD_REVISION
         )
 
 

@@ -27,6 +27,16 @@ class JobStatus(StrVocab):
         return (cls.QUEUED, cls.RUNNING)
 
 
+class DegradedReason(StrVocab):
+    """Structured lexical-fallback reason (family retrieval contract)."""
+
+    PROVIDER_UNASSIGNED = "provider_unassigned"
+    EMBED_FAILED = "embed_failed"
+    INDEX_MISSING = "index_missing"
+    SPACE_MISMATCH = "space_mismatch"
+    OVER_CAP = "over_cap"
+
+
 class JobType(StrVocab):
     INGEST = "ingest"
     POSTPROCESS = "postprocess"
@@ -36,6 +46,11 @@ class JobType(StrVocab):
     GENESIS = "genesis"
     URL_IMPORT = "url_import"
     COMPOSE = "compose"
+    # Family retrieval-operations contract (plan 51 Q0): the names are the
+    # exact `retrieval_ops.VECTOR_JOB_TYPES` tokens, uppercase by contract.
+    VECTOR_REINDEX = "VECTOR_REINDEX"
+    VECTOR_MAINTENANCE = "VECTOR_MAINTENANCE"
+    VECTOR_CUTOVER = "VECTOR_CUTOVER"
 
 
 class QuestionType(StrVocab):

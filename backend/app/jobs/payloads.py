@@ -1,5 +1,8 @@
 from typing import Required, TypedDict
 
+from ..domain.payloads import JobResult as JobResult
+from ..domain.payloads import LatencyHistogram as LatencyHistogram
+
 
 class IngestPayload(TypedDict, total=False):
     material_id: Required[str]
@@ -60,3 +63,5 @@ class ComposePayload(TypedDict, total=False):
     regenerate: bool | None
     include_unassigned: bool | None
     material_id: str | None
+
+

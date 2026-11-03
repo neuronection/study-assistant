@@ -21,6 +21,7 @@ from ..core.vocab import (
     CitationKind,
     ConceptRelation,
     CourseOrigin,
+    DegradedReason,
     DiscoveryKind,
     ExerciseKind,
     ExternalSourceKind,
@@ -77,6 +78,7 @@ CLOSED_SETS: dict[str, type[StrVocab]] = {
     "plan_items.origin": PlanItemOrigin,
     "questions.flag": ItemFlag,
     "questions.type": QuestionType,
+    "retrieval_query_rollups.degraded_reason": DegradedReason,
     "study_goals.unit": GoalUnit,
     "study_sessions.kind": StudySessionKind,
     "study_sessions.source": StudySessionSource,
@@ -124,6 +126,7 @@ JSON_SPECIES: dict[str, str] = {
     "extractions.confidence": STATE,
     "item_stats.distractor_selection": STATE,
     "jobs.payload": STATE,
+    "jobs.result": STATE,
     "material_drawings.ocr_blocks": DOCUMENT,
     "material_drawings.strokes": DOCUMENT,
     "material_index_cards.key_terms": LIST,
@@ -156,6 +159,7 @@ JSON_SPECIES: dict[str, str] = {
     "questions.stem": DOCUMENT,
     "questions.sympy_check": STATE,
     "questions.tags": LIST,
+    "retrieval_query_rollups.latency_histogram": STATE,
     "skill_versions.contract": STATE,
     "skill_versions.params": STATE,
     "step_attempts.feedback": DOCUMENT,
@@ -228,6 +232,12 @@ PROFILE_SCOPE: dict[str, str] = {
     "questions": "activity_id → activities.profile_id",
     "quiz_help_events": "attempt_id → attempts → activities.profile_id",
     "quizme_answers": "profile_id",
+    "retrieval_coverage_snapshots": (
+        "operational (instance vector coverage aggregate, no user-content record)"
+    ),
+    "retrieval_query_rollups": (
+        "operational (instance query-health aggregate, no user-content record)"
+    ),
     "review_log": "card_id → exercises.profile_id",
     "skill_versions": (
         "catalogue; course/course_type overrides via scope_ref → courses.id/course_types.id"

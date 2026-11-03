@@ -42,6 +42,10 @@ from .services.platform.backup import (
 )
 from .services.platform.external_source_scheduler import ExternalSourceScheduler
 from .services.platform.scan_scheduler import ScanScheduler
+from .services.retrieval.telemetry import (
+    QueryRollupRecorder,
+    configure_recorder,
+)
 from .storage.blobs import BlobStore
 from .storage.db import make_engine, make_session_factory
 
@@ -95,7 +99,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         external_scheduler.start()
         backups: BackupScheduler = app.state.backups
         backups.start()
+        telemetry: QueryRollupRecorder = app.state.retrieval_telemetry
+        telemetry.start()
         yield
+        telemetry.stop()
         backups.stop()
         external_scheduler.stop()
         scheduler.stop()
@@ -170,6 +177,8 @@ def create_app(
     app.state.bus = EventBus()
     app.state.engine = make_engine(settings.db_url)
     app.state.session_factory = make_session_factory(app.state.engine)
+    app.state.retrieval_telemetry = QueryRollupRecorder(app.state.session_factory)
+    configure_recorder(app.state.retrieval_telemetry)
 
     run_startup_seeds(app.state.session_factory, jobs_done_ttl_days=settings.jobs_done_ttl_days)
 

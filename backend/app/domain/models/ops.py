@@ -13,6 +13,7 @@ from ...core.vocab import (
 from ..payloads import (
     DistractorSelection,
     JobPayload,
+    JobResult,
     ProviderStatus,
     SkillContract,
     SkillParams,
@@ -93,6 +94,7 @@ class Job(Base):
     status: Mapped[str] = mapped_column(String(20), default="queued")
     progress: Mapped[int] = mapped_column(Integer, default=0)
     stage: Mapped[str | None] = mapped_column(String(120))
+    result: Mapped[JobResult | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

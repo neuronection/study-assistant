@@ -55,6 +55,7 @@ extractions.blocks :: keep-open content blocks behind blocks_schema_version
 extractions.confidence :: keep-open extractor confidence scores
 item_stats.distractor_selection :: keep-open distractor choice counts
 jobs.payload :: keep-open job-type payload union
+jobs.result :: keep-open bounded VECTOR_* run-result counters (scanned/embedded/skipped/failed/failed_ids)
 material_drawings.ocr_blocks :: keep-open OCR blocks behind ocr_blocks_schema_version
 material_drawings.strokes :: keep-open ink strokes behind strokes_schema_version
 material_drawings.view :: typed-out view_x / view_y / view_width / view_height
@@ -89,6 +90,7 @@ questions.stats :: keep-open item statistics document
 questions.stem :: keep-open prompt document list
 questions.sympy_check :: keep-open symbolic verification document
 questions.tags :: keep-open tag list
+retrieval_query_rollups.latency_histogram :: keep-open bounded latency histogram (le buckets + overflow; TTL 30d)
 skill_versions.contract :: keep-open skill contract knobs
 skill_versions.params :: keep-open skill parameter knobs
 step_attempts.feedback :: keep-open feedback document list
