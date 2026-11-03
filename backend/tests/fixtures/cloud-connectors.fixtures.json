@@ -1194,5 +1194,95 @@
         }
       ]
     }
+  },
+  "attribution": {
+    "rule": "attributable-only (E8): the marker category, a minted uid namespace, or an existing link. Keyword matches are suggestions, never records.",
+    "sourceCategory": "NEURONECTION",
+    "namespaces": [
+      "study:",
+      "health:"
+    ],
+    "cases": [
+      {
+        "name": "marker-category",
+        "event": {
+          "uid": "remote-1",
+          "summary": "whatever",
+          "start": "2026-11-12T09:00:00Z",
+          "categories": [
+            "NEURONECTION",
+            "EXAM"
+          ]
+        },
+        "attributable": true
+      },
+      {
+        "name": "marker-category-case-insensitive",
+        "event": {
+          "uid": "remote-1",
+          "summary": "x",
+          "start": "2026-11-12T09:00:00Z",
+          "categories": [
+            "neuronection"
+          ]
+        },
+        "attributable": true
+      },
+      {
+        "name": "minted-uid-study",
+        "event": {
+          "uid": "study:plan-item:p1",
+          "summary": "Exam",
+          "start": "2026-11-12",
+          "end": "2026-11-13",
+          "allDay": true
+        },
+        "attributable": true
+      },
+      {
+        "name": "minted-uid-health",
+        "event": {
+          "uid": "health:examination:e1",
+          "summary": "Appt",
+          "start": "2026-11-12",
+          "end": "2026-11-13",
+          "allDay": true
+        },
+        "attributable": true
+      },
+      {
+        "name": "keyword-lookalike-is-NOT-attributable",
+        "event": {
+          "uid": "remote-9",
+          "summary": "Midterm exam Friday",
+          "start": "2026-11-12T09:00:00Z"
+        },
+        "attributable": false
+      },
+      {
+        "name": "personal-event-not-attributable",
+        "event": {
+          "uid": "remote-2",
+          "summary": "Dentist",
+          "start": "2026-11-12T09:00:00Z",
+          "categories": [
+            "PERSONAL"
+          ]
+        },
+        "attributable": false
+      },
+      {
+        "name": "kind-category-alone-is-NOT-enough",
+        "event": {
+          "uid": "remote-3",
+          "summary": "Exam",
+          "start": "2026-11-12T09:00:00Z",
+          "categories": [
+            "EXAM"
+          ]
+        },
+        "attributable": false
+      }
+    ]
   }
 }

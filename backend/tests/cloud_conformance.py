@@ -521,6 +521,29 @@ def _wire(fixtures: Mapping[str, Any]) -> None:
                 _check(where, got == value, f"{key!r} expected {value!r}, got {got!r}")
 
 
+def _attribution(fixtures: Mapping[str, Any]) -> None:
+    group = fixtures.get("attribution")
+    if not group:
+        return
+    from cloud_calendar import SOURCE_CATEGORY, is_attributable
+
+    _check(
+        "attribution.sourceCategory",
+        SOURCE_CATEGORY == group["sourceCategory"],
+        f"marker drifted: {SOURCE_CATEGORY!r}",
+    )
+    namespaces = tuple(group.get("namespaces", ()))
+    for index, case in enumerate(group.get("cases", [])):
+        where = f"attribution[{index}:{case['name']}]"
+        event = event_from_dict(case["event"])
+        got = is_attributable(event, namespaces=namespaces)
+        _check(
+            where,
+            got is case["attributable"],
+            f"expected attributable={case['attributable']}, got {got}",
+        )
+
+
 def run(fixtures_path: Path | None = None, catalog_path: Path | None = None) -> int:
     fixtures = json.loads(Path(fixtures_path or FIXTURES).read_text(encoding="utf-8"))
     catalog_document = json.loads(Path(catalog_path or CATALOG).read_text(encoding="utf-8"))
@@ -540,6 +563,7 @@ def run(fixtures_path: Path | None = None, catalog_path: Path | None = None) -> 
     )
     _ics(fixtures["ics"])
     _reconcile(fixtures)
+    _attribution(fixtures)
     _files(fixtures["files"])
     _wire(fixtures["wire"])
     return 0
