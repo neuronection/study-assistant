@@ -255,9 +255,14 @@ def _resolve_pin(
 
 def _link(record: Mapping[str, Any], row: Mapping[str, Any]) -> EventLink:
     locals_by_id = {entry["localId"]: entry for entry in row.get("local", [])}
-    remote_by_uid = {entry["uid"]: entry for entry in row.get("remote", [])}
+    remotes = row.get("remote", [])
     local_row = locals_by_id.get(record["localId"], {"event": {"uid": record["uid"], "start": "2026-01-01", "summary": ""}})
-    remote_row = remote_by_uid.get(record["uid"], {"uid": record["uid"], "start": "2026-01-01", "summary": ""})
+    # the remote side is keyed by its write handle (remoteId), not its uid
+    remote_row = next(
+        (entry for entry in remotes if record.get("remoteId") and entry.get("remoteId") == record["remoteId"]),
+        next((entry for entry in remotes if entry["uid"] == record["uid"]),
+             {"uid": record["uid"], "start": "2026-01-01", "summary": ""}),
+    )
     return EventLink(
         local_id=record["localId"],
         uid=record["uid"],

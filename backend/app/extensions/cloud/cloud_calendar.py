@@ -102,6 +102,9 @@ class ActionKind(StrEnum):
     DELETE_LOCAL = "delete-local"
     UNLINK = "unlink"
     CONFLICT = "conflict"
+    #: Crash-window repair: an unlinked local record and an unlinked remote
+    #: event are the SAME event (content match) — attach, never duplicate.
+    LINK_EXISTING = "link-existing"
 
 
 # ---------------------------------------------------------------------------
@@ -1634,16 +1637,20 @@ def reconcile(
     now = (now or datetime.now(UTC)).astimezone(UTC)
 
     local_by_uid = {record.event.uid: record for record in local}
-    remote_by_uid = {
-        event.uid: event for event in remote if accept is None or accept(event)
-    }
+    accepted = [event for event in remote if accept is None or accept(event)]
+    # E9/identity law: the LINK ROW is the identity authority. A provider may
+    # mint its own uid (Graph's `iCalUId` is server-generated and read-only),
+    # so the remote side is keyed by its WRITE HANDLE (`remote_id`), falling
+    # back to uid. Matching by uid alone silently split one event into two.
+    remote_by_key = {event.remote_id or event.uid: event for event in accepted}
+    remote_by_uid = {event.uid: event for event in accepted}
     link_by_uid = {link.uid: link for link in links}
     actions: list[SyncAction] = []
     skipped = 0
 
     for uid, link in link_by_uid.items():
         local_record = local_by_uid.get(uid)
-        remote_event = remote_by_uid.get(uid)
+        remote_event = remote_by_key.get(link.remote_id or "") or remote_by_uid.get(uid)
         if local_record is None:
             # The host dropped the local record entirely: treat as unlink.
             actions.append(SyncAction(ActionKind.UNLINK, uid, local_id=link.local_id, reason="local-missing"))
@@ -1737,15 +1744,38 @@ def reconcile(
         else:
             skipped += 1
 
+    # Remotes already claimed by a link (or by an orphan repair below) must
+    # never be re-created as a duplicate — shared across both write passes.
+    claimed = {(link.remote_id or link.uid) for link in link_by_uid.values()}
+    claimed |= set(link_by_uid)
+
     if direction != SyncDirection.PULL:
         if not remote_writable:
             skipped += sum(1 for record in local_by_uid.values() if record.event.uid not in link_by_uid)
         else:
+            # E9 crash-window repair: a local record with no link may already
+            # have a remote twin whose link write was lost (crash between the
+            # provider write and the local commit). Match by CONTENT HASH and
+            # attach — creating again would duplicate the user's event.
+            orphans = {
+                event_hash(event): event
+                for event in accepted
+                if (event.remote_id or event.uid) not in claimed
+            }
             for uid, record in local_by_uid.items():
                 if uid in link_by_uid:
                     continue
                 if record.deleted:
                     skipped += 1
+                    continue
+                twin = orphans.pop(event_hash(record.event), None)
+                if twin is not None:
+                    claimed.add(twin.remote_id or twin.uid)
+                    actions.append(
+                        SyncAction(ActionKind.LINK_EXISTING, uid, local_id=record.local_id,
+                                   event=twin, remote_id=twin.remote_id,
+                                   reason="orphan-repair")
+                    )
                     continue
                 actions.append(
                     SyncAction(ActionKind.CREATE_REMOTE, uid, local_id=record.local_id,
@@ -1753,8 +1783,11 @@ def reconcile(
                 )
 
     if direction != SyncDirection.PUSH:
+        # A remote is "claimed" when a link holds its write handle OR an
+        # orphan-repair just attached it — its uid may be provider-minted, so
+        # uid alone is not the test (E9).
         for uid, event in remote_by_uid.items():
-            if uid in link_by_uid:
+            if uid in claimed or (event.remote_id or "") in claimed:
                 continue
             if event.status == "cancelled":
                 skipped += 1
@@ -1830,6 +1863,17 @@ def apply_action_to_link(
     at = now or datetime.now(UTC)
     if action.kind == ActionKind.UNLINK or action.kind == ActionKind.DELETE_REMOTE:
         return None
+    if action.kind == ActionKind.LINK_EXISTING:
+        # Attach an orphan remote to its local record — no write happened.
+        return EventLink(
+            local_id=local_id or action.local_id or "",
+            uid=local_id or action.uid,
+            remote_id=event.remote_id if event else action.remote_id,
+            etag=event.etag if event else None,
+            local_hash=event_hash(event) if event else None,
+            remote_hash=event_hash(event) if event else None,
+            updated_at=at,
+        )
     if event is None:
         return None
     return EventLink(

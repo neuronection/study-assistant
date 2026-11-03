@@ -881,6 +881,94 @@
         "actions": [],
         "skipped": 1
       }
+    },
+    {
+      "name": "graph-round-trip-identity-via-remote-id",
+      "local": [
+        {
+          "localId": "e1",
+          "event": {
+            "uid": "health:examination:e1",
+            "summary": "Medical appointment",
+            "start": "2026-11-20",
+            "end": "2026-11-21",
+            "allDay": true
+          },
+          "updatedAt": "2026-11-03T10:00:00Z"
+        }
+      ],
+      "remote": [
+        {
+          "uid": "GRAPH-GENERATED-UID",
+          "summary": "Medical appointment",
+          "start": "2026-11-20",
+          "end": "2026-11-21",
+          "allDay": true,
+          "remoteId": "AAMk-1",
+          "etag": "ck1"
+        }
+      ],
+      "links": [
+        {
+          "localId": "e1",
+          "uid": "health:examination:e1",
+          "remoteId": "AAMk-1",
+          "etag": "ck1",
+          "localHash": "$local",
+          "remoteHash": "$remote",
+          "updatedAt": "2026-11-03T10:00:00Z"
+        }
+      ],
+      "args": {
+        "direction": "two-way",
+        "remoteWritable": true
+      },
+      "expect": {
+        "actions": [],
+        "skipped": 1
+      }
+    },
+    {
+      "name": "orphan-repair-attaches-instead-of-duplicating",
+      "local": [
+        {
+          "localId": "p1",
+          "event": {
+            "uid": "study:plan-item:p1",
+            "summary": "Midterm exam",
+            "start": "2026-11-20",
+            "end": "2026-11-21",
+            "allDay": true
+          },
+          "updatedAt": "2026-11-03T10:00:00Z"
+        }
+      ],
+      "remote": [
+        {
+          "uid": "GRAPH-GENERATED-UID",
+          "summary": "Midterm exam",
+          "start": "2026-11-20",
+          "end": "2026-11-21",
+          "allDay": true,
+          "remoteId": "AAMk-2",
+          "etag": "ck2"
+        }
+      ],
+      "links": [],
+      "args": {
+        "direction": "two-way",
+        "remoteWritable": true
+      },
+      "expect": {
+        "actions": [
+          {
+            "kind": "link-existing",
+            "uid": "study:plan-item:p1",
+            "remoteId": "AAMk-2"
+          }
+        ],
+        "skipped": 0
+      }
     }
   ],
   "files": {
