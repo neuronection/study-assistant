@@ -156,6 +156,30 @@ id is a typed `needs-config`, never a crash.
   settings map wall cover placement (the card lives under `tools.connectors`,
   so the settings nav contract is unchanged).
 
+## Deployment modes: desktop vs web (plan 52 fix)
+
+Two things differ between a desktop install and a web/server deployment, and
+**both fail silently** if ignored.
+
+| Concern | Desktop/local | Web/server |
+|---|---|---|
+| Credential storage | OS keyring | sealed file `<data_dir>/secrets.json` (0600, `nx_auth.atrest`) |
+| OAuth redirect | loopback `http://127.0.0.1:<port>/oauth/callback` (RFC 8252) | `{SA_APP_URL}/api/v1/calendar/oauth/callback` |
+
+**Storage.** `app/core/secrets.py` probe-selects the backend: the keyring is
+used only if a write **round-trips**, else the sealed file, else it **fails
+closed**. The probe matters because `keyring.backends.null` accepts writes and
+discards them — without it a bind "succeeds" and the token is simply gone.
+`store_backend()` reports which is live (`keyring` | `file` | `none`).
+
+**Redirect.** Set `SA_APP_URL` (the public base URL) on any web deployment.
+Without it OAuth uses the loopback redirect, which only works when the browser
+and the app share a machine — the provider would otherwise send the code to
+the *user's own* localhost. The server callback route's security is the state
+law: single-use, expiring, bound to the profile that started it. The state is
+a `<link-id>.<nonce>` composite so the callback can find the binding; the
+nonce does the security work.
+
 ## Common pitfalls
 
 - Do not hand-write a provider or scope list — read the catalog. The bind
