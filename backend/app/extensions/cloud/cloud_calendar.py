@@ -54,6 +54,14 @@ TRANSPARENCIES = ("opaque", "transparent")
 #: Safe default for hosts that project private items: never leak details.
 REDACTED_SUMMARY = "Busy"
 
+#: The marker category every projected event carries. It is BOTH the user's
+#: filter handle ("show me my Neuronection events") and the family's
+#: attribution signal (ADR-0052 §6 / E8): Google has no categories field, so
+#: this rides `extendedProperties.private.nxCategories` there and a real
+#: CATEGORIES field on CalDAV/Graph — and reads back as `categories` on all
+#: three. Provider-agnostic on purpose: no host branches on a provider name.
+SOURCE_CATEGORY = "NEURONECTION"
+
 
 class CalendarError(Exception):
     """Typed calendar failure; ``code`` is stable across hosts."""
@@ -308,6 +316,30 @@ def event_content(event: CalendarEvent) -> dict[str, Any]:
     ):
         payload.pop(key, None)
     return payload
+
+
+def is_attributable(
+    event: CalendarEvent, *, namespaces: Sequence[str] = ()
+) -> bool:
+    """Can this event be attributed to a family host?
+
+    The inbound law (ADR-0052 §6 / E8): a remote event may become a local
+    record ONLY if it is attributable —
+
+    * it carries :data:`SOURCE_CATEGORY` (we projected it), or
+    * its uid is in a host namespace (``study:``/``health:`` — we minted it),
+      or
+    * a linked row already claims it.
+
+    Anything else is a *candidate*, never a record: a keyword match on the
+    title is surfaced as a suggestion the user confirms, never written
+    silently. In health especially, a false positive becomes a clinical
+    record — so fuzzy matching is never an automatic write path.
+    """
+    if any(str(category).upper() == SOURCE_CATEGORY for category in event.categories):
+        return True
+    uid = event.uid or ""
+    return any(uid.startswith(namespace) for namespace in namespaces)
 
 
 def event_hash(event: CalendarEvent) -> str:
@@ -1874,7 +1906,9 @@ __all__ = [
     "REDACTED_SUMMARY",
     "SyncAction",
     "SyncDirection",
+    "SOURCE_CATEGORY",
     "SyncPlan",
+    "is_attributable",
     "apply_action_to_link",
     "basic_auth",
     "bearer_auth",

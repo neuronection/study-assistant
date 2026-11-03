@@ -151,6 +151,7 @@ class SyncReportOut(BaseModel):
     unlinked: int = 0
     conflicts: int = 0
     skipped: int = 0
+    suggested: int = 0
     error: str | None = None
 
 

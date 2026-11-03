@@ -106,6 +106,7 @@ class SyncReport:
     unlinked: int = 0
     conflicts: int = 0
     skipped: int = 0
+    suggested: int = 0
     error: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
@@ -120,6 +121,7 @@ class SyncReport:
             "unlinked": self.unlinked,
             "conflicts": self.conflicts,
             "skipped": self.skipped,
+            "suggested": self.suggested,
             "error": self.error,
         }
 
@@ -368,7 +370,9 @@ def create_link(
 
     merged_options: dict[str, Any] = {
         "kinds": list(PROJECTED_KINDS),
-        "acceptCategories": list(ACCEPT_CATEGORIES),
+        # E8: inbound is attributable-only by default. A user who wants
+        # category matching lists the categories themselves (explicit pick).
+        "acceptCategories": [],
         "acceptAll": False,
         "conflictPolicy": "skip",
         "deletionPolicy": "keep-local",
@@ -1021,22 +1025,77 @@ def to_event(item: PlanItem, course: Course) -> calendar.CalendarEvent:
         all_day=True,
         summary=item.title[:MAX_TITLE],
         description=description[:MAX_DETAIL],
-        categories=(item.kind.upper(),),
+        # E8 storage + attribution: the marker rides every projected event
+        # (Google: private extendedProperties; CalDAV/Graph: real CATEGORIES)
+        # so a round trip is attributable without any provider branch.
+        categories=(calendar.SOURCE_CATEGORY, item.kind.upper()),
         updated_at=item.updated_at or item.created_at,
     )
 
 
 def _accepted(event: calendar.CalendarEvent, link: CalendarLink) -> bool:
+    """The inbound law (ADR-0052 §6 / E8): attributable-only.
+
+    A remote event becomes a plan item ONLY when it is attributable (the
+    ``NEURONECTION`` marker category or a uid we minted), when the link
+    explicitly opted into ``acceptAll``, or when the user listed the
+    categories themselves. A title that merely *looks* like an exam is a
+    suggestion (:func:`_suggest_items`), never a record — a false positive
+    here silently writes into the user's plan.
+    """
     options = link.options or {}
-    categories = {str(value).upper() for value in event.categories}
+    if calendar.is_attributable(event, namespaces=("study:",)):
+        return True
     if options.get("acceptAll") is True:
         return True
-    allowed = {str(value).upper() for value in options.get("acceptCategories") or ACCEPT_CATEGORIES}
-    if categories & allowed:
-        return True
-    # Uncategorised events: only unmistakable exam/deadline titles, never a
-    # whole personal calendar. Users can opt into `acceptAll` per link.
-    return bool(EXAM_PATTERN.search(event.summary or ""))
+    allowed = {str(value).upper() for value in options.get("acceptCategories") or ()}
+    if not allowed:
+        return False
+    return bool({str(value).upper() for value in event.categories} & allowed)
+
+
+def _suggest_items(
+    session: Session, link: CalendarLink, remote: list[calendar.CalendarEvent]
+) -> int:
+    """Keyword lookalikes become ``origin='draft'`` suggestions, not records.
+
+    The user keeps or discards each in the planner (the existing draft row
+    pattern). Never auto-created, never auto-completed.
+    """
+    created = 0
+    for event in remote:
+        if _accepted(event, link):
+            continue
+        if not EXAM_PATTERN.search(event.summary or ""):
+            continue
+        exists = session.scalars(
+            select(PlanItem).where(
+                PlanItem.course_id == link.course_id,
+                PlanItem.external_uid == event.uid,
+            )
+        ).first()
+        if exists is not None:
+            continue
+        session.add(
+            PlanItem(
+                profile_id=link.profile_id,
+                course_id=link.course_id,
+                node_id=None,
+                title=(event.summary or "Calendar event")[:MAX_TITLE],
+                detail=(event.description or "")[:MAX_DETAIL] or None,
+                kind=kind_for_event(event),
+                due_date=event.start_day,
+                origin=PlanItemOrigin.DRAFT.value,
+                sort_key=0,
+                external_uid=event.uid,
+                created_at=utcnow(),
+                updated_at=utcnow(),
+            )
+        )
+        created += 1
+    if created:
+        session.flush()
+    return created
 
 
 def kind_for_event(event: calendar.CalendarEvent) -> str:
@@ -1403,6 +1462,8 @@ async def _sync_locked(
             except calendar.CalendarError as exc:
                 report.error = f"{exc.code}: {exc.detail}"
                 report.status = CalendarStatus.DEGRADED.value
+        # E8: keyword lookalikes become draft suggestions, never records.
+        report.suggested = _suggest_items(session, link, remote)
         link.last_synced_at = utcnow()
         link.consecutive_failures = 0
         link.last_error = report.error

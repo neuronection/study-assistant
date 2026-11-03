@@ -238,7 +238,7 @@ def test_push_maps_exam_and_is_idempotent(
         assert pushed.all_day is True
         assert pushed.start == date(2026, 11, 20)
         assert pushed.end == date(2026, 11, 21)  # canonical all-day end is exclusive
-        assert pushed.categories == ("EXAM",)
+        assert pushed.categories == ("NEURONECTION", "EXAM")  # E8: marker + kind
         assert pushed.summary == "Midterm exam"
 
         db_session.expire_all()
@@ -277,14 +277,26 @@ def test_pull_only_accepts_study_events(
 ) -> None:
     with client:
         course_id = _course(client)
-        exam = cc.CalendarEvent(
+        # E8: attributable — carries the family marker.
+        marked = cc.CalendarEvent(
             uid="remote-exam",
             start=date(2026, 11, 30),
             end=date(2026, 12, 1),
             all_day=True,
             summary="Final exam",
-            categories=("EXAM",),
+            categories=("NEURONECTION", "EXAM"),
             remote_id="remote-exam",
+        )
+        # Bare EXAM category, no marker — a USER must have picked this
+        # category on the link; by default it is only a suggestion.
+        bare = cc.CalendarEvent(
+            uid="remote-bare",
+            start=date(2026, 11, 28),
+            end=date(2026, 11, 29),
+            all_day=True,
+            summary="Midterm",
+            categories=("EXAM",),
+            remote_id="remote-bare",
         )
         personal = cc.CalendarEvent(
             uid="remote-dentist",
@@ -295,23 +307,114 @@ def test_pull_only_accepts_study_events(
             remote_id="remote-dentist",
         )
         link = _link(client, course_id, direction="pull")
-        fake = FakeTransport([exam, personal])
+        fake = FakeTransport([marked, bare, personal])
         monkeypatch.setattr(service, "_transport", lambda *args: fake)
         monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _NoopClient())
 
         report = _sync(client, link["id"])
         assert report["created_local"] == 1, report
+        # the bare-category event is a DRAFT suggestion, not a record
+        assert report["suggested"] == 1, report
+
+        db_session.expire_all()
+        items = list(db_session.scalars(select(PlanItem).where(PlanItem.course_id == course_id)))
+        by_uid = {item.external_uid: item for item in items}
+        assert by_uid["remote-exam"].origin == "calendar"
+        assert by_uid["remote-exam"].kind == "exam"
+        assert by_uid["remote-bare"].origin == "draft"  # keep/discard, never silent
+        assert "remote-dentist" not in by_uid  # personal calendar is never imported
+
+        again = _sync(client, link["id"])
+        assert again["created_local"] == 0
+        assert again["suggested"] == 0  # idempotent, no duplicate suggestions
+
+
+def test_keyword_lookalike_is_a_suggestion_not_a_record(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, db_session: Session
+) -> None:
+    """A title that merely looks like an exam never becomes a record (E8)."""
+    with client:
+        course_id = _course(client)
+        lookalike = cc.CalendarEvent(
+            uid="remote-test",
+            start=date(2026, 11, 26),
+            end=date(2026, 11, 27),
+            all_day=True,
+            summary="Test the projector",
+            remote_id="remote-test",
+        )
+        link = _link(client, course_id, direction="pull")
+        fake = FakeTransport([lookalike])
+        monkeypatch.setattr(service, "_transport", lambda *args: fake)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _NoopClient())
+
+        report = _sync(client, link["id"])
+        assert report["created_local"] == 0, report
+        assert report["suggested"] == 1, report
 
         db_session.expire_all()
         items = list(db_session.scalars(select(PlanItem).where(PlanItem.course_id == course_id)))
         assert len(items) == 1
-        assert items[0].title == "Final exam"
-        assert items[0].kind == "exam"
-        assert items[0].origin == "calendar"
-        assert items[0].external_uid == "remote-exam"
+        assert items[0].origin == "draft"
+        assert items[0].title == "Test the projector"
 
-        again = _sync(client, link["id"])
-        assert again["created_local"] == 0
+
+def test_marker_category_round_trips_attribution(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What we push is attributable when it comes back (E8 storage)."""
+    with client:
+        course_id = _course(client)
+        item_id = _item(client, course_id, title="Midterm exam", due="2026-11-20", kind="exam")
+        link = _link(client, course_id)
+        fake = FakeTransport()
+        monkeypatch.setattr(service, "_transport", lambda *args: fake)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _NoopClient())
+        _sync(client, link["id"])
+
+        pushed = fake.put[0]
+        assert "NEURONECTION" in pushed.categories
+        assert cc.is_attributable(pushed, namespaces=("study:",)) is True
+        # a foreign event with no marker is not attributable
+        foreign = cc.CalendarEvent(
+            uid="f1",
+            start=date(2026, 11, 2),
+            end=date(2026, 11, 3),
+            all_day=True,
+            summary="Exam",
+        )
+        assert cc.is_attributable(foreign, namespaces=("study:",)) is False
+        assert item_id  # the projection that produced it
+
+
+def test_accept_categories_is_an_explicit_user_pick(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, db_session: Session
+) -> None:
+    """Listing categories on the link is user attribution — it accepts."""
+    with client:
+        course_id = _course(client)
+        bare = cc.CalendarEvent(
+            uid="remote-bare",
+            start=date(2026, 11, 28),
+            end=date(2026, 11, 29),
+            all_day=True,
+            summary="Midterm",
+            categories=("EXAM",),
+            remote_id="remote-bare",
+        )
+        link = _link(
+            client,
+            course_id,
+            direction="pull",
+            options={"acceptCategories": ["EXAM"]},
+        )
+        fake = FakeTransport([bare])
+        monkeypatch.setattr(service, "_transport", lambda *args: fake)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: _NoopClient())
+
+        report = _sync(client, link["id"])
+        assert report["created_local"] == 1, report
+        assert report["suggested"] == 0, report
 
 
 def test_update_link_direction_and_disable(client: TestClient) -> None:
