@@ -56,6 +56,12 @@
               "file": "user/exploring.md",
               "title": "Exploring topics — the Scratchpad",
               "description": "A private playground for capturing ideas and material before they become a course."
+            },
+            {
+              "id": "calendar",
+              "file": "user/calendar.md",
+              "title": "Cloud calendars",
+              "description": "Bind a course to Google, Microsoft, Nextcloud, iCloud, Fastmail, CalDAV or an ICS feed; project exams and deadlines; opt in to two-way sync."
             }
           ]
         },
@@ -316,6 +322,12 @@
               "file": "dev/security.md",
               "title": "Security model",
               "description": "Keyring secrets, the AI trust boundary, upload and blob guards, and test isolation."
+            },
+            {
+              "id": "cloud-calendars",
+              "file": "dev/cloud-calendars.md",
+              "title": "Cloud calendars",
+              "description": "Study host map for ADR-0052: vendored engines, mapping law, persistence, sync, OAuth fallback and tests."
             }
           ]
         },

@@ -88,7 +88,7 @@ def test_declared_shots_resolve_under_docs() -> None:
 # ------------------------------------------------------- contract semantics
 
 
-def _semantic_problems(doc: dict, expected_project: str) -> list[str]:
+def _semantic_problems(doc: dict[str, Any], expected_project: str) -> list[str]:
     problems: list[str] = []
     if doc.get("project") != expected_project:
         problems.append(f"project must be {expected_project!r}")
@@ -106,7 +106,9 @@ def _semantic_problems(doc: dict, expected_project: str) -> list[str]:
         if isinstance(shot, str) and (
             shot.startswith("/") or "\\" in shot or ".." in shot.split("/")
         ):
-            problems.append(f"capability {cap.get('id')!r} shot escapes the manifest directory: {shot!r}")
+            problems.append(
+                f"capability {cap.get('id')!r} shot escapes the manifest directory: {shot!r}"
+            )
     return problems
 
 
@@ -133,6 +135,8 @@ def test_contract_fixtures_stay_honest() -> None:
         )
     for case in fixtures["invalid"]:
         rejected = contract.validate(schema, case["doc"], schema) is not None or bool(
-            _semantic_problems(case["doc"], case.get("expectProject", case["doc"].get("project", "")))
+            _semantic_problems(
+                case["doc"], case.get("expectProject", case["doc"].get("project", ""))
+            )
         )
         assert rejected, f"fixture {case['name']!r} must stay invalid against the contract"

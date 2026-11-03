@@ -20,6 +20,8 @@ answers.feedback :: keep-open feedback document list
 answers.help_events :: keep-open help audit trail
 answers.response :: keep-open graded response document
 attempts.meta :: keep-open attempt metadata
+calendar_links.options :: keep-open sync options (mapping, acceptance, policy)
+calendar_links.scopes :: keep-open granted OAuth scope list
 chat_messages.blocks :: keep-open rendering blocks behind blocks_schema_version
 chat_messages.citations :: keep-open citation list
 chat_messages.mentions :: keep-open mention list

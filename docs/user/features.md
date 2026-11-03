@@ -1086,6 +1086,13 @@ P0/P1/P2 refer to the product plan (vision tiers). "—" means not started; see
   zero) and opt-in browser notifications (Settings → General; ≤1 summary per
   30 min while the app is open; feature-detected with honest fallbacks) —
   plan 68-C
+- ✅ Cloud calendars (ADR-0052 / plan 52): bind a course to Google, Microsoft
+  365, Nextcloud, iCloud, Fastmail, generic CalDAV or a read-only ICS feed;
+  the bind form renders from catalog setup fields (no provider hardcoding) and
+  lists the account's calendars to pick one; exam/deadline/milestone plan
+  items project as all-day events; optional two-way sync accepts only
+  study-event categories; credentials live in the OS keyring, never the
+  database — Settings → Tools → Connectors → Cloud calendars
 - ✅ Planner week view + ICS: List⇄Week toggle (Mon–Sun grid, today highlight,
   drag-between-days, overdue/done styling) and a server-rendered
   `GET /courses/{id}/plan.ics` calendar export with stable UIDs (re-import

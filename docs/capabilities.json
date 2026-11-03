@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": "study",
-  "updated": "2026-10-27",
+  "updated": "2026-11-03",
   "capabilities": [
     {
       "id": "material-to-practice",
@@ -247,6 +247,40 @@
         {
           "kind": "api",
           "href": "docs/study/sdk/overview"
+        },
+        {
+          "kind": "source",
+          "href": "https://github.com/neuronection/study-assistant",
+          "label": "GitHub"
+        }
+      ],
+      "platforms": [
+        "web",
+        "desktop"
+      ]
+    },
+    {
+      "id": "cloud-calendars",
+      "verb": "Put exam and deadline dates on your own calendar",
+      "summary": "Bind a course to Google, Microsoft 365, Nextcloud, iCloud, Fastmail, CalDAV or an ICS feed. Exam, deadline and milestone dates project as all-day events; two-way sync is opt-in.",
+      "category": "integrate",
+      "status": "shipped",
+      "order": 75,
+      "metric": {
+        "value": "9",
+        "label": "calendar providers"
+      },
+      "proofs": [
+        "Providers, scopes and the bind form's fields render from the family catalog (ADR-0052); calendars are picked from a discovered list",
+        "Credentials live only in the OS keyring; the database stores a pointer",
+        "All-day projections use the canonical exclusive end (due date + 1 day)",
+        "Two-way sync accepts only exam/deadline categories unless you opt into all events",
+        "Every sync is bounded to a 14-day past / 400-day future window and stops on repeated failure"
+      ],
+      "links": [
+        {
+          "kind": "guide",
+          "href": "docs/study/user/calendar"
         },
         {
           "kind": "source",

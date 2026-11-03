@@ -87,6 +87,14 @@ extend-exclude = [
     "app/extensions/polite_http.py",
     "app/extensions/conformance.py",
     "app/extensions/search/providers_contract.py",
+    # Cloud-connector contract (ADR-0052): vendored byte-identical from
+    # dev/contracts/ via sync-cloud-connectors.sh — lint findings belong to
+    # the dev canonical, never to a vendored copy (same accommodation as
+    # contract.py above).
+    "app/extensions/cloud/cloud_calendar.py",
+    "app/extensions/cloud/cloud_files.py",
+    "app/extensions/cloud/cloud_providers.py",
+    "tests/cloud_conformance.py",
 ]
 
 [tool.ruff.lint]
@@ -134,6 +142,21 @@ exclude = ["^dist/", "app/extensions/contract.py"]
 [[tool.mypy.overrides]]
 module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Vendored cloud-connector contract runtime (dev/contracts canonical,
+# byte-identical, never edited here — ADR-0052): type findings belong in the
+# dev canonical, not the vendored copy. Drift is gated by
+# scripts/sync-cloud-connectors.sh --check on the dev side and by the fixture
+# wall (tests/test_cloud_contract.py) here.
+# (The extension contract above carries the same accommodation per pyproject.)
+module = [
+    "app.extensions.cloud.cloud_calendar",
+    "app.extensions.cloud.cloud_files",
+    "app.extensions.cloud.cloud_providers",
+    "cloud_conformance",
+]
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 # Vendored family contract runtime (dev/contracts canonical, byte-identical,

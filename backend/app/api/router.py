@@ -5,6 +5,7 @@ from . import (
     ai_settings,
     analytics,
     backup,
+    calendar,
     chat,
     config,
     courses,
@@ -64,6 +65,7 @@ api_router.include_router(study.router)
 api_router.include_router(study_sessions.router)
 api_router.include_router(notifications.router)
 api_router.include_router(backup.router)
+api_router.include_router(calendar.router)
 api_router.include_router(profiles.router)
 api_router.include_router(plan.router)
 api_router.include_router(plan.upcoming_router)

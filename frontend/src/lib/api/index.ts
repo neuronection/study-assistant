@@ -631,6 +631,31 @@ export {
 } from './system'
 
 export type {
+  CalendarCatalog,
+  CalendarLink,
+  CalendarLinkInput,
+  CalendarOAuthStart,
+  CalendarProvider,
+  CalendarSetupField,
+  CalendarSyncReport,
+  DiscoveredCalendar,
+} from './calendar'
+
+export {
+  completeCalendarOAuth,
+  createCalendarLink,
+  deleteCalendarLink,
+  discoverCalendars,
+  listCalendarLinks,
+  listCalendarProviders,
+  setCalendarLinkSecret,
+  startCalendarOAuth,
+  syncCalendarLink,
+  testCalendarLink,
+  updateCalendarLink,
+} from './calendar'
+
+export type {
   DiscoveryResultRow,
   DiscoverySearchResponse,
   DiscoverySuggestion,

@@ -580,6 +580,17 @@ class TaskParams(TypedDict, total=False):
     transport: str
 
 
+class CalendarLinkOptions(TypedDict, total=False):
+    """Per-link sync options (ADR-0052): mapping, acceptance and policy."""
+
+    kinds: list[str]
+    acceptCategories: list[str]
+    acceptAll: bool
+    conflictPolicy: str
+    deletionPolicy: str
+    username: str | None
+
+
 class JobPayload(TypedDict, total=False):
     """The union of every job-type payload (the type column selects the shape)."""
 
@@ -636,6 +647,8 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "chat_quiz_pendings.choices": "StringList",
     "chat_sessions.context": "ChatSessionContext",
     "chat_sessions.mention_registry": "MentionRegistryList",
+    "calendar_links.options": "CalendarLinkOptions",
+    "calendar_links.scopes": "StringList",
     "concepts.aliases": "StringList",
     "courses.goals": "StringList",
     "courses.tags": "StringList",
@@ -698,6 +711,7 @@ PAYLOAD_TYPES: dict[str, object] = {
     "ActivityConfig": ActivityConfig,
     "ActivityGeneratedFrom": ActivityGeneratedFrom,
     "AnswerResponse": AnswerResponse,
+    "CalendarLinkOptions": CalendarLinkOptions,
     "AttemptMeta": AttemptMeta,
     "BlockList": BlockList,
     "ChatSessionContext": ChatSessionContext,

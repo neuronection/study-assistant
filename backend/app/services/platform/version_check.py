@@ -209,7 +209,12 @@ def validate_doc(doc: Any) -> list[str]:
                 issues.append(
                     f"history[{index}] declares {declared} but its version is {suffix_channel}"
                 )
-            _validate_release(entry, declared, f"history[{index}]", issues)
+            _validate_release(
+                entry,
+                declared,  # type: ignore[arg-type]
+                f"history[{index}]",
+                issues,
+            )
     return issues
 
 

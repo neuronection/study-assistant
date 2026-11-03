@@ -11,6 +11,44 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (cloud calendars — ADR-0052 / plan 52)
+- **A course can bind its own cloud calendar.** Providers come from the
+  family catalog (Google, Microsoft 365, Nextcloud, iCloud, Fastmail, generic
+  CalDAV, read-only ICS); exam, deadline and milestone plan items project as
+  all-day events, and two-way sync is opt-in with an explicit study-event
+  acceptance filter. Credentials live only in the OS keyring
+  (`calendar:<link-id>:…`); the database stores a pointer, never a token.
+- New `GET/POST/PATCH/DELETE /api/v1/calendar/links`, the provider catalog,
+  one-shot secret write, OAuth start/complete, and test/sync verbs; migration
+  `0009_calendar_links` adds the binding + identity-map tables and the
+  `exam`/`deadline` plan kinds.
+- Settings → Tools → Connectors → **Cloud calendars**: bind, status, test,
+  sync and disconnect. The planner's add form offers the two new kinds.
+- **The bind form is data-driven (plan 52 §12 Rev 4).** Fields — including
+  the sign-in method (app password vs access token) — are derived from the
+  catalog row's protocol, auth kinds and base-URL rule (`setup_fields` on the
+  provider catalog response); adding a provider that speaks an existing
+  protocol needs no frontend change, and the card holds no provider branches.
+- **Calendar discovery (§9 M1).** `POST /api/v1/calendar/links/discover`
+  lists an account's calendars (CalDAV PROPFIND, Google `calendarList`, Graph
+  `me/calendars`) — capped at 50 rows, credentials held only for the one
+  request, URLs sanitized to scheme+host+path. The bind form picks a calendar
+  instead of pasting collection URLs; bound links offer **Choose calendar**
+  (this is how Microsoft links select a calendar after OAuth).
+- **OAuth honesty (§10 E12).** The bind flow's `state` is bound to the
+  profile and single-use: the pending slot is consumed on success, expiry,
+  profile mismatch or state mismatch, so a replayed or cross-profile
+  completion is refused. The hand-rolled `app/core/oauth.py` flow is kept for
+  now behind a marked seam in `calendar_sync.py`; migration to the family
+  `nx_auth.oauth` module (PKCE S256, session-bound state) is documented in
+  `docs/dev/cloud-calendars.md` and lands as a drop-in when that module
+  ships.
+- **Host contract pins** (`tests/test_calendar_sync.py`): the
+  `local_hash`/`remote_hash` two-pin link schema (E3), the `skip` conflict
+  default (C2/E4), window-aware reconcile — out-of-window links are skipped,
+  never unlinked (E5) — and private-ICS-URL custody: the full URL goes to the
+  keyring, the row keeps only scheme+host+path (C4).
+
 ### Changed (update checks — family version API, plan 48 W6)
 - **`GET /api/v1/instance/update-check` now runs on the synced family
   version-check contract** (`backend/app/services/platform/version_check.py`,

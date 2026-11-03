@@ -1129,6 +1129,615 @@
         "title": "BundlePreviewOut",
         "type": "object"
       },
+      "CalendarCatalogOut": {
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarProviderOut"
+            },
+            "title": "Providers",
+            "type": "array"
+          },
+          "secret_disclosure": {
+            "title": "Secret Disclosure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "providers",
+          "secret_disclosure"
+        ],
+        "title": "CalendarCatalogOut",
+        "type": "object"
+      },
+      "CalendarDiscoverIn": {
+        "description": "Bind-form credentials for one discovery call \u2014 never persisted.",
+        "properties": {
+          "auth_kind": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Kind"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "calendar_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Url"
+          },
+          "link_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Id"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "title": "CalendarDiscoverIn",
+        "type": "object"
+      },
+      "CalendarDiscoverOut": {
+        "properties": {
+          "calendars": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDiscoveredOut"
+            },
+            "title": "Calendars",
+            "type": "array"
+          }
+        },
+        "required": [
+          "calendars"
+        ],
+        "title": "CalendarDiscoverOut",
+        "type": "object"
+      },
+      "CalendarDiscoveredOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary": {
+            "default": false,
+            "title": "Primary",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CalendarDiscoveredOut",
+        "type": "object"
+      },
+      "CalendarLinkIn": {
+        "properties": {
+          "auth_kind": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Kind"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "calendar_id": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Id"
+          },
+          "calendar_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Url"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "direction": {
+            "default": "push",
+            "pattern": "^(push|pull|two-way)$",
+            "title": "Direction",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "course_id",
+          "provider",
+          "label"
+        ],
+        "title": "CalendarLinkIn",
+        "type": "object"
+      },
+      "CalendarLinkOut": {
+        "properties": {
+          "account_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Label"
+          },
+          "auth_kind": {
+            "title": "Auth Kind",
+            "type": "string"
+          },
+          "calendar_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Id"
+          },
+          "calendar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Url"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "options": {
+            "additionalProperties": true,
+            "title": "Options",
+            "type": "object"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "secret_configured": {
+            "title": "Secret Configured",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "provider",
+          "auth_kind",
+          "label",
+          "account_label",
+          "calendar_id",
+          "calendar_url",
+          "direction",
+          "enabled",
+          "status",
+          "last_error",
+          "last_synced_at",
+          "consecutive_failures",
+          "scopes",
+          "options",
+          "secret_configured",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CalendarLinkOut",
+        "type": "object"
+      },
+      "CalendarLinkPatch": {
+        "properties": {
+          "calendar_id": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Id"
+          },
+          "calendar_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Url"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "pattern": "^(push|pull|two-way)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          }
+        },
+        "title": "CalendarLinkPatch",
+        "type": "object"
+      },
+      "CalendarProviderOut": {
+        "properties": {
+          "auth_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Auth Kinds",
+            "type": "array"
+          },
+          "base_url_required": {
+            "title": "Base Url Required",
+            "type": "boolean"
+          },
+          "consent_notice": {
+            "title": "Consent Notice",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "protocol": {
+            "title": "Protocol",
+            "type": "string"
+          },
+          "scope_presets": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Scope Presets",
+            "type": "object"
+          },
+          "setup_fields": {
+            "items": {
+              "$ref": "#/components/schemas/SetupFieldOut"
+            },
+            "title": "Setup Fields",
+            "type": "array"
+          },
+          "supports_delta": {
+            "title": "Supports Delta",
+            "type": "boolean"
+          },
+          "supports_discovery": {
+            "title": "Supports Discovery",
+            "type": "boolean"
+          },
+          "writable": {
+            "title": "Writable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "auth_kinds",
+          "base_url_required",
+          "protocol",
+          "writable",
+          "supports_delta",
+          "scope_presets",
+          "consent_notice",
+          "domains",
+          "setup_fields",
+          "supports_discovery"
+        ],
+        "title": "CalendarProviderOut",
+        "type": "object"
+      },
+      "CalendarSecretIn": {
+        "properties": {
+          "value": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CalendarSecretIn",
+        "type": "object"
+      },
       "CaqDocument": {
         "additionalProperties": true,
         "properties": {
@@ -10003,7 +10612,9 @@
           "study",
           "practice",
           "review",
-          "milestone"
+          "milestone",
+          "exam",
+          "deadline"
         ],
         "title": "PlanItemKind",
         "type": "string"
@@ -10011,7 +10622,8 @@
       "PlanItemOrigin": {
         "enum": [
           "manual",
-          "draft"
+          "draft",
+          "calendar"
         ],
         "title": "PlanItemOrigin",
         "type": "string"
@@ -13225,6 +13837,79 @@
         "title": "SetWorkingDirOut",
         "type": "object"
       },
+      "SetupFieldOut": {
+        "description": "One bind-form field, derived from the catalog row (plan 52 \u00a712).\n\n``kind`` selects the input; ``calendar`` is the discovery-backed picker.\n``label_key`` is an i18n suffix under ``settings.calendar.`` so the\nbackend never ships user copy.",
+        "properties": {
+          "auth_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Kind"
+          },
+          "autocomplete": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autocomplete"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label_key": {
+            "title": "Label Key",
+            "type": "string"
+          },
+          "manual_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Key"
+          },
+          "placeholder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "required",
+          "label_key"
+        ],
+        "title": "SetupFieldOut",
+        "type": "object"
+      },
       "SetupOptionsIn": {
         "properties": {
           "bind_chat": {
@@ -15087,6 +15772,75 @@
           "node_title"
         ],
         "title": "SummaryNoteOut",
+        "type": "object"
+      },
+      "SyncReportOut": {
+        "properties": {
+          "conflicts": {
+            "default": 0,
+            "title": "Conflicts",
+            "type": "integer"
+          },
+          "created_local": {
+            "default": 0,
+            "title": "Created Local",
+            "type": "integer"
+          },
+          "created_remote": {
+            "default": 0,
+            "title": "Created Remote",
+            "type": "integer"
+          },
+          "deleted_local": {
+            "default": 0,
+            "title": "Deleted Local",
+            "type": "integer"
+          },
+          "deleted_remote": {
+            "default": 0,
+            "title": "Deleted Remote",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "unlinked": {
+            "default": 0,
+            "title": "Unlinked",
+            "type": "integer"
+          },
+          "updated_local": {
+            "default": 0,
+            "title": "Updated Local",
+            "type": "integer"
+          },
+          "updated_remote": {
+            "default": 0,
+            "title": "Updated Remote",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SyncReportOut",
         "type": "object"
       },
       "TaskAssignmentIn": {
@@ -18878,6 +19632,476 @@
         "summary": "Get Blob",
         "tags": [
           "blobs"
+        ]
+      }
+    },
+    "/api/v1/calendar/links": {
+      "get": {
+        "operationId": "list_links_api_v1_calendar_links_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CalendarLinkOut"
+                  },
+                  "title": "Response List Links Api V1 Calendar Links Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Links",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "post": {
+        "operationId": "create_link_api_v1_calendar_links_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarLinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Link",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/discover": {
+      "post": {
+        "description": "List an account's calendars so the bind form offers a picker (M1).",
+        "operationId": "discover_calendars_api_v1_calendar_links_discover_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarDiscoverIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarDiscoverOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover Calendars",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/{link_id}": {
+      "delete": {
+        "operationId": "remove_link_api_v1_calendar_links__link_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Link",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_link_api_v1_calendar_links__link_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarLinkPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Link",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/{link_id}/oauth/complete": {
+      "post": {
+        "operationId": "oauth_complete_api_v1_calendar_links__link_id__oauth_complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthCompleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Complete",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/{link_id}/oauth/start": {
+      "post": {
+        "operationId": "oauth_start_api_v1_calendar_links__link_id__oauth_start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStartOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Start",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/{link_id}/secret": {
+      "post": {
+        "operationId": "set_secret_api_v1_calendar_links__link_id__secret_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSecretIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Secret",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/{link_id}/sync": {
+      "post": {
+        "operationId": "sync_link_api_v1_calendar_links__link_id__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Link",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/links/{link_id}/test": {
+      "post": {
+        "operationId": "test_link_api_v1_calendar_links__link_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Link",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/providers": {
+      "get": {
+        "operationId": "provider_catalog_api_v1_calendar_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarCatalogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Provider Catalog",
+        "tags": [
+          "calendar"
         ]
       }
     },

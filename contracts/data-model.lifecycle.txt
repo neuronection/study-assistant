@@ -22,6 +22,8 @@ attempts :: record
 audit_events :: operational
 auth_sessions :: transient
 blobs :: operational
+calendar_event_links :: record
+calendar_links :: record
 chat_messages :: record
 chat_proposal_anchors :: record
 chat_proposals :: record

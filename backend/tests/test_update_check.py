@@ -71,7 +71,9 @@ def test_same_or_older_release_is_not_an_update(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_stable_channel_ignores_a_newer_prerelease(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(version_check, "_default_fetch_json", lambda url: make_doc(__version__, "99.0.0-rc.1"))
+    monkeypatch.setattr(
+        version_check, "_default_fetch_json", lambda url: make_doc(__version__, "99.0.0-rc.1")
+    )
     payload = instance.update_check()
     assert payload["update_available"] is False
     assert payload["error"] is None

@@ -2,6 +2,12 @@ from ...core.vocab import (
     AttemptMode as AttemptMode,
 )
 from ...core.vocab import (
+    CalendarDirection as CalendarDirection,
+)
+from ...core.vocab import (
+    CalendarStatus as CalendarStatus,
+)
+from ...core.vocab import (
     ExerciseKind as ExerciseKind,
 )
 from ...core.vocab import (
@@ -28,6 +34,7 @@ from ..payloads import (
     AnswerResponse,
     AttemptMeta,
     BlockList,
+    CalendarLinkOptions,
     DetectionSpec,
     DistractorMisconceptions,
     ExerciseContextList,
@@ -473,3 +480,93 @@ class PlanItem(Base):
     sort_key: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     external_uid: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class CalendarLink(Base):
+    """One bound cloud-calendar account for a course (ADR-0052).
+
+    A link is a *credential binding*, not an identity: tokens live only in
+    the OS keyring under ``calendar:<id>:<slot>`` and ``secret_ref`` is a
+    pointer. The row carries the calendar's location, direction and visible
+    sync health; plan-item joins use ``plan_items.external_uid`` (the remote
+    event UID), never a token or an email.
+    """
+
+    __tablename__ = "calendar_links"
+    __table_args__ = (
+        Index("ix_calendar_links_profile", "profile_id"),
+        Index(
+            "uq_calendar_links_course_calendar",
+            "course_id",
+            "provider",
+            "calendar_id",
+            unique=True,
+        ),
+        vocab_check("direction", CalendarDirection),
+        vocab_check("status", CalendarStatus),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    profile_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("courses.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(32))
+    auth_kind: Mapped[str] = mapped_column(String(20), default="none")
+    label: Mapped[str] = mapped_column(String(200))
+    account_label: Mapped[str | None] = mapped_column(String(200))
+    calendar_id: Mapped[str | None] = mapped_column(String(512))
+    calendar_url: Mapped[str | None] = mapped_column(String(2048))
+    base_url: Mapped[str | None] = mapped_column(String(2048))
+    scopes: Mapped[StringList | None] = mapped_column(JSON)
+    secret_ref: Mapped[str | None] = mapped_column(String(200))
+    direction: Mapped[str] = mapped_column(String(20), default="push", server_default="push")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    status: Mapped[str] = mapped_column(
+        String(20), default="needs-auth", server_default="needs-auth"
+    )
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    sync_cursor: Mapped[str | None] = mapped_column(String(1024))
+    options: Mapped[CalendarLinkOptions | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class CalendarEventLink(Base):
+    """Remote identity for one local plan item on one calendar link.
+
+    The link row is the join key between a plan item and the provider's event
+    (stable UID, remote id, etag) plus a change pin per side: `local_hash`
+    and `remote_hash` are the hash of the LOCAL and REMOTE content as last
+    reconciled. A single shared hash cannot work — providers normalize on
+    write, so one hash reads back as "changed" on every run. It is kept when a
+    plan item disappears — that is how the next sync learns the local side was
+    deleted instead of re-creating it.
+    """
+
+    __tablename__ = "calendar_event_links"
+    __table_args__ = (
+        Index("uq_calendar_event_links_link_uid", "link_id", "uid", unique=True),
+        Index("ix_calendar_event_links_local", "link_id", "local_id"),
+    )
+
+    id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
+    link_id: Mapped[str] = mapped_column(
+        _UUID, ForeignKey("calendar_links.id", ondelete="CASCADE"), index=True
+    )
+    local_id: Mapped[str] = mapped_column(String(64))
+    uid: Mapped[str] = mapped_column(String(200))
+    remote_id: Mapped[str | None] = mapped_column(String(2048))
+    etag: Mapped[str | None] = mapped_column(String(256))
+    local_hash: Mapped[str | None] = mapped_column(String(64))
+    remote_hash: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

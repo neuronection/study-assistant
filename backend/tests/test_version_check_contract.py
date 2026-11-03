@@ -46,7 +46,10 @@ def make_doc(latest_stable: str, latest_beta: str | None) -> dict[str, Any]:
 
 @pytest.mark.parametrize("row", FIXTURES["semverCompare"], ids=lambda r: r["name"])
 def test_semver_compare(row: Any) -> None:
-    assert compare_semver(parse_semver(row["a"]), parse_semver(row["b"])) == row["expected"]
+    left = parse_semver(row["a"])
+    right = parse_semver(row["b"])
+    assert left is not None and right is not None
+    assert compare_semver(left, right) == row["expected"]
 
 
 @pytest.mark.parametrize("row", FIXTURES["channelOf"], ids=lambda r: r["name"])
