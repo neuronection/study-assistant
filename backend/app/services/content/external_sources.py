@@ -74,7 +74,6 @@ __all__ = [
     "validate_source",
 ]
 
-_PENDING_OAUTH: dict[str, tuple[Any, str, str]] = {}
 
 
 def validate_source(
@@ -125,9 +124,11 @@ def secrets_configured(source: Any) -> dict[str, bool]:
     for slot in provider.secret_slots:
         result[slot.name] = get_secret(_secret_ref(source.id, slot.name)) is not None
     if provider.auth_kind == "oauth2":
-        from app.core.oauth import load_tokens, token_slot
+        from app.services.study import cloud_oauth
 
-        result["oauth"] = load_tokens(token_slot(source.id)) is not None
+        result["oauth"] = (
+            cloud_oauth.source_vault_for(source.id).find(source.id) is not None
+        )
     return result
 
 
@@ -148,69 +149,112 @@ def delete_source_secret(source: Any, slot: str) -> None:
     delete_secret(_secret_ref(source.id, slot))
 
 
-def _oauth_config(source: Any) -> Any:
-    from app.core.oauth import oauth_config_from_catalog
+def _oauth_client(source: Any) -> Any:
+    from app.services.study import cloud_oauth
 
     if source.auth_kind != "oauth2":
         raise ExtensionError("invalid", "this source does not use OAuth")
     try:
-        return oauth_config_from_catalog(source.provider)
+        return cloud_oauth.source_client_for(source.provider)
     except Exception as error:
         code = getattr(error, "code", "needs-config")
         detail = getattr(error, "detail", str(error))
         raise ExtensionError(code, detail) from error
 
 
-def oauth_start(source: Any) -> dict[str, str]:
-    from app.core.oauth import build_authorize_url, new_state, pkce_verifier
+def oauth_start(source: Any, *, principal_id: str) -> dict[str, str]:
+    """Begin a bind. State is single-use, expiring and principal-bound (E12).
 
-    config = _oauth_config(source)
-    verifier = pkce_verifier()
-    state = new_state()
-    _PENDING_OAUTH[source.id] = (config, verifier, state)
+    The old in-memory `_PENDING_OAUTH` map was process-local and unbound —
+    migrating onto the kit's state store closes that (a restart mid-flow now
+    fails closed instead of silently losing the flow).
+    """
+    import nx_auth.oauth as nx_oauth
+
+    from app.services.study import cloud_oauth
+
+    client = _oauth_client(source)
+    store = cloud_oauth.KeyringStateStore(cloud_oauth.source_ref(source.id))
+    try:
+        offer = nx_oauth.authorize(client, store=store, principal_id=principal_id)
+    except nx_oauth.OAuthError as error:
+        raise ExtensionError(error.code, error.detail) from error
     return {
-        "authorize_url": build_authorize_url(config, state, verifier),
-        "redirect_uri": config.redirect_uri(),
-        "state": state,
+        "authorize_url": offer.authorize_url,
+        "redirect_uri": client.redirect_uri,
+        "state": offer.record.state,
     }
 
 
-def complete_oauth(source: Any, code: str, state: str) -> None:
-    from app.core.oauth import OAuthError, exchange_code, seal_tokens, token_slot
+def complete_oauth(
+    source: Any,
+    code: str,
+    state: str,
+    *,
+    principal_id: str,
+    transport: Any | None = None,
+) -> None:
+    import nx_auth.oauth as nx_oauth
 
-    pending = _PENDING_OAUTH.pop(source.id, None)
-    if pending is None:
-        raise ExtensionError("not-ready", "start the OAuth flow first")
-    config, verifier, expected_state = pending
-    if state != expected_state:
-        raise ExtensionError("invalid", "OAuth state mismatch")
+    from app.services.study import cloud_oauth
+
+    client = _oauth_client(source)
+    store = cloud_oauth.KeyringStateStore(cloud_oauth.source_ref(source.id))
     try:
-        tokens = exchange_code(config, code, verifier)
-    except OAuthError as error:
+        record = store.consume(state, principal_id=principal_id)
+    except nx_oauth.OAuthError as error:
         raise ExtensionError(error.code, error.detail) from error
-    seal_tokens(token_slot(source.id), tokens)
-
-
-def connect_oauth(source: Any) -> None:
-    from app.core.oauth import OAuthError, connect_loopback, token_slot
-
-    config = _oauth_config(source)
     try:
-        connect_loopback(config, token_slot(source.id))
-    except OAuthError as error:
+        tokens = nx_oauth.exchange_code(
+            client,
+            code=code,
+            code_verifier=record.code_verifier,
+            transport=cloud_oauth.HttpxTokenTransport(_token_http(transport)),
+            redirect_uri=record.redirect_uri,
+        )
+    except nx_oauth.OAuthError as error:
+        raise ExtensionError(error.code, error.detail) from error
+    cloud_oauth.source_vault_for(source.id).seal(source.id, tokens)
+
+
+def connect_oauth(source: Any, *, transport: Any | None = None) -> None:
+    from app.services.study import cloud_oauth
+
+    client = _oauth_client(source)
+    try:
+        cloud_oauth.connect_loopback(
+            client,
+            cloud_oauth.source_vault_for(source.id),
+            source.id,
+            transport=cloud_oauth.HttpxTokenTransport(_token_http(transport)),
+        )
+    except cloud_oauth.OAuthError as error:
         raise ExtensionError(error.code, error.detail) from error
 
 
 def disconnect_oauth(source: Any) -> None:
-    from app.core.oauth import token_slot, wipe_tokens
+    from app.services.study import cloud_oauth
 
-    wipe_tokens(token_slot(source.id))
+    cloud_oauth.source_vault_for(source.id).clear(source.id)
 
 
 def oauth_status(source: Any) -> str:
-    from app.core.oauth import load_tokens, token_slot, token_status
+    from app.services.study import cloud_oauth
 
-    return token_status(load_tokens(token_slot(source.id)))
+    return cloud_oauth.token_status(cloud_oauth.source_vault_for(source.id).find(source.id))
+
+
+def _token_http(transport: Any | None = None) -> Any:
+    """A blocking client for the kit's synchronous token seam.
+
+    ``transport`` is injectable so tests never touch the network — the same
+    seam the kit's ``TokenTransport`` expects.
+    """
+    import httpx
+
+    if transport is not None:
+        return httpx.Client(transport=transport)
+    return httpx.Client(timeout=20.0, follow_redirects=False)
 
 
 @dataclass

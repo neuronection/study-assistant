@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 import app.extensions.builtin.external_sources as extconn
 import app.extensions.builtin.external_sources.engine as engine
-from app.core import oauth as oauth_core
 from app.core import secrets as secret_store
 from app.domain.models import (
     ExternalReviewEvent,
@@ -424,13 +423,17 @@ def test_google_drive_changes_cursor_and_export_mime(
             kind="cloud_folder",
             options={"folder_id": "folder-1"},
         )
-        oauth_core.seal_tokens(
-            oauth_core.token_slot(source["id"]),
-            oauth_core.OAuthTokens(
+        from nx_auth.oauth import TokenSet
+
+        from app.services.study import cloud_oauth
+
+        cloud_oauth.source_vault_for(source["id"]).seal(
+            source["id"],
+            TokenSet(
                 access_token="access-1",
                 refresh_token="refresh-1",
-                token_type="Bearer",
                 expires_at=None,
+                scope="https://www.googleapis.com/auth/drive.readonly",
             ),
         )
         first = client.post(f"/api/v1/external-sources/{source['id']}/scan")

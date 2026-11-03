@@ -488,14 +488,6 @@ def set_secret(session: Session, link: CalendarLink, value: str) -> CalendarLink
 # ---------------------------------------------------------------------------
 # OAuth
 #
-# MIGRATION SEAM (plan 52 §13): every call into ``app.core.oauth`` below is
-# the study-host adapter for the future family ``nx_auth.oauth`` module. The
-# replacement is a drop-in when that module lands: swap this section's helper
-# calls for ``nx_auth.oauth`` equivalents (PKCE S256, sealed token slots over
-# nx_auth.atrest) and keep the pending-slot law — ``state`` is bound to the
-# profile, single-use, 10-minute expiry. No other module may import
-# ``app.core.oauth`` for calendar flows.
-# ---------------------------------------------------------------------------
 
 
 def oauth_client(provider_row: Provider, link: _CredentialContext | None = None) -> Any:

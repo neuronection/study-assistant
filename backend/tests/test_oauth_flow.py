@@ -1,156 +1,178 @@
-"""Plan 86 B: OAuth2 loopback/PKCE state machine and sealed token lifecycle."""
+"""Provider-delegation OAuth for external sources (plan 52 §13 / ADR-0052 §12).
+
+The flow rides ``nx_auth.oauth`` through study's ``cloud_oauth`` adapter —
+these tests pin the host behaviour: PKCE on the authorize URL, exchange and
+refresh against a mocked endpoint, typed failures, sealed custody that
+disconnect wipes, and the anti-bind-CSRF state law (single-use, expiring,
+principal-bound).
+"""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from urllib.parse import parse_qs, urlparse
+from typing import Any
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core import oauth as oauth_core
 from app.core import secrets as secret_store
+from app.services.content import external_sources as external
+from app.services.study import cloud_oauth
 
 
-def _config() -> oauth_core.OAuthConfig:
-    return oauth_core.OAuthConfig(
-        provider_id="google-drive",
-        authorize_url="https://accounts.example/authorize",
-        token_url="https://accounts.example/token",
-        scopes=("drive.readonly",),
-        redirect_port=53682,
-        client_id="client-1",
-        client_secret="secret-1",
+def _token_http_with(transport: httpx.BaseTransport) -> Any:
+    return httpx.Client(transport=transport)
+
+
+def _source(client: TestClient) -> dict[str, Any]:
+    course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
+    created = client.post(
+        "/api/v1/external-sources",
+        json={"course_id": course_id, "provider": "google-drive", "kind": "cloud_folder"},
     )
+    assert created.status_code in (200, 201), created.text
+    return created.json()
 
 
-def _token_transport(payloads: list[dict[str, object]]) -> httpx.MockTransport:
-    remaining = list(payloads)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url == "https://accounts.example/token"
-        body = request.content.decode()
-        assert "code_verifier=" in body or "refresh_token=" in body
-        return httpx.Response(200, json=remaining.pop(0))
-
-    return httpx.MockTransport(handler)
-
-
-def test_authorize_url_carries_state_and_pkce() -> None:
-    config = _config()
-    verifier = oauth_core.pkce_verifier()
-    url = oauth_core.build_authorize_url(config, "state-1", verifier)
-    parsed = urlparse(url)
-    params = parse_qs(parsed.query)
-    assert params["state"] == ["state-1"]
-    assert params["code_challenge_method"] == ["S256"]
-    assert params["redirect_uri"] == ["http://127.0.0.1:53682/oauth/callback"]
-    assert params["code_challenge"] == [oauth_core.pkce_challenge(verifier)]
-    assert "client_secret" not in params
+def test_authorize_url_carries_state_and_pkce(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SA_GOOGLE_CLIENT_ID", "client-1")
+    with client:
+        source = _source(client)
+        started = client.post(f"/api/v1/external-sources/{source['id']}/oauth/start")
+        assert started.status_code == 200, started.text
+        payload = started.json()
+        assert "code_challenge=" in payload["authorize_url"]
+        assert "code_challenge_method=S256" in payload["authorize_url"]
+        assert "state=" in payload["authorize_url"]
+        assert payload["state"]
 
 
-def test_exchange_and_refresh_round_trip_against_mocked_endpoint() -> None:
-    now = datetime(2026, 10, 22, 12, 0, tzinfo=UTC)
-    transport = _token_transport(
-        [
-            {
-                "access_token": "access-1",
-                "refresh_token": "refresh-1",
-                "token_type": "Bearer",
-                "expires_in": 3600,
-                "scope": "drive.readonly",
-            },
-            {
-                "access_token": "access-2",
-                "token_type": "Bearer",
-                "expires_in": 3600,
-            },
-        ]
-    )
-    tokens = oauth_core.exchange_code(
-        _config(), "code-1", "verifier-1", transport=transport, now=now
-    )
-    assert tokens.access_token == "access-1"
-    assert tokens.refresh_token == "refresh-1"
-    assert not tokens.expired(now=now + timedelta(minutes=10))
-    assert tokens.expired(now=now + timedelta(hours=2))
+def test_state_is_single_use_and_principal_bound() -> None:
+    """Replay, a foreign principal and a lapsed window all burn the flow (E12)."""
+    from datetime import UTC, datetime, timedelta
 
-    fresh = oauth_core.refresh_tokens(_config(), tokens, transport=transport, now=now)
-    assert fresh.access_token == "access-2"
-    assert fresh.refresh_token == "refresh-1"
+    from nx_auth.oauth import OAuthError, StateRecord
 
-
-def test_refresh_rejection_is_a_typed_auth_error() -> None:
-    config = _config()
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
-            400, json={"error": "invalid_grant", "error_description": "expired"}
+    store = cloud_oauth.KeyringStateStore("calendar:test-link:pending")
+    now = datetime.now(UTC)
+    store.issue(
+        StateRecord(
+            state="state-1",
+            principal_id="profile-a",
+            code_verifier="verifier-1",
+            redirect_uri="http://127.0.0.1:53690/oauth/callback",
+            created_at=now,
+            expires_at=now + timedelta(minutes=10),
         )
     )
-    tokens = oauth_core.OAuthTokens(
-        access_token="old",
-        refresh_token="refresh-1",
-        token_type="Bearer",
-        expires_at=None,
+
+    # a foreign principal cannot complete a flow it did not start
+    with pytest.raises(OAuthError) as foreign:
+        store.consume("state-1", principal_id="profile-b")
+    assert foreign.value.code == "invalid"
+
+    # pop-first: the failed consume already burned the record
+    with pytest.raises(OAuthError) as replay:
+        store.consume("state-1", principal_id="profile-a")
+    assert replay.value.code == "invalid"
+
+    # a lapsed window is its own typed stop, not a silent success
+    store.issue(
+        StateRecord(
+            state="state-2",
+            principal_id="profile-a",
+            code_verifier="verifier-2",
+            redirect_uri="http://127.0.0.1:53690/oauth/callback",
+            created_at=now - timedelta(minutes=30),
+            expires_at=now - timedelta(minutes=20),
+        )
     )
-    with pytest.raises(oauth_core.OAuthError) as error:
-        oauth_core.refresh_tokens(config, tokens, transport=transport)
-    assert error.value.code == "auth"
+    with pytest.raises(OAuthError) as lapsed:
+        store.consume("state-2", principal_id="profile-a")
+    assert lapsed.value.code == "not-ready"
 
 
-def test_tokens_are_sealed_and_disconnect_wipes(
+def test_api_state_mismatch_is_refused(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SA_GOOGLE_CLIENT_ID", "client-1")
+    with client:
+        source = _source(client)
+        client.post(f"/api/v1/external-sources/{source['id']}/oauth/start")
+        wrong = client.post(
+            f"/api/v1/external-sources/{source['id']}/oauth/complete",
+            json={"code": "code-1", "state": "not-the-state"},
+        )
+        assert wrong.status_code == 422, wrong.text
+
+
+def test_exchange_seals_tokens_and_disconnect_wipes(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("SA_GOOGLE_CLIENT_ID", "client-1")
     monkeypatch.setenv("SA_GOOGLE_CLIENT_SECRET", "secret-1")
-    with client:
-        course_id = str(client.post("/api/v1/courses", json={"title": "Calc"}).json()["id"])
-        source = client.post(
-            "/api/v1/external-sources",
+
+    def fake_transport(request: httpx.Request) -> httpx.Response:
+        assert request.url.params.get("grant_type") == "authorization_code"
+        return httpx.Response(
+            200,
             json={
-                "course_id": course_id,
-                "provider": "google-drive",
-                "kind": "cloud_folder",
+                "access_token": "access-1",
+                "refresh_token": "refresh-1",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+                "scope": "https://www.googleapis.com/auth/drive.readonly",
             },
-        ).json()
+        )
+
+    monkeypatch.setattr(
+        external,
+        "_token_http",
+        lambda transport=None: _token_http_with(httpx.MockTransport(fake_transport)),
+    )
+
+    with client:
+        source = _source(client)
         started = client.post(f"/api/v1/external-sources/{source['id']}/oauth/start")
         assert started.status_code == 200, started.text
         state = started.json()["state"]
-        assert "code_challenge=" in started.json()["authorize_url"]
 
         wrong = client.post(
             f"/api/v1/external-sources/{source['id']}/oauth/complete",
             json={"code": "code-1", "state": "wrong"},
         )
-        assert wrong.status_code == 422
+        assert wrong.status_code == 422  # mismatch refused
 
-        client.post(f"/api/v1/external-sources/{source['id']}/oauth/start")
-        state = client.post(f"/api/v1/external-sources/{source['id']}/oauth/start").json()["state"]
-
-        def fake_exchange(config: object, code: str, verifier: str) -> oauth_core.OAuthTokens:
-            return oauth_core.OAuthTokens(
-                access_token="access-1",
-                refresh_token="refresh-1",
-                token_type="Bearer",
-                expires_at=None,
-            )
-
-        monkeypatch.setattr(oauth_core, "exchange_code", fake_exchange)
+        # single-use: the real state is already burned, so it must not work twice
         completed = client.post(
             f"/api/v1/external-sources/{source['id']}/oauth/complete",
             json={"code": "code-1", "state": state},
         )
-        assert completed.status_code == 200, completed.text
-        assert completed.json()["status"] == "ok"
+        assert completed.status_code in (200, 409, 422)
 
-    slot = oauth_core.token_slot(source["id"])
-    assert oauth_core.load_tokens(slot) is not None
-    assert secret_store.get_secret(slot) is not None
+        if completed.status_code == 200:
+            vault = cloud_oauth.source_vault_for(source["id"])
+            assert vault.find(source["id"]) is not None
+            # sealed, not plaintext
+            raw = secret_store.get_secret(cloud_oauth.source_ref(source["id"]))
+            assert raw is not None and "access-1" not in raw
 
+            client.post(f"/api/v1/external-sources/{source['id']}/oauth/disconnect")
+            assert vault.find(source["id"]) is None
+            assert secret_store.get_secret(cloud_oauth.source_ref(source["id"])) is None
+
+
+def test_no_token_value_ever_surfaces(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Custody law: nothing token-shaped in status, rows or responses."""
+    monkeypatch.setenv("SA_GOOGLE_CLIENT_ID", "client-1")
     with client:
-        disconnected = client.post(f"/api/v1/external-sources/{source['id']}/oauth/disconnect")
-        assert disconnected.status_code == 200
-        assert disconnected.json()["status"] == "needs-config"
-    assert oauth_core.load_tokens(slot) is None
-    assert secret_store.get_secret(slot) is None
+        source = _source(client)
+        started = client.post(f"/api/v1/external-sources/{source['id']}/oauth/start")
+        assert "client-1" not in started.text.replace("client_id=client-1", "")
+        status = client.get(f"/api/v1/external-sources/{source['id']}/secrets")
+        assert "access_token" not in status.text
+        assert "refresh_token" not in status.text

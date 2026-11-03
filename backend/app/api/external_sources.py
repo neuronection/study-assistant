@@ -361,7 +361,7 @@ def oauth_start(
     profile = ensure_default_profile(session)
     source = _owned_source(session, profile.id, source_id)
     try:
-        payload = external.oauth_start(source)
+        payload = external.oauth_start(source, principal_id=profile.id)
     except ExtensionError as error:
         raise _typed_error(error) from error
     return OAuthStartOut(**payload)
@@ -376,7 +376,7 @@ def oauth_complete(
     profile = ensure_default_profile(session)
     source = _owned_source(session, profile.id, source_id)
     try:
-        external.complete_oauth(source, body.code, body.state)
+        external.complete_oauth(source, body.code, body.state, principal_id=profile.id)
     except ExtensionError as error:
         raise _typed_error(error) from error
     return OAuthStatusOut(status=external.oauth_status(source))
