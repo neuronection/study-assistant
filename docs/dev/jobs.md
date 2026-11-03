@@ -40,6 +40,9 @@ The registered job types are:
 | `genesis` | Topic-to-course generation | `pipelines/genesis.py` |
 | `compose` | AI-composed material requested | `pipelines/compose.py` |
 | `url_import` | A link material is refreshed | `pipelines/url_import.py` |
+| `VECTOR_REINDEX` | Admin/ops reindex over the legacy vector store | `pipelines/retrieval_ops.py` — bounded verify/re-embed + coverage snapshot |
+| `VECTOR_MAINTENANCE` | Orphan sweep, vacuum, index rebuild or scoped retry | `pipelines/retrieval_ops.py` |
+| `VECTOR_CUTOVER` | Reserved by the family contract | `pipelines/retrieval_ops.py` — refuses until Q3b's space lifecycle exists |
 
 The closed vocabulary of job statuses is `JobStatus` in `core/vocab.py`:
 `queued`, `running`, `failed`, `done`, `cancelled`.

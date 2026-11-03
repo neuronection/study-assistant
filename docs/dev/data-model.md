@@ -425,6 +425,17 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0010_retrieval_ops (plan 51 Q3a, ADR-0051 companion)**: the `jobs.type`
+  CHECK widens with the three family `VECTOR_*` names and `jobs.result`
+  (JSON, nullable) carries the bounded run-result document. New
+  `retrieval_query_rollups` (dimensions `space_id/kind/view/degraded_reason/
+  bucket_start/bucket_width`; count/zero/candidates measures + a versioned
+  latency histogram; 30-day operational TTL) and
+  `retrieval_coverage_snapshots` (one row per space/kind/as_of; nullable ANN
+  recall; 90-day TTL). Both key a string `space_id` because study has no
+  vector-space lifecycle yet (Q3b). Downgrade drops the tables and the
+  result column and restores the old type CHECK; it fails loudly if a
+  `VECTOR_*` job row still exists rather than rewriting run history.
 - **0008_quiz_question_kinds (plan 87 B, ADR-217)**: the `questions.type`
   CHECK twin widens with the exercise-engine kinds (`matching`, `ordering`,
   `cloze`, `essay`); answer payloads reuse the existing JSON column (no new

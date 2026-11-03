@@ -11,6 +11,33 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (retrieval operations — plan 51 Q3a)
+- **The family retrieval-operations contract is vendored** (byte-identical
+  to `dev-vector-p0`, sha-gated by the fixture wall) with the exact
+  `VECTOR_REINDEX` / `VECTOR_MAINTENANCE` / `VECTOR_CUTOVER` job names.
+  Study's closed `JobType` vocabulary and `jobs.type` CHECK gain the three
+  slots; `jobs.result` carries the bounded
+  `scanned/embedded/skipped/failed/failed_ids/truncated/gate` contract.
+- **Bounded handlers over the existing legacy `chunk_vecs` store** — a
+  resumable-free, limit/batch-capped reconcile that verifies or re-embeds
+  chunks and publishes coverage only after a full pass; maintenance for
+  orphan sweep, vacuum, index rebuild and scoped retry; a cutover handler
+  that refuses honestly because study has no space lifecycle yet (Q3b).
+- **Two operational aggregates** (`retrieval_query_rollups`,
+  `retrieval_coverage_snapshots`, migration `0010_retrieval_ops`) with
+  30/90-day TTLs. Query health (latency, zero-result, candidates, degraded
+  reason) is buffered off the search hot path and flushed in 5-minute
+  buckets; no query text is recorded. Rollups are aggregates, not audit
+  history.
+- **Admin read surface** `GET /api/v1/admin/retrieval/{overview,spaces,
+  coverage,runs,query-health}` composed from the legacy store, jobs and the
+  aggregates; cold/empty/degraded states stay truthful. Settings → Tools →
+  Indexing gains a read-only status card for admins.
+- **Deliberately not shipped:** the management/action UI, space lifecycle,
+  quality gate, idempotency/single-active-run lock, `ai_generations`-style
+  metadata tagging, and `tools.retrieval` alignment — all recorded as the
+  Q3b handoff in `docs/dev/retrieval-ops.md`.
+
 ### Added (cloud calendars — ADR-0052 / plan 52)
 - **A course can bind its own cloud calendar.** Providers come from the
   family catalog (Google, Microsoft 365, Nextcloud, iCloud, Fastmail, generic
