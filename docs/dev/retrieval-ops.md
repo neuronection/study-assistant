@@ -1,17 +1,18 @@
-# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1/Q3c2b2/Q3c3a)
+# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1/Q3c2b2/Q3c3a/Q3c3b)
 
 Status: **Q3b shipped, plan 50 P3a storage foundation, Q3c1 PostgreSQL
 baseline repair, Q3c2a vector backend/provisioning, Q3c2b1
-lifecycle/cutover, Q3c2b2 golden-query quality + gate and Q3c3a
-alerts/generation tagging/canonical adoption shipped** (2026-11-04). The
+lifecycle/cutover, Q3c2b2 golden-query quality + gate, Q3c3a
+alerts/generation tagging/canonical adoption and Q3c3b read-only retrieval
+observation shipped** (2026-11-04). The
 family contracts, the `VECTOR_*` job slot, the two bounded aggregates, the
 admin read surface, the management/action seam (idempotency,
 single-active-run lock, stale reaper, audit), the Tools → Indexing controls,
 the versioned golden-query quality compare, the ten boot-seeded alerts, the
-caller-supplied embedding tags and the cross-repo parity runner are shipped.
+caller-supplied embedding tags, the read-only observation card inside
+Tools → Indexing and the cross-repo parity runner are shipped.
 Activation and cutover require physical health, coverage **and** the
-pre-cutover quality compare. The optional Audit → Retrieval tab and the
-family closeout remain Q3c3b/Q5.
+pre-cutover quality compare. The family closeout remains Q5.
 
 ## Contracts
 
@@ -607,8 +608,11 @@ out to at most 20 active admins (the fixture user is admin), respect the
 contract daily cap, and carry structured ids/counts/scores/reasons only.
 `assert_no_raw_text` runs on every payload. Manage URLs point at the **shipped**
 Tools → Indexing controls: `/settings?tab=tools&section=indexing` (run alerts
-add `&detail=<run_id>`); the embeddings-assignment/budget kinds point at
-`/settings?tab=ai&section=tasks`. There is no Audit → Retrieval URL yet.
+add `&detail=<run_id>`, which now opens the observation run drawer);
+the embeddings-assignment/budget kinds point at
+`/settings?tab=ai&section=tasks`. There is no separate Audit → Retrieval
+route in study; the read-only observation sits on the same Tools → Indexing
+page.
 
 `GET /notifications` gains `alerts` (active, recipient-scoped, still deduped)
 and the bell renders them; recovery removes the alert from the bell without
@@ -635,6 +639,50 @@ instead of fabricated: study's ledger has no status/error column
 (`errors_available=false`) and no token-denominated budget (`budget=null`,
 notes say so); missing token counts report `tokens_available=false`.
 Untagged legacy rows are `unattributed`, never guessed.
+
+## Read-only retrieval observation (Q3c3b)
+
+The admin-only **Retrieval observation** card is rendered inside the existing
+`indexing` settings section, below the Tools controls. There is no new
+settings domain, top-level tab, audit route or second ledger: the same page
+hosts management (`?tab=tools&section=indexing`) and observation.
+
+- **URL state.** The settings route keeps `tab=tools&section=indexing` and
+  gains `&obs=` (`overview`, `spaces`, `runs`, `quality`, `query-health`,
+  `failures`, `usage`) plus the pinned `&detail=<id>`. A bare run id opens the
+  run drawer (the alerts' existing `&detail=<run_id>` links work unchanged);
+  `space:<space_id>` and `quality:<space_id>` select the space and quality
+  drawers. Switching sections clears `detail`.
+- **Reads only.** The card composes the shipped `GET /admin/retrieval/`
+  `overview|spaces|runs|quality|query-health|usage` DTOs. It imports no POST
+  client and renders no reindex/compare/cancel/retry control; those stay in
+  the Tools card above. A test pins the source-level read-only guarantee.
+- **Sections.** Overview (active space/backend/model/dim, honest coverage,
+  p50/p95, degraded/zero-result, embed calls/tokens), Spaces (model/dim/
+  coverage/quality/gate, drawer), Runs (counters and drawer with stage,
+  progress, scope, bounded `failed_ids`), Quality (set/scores/gate plus
+  bad-match ids/scores in the drawer), Query health (latency, candidates,
+  degraded reasons, per-view hits, ANN sample or honest "not sampled"),
+  Failures and Usage.
+- **Failures.** There is no `/failures` endpoint and no failures table; the
+  card groups structured facts client-side — failed runs (reason
+  `gate_failed`/`embed_failed`/`run_failed`, by job type), space failed-document
+  counts, a sampled below-floor quality gate, and the query-health degraded
+  reasons. Only reason codes, ids and counts render; `run.error`, space
+  `last_error` and all document/query text are never shown.
+- **Window.** The selector drives the overview, query-health and usage reads
+  (`24h`/`7d`/`30d`/`90d`, default `24h`); it is local panel state, not a
+  second URL contract.
+- **Vocabulary.** The card reuses the family state/degraded/cold/run/gate
+  tokens; `no_golden_set`, `not_sampled`, `stale_compare`, never-reconciled
+  coverage and `tokens_available=false` stay explicit instead of becoming a
+  fabricated pass or zero.
+- **No backend change** was needed for this slice.
+
+Tests: `RetrievalObservationPanel.test.tsx` (cold/degraded, section switching
+and URL state, run/space/quality drawers, structured failures, usage gaps,
+admin-only and the read-only/no-raw-text guards) plus the updated
+`IndexingSection.test.tsx` and the i18n wall.
 
 ## Q3c2b2 shipped vs Q3c3 handoff
 
@@ -669,14 +717,15 @@ vendored bytes; the adoption check passes and the parity runner reports
 `strict=true` with no blockers. The `dev-vector-p0` settings-map copy is older than `/dev`
 and is not the settings canonical the runner reads.
 
+**Q3c3b shipped** (above): the read-only observation card inside Tools →
+Indexing, its URL-synced sections and the pinned `detail=` drawers, composed
+only from the shipped read DTOs with no write control and no raw text. Study
+keeps the alerts in the existing bell and does not add an Audit → Retrieval
+route or a second audit stack.
+
 **Remaining** (explicitly not built here):
 
-1. **Q3c3b — Audit → Retrieval tab** — study adopts the composed audit read
-   surface (overview/spaces/runs/quality/query-health/failures/usage with the
-   pinned `?section=`/`?detail=` deep links and CSV exports); this slice keeps
-   the read-only quality evidence in the Tools card/drawer and the alerts in
-   the existing bell. No second audit stack, no new ledger.
-2. **Q5 — family closeout** — study parity/health gate evidence, the family
+1. **Q5 — family closeout** — study parity/health gate evidence, the family
    `--strict` claim once main adopts, the no-raw-vector-SQL/no-second-audit/
    settings-map/audit-vocabulary/no-`vector_events`/no-`prompt` checks, and
    the shared UI promotion under the two-app rule.

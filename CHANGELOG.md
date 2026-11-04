@@ -23,6 +23,37 @@ Release history from before the public launch lives in the
   reports no changes the reconcile is skipped; any change falls through to the
   full window. The bind form is rendered entirely from the catalog's
   `setupFields`, so a new provider needs no UI change.
+### Added (retrieval observation inside Tools → Indexing — plan 51 Q3c3b)
+- **Admin-only read-only observation card.** The existing Tools → Indexing
+  section now hosts a second, read-only surface without adding a settings
+  domain or audit route. It is URL-synced on the same `/settings` route:
+  `?tab=tools&section=indexing&obs=overview|spaces|runs|quality|query-health|failures|usage`,
+  with the pinned `&detail=<id>` opening run (`<run_id>`), space
+  (`space:<space_id>`) and quality (`quality:<space_id>`) drawers. Alert
+  manage URLs that already carry a run id keep working.
+- **Composed from the shipped read DTOs only** (`overview`, `spaces`, `runs`,
+  `quality`, `query-health`, `usage`); the card imports no action client and
+  renders no reindex/cutover/maintenance/compare/cancel/retry control. It
+  links to the management controls above, and a test pins the read-only
+  source guard. Overview shows the active space/backend/model/dim, honest
+  coverage (never a fabricated percentage), p50/p95, degraded and zero-result
+  rates and embed calls/tokens; runs include result counters and a drawer
+  with stage/progress and bounded failed ids; quality includes set version,
+  recall/precision vs floor, gate state and bad-match ids/scores only;
+  query health shows latency, candidates, degraded reasons, per-view hits and
+  an honest "not sampled" ANN state; usage shows calls/tokens by day, space
+  and kind with `tokens_available=false` and the no-budget gap intact.
+- **Failures are structured, never raw.** There is no `/failures` endpoint and
+  no failures table: the card groups failed runs, space failed-document
+  counts, a below-floor quality gate and query-health degraded reasons into
+  reason-code groups with ids/counts. `run.error`, space `last_error` and all
+  document/query text are never rendered.
+- **No backend change.** Tests: `RetrievalObservationPanel.test.tsx`
+  (cold/degraded, URL section switching, run/space/quality drawers,
+  structured failures, usage gaps, admin-only and read-only/no-raw-text
+  guards), updated `IndexingSection.test.tsx`, translations for en/de/el.
+  Q5 (family closeout) remains.
+
 ### Added (retrieval alerts, generation tagging & canonical adoption — plan 51 Q3c3a)
 - **Ten retrieval alerts through the existing notification funnel.**
   Migration `0015_retrieval_alerts` adds the boot-seeded
