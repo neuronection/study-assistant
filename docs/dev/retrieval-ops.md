@@ -593,6 +593,13 @@ request, and is bounded (`RUN_SCAN_LIMIT`, `DEDUP_ROW_LIMIT`,
 | `retrieval.budget_exhausted` | **honest `unavailable`**: study has no token-denominated embed budget yet; its `monthly_cap_usd` is monetary and is not invented as a token budget |
 | `retrieval.space_drop_pending` | retired space past the 7-day drop grace |
 
+The 15-minute p95 path also fixes the telemetry histogram's overflow
+accounting: every sample used to increment both the last finite `le` bucket
+and `inf`, so the total double-counted and p95 always looked like 10000 ms —
+`retrieval.query_slo` could never recover. Overflow now counts only samples
+above the largest finite bound, so the p95 follows the real cumulative
+buckets (the existing telemetry test still pins the 9000 ms case at 10000).
+
 Dedup and recovery are one operation: active keys are the currently true
 conditions; a key whose condition cleared (or whose TTL expired) is released
 so a later recurrence is a new event, while the history row stays. Events fan

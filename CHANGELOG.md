@@ -25,7 +25,9 @@ Release history from before the public launch lives in the
   payloads pass `assert_no_raw_text`, and every manage URL points at the
   shipped Tools → Indexing (run detail included) or the AI task assignment.
   `retrieval.budget_exhausted` reports `unavailable` rather than inventing a
-  token budget study does not have. `GET /notifications` carries the active
+  token budget study does not have. The latency histogram writer now counts
+  overflow only above the largest finite bound (it double-counted every sample
+  before, so p95 was always 10000 ms and query_slo could never recover). `GET /notifications` carries the active
   recipient-scoped alerts and the bell renders them.
 - **Generation-ledger tagging and an honest usage read.** Study's ledger is
   `ai_interactions`; migration `0015` adds `metadata` + `metadata_schema_version`
