@@ -375,7 +375,8 @@ Support development: [Buy Me a Coffee](https://buymeacoffee.com/neuronection)
 
 ## Contributing
 
-Contributions are welcome. Set up a dev environment via
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), set up a dev environment via
 [Quick start](#quick-start), then run the verification suite before every commit:
 
 ```bash

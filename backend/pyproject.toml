@@ -88,14 +88,14 @@ extend-exclude = [
     "app/extensions/conformance.py",
     "app/extensions/search/providers_contract.py",
     # Cloud-connector contract (ADR-0052): vendored byte-identical from
-    # dev/contracts/ via sync-cloud-connectors.sh — lint findings belong to
-    # the dev canonical, never to a vendored copy (same accommodation as
+    # the family contract canonical via the sync tooling — lint findings belong to
+    # the family canonical, never to a vendored copy (same accommodation as
     # contract.py above).
     "app/extensions/cloud/cloud_calendar.py",
     "app/extensions/cloud/cloud_files.py",
     "app/extensions/cloud/cloud_providers.py",
     # Family retrieval-operations contract (plan 51 Q0): vendored
-    # byte-identical from dev/contracts/ — lint findings belong to the dev
+    # byte-identical from the family contract canonical — lint findings belong to the family
     # canonical, never to this copy.
     "app/storage/retrieval_ops.py",
     "tests/cloud_conformance.py",
@@ -139,8 +139,8 @@ exclude = ["app/ai/providers/presets_data.py"]
 [tool.mypy]
 strict = true
 # The vendored extension-contract canonical (backend/app/extensions/contract.py)
-# is byte-identical to dev/contracts/contract.py — never edited in-repo, and
-# mypy-strict compliance is the dev canonical's duty (career carries the same
+# is byte-identical to the family extension contract — never edited in-repo, and
+# mypy-strict compliance is the family canonical's duty (career carries the same
 # exclusion; the unification wave's sync introduced strict-mode findings here).
 exclude = ["^dist/", "app/extensions/contract.py", "app/storage/retrieval_ops.py"]
 
@@ -149,9 +149,9 @@ module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-# Vendored cloud-connector contract runtime (dev/contracts canonical,
+# Vendored cloud-connector contract runtime (family canonical,
 # byte-identical, never edited here — ADR-0052): type findings belong in the
-# dev canonical, not the vendored copy. Drift is gated by
+# family canonical, not the vendored copy. Drift is gated by
 # scripts/sync-cloud-connectors.sh --check on the dev side and by the fixture
 # wall (tests/test_cloud_contract.py) here.
 # (The extension contract above carries the same accommodation per pyproject.)
@@ -164,11 +164,11 @@ module = [
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-# Vendored family contract runtime (dev/contracts canonical, byte-identical,
+# Vendored family contract runtime (family canonical, byte-identical,
 # never edited here — ADR-0031/ADR-0040): type findings belong in the dev
 # canonical, not the vendored copy. Drift is gated by this repo's
 # scripts/check-extensions-structure.sh plus the dev-side
-# dev/scripts/sync-extension-contract.sh / dev/scripts/verify-wiring.sh
+# the family contract sync tooling / the family wiring verifier
 # (both live in the family dev repo, not here).
 # (career/health carry the same accommodation per pyproject.)
 module = ["app.extensions.polite_http"]

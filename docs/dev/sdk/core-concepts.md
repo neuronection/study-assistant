@@ -104,11 +104,11 @@ dev-repo canonicals, never edited in place (ADR-0031 sync-and-gate):
 
 - the **charter set** (`contracts/extension-charter.json`, the manifest
   schema, fixtures, the Python validators in `extensions/`) — synced by
-  `dev/scripts/sync-extension-contract.sh`, drift-walled by
-  `verify-wiring.sh`;
+  the family contract sync tooling, drift-walled by the family wiring
+  verifier;
 - the **ADR-0035 web-search trio** (`extensions/search/
   providers_contract.py` + its fixtures and catalog) — synced by
-  `dev/scripts/sync-search-providers.sh`, with desktop's TS adapters as
+  the family search-provider sync tooling, with desktop's TS adapters as
   the reference implementation of the same wire contract;
 - the **docs-tree contract** (`contracts/docs-tree.schema.json` +
   fixtures) — the validated shape of this set's own navigation tree.

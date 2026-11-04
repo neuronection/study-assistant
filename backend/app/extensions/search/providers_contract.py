@@ -1,8 +1,8 @@
 """Family web-search provider core (contract, ADR-0035 / plan 28).
 
-Canonical copy lives in the dev repo (contracts/search_providers.py) and is
+Canonical copy lives in the family standards (contracts/search_providers.py) and is
 vendored byte-identical into the product backends via
-dev/scripts/sync-search-providers.sh — edit the canonical copy only, never a
+the family sync tooling — edit the canonical copy only, never a
 vendored copy (ADR-0031 sync-and-gate).
 
 The contract this module freezes (desktop-assistant's TS adapters in
@@ -85,7 +85,6 @@ class SearchError(Exception):
 # Config normalization
 # ---------------------------------------------------------------------------
 
-
 def normalize_provider_config(raw: Mapping[str, Any]) -> dict[str, Any]:
     """Validate + clamp one provider config dict (raises SearchError)."""
     if not isinstance(raw, Mapping):
@@ -137,7 +136,6 @@ def normalize_provider_config(raw: Mapping[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Normalization of provider payloads
 # ---------------------------------------------------------------------------
-
 
 def _item(row: Any) -> dict[str, str] | None:
     if not isinstance(row, Mapping):
@@ -210,8 +208,9 @@ def _request_json(
         # keyless searxng has no real auth, so a non-JSON 403 body is the
         # json-disabled case, not an auth failure.
         text = response.text
-        looks_json = "json" in response.headers.get("content-type", "") or text.lstrip().startswith(
-            ("{", "[")
+        looks_json = (
+            "json" in response.headers.get("content-type", "")
+            or text.lstrip().startswith(("{", "["))
         )
         if config["type"] == "searxng" and not looks_json:
             raise SearchError(
@@ -245,11 +244,7 @@ def _request_json(
         raise SearchError(
             SearchErrorKind.JSON_DISABLED,
             "provider returned non-JSON output"
-            + (
-                " (enable the `json` format on the SearXNG instance)"
-                if config["type"] == "searxng"
-                else ""
-            ),
+            + (" (enable the `json` format on the SearXNG instance)" if config["type"] == "searxng" else ""),
             http_status=response.status_code,
         )
     try:
@@ -272,14 +267,8 @@ def _require_key(config: Mapping[str, Any], api_key: str) -> str:
 # Adapters (wire shapes mirror the desktop reference implementation)
 # ---------------------------------------------------------------------------
 
-
-def _fetch_searxng(
-    config: Mapping[str, Any],
-    query: str,
-    api_key: str,
-    limit: int,
-    transport: httpx.BaseTransport | None,
-) -> list[dict[str, str]]:
+def _fetch_searxng(config: Mapping[str, Any], query: str, api_key: str,
+                   limit: int, transport: httpx.BaseTransport | None) -> list[dict[str, str]]:
     base = _effective_base(config)
     request = httpx.Request(
         "GET",
@@ -294,13 +283,8 @@ def _fetch_searxng(
     return hits
 
 
-def _fetch_tavily(
-    config: Mapping[str, Any],
-    query: str,
-    api_key: str,
-    limit: int,
-    transport: httpx.BaseTransport | None,
-) -> list[dict[str, str]]:
+def _fetch_tavily(config: Mapping[str, Any], query: str, api_key: str,
+                  limit: int, transport: httpx.BaseTransport | None) -> list[dict[str, str]]:
     key = _require_key(config, api_key)
     base = _effective_base(config)
     body: dict[str, Any] = {"query": query, "max_results": limit, "api_key": key}
@@ -318,13 +302,8 @@ def _fetch_tavily(
     return _items(payload, "results", limit)
 
 
-def _fetch_brave(
-    config: Mapping[str, Any],
-    query: str,
-    api_key: str,
-    limit: int,
-    transport: httpx.BaseTransport | None,
-) -> list[dict[str, str]]:
+def _fetch_brave(config: Mapping[str, Any], query: str, api_key: str,
+                 limit: int, transport: httpx.BaseTransport | None) -> list[dict[str, str]]:
     key = _require_key(config, api_key)
     base = _effective_base(config)
     request = httpx.Request(
@@ -338,60 +317,40 @@ def _fetch_brave(
     return _items(web if isinstance(web, Mapping) else {}, "results", limit)
 
 
-def _fetch_exa(
-    config: Mapping[str, Any],
-    query: str,
-    api_key: str,
-    limit: int,
-    transport: httpx.BaseTransport | None,
-) -> list[dict[str, str]]:
+def _fetch_exa(config: Mapping[str, Any], query: str, api_key: str,
+               limit: int, transport: httpx.BaseTransport | None) -> list[dict[str, str]]:
     key = _require_key(config, api_key)
     base = _effective_base(config)
-    body = {"query": query, "numResults": limit, "contents": {"text": {"maxCharacters": 400}}}
+    body = {"query": query, "numResults": limit,
+            "contents": {"text": {"maxCharacters": 400}}}
     request = httpx.Request(
         "POST",
         f"{base}/search",
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "x-api-key": key,
-        },
+        headers={"Content-Type": "application/json", "Accept": "application/json",
+                 "x-api-key": key},
         content=json.dumps(body),
     )
     payload, _ = _request_json(config, transport, request)
     return _items(payload, "results", limit)
 
 
-def _fetch_serper(
-    config: Mapping[str, Any],
-    query: str,
-    api_key: str,
-    limit: int,
-    transport: httpx.BaseTransport | None,
-) -> list[dict[str, str]]:
+def _fetch_serper(config: Mapping[str, Any], query: str, api_key: str,
+                  limit: int, transport: httpx.BaseTransport | None) -> list[dict[str, str]]:
     key = _require_key(config, api_key)
     base = _effective_base(config)
     request = httpx.Request(
         "POST",
         f"{base}/search",
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-API-KEY": key,
-        },
+        headers={"Content-Type": "application/json", "Accept": "application/json",
+                 "X-API-KEY": key},
         content=json.dumps({"q": query, "num": limit}),
     )
     payload, _ = _request_json(config, transport, request)
     return _items(payload, "organic", limit)
 
 
-def _fetch_google_pse(
-    config: Mapping[str, Any],
-    query: str,
-    api_key: str,
-    limit: int,
-    transport: httpx.BaseTransport | None,
-) -> list[dict[str, str]]:
+def _fetch_google_pse(config: Mapping[str, Any], query: str, api_key: str,
+                      limit: int, transport: httpx.BaseTransport | None) -> list[dict[str, str]]:
     key = _require_key(config, api_key)
     google_cx = str(config.get("google_cx", "") or "").strip()
     if not google_cx:

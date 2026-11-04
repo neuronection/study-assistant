@@ -559,7 +559,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   the SQLite FTS5 virtual tables / PostgreSQL tsvector+pg_trgm twins and the
   four seeded `decision:*` `default_task_assignments` rows — and
   `alembic downgrade base` drops it cleanly (a baseline-squash downgrade,
-  family-migration §3). **Pre-baseline databases are rebuilt, not migrated**:
+  the family migration rules (§3)). **Pre-baseline databases are rebuilt, not migrated**:
   delete the SQLite file and reseed demo data (`scripts/seed-demo.py`); no
   data-migration path exists by design. Every revision-pinned test was
   reworked to baseline round-trips/shape tests and all head assertions read
@@ -647,7 +647,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   `concept_links.relation`, `study_goals.unit`) gain `CHECK` twins (`ck_<table>_<column>_allowed`) mirroring their StrEnum
   member lists; `Base.metadata` gains an `ix_/uq_/ck_/fk_/pk_` naming
   convention so every future constraint is named (short-name drops per
-  family-migration §5b). `JobType.COMPOSE` was missing from the enum while the
+  the family migration rules (§5b)). `JobType.COMPOSE` was missing from the enum while the
   job registry already ran it — widened in the same commit so the new
   `jobs.type` CHECK cannot reject a real job. Explicit `ON DELETE` is declared
   on the FKs that silently relied on NO ACTION (`SET NULL` for catalogue/model

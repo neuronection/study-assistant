@@ -1,13 +1,13 @@
 # VENDORED FILE — family canonical (ADR-0031 / ADR-0048). Source of truth:
-# dev/contracts/version_check.py; synced byte-identical to
+# the family version-check contract; synced byte-identical to
 # backend/app/core/version_check.py in career-assistant and
 # backend/app/services/platform/version_check.py in study-assistant by
-# dev/scripts/sync-version-check.sh, sha-checked by
-# dev/scripts/verify-wiring.sh, accepted by the shared fixture table
-# (dev/contracts/version_check.fixtures.json — vendored alongside, loaded
+# the family sync tooling, sha-checked by
+# the family wiring verifier, accepted by the shared fixture table
+# (the family contract canonical/version_check.fixtures.json — vendored alongside, loaded
 # by every repo's version-check contract test). NEVER edit the vendored
-# copy in-repo — change the dev canonical, then re-run the sync (contract
-# changes = one dev commit + one sync run, never per-repo edits).
+# copy in-repo — change the family canonical, then re-run the sync (contract
+# changes = one canonical commit + one sync run, never per-repo edits).
 """Family version-check core (ADR-0048 / plan 48) — the shared Python law.
 
 One canonical implementation of the update-check rules for the Python

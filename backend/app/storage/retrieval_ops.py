@@ -1,12 +1,7 @@
-# VENDORED FILE — family canonical (ADR-0031 / ADR-0051). Source of truth:
-# dev/contracts/retrieval_ops.py; vendored byte-identical into
-# career-assistant in plan 51 Q1 (backend/app/storage/retrieval_ops.py) and
-# study-assistant in Q3 by scripts/sync-retrieval-ops.sh, sha-checked by
-# scripts/verify-wiring.sh, accepted by the shared fixture table
-# (dev/contracts/retrieval-ops.fixtures.json — vendored alongside, loaded by
-# every repo's retrieval-ops contract test). NEVER edit the vendored copy
-# in-repo — change the dev canonical, then re-run the sync (contract changes
-# = one dev commit + one sync run, never per-repo edits).
+# VENDORED FILE — family canonical (ADR-0031 / ADR-0051).
+# Synced byte-identically from the family contract and checked by the family
+# wiring verifier; the shared fixture table loads alongside it. NEVER edit the
+# vendored copy in-repo — change the family canonical, then re-run the sync.
 """Family retrieval-operations contract (plan 51 Q0) — read/action vocabulary.
 
 This module is the companion to :mod:`vector_contract` (ADR-0051). The

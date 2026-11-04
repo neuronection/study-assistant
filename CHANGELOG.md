@@ -348,7 +348,7 @@ Release history from before the public launch lives in the
 ### Changed (update checks — family version API, plan 48 W6)
 - **`GET /api/v1/instance/update-check` now runs on the synced family
   version-check contract** (`backend/app/services/platform/version_check.py`,
-  canonical in `dev/contracts/`): the ad-hoc GitHub-Releases poll and its
+  canonical in `the family contract canonical/`): the ad-hoc GitHub-Releases poll and its
   crude version tuples are replaced by the neuronection.com version API
   (ADR-0048) with real semver ordering, the stable-channel law (prereleases
   are never offered to stable clients), document validation before use and

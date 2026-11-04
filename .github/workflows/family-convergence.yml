@@ -3,7 +3,7 @@ name: Family convergence
 # Family-convergence gate (plan 20 D9 / reference-architecture.md) — tool
 # config parity, prefixed-only env, migrations home, no legacy markers,
 # packaging shape, contract gates. Script must stay byte-identical across
-# family repos (sha-checked by dev/scripts/verify-wiring.sh).
+# family repos (sha-checked by the family wiring verifier).
 
 on:
   push:

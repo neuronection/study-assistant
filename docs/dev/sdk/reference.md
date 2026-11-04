@@ -8,8 +8,8 @@ the endpoints, and the limits.
 
 Pure functions over plain dicts; httpx is the only dependency and the
 transport is injectable (`transport=` on every entry point — how the
-suite runs it network-free). Canonical: `dev/contracts/
-search_providers.py`, byte-identical here via the sync script.
+suite runs it network-free). Canonical: the family contract canonical,
+byte-identical here via the sync script.
 
 | Symbol | What it does |
 |---|---|

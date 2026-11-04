@@ -4,7 +4,7 @@ Keyed by a user-declared URL pattern (e.g. `coursera.org/learn/*`); executed
 by the url_import job like any built-in parser. It is an extension-runtime
 seam (D24: ``app/parsers/`` stays with the content pipeline) and registers
 into the parser registry at composition time. Contract violations fail
-honestly — external output is untrusted input (family-ai trust boundary).
+honestly — external output is untrusted input (the family AI standard trust boundary).
 """
 
 import json

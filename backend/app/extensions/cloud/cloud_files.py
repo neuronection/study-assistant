@@ -1,8 +1,8 @@
 """Family cloud-files engine (ADR-0052).
 
-Canonical copy lives in the dev repo (``contracts/cloud_files.py``) and is
+Canonical copy lives in the family standards (``contracts/cloud_files.py``) and is
 vendored byte-identical into product hosts via
-``dev/scripts/sync-cloud-connectors.sh``. Edit the canonical copy only.
+``the family sync tooling``. Edit the canonical copy only.
 
 One normalized file shape (:class:`CloudFile`) and one transport seam for
 WebDAV (Nextcloud, Fastmail, self-hosted), Google Drive, Microsoft Graph

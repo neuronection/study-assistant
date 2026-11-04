@@ -2,7 +2,7 @@
 
 Generalizes career's shipped ``ConnectorContractTests`` to the charter
 envelope and is itself vendored byte-identical from
-``dev/contracts/conformance.py`` (ADR-0031 sync-and-gate; never edited
+``the family conformance contract`` (ADR-0031 sync-and-gate; never edited
 in-repo). Hosts re-export this module to connector authors as THE
 conformance suite; the politeness/h hostile runtime wall is separate —
 hosts run ``polite_http.fixtures.json`` through the vendored runtime

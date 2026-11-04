@@ -2,8 +2,8 @@
 
 Family law: [ADR-0052] (cloud accounts) and
 [`guidelines/cloud-connectors.md`]. This page is the study-host map; the
-canonical catalog and engines are vendored byte-identically from
-`dev/contracts/`.
+canonical catalog and engines are vendored byte-identically from the
+family contract canonical.
 
 ## Where the code lives
 
@@ -90,7 +90,7 @@ verbatim and holds no `if provider === "x"` branch; protocol adapters stay
 server-side.
 
 Where this should live long-term: the descriptor is derived, not stored — the
-canonical catalog (`dev/contracts/cloud-providers.json`) could grow an
+canonical catalog (the family cloud-providers contract) could grow an
 explicit `setupFields` block per row, and this mapper would then validate
 against it instead of deriving. Until that lands, this file is the study-host
 derivation and any new protocol needs a case in `setup_fields` (code, not

@@ -114,7 +114,7 @@ for vendored in \
   if [ -f "$ROOT/$vendored" ]; then
     ok "vendored: $vendored"
   else
-    note "vendored contract module missing: $vendored (run ../dev/scripts/sync-extension-contract.sh --project study-assistant / sync-search-providers.sh)"
+    note "vendored contract module missing: $vendored (run the family extension-contract and search-provider sync tooling for study-assistant)"
   fi
 done
 

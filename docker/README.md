@@ -113,8 +113,8 @@ SA_DB_PASSWORD=study_dev_pw docker compose -f docker/docker-compose.dev-db.yml u
 ```
 
 - `SA_DB_PASSWORD` is `:?`-guarded (any dev-only value); the port knob is
-  `SA_DB_PORT` (default **5434** — study's dev-infra port; see
-  `dev/guidelines/dev-ports.md`).
+  `SA_DB_PORT` (default **5434** — study's dev-infra port; see the family
+  dev-port bands).
 - Container name `study-postgres` / project `study` are env-overridable
   (`SA_DB_CONTAINER`, `COMPOSE_PROJECT_NAME`, `SA_DB_PORT`) so git-worktree
   sessions can run side by side.

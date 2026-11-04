@@ -79,7 +79,7 @@ export default defineConfig({
     },
   },
   server: {
-    // Family dev-port bands (dev/guidelines/dev-ports.md): study is slot 2 —
+    // Family dev-port bands (the family dev-ports.md standard): study is slot 2 —
     // backend 8200 / frontend 3200. Proxy follows SA_PORT so run-dev.sh
     // overrides stay consistent; strictPort fails loud instead of silently
     // bumping onto a port another family app may own.

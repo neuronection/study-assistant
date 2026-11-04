@@ -11,10 +11,8 @@ add, and the docs to update in the same commit. Read
 - Confirm the change is in scope for the current phase (`docs/STATUS.md`).
 - Check whether the shared library already has the UI you need
   ([ui-conventions.md](ui-conventions.md)).
-- Check whether the family guidelines already record a decision that constrains
-  the change (the family `dev/guidelines/` and the repo's ADR register — the
-  latter lives in the family dev repo's `projects/study-assistant/plans/`;
-  there is no repo-root `dev/` anymore).
+- Check whether the family guidelines already record a decision that
+  constrains the change; there is no repo-root `dev/` directory.
 
 ## A new API endpoint
 

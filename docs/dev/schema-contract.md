@@ -56,7 +56,7 @@ closed set and carries a database `CHECK` mirroring the enum members
 (`ck_<table>_<column>_allowed`, short name `"<column>_allowed"` for
 `op.drop_constraint`). The enum and its CHECK land in the **same commit** —
 widening a vocabulary without widening the CHECK makes inserts fail at runtime
-(family-migration §5b).
+(the family migration rules, §5b).
 
 Adding a new closed-set column means: StrEnum member → `schema_contract.CLOSED_SETS`
 entry → `CheckConstraint` on the model → migration → inventory regeneration.

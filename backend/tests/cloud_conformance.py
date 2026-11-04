@@ -23,7 +23,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-# Canonical location (dev/contracts) has the modules beside this file. A
+# Canonical location (the family contract canonical) has the modules beside this file. A
 # vendored host copy lives under `<backend>/tests/`, where the engines are in
 # `<backend>/app/extensions/cloud/` and the fixtures in `<backend>/tests/fixtures/`.
 ROOT = Path(__file__).resolve().parent

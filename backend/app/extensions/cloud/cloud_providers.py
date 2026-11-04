@@ -1,8 +1,8 @@
 """Family cloud-connector catalog (ADR-0052).
 
-Canonical copy lives in the dev repo (``contracts/cloud_providers.py``) and
+Canonical copy lives in the family standards (``contracts/cloud_providers.py``) and
 is vendored byte-identical into the product hosts via
-``dev/scripts/sync-cloud-connectors.sh`` — edit the canonical copy only,
+``the family sync tooling`` — edit the canonical copy only,
 never a vendored copy (ADR-0031 sync-and-gate).
 
 What this module freezes:

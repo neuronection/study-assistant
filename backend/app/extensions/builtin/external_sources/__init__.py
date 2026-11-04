@@ -4,7 +4,7 @@ A source (RSS feed, YouTube channel/playlist, site-filtered search) is
 polled on a schedule and every new item lands as a *suggestion* — never a
 material, never an auto-import. Feed and yt-dlp metadata is untrusted
 input: title/snippet are stripped to plain text, URLs are re-validated
-http(s) before upsert (family-security). Declared capabilities (D3):
+http(s) before upsert (the family security standard). Declared capabilities (D3):
 ``sync`` only — the fetch URLs are user-configured, so there is no fixed
 domain list for an honest ``net`` grant (the fetch-leg honesty lives in
 the manifest description and the charter's connector profile). Sync

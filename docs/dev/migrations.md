@@ -65,7 +65,7 @@ Every migration implements `downgrade()`. New tables are dropped; new columns
 are dropped; data migrations reverse best-effort. Downgrades are tested.
 
 **One sanctioned exception — a declared destructive baseline squash**
-(family-migration §3). `0001_baseline`'s `downgrade()` restores an *empty*
+(the family migration rules, §3). `0001_baseline`'s `downgrade()` restores an *empty*
 schema (it drops every table) instead of a previous chain shape; the header,
 [data-model.md](data-model.md) and ADR-196 declare it. Every revision after
 the baseline stays under the normal rule.
@@ -77,7 +77,7 @@ twin on the model (`schema_contract.vocab_check("<column>", Enum)`) and a row
 in `schema_contract.CLOSED_SETS`. Adding a member means changing the enum, the
 CHECK, and adding a migration **in the same commit** — otherwise inserts of the
 new value fail at runtime while the Python code happily produces them
-(family-migration §5b). The metadata `naming_convention` renders
+(the family migration rules, §5b). The metadata `naming_convention` renders
 `ck_<table>_<column>_allowed`; `op.drop_constraint` takes the short
 `"<column>_allowed"` form.
 

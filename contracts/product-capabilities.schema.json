@@ -13,7 +13,7 @@
   "properties": {
     "version": {
       "const": 1,
-      "$comment": "Contract version. Bumping is a family decision (dev/contracts canonical first, re-vendor everywhere)."
+      "$comment": "Contract version. Bumping is a family decision (the family product-capabilities contract first, re-vendor everywhere)."
     },
     "project": {
       "$ref": "#/$defs/projectSlug",

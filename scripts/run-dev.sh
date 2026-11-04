@@ -23,7 +23,7 @@
 #                                         #   shows the login/register UI
 #   ./scripts/run-dev.sh -h | --help      # print this help and exit
 #
-# Ports (family dev-port bands, dev/guidelines/dev-ports.md): study is slot 2,
+# Ports (family dev-port bands): study is slot 2,
 # so SA_PORT defaults to 8200 and VITE_PORT to 3200 (dev-db Postgres: 5434).
 # Desktop mode (pywebview) is a single process: scripts/app.sh (`pnpm app`).
 # Built-SPA mode served by the backend: scripts/webapp.sh (`pnpm webapp`).

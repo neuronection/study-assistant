@@ -4,7 +4,7 @@ One revision holds the whole schema: the former `0001`-`0075` chain is
 squashed and regenerated from the post-A-E models (plan 81 A-E).
 `alembic upgrade head` on an empty database builds everything here.
 
-**Destructive by design** (the family-migration §3 baseline-squash
+**Destructive by design** (the the family migration rules §3 baseline-squash
 sanction, ADR-196): no database is deployed yet and pre-baseline
 databases are **rebuilt**, not migrated (`scripts/seed-demo.py` reseeds
 demo data). `downgrade()` restores the empty schema — it drops every

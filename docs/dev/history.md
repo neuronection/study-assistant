@@ -1594,7 +1594,7 @@ Tests: `test_compose_coverage.py` (9: coverage split/stats, second-round
 boundary ≥8/<50 %/floor, provenance + gate + stale-flag replace);
 GenerateDialog result-state coverage (3). Backend 1,156 green, frontend 1,246
 green, lint/typecheck/build/i18n green. Plan doc:
-`dev/plans/70-compose-quality-and-scale.md` (local-only).
+`local planning notes/70-compose-quality-and-scale.md` (local-only).
 
 **Feature — exam timing (plan 49-C, ADR-108, 2026-09-15):** quizzes can now
 carry a **server-enforced clock**. Migration **0060** adds
@@ -1740,7 +1740,7 @@ plain folders — folder links route them like any folder. Backend 1,119
 green (+4), ruff/mypy clean; frontend 1,182 green, lint/typecheck/build/
 `pnpm i18n` green. Docs: features.md, data-model.md. ADR-178's expected
 membership bug resolution recorded in docs/data-model.md. Plan doc:
-`dev/plans/75-material-placement-and-discovery.md` (local-only).
+`local planning notes/75-material-placement-and-discovery.md` (local-only).
 
 **Plan 75 slice D — deterministic placement suggestions (2026-09-15):** new
 `placement.py::suggest_placements` — token-overlap scoring between the
@@ -1804,7 +1804,7 @@ mirroring, C "Needs placement" surface over plan 70-B's unassigned endpoint
 (definition pinned: via-folder counts as placed), D deterministic placement
 suggestions (token-overlap, `matched_on` evidence), E linked-source subdir
 mirroring + scan `new_relpaths` (migration 0058). Plan doc:
-`dev/plans/75-material-placement-and-discovery.md` (local-only).
+`local planning notes/75-material-placement-and-discovery.md` (local-only).
 
 **Plan 76 COMPLETE — slices A–C: in-tab folder browsing (2026-09-15,
 user-approved; ADRs 181–183):** **C** closed the round — linked-source folders
@@ -1907,10 +1907,10 @@ verify` green (13 new tests, docs page, story, a11y row, changeset).
 server-enforced exam timing; ADR-106…108)** was silently skipped when the
 2026-08-31 wave jumped 48 → 50 (verified: no `study_sessions`, no
 `features/review/`, review remains per-course). Re-queued as the **next
-feature round; execution order 49 → 68 → 70 → 73**. Both `dev/plans/` roadmap
+feature round; execution order 49 → 68 → 70 → 73**. Both `local planning notes/` roadmap
 copies reconciled (stale "unpulled" backlog corrected: URL importer, tags/
 favorites, snap-to-notes, quick-capture hotkey, extra languages all shipped in
-plans 67/69); plan 49's doc copied into the app-repo `dev/plans/`. Also noted:
+plans 67/69); plan 49's doc copied into the app-repo `local planning notes/`. Also noted:
 `tests/evals/` still does not exist — populate the golden sets before/during 49.
 
 **Feature — review nudges (plan 68-C, ADR-153, 2026-09-15):** the review
@@ -1999,7 +1999,7 @@ canvas over `conceptGraph` with concept×skill mastery coloring, **F** materials
 + tree nodes join the trash (snapshot-to-trash; row-only restore on the
 immortal blob store; course purge stays irreversible), **G** upstream
 typography/spacing/elevation token refresh swept last. ADRs 184–190 reserved.
-Plan doc: `dev/plans/77-nextgen-feel-and-flow.md` (local-only, mirrored to the
+Plan doc: `local planning notes/77-nextgen-feel-and-flow.md` (local-only, mirrored to the
 family dev repo).
 
 **Also planned (user-approved 2026-09-11) — plan 73 "Material discovery,
@@ -2020,7 +2020,7 @@ deterministic explainable placement suggestions (token-overlap scoring over
 node titles/objectives + index-card topics + concepts, `matched_on` evidence,
 never auto-applied), and opt-in linked-source subdirectory mirroring
 (migration 0058) with per-file scan surfacing. ADRs 177–180 reserved. Plan
-doc: `dev/plans/75-material-placement-and-discovery.md` (local-only).
+doc: `local planning notes/75-material-placement-and-discovery.md` (local-only).
 
 **Also planned (user-approved 2026-09-15) — plan 74 "Extraction quality &
 control" — COMPLETE: A+B+C+D LANDED (2026-09-15, ADRs 172–176):** slice D
@@ -2123,7 +2123,7 @@ threading; and one shared **Re-extract dialog** mounted in the material view ⋯
 menu, the Library right-click and the course Materials tab, gated on
 API-truth `MaterialOut.reextract_modes` (closing the existing 4-vs-10
 frontend/backend reingestable-kinds drift). Zero migrations. ADRs 172–176
-reserved. Plan doc: `dev/plans/74-extraction-quality-and-control.md`
+reserved. Plan doc: `local planning notes/74-extraction-quality-and-control.md`
 (local-only).
 
 **Plan 72 slice A — legacy chat engine removed (2026-09-09, user-approved;
@@ -2142,7 +2142,7 @@ parity harness traded for graph-only equivalents), `check-ai-alignment.sh`
 clean, 8/8 e2e specs green against the real backend + mock provider.
 
 **Plan 72 (AI sees the course tree) COMPLETE 2026-09-09 — see the entry
-above.** Plan doc: `dev/plans/72-ai-tree-structure-context.md` (local-only).
+above.** Plan doc: `local planning notes/72-ai-tree-structure-context.md` (local-only).
 
 **Plan 71 slices A–C — library placement references (2026-09-09,
 user-approved follow-up; ADR-159; renumbered from 156 after plan 70 claimed
@@ -2424,11 +2424,11 @@ completion pass, interaction sweep; ADRs 154–155). **Plan 71 — library
 placement references** (per-item reference-count badges + right-click
 "Linked locations" details over the existing course-tree placement data;
 ADR-159) is user-approved 2026-09-09 as a follow-up round — plan doc under
-`dev/plans/71-library-placement-references.md` (local-only; numbered 71
+`local planning notes/71-library-placement-references.md` (local-only; numbered 71
 because plan 70 — compose quality & scale — exists in the family planning
 record). Plan 66 (chat as
 a working actor) COMPLETE 2026-09-09 — see its entry above. Plan docs are
-local-only under `dev/plans/`.
+local-only under `local planning notes/`.
 
 **Plan 62 slice G follow-up — editor fills its container, content scrolls
 inside (2026-09-07, supersedes the sticky-toolbar attempt):** the shared
@@ -2728,7 +2728,7 @@ machine (~2,000 local lines gone). Frontend 925 tests green (was 906),
 lint/typecheck/build green, `pnpm e2e` green against the mock provider.
 
 **Plan 61 — reading-view "Ask AI" + sidepanel coexistence COMPLETE (2026-09-07,
-ADR-137/138; `dev/plans/61-reading-view-ask-ai-and-chat-coexistence.md`, mirrored
+ADR-137/138; `local planning notes/61-reading-view-ask-ai-and-chat-coexistence.md`, mirrored
 to the family dev repo).** Zero-backend frontend round, slices A→D in one
 landing: **A (ask bridge, ADR-137)** — `chat-store` gains a `pendingSend`
 channel (`{content, attachments, mode: prefill|send}`) consumed by the
@@ -2849,9 +2849,9 @@ hotspot/label hotspots deferred until an image-authoring surface exists, see
 ADR-124 note). **Plan 50 COMPLETE (2026-09-02)** and plan 48 landed
 2026-09-01 — see the 2026-09-02 changelog entries.
 
-## Phase narrative — **plan 50 (sa-course/v2, skill packs, e2e smoke, OSS readiness) COMPLETE (2026-09-02)** — course bundles carry the full learning state (flashcards + FSRS schedules, exam_date, discovered error patterns, opt-in attempts/note-versions) and **imports self-heal** (postprocess re-embeds every imported material — no more FTS-only degradation), **skill packs** (`ca-skills/v1`) export/import prompt customizations with staged preview + replace/rename/skip collisions, **Playwright e2e smoke** (4 specs against the real backend + mock OpenAI-compatible provider, keyless per plan 48) gates CI and releases, and OSS polish (SECURITY.md, issue/PR templates, About family links, enriched sample course with quiz/6 flashcards/2 due/exam date/concept). Preceded by **plan 48 (local AI engines) COMPLETE (2026-09-01, partial C — Ollama verified live)** — local presets (**llama.cpp** `:8080`/`:8081`, **LM Studio** `:1234` alongside Ollama `:11434`, all keyless — blank keys skip the keyring write and the gateway resolves them to a keyless client), **`GET /providers/detect-local`** probes the local ports (≤300 ms connect + 1.5 s read, hit requires an OpenAI-shaped `/v1/models` 200; localhost-only, read-only, never persisted, base URLs already configured as providers are skipped) with the wizard Provider step auto-probing once per open + one-click **Add** per hit and the same detector in Settings → Providers empty state; the all-local Defaults step gains a "everything runs on this machine" hint; verification matrix executed **live against Ollama** (chat streaming turn, vision `image_url` OCR, `/v1/embeddings` + chunk embed → hybrid search, embeddings ledger row) and **fixed en route: embeddings calls now record `ai_interactions` ledger rows** (`GatewayEmbedder` routed through the gateway; it had bypassed the ledger since plan 37); `docs/usage/local-ai.md` written, README gained a "Runs fully local" bullet. llama.cpp/LM Studio/audio rows of the matrix await the user's engines. Preceded by **plan 47 (ingestion breadth) COMPLETE (2026-08-31)** — uploads are honest (unknown types refused 422 with machine reasons at the door; linked sources skip-with-reason instead of failed-job piles, ADR-103), **office/web materials** (docx/pptx/epub/html) convert to markdown extractions at ingest with embedded images extracted into `material_images` (0048) and async `image_ocr` transcripts, and **lecture audio/video** transcribe through the provider `transcribe` task into searchable transcript materials (mutagen duration/bitrate on the material row, 0049; pre-flight 25 MB warning; no ffmpeg, ADR-104). Preceded by **plan 55 (code quality & typed contracts) COMPLETE (2026-08-31)** — closed vocabularies are StrEnums in `core/vocab.py` (ADR-128); the frontend contract is **OpenAPI-generated** (`pnpm api:types`, committed `openapi.json` + `api-schema.d.ts`, CI drift-guarded — ADR-129); **every JSON endpoint declares a typed pydantic response model** (ADR-130; final survey: 0 untyped 200/201-JSON responses, binary downloads intentionally model-free); WS topics + localStorage keys single-sourced in `lib/constants.ts`; assistant-ui adoption round 2 (copy-button/spinner/empty-state shims + big-surface sweep; family drift audit clean over 335 files). **Next up:** feature rounds **48–53** (`dev/plans/`, local-only) in order 48 → 49 → 50 → 51 → 52 → 53 — see the 2026-08-31 changelog entries and each plan's slices. Prior round: **shared UI library adoption (`@neuronection/assistant-ui`) COMPLETE (2026-08-29, user-requested)** — study consumes the family library (`github.com/neuronection/assistant-ui@0.1.0`, published via Changesets with provenance): `components/ui/button.tsx` and `card.tsx` are now **pure re-exports** from the library (implementations deleted, same-commit rule; 65+35 import sites untouched), `@neuronection/assistant-ui/styles.css` imported after `index.css` in `main.tsx` (token defaults == study's palette), `optimizeDeps.exclude` added to `vite.config.ts` (required for linked local development via the library's `dev-link` tooling); **all 27 `window.confirm` sites across 18 files** (settings, chat, library, notes, courses, practice, jobs, canvas/editor, layout) replaced by a promise-based `lib/use-confirm.tsx` hook over the library's destructive-themed `ConfirmationModal` — existing i18n keys reused (`*.confirmDelete*` → description, short labels → title/confirmLabel, `common.cancel`), and confirm-mocking tests now click the modal's confirm button (`within(dialog)` scoping where labels collide); drift is policed by the library's `audit-usage.mjs` (case-insensitive, study clean over 313 files) plus a weekly drift-audit workflow snippet in the library repo — preceded by **plan 45 (working directory, ADR-101) COMPLETE (2026-08-28, user-requested)** — the app data directory is now user-visible and changeable: `core/working_dir.py` pointer file (`<platform config dir>/StudyAssistant/working-dir.txt`, `SA_CONFIG_DIR` overrides the config dir for tests/packaging), `Settings.data_dir` factory resolves pointer → platform default (env `SA_DATA_DIR`/.env stays strongest), new `api/config.py` — `GET /config/working-dir` (`{path, default_path, custom, restart_pending}`), `POST …/validate` (absolute/writable/empty-or-`app.db` policy with machine reason codes; non-existent targets checked via nearest existing ancestor), `PUT` (write pointer, restart applies), `DELETE` (clear pointer); frontend shared `WorkingDirEditor` (input + Check/Use-after-restart/Use-default/Restore-default + restart-pending banner with Undo) mounted as a **Settings → Data card** and as **wizard step 2** (core-8 steps now) — preceded by **plan 44 (first-run setup wizard, ADR-100) COMPLETE (2026-08-28, user-requested)** — a fresh install (server truth: no provider AND no course) auto-opens a full-screen wizard overlay over the AppShell; `GET /onboarding/state` is the one-round-trip gate/summary aggregate (`has_provider/has_enabled_model/defaults_set/has_course/has_material`); core-7 steps (Welcome → AI provider → Enable models → Capability defaults → First course (create or load sample) → First files via `UploadDropzone`+`useMaterialUpload` on the created course → Done checklist with open-course CTA), every step skippable, dismissal in localStorage `ca-onboarding-done`, re-openable from Settings→Providers empty state and the Home onboarding card; `ProviderFormDialog` create-mode logic extracted into shared `useProviderCreate` + `ProviderCreateFields` so wizard and Settings can't drift — preceded by **plan 43 (infinite drawing canvas: pan/zoom navigation, fullscreen, crop-on-save + view-box scale metadata, ADR-098) COMPLETE (2026-08-28, user-requested)** — an unbounded canvas (wheel = zoom to cursor; middle-drag / Space-drag / hand tool = pan; floating bottom bar: zoom −/%,+, Fit, 1:1), fullscreen toggle on the drawing dialogs, saves crop the PNG to the strokes' bounding box + 24 px pad and persist the exported region as nullable `view` JSON on `note_drawings`/`material_drawings` (0046) so re-editing restores exact 100% scale; drawings render at natural size (no stretch) — preceded by **plan 42 (dictation via Whisper STT, ADR-097) COMPLETE (2026-08-27, user-requested)** — a 🎤 mic button in the shared Tiptap editor toolbar and the chat composer records a clip (MediaRecorder webm/opus, timer + live level strip, cancel), `POST /ai/transcribe` (multipart, ≤25 MB, optional language) returns `{text, model}` inserted at the cursor/draft caret; new `transcribe` task + `audio` capability in the task chain (provider-native STT: `openai_compatible` → `/audio/transcriptions` incl. local whisper servers, Google → `generateContent` inline audio via the `transcribe.audio` seed skill, anthropic unsupported; audio ephemeral, ledgered), Settings caps pickers gained `audio` — preceded by **plan 41 (chat branch-tree rail, ADR-095) COMPLETE (2026-08-27, user-requested)** — a `GitBranch` header popover renders the full conversation tree from a new read-only `GET /chat/sessions/{id}/tree` (commit-graph styling, active path highlighted, click a node = `select` that variant; no schema change, no graph deps) — preceded by **plan 40 (chat turn branches + composer & message actions, ADR-093…094) COMPLETE (2026-08-27, user-requested)** — 40A branch-tree core (migration 0044 `chat_messages.parent_id`/`active_child_id` + `chat_sessions.active_root_id`, active-path history, edit/regenerate/select endpoints, FIFO per-session turn lock); 40B message-action UI (copy/edit/resend/regenerate + ‹k/N› variant switcher); 40C "+"-menu equation editor/drawing canvas/screenshot-crop attachments; 40D stop-generation + scroll-to-bottom pill + code-block copy + session .md export; plan 33 (cheat-sheet menu + compose builder, ADR-070) DONE; plan 34 (interactive widget blocks + AG-UI state channel, ADR-071…076) COMPLETE; plan 35 (chat streaming performance + turn-trace observability + tool-call component system, ADR-077…079) COMPLETE; plan 36 (MCP resource tools as shared chat tools + Settings page, ADR-080) IN PROGRESS; plan 37 (AI gateway framework + reliability, ADR-081…084) **COMPLETE** — 37A LangChain behind the gateway (retry + fallback + real token accounting, socket-guarded no-network suite), 37B native `.bind_tools()` tool calling (cap-gated, prompt fallback), 37C `.with_structured_output()` pre-validation fast path, 37D prompt caching (Anthropic hints + OpenAI accounting, `cached_input_tokens` ledger); plan 32's Ctrl+N palette remains documented-only; **plan 38 (AI gateway best-practices alignment, ADR-085…087 — 2026-08-26) COMPLETE** (reasoning-effort parity incl. Google with per-provider value filtering, real-usage accounting in `generate_structured`, profile-based structured-output pre-gate, gateway cleanups); **plan 39 (jobs hygiene: failed-job delete + stale detection + boot pruning, and the task-defaults persistence fix — ADR-089/090) COMPLETE**
+## Phase narrative — **plan 50 (sa-course/v2, skill packs, e2e smoke, OSS readiness) COMPLETE (2026-09-02)** — course bundles carry the full learning state (flashcards + FSRS schedules, exam_date, discovered error patterns, opt-in attempts/note-versions) and **imports self-heal** (postprocess re-embeds every imported material — no more FTS-only degradation), **skill packs** (`ca-skills/v1`) export/import prompt customizations with staged preview + replace/rename/skip collisions, **Playwright e2e smoke** (4 specs against the real backend + mock OpenAI-compatible provider, keyless per plan 48) gates CI and releases, and OSS polish (SECURITY.md, issue/PR templates, About family links, enriched sample course with quiz/6 flashcards/2 due/exam date/concept). Preceded by **plan 48 (local AI engines) COMPLETE (2026-09-01, partial C — Ollama verified live)** — local presets (**llama.cpp** `:8080`/`:8081`, **LM Studio** `:1234` alongside Ollama `:11434`, all keyless — blank keys skip the keyring write and the gateway resolves them to a keyless client), **`GET /providers/detect-local`** probes the local ports (≤300 ms connect + 1.5 s read, hit requires an OpenAI-shaped `/v1/models` 200; localhost-only, read-only, never persisted, base URLs already configured as providers are skipped) with the wizard Provider step auto-probing once per open + one-click **Add** per hit and the same detector in Settings → Providers empty state; the all-local Defaults step gains a "everything runs on this machine" hint; verification matrix executed **live against Ollama** (chat streaming turn, vision `image_url` OCR, `/v1/embeddings` + chunk embed → hybrid search, embeddings ledger row) and **fixed en route: embeddings calls now record `ai_interactions` ledger rows** (`GatewayEmbedder` routed through the gateway; it had bypassed the ledger since plan 37); `docs/usage/local-ai.md` written, README gained a "Runs fully local" bullet. llama.cpp/LM Studio/audio rows of the matrix await the user's engines. Preceded by **plan 47 (ingestion breadth) COMPLETE (2026-08-31)** — uploads are honest (unknown types refused 422 with machine reasons at the door; linked sources skip-with-reason instead of failed-job piles, ADR-103), **office/web materials** (docx/pptx/epub/html) convert to markdown extractions at ingest with embedded images extracted into `material_images` (0048) and async `image_ocr` transcripts, and **lecture audio/video** transcribe through the provider `transcribe` task into searchable transcript materials (mutagen duration/bitrate on the material row, 0049; pre-flight 25 MB warning; no ffmpeg, ADR-104). Preceded by **plan 55 (code quality & typed contracts) COMPLETE (2026-08-31)** — closed vocabularies are StrEnums in `core/vocab.py` (ADR-128); the frontend contract is **OpenAPI-generated** (`pnpm api:types`, committed `openapi.json` + `api-schema.d.ts`, CI drift-guarded — ADR-129); **every JSON endpoint declares a typed pydantic response model** (ADR-130; final survey: 0 untyped 200/201-JSON responses, binary downloads intentionally model-free); WS topics + localStorage keys single-sourced in `lib/constants.ts`; assistant-ui adoption round 2 (copy-button/spinner/empty-state shims + big-surface sweep; family drift audit clean over 335 files). **Next up:** feature rounds **48–53** (`local planning notes/`, local-only) in order 48 → 49 → 50 → 51 → 52 → 53 — see the 2026-08-31 changelog entries and each plan's slices. Prior round: **shared UI library adoption (`@neuronection/assistant-ui`) COMPLETE (2026-08-29, user-requested)** — study consumes the family library (`github.com/neuronection/assistant-ui@0.1.0`, published via Changesets with provenance): `components/ui/button.tsx` and `card.tsx` are now **pure re-exports** from the library (implementations deleted, same-commit rule; 65+35 import sites untouched), `@neuronection/assistant-ui/styles.css` imported after `index.css` in `main.tsx` (token defaults == study's palette), `optimizeDeps.exclude` added to `vite.config.ts` (required for linked dev via the library's `dev-link` tooling); **all 27 `window.confirm` sites across 18 files** (settings, chat, library, notes, courses, practice, jobs, canvas/editor, layout) replaced by a promise-based `lib/use-confirm.tsx` hook over the library's destructive-themed `ConfirmationModal` — existing i18n keys reused (`*.confirmDelete*` → description, short labels → title/confirmLabel, `common.cancel`), and confirm-mocking tests now click the modal's confirm button (`within(dialog)` scoping where labels collide); drift is policed by the library's `audit-usage.mjs` (case-insensitive, study clean over 313 files) plus a weekly drift-audit workflow snippet in the library repo — preceded by **plan 45 (working directory, ADR-101) COMPLETE (2026-08-28, user-requested)** — the app data directory is now user-visible and changeable: `core/working_dir.py` pointer file (`<platform config dir>/StudyAssistant/working-dir.txt`, `SA_CONFIG_DIR` overrides the config dir for tests/packaging), `Settings.data_dir` factory resolves pointer → platform default (env `SA_DATA_DIR`/.env stays strongest), new `api/config.py` — `GET /config/working-dir` (`{path, default_path, custom, restart_pending}`), `POST …/validate` (absolute/writable/empty-or-`app.db` policy with machine reason codes; non-existent targets checked via nearest existing ancestor), `PUT` (write pointer, restart applies), `DELETE` (clear pointer); frontend shared `WorkingDirEditor` (input + Check/Use-after-restart/Use-default/Restore-default + restart-pending banner with Undo) mounted as a **Settings → Data card** and as **wizard step 2** (core-8 steps now) — preceded by **plan 44 (first-run setup wizard, ADR-100) COMPLETE (2026-08-28, user-requested)** — a fresh install (server truth: no provider AND no course) auto-opens a full-screen wizard overlay over the AppShell; `GET /onboarding/state` is the one-round-trip gate/summary aggregate (`has_provider/has_enabled_model/defaults_set/has_course/has_material`); core-7 steps (Welcome → AI provider → Enable models → Capability defaults → First course (create or load sample) → First files via `UploadDropzone`+`useMaterialUpload` on the created course → Done checklist with open-course CTA), every step skippable, dismissal in localStorage `ca-onboarding-done`, re-openable from Settings→Providers empty state and the Home onboarding card; `ProviderFormDialog` create-mode logic extracted into shared `useProviderCreate` + `ProviderCreateFields` so wizard and Settings can't drift — preceded by **plan 43 (infinite drawing canvas: pan/zoom navigation, fullscreen, crop-on-save + view-box scale metadata, ADR-098) COMPLETE (2026-08-28, user-requested)** — an unbounded canvas (wheel = zoom to cursor; middle-drag / Space-drag / hand tool = pan; floating bottom bar: zoom −/%,+, Fit, 1:1), fullscreen toggle on the drawing dialogs, saves crop the PNG to the strokes' bounding box + 24 px pad and persist the exported region as nullable `view` JSON on `note_drawings`/`material_drawings` (0046) so re-editing restores exact 100% scale; drawings render at natural size (no stretch) — preceded by **plan 42 (dictation via Whisper STT, ADR-097) COMPLETE (2026-08-27, user-requested)** — a 🎤 mic button in the shared Tiptap editor toolbar and the chat composer records a clip (MediaRecorder webm/opus, timer + live level strip, cancel), `POST /ai/transcribe` (multipart, ≤25 MB, optional language) returns `{text, model}` inserted at the cursor/draft caret; new `transcribe` task + `audio` capability in the task chain (provider-native STT: `openai_compatible` → `/audio/transcriptions` incl. local whisper servers, Google → `generateContent` inline audio via the `transcribe.audio` seed skill, anthropic unsupported; audio ephemeral, ledgered), Settings caps pickers gained `audio` — preceded by **plan 41 (chat branch-tree rail, ADR-095) COMPLETE (2026-08-27, user-requested)** — a `GitBranch` header popover renders the full conversation tree from a new read-only `GET /chat/sessions/{id}/tree` (commit-graph styling, active path highlighted, click a node = `select` that variant; no schema change, no graph deps) — preceded by **plan 40 (chat turn branches + composer & message actions, ADR-093…094) COMPLETE (2026-08-27, user-requested)** — 40A branch-tree core (migration 0044 `chat_messages.parent_id`/`active_child_id` + `chat_sessions.active_root_id`, active-path history, edit/regenerate/select endpoints, FIFO per-session turn lock); 40B message-action UI (copy/edit/resend/regenerate + ‹k/N› variant switcher); 40C "+"-menu equation editor/drawing canvas/screenshot-crop attachments; 40D stop-generation + scroll-to-bottom pill + code-block copy + session .md export; plan 33 (cheat-sheet menu + compose builder, ADR-070) DONE; plan 34 (interactive widget blocks + AG-UI state channel, ADR-071…076) COMPLETE; plan 35 (chat streaming performance + turn-trace observability + tool-call component system, ADR-077…079) COMPLETE; plan 36 (MCP resource tools as shared chat tools + Settings page, ADR-080) IN PROGRESS; plan 37 (AI gateway framework + reliability, ADR-081…084) **COMPLETE** — 37A LangChain behind the gateway (retry + fallback + real token accounting, socket-guarded no-network suite), 37B native `.bind_tools()` tool calling (cap-gated, prompt fallback), 37C `.with_structured_output()` pre-validation fast path, 37D prompt caching (Anthropic hints + OpenAI accounting, `cached_input_tokens` ledger); plan 32's Ctrl+N palette remains documented-only; **plan 38 (AI gateway best-practices alignment, ADR-085…087 — 2026-08-26) COMPLETE** (reasoning-effort parity incl. Google with per-provider value filtering, real-usage accounting in `generate_structured`, profile-based structured-output pre-gate, gateway cleanups); **plan 39 (jobs hygiene: failed-job delete + stale detection + boot pruning, and the task-defaults persistence fix — ADR-089/090) COMPLETE**
 
-**plan 33 (`dev/plans/33-cheat-sheet-menu-and-builder.md`, ADR-070 — complete
+**plan 33 (`local planning notes/33-cheat-sheet-menu-and-builder.md`, ADR-070 — complete
 2026-08-23, user-requested)**: the Overview tab's cheat-sheet action is now a **dropdown
 menu** — `TabAction` gained a `menu` variant that renders the shared `PopoverMenu` (a
 menu grammar every tab can reuse). No sheet → **Generate cheat sheet…**; sheet exists →
@@ -2866,7 +2866,7 @@ one-live-artifact regeneration per ADR-043/051; backend tests re-based on it). F
 latent i18n bug en route: `generate.action.compose` was missing, so the compose dialog's
 primary button showed the literal key. Backend 486 · frontend 641 tests green.
 
-**plan 32 (`dev/plans/32-unified-practice-and-builder.md`, ADR-069 — in progress
+**plan 32 (`local planning notes/32-unified-practice-and-builder.md`, ADR-069 — in progress
 2026-08-22, user-requested)**: Practice becomes **one section + one builder** —
 the two parallel quiz/exercise lists merge into one list with kind badges and one
 primary **New practice** action (`features/practice/PracticeTab.tsx`), and
@@ -2880,7 +2880,7 @@ unified Ctrl+N creation palette — the generate-dialog context picker is modern
 the checkbox lists; frontend 636 tests); the unified Ctrl+N creation palette remains
 documented-only**.
 
-Preceded by **plan 31 (`dev/plans/31-inline-ai-helper.md`, ADR-068 — complete 2026-08-22,
+Preceded by **plan 31 (`local planning notes/31-inline-ai-helper.md`, ADR-068 — complete 2026-08-22,
 user-requested)**: the shared Tiptap `MarkdownEditor` gains an **inline AI helper** — a ✨
 toolbar button (new optional `aiHelper` prop, host-injected like the pen adapter) opening
 a modern AI popover (Notion/Craft/Google-Docs "Help me write" pattern): transform presets
@@ -2900,7 +2900,7 @@ loop, `EditorTransformService` singleton (`app.state.editor_ai`; in-memory job r
 /ai/editor/jobs/{id}/cancel` + `GET /ai/editor/jobs/{id}` poll fallback, all audited
 (`AuditRef("editor_transform", …)`); nothing persisted but what the user inserts. Wired
 into NoteEditor, ExtractionView and the new text/markdown file dialog. Frontend 599 ·
-backend 479 tests green. Preceded by **plan 29 (`dev/plans/29-…md`, ADR-064 —
+backend 479 tests green. Preceded by **plan 29 (`local planning notes/29-…md`, ADR-064 —
 complete 2026-08-22)**: text/markdown
 materials own drawings exactly like notes — `material_drawings` (migration 0032),
 `sa-drawing://` refs in the extraction markdown, editable in-app via a
@@ -2915,7 +2915,7 @@ drawing OCR joins FTS/search + AI chunk context, derive copies + remaps refs,
   Create is clicked, and **the dialog stays open after Create** — Save writes
   again without closing (2026-08-22 follow-up).
 
-Preceded by plan 28 (`dev/plans/28-…md`, ADR-063 — complete 2026-08-22): error-pattern
+Preceded by plan 28 (`local planning notes/28-…md`, ADR-063 — complete 2026-08-22): error-pattern
 drills stop being a hardcoded calculus list — patterns become DB-backed,
 course-type-scoped data (`error_patterns`, migration 0031; the G10 calculus
 taxonomy seeds under the `math` course type), counts are scoped to the open
@@ -2928,7 +2928,7 @@ course subject + pattern description/example instead of hard-coded "calculus").
 The DrillsCard shows Seeded/Discovered sections, an honest empty state, and a
 *Find more patterns* action.
 
-Then **plan 27 (`dev/plans/27-…md`, ADR-062 — complete 2026-08-22)**: the workspace
+Then **plan 27 (`local planning notes/27-…md`, ADR-062 — complete 2026-08-22)**: the workspace
 **Materials tab** gets the Library create grammar through one shared hook
 (`useCreateMaterialMenu` — item list + hidden upload inputs, consumed by both
 LibraryPage and MaterialsTab): a **New…** primary menu (New text file / New
@@ -2946,7 +2946,7 @@ retired (one create
 affordance, matching the 2026-08-22 library simplification; the picker footer
 keeps its own upload button).
 
-Plan 26 (`dev/plans/26-…md`, ADR-060/061 — complete 2026-08-22): extraction
+Plan 26 (`local planning notes/26-…md`, ADR-060/061 — complete 2026-08-22): extraction
 QA editing upgraded from a textarea to the shared Tiptap `MarkdownEditor`
 (lazy-loaded) behind new round-trip guards (table schema nodes, Link protocol
 allowlist incl. `ca-material:`/`ca-drawing:`/`mention:`, math-span backslash
@@ -2973,10 +2973,10 @@ primitives (`useSelection`, `useMarquee`+band, typed clipboard store),
 keyboard, drag-to-folder move with multi-id payload, Assign-to-node dialog),
 **D** workspace tabs get the same grammar as **placement verbs** (bulk
 unassign/assign materials, bulk delete notes/quizzes/exercises with trash
-undo, Move-to-node for all three). Next per `dev/plans/05-roadmap.md`:
+undo, Move-to-node for all three). Next per `local planning notes/05-roadmap.md`:
 post-1.0 backlog (local OCR adapter, Tauri shell, audio/video ingestion,
 plugins, PDF stroke-layers, graph-sketch grading, etc.) — plan 34 (interactive
-widget blocks + AG-UI state channel, `dev/plans/34-interactive-widgets-and-agui.md`)
+widget blocks + AG-UI state channel, `local planning notes/34-interactive-widgets-and-agui.md`)
 is **complete** (ADR-071…076); the graph-sketch/numberline *grading* (G7/C21) is the
 natural follow-on, now that the widget state channel exists.
 
@@ -2986,7 +2986,7 @@ to end (mentions → on-demand context → HITL proposals → AI-composed materi
 companion glue).
 
 
-Phase 11 (user decision 2026-08-20, **ADR-043, plan `dev/plans/15-ai-companion.md`**):
+Phase 11 (user decision 2026-08-20, **ADR-043, plan `local planning notes/15-ai-companion.md`**):
 the AI becomes a first-class actor — entity **mentions** (done, 11A), chat
 **on-demand context** via a READ tool (done, 11B), **HITL proposal cards**
 (11C1/11C2), **AI-composed material** (11D), companion glue (11E).
@@ -3004,7 +3004,7 @@ protocol; frontend `features/ai/EntityMention` (one chip: M→library, N→note,
 C→concepts tab, T→node workspace, Q/E→runner) + `AiBadge` + inline rendering in
 BlockRenderer (markdown `mention:` links + standalone `mention` block type).
 
-Phase 10 (user decision 2026-08-20, **ADR-042, plan `dev/plans/14-ai-task-layer.md`):
+Phase 10 (user decision 2026-08-20, **ADR-042, plan `local planning notes/14-ai-task-layer.md`):
 a uniform way to invoke AI generation with explicit, inspectable context. **10A**
 `ContextResolver` (`app/services/context.py`) — scope (node/subtree/course) +
 material opt-in/out + notes + concepts + per-node **AI hints** → one budgeted
@@ -3022,7 +3022,7 @@ per-node AI-instructions card in the workspace
 overview. **10E deferred**: chat keeps its own context assembly; manifest +
 `read_item` tool and MCP sharing the resolver are future work.
 
-Phase 9 (user decision 2026-08-19, **ADR-039, plan `dev/plans/12-uniform-scoping.md`**):
+Phase 9 (user decision 2026-08-19, **ADR-039, plan `local planning notes/12-uniform-scoping.md`**):
 chapters/sections collapse into a **unified node tree** (`tree_nodes`, ≤4 node levels
 below the course, undeletable root = course level). All placement (quizzes, exercises,
 flashcards, notes, material links, concept coverage, chat) becomes one `node_id`
@@ -3037,7 +3037,7 @@ coverage per node **(done)** · 9D scope-bound tutor chat **(done)** · 9E local
 read-only **MCP resource server (done — `python -m studyassistant mcp`, stdio)**.
 
 Phase 8 (user-approved 2026-08-19, ADR-035/036/037; roadmap
-`dev/plans/05-roadmap.md`) is complete: **8A** per-course materials & scoped
+`local planning notes/05-roadmap.md`) is complete: **8A** per-course materials & scoped
 assignment (0014) · **8B** Nemo library + material page + symlink sources (L1,
 0015) + chapter workspace/course tabs + reconciliation automation (L2) +
 per-source scan options/error reporting (L3, 0016) · **8C** notes tags +
@@ -3568,7 +3568,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   ai.md (speech/tts), data-model.md (0056), usage/printing.md (new),
   usage/chat.md (quiz-me credit).
 - 2026-09-06 — **feat(quizme): plan 53-C — Quiz-me chat mode with
-  server-side deterministic grading (ADR-121, plan 53 `dev/plans/53-…md`).**
+  server-side deterministic grading (ADR-121, plan 53 `local planning notes/53-…md`).**
   A per-session **Quiz-me** toggle (header button; `chat_sessions.quizme`,
   migration 0055 with `quiz_pending` JSON) swaps in the assessing system
   prompt (one question at a time, escalate, never reveal answers) and teaches
@@ -3589,7 +3589,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   answer). Backend 1016 + frontend 906 tests green.
 
 - 2026-09-06 — **feat(forecast): plan 53-B — mastery-weighted exam-readiness
-  estimate (ADR-118, plan 53 `dev/plans/53-…md`).** `exam_status` entries now
+  estimate (ADR-118, plan 53 `local planning notes/53-…md`).** `exam_status` entries now
   carry a **readiness** estimate beyond the coverage bar:
   `course_readiness` (metrics.py) computes 100 × (0.5·coverage +
   0.35·mastery + 0.15·trend) where mastery is the answer-weighted accuracy
@@ -3605,7 +3605,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   frontend 904 tests green.
 
 - 2026-09-06 — **feat(planner): plan 53-A — deadline-aware study planner
-  (ADR-118, plan 53 `dev/plans/53-…md`).** The course workspace gains a
+  (ADR-118, plan 53 `local planning notes/53-…md`).** The course workspace gains a
   root-only **Planner** tab backed by `plan_items` (migration 0054: profile/
   course/node placement via the composite FK so items follow node
   merge-delete and Promote-to-course, `kind`
@@ -3626,7 +3626,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
 
 - 2026-09-06 — **feat(research): plan 52-D — SEARCH/FETCH chat tools, web
   search provider setting, optional web-grounded genesis (ADR-136, plan 52
-  `dev/plans/52-…md`) — plan 52 COMPLETE.** New `app/search/provider.py`
+  `local planning notes/52-…md`) — plan 52 COMPLETE.** New `app/search/provider.py`
   adapter: Tavily-style `POST {base}/search` and SearXNG JSON API behind one
   interface (`flavor` + `base_url` in profile preferences, API key in the
   **keyring** (`search:api_key`), connect 1.5 s / read 10 s timeouts,
@@ -3649,7 +3649,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   tests green.
 
 - 2026-09-06 — **feat(genesis): plan 52-B/C — course genesis + `lesson`
-  compose kind (ADR-135, plan 52 `dev/plans/52-…md`).** "I want to learn X"
+  compose kind (ADR-135, plan 52 `local planning notes/52-…md`).** "I want to learn X"
   now has a path. **Slice C** adds the `lesson` compose kind — an expository
   lesson (definitions → explanation → worked example → common pitfalls, no
   fabricated citations) whose source is **model knowledge**: the ContextSpec
@@ -3677,7 +3677,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   Backend 987 + frontend 898 tests green.
 
 - 2026-09-06 — **feat(scratchpad): plan 52-A — a home for exploration +
-  Promote-to-course (ADR-134, plan 52 `dev/plans/52-…md`).** The app is no
+  Promote-to-course (ADR-134, plan 52 `local planning notes/52-…md`).** The app is no
   longer closed-world: a per-profile **Scratchpad** system course
   (`origin='scratch'`, `hidden=true`, unique per profile via partial index
   `uq_courses_profile_scratch`; migration 0053 adds `courses.origin`
@@ -3764,7 +3764,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   a new `has_extraction` flag on `MaterialOut` (bulk-computed in `GET
   /materials` + detail) and `WorkspaceMaterialOut` (bulk-computed in
   `TreeService.workspace`). Backend 966 · frontend 872 tests green. Plan doc:
-  `dev/projects/study-assistant/plans/57-batch-derive-from-selection.md` (local-only).
+  `local project notes/study-assistant/plans/57-batch-derive-from-selection.md` (local-only).
 - 2026-09-04 — **feat(ai): chat-engine cutover — `SA_CHAT_ENGINE` defaults to
   `graph` (family AI-alignment Phase 8, plan 10).** Soaked first: a paced-token
   live-server soak (real uvicorn + WS client + staged mock provider covering
@@ -4737,12 +4737,12 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   ADR-119), and a print/PDF engine of print-HTML templates (quiz paper/key,
   flashcard cut-out sheets, materials, planner week) over the browser's
   print-to-PDF — no weasyprint/Typst bundling (ADR-118…120). Roadmap backlog and
-  `dev/plans/README.md` updated. Tracked-code changes: none.
+  `local planning notes/README.md` updated. Tracked-code changes: none.
 
 - 2026-08-31 — **docs(planning): post-1.0 gap audit → five approved rounds (plans
   47–51) + `ca-plan` skill renamed `sa-plan`.** A full docs/codebase audit
   (backend + frontend + family alignment vs neuronection.com / assistant-ui) fed
-  five slice-level plans in `dev/plans/` (local-only, gitignored): **47**
+  five slice-level plans in `local planning notes/` (local-only, gitignored): **47**
   ingestion breadth — DOCX/PPTX/EPUB/HTML converters (B10 vision promise, today
   uploads as kind `doc` then fails ingest with `unsupported material kind`) +
   lecture audio/video → transcript materials via the existing `transcribe` task
@@ -4762,11 +4762,11 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   (keypoint-based v1, freehand out), C20 error-spotting (detector-seeded flaws,
   equivalence-chain proof of wrongness for LLM-proposed ones), C14 code execution
   in Pyodide — server-side execution: none, ever (ADR-112…115). Roadmap
-  `dev/plans/05-roadmap.md` post-1.0 backlog rewritten around the rounds;
+  `local planning notes/05-roadmap.md` post-1.0 backlog rewritten around the rounds;
   `docs/STATUS.md` (this file) stays the tracked source of truth. Repo hygiene
   en route: `.opencode/skills/ca-plan` → `sa-plan` (the AGENTS.md `sa-plan`
   reference now resolves), its content updated (plans 01–46, current
-  conventions), `dev/plans/README.md` document table gained rows 43–51 and lost
+  conventions), `local planning notes/README.md` document table gained rows 43–51 and lost
   its stale CourseAssistant title, README badges now track GitHub releases
   (were hardcoded v0.1.0 / "in development"). Tracked-code changes: none (no
   product code touched this round).
@@ -6283,7 +6283,7 @@ Plans (internal planning record, outside this repository): 01–55; 47–55 plan
   stored indices — grading/analytics untouched. Engines, exports, mistake notebook and
   both runners are unchanged (ADR-045: quizzes and exercises stay separate assessment
   entities). Backend 483 · frontend 620 tests green. Slice 32D (materials/notes
-  display + unified Ctrl+N creation palette) is documented in `dev/plans/32-…md` as
+  display + unified Ctrl+N creation palette) is documented in `local planning notes/32-…md` as
   the next slice, not yet implemented.
 
 - 2026-08-22 — **UX: creating a text/Markdown file no longer closes the dialog —
@@ -8215,7 +8215,7 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   (ChatPanel context-panel/read-indicator coverage).
 
 - 2026-08-20 — **Phase 11A: entity mentions (ADR-043, plan
-  `dev/plans/15-ai-companion.md`).** New `app/ai/mentions.py`
+  `local planning notes/15-ai-companion.md`).** New `app/ai/mentions.py`
   (`MentionRegistry` + parser; handles `[M#][N#][C#][T#]` are real ids, `Q/E`
   reserved for future contexts; out-of-range handles stay literal). The context
   resolver gains `ContextBundle.mentions()` and a structure section (scope node
@@ -8272,7 +8272,7 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   `chat.tools.*`. 274 backend + 206 frontend tests.
 
 - 2026-08-20 — **Phase 10 (10A–10D): AI task layer & context engine (ADR-042,
-  plan `dev/plans/14-ai-task-layer.md`).** **10A** — new
+  plan `local planning notes/14-ai-task-layer.md`).** **10A** — new
   `services/context.py`: `ContextSpec` (course, node, scope `node|subtree|
   course`, include/exclude material ids, note ids, concept ids, one-off hint,
   retrieval query/budgets — all cross-course ids 422) resolves to a
@@ -8308,7 +8308,7 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   273 backend + 204 frontend tests.
 
 - 2026-08-20 — **Sidebar-navigation & tree-telemetry round (plan
-  `dev/plans/13-sidebar-navigation.md`): the structure sidebar becomes a complete
+  `local planning notes/13-sidebar-navigation.md`): the structure sidebar becomes a complete
   navigation surface.** **A — polish**: open/closed + per-course expansion persist
   to localStorage (stored expansion wins over auto-expand — first visit still
   auto-expands to the current node); fuzzy **Find a node…** filter (`lib/fuzzy`,
@@ -9141,10 +9141,10 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   structure.
 - 2026-08-19 — Documentation sync pass (ca-docs-sync): created `docs/usage/` (6 user
   guides: getting started, library, courses, quiz, exercises, chat — linked from
-  README); `dev/plans/03` gained the as-built schema section (migrations 0002–0007,
+  README); `local planning notes/03` gained the as-built schema section (migrations 0002–0007,
   deviations: surrogate PK on study state, FTS service-layer sync, runtime vec
-  tables, folders addition, not-yet-built table inventory); `dev/plans/02` module map
-  refreshed to the real layout with deviation notes; `dev/plans/06` gained ADRs
+  tables, folders addition, not-yet-built table inventory); `local planning notes/02` module map
+  refreshed to the real layout with deviation notes; `local planning notes/06` gained ADRs
   029–032 (hand-rolled gateway adapters w/ LangGraph deferred, runtime vec0 tables,
   plan-07 layer pulled into Phase 1, local embeddings deferred). Plans are
   local-only/gitignored — STATUS.md remains the tracked source of truth.
@@ -9282,7 +9282,7 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
 - 2026-08-18 — Added root `README.md` with Linux prerequisites for the pywebview shell
   (`libgirepository-2.0-dev`, `libcairo2-dev` — required to build PyGObject; WebKitGTK
   typelib preinstalled on Mint) and dev/verify commands.
-- 2026-08-18 — `dev/plans/` is fully gitignored again (user decision): all of `dev/` is
+- 2026-08-18 — `local planning notes/` is fully gitignored again (user decision): all of `dev/` is
   local-only scratch, plans are never committed. AGENTS.md, both skills, and this file
   updated to say so; tracked doc surface is now AGENTS.md + `docs/` + `.opencode/` only.
 - 2026-08-18 — Phase 0 skeleton implemented on `feat/phase-0-skeleton`: uv/pnpm
@@ -9291,17 +9291,17 @@ concepts extract-from-bar ×1, ConceptsPanel cancel ×1; backend unchanged).
   13 tests); frontend (Vite+React+TS, Tailwind 4 semantic tokens light/dark, shadcn
   base, i18n harness w/ no-literal-string lint, block renderers, nav shell, Today
   placeholder, rendering-spike page for KaTeX/Mermaid/MathLive/canvas); CI mirrors both
-  verification suites. `.gitignore` fixed to actually track `dev/plans/` and `.opencode/`
+  verification suites. `.gitignore` fixed to actually track `local planning notes/` and `.opencode/`
   (docs claimed tracked but the old rules ignored them).
-- 2026-08-18 — Plans moved back to `dev/plans/` (tracked; rest of `dev/` gitignored via
-  `dev/*` + `!dev/plans/`). References updated. Tracked docs: AGENTS.md, docs/STATUS.md,
-  dev/plans/, .opencode/.
+- 2026-08-18 — Plans moved back to `local planning notes/` (tracked; rest of `dev/` gitignored via
+  `dev/*` + `!local planning notes/`). References updated. Tracked docs: AGENTS.md, docs/STATUS.md,
+  local planning notes/, .opencode/.
 - 2026-08-18 — `dev/` is now fully gitignored scratch space (notes.txt); STATUS.md moved
   to `docs/STATUS.md` so all tracked documentation lives under `docs/`. Fixed the
   misnamed `.gitignored` → `.gitignore`.
-- 2026-08-18 — Plans moved from `dev/plans/` to `dev/plans/`; all references updated
+- 2026-08-18 — Plans moved from `local planning notes/` to `local planning notes/`; all references updated
   (AGENTS.md, skills, STATUS.md). User-facing docs will live in `docs/usage/`.
-- 2026-08-18 — Planning complete: docs `dev/plans/01–11` + `README.md` written and
+- 2026-08-18 — Planning complete: docs `local planning notes/01–11` + `README.md` written and
   cross-linked; 28 ADRs recorded; opencode agent harness added (AGENTS.md, skills
   `ca-dev` / `ca-docs-sync`, this file). No code yet.
 

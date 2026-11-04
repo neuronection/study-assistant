@@ -1,8 +1,8 @@
 """Family cloud-calendar engine (ADR-0052).
 
-Canonical copy lives in the dev repo (``contracts/cloud_calendar.py``) and is
+Canonical copy lives in the family standards (``contracts/cloud_calendar.py``) and is
 vendored byte-identical into product hosts via
-``dev/scripts/sync-cloud-connectors.sh``. Edit the canonical copy only.
+``the family sync tooling``. Edit the canonical copy only.
 
 The module is deliberately *domain-agnostic*. It knows how to:
 

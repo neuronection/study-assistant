@@ -1,12 +1,12 @@
 # VENDORED FILE — family canonical (ADR-0031 / ADR-0038). Source of truth:
-# dev/contracts/wire_params.py; synced byte-identical to
+# the family wire-parameter contract; synced byte-identical to
 # backend/app/ai/wire_params.py in study-assistant, health-assistant/core
-# and career-assistant by dev/scripts/sync-wire-params.sh, sha-checked by
-# dev/scripts/verify-wiring.sh, accepted by the shared fixture table
-# (dev/contracts/wire-params.fixtures.json — vendored alongside, loaded by
+# and career-assistant by the family sync tooling, sha-checked by
+# the family wiring verifier, accepted by the shared fixture table
+# (the family contract canonical/wire-params.fixtures.json — vendored alongside, loaded by
 # every repo's wire-params contract test). NEVER edit the vendored copy
-# in-repo — change the dev canonical, then re-run the sync (contract
-# changes = one dev commit + one sync run, never per-repo edits).
+# in-repo — change the family canonical, then re-run the sync (contract
+# changes = one canonical commit + one sync run, never per-repo edits).
 """Family wire-parameter policy (ADR-0038) — the shared core.
 
 One canonical implementation of the rules every model factory applies

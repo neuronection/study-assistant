@@ -49,7 +49,7 @@ SCHOLARLY_PROVIDER_IDS = ("arxiv", "openalex", "crossref")
 ARXIV_ENDPOINT = "https://export.arxiv.org/api/query"
 OPENALEX_ENDPOINT = "https://api.openalex.org/works"
 CROSSREF_ENDPOINT = "https://api.crossref.org/works"
-SCHOLARLY_MAILTO = "study-assistant@neuronection.dev"
+SCHOLARLY_MAILTO = "study-assistant@neuronection.com"
 
 Resolver = Callable[[str], list[str]]
 

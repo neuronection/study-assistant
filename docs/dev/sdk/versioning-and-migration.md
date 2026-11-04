@@ -31,10 +31,8 @@ The web-search trio, the charter set, and the docs-tree contract are
 **byte-identical vendored copies** — never edited in-repo. The law, in
 one line each:
 
-- change the **dev canonical** (`dev/contracts/search_providers.py`,
-  `dev/contracts/…`), then run the sync script
-  (`dev/scripts/sync-search-providers.sh` /
-  `sync-extension-contract.sh`) and commit both sides together;
+- change the **family canonical contract**, then run the family sync
+  tooling and commit both sides together;
 - drift is a gate failure (`--check`, wired into `verify-wiring.sh`),
   not a merge conflict to resolve by hand;
 - the vendored `SearchError` taxonomy maps onto the charter codes
