@@ -261,9 +261,13 @@ const jobsRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
-  validateSearch: (search: Record<string, unknown>): { tab?: string; section?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { tab?: string; section?: string; obs?: string; detail?: string } => ({
     tab: typeof search.tab === 'string' ? search.tab : undefined,
     section: typeof search.section === 'string' ? search.section : undefined,
+    obs: typeof search.obs === 'string' ? search.obs : undefined,
+    detail: typeof search.detail === 'string' ? search.detail : undefined,
   }),
   component: () => <SettingsPage />,
 })

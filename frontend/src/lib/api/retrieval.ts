@@ -16,9 +16,14 @@ export type RetrievalCutoverRequest = Schemas['RetrievalCutoverIn']
 export type RetrievalAction = Schemas['RetrievalActionOut']
 export type RetrievalQuality = Schemas['RetrievalQualityEnvelopeOut']
 export type RetrievalQualityCompareRequest = Schemas['RetrievalQualityCompareIn']
+export type RetrievalQueryHealth = Schemas['RetrievalQueryHealthEnvelopeOut']
+export type RetrievalUsage = Schemas['RetrievalUsageOut']
 
-export async function getRetrievalOverview(): Promise<RetrievalOverview> {
-  const response = await apiFetch('/api/v1/admin/retrieval/overview')
+export async function getRetrievalOverview(
+  window?: string
+): Promise<RetrievalOverview> {
+  const search = window ? `?window=${encodeURIComponent(window)}` : ''
+  const response = await apiFetch(`/api/v1/admin/retrieval/overview${search}`)
   return json<RetrievalOverview>(response)
 }
 
@@ -46,6 +51,24 @@ export async function getRetrievalQuality(
   const search = space ? `?space=${encodeURIComponent(space)}` : ''
   const response = await apiFetch(`/api/v1/admin/retrieval/quality${search}`)
   return json<RetrievalQuality>(response)
+}
+
+export async function getRetrievalQueryHealth(
+  window?: string
+): Promise<RetrievalQueryHealth> {
+  const search = window ? `?window=${encodeURIComponent(window)}` : ''
+  const response = await apiFetch(
+    `/api/v1/admin/retrieval/query-health${search}`
+  )
+  return json<RetrievalQueryHealth>(response)
+}
+
+export async function getRetrievalUsage(
+  window?: string
+): Promise<RetrievalUsage> {
+  const search = window ? `?window=${encodeURIComponent(window)}` : ''
+  const response = await apiFetch(`/api/v1/admin/retrieval/usage${search}`)
+  return json<RetrievalUsage>(response)
 }
 
 function actionHeaders(idempotencyKey?: string): Record<string, string> {
