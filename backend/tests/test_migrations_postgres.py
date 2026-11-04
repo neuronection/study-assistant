@@ -10,6 +10,7 @@ import socket
 import tempfile
 import uuid
 from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import pytest
@@ -18,9 +19,13 @@ from alembic.script import ScriptDirectory
 from filelock import FileLock
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, RowMapping, make_url
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from alembic import command
+from app.domain.models import Chunk, Course, Extraction, Material, Profile, User
+from app.storage import vectors
+from app.storage.vector_contract import content_hash
 
 # gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
 DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
@@ -69,9 +74,23 @@ def _columns(engine: Engine, table: str) -> dict[str, RowMapping]:
         return {row["column_name"]: row for row in rows}
 
 
-@pytest.fixture(scope="module")
-def migrated_pg(_loopback_sockets: None) -> Iterator[Engine]:
-    """A scratch database on the same server, migrated to head."""
+def _scalar(engine: Engine, statement: str, params: dict[str, Any] | None = None) -> Any:
+    with engine.connect() as conn:
+        return conn.execute(text(statement), params or {}).scalar()
+
+
+def _relation_exists(engine: Engine, name: str) -> bool:
+    return _scalar(engine, "SELECT to_regclass(:name)", {"name": name}) is not None
+
+
+def _rows(engine: Engine, statement: str) -> list[RowMapping]:
+    with engine.connect() as conn:
+        return list(conn.execute(text(statement)).mappings())
+
+
+@contextmanager
+def _scratch_database() -> Iterator[tuple[Config, Engine]]:
+    """A throwaway database on the configured server plus an alembic config."""
     base = make_url(DATABASE_URL)
     scratch = f"{base.database or 'postgres'}_migtest_{uuid.uuid4().hex[:8]}"
     scratch_url = base.set(database=scratch)
@@ -85,10 +104,8 @@ def migrated_pg(_loopback_sockets: None) -> Iterator[Engine]:
         alembic_cfg.set_main_option(
             "sqlalchemy.url", scratch_url.render_as_string(hide_password=False)
         )
-        with _MIGRATION_LOCK:
-            command.upgrade(alembic_cfg, "head")
         engine = create_engine(scratch_url, poolclass=NullPool)
-        yield engine
+        yield alembic_cfg, engine
     finally:
         if engine is not None:
             engine.dispose()
@@ -96,6 +113,81 @@ def migrated_pg(_loopback_sockets: None) -> Iterator[Engine]:
             conn.execution_options(isolation_level="AUTOCOMMIT")
             conn.execute(text(f'DROP DATABASE IF EXISTS "{scratch}" WITH (FORCE)'))
         maintenance.dispose()
+
+
+def _seed_legacy_store(engine: Engine) -> dict[str, Any]:
+    """Seed the pre-0012 shape (ORM rows + the runtime legacy vector tables)."""
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        user = User(email="pg-migration@test.local", password_hash=None)
+        session.add(user)
+        session.flush()
+        profile = Profile(user_id=user.id, name="Default", is_default=True)
+        session.add(profile)
+        session.flush()
+        course = Course(profile_id=profile.id, title="PostgreSQL migration")
+        session.add(course)
+        session.flush()
+        material = Material(
+            profile_id=profile.id,
+            course_id=course.id,
+            kind="md",
+            title="Notes",
+            filename="notes.md",
+            status="ready",
+        )
+        session.add(material)
+        session.flush()
+        extraction = Extraction(
+            material_id=material.id,
+            extractor="test",
+            blocks=[{"type": "text", "md": "alpha\n\nbeta"}],
+            markdown="alpha\n\nbeta",
+        )
+        session.add(extraction)
+        session.flush()
+        chunks = [
+            Chunk(extraction_id=extraction.id, ordinal=0, text="alpha"),
+            Chunk(extraction_id=extraction.id, ordinal=1, text="beta"),
+        ]
+        session.add_all(chunks)
+        session.commit()
+        chunk_ids = [str(chunk.id) for chunk in chunks]
+        vectors.store(
+            session,
+            chunk_ids,
+            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]],
+            "legacy-model",
+        )
+        session.commit()
+        return {
+            "profile_id": str(profile.id),
+            "material_id": str(material.id),
+            "chunk_ids": chunk_ids,
+        }
+
+
+@pytest.fixture(scope="module")
+def migrated_pg(_loopback_sockets: None) -> Iterator[Engine]:
+    """A scratch database on the same server, migrated to head."""
+    with _scratch_database() as (alembic_cfg, engine):
+        with _MIGRATION_LOCK:
+            command.upgrade(alembic_cfg, "head")
+        yield engine
+
+
+@pytest.fixture(scope="module")
+def seeded_vector_pg(
+    _loopback_sockets: None,
+) -> Iterator[tuple[Config, Engine, dict[str, Any]]]:
+    """A scratch database at 0011 with a real legacy store, migrated to head."""
+    with _scratch_database() as (alembic_cfg, engine):
+        with _MIGRATION_LOCK:
+            command.upgrade(alembic_cfg, "0011_retrieval_run_actions")
+        seeded = _seed_legacy_store(engine)
+        with _MIGRATION_LOCK:
+            command.upgrade(alembic_cfg, "head")
+        yield alembic_cfg, engine, seeded
 
 
 def test_upgrade_reaches_head(migrated_pg: Engine) -> None:
@@ -153,3 +245,159 @@ def test_retrieval_ops_tables_and_job_result(migrated_pg: Engine) -> None:
     assert "VECTOR_REINDEX" in check
     assert "VECTOR_MAINTENANCE" in check
     assert "VECTOR_CUTOVER" in check
+
+
+def test_baseline_boolean_defaults_are_dialect_portable(migrated_pg: Engine) -> None:
+    """Boolean ``server_default=0/1`` is a PostgreSQL DDL error.
+
+    The pre-0012 chain shipped five such defaults in the baseline and one in
+    ``0009_calendar_links``; a fresh PostgreSQL upgrade failed at
+    ``CREATE TABLE courses``. They are SQLAlchemy ``false()``/``true()`` now.
+    """
+    expected = {
+        ("courses", "hidden"): "false",
+        ("material_sources", "mirror_subdirs"): "false",
+        ("chat_sessions", "quizme"): "false",
+        ("chat_quiz_pendings", "awaiting_answer"): "false",
+        ("materials", "starred"): "false",
+        ("calendar_links", "enabled"): "true",
+    }
+    with migrated_pg.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT table_name, column_name, column_default "
+                "FROM information_schema.columns WHERE table_schema = 'public'"
+            )
+        ).mappings()
+        defaults = {(row["table_name"], row["column_name"]): row["column_default"] for row in rows}
+    for column, value in expected.items():
+        assert defaults[column] == value
+
+
+def test_decision_slots_seed_on_postgres(migrated_pg: Engine) -> None:
+    """The slot seed reuses one bind parameter in target and predicate.
+
+    PostgreSQL type-deduced the two occurrences as ``text`` vs
+    ``character varying`` and rejected the statement; both are cast now.
+    """
+    slots = {
+        row["requires"]
+        for row in _rows(migrated_pg, "SELECT requires FROM default_task_assignments")
+    }
+    assert {
+        "decision:tool-dispatch",
+        "decision:boolean-gate",
+        "decision:choice",
+        "decision:score",
+    } <= slots
+
+
+def test_vector_space_backfill_shape_and_round_trip(
+    seeded_vector_pg: tuple[Config, Engine, dict[str, Any]],
+) -> None:
+    """0012 maps the legacy store on PostgreSQL and survives downgrade/upgrade."""
+    alembic_cfg, engine, seeded = seeded_vector_pg
+    chunk_ids: list[str] = seeded["chunk_ids"]
+
+    assert _relation_exists(engine, "chunk_vecs")
+    assert _relation_exists(engine, "chunk_vec_ids")
+    assert _scalar(engine, "SELECT count(*) FROM chunk_vecs") == 2
+
+    space = _rows(
+        engine, "SELECT id, name, model, dim, index_table, status, normalize FROM vector_spaces"
+    )[0]
+    assert space["id"] == "legacy-chunk-vecs"
+    assert space["name"] == "content"
+    assert space["model"] == "legacy-model"
+    assert space["dim"] == 4
+    assert space["index_table"] == "chunk_vecs"
+    assert space["status"] == "active"
+    assert space["normalize"] is True
+
+    legacy_meta = {
+        row["key"]: row["value"] for row in _rows(engine, "SELECT key, value FROM vec_meta")
+    }
+    assert legacy_meta["model"] == space["model"]
+    assert int(legacy_meta["dim"]) == space["dim"]
+
+    document = _rows(
+        engine, "SELECT id, space_id, kind, source_id, profile_id FROM vector_documents"
+    )[0]
+    assert str(document["id"]) == seeded["material_id"]
+    assert document["space_id"] == "legacy-chunk-vecs"
+    assert document["kind"] == "material"
+    assert document["source_id"] == seeded["material_id"]
+    assert str(document["profile_id"]) == seeded["profile_id"]
+
+    records = _rows(
+        engine,
+        "SELECT id, document_id, space_id, view, chunk_index, rowid, "
+        "content_hash, embedding FROM vector_records ORDER BY chunk_index",
+    )
+    assert len(records) == 2
+    assert {str(record["id"]) for record in records} == set(chunk_ids)
+    assert {str(record["document_id"]) for record in records} == {seeded["material_id"]}
+    assert {record["space_id"] for record in records} == {"legacy-chunk-vecs"}
+    assert {record["view"] for record in records} == {"body"}
+    assert [record["chunk_index"] for record in records] == [0, 1]
+    assert [record["content_hash"] for record in records] == [
+        content_hash("alpha"),
+        content_hash("beta"),
+    ]
+    assert [record["embedding"] for record in records] == [None, None]
+
+    legacy_rowids = {int(row["rowid"]) for row in _rows(engine, "SELECT rowid FROM chunk_vec_ids")}
+    metadata_rowids = {int(record["rowid"]) for record in records}
+    assert (
+        metadata_rowids == legacy_rowids == {vectors.rowid_for(chunk_id) for chunk_id in chunk_ids}
+    )
+
+    assert _scalar(engine, "SELECT count(*) FROM retrieval_coverage_snapshots") == 0
+
+    with engine.connect() as conn:
+        constraints: dict[str, str] = {
+            str(row[0]): str(row[1])
+            for row in conn.execute(
+                text(
+                    "SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint "
+                    "WHERE conname IN ('uq_vector_records_rowid', 'uq_vector_documents_source', "
+                    "'ck_vector_spaces_status_allowed', 'ck_vector_records_view_allowed')"
+                )
+            )
+        }
+        indexes: dict[str, str] = {
+            str(row[0]): str(row[1])
+            for row in conn.execute(
+                text(
+                    "SELECT indexname, indexdef FROM pg_indexes "
+                    "WHERE indexname IN ('uq_vector_spaces_name_active', "
+                    "'uq_jobs_idempotency_active', 'uq_jobs_lock_key_active')"
+                )
+            )
+        }
+    assert "UNIQUE" in constraints["uq_vector_records_rowid"]
+    assert "UNIQUE" in constraints["uq_vector_documents_source"]
+    assert "active" in constraints["ck_vector_spaces_status_allowed"]
+    assert "body" in constraints["ck_vector_records_view_allowed"]
+    assert "UNIQUE" in indexes["uq_vector_spaces_name_active"]
+    for name in ("uq_jobs_idempotency_active", "uq_jobs_lock_key_active"):
+        assert "UNIQUE" in indexes[name]
+        assert "WHERE" in indexes[name]
+        assert "queued" in indexes[name]
+        assert "running" in indexes[name]
+    assert _columns(engine, "jobs")["cancel_requested"]["is_nullable"] == "NO"
+
+    with _MIGRATION_LOCK:
+        command.downgrade(alembic_cfg, "0011_retrieval_run_actions")
+    for table in ("vector_spaces", "vector_documents", "vector_records"):
+        assert not _relation_exists(engine, table)
+    assert _scalar(engine, "SELECT count(*) FROM chunk_vecs") == 2
+    assert _scalar(engine, "SELECT count(*) FROM chunk_vec_ids") == 2
+    assert _scalar(engine, "SELECT value FROM vec_meta WHERE key = 'model'") == "legacy-model"
+
+    with _MIGRATION_LOCK:
+        command.upgrade(alembic_cfg, "head")
+    assert _scalar(engine, "SELECT count(*) FROM vector_spaces") == 1
+    assert _scalar(engine, "SELECT count(*) FROM vector_documents") == 1
+    assert _scalar(engine, "SELECT count(*) FROM vector_records") == 2
+    assert _scalar(engine, "SELECT count(*) FROM retrieval_coverage_snapshots") == 0
