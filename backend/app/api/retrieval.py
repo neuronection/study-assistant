@@ -62,6 +62,9 @@ class RetrievalRunOut(BaseModel):
     cancel_requested: bool = False
     idempotency_key: str | None = None
     lock_key: str | None = None
+    token_aware: bool = False
+    tokenizer: dict[str, Any] | None = None
+    chunk: dict[str, Any] | None = None
 
 
 class RetrievalRunDetailOut(BaseModel):
@@ -97,6 +100,9 @@ class RetrievalSpaceOut(BaseModel):
     as_of: str | None = None
     quality_state: str = "not_sampled"
     quality_gate: str = "unknown"
+    token_aware: bool = False
+    tokenizer: dict[str, Any] | None = None
+    chunk: dict[str, Any] | None = None
 
 
 class RetrievalCoverageOut(BaseModel):
@@ -311,6 +317,7 @@ class RetrievalSpaceBuildIn(BaseModel):
     normalize: bool = True
     query_prefix: str | None = Field(default=None, max_length=80)
     document_prefix: str | None = Field(default=None, max_length=80)
+    token_aware: bool | None = None
     idempotency_key: str | None = None
 
 
@@ -640,6 +647,7 @@ def post_build_space(
             normalize=body.normalize,
             query_prefix=body.query_prefix,
             document_prefix=body.document_prefix,
+            token_aware=bool(body.token_aware),
         )
     except actions.RetrievalActionError as error:
         raise _refused(error) from error

@@ -812,10 +812,10 @@ idempotency (`building`/active comparison), activation's
 `previous_space_key`, status/DTO reads and `legacy.load_store` all return the
 row's value instead of recomputing it. `build_space` computes and persists the
 v1 key for a new space. A direct ORM insert without `space_key` stamps the v1
-key; an insert carrying tokenizer columns but no explicit key is refused
-(T5b2 owns the v2 pre-image). This closes the pre-image boundary: a later
-tokenizer/chunker change can never make an existing row look like a different
-live space during remap/cutover.
+key; T5b2 replaced the earlier refusal so a complete tokenizer/chunk pair now
+computes the v2 pre-image (a half-configured pair is still refused). This
+closes the pre-image boundary: a later tokenizer/chunker change can never make
+an existing row look like a different live space during remap/cutover.
 
 **Schema for T5b2 (migration `0017_vector_token_schema`).**
 `vector_spaces` gains `tokenizer_kind`, `tokenizer_identifier`,
@@ -853,3 +853,98 @@ it are removed.
 5. Build a candidate v2 space, compare coverage/quality, cut over with the
    stored-key activation path, and retain the v1 space. Progress detail/UI
    stay T5c/T5d.
+
+## Plan 52 T5b2 — token-aware writes and the v2 cutover (T5c handoff)
+
+T5b2 is the **write half**. A token-aware space now chunks and embeds by
+tokens while every v1 space stays character-chunked and byte-identical. It
+does **not** emit `progress_detail`, change the Tools UI or write rollout
+docs; those remain T5c.
+
+**Profile resolution.** `services/retrieval/chunk_profile.py` resolves one
+effective pair from the embeddings assignment through the existing accounting
+seam: an explicit admin pair when supplied, the curated OpenAI embedding
+mapping (bundled exact `cl100k_base`), otherwise the labelled heuristic
+fallback. No model-name substring ever selects a tokenizer. The default
+budget is 512 tokens / 64 overlap / 2400 chars, clamped to fit
+`max_input_tokens` minus the document prefix and a 16-token safety margin.
+Request batching is separate: `batch_max_items=64`,
+`batch_max_tokens=32_000`, and the reindex payload's own `batch_size` can
+only tighten the item bound.
+
+**Identity.** `lifecycle.build_space` takes an optional complete
+`tokenizer` + `chunk` pair. With the pair it persists all nine scalars,
+forces `chunker_version='2'`, validates the budget and computes
+`space_key_v2` explicitly; with neither it keeps the v1 build and the v1 key.
+A half pair is refused. The ORM's implicit `space_key` default now computes
+the v2 pre-image from a complete pair, still stamps v1 for a legacy row, and
+refuses a half pair or `chunker_version='2'` without a tokenizer.
+`ContentSpace`/`canonical_space` reconstruct the pair and return the stored
+key verbatim. `POST /admin/retrieval/spaces` accepts `token_aware: true` to
+resolve and persist the assignment's profile; the space/run read DTOs expose
+`token_aware`, tokenizer identity/exactness and the chunk config.
+
+**Chunking.** `pipelines/chunking.py` keeps `chunk_markdown` unchanged and
+adds `chunk_tokens`: `encode_with_offsets` windows with exact character
+spans, token `start/end/count`, token overlap, a hard `max_chars` ceiling and
+no truncation. A window that cannot fit raises the typed `input_too_long`
+failure. Ingest, trash restore, material edits and course import all call
+`chunk_texts_for_space`, which uses the **active** v2 space's exact profile
+and otherwise the v1 character path. `Chunk.token_count` is the exact window
+count for a v2-created chunk; existing v1 chunks are never rewritten.
+
+**Writes.** `StudyVectorStore.store_specs` writes one `vector_records` row
+per token window with `char_start/char_end` and
+`token_count/token_start/token_end`; `IndexRecord` carries the same fields to
+the backend. Migration `0018_vector_record_token_windows` widens the record
+uniqueness to `(space, chunk, chunk_index)` so one source chunk can own
+several windows without losing its `chunk_id` hydration handle. Search
+dedupes hits by chunk (best distance). The ordinary `store()` path is
+untouched for v1. Reindex windows each source chunk, skips a window whose
+`(chunk_id, chunk_index)` content hash is stored unchanged, reports
+`input_too_long` once per chunk (never loops or truncates) and keeps coverage
+counted in chunks. Postprocess uses the same profile and batching for an
+active v2 space.
+
+**Cutover.** Build a v2 space beside the active v1 space (API
+`token_aware=true` or `lifecycle.build_space` with a pair), backfill it with
+`VECTOR_REINDEX`, pass the existing physical/coverage/golden-query quality
+gates, then `activate`/`VECTOR_CUTOVER`. Activation returns the retired
+space's **stored** key (`previous_space_key`) as the remap identity, flips
+the one active pointer and keeps the v1 space and `chunk_vecs` retained. No
+in-place re-chunking: the v1 rows, their keys and their NULL token fields
+survive until the explicit drop.
+
+**Operator runbook.** Set the embeddings assignment first; a curated OpenAI
+embedding model resolves the exact bundled `cl100k_base`, anything else shows
+`exact=false` and must be treated as approximate. Then:
+
+1. `POST /api/v1/admin/retrieval/spaces` with the current provider/model/dim
+   and `"token_aware": true` (or an explicit `tokenizer` + `chunk` pair from
+   an admin script); capture `space_id`, `space_key`, `tokenizer` and `chunk`.
+2. `POST /api/v1/admin/retrieval/reindex` with that `space_id` and an
+   `Idempotency-Key`; wait for `GET /runs`, then confirm the space's coverage
+   snapshot/gate.
+3. Run `POST /quality/compare` (or `POST /cutover`, which runs coverage,
+   quality, activation and retirement in one run) and require `pass`.
+4. Activate or cut over; confirm the response's `previous_space_key` is the
+   old **stored** key, the active space DTO reports `token_aware=true`, and
+   the v1 space is `retired` but still present.
+5. Drop the retired v1 space only with its typed name after the grace period
+   (or `force` + the typed name); the compatibility `chunk_vecs` store
+   disappears with that explicit drop.
+
+**T5c handoff (exact, not built here).**
+1. Emit the bounded `background_jobs.progress_detail` contract
+   (`phase`, processed/total/pending documents and chunks, embedded/skipped/
+   failed chunks, tokens, embed calls, `exact_tokenizer`) from the v2 write
+   loop, carry it across chained reconcile runs, fold it into the existing
+   per-document progress update, prune it when the final `result` lands, and
+   keep no id lists or text in it.
+2. Render that detail in Tools → Indexing and the Audit/run drawers (bar plus
+   counters, exact/fallback label); the space/run DTO fields already exist.
+3. Rollout docs/runbook: operator sequence for a v2 build/backfill/quality
+   compare/cutover, the tokenizer fallback warning, and the explicit retained-
+   v1 drop; no new ledger and no Study-only contract edit.
+4. Run the full re-embed/parity benchmark and close the family T5 parity
+   evidence once main carries these bytes.

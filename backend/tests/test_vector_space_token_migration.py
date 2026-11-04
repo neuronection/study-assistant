@@ -14,11 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from alembic.config import Config
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from alembic import command
-from app.domain.models import VectorSpace
+from app.domain.models import VectorDocument, VectorRecord, VectorSpace
 from app.storage.db import make_engine, make_session_factory
 from app.storage.vector_contract import space_key
 
@@ -219,3 +219,64 @@ def test_downgrade_to_0015_drops_the_key(tmp_path: Path) -> None:
     assert "space_key" in _columns(db_path, "vector_spaces")
     assert "tokenizer_kind" in _columns(db_path, "vector_spaces")
     assert "token_count" in _columns(db_path, "vector_records")
+
+
+def test_token_windows_coexist_per_source_chunk(tmp_path: Path) -> None:
+    db_path = tmp_path / "vector-token-windows.db"
+    config = _cfg(db_path)
+    command.upgrade(config, "head")
+
+    with _factory(db_path)() as session:
+        space = VectorSpace(
+            id=str(uuid.uuid4()),
+            name=f"windows-{uuid.uuid4().hex[:8]}",
+            provider="openai",
+            model="text-embedding-3-small",
+            dim=4,
+            chunker_version="1",
+            composer_version="1",
+            status="active",
+        )
+        session.add(space)
+        session.flush()
+        document = VectorDocument(
+            id=str(uuid.uuid4()),
+            space_id=space.id,
+            kind="material",
+            source_id=str(uuid.uuid4()),
+            profile_id=None,
+            source_hash="",
+            schema_version=0,
+        )
+        session.add(document)
+        session.flush()
+        chunk_id = str(uuid.uuid4())
+        for index in range(2):
+            session.add(
+                VectorRecord(
+                    id=str(uuid.uuid4()),
+                    document_id=document.id,
+                    space_id=space.id,
+                    chunk_id=chunk_id,
+                    view="body",
+                    chunk_index=index,
+                    char_start=index * 10,
+                    char_end=index * 10 + 10,
+                    token_count=4,
+                    token_start=index * 4,
+                    token_end=index * 4 + 4,
+                    content_hash="a" * 64,
+                )
+            )
+        session.commit()
+        stored = list(
+            session.scalars(
+                select(VectorRecord).where(VectorRecord.chunk_id == chunk_id)
+            )
+        )
+        assert len(stored) == 2
+        assert {record.chunk_index for record in stored} == {0, 1}
+        assert all(
+            record.token_count == record.token_end - record.token_start  # type: ignore[operator]
+            for record in stored
+        )

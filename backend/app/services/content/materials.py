@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ...ai.tokenizers import embedding_accounting, token_count
 from ...core.urls import normalize_url
 from ...core.vocab import DeriveOutcome, MaterialKind
 from ...domain.models import (
@@ -26,7 +25,7 @@ from ...domain.payloads import BlockDict
 from ...jobs.cancellation import cancel_jobs_for_material
 from ...jobs.payloads import IngestPayload
 from ...jobs.runner import JobRunner
-from ...pipelines.chunking import chunk_markdown
+from ...services.retrieval.chunk_profile import chunk_texts_for_space
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
 from ...storage.vector_store import StudyVectorStore
@@ -693,14 +692,15 @@ class MaterialsService:
         self._session.flush()
         ocr = self.embedded_ocr_text(material)
         chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
-        accounting = embedding_accounting(self._session)
-        for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
+        for ordinal, (chunk_text, chunk_tokens) in enumerate(
+            chunk_texts_for_space(self._session, chunk_source)
+        ):
             self._session.add(
                 Chunk(
                     extraction_id=extraction.id,
                     ordinal=ordinal,
                     text=chunk_text,
-                    token_count=token_count(chunk_text, accounting),
+                    token_count=chunk_tokens,
                 )
             )
         words = len(markdown.split())

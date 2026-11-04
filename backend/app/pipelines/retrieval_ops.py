@@ -17,7 +17,7 @@ with the compare persisted on the run result.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, cast
 
 import structlog
@@ -30,8 +30,15 @@ from ..core.vocab import JobType
 from ..domain.models import Chunk, Job, VectorSpace
 from ..jobs.payloads import JobResult
 from ..jobs.runner import JobError
+from ..pipelines.chunking import InputTooLong
 from ..services.retrieval import lifecycle, quality
 from ..services.retrieval.audit import build_vector_event
+from ..services.retrieval.chunk_profile import (
+    ChunkProfile,
+    batch_window_specs,
+    profile_from_row,
+    window_specs_for_chunk,
+)
 from ..services.retrieval.legacy import load_store, write_coverage_snapshot
 from ..services.retrieval.telemetry import degraded_reason_for_warning
 from ..storage.retrieval_ops import (
@@ -43,7 +50,7 @@ from ..storage.retrieval_ops import (
     truncate_failed_ids,
 )
 from ..storage.vector_contract import content_hash
-from ..storage.vector_store import CONTENT_SPACE_ID, StudyVectorStore
+from ..storage.vector_store import CONTENT_SPACE_ID, StudyVectorStore, VectorRecordSpec
 
 logger = structlog.get_logger(__name__)
 
@@ -177,6 +184,23 @@ def _reindex(
     chunks = session.scalars(statement.limit(limit)).all()
     limited = len(chunks) < total
     store = StudyVectorStore(session, space_id=target)
+    profile = profile_from_row(session.get(VectorSpace, target))
+    if profile is not None:
+        return _reindex_tokens(
+            session,
+            job,
+            report,
+            embed,
+            payload,
+            target=target,
+            store=store,
+            profile=profile,
+            chunks=chunks,
+            total=total,
+            limited=limited,
+            only_ids=only_ids,
+            batch_size=batch_size,
+        )
     stored_hashes = store.stored_chunk_hashes()
     stored_ids = set(store.stored_chunk_ids().values())
 
@@ -296,6 +320,170 @@ def _reindex(
         failed_ids=failed_ids,
         gate=gate,
         space_id=target,
+    )
+    report(100, "reindex complete")
+    return RunResultDTO(
+        scanned=scanned,
+        embedded=embedded,
+        skipped=skipped,
+        failed=failed,
+        failed_ids=tuple(failed_ids[:FAILED_IDS_LIMIT]),
+        failed_ids_truncated=len(failed_ids) > FAILED_IDS_LIMIT,
+        gate=gate,
+    )
+
+
+def _reindex_tokens(
+    session: Session,
+    job: Job,
+    report: Progress,
+    embed: EmbedFn,
+    payload: dict[str, Any],
+    *,
+    target: str,
+    store: StudyVectorStore,
+    profile: ChunkProfile,
+    chunks: Sequence[Chunk],
+    total: int,
+    limited: bool,
+    only_ids: set[str] | None,
+    batch_size: int,
+) -> RunResultDTO:
+    """Token-aware reindex: windows are the write unit, chunks the coverage unit."""
+    force = bool(payload.get("force"))
+    stored = store.stored_record_hashes()
+    scanned = 0
+    embedded = 0
+    skipped = 0
+    failed = 0
+    failed_ids: list[str] = []
+    embedded_chunks: set[str] = set()
+    too_long = 0
+    report(1, "scanning chunks")
+
+    def write(specs: list[Any]) -> None:
+        nonlocal embedded, failed, failed_ids
+        if not specs:
+            return
+        chunk_ids = {str(spec.chunk_id) for spec in specs}
+        tags: dict[str, Any] = {
+            "space_id": target,
+            "kind": str(payload.get("kind") or "material"),
+            "view": str(payload.get("view") or "body"),
+        }
+        if len(chunk_ids) == 1:
+            tags["chunk_index"] = int(specs[0].window_index)
+        try:
+            result = embed_with_tags(embed, [str(spec.text) for spec in specs], tags)
+        except Exception as error:
+            logger.warning(
+                "vector_reindex_embed_failed",
+                job_id=job.id,
+                count=len(specs),
+                error=str(error)[:300],
+            )
+            failed += len(chunk_ids)
+            failed_ids.extend(sorted(chunk_ids))
+            return
+        if result is None:
+            failed += len(chunk_ids)
+            failed_ids.extend(sorted(chunk_ids))
+            return
+        model, batch = result
+        if len(batch) != len(specs):
+            failed += len(chunk_ids)
+            failed_ids.extend(sorted(chunk_ids))
+            return
+        store.store_specs(
+            [
+                VectorRecordSpec(
+                    chunk_id=str(spec.chunk_id),
+                    text=str(spec.text),
+                    chunk_index=int(spec.window_index),
+                    char_start=spec.char_start,
+                    char_end=spec.char_end,
+                    token_count=spec.token_count,
+                    token_start=spec.token_start,
+                    token_end=spec.token_end,
+                )
+                for spec in specs
+            ],
+            batch,
+            model,
+        )
+        session.commit()
+        embedded_chunks.update(chunk_ids)
+        embedded = len(embedded_chunks)
+
+    for chunk in chunks:
+        report(
+            max(1, min(99, int(scanned * 100 / max(total, 1)))),
+            f"reindex {scanned}/{len(chunks)}",
+        )
+        scanned += 1
+        try:
+            specs = window_specs_for_chunk(chunk, profile)
+        except InputTooLong as error:
+            logger.warning(
+                "vector_reindex_input_too_long",
+                job_id=job.id,
+                chunk_id=str(chunk.id),
+                tokens=error.tokens,
+                limit=error.limit,
+            )
+            failed += 1
+            failed_ids.append(str(chunk.id))
+            too_long += 1
+            continue
+        changed = [
+            spec
+            for spec in specs
+            if force
+            or stored.get((spec.chunk_id, spec.window_index)) != spec.content_hash
+        ]
+        if not changed:
+            skipped += 1
+            continue
+        for batch in batch_window_specs(changed, profile, max_items=batch_size):
+            write(batch)
+
+    gate = GateStatus.UNKNOWN
+    if not limited and only_ids is None:
+        embedded_total = max(total - failed, 0)
+        coverage = write_coverage_snapshot(
+            session,
+            total=total,
+            embedded=embedded_total,
+            missing=failed,
+            failed=failed,
+            stale=0,
+            space_id=target,
+        )
+        gate = _gate_for(
+            CoverageDTO(
+                space_id=coverage.space_id,
+                as_of=None,
+                total=coverage.total,
+                missing=coverage.missing,
+                stale=coverage.stale,
+                failed=coverage.failed,
+                embedded=coverage.embedded,
+                coverage=(
+                    coverage.embedded / coverage.total if coverage.total > 0 else None
+                ),
+            )
+        )
+    _finish(
+        session,
+        job,
+        scanned=scanned,
+        embedded=embedded,
+        skipped=skipped,
+        failed=failed,
+        failed_ids=failed_ids,
+        gate=gate,
+        space_id=target,
+        extra={"failed_reason": "input_too_long"} if too_long else None,
     )
     report(100, "reindex complete")
     return RunResultDTO(

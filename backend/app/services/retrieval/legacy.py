@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -32,8 +33,10 @@ from ...storage.retrieval_ops import (
     COVERAGE_GATE,
     CoverageDTO,
     GateStatus,
+    SpaceChunkDTO,
     SpaceDTO,
     SpaceStatus,
+    SpaceTokenizerDTO,
 )
 from ...storage.vector_store import (
     CONTENT_SPACE_ID,
@@ -81,6 +84,9 @@ class LegacyStore:
     created_at: str | None = None
     activated_at: str | None = None
     retired_at: str | None = None
+    token_aware: bool = False
+    tokenizer: SpaceTokenizerDTO | None = None
+    chunk: SpaceChunkDTO | None = None
 
 
 def _distinct_documents(session: Session) -> int:
@@ -128,6 +134,35 @@ def load_store(session: Session, space_id: str | None = None) -> LegacyStore | N
         created_at=_row_time(session, space.space_id, "created_at"),
         activated_at=_row_time(session, space.space_id, "activated_at"),
         retired_at=_row_time(session, space.space_id, "retired_at"),
+        token_aware=space.token_aware,
+        tokenizer=_tokenizer_payload(space),
+        chunk=_chunk_payload(space),
+    )
+
+
+def _tokenizer_payload(space: Any) -> SpaceTokenizerDTO | None:
+    tokenizer = getattr(space, "tokenizer", None)
+    if tokenizer is None:
+        return None
+    return SpaceTokenizerDTO(
+        kind=str(tokenizer.kind),
+        identifier=tokenizer.identifier,
+        revision=tokenizer.revision,
+        artifact_sha256=tokenizer.artifact_sha256,
+        exact=bool(tokenizer.exact),
+        max_input_tokens=int(tokenizer.max_input_tokens),
+        source=str(tokenizer.source),
+    )
+
+
+def _chunk_payload(space: Any) -> SpaceChunkDTO | None:
+    chunk = getattr(space, "chunk", None)
+    if chunk is None:
+        return None
+    return SpaceChunkDTO(
+        max_chunk_tokens=int(chunk.max_chunk_tokens),
+        overlap_tokens=int(chunk.overlap_tokens),
+        max_chars=int(chunk.max_chars),
     )
 
 
@@ -215,6 +250,9 @@ def space_dto(session: Session, store: LegacyStore) -> SpaceDTO:
         last_error=None if store.health_ok else store.health_detail,
         gate=coverage.gate,
         as_of=coverage.as_of,
+        token_aware=store.token_aware,
+        tokenizer=store.tokenizer,
+        chunk=store.chunk,
     )
 
 

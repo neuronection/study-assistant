@@ -28,8 +28,11 @@ from ...storage.retrieval_ops import (
     RunResultDTO,
     RunScope,
     RunStatus,
+    SpaceChunkDTO,
     SpaceDTO,
+    SpaceTokenizerDTO,
 )
+from ...storage.vector_space_identity import chunk_dict, tokenizer_dict
 from ...storage.vector_store import backend_label
 from . import lifecycle, quality
 from .legacy import (
@@ -92,7 +95,18 @@ def _result(row: Job) -> RunResultDTO | None:
         return None
 
 
-def _run_dto(row: Job) -> RunDTO | None:
+def _token_dtos(
+    row: VectorSpace | None,
+) -> tuple[SpaceTokenizerDTO | None, SpaceChunkDTO | None]:
+    tokenizer = tokenizer_dict(row)
+    chunk = chunk_dict(row)
+    return (
+        SpaceTokenizerDTO(**tokenizer) if tokenizer is not None else None,
+        SpaceChunkDTO(**chunk) if chunk is not None else None,
+    )
+
+
+def _run_dto(session: Session, row: Job) -> RunDTO | None:
     job_type = str(row.type)
     if job_type not in VECTOR_JOB_TYPES:
         return None
@@ -104,9 +118,12 @@ def _run_dto(row: Job) -> RunDTO | None:
         since=str(payload["since"]) if payload.get("since") else None,
     )
     budget = payload.get("budget")
+    space_id = str(payload.get("space_id") or LEGACY_SPACE_ID)
+    space_row = session.get(VectorSpace, space_id)
+    tokenizer, chunk = _token_dtos(space_row)
     return RunDTO(
         run_id=row.id,
-        space_id=str(payload.get("space_id") or LEGACY_SPACE_ID),
+        space_id=space_id,
         job_type=job_type,
         status=status,
         progress=max(0, min(int(row.progress or 0), 100)),
@@ -121,11 +138,14 @@ def _run_dto(row: Job) -> RunDTO | None:
         cancel_requested=bool(row.cancel_requested),
         idempotency_key=row.idempotency_key,
         lock_key=row.lock_key,
+        token_aware=bool(space_row is not None and space_row.tokenizer_kind is not None),
+        tokenizer=tokenizer,
+        chunk=chunk,
     )
 
 
-def _run_payload(row: Job) -> dict[str, Any]:
-    dto = _run_dto(row)
+def _run_payload(session: Session, row: Job) -> dict[str, Any]:
+    dto = _run_dto(session, row)
     result = _result(row)
     raw = row.result if isinstance(row.result, dict) else {}
     compare = quality.parse_persisted_compare(raw)
@@ -153,7 +173,7 @@ def list_runs(session: Session, *, limit: int = RUN_LIMIT) -> list[dict[str, Any
         .order_by(Job.created_at.desc(), Job.id.desc())
         .limit(capped)
     ).all()
-    payloads = [_run_payload(row) for row in rows]
+    payloads = [_run_payload(session, row) for row in rows]
     return [payload for payload in payloads if payload["run"] is not None]
 
 

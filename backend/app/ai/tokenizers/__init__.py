@@ -15,6 +15,7 @@ from app.ai.tokenizers.accounting import (
     count_tokens,
     default_accounting,
     embedding_accounting,
+    embedding_model_pair,
     embedding_token_count,
     token_count,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "default_accounting",
     "default_cache_dir",
     "embedding_accounting",
+    "embedding_model_pair",
     "embedding_token_count",
     "fallback_spec",
     "get_tokenizer_service",

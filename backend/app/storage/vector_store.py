@@ -43,6 +43,7 @@ from ..domain.models import (
     VectorSpace,
 )
 from . import vectors
+from .tokenizer_contract import ChunkConfig, TokenizerSpec
 from .vector_backends import (
     SCOPE_ALL,
     LinearBackend,
@@ -64,6 +65,7 @@ from .vector_provisioning import (
     provision_space,
     space_status,
 )
+from .vector_space_identity import chunk_from_row, tokenizer_from_row
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +97,9 @@ class ContentSpace:
     status: str
     key: str
     metadata_row: bool
+    token_aware: bool = False
+    tokenizer: TokenizerSpec | None = None
+    chunk: ChunkConfig | None = None
 
     def as_contract(self) -> ContractSpace:
         return ContractSpace(
@@ -102,9 +107,12 @@ class ContentSpace:
             provider=self.provider,
             model=self.model,
             dim=self.dim,
+            chunker_version="2" if self.token_aware else "1",
             space_id=self.space_id,
             index_table=self.index_table,
             stored_key=self.key,
+            tokenizer=self.tokenizer,
+            chunk=self.chunk,
         )
 
 
@@ -113,6 +121,35 @@ class MetadataBackfill:
     documents: int
     records: int
     scanned: int
+
+
+@dataclass(frozen=True)
+class VectorRecordSpec:
+    """One embeddable token window of a source chunk (v2 write input)."""
+
+    chunk_id: str
+    text: str
+    chunk_index: int
+    char_start: int | None = None
+    char_end: int | None = None
+    token_count: int | None = None
+    token_start: int | None = None
+    token_end: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.chunk_index < 0:
+            raise ValueError("chunk_index must be >= 0")
+        tokens = (self.token_count, self.token_start, self.token_end)
+        if any(value is not None for value in tokens) and any(
+            value is None for value in tokens
+        ):
+            raise ValueError("token fields must be all present or all None")
+        if (
+            self.char_start is not None
+            and self.char_end is not None
+            and self.char_end < self.char_start
+        ):
+            raise ValueError("char_end must be >= char_start")
 
 
 @dataclass(frozen=True)
@@ -184,6 +221,16 @@ def _is_provisioned(index_table: str | None) -> bool:
     return bool(index_table) and str(index_table).startswith("vec_")
 
 
+def _dedupe_scored(hits: Sequence[ScoredHit]) -> list[ScoredHit]:
+    """Keep the best window per chunk, ordered by (distance, chunk id)."""
+    best: dict[str, ScoredHit] = {}
+    for hit in hits:
+        current = best.get(hit.chunk_id)
+        if current is None or hit.distance < current.distance:
+            best[hit.chunk_id] = hit
+    return sorted(best.values(), key=lambda hit: (hit.distance, hit.chunk_id))
+
+
 def _record_id_for(space_id: str, chunk_id: str) -> str:
     """Deterministic space-local record id (never a global chunk id collision)."""
     try:
@@ -194,6 +241,11 @@ def _record_id_for(space_id: str, chunk_id: str) -> str:
     else:
         name = f"study:{chunk_id}"
     return str(uuid.uuid5(namespace, name))
+
+
+def _record_id_for_window(space_id: str, chunk_id: str, window_index: int) -> str:
+    """Deterministic record id for one token window of a source chunk."""
+    return _record_id_for(space_id, f"{chunk_id}:{int(window_index)}")
 
 
 class StudyVectorStore:
@@ -286,6 +338,27 @@ class StudyVectorStore:
         return {
             str(chunk_id): str(content or "")
             for chunk_id, content in rows
+            if chunk_id is not None
+        }
+
+    def stored_record_hashes(self) -> dict[tuple[str, int], str]:
+        """``(chunk id, window index) -> content hash`` for the addressed space."""
+        space = self.content_space()
+        if space is None:
+            return {}
+        rows = self.session.execute(
+            select(
+                VectorRecord.chunk_id,
+                VectorRecord.chunk_index,
+                VectorRecord.content_hash,
+            ).where(
+                VectorRecord.space_id == space.space_id,
+                VectorRecord.chunk_id.is_not(None),
+            )
+        )
+        return {
+            (str(chunk_id), int(chunk_index)): str(content or "")
+            for chunk_id, chunk_index, content in rows
             if chunk_id is not None
         }
 
@@ -630,8 +703,7 @@ class StudyVectorStore:
             )
             for hit in hits
         ]
-        scored.sort(key=lambda hit: (hit.distance, hit.chunk_id))
-        return scored
+        return _dedupe_scored(scored)
 
     def _scored_from_pairs(
         self, pairs: Sequence[tuple[str, float]]
@@ -657,8 +729,7 @@ class StudyVectorStore:
             )
             for chunk_id, distance in pairs
         ]
-        scored.sort(key=lambda hit: (hit.distance, hit.chunk_id))
-        return scored
+        return _dedupe_scored(scored)
 
     def store(self, chunk_ids: list[str], vectors_batch: list[list[float]], model: str) -> None:
         """Write physical vectors for the addressed space, then register metadata."""
@@ -755,6 +826,144 @@ class StudyVectorStore:
             if (record := records.get(str(chunk_id))) is not None
         ]
         if index_records:
+            backend.upsert(space.as_contract(), index_records)
+
+    def store_specs(
+        self,
+        specs: Sequence[VectorRecordSpec],
+        vectors_batch: Sequence[Sequence[float]],
+        model: str,
+    ) -> None:
+        """Write token-window records for a v2 space, then register metadata.
+
+        Records are keyed by ``(chunk_id, chunk_index)``; a source chunk that
+        produced several token windows therefore owns several records while
+        still hydrating back to one chunk. Unchanged windows are skipped by
+        the caller; this method refreshes the addressed windows and prunes
+        stale windows of the same chunk.
+        """
+        if not specs:
+            return
+        if len(specs) != len(vectors_batch):
+            raise ValueError("store_specs needs one vector per record spec")
+        space = self.content_space()
+        if space is None:
+            raise VectorSpaceRowMissing(f"vector space {self.space_id!r} has no row")
+        if not space.token_aware:
+            raise VectorProvisioningError(
+                f"space {space.name!r} is not token-aware; use store() for the v1 path"
+            )
+        if model != space.model:
+            raise vectors.VectorSpaceChangeRequired(
+                current_model=space.model,
+                current_dim=space.dim,
+                requested_model=model,
+                requested_dim=len(vectors_batch[0]) if vectors_batch else 0,
+                detail=f"space {space.name!r} owns writes; build a new space to change the model",
+            )
+        if any(len(vector) != space.dim for vector in vectors_batch):
+            raise vectors.VectorSpaceChangeRequired(
+                current_model=space.model,
+                current_dim=space.dim,
+                requested_model=model,
+                requested_dim=len(vectors_batch[0]) if vectors_batch else 0,
+                detail=f"space {space.name!r} expects dim {space.dim}",
+            )
+        space = self._ensure_physical(space)
+        chunk_rows = {
+            row[0]: row
+            for row in self._chunk_rows(
+                sorted({str(spec.chunk_id) for spec in specs})
+            )
+        }
+        grouped: dict[str, list[tuple[VectorRecordSpec, Sequence[float]]]] = {}
+        for spec, vector in zip(specs, vectors_batch, strict=True):
+            row = chunk_rows.get(spec.chunk_id)
+            if row is not None:
+                grouped.setdefault(row[3], []).append((spec, vector))
+        backend = self._backend(space)
+        index_records: list[IndexRecord] = []
+        for material_id, items in grouped.items():
+            sample = chunk_rows[items[0][0].chunk_id]
+            document = self._document_for(
+                space_id=space.space_id,
+                source_id=_canonical_id(material_id),
+                profile_id=_canonical_id(sample[4]) if sample[4] else None,
+            )
+            document.source_hash = content_hash(sample[5])
+            document_records = list(
+                self.session.scalars(
+                    select(VectorRecord).where(
+                        VectorRecord.space_id == space.space_id,
+                        VectorRecord.document_id == document.id,
+                    )
+                )
+            )
+            existing = {
+                (str(record.chunk_id), int(record.chunk_index)): record
+                for record in document_records
+                if record.chunk_id is not None
+            }
+            addressed = {spec.chunk_id for spec, _vector in items}
+            wanted = {(spec.chunk_id, spec.chunk_index) for spec, _vector in items}
+            stale = [
+                record
+                for (chunk_id, _index), record in existing.items()
+                if chunk_id in addressed and (chunk_id, int(record.chunk_index)) not in wanted
+            ]
+            if backend is not None and stale:
+                backend.delete_record_ids(
+                    space.as_contract(), [str(record.id) for record in stale]
+                )
+            for stale_record in stale:
+                self.session.delete(stale_record)
+                existing.pop(
+                    (str(stale_record.chunk_id), int(stale_record.chunk_index)), None
+                )
+            for spec, vector in items:
+                key = (spec.chunk_id, spec.chunk_index)
+                record: VectorRecord | None = existing.get(key)
+                if record is None:
+                    record_id = _record_id_for_window(
+                        space.space_id, spec.chunk_id, spec.chunk_index
+                    )
+                    record = VectorRecord(
+                        id=record_id,
+                        document_id=document.id,
+                        space_id=space.space_id,
+                        chunk_id=spec.chunk_id,
+                        view=CONTENT_VIEW,
+                        chunk_index=spec.chunk_index,
+                        rowid=self._allocate_rowid(record_id),
+                    )
+                    self.session.add(record)
+                    existing[key] = record
+                record.chunk_id = spec.chunk_id
+                record.view = CONTENT_VIEW
+                record.chunk_index = spec.chunk_index
+                record.char_start = spec.char_start
+                record.char_end = spec.char_end
+                record.token_count = spec.token_count
+                record.token_start = spec.token_start
+                record.token_end = spec.token_end
+                record.content_hash = content_hash(spec.text)
+                index_records.append(
+                    IndexRecord(
+                        record_id=str(record.id),
+                        document_id=str(record.document_id),
+                        view=str(record.view),
+                        chunk_index=int(record.chunk_index),
+                        embedding=tuple(float(value) for value in vector),
+                        content_hash=str(record.content_hash or ""),
+                        char_start=spec.char_start,
+                        char_end=spec.char_end,
+                        token_count=spec.token_count,
+                        token_start=spec.token_start,
+                        token_end=spec.token_end,
+                    )
+                )
+            self.session.flush()
+        if backend is not None and index_records:
             backend.upsert(space.as_contract(), index_records)
 
     def delete_for_extraction(self, chunk_ids: list[str]) -> None:
@@ -996,6 +1205,8 @@ class StudyVectorStore:
         backend: str,
         metadata_row: bool,
     ) -> ContentSpace:
+        tokenizer = tokenizer_from_row(row)
+        chunk = chunk_from_row(row)
         return ContentSpace(
             space_id=str(row.id),
             name=str(row.name),
@@ -1007,6 +1218,9 @@ class StudyVectorStore:
             status=str(row.status),
             key=str(row.space_key),
             metadata_row=metadata_row,
+            token_aware=tokenizer is not None and chunk is not None,
+            tokenizer=tokenizer,
+            chunk=chunk,
         )
 
     def _document_for(
@@ -1242,6 +1456,7 @@ __all__ = [
     "ScoredHit",
     "StoreHealth",
     "StudyVectorStore",
+    "VectorRecordSpec",
     "backend_for",
     "backend_label",
     "content_space_for",

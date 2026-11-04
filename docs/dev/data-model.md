@@ -446,9 +446,12 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   `storage/vector_backends.py`. Since 0016 every space carries the non-null
   `space_key` stamped once at creation/cutover (the frozen v1 pre-image for
   legacy rows); remap/status reads use that stored value and never recompute
-  it. 0017 adds the nullable tokenizer/chunk identity and token-offset columns
-  that plan 52 T5b2 will write; existing rows stay NULL and character chunking
-  is unchanged.
+  it. 0017 adds the nullable tokenizer/chunk identity and token-offset columns;
+  0018 widens the record uniqueness to `(space, chunk, window)` so a v2 space
+  can store several token windows per source chunk while legacy v1 rows keep
+  exactly one. Plan 52 T5b2 writes the pair, the token offsets and the v2
+  `space_key` for a token-aware space; v1 rows stay NULL and character
+  chunking is unchanged.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
   rebuilt by the migration and maintained by `services/tree.py` (rebuildable at
   any time)
@@ -461,6 +464,14 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0018_vector_record_token_windows (plan 52 T5b2)**: widens the two
+  `vector_records` unique keys to include `chunk_id`/`chunk_index` —
+  `(document_id, view, chunk_id, chunk_index)` and
+  `(space_id, chunk_id, chunk_index)`. A v2 space stores one record per token
+  window, so one source chunk may own several; legacy v1 rows keep one record
+  per chunk (`chunk_index=0`) and need no rewrite. Downgrade restores the
+  narrower keys and is only safe before a v2 space writes more than one
+  window per chunk.
 - **0017_vector_token_schema (plan 52 T5b1)**: adds the nullable tokenizer
   (`kind`/`identifier`/`revision`/`artifact_sha256`/`exact`/`max_input_tokens`)
   and chunk (`max_tokens`/`overlap_tokens`/`max_chars`) scalars to
@@ -469,7 +480,7 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   all-or-none, kind/exact/provenance, chunk bounds,
   `chunker_version='2'` when a tokenizer is present, and ordered/consistent
   token offsets. Downgrade drops these columns/checks but keeps `space_key`.
-  No write path uses them yet (T5b2).
+  Plan 52 T5b2 now writes them for a token-aware space; legacy rows stay NULL.
 - **0016_vector_space_stored_key (plan 52 T5b1)**: adds non-null
   `vector_spaces.space_key` (`String(64)`) and stamps every existing row once
   with the frozen v1 eight-field pre-image before enforcing NOT NULL. The

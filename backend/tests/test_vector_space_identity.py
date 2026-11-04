@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.models import VectorDocument, VectorRecord, VectorSpace
 from app.services.retrieval import lifecycle
+from app.storage import tokenizer_contract as tc
 from app.storage import vector_contract as vc
 from app.storage.vector_store import StudyVectorStore, content_space_for
 
@@ -148,32 +149,6 @@ def test_stored_key_wins_over_the_preimage(db_session: Session) -> None:
     assert status_space.key == stored
 
 
-def test_direct_insert_refuses_to_guess_a_v2_key(db_session: Session) -> None:
-    row = VectorSpace(
-        id=str(uuid.uuid4()),
-        name=f"v2-guard-{uuid.uuid4().hex[:8]}",
-        provider="openai",
-        model="text-embedding-3-small",
-        dim=DIM,
-        normalize=True,
-        chunker_version="2",
-        composer_version="1",
-        tokenizer_kind="tiktoken",
-        tokenizer_identifier="cl100k_base",
-        tokenizer_artifact_sha256="d" * 64,
-        tokenizer_exact=True,
-        max_input_tokens=8191,
-        chunk_max_tokens=64,
-        chunk_overlap_tokens=8,
-        chunk_max_chars=400,
-        status="building",
-    )
-    db_session.add(row)
-    with pytest.raises(StatementError, match="v2 space_key explicitly"):
-        db_session.flush()
-    db_session.rollback()
-
-
 def _token_columns(**overrides: Any) -> dict[str, Any]:
     values: dict[str, Any] = {
         "tokenizer_kind": "tiktoken",
@@ -187,6 +162,84 @@ def _token_columns(**overrides: Any) -> dict[str, Any]:
     }
     values.update(overrides)
     return values
+
+
+def test_direct_insert_computes_the_v2_key(db_session: Session) -> None:
+    row = VectorSpace(
+        id=str(uuid.uuid4()),
+        name=f"v2-default-{uuid.uuid4().hex[:8]}",
+        provider="openai",
+        model="text-embedding-3-small",
+        dim=DIM,
+        normalize=True,
+        chunker_version="2",
+        composer_version="1",
+        status="building",
+        **_token_columns(),
+    )
+    db_session.add(row)
+    db_session.commit()
+    expected = vc.space_key_v2(
+        "openai",
+        "text-embedding-3-small",
+        DIM,
+        True,
+        None,
+        None,
+        "2",
+        "1",
+        tokenizer=tc.TokenizerSpec(
+            kind="tiktoken",
+            identifier="cl100k_base",
+            artifact_sha256="e" * 64,
+            max_input_tokens=8191,
+            source="curated",
+        ),
+        chunk=tc.ChunkConfig(
+            max_chunk_tokens=64, overlap_tokens=8, max_chars=400
+        ),
+    )
+    assert row.space_key == expected
+
+
+def test_direct_insert_refuses_a_half_configured_pair(db_session: Session) -> None:
+    row = VectorSpace(
+        id=str(uuid.uuid4()),
+        name=f"v2-half-{uuid.uuid4().hex[:8]}",
+        provider="openai",
+        model="text-embedding-3-small",
+        dim=DIM,
+        normalize=True,
+        chunker_version="2",
+        composer_version="1",
+        tokenizer_kind="tiktoken",
+        tokenizer_identifier="cl100k_base",
+        tokenizer_exact=True,
+        max_input_tokens=8191,
+        status="building",
+    )
+    db_session.add(row)
+    with pytest.raises(StatementError, match="half-configured"):
+        db_session.flush()
+    db_session.rollback()
+
+
+def test_chunker_v2_without_a_tokenizer_is_refused(db_session: Session) -> None:
+    row = VectorSpace(
+        id=str(uuid.uuid4()),
+        name=f"chunker-only-{uuid.uuid4().hex[:8]}",
+        provider="openai",
+        model="text-embedding-3-small",
+        dim=DIM,
+        normalize=True,
+        chunker_version="2",
+        composer_version="1",
+        status="building",
+    )
+    db_session.add(row)
+    with pytest.raises(StatementError, match="requires a complete tokenizer"):
+        db_session.flush()
+    db_session.rollback()
 
 
 def test_half_configured_space_is_rejected(db_session: Session) -> None:

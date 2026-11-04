@@ -10142,6 +10142,10 @@ export interface components {
              * @default false
              */
             cancel_requested: boolean;
+            /** Chunk */
+            chunk?: {
+                [key: string]: unknown;
+            } | null;
             /** Created At */
             created_at?: string | null;
             /** Error */
@@ -10172,6 +10176,15 @@ export interface components {
             started_at?: string | null;
             /** Status */
             status: string;
+            /**
+             * Token Aware
+             * @default false
+             */
+            token_aware: boolean;
+            /** Tokenizer */
+            tokenizer?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** RetrievalRunResultOut */
         RetrievalRunResultOut: {
@@ -10246,6 +10259,8 @@ export interface components {
             provider?: string | null;
             /** Query Prefix */
             query_prefix?: string | null;
+            /** Token Aware */
+            token_aware?: boolean | null;
         };
         /**
          * RetrievalSpaceConfirmIn
@@ -10270,6 +10285,10 @@ export interface components {
             as_of?: string | null;
             /** Backend */
             backend: string;
+            /** Chunk */
+            chunk?: {
+                [key: string]: unknown;
+            } | null;
             /** Coverage */
             coverage?: number | null;
             /** Created At */
@@ -10328,6 +10347,15 @@ export interface components {
             stale?: number | null;
             /** Status */
             status: string;
+            /**
+             * Token Aware
+             * @default false
+             */
+            token_aware: boolean;
+            /** Tokenizer */
+            tokenizer?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** RetrievalSpacesOut */
         RetrievalSpacesOut: {

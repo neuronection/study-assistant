@@ -26,7 +26,7 @@ from app.pipelines.retrieval_ops import (
     make_vector_cutover_handler,
     make_vector_reindex_handler,
 )
-from app.services.retrieval import quality, reads
+from app.services.retrieval import lifecycle, quality, reads
 from app.services.retrieval.legacy import LEGACY_SPACE_ID
 from app.services.retrieval.telemetry import QueryRollupRecorder, configure_recorder
 from app.storage import retrieval_ops as ops
@@ -204,6 +204,44 @@ def test_build_provisions_a_real_building_space_and_replays(
     assert (
         db_session.scalar(select(func.count()).select_from(VectorSpace)) == 1
     )
+
+
+def test_build_token_aware_persists_and_exposes_the_pair(
+    client: TestClient, db_session: Session
+) -> None:
+    _stop_worker(client)
+    response = client.post(
+        f"{BASE}/spaces",
+        json={
+            "name": "content-v2",
+            "provider": "fake",
+            "model": "fake-embed-v2",
+            "dim": DIM,
+            "token_aware": True,
+        },
+        headers=_key("build-key-token-aware"),
+    )
+    assert response.status_code == 200, response.text
+    body = cast(dict[str, Any], response.json())
+    assert body["space"]["token_aware"] is True
+    assert body["space"]["tokenizer"]["kind"] == "heuristic"
+    assert body["space"]["tokenizer"]["exact"] is False
+    assert body["space"]["chunk"]["max_chunk_tokens"] >= 32
+
+    row = db_session.get(VectorSpace, body["space_id"])
+    assert row is not None
+    assert row.chunker_version == "2"
+    assert row.tokenizer_kind == "heuristic"
+    assert row.tokenizer_exact is False
+    assert row.space_key == lifecycle.space_key_for(row)
+
+    spaces = client.get(f"{BASE}/spaces").json()
+    entry = next(
+        space for space in spaces["spaces"] if space["space_id"] == body["space_id"]
+    )
+    assert entry["token_aware"] is True
+    assert entry["tokenizer"]["identifier"]
+    assert entry["chunk"]["overlap_tokens"] >= 0
 
 
 def test_backfill_activate_retires_previous_and_keeps_chunk_vecs(

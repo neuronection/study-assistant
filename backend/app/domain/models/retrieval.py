@@ -26,6 +26,7 @@ from ...core.vocab import DegradedReason
 from ...storage.tokenizer_contract import TokenizerKind
 from ...storage.vector_contract import METRICS, V1_VIEWS, SpaceStatus
 from ...storage.vector_contract import space_key as make_space_key
+from ...storage.vector_contract import space_key_v2 as make_space_key_v2
 from ..payloads import LatencyHistogram
 from ..schema_contract import vocab_check
 from .core import (
@@ -107,26 +108,91 @@ _TOKEN_FIELDS_CHECK = (
 
 
 def _computed_space_key(context: Any) -> str:
-    """Stamp a new v1 row once; a token-aware row must carry its own key.
+    """Stamp a new row's stored key from its own configuration.
 
-    No application path writes the tokenizer/chunk columns in T5b1. Refusing
-    the implicit default here means a direct insert cannot silently stamp a
-    v2 space with a v1 key; T5b2 owns the explicit v2 pre-image.
+    A row with no tokenizer/chunk columns keeps the frozen v1 pre-image. A
+    complete tokenizer/chunk set computes the v2 pre-image and the DB check
+    forces ``chunker_version='2'``. A half-configured row is refused here so
+    a direct insert can never mix a v1 key with v2 columns (or the reverse).
     """
     values = context.get_current_parameters()
-    if values.get("tokenizer_kind") is not None:
-        raise ValueError(
-            "a token-aware space must persist its v2 space_key explicitly (plan 52 T5b2)"
+    token_fields = (
+        "tokenizer_kind",
+        "tokenizer_identifier",
+        "tokenizer_revision",
+        "tokenizer_artifact_sha256",
+        "tokenizer_exact",
+        "max_input_tokens",
+        "chunk_max_tokens",
+        "chunk_overlap_tokens",
+        "chunk_max_chars",
+    )
+    present = [field for field in token_fields if values.get(field) is not None]
+    if not present:
+        if str(values.get("chunker_version") or "1") == "2":
+            raise ValueError(
+                "chunker_version='2' requires a complete tokenizer/chunk set (plan 52 T5b2)"
+            )
+        return make_space_key(
+            values["provider"],
+            values["model"],
+            int(values["dim"]),
+            bool(values.get("normalize", True)),
+            values.get("query_prefix"),
+            values.get("document_prefix"),
+            str(values.get("chunker_version") or "1"),
+            str(values.get("composer_version") or "1"),
         )
-    return make_space_key(
+    required = (
+        "tokenizer_kind",
+        "tokenizer_identifier",
+        "tokenizer_exact",
+        "max_input_tokens",
+        "chunk_max_tokens",
+        "chunk_overlap_tokens",
+        "chunk_max_chars",
+    )
+    if any(values.get(field) is None for field in required):
+        raise ValueError(
+            "a half-configured tokenizer/chunk set is refused (plan 52 T5b2)"
+        )
+    from ...storage.tokenizer_contract import (
+        ChunkConfig,
+        TokenizerKind,
+        TokenizerSource,
+        TokenizerSpec,
+    )
+
+    kind = TokenizerKind(str(values["tokenizer_kind"]))
+    tokenizer = TokenizerSpec(
+        kind=kind,
+        identifier=str(values["tokenizer_identifier"]),
+        revision=values.get("tokenizer_revision"),
+        artifact_sha256=values.get("tokenizer_artifact_sha256"),
+        exact=bool(values["tokenizer_exact"]),
+        max_input_tokens=int(values["max_input_tokens"]),
+        source=(
+            TokenizerSource.FALLBACK
+            if kind is TokenizerKind.HEURISTIC
+            else TokenizerSource.CURATED
+        ),
+    )
+    chunk = ChunkConfig(
+        max_chunk_tokens=int(values["chunk_max_tokens"]),
+        overlap_tokens=int(values["chunk_overlap_tokens"]),
+        max_chars=int(values["chunk_max_chars"]),
+    )
+    return make_space_key_v2(
         values["provider"],
         values["model"],
         int(values["dim"]),
         bool(values.get("normalize", True)),
         values.get("query_prefix"),
         values.get("document_prefix"),
-        str(values.get("chunker_version") or "1"),
+        "2",
         str(values.get("composer_version") or "1"),
+        tokenizer=tokenizer,
+        chunk=chunk,
     )
 
 
@@ -257,9 +323,18 @@ class VectorRecord(Base):
     __tablename__ = "vector_records"
     __table_args__ = (
         UniqueConstraint(
-            "document_id", "view", "chunk_index", name="uq_vector_records_document_view_chunk"
+            "document_id",
+            "view",
+            "chunk_id",
+            "chunk_index",
+            name="uq_vector_records_document_view_chunk",
         ),
-        UniqueConstraint("space_id", "chunk_id", name="uq_vector_records_space_chunk"),
+        UniqueConstraint(
+            "space_id",
+            "chunk_id",
+            "chunk_index",
+            name="uq_vector_records_space_chunk",
+        ),
         CheckConstraint(_VIEW_CHECK, name="view_allowed"),
         CheckConstraint("chunk_index >= 0", name="chunk_index_non_negative"),
         CheckConstraint(

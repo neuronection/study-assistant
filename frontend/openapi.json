@@ -14377,6 +14377,18 @@
             "title": "Cancel Requested",
             "type": "boolean"
           },
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -14488,6 +14500,23 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "token_aware": {
+            "default": false,
+            "title": "Token Aware",
+            "type": "boolean"
+          },
+          "tokenizer": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenizer"
           }
         },
         "required": [
@@ -14685,6 +14714,17 @@
               }
             ],
             "title": "Query Prefix"
+          },
+          "token_aware": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Aware"
           }
         },
         "title": "RetrievalSpaceBuildIn",
@@ -14749,6 +14789,18 @@
           "backend": {
             "title": "Backend",
             "type": "string"
+          },
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk"
           },
           "coverage": {
             "anyOf": [
@@ -14891,6 +14943,23 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "token_aware": {
+            "default": false,
+            "title": "Token Aware",
+            "type": "boolean"
+          },
+          "tokenizer": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenizer"
           }
         },
         "required": [

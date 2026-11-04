@@ -4,7 +4,6 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, TaskUnassigned
-from ..ai.tokenizers import embedding_accounting, token_count
 from ..core.vocab import (
     ExtractionMode,
     MaterialKind,
@@ -23,9 +22,9 @@ from ..jobs.payloads import IngestPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
 from ..ocr.base import OcrEngine
 from ..services.content.materials import extraction_to_blocks
+from ..services.retrieval.chunk_profile import chunk_texts_for_space
 from ..storage.blobs import BlobStore
 from ..storage.fts import sync_material_fts
-from .chunking import chunk_markdown
 from .convert import (
     ImageStore,
     convert_html_document,
@@ -110,14 +109,15 @@ def _store_extraction(
 
     ocr = _embedded_ocr_text(material)
     chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
-    accounting = embedding_accounting(session)
-    for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
+    for ordinal, (chunk_text, chunk_tokens) in enumerate(
+        chunk_texts_for_space(session, chunk_source)
+    ):
         session.add(
             Chunk(
                 extraction_id=extraction.id,
                 ordinal=ordinal,
                 text=chunk_text,
-                token_count=token_count(chunk_text, accounting),
+                token_count=chunk_tokens,
             )
         )
     words = len(markdown.split())

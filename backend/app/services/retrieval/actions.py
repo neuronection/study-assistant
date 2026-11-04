@@ -29,6 +29,7 @@ from ...storage.retrieval_ops import (
     assert_no_raw_text,
     run_lock_key,
 )
+from ...storage.tokenizer_contract import ChunkConfig, TokenizerSpec
 from ...storage.vector_provisioning import VectorProvisioningError
 from ...storage.vector_store import embedding_assignment
 from . import lifecycle, quality
@@ -504,8 +505,13 @@ def build_space(
     normalize: bool = True,
     query_prefix: str | None = None,
     document_prefix: str | None = None,
+    token_aware: bool = False,
+    tokenizer: TokenizerSpec | None = None,
+    chunk: ChunkConfig | None = None,
 ) -> dict[str, Any]:
     """Provision a real ``building`` space beside the active one."""
+    from .chunk_profile import resolve_chunk_profile
+
     assignment = embedding_assignment(session)
     active = lifecycle.active_space_row(session)
     resolved_provider = provider or assignment.provider or (active.provider if active else "")
@@ -518,6 +524,23 @@ def build_space(
             reason="invalid_request",
         )
     resolved_name = (name or "content").strip()
+    if token_aware or tokenizer is not None or chunk is not None:
+        if tokenizer is None and chunk is None:
+            from ...ai.tokenizers.accounting import embedding_model_pair
+
+            provider_type, assigned_model = embedding_model_pair(session)
+            profile = resolve_chunk_profile(
+                provider_type,
+                assigned_model,
+                document_prefix=document_prefix,
+            )
+            tokenizer, chunk = profile.tokenizer, profile.chunk
+        elif tokenizer is None or chunk is None:
+            raise RetrievalActionError(
+                "tokenizer and chunk must be supplied together",
+                status_code=422,
+                reason="invalid_request",
+            )
     payload = {
         "action": "build_space",
         "name": resolved_name,
@@ -527,6 +550,9 @@ def build_space(
         "normalize": bool(normalize),
         "query_prefix": query_prefix,
         "document_prefix": document_prefix,
+        "token_aware": bool(tokenizer is not None),
+        "tokenizer": tokenizer.to_dict() if tokenizer is not None else None,
+        "chunk": chunk.to_dict() if chunk is not None else None,
     }
     audit = _audit_for(actor, "vector.space.provisioned", None)
     try:
@@ -539,6 +565,7 @@ def build_space(
             execute=lambda _job: _execute_build(
                 session, resolved_name, resolved_provider, resolved_model, int(resolved_dim),
                 bool(normalize), query_prefix, document_prefix, payload, actor,
+                tokenizer, chunk,
             ),
             audit=audit,
             failure_audit=_audit_for(
@@ -583,6 +610,8 @@ def _execute_build(
     document_prefix: str | None,
     payload: dict[str, Any],
     actor: str,
+    tokenizer: TokenizerSpec | None = None,
+    chunk: ChunkConfig | None = None,
 ) -> dict[str, Any]:
     built, model_changed = lifecycle.build_space(
         session,
@@ -593,6 +622,8 @@ def _execute_build(
         normalize=normalize,
         query_prefix=query_prefix,
         document_prefix=document_prefix,
+        tokenizer=tokenizer,
+        chunk=chunk,
     )
     session.add(_audit_for(actor, "vector.space.provisioned", built.space_id))
     if model_changed:

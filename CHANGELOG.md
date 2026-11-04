@@ -11,14 +11,44 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (token-aware writes + v2 cutover — plan 52 T5b2)
+- **Profile + identity**: `services/retrieval/chunk_profile.py` resolves one
+  effective tokenizer/chunk pair (explicit admin pair → curated OpenAI exact
+  `cl100k_base` → labelled heuristic fallback) with separate per-item
+  (`max_input_tokens`) and per-request (`batch_max_items`/`batch_max_tokens`)
+  limits. `lifecycle.build_space` persists the pair, forces
+  `chunker_version='2'`, validates the budget and computes `space_key_v2`;
+  v1 builds stay on the character path. The ORM `space_key` default computes
+  v2 from a complete pair and still refuses a half pair; `ContentSpace`
+  reconstructs the pair and stored key.
+- **Token chunking**: `pipelines/chunking.py` adds `chunk_tokens` using
+  `encode_with_offsets` — exact char/token offsets, token overlap, a hard
+  `max_chars` ceiling, no truncation and a typed `input_too_long` failure.
+  `chunk_markdown` is unchanged. Ingest, trash restore, material edits and
+  course import use the active v2 profile through `chunk_texts_for_space`;
+  legacy chunks are preserved.
+- **Writes + cutover**: `StudyVectorStore.store_specs` writes one
+  `vector_records` row per token window with the vendored `IndexRecord` token
+  columns; reindex skips unchanged windows, batches by items and token sum,
+  and reports `input_too_long` once per chunk. Migration
+  `0018_vector_record_token_windows` widens record uniqueness to
+  `(space, chunk, window)`, so a source chunk can own several windows while
+  v1 rows keep one/NULL. A v2 space builds beside v1, backfills, passes the
+  coverage/quality gate, activates with the retired stored key and retains
+  v1; space/run read DTOs expose `token_aware`, tokenizer/exactness and chunk
+  config.
+- **Not in this slice**: bounded `progress_detail`, Tools/Audit progress UI
+  and rollout docs. Those are T5c; see
+  [dev/retrieval-ops.md](docs/dev/retrieval-ops.md).
+
 ### Added (stored space key + tokenizer/chunk schema — plan 52 T5b1)
 - **Stored space identity**: migration `0016_vector_space_stored_key` adds
   non-null `vector_spaces.space_key` and stamps every existing row once with
   the frozen v1 pre-image before enforcing NOT NULL. `ContentSpace`,
   `space_key_for`, build idempotency, activation (`previous_space_key`),
   status/DTO reads and `load_store` use the stored value instead of
-  recomputing it; new spaces persist the v1 key. A direct insert carrying
-  tokenizer columns without an explicit key is refused (T5b2 owns v2).
+  recomputing it; new spaces persist the v1 key. (T5b2 later replaced the
+  explicit-key refusal with the v2 default.)
 - **Schema for T5b2**: migration `0017_vector_token_schema` adds nullable
   tokenizer/chunk identity columns to `vector_spaces` and nullable
   `token_count`/`token_start`/`token_end` to `vector_records`, with

@@ -34,7 +34,9 @@ from ...domain.models import (
     VectorSpace,
 )
 from ...storage.retrieval_ops import COVERAGE_GATE, SPACE_DROP_GRACE_DAYS, GateStatus
+from ...storage.tokenizer_contract import ChunkConfig, TokenizerSpec
 from ...storage.vector_contract import METRICS
+from ...storage.vector_contract import space_key_v2 as make_space_key_v2
 from ...storage.vector_provisioning import (
     SpaceProvision,
     VectorProvisioningError,
@@ -96,6 +98,9 @@ class SpaceBuildResult:
     index_table: str | None
     created: bool
     provision_detail: str
+    token_aware: bool = False
+    tokenizer: dict[str, Any] | None = None
+    chunk: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -110,6 +115,9 @@ class SpaceBuildResult:
             "index_table": self.index_table,
             "created": self.created,
             "provision_detail": self.provision_detail,
+            "token_aware": self.token_aware,
+            "tokenizer": self.tokenizer,
+            "chunk": self.chunk,
         }
 
 
@@ -343,12 +351,16 @@ def build_space(
     document_prefix: str | None = None,
     chunker_version: str = "1",
     composer_version: str = "1",
+    tokenizer: TokenizerSpec | None = None,
+    chunk: ChunkConfig | None = None,
 ) -> tuple[SpaceBuildResult, bool]:
     """Create a ``building`` space and provision its physical index.
 
-    Returns ``(result, model_changed)``. A matching building space is reused
-    idempotently; a different building space with the same name is refused
-    until the first one is retired/dropped.
+    A complete tokenizer/chunk pair makes this a token-aware v2 space: the
+    pair is persisted, ``chunker_version`` is forced to ``'2'`` and the key
+    is the explicit v2 pre-image. With neither supplied the build stays
+    legacy v1 (the character chunker and the v1 key). A half-configured pair
+    is refused. Returns ``(result, model_changed)``.
     """
     if not name or len(name) > 40:
         raise ValueError("space name must be 1-40 characters")
@@ -358,17 +370,46 @@ def build_space(
         raise ValueError("dim must be positive")
     if metric not in METRICS:
         raise ValueError(f"unsupported metric {metric!r}; expected one of {METRICS}")
+    if (tokenizer is None) != (chunk is None):
+        raise ValueError("tokenizer and chunk must be supplied together")
     normalized_name = str(name).strip()
-    requested_key = _computed_v1_key(
-        provider=str(provider),
-        model=str(model),
-        dim=int(dim),
-        normalize=bool(normalize),
-        query_prefix=query_prefix,
-        document_prefix=document_prefix,
-        chunker_version=str(chunker_version),
-        composer_version=str(composer_version),
-    )
+    if tokenizer is not None and chunk is not None:
+        from ...ai.tokenizers.service import get_tokenizer_service
+        from ...pipelines.chunking import TOKEN_SAFETY_MARGIN
+
+        service = get_tokenizer_service()
+        prefix_tokens = (
+            service.count(tokenizer, document_prefix) if document_prefix else 0
+        )
+        chunk.assert_fits(
+            tokenizer.max_input_tokens,
+            prefix_tokens=prefix_tokens,
+            safety_margin=TOKEN_SAFETY_MARGIN,
+        )
+        chunker_version = "2"
+        requested_key = make_space_key_v2(
+            str(provider),
+            str(model),
+            int(dim),
+            bool(normalize),
+            query_prefix,
+            document_prefix,
+            "2",
+            str(composer_version),
+            tokenizer=tokenizer,
+            chunk=chunk,
+        )
+    else:
+        requested_key = _computed_v1_key(
+            provider=str(provider),
+            model=str(model),
+            dim=int(dim),
+            normalize=bool(normalize),
+            query_prefix=query_prefix,
+            document_prefix=document_prefix,
+            chunker_version=str(chunker_version),
+            composer_version=str(composer_version),
+        )
     for existing in building_spaces(session):
         if existing.name != normalized_name:
             continue
@@ -398,6 +439,7 @@ def build_space(
         space_key=requested_key,
         index_table=None,
         status="building",
+        **_tokenizer_columns(tokenizer, chunk),
         created_at=_now(),
         updated_at=_now(),
     )
@@ -409,6 +451,47 @@ def build_space(
         session.rollback()
         raise
     return (_build_result(row, provision, created=True), _model_changed(session, row))
+
+
+def _tokenizer_columns(
+    tokenizer: TokenizerSpec | None, chunk: ChunkConfig | None
+) -> dict[str, Any]:
+    if tokenizer is None or chunk is None:
+        return {}
+    return {
+        "tokenizer_kind": tokenizer.kind.value,
+        "tokenizer_identifier": tokenizer.identifier,
+        "tokenizer_revision": tokenizer.revision,
+        "tokenizer_artifact_sha256": tokenizer.artifact_sha256,
+        "tokenizer_exact": tokenizer.exact,
+        "max_input_tokens": tokenizer.max_input_tokens,
+        "chunk_max_tokens": chunk.max_chunk_tokens,
+        "chunk_overlap_tokens": chunk.overlap_tokens,
+        "chunk_max_chars": chunk.max_chars,
+    }
+
+
+def _tokenizer_dict(row: VectorSpace) -> dict[str, Any] | None:
+    if row.tokenizer_kind is None:
+        return None
+    return {
+        "kind": str(row.tokenizer_kind),
+        "identifier": str(row.tokenizer_identifier or ""),
+        "revision": row.tokenizer_revision,
+        "artifact_sha256": row.tokenizer_artifact_sha256,
+        "exact": bool(row.tokenizer_exact),
+        "max_input_tokens": int(row.max_input_tokens or 0),
+    }
+
+
+def _chunk_dict(row: VectorSpace) -> dict[str, Any] | None:
+    if row.tokenizer_kind is None:
+        return None
+    return {
+        "max_chunk_tokens": int(row.chunk_max_tokens or 0),
+        "overlap_tokens": int(row.chunk_overlap_tokens or 0),
+        "max_chars": int(row.chunk_max_chars or 0),
+    }
 
 
 def _build_result(
@@ -426,6 +509,9 @@ def _build_result(
         index_table=provision.index_table,
         created=created,
         provision_detail=provision.detail,
+        token_aware=row.tokenizer_kind is not None,
+        tokenizer=_tokenizer_dict(row),
+        chunk=_chunk_dict(row),
     )
 
 

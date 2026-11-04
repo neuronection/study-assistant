@@ -119,6 +119,11 @@ def embedding_accounting(session: Session | None) -> TokenAccounting:
     return accounting_for(provider_type, model)
 
 
+def embedding_model_pair(session: Session) -> tuple[str | None, str | None]:
+    """The assigned embeddings ``(provider_type, external_id)`` pair."""
+    return _assignment_model(session, EMBEDDINGS_TASK)
+
+
 def count_tokens(text: str, accounting: TokenAccounting | None = None) -> TokenCount:
     """Count with ``accounting`` (or the labelled fallback when omitted)."""
     return (accounting or default_accounting()).count(text)
@@ -147,6 +152,7 @@ __all__ = [
     "count_tokens",
     "default_accounting",
     "embedding_accounting",
+    "embedding_model_pair",
     "embedding_token_count",
     "token_count",
 ]

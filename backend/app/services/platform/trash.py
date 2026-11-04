@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import DateTime, delete, select
 from sqlalchemy.orm import Session
 
-from ...ai.tokenizers import embedding_accounting, token_count
 from ...domain.models import (
     Activity,
     Answer,
@@ -39,7 +38,7 @@ from ...domain.models import (
     TreeNode,
     utcnow,
 )
-from ...pipelines.chunking import chunk_markdown
+from ...services.retrieval.chunk_profile import chunk_texts_for_space
 from ...storage.fts import sync_material_fts
 
 TRASH_TTL_DAYS = 7
@@ -322,14 +321,15 @@ def restore_material(session: Session, item: DeletedItem) -> tuple[str, str | No
             ] + [image.ocr_markdown for image in restored.images if image.ocr_markdown]
             ocr = "\n".join(part for part in ocr_parts if part)
             chunk_source = f"{latest.markdown}\n\n{ocr}" if ocr else latest.markdown
-            accounting = embedding_accounting(session)
-            for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
+            for ordinal, (chunk_text, chunk_tokens) in enumerate(
+                chunk_texts_for_space(session, chunk_source)
+            ):
                 session.add(
                     Chunk(
                         extraction_id=latest.id,
                         ordinal=ordinal,
                         text=chunk_text,
-                        token_count=token_count(chunk_text, accounting),
+                        token_count=chunk_tokens,
                     )
                 )
             sync_material_fts(session, restored, latest.markdown, ocr)
