@@ -1,20 +1,22 @@
-"""The study vector-store adapter (plan 50 P3a).
+"""The study vector-store adapter (plan 50 P3a, plan 51 Q3c2a).
 
-One seam owns the legacy physical store (``chunk_vecs`` + ``chunk_vec_ids``
-+ ``vec_meta``) **and** the portable metadata layer (``vector_spaces`` /
-``vector_documents`` / ``vector_records``). Search, embedding writes, purge
-paths and the retrieval-operations reads call this adapter instead of
-issuing vector SQL themselves, so plan 51 Q3c can add build/activate/retire/
-drop and a cutover target without duplicating any of it.
+One seam owns the portable metadata layer (``vector_spaces`` /
+``vector_documents`` / ``vector_records``) **and** the physical vector index.
+Search, embedding writes, purge paths and the retrieval-operations reads call
+this adapter instead of issuing vector SQL themselves.
 
-P3a is deliberately still a **legacy physical backend**: the ``content``
-space's ``index_table`` is ``chunk_vecs`` and no ``vec_*`` table is
-provisioned yet. The metadata rows are a mapping over that store, not a
-replacement for it:
+Q3c2a moves the ``content`` space onto a real family backend: a provisioned
+``vec_<8hex>`` table (pgvector + HNSW cosine, or sqlite-vec ``vec0``) is
+created by :mod:`storage.vector_provisioning` and addressed through
+:mod:`storage.vector_backends`. ``chunk_vecs`` is still dual-written as the
+compatibility store — it is the honest read fallback until a later cutover
+retires it, and it is never dropped here.
+
+Metadata mapping:
 
 * document = a material (``kind='material'``, ``source_id`` = material id);
 * record = one chunk's ``body`` view, carrying its content hash and the
-  existing 63-bit ``rowid`` reverse map (``chunk_vec_ids``);
+  63-bit study rowid (the sqlite-vec rowid map);
 * space = the one ``content`` space, id ``legacy-chunk-vecs`` (the id Q3a/
   Q3b already write into rollups/snapshots), model/dim read from ``vec_meta``.
 
@@ -28,6 +30,7 @@ metadata counts are real row counts and coverage still comes only from a
 from __future__ import annotations
 
 import contextlib
+import logging
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -49,13 +52,33 @@ from ..domain.models import (
     VectorSpace,
 )
 from . import vectors
+from .vector_backends import (
+    SCOPE_ALL,
+    LinearBackend,
+    SessionVectorBackend,
+    VectorBackendError,
+    choose_backend,
+    document_scope,
+    filter_scope,
+)
+from .vector_contract import IndexRecord, ScopeSpec, content_hash, space_key
 from .vector_contract import VectorSpace as ContractSpace
-from .vector_contract import content_hash, space_key
+from .vector_provisioning import (
+    SpaceProvision,
+    SpaceStatus,
+    VectorProvisioningError,
+    backfill_from_legacy,
+    provision_space,
+    space_status,
+)
+
+logger = logging.getLogger(__name__)
 
 CONTENT_SPACE_ID = "legacy-chunk-vecs"
 CONTENT_SPACE_NAME = "content"
 CONTENT_SPACE_KIND = "material"
 CONTENT_VIEW = "body"
+LEGACY_INDEX_TABLE = "chunk_vecs"
 
 
 @dataclass(frozen=True)
@@ -98,6 +121,19 @@ class MetadataBackfill:
     scanned: int
 
 
+@dataclass(frozen=True)
+class StoreHealth:
+    """The backend/table truth the admin read surface reports."""
+
+    ok: bool
+    detail: str
+    backend: str
+    index_table: str | None
+    records: int
+    legacy_rows: int
+    provisioned: bool
+
+
 def backend_for(session: Session) -> str:
     return "pgvector" if session.get_bind().dialect.name == "postgresql" else "sqlite_vec"
 
@@ -133,15 +169,38 @@ def _canonical_id(value: str) -> str:
         return str(value)
 
 
+def _is_provisioned(index_table: str | None) -> bool:
+    return bool(index_table) and str(index_table).startswith("vec_")
+
+
 class StudyVectorStore:
-    """Read/write seam over the legacy index and its metadata mapping."""
+    """Read/write seam over the metadata layer and the active backend."""
 
     def __init__(self, session: Session) -> None:
         self.session = session
 
     @property
     def index_table(self) -> str:
+        """The active physical index table (legacy while unprovisioned)."""
+        space = self.content_space()
+        if space is not None and space.index_table:
+            return str(space.index_table)
         return vectors.VEC_TABLE
+
+    @property
+    def index_name(self) -> str | None:
+        """The backend's index object, when the backend has one."""
+        table = self.index_table
+        if _is_provisioned(table):
+            return (
+                f"ix_{table}_hnsw" if self.session.get_bind().dialect.name == "postgresql" else None
+            )
+        if (
+            table == LEGACY_INDEX_TABLE
+            and self.session.get_bind().dialect.name == "postgresql"
+        ):
+            return f"ix_{LEGACY_INDEX_TABLE}_embedding"
+        return None
 
     def read_meta(self) -> dict[str, str]:
         return vectors.read_meta(self.session)
@@ -150,13 +209,50 @@ class StudyVectorStore:
         return vectors.table_exists(self.session)
 
     def vector_count(self) -> int:
+        space = self.content_space()
+        if space is None:
+            return 0
+        backend = self._backend(space)
+        if backend is not None:
+            try:
+                return backend.count(space.as_contract())
+            except VectorBackendError as exc:
+                logger.warning("vector_count backend failed: %s", exc)
         return vectors.vector_count(self.session)
 
     def stored_chunk_ids(self) -> dict[int, str]:
-        return vectors.stored_chunk_ids(self.session)
+        """``rowid -> chunk id`` from the legacy map plus the metadata rows."""
+        merged = dict(vectors.stored_chunk_ids(self.session))
+        rows = self.session.execute(
+            select(VectorRecord.rowid, VectorRecord.id).where(
+                VectorRecord.space_id == CONTENT_SPACE_ID,
+                VectorRecord.rowid.is_not(None),
+            )
+        )
+        for rowid, record_id in rows:
+            if rowid is not None:
+                merged.setdefault(int(rowid), str(record_id))
+        return merged
 
     def orphan_rowids(self, live_chunk_ids: set[str]) -> tuple[list[int], list[int]]:
-        return vectors.orphan_rowids(self.session, live_chunk_ids)
+        dangling, orphan = vectors.orphan_rowids(self.session, live_chunk_ids)
+        space = self.content_space()
+        if space is None:
+            return (dangling, orphan)
+        records = self.session.execute(
+            select(VectorRecord.rowid, VectorRecord.id).where(
+                VectorRecord.space_id == space.space_id,
+                VectorRecord.rowid.is_not(None),
+            )
+        )
+        known = set(dangling) | set(orphan)
+        for rowid, record_id in records:
+            if rowid is None or int(rowid) in known:
+                continue
+            if str(record_id) not in live_chunk_ids:
+                orphan.append(int(rowid))
+                known.add(int(rowid))
+        return (dangling, orphan)
 
     def content_space(self) -> ContentSpace | None:
         """The active space without writing (a status read never mutates).
@@ -259,7 +355,6 @@ class StudyVectorStore:
                     detail="vector_spaces row disagrees with vec_meta",
                 )
             row.provider = resolved_provider
-            row.index_table = row.index_table or vectors.VEC_TABLE
         self.session.flush()
         return self._dto(
             row,
@@ -270,34 +365,181 @@ class StudyVectorStore:
             metadata_row=True,
         )
 
+    def provision(self) -> SpaceProvision | None:
+        """Provision the content space's ``vec_<8hex>`` table and backfill it.
+
+        Off the read path by construction: callers are the one-time migration,
+        the ingest/reindex write path, or an explicit ops action. ``chunk_vecs``
+        is copied, never replaced or dropped; the index_table switch commits
+        with the caller's transaction.
+        """
+        space = self.ensure_content_space()
+        if space is None:
+            return None
+        if _is_provisioned(space.index_table):
+            return None
+        self.backfill_metadata()
+        space = self.content_space() or space
+        result = provision_space(self.session, space.space_id)
+        if result.index_table is not None:
+            backfill_from_legacy(self.session, space.space_id)
+        return result
+
+    def backfill_physical(self) -> int:
+        """Copy any legacy rows into an already-provisioned content table."""
+        space = self.content_space()
+        if space is None or not _is_provisioned(space.index_table):
+            return 0
+        return backfill_from_legacy(self.session, space.space_id)
+
+    def space_status(self) -> SpaceStatus | None:
+        space = self.content_space()
+        if space is None:
+            return None
+        return space_status(self.session, space.space_id)
+
+    def health(self) -> StoreHealth:
+        """Backend/table health without creating or repairing anything."""
+        space = self.content_space()
+        legacy_rows = vectors.vector_count(self.session)
+        if space is None:
+            return StoreHealth(
+                ok=False,
+                detail="no vector store is provisioned (vec_meta has no dim)",
+                backend=backend_for(self.session),
+                index_table=None,
+                records=0,
+                legacy_rows=legacy_rows,
+                provisioned=False,
+            )
+        backend = self._backend(space)
+        if backend is None:
+            backend_name = choose_backend(self.session).name
+            return StoreHealth(
+                ok=vectors.table_exists(self.session),
+                detail=f"legacy {vectors.VEC_TABLE} store, {legacy_rows} vector(s)",
+                backend=backend_name,
+                index_table=space.index_table,
+                records=legacy_rows,
+                legacy_rows=legacy_rows,
+                provisioned=False,
+            )
+        result = backend.health(space.as_contract())
+        try:
+            records = backend.count(space.as_contract())
+        except VectorBackendError:
+            records = 0
+        return StoreHealth(
+            ok=result.ok,
+            detail=result.detail,
+            backend=backend.name,
+            index_table=space.index_table,
+            records=records,
+            legacy_rows=legacy_rows,
+            provisioned=_is_provisioned(space.index_table),
+        )
+
     def search(
-        self, query_vector: Sequence[float], limit: int = 24
+        self,
+        query_vector: Sequence[float],
+        limit: int = 24,
+        *,
+        course_id: str | None = None,
+        material_ids: Sequence[str] | None = None,
+        profile_id: str | None = None,
     ) -> list[tuple[str, float]]:
+        """Top chunks by cosine, scoped before the ANN scan when possible.
+
+        Returns the legacy ``(chunk id, distance)`` shape so the FTS/RRF
+        fusion and hydration paths stay unchanged. When the provisioned
+        backend is unavailable (missing extension/table) the legacy
+        ``chunk_vecs`` path answers; a partial backfill never fabricates
+        coverage because the migration only switches ``index_table`` after
+        verifying its row count.
+        """
+        space = self.content_space()
+        if space is None or space.dim != len(query_vector):
+            return []
+        backend = self._backend(space)
+        if backend is not None:
+            try:
+                hits = backend.search(
+                    space.as_contract(),
+                    list(query_vector),
+                    views=(CONTENT_VIEW,),
+                    scope=self._scope(
+                        course_id=course_id,
+                        material_ids=material_ids,
+                        profile_id=profile_id,
+                    ),
+                    limit=limit,
+                )
+                return [(hit.record_id, hit.distance) for hit in hits]
+            except VectorBackendError as exc:
+                logger.warning("vector backend search failed, using legacy store: %s", exc)
         return vectors.search(self.session, list(query_vector), limit=limit)
 
-    def store(
-        self, chunk_ids: list[str], vectors_batch: list[list[float]], model: str
-    ) -> None:
+    def store(self, chunk_ids: list[str], vectors_batch: list[list[float]], model: str) -> None:
         """Write physical vectors, then register their metadata mapping.
 
-        ``vectors.store`` first enforces the model/dim guard; only a
-        successful physical write reaches ``ensure_content_space``, so a
-        refused change never leaves a metadata row behind.
+        ``vectors.store`` first enforces the model/dim guard and maintains the
+        legacy mirror; only a successful physical write reaches the metadata
+        registration and the provisioned backend. A refused change never
+        leaves a metadata row or a copied vector behind.
         """
         if not chunk_ids or not vectors_batch:
             return
         vectors.store(self.session, chunk_ids, vectors_batch, model)
-        self.ensure_content_space()
-        self._sync_records(chunk_ids)
+        space = self.ensure_content_space()
+        records = self._sync_records(chunk_ids)
+        if space is None:
+            return
+        space = self._ensure_physical(space)
+        backend = self._backend(space)
+        if backend is None:
+            return
+        index_records = [
+            IndexRecord(
+                record_id=str(record.id),
+                document_id=str(record.document_id),
+                view=str(record.view),
+                chunk_index=int(record.chunk_index),
+                embedding=tuple(float(value) for value in vector),
+                content_hash=str(record.content_hash or ""),
+            )
+            for chunk_id, vector in zip(chunk_ids, vectors_batch, strict=True)
+            if (record := records.get(str(chunk_id))) is not None
+        ]
+        if index_records:
+            backend.upsert(space.as_contract(), index_records)
 
     def delete_for_extraction(self, chunk_ids: list[str]) -> None:
         if not chunk_ids:
             return
         rowids = [vectors.rowid_for(chunk_id) for chunk_id in chunk_ids]
+        space = self.content_space()
+        if space is not None:
+            backend = self._backend(space)
+            if backend is not None:
+                backend.delete_record_ids(space.as_contract(), list(chunk_ids))
         vectors.delete_for_extraction(self.session, chunk_ids)
         self._drop_records(rowids)
 
     def delete_rowids(self, rowids: list[int]) -> int:
+        space = self.content_space()
+        if space is not None and rowids:
+            backend = self._backend(space)
+            if backend is not None:
+                record_ids = [
+                    str(record_id)
+                    for (record_id,) in self.session.execute(
+                        select(VectorRecord.id).where(
+                            VectorRecord.space_id == space.space_id,
+                            VectorRecord.rowid.in_([int(rowid) for rowid in rowids]),
+                        )
+                    )
+                ]
+                backend.delete_record_ids(space.as_contract(), record_ids)
         removed = vectors.delete_rowids(self.session, rowids)
         self._drop_records(rowids)
         return removed
@@ -328,7 +570,7 @@ class StudyVectorStore:
 
     def metadata_complete(self) -> bool:
         """True when the metadata mapping covers every physical vector row."""
-        physical = vectors.vector_count(self.session)
+        physical = self.vector_count()
         return physical > 0 and self.record_count(view=CONTENT_VIEW) >= physical
 
     def documents(self, *, limit: int | None = None) -> list[VectorDocument]:
@@ -357,8 +599,8 @@ class StudyVectorStore:
         ).first()
 
     def rowid_map(self) -> dict[int, str]:
-        """``rowid -> chunk id`` — the existing ``chunk_vec_ids`` reverse map."""
-        return vectors.stored_chunk_ids(self.session)
+        """``rowid -> chunk id`` — the sqlite-vec rowid map (P3a legacy map)."""
+        return self.stored_chunk_ids()
 
     def backfill_metadata(self, *, batch_size: int = 500) -> MetadataBackfill:
         """Rebuild/refresh the mapping from the physical rowid reverse map.
@@ -368,7 +610,7 @@ class StudyVectorStore:
         rowid, never duplicated.
         """
         self.ensure_content_space()
-        mapping = vectors.stored_chunk_ids(self.session)
+        mapping = self.stored_chunk_ids()
         chunk_ids = list(mapping.values())
         scanned = 0
         for start in range(0, len(chunk_ids), max(1, batch_size)):
@@ -381,6 +623,58 @@ class StudyVectorStore:
             records=self.record_count(view=CONTENT_VIEW),
             scanned=scanned,
         )
+
+    def _backend(self, space: ContentSpace) -> SessionVectorBackend | None:
+        """The backend that answers this space, or ``None`` for the legacy store."""
+        if space.index_table == LEGACY_INDEX_TABLE or not space.index_table:
+            if space.index_table is None:
+                return LinearBackend(self.session)
+            return None
+        if not _is_provisioned(space.index_table):
+            return None
+        return choose_backend(self.session)
+
+    def _ensure_physical(self, space: ContentSpace) -> ContentSpace:
+        """Provision on the write path only; a failure keeps the legacy store."""
+        if space.index_table != LEGACY_INDEX_TABLE:
+            return space
+        row = self.session.get(VectorSpace, space.space_id)
+        savepoint = self.session.begin_nested()
+        try:
+            self.provision()
+        except VectorProvisioningError as exc:
+            savepoint.rollback()
+            logger.warning(
+                "vector_space_provision_deferred space_id=%s reason=%s",
+                space.space_id,
+                exc,
+            )
+            if row is not None:
+                self.session.expire(row)
+            return space
+        savepoint.commit()
+        return self.content_space() or space
+
+    def _scope(
+        self,
+        *,
+        course_id: str | None,
+        material_ids: Sequence[str] | None,
+        profile_id: str | None,
+    ) -> ScopeSpec:
+        if material_ids is not None:
+            return document_scope([_canonical_id(value) for value in material_ids])
+        if course_id is not None:
+            ids = [
+                str(value)
+                for value in self.session.scalars(
+                    select(Material.id).where(Material.course_id == course_id)
+                )
+            ]
+            return document_scope(ids)
+        if profile_id is not None:
+            return filter_scope(profile_ids=[profile_id])
+        return ScopeSpec(kind=SCOPE_ALL, predicate=None)
 
     def _dto(
         self,
@@ -442,9 +736,10 @@ class StudyVectorStore:
             document.source_id = source_id
         return document
 
-    def _sync_records(self, chunk_ids: Sequence[str]) -> int:
+    def _sync_records(self, chunk_ids: Sequence[str]) -> dict[str, VectorRecord]:
+        """Register/refresh metadata for ``chunk_ids``; record id = chunk id."""
         if not chunk_ids:
-            return 0
+            return {}
         wanted = [str(chunk_id) for chunk_id in chunk_ids]
         rows = self.session.execute(
             select(
@@ -466,7 +761,7 @@ class StudyVectorStore:
             by_material.setdefault(key, []).append(
                 (str(chunk_id), int(ordinal), str(text), key, profile_id, markdown or "")
             )
-        written = 0
+        registered: dict[str, VectorRecord] = {}
         for material_id, chunks in by_material.items():
             source_id = _canonical_id(material_id)
             document = self._document_for(
@@ -486,11 +781,12 @@ class StudyVectorStore:
             }
             next_index = max((record.chunk_index for record in existing.values()), default=-1) + 1
             for chunk_id, _ordinal, text, _material, _profile, _markdown in chunks:
-                rowid = vectors.rowid_for(chunk_id)
+                canonical_chunk = _canonical_id(chunk_id)
+                rowid = vectors.rowid_for(canonical_chunk)
                 record = existing.get(rowid)
                 if record is None:
                     record = VectorRecord(
-                        id=str(uuid.uuid4()),
+                        id=canonical_chunk,
                         document_id=document.id,
                         space_id=CONTENT_SPACE_ID,
                         view=CONTENT_VIEW,
@@ -499,12 +795,13 @@ class StudyVectorStore:
                         content_hash=content_hash(text),
                     )
                     self.session.add(record)
+                    existing[rowid] = record
                     next_index += 1
                 else:
                     record.content_hash = content_hash(text)
-                written += 1
+                registered[canonical_chunk] = record
             self.session.flush()
-        return written
+        return registered
 
     def _drop_records(self, rowids: Sequence[int]) -> int:
         wanted = [int(rowid) for rowid in rowids]
@@ -543,9 +840,11 @@ __all__ = [
     "CONTENT_SPACE_KIND",
     "CONTENT_SPACE_NAME",
     "CONTENT_VIEW",
+    "LEGACY_INDEX_TABLE",
     "ContentSpace",
     "EmbeddingAssignment",
     "MetadataBackfill",
+    "StoreHealth",
     "StudyVectorStore",
     "backend_for",
     "backend_label",

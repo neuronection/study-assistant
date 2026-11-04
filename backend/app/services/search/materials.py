@@ -167,7 +167,9 @@ def _vector_ranking(
             return ([], "provider_unassigned")
         _model, vectors_batch = embedded
         query_vector = vectors_batch[0]
-        hits = StudyVectorStore(session).search(query_vector, limit=limit)
+        hits = StudyVectorStore(session).search(
+            query_vector, limit=limit, course_id=course_id
+        )
     except Exception:
         return ([], "embed_failed")
     if not hits:

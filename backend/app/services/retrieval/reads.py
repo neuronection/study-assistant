@@ -215,16 +215,28 @@ def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
     health = query_health(session, window=window)
     notes: list[str] = [
         "Space lifecycle management (build/activate/retire/cutover) is not "
-        "available in this build — plan 51 Q3b/Q3c; the P3a metadata layer "
-        "only maps the legacy content space."
+        "available in this build — plan 51 Q3c2; the content space is mapped "
+        "onto its provisioned physical backend."
     ]
+    if store is not None:
+        notes.append(f"Storage: {store.health_detail}.")
+        if not store.health_ok:
+            notes.append(
+                "The provisioned vector backend reports a problem; search falls "
+                "back to the legacy store or lexical matching."
+            )
     if store is None and coverage.as_of is None:
         state = "empty"
         notes.append("The legacy vector store has no vec_meta yet (nothing embedded).")
     elif coverage.as_of is None:
         state = "cold"
         notes.append("Never reconciled — run a vector reindex to publish coverage.")
-    elif store is None or coverage.gate == GateStatus.FAIL or (coverage.failed or 0) > 0:
+    elif (
+        store is None
+        or coverage.gate == GateStatus.FAIL
+        or (coverage.failed or 0) > 0
+        or not store.health_ok
+    ):
         state = "degraded"
     else:
         state = "ready"

@@ -98,7 +98,12 @@ def _vector_chunk_ranking(
         if embedded is None or not embedded[1]:
             return [], "no embeddings model is assigned (Settings → Tasks)"
         _model, vectors_batch = embedded
-        hits = StudyVectorStore(session).search(vectors_batch[0], limit=limit * 3)
+        hits = StudyVectorStore(session).search(
+            vectors_batch[0],
+            limit=limit * 3,
+            course_id=course_id,
+            material_ids=material_ids,
+        )
     except Exception as error:
         return [], f"the embeddings request failed ({type(error).__name__})"
     rows = _chunk_rows(

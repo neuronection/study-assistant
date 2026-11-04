@@ -263,15 +263,20 @@ def _vacuum(session: Session, table: str) -> None:
 def _rebuild_index(session: Session) -> str:
     if session.get_bind().dialect.name != "postgresql":
         return "sqlite-vec has no online index rebuild; run a full VECTOR_REINDEX instead"
-    exists = session.execute(
-        text("SELECT to_regclass(:name)"), {"name": "ix_chunk_vecs_embedding"}
-    ).scalar()
+    store = StudyVectorStore(session)
+    index_name = store.index_name
+    if index_name is None:
+        return (
+            f"{store.index_table} has no provisioned HNSW index; run a full "
+            "VECTOR_REINDEX to move the space onto its vec_ table"
+        )
+    exists = session.execute(text("SELECT to_regclass(:name)"), {"name": index_name}).scalar()
     if exists is None:
-        raise JobError("chunk_vecs has no HNSW index to rebuild")
+        raise JobError(f"{store.index_table} has no HNSW index to rebuild")
     with _engine(session).connect() as connection:
         connection = connection.execution_options(isolation_level="AUTOCOMMIT")
-        connection.execute(text("REINDEX INDEX CONCURRENTLY ix_chunk_vecs_embedding"))
-    return "rebuilt ix_chunk_vecs_embedding concurrently"
+        connection.execute(text(f"REINDEX INDEX CONCURRENTLY {index_name}"))
+    return f"rebuilt {index_name} concurrently"
 
 
 def make_vector_maintenance_handler(
@@ -298,7 +303,8 @@ def make_vector_maintenance_handler(
             return
 
         if action == "vacuum":
-            _vacuum(session, StudyVectorStore(session).index_table)
+            table = StudyVectorStore(session).index_table
+            _vacuum(session, table)
             job.result = cast(
                 JobResult,
                 {
@@ -310,7 +316,7 @@ def make_vector_maintenance_handler(
                     "failed_ids_truncated": False,
                     "gate": GateStatus.UNKNOWN.value,
                     "action": action,
-                    "note": "vacuumed the legacy vector table",
+                    "note": f"vacuumed {table}",
                 },
             )
             session.commit()
@@ -387,8 +393,8 @@ def make_vector_cutover_handler() -> Callable[[Session, Job, Progress], None]:
         del session, job, report
         raise JobError(
             "vector cutover is unavailable: study has no vector-space lifecycle "
-            "cutover target yet (plan 51 Q3c); the legacy content space remains "
-            "readable"
+            "cutover target yet (plan 51 Q3c2b); the content space remains "
+            "readable on its provisioned backend"
         )
 
     return handler

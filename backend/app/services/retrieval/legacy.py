@@ -26,6 +26,7 @@ from ...domain.models import (
     Extraction,
     Material,
     RetrievalCoverageSnapshot,
+    VectorSpace,
 )
 from ...storage import vectors
 from ...storage.retrieval_ops import (
@@ -74,6 +75,12 @@ class LegacyStore:
     meta: dict[str, str]
     key: str = ""
     metadata_row: bool = False
+    status: str = "active"
+    health_ok: bool = True
+    health_detail: str = ""
+    created_at: str | None = None
+    activated_at: str | None = None
+    retired_at: str | None = None
 
 
 def _distinct_documents(session: Session) -> int:
@@ -98,27 +105,37 @@ def load_store(session: Session) -> LegacyStore | None:
     if space is None:
         return None
     assignment = embedding_assignment(session)
-    physical_records = vectors.vector_count(session)
+    physical_records = store.vector_count()
     metadata_ready = store.metadata_complete()
+    health = store.health()
     return LegacyStore(
         space_id=space.space_id,
         name=space.name,
         provider=assignment.provider if assignment.provider else space.provider,
         model=space.model,
         dim=space.dim,
-        backend=space.backend,
+        backend=health.backend,
         index_table=space.index_table,
-        documents=(
-            store.document_count()
-            if metadata_ready
-            else _distinct_documents(session)
-        ),
+        documents=(store.document_count() if metadata_ready else _distinct_documents(session)),
         records=physical_records,
         chunk_total=_chunk_total(session),
         meta=vectors.read_meta(session),
         key=space.key,
         metadata_row=space.metadata_row,
+        status=space.status,
+        health_ok=health.ok,
+        health_detail=health.detail,
+        created_at=_row_time(session, "created_at"),
+        activated_at=_row_time(session, "activated_at"),
+        retired_at=_row_time(session, "retired_at"),
     )
+
+
+def _row_time(session: Session, field: str) -> str | None:
+    row = session.get(VectorSpace, CONTENT_SPACE_ID)
+    if row is None:
+        return None
+    return iso(getattr(row, field))
 
 
 def latest_coverage(session: Session) -> RetrievalCoverageSnapshot | None:
@@ -133,9 +150,7 @@ def latest_coverage(session: Session) -> RetrievalCoverageSnapshot | None:
     ).first()
 
 
-def coverage_dto(
-    session: Session, store: LegacyStore | None = None
-) -> CoverageDTO:
+def coverage_dto(session: Session, store: LegacyStore | None = None) -> CoverageDTO:
     snapshot = latest_coverage(session)
     if snapshot is None:
         return CoverageDTO(
@@ -149,11 +164,7 @@ def coverage_dto(
             coverage=None,
             gate=GateStatus.UNKNOWN,
         )
-    coverage = (
-        snapshot.embedded / snapshot.total
-        if snapshot.total > 0
-        else None
-    )
+    coverage = snapshot.embedded / snapshot.total if snapshot.total > 0 else None
     gate = (
         GateStatus.UNKNOWN
         if coverage is None
@@ -180,7 +191,7 @@ def space_dto(session: Session, store: LegacyStore) -> SpaceDTO:
     return SpaceDTO(
         space_id=store.space_id,
         name=store.name,
-        status=SpaceStatus.ACTIVE,
+        status=SpaceStatus(store.status),
         provider=store.provider,
         model=store.model,
         dim=store.dim,
@@ -191,11 +202,11 @@ def space_dto(session: Session, store: LegacyStore) -> SpaceDTO:
         coverage=coverage.coverage,
         stale=None,
         failed=coverage.failed if coverage.as_of is not None else None,
-        created_at=None,
-        activated_at=None,
-        retired_at=None,
+        created_at=store.created_at,
+        activated_at=store.activated_at,
+        retired_at=store.retired_at,
         last_reindex_at=None,
-        last_error=None,
+        last_error=None if store.health_ok else store.health_detail,
         gate=coverage.gate,
         as_of=coverage.as_of,
     )
@@ -242,9 +253,7 @@ def prune_coverage(session: Session, *, now: datetime | None = None) -> int:
     cutoff = moment.timestamp() - COVERAGE_TTL_DAYS * 86_400
     cutoff_dt = datetime.fromtimestamp(cutoff, UTC)
     rows = session.scalars(
-        select(RetrievalCoverageSnapshot).where(
-            RetrievalCoverageSnapshot.as_of < cutoff_dt
-        )
+        select(RetrievalCoverageSnapshot).where(RetrievalCoverageSnapshot.as_of < cutoff_dt)
     ).all()
     for row in rows:
         session.delete(row)
