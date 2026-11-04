@@ -180,6 +180,31 @@ law: single-use, expiring, bound to the profile that started it. The state is
 a `<link-id>.<nonce>` composite so the callback can find the binding; the
 nonce does the security work.
 
+## Identity & the delta fast path (E9 / M4)
+
+Two rules that only bite in production:
+
+**The link row is the identity authority.** `CalendarEventLink.uid` is the
+LOCAL uid (`study:plan-item:<id>` / `health:examination:<id>`); the provider's
+handle lives in `remote_id`/`etag`. This is load-bearing: **Graph's `iCalUId`
+is server-generated and read-only**, so the provider can hand back a different
+uid for an event we created. Matching by uid alone split one event into
+`unlink` + `create-remote` — a duplicate every sync. The remote side is
+matched by write handle, falling back to uid.
+
+**Orphan repair.** A local record with no link may already have a remote twin
+(the link write was lost in a crash between the provider write and our
+commit). `reconcile` matches those by content hash and emits `LINK_EXISTING`
+— attach, never create. Graph has no idempotency key, so this is what closes
+the crash window there.
+
+**A delta cursor is a probe, never the remote view.** A delta listing returns
+only *changed* events. Feeding it to `reconcile` as the remote set reads every
+unchanged event as "vanished" and unlinks it. The cursor is used to
+short-circuit the run when the provider reports no changes; any change
+(including a tombstone) falls through to the full window; a dead cursor is
+dropped and the run resyncs — never a failure.
+
 ## Common pitfalls
 
 - Do not hand-write a provider or scope list — read the catalog. The bind
@@ -191,3 +216,5 @@ nonce does the security work.
 - Do not project every plan item; that is the noise the mapping law exists to
   prevent.
 - Do not pull without an acceptance predicate.
+- Do not store the provider's uid in the link row — it is not an identity.
+- Do not feed a delta result to `reconcile` as the remote view.

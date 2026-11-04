@@ -11,6 +11,18 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (calendar identity + delta safety — ADR-0052 / E9 / M4)
+- **A calendar link's `uid` is now the LOCAL uid**, with the provider's handle
+  in `remote_id`. Providers may mint their own (Graph's `iCalUId` is
+  server-generated), and uid-matching split one event into `unlink` +
+  `create-remote` — a duplicate on every sync.
+- **Orphan repair**: an unlinked plan item with a matching unlinked remote
+  event is attached (`LINK_EXISTING`), never duplicated. This closes the
+  crash window even on providers with no idempotency key.
+- **Delta cursors are a fast path, never the remote view**: when the provider
+  reports no changes the reconcile is skipped; any change falls through to the
+  full window. The bind form is rendered entirely from the catalog's
+  `setupFields`, so a new provider needs no UI change.
 ### Added (retrieval alerts, generation tagging & canonical adoption — plan 51 Q3c3a)
 - **Ten retrieval alerts through the existing notification funnel.**
   Migration `0015_retrieval_alerts` adds the boot-seeded
