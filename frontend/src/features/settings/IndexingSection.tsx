@@ -10,6 +10,8 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { getProfilePreferences, updateProfilePreferences } from '@/lib/api'
+import { getCurrentUser } from '@/lib/auth-session'
+import { RetrievalObservationPanel } from './RetrievalObservationPanel'
 import { RetrievalStatusCard } from './RetrievalStatusCard'
 
 const MAX_EDGE_OPTIONS = [0, 1024, 1568, 2048] as const
@@ -30,10 +32,24 @@ export function IndexingSection() {
 
   const enabled = preferences.data?.use_embeddings ?? true
   const maxEdge = preferences.data?.ocr_image_max_edge ?? 1568
+  const isAdmin = getCurrentUser()?.is_admin ?? false
 
   return (
     <div className="space-y-4">
-      <RetrievalStatusCard />
+      {isAdmin ? (
+        <div className="flex items-center justify-end">
+          <a
+            href="#retrieval-observation"
+            className="text-primary text-xs font-medium hover:underline"
+          >
+            {t('settings.retrievalObsOpen')}
+          </a>
+        </div>
+      ) : null}
+      <section id="retrieval-management" className="space-y-4">
+        <RetrievalStatusCard />
+      </section>
+      <RetrievalObservationPanel />
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">{t('settings.searchTitle')}</CardTitle>
