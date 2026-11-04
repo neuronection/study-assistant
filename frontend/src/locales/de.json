@@ -2904,6 +2904,7 @@
   "notifications": {
     "label": "Benachrichtigungen",
     "empty": "Im Moment braucht dich nichts.",
+    "alerts": "Warnungen",
     "dueNow": "Jetzt fällig",
     "dueCards": "{{count}} Karten fällig",
     "plan": "Plan",

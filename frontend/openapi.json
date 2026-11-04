@@ -222,6 +222,55 @@
         "title": "AdminUserUpdateIn",
         "type": "object"
       },
+      "AlertEntryOut": {
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "title",
+          "link"
+        ],
+        "title": "AlertEntryOut",
+        "type": "object"
+      },
       "AllocationIn": {
         "properties": {
           "material_id": {
@@ -9891,6 +9940,14 @@
       },
       "NotificationsOut": {
         "properties": {
+          "alerts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AlertEntryOut"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
           "due_cards": {
             "title": "Due Cards",
             "type": "integer"
@@ -14882,6 +14939,134 @@
           }
         },
         "title": "RetrievalSpacesOut",
+        "type": "object"
+      },
+      "RetrievalUsageOut": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "errors_available": {
+            "default": false,
+            "title": "Errors Available",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalUsageRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "tokens_available": {
+            "default": false,
+            "title": "Tokens Available",
+            "type": "boolean"
+          },
+          "window": {
+            "title": "Window",
+            "type": "string"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          }
+        },
+        "required": [
+          "window",
+          "window_start",
+          "window_end"
+        ],
+        "title": "RetrievalUsageOut",
+        "type": "object"
+      },
+      "RetrievalUsageRowOut": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reindex_calls": {
+            "default": 0,
+            "title": "Reindex Calls",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "tokens_in": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens In"
+          },
+          "tokens_out": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Out"
+          }
+        },
+        "required": [
+          "day",
+          "space_id",
+          "kind",
+          "calls"
+        ],
+        "title": "RetrievalUsageRowOut",
         "type": "object"
       },
       "RetryFailedBody": {
@@ -21285,6 +21470,49 @@
           }
         },
         "summary": "Post Retire Space",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/usage": {
+      "get": {
+        "operationId": "get_usage_api_v1_admin_retrieval_usage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "24h",
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalUsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
         "tags": [
           "retrieval"
         ]

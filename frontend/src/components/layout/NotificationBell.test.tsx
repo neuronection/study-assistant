@@ -62,6 +62,7 @@ const AGGREGATE: Notifications = {
   ],
   pending_proposals: 0,
   staged_imports: [],
+  alerts: [],
   generated_at: '2026-09-15T00:00:00Z',
 }
 
@@ -183,5 +184,38 @@ describe('NotificationBell pending proposals (plan 78-E)', () => {
     fireEvent.click(trigger)
     expect(await screen.findByText(/2 tutor suggestions to review/)).toBeInTheDocument()
     expect(view.getByText(/waiting for you/i)).toBeInTheDocument()
+  })
+})
+
+describe('NotificationBell retrieval alerts (plan 51 Q3c3a)', () => {
+  test('shows active admin alerts and counts them in the actionable total', async () => {
+    const withAlert: Notifications = {
+      ...AGGREGATE,
+      due_cards: 0,
+      due_reviews: [],
+      plan_today: [],
+      plan_overdue_count: 0,
+      exams: [],
+      alerts: [
+        {
+          id: 'n-1',
+          kind: 'retrieval.quality_gate',
+          severity: 'warning',
+          title: 'Retrieval quality below floor',
+          body: 'The golden-query compare missed the floor.',
+          link: '/settings?tab=tools&section=indexing',
+          created_at: '2026-11-04T00:00:00Z',
+        },
+      ],
+    }
+    getNotifications.mockResolvedValue(withAlert)
+    expect(actionableTotal(withAlert)).toBe(1)
+    renderBell()
+    const trigger = await screen.findByRole('button', { name: /notifications/i })
+    fireEvent.click(trigger)
+    expect(await screen.findByText('Alerts')).toBeInTheDocument()
+    expect(
+      screen.getByText('Retrieval quality below floor')
+    ).toBeInTheDocument()
   })
 })

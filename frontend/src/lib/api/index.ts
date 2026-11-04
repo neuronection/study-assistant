@@ -82,6 +82,7 @@ export type {
 } from './study'
 
 export type {
+  AlertEntry,
   DueReviewEntry,
   ExamEntry,
   Notifications,

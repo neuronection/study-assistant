@@ -2904,6 +2904,7 @@
   "notifications": {
     "label": "Notifications",
     "empty": "Nothing needs you right now.",
+    "alerts": "Alerts",
     "dueNow": "Due now",
     "dueCards": "{{count}} cards due",
     "plan": "Plan",

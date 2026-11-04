@@ -308,6 +308,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/retrieval/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Usage */
+        get: operations["get_usage_api_v1_admin_retrieval_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/users": {
         parameters: {
             query?: never;
@@ -5655,6 +5672,26 @@ export interface components {
             /** Is Admin */
             is_admin?: boolean | null;
         };
+        /** AlertEntryOut */
+        AlertEntryOut: {
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Link */
+            link: string;
+            /** Severity */
+            severity: string;
+            /** Title */
+            title: string;
+        };
         /** AllocationIn */
         AllocationIn: {
             /** Material Id */
@@ -8718,6 +8755,11 @@ export interface components {
         };
         /** NotificationsOut */
         NotificationsOut: {
+            /**
+             * Alerts
+             * @default []
+             */
+            alerts: components["schemas"]["AlertEntryOut"][];
             /** Due Cards */
             due_cards: number;
             /** Due Reviews */
@@ -10300,6 +10342,53 @@ export interface components {
             notes?: string[];
             /** Spaces */
             spaces?: components["schemas"]["RetrievalSpaceOut"][];
+        };
+        /** RetrievalUsageOut */
+        RetrievalUsageOut: {
+            /** Budget */
+            budget?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Errors Available
+             * @default false
+             */
+            errors_available: boolean;
+            /** Notes */
+            notes?: string[];
+            /** Rows */
+            rows?: components["schemas"]["RetrievalUsageRowOut"][];
+            /**
+             * Tokens Available
+             * @default false
+             */
+            tokens_available: boolean;
+            /** Window */
+            window: string;
+            /** Window End */
+            window_end: string | null;
+            /** Window Start */
+            window_start: string | null;
+        };
+        /** RetrievalUsageRowOut */
+        RetrievalUsageRowOut: {
+            /** Calls */
+            calls: number;
+            /** Day */
+            day: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Reindex Calls
+             * @default 0
+             */
+            reindex_calls: number;
+            /** Space Id */
+            space_id: string;
+            /** Tokens In */
+            tokens_in?: number | null;
+            /** Tokens Out */
+            tokens_out?: number | null;
         };
         /** RetryFailedBody */
         RetryFailedBody: {
@@ -12709,6 +12798,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage_api_v1_admin_retrieval_usage_get: {
+        parameters: {
+            query?: {
+                window?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalUsageOut"];
                 };
             };
             /** @description Validation Error */
