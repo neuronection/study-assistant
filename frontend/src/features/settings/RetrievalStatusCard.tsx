@@ -96,7 +96,7 @@ export function RetrievalStatusCard() {
 
   const overview = useQuery({
     queryKey: ['retrieval-overview'],
-    queryFn: getRetrievalOverview,
+    queryFn: () => getRetrievalOverview(),
     enabled: isAdmin,
     retry: false,
     staleTime: 30_000,

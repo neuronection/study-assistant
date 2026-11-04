@@ -73,6 +73,7 @@ describe('IndexingSection', () => {
     const select = await screen.findByLabelText(/max long edge/i)
     await waitFor(() => expect(select).toHaveValue('1568'))
 
+    expect(screen.queryByText(/retrieval observation/i)).not.toBeInTheDocument()
     fireEvent.change(select, { target: { value: '1024' } })
     await waitFor(() =>
       expect(updateProfilePreferences).toHaveBeenCalledWith({ ocr_image_max_edge: 1024 })
