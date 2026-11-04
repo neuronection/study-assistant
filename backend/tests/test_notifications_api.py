@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Any, cast
 
 from fastapi.testclient import TestClient
 
@@ -103,6 +104,40 @@ def test_notifications_done_plan_items_invisible(client: TestClient) -> None:
         after = client.get("/api/v1/notifications").json()
         assert after["plan_overdue_count"] == 0
         assert after["plan_today"] == []
+
+
+def test_notifications_delivers_active_admin_retrieval_alerts(client: TestClient) -> None:
+    from sqlalchemy import select
+
+    from app.domain.models import User
+    from app.services.platform.notifications import NotificationService
+
+    with client:
+        with cast(Any, client.app).state.session_factory() as session:
+            user = session.scalars(select(User).where(User.email == "session@study.local")).one()
+            NotificationService(session).emit(
+                "retrieval.quality_gate",
+                [user.id],
+                title="Retrieval quality below floor",
+                body="A compare missed the floor.",
+                payload={"link": "/settings?tab=tools&section=indexing", "space_id": "s"},
+                dedup_key="retrieval.quality_gate:s",
+                max_per_day=3,
+            )
+            session.commit()
+
+        body = client.get("/api/v1/notifications").json()
+        assert body["alerts"] == [
+            {
+                "id": body["alerts"][0]["id"],
+                "kind": "retrieval.quality_gate",
+                "severity": "warning",
+                "title": "Retrieval quality below floor",
+                "body": "A compare missed the floor.",
+                "link": "/settings?tab=tools&section=indexing",
+                "created_at": body["alerts"][0]["created_at"],
+            }
+        ]
 
 
 def test_notifications_ignores_scratch_courses(client: TestClient) -> None:

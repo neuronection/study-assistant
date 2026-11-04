@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "adr": "ADR-0051 (proposed)",
+  "plan": 50,
+  "description": "Cross-product acceptance wall for the family vector-retrieval contract (ADR-0051 / plan 50 P0). Every vendored copy of contracts/vector_contract.py must satisfy these rows — score math, chunk aggregation, weighted RRF fusion, space-key stability, content-hash normalization, the v1 caps/defaults and the degradation vocabulary. Same law, one table, never per-repo edits.",
+  "cosine": [
+    { "name": "identical-vectors", "a": [1, 2, 3], "b": [1, 2, 3], "expected": 1.0 },
+    { "name": "orthogonal-vectors", "a": [1, 0, 1], "b": [1, 1, 0], "expected": 0.5 },
+    { "name": "pythagorean-triple", "a": [3, 4], "b": [4, 3], "expected": 0.96 },
+    { "name": "opposite-vectors", "a": [1, 0], "b": [-1, 0], "expected": -1.0 },
+    { "name": "dim-mismatch-scores-zero-never-crashes", "a": [1, 2], "b": [1, 2, 3], "expected": 0.0 },
+    { "name": "empty-scores-zero", "a": [], "b": [], "expected": 0.0 },
+    { "name": "zero-vector-scores-zero", "a": [0, 0], "b": [1, 2], "expected": 0.0 }
+  ],
+  "normalize": [
+    { "name": "l2-unit", "vector": [3, 4], "expected": [0.6, 0.8] },
+    { "name": "negative-component", "vector": [-3, 4], "expected": [-0.6, 0.8] },
+    { "name": "already-unit", "vector": [1, 0], "expected": [1.0, 0.0] },
+    { "name": "zero-vector-stays-zero", "vector": [0, 0], "expected": [0.0, 0.0] },
+    { "name": "empty-stays-empty", "vector": [], "expected": [] }
+  ],
+  "textHash": [
+    { "name": "whitespace-fold-and-case", "text": "  Hello\tWorld  ", "expectedNormalized": "hello world", "expectedHash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9" },
+    { "name": "newlines-and-tabs-fold", "text": "A\n\tB ", "expectedNormalized": "a b", "expectedHash": "c8687a08aa5d6ed2044328fa6a697ab8e96dc34291e8c2034ae8c38e6fcc6d65" },
+    { "name": "runs-of-spaces-fold", "text": "Multiple   spaces", "expectedNormalized": "multiple spaces", "expectedHash": "cdbb2583932f122c57ad2c34c022329fb9587e3609c1501f2192bf3cf71b86f1" },
+    { "name": "mixed-case-lowercased", "text": "MiXeD CaSe", "expectedNormalized": "mixed case", "expectedHash": "938c14299c2810673b77d4a3a05ef9c7ba32e39acfb6ff723da7e1afdbaef31e" },
+    { "name": "already-normalized", "text": "already normal", "expectedNormalized": "already normal", "expectedHash": "7c65441e02222b6a3755c4c0ba85925d8c6ea838cdcd630111720e6fc16fdf04" }
+  ],
+  "spaceKeyStability": [
+    {
+      "name": "case-and-whitespace-never-split-a-space",
+      "a": { "provider": "OpenAI", "model": "Text-Embedding-3-Small ", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "same": true
+    },
+    {
+      "name": "no-prefix-null-equals-empty",
+      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": "", "documentPrefix": "  ", "chunkerVersion": "1", "composerVersion": "1" },
+      "same": true
+    },
+    {
+      "name": "dimension-change-changes-the-key",
+      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1024, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "same": false
+    },
+    {
+      "name": "model-change-changes-the-key",
+      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "openai", "model": "text-embedding-3-large", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "same": false
+    },
+    {
+      "name": "chunker-version-changes-the-key",
+      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "2", "composerVersion": "1" },
+      "same": false
+    },
+    {
+      "name": "swapped-prefix-roles-change-the-key",
+      "a": { "provider": "intfloat", "model": "e5-large-v2", "dim": 1024, "normalize": true, "queryPrefix": "query: ", "documentPrefix": "passage: ", "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "intfloat", "model": "e5-large-v2", "dim": 1024, "normalize": true, "queryPrefix": "passage: ", "documentPrefix": "query: ", "chunkerVersion": "1", "composerVersion": "1" },
+      "same": false
+    },
+    {
+      "name": "normalization-toggle-changes-the-key",
+      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": false, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "same": false
+    }
+  ],
+  "spaceKeyPinned": [
+    {
+      "name": "openai-1536-no-prefix",
+      "space": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "expected": "15b568bcad93c4580ddf7e77e3c8c25a49994239631f64f376e8367fea16ecd3"
+    },
+    {
+      "name": "ollama-asymmetric-768",
+      "space": { "provider": "ollama", "model": "embeddinggemma-2:440m", "dim": 768, "normalize": true, "queryPrefix": "query: ", "documentPrefix": "passage: ", "chunkerVersion": "2", "composerVersion": "3" },
+      "expected": "70815a9b4592bbddca6ff1ab5b55316cc2d7e833d2182f9ad7185698359994fb"
+    }
+  ],
+  "rrfMerge": [
+    {
+      "name": "two-rankings-k60",
+      "lists": [["d1", "d2"], ["d2", "d3"]],
+      "k": 60,
+      "weights": null,
+      "expectedScores": {
+        "d1": 0.01639344262295082,
+        "d2": 0.03252247488101534,
+        "d3": 0.016129032258064516
+      },
+      "expectedOrder": ["d2", "d1", "d3"]
+    },
+    {
+      "name": "weighted-views",
+      "lists": [["d1", "d2"], ["d2", "d3"]],
+      "k": 60,
+      "weights": [2.0, 1.0],
+      "expectedScores": {
+        "d1": 0.03278688524590164,
+        "d2": 0.048651507139079855,
+        "d3": 0.016129032258064516
+      },
+      "expectedOrder": ["d2", "d1", "d3"]
+    },
+    {
+      "name": "tie-breaks-on-id-ascending",
+      "lists": [["b", "a"], ["a", "b"]],
+      "k": 60,
+      "weights": null,
+      "expectedScores": {
+        "a": 0.03252247488101534,
+        "b": 0.03252247488101534
+      },
+      "expectedOrder": ["a", "b"]
+    },
+    {
+      "name": "single-ranking-is-its-own-order",
+      "lists": [["x", "y", "z"]],
+      "k": 60,
+      "weights": null,
+      "expectedScores": {
+        "x": 0.01639344262295082,
+        "y": 0.016129032258064516,
+        "z": 0.015873015873015872
+      },
+      "expectedOrder": ["x", "y", "z"]
+    }
+  ],
+  "fusedOrder": [
+    {
+      "name": "score-descending",
+      "scores": { "a": 0.2, "b": 0.9, "c": 0.5 },
+      "expected": ["b", "c", "a"]
+    },
+    {
+      "name": "ties-break-on-id-ascending",
+      "scores": { "z": 0.4, "m": 0.4, "a": 0.4 },
+      "expected": ["a", "m", "z"]
+    }
+  ],
+  "maxsim": [
+    { "name": "identical-single-vector", "queries": [[1, 0]], "documents": [[1, 0]], "expected": 1.0 },
+    { "name": "best-chunk-wins", "queries": [[1, 0]], "documents": [[0, 1], [1, 1]], "expected": 0.7071067811865475 },
+    { "name": "sum-over-query-vectors", "queries": [[1, 0], [0, 1]], "documents": [[1, 0], [0, 1]], "expected": 2.0 },
+    { "name": "no-documents-scores-zero", "queries": [[1, 0]], "documents": [], "expected": 0.0 },
+    { "name": "dim-mismatch-scores-zero", "queries": [[1, 0, 0]], "documents": [[1, 0]], "expected": 0.0 }
+  ],
+  "topMean": [
+    { "name": "top-2-mean", "scores": [0.9, 0.5, 0.3], "n": 2, "expected": 0.7 },
+    { "name": "n-exceeds-count-means-all", "scores": [0.9, 0.5, 0.3], "n": 5, "expected": 0.5666666666666667 },
+    { "name": "n1-is-max", "scores": [0.2, 0.8, 0.4], "n": 1, "expected": 0.8 },
+    { "name": "empty-scores-zero", "scores": [], "n": 2, "expected": 0.0 }
+  ],
+  "defaults": {
+    "rrfK": 60,
+    "exactScanThreshold": 10000,
+    "coverageGate": 0.995,
+    "candidateMultiplier": 4,
+    "maxsimCandidateCap": 200,
+    "rerankTopN": 20,
+    "topMeanN": 2,
+    "efSearchDefault": 40,
+    "linearCapRows": 50000,
+    "sqliteVecRecommendedRows": 100000
+  },
+  "vocabularies": {
+    "backends": ["pgvector", "sqlite_vec", "linear"],
+    "spaceStatuses": ["active", "building", "retired"],
+    "degradedReasons": ["provider_unassigned", "embed_failed", "index_missing", "space_mismatch", "over_cap"],
+    "views": ["summary", "requirements", "responsibilities", "skills", "body"],
+    "metric": "cosine"
+  },
+  "backendCaps": {
+    "pgvector": { "ann": true, "maxDim": 3072, "maxRecommendedRows": 10000000, "scopeEnforcement": "pre_join" },
+    "sqlite_vec": { "ann": true, "maxDim": 3072, "maxRecommendedRows": 100000, "scopeEnforcement": "overfetch_postfilter" },
+    "linear": { "ann": false, "maxDim": 3072, "maxRecommendedRows": 50000, "scopeEnforcement": "in_scan" }
+  },
+  "degradation": [
+    { "condition": "no embeddings provider assigned", "reason": "provider_unassigned" },
+    { "condition": "embed call fails or times out", "reason": "embed_failed" },
+    { "condition": "space missing or no index table", "reason": "index_missing" },
+    { "condition": "writer resolves a model or dim different from the space", "reason": "space_mismatch" },
+    { "condition": "desktop over the backend row cap", "reason": "over_cap" }
+  ],
+  "invalidArgs": [
+    { "name": "top-mean-n-zero", "call": "topMean", "scores": [0.5], "n": 0 },
+    { "name": "rrf-k-zero", "call": "rrfMerge", "lists": [["a"]], "k": 0 },
+    { "name": "rrf-weight-count-mismatch", "call": "rrfMerge", "lists": [["a"], ["b"]], "k": 60, "weights": [1.0] },
+    { "name": "space-dim-zero", "call": "space", "space": { "provider": "openai", "model": "text-embedding-3-small", "dim": 0, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" } }
+  ]
+}

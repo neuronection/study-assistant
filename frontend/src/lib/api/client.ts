@@ -46,6 +46,12 @@ export function apiDetailMessage(detail: unknown): string | null {
       .filter((part) => part.length > 0)
     return parts.length > 0 ? parts.join('; ') : null
   }
+  if (detail !== null && typeof detail === 'object') {
+    const record = detail as { message?: unknown }
+    if (typeof record.message === 'string' && record.message.trim()) {
+      return record.message
+    }
+  }
   if (detail !== null && detail !== undefined) {
     return String(detail)
   }

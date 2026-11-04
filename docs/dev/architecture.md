@@ -120,9 +120,10 @@ without touching app code.
   EventBus bridges worker threads to subscribers via `publish_threadsafe`.
 - **Storage**: SQLite (`study.sqlite3`, WAL mode) or PostgreSQL 16 in web
   mode — one dialect-aware schema (ADR-0022) — FTS5/tsvector full-text,
-  sqlite-vec/pgvector vectors (runtime-created
-  `chunk_vecs`, rebuilt automatically when the embedding model/dimension changes),
-  originals in a content-addressed blob store (`blobs/ab/cd/<sha256>`) — dedup by
+  sqlite-vec/pgvector vectors (the `content` space runs on a provisioned
+  `vec_<8hex>` table — pgvector/HNSW or sqlite-vec vec0 — with `chunk_vecs`
+  kept as the dual-written compatibility store; plan 51 Q3c2a), originals in
+  a content-addressed blob store (`blobs/ab/cd/<sha256>`) — dedup by
   content hash, never modified.
 - **Data dir**: `~/.local/share/StudyAssistant/` (`study.sqlite3` on
   desktop/tests — web mode runs PostgreSQL per ADR-0022; `blobs/`, `cache/`,

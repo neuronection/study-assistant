@@ -591,6 +591,34 @@ class CalendarLinkOptions(TypedDict, total=False):
     username: str | None
 
 
+class JobResult(TypedDict, total=False):
+    """The bounded `jobs.result` payload (plan 51 §3.2 run-result contract)."""
+
+    scanned: int
+    embedded: int
+    skipped: int
+    failed: int
+    failed_ids: list[str]
+    failed_ids_truncated: bool
+    gate: str
+    action: str
+    removed: int
+    verified: int
+    note: str
+
+
+type LatencyHistogram = dict[str, int]
+
+# Caller-supplied embedding tags (plan 51 Q3c3a): space_id/kind/view/
+# chunk_index and future open caller keys. Never prompt/document/query text.
+AiInteractionMetadata = dict[str, Any]
+
+# One notification event's structured evidence and typed source handle. Both
+# carry ids/counts/scores/reasons only (no raw text).
+NotificationPayload = dict[str, Any]
+NotificationSourceRef = dict[str, Any]
+
+
 class JobPayload(TypedDict, total=False):
     """The union of every job-type payload (the type column selects the shape)."""
 
@@ -622,10 +650,22 @@ class JobPayload(TypedDict, total=False):
     context_hint: str | None
     regenerate: bool | None
     include_unassigned: bool | None
+    space_id: str | None
+    view: str | None
+    since: str | None
+    force: bool | None
+    batch_size: int | None
+    limit: int | None
+    budget: int | None
+    chunk_ids: list[str] | None
 
 
 PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "activities.config": "ActivityConfig",
+    "ai_interactions.metadata": "AiInteractionMetadata",
+    "notifications.payload": "NotificationPayload",
+    "notifications.recipients": "StringList",
+    "notifications.source_ref": "NotificationSourceRef",
     "activities.generated_from": "ActivityGeneratedFrom",
     "answers.error_tags": "StringList",
     "answers.feedback": "FeedbackList",
@@ -666,6 +706,7 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "extractions.confidence": "ExtractionConfidence",
     "item_stats.distractor_selection": "DistractorSelection",
     "jobs.payload": "JobPayload",
+    "jobs.result": "JobResult",
     "material_drawings.ocr_blocks": "BlockList",
     "material_drawings.strokes": "StrokeList",
     "material_index_cards.key_terms": "StringList",
@@ -698,6 +739,7 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "questions.stem": "BlockList",
     "questions.sympy_check": "SympyCheck",
     "questions.tags": "StringList",
+    "retrieval_query_rollups.latency_histogram": "LatencyHistogram",
     "skill_versions.contract": "SkillContract",
     "skill_versions.params": "SkillParams",
     "step_attempts.feedback": "FeedbackList",

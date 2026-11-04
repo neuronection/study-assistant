@@ -24,6 +24,7 @@ class ScanScheduler:
         interval_sec: int = 300,
         startup_delay_sec: float = 5.0,
         inbox_dir: Path | None = None,
+        retrieval_alerts: Callable[[], dict[str, Any]] | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._blobs_dir = Path(blobs_dir)
@@ -32,6 +33,7 @@ class ScanScheduler:
         self._interval = interval_sec
         self._startup_delay = startup_delay_sec
         self._inbox_dir = Path(inbox_dir) if inbox_dir is not None else None
+        self._retrieval_alerts = retrieval_alerts
         self._inbox_last_scan: datetime | None = None
         self._inbox_signature: tuple[tuple[str, int], ...] = ()
         self._stop = threading.Event()
@@ -81,7 +83,17 @@ class ScanScheduler:
             if stats is not None:
                 results[source_id] = stats
         self.scan_inbox(force=force)
+        self.scan_retrieval_alerts()
         return results
+
+    def scan_retrieval_alerts(self) -> dict[str, Any] | None:
+        """Evaluate the bounded retrieval alerts on the existing periodic seam."""
+        if self._retrieval_alerts is None:
+            return None
+        try:
+            return self._retrieval_alerts()
+        except Exception:
+            return None
 
     def scan_inbox(self, *, force: bool = False) -> list[dict[str, Any]]:
         if self._inbox_dir is None:

@@ -5,6 +5,7 @@ from alembic import context
 from app.core.config import get_settings
 from app.domain import models  # noqa: F401
 from app.storage.db import Base
+from app.storage.vector_schema import include_object
 
 config = context.config
 
@@ -24,6 +25,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=True,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -34,6 +36,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         render_as_batch=True,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()

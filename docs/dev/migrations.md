@@ -160,6 +160,96 @@ tooling exists for the deleted chain (ADR-196, non-goal): delete the SQLite
 file and reseed (`scripts/seed-demo.py`), or re-provision the PostgreSQL
 database.
 
+## PostgreSQL chain (plan 51 Q3c1)
+
+The chain is green from `0001_baseline` to
+`0015_retrieval_alerts` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
+scratch database, upgrades the whole chain and asserts the result whenever
+`SA_TEST_DATABASE_URL` points at a disposable server; it skips only when the
+variable is unset (the SQLite suite always runs). The repaired pre-0012
+history is dialect-portable without changing any final schema shape:
+
+- **Boolean server defaults** — the baseline shipped
+  `server_default=text("0")` (and bare `"0"`) on `courses.hidden`,
+  `material_sources.mirror_subdirs`, `chat_sessions.quizme`,
+  `chat_quiz_pendings.awaiting_answer` and `materials.starred`;
+  `0009_calendar_links` shipped `text("1")` on `calendar_links.enabled`.
+  PostgreSQL rejects `BOOLEAN DEFAULT 0` at `CREATE TABLE`, so a fresh
+  upgrade failed on `courses`. They now use SQLAlchemy `sa.false()` /
+  `sa.true()` (rendered as `0`/`1` on SQLite, `false`/`true` on PostgreSQL).
+  The model declarations use the matching `false()` / `true()`.
+- **Decision-slot seed** — `0001_baseline` reused one bind parameter in an
+  `INSERT … SELECT` target and its `WHERE NOT EXISTS` predicate; PostgreSQL
+  deduced `text` vs `character varying` and rejected the statement with
+  `AmbiguousParameter`. Both occurrences cast to `VARCHAR(40)`.
+- **`batch_alter_table(recreate="always")`** — 0002/0003/0004/0006/0007/
+  0008/0009/0010/0011 force-recreated tables on every dialect. On PostgreSQL
+  that copy drops the primary key while dependent foreign keys still
+  reference it (`DependentObjectsStillExist`). Each revision now uses a local
+  `_recreate_mode()`: `"always"` on SQLite (which needs the copy), `"auto"`
+  on PostgreSQL (alter in place). The SQLite path and every final schema are
+  unchanged.
+
+`tests/test_migrations_postgres.py` pins the repaired defaults, the seeded
+decision slots, and a full 0011→0012 round-trip over a real legacy store
+(`vec_meta` + `chunk_vecs` + `chunk_vec_ids`): the `content` space row,
+document/record backfill shape, rowid parity, content hashes, absence of a
+fabricated coverage snapshot, model/dim agreement with `vec_meta`, the Q3b
+partial indexes, and a downgrade/upgrade that leaves `chunk_vecs` intact.
+
+## Vector-space provisioning (plan 51 Q3c2a)
+
+`0013_vector_space_provisioning` performs the one-time physical move from the
+legacy `chunk_vecs` store to the provisioned `vec_<8hex>` table:
+
+- PostgreSQL creates the `vector` extension when available, then
+  `vec_<8hex> (record_id UUID PRIMARY KEY REFERENCES vector_records(id) ON
+  DELETE CASCADE, embedding vector(dim) NOT NULL)` plus
+  `ix_<table>_hnsw USING hnsw (embedding vector_cosine_ops)`. HNSW supports
+  at most 2,000 dimensions; a larger space is left on the legacy store.
+- SQLite loads `sqlite-vec` defensively and creates
+  `vec_<8hex> USING vec0(record_rowid INTEGER PRIMARY KEY, embedding
+  float[dim] distance_metric=cosine)`. `vector_records.rowid` is the rowid
+  map; no second mapping table exists.
+- The copy is `chunk_vecs ⨝ chunk_vec_ids ⨝ vector_records`, keyed by record
+  identity. The new table's row count is verified before
+  `vector_spaces.index_table` is updated, all inside the migration
+  transaction; a failed copy leaves both the pointer and the legacy tables
+  untouched.
+- `chunk_vecs` / `chunk_vec_ids` are never dropped or rewritten. Downgrade
+  drops the provisioned table(s) and resets `index_table = 'chunk_vecs'`.
+
+The naming rule is frozen in the migration (a migration must not import
+application code) and shares its shape with
+`storage/vector_schema.index_table_name`: eight lowercase hex characters
+derived from the space id (`vec_dfbcce9b` for `legacy-chunk-vecs`). The
+migration tests pin both the table name and the copied rows.
+
+## Retrieval alerts and generation tags (plan 51 Q3c3a)
+
+`0015_retrieval_alerts` adds the ledger's `metadata`/`metadata_schema_version`
+columns and the two notification-funnel tables. The `metadata` column is
+non-null with a `{}` server default; the notification dedup key is a partial
+unique index over `dedup_key IS NOT NULL`. Both the SQLite round-trip
+(`tests/test_retrieval_ops_migration.py`) and the PostgreSQL chain
+(`tests/test_migrations_postgres.py`) pin the columns, tables, foreign key and
+partial index, including downgrade/upgrade. A revision id longer than 32
+characters would overflow Alembic's `alembic_version.version_num` on
+PostgreSQL; the short `0015_retrieval_alerts` id is deliberate.
+
+## Vector record chunk identity (plan 51 Q3c2b1)
+
+`0014_vector_record_chunk_id` adds
+`vector_records.chunk_id` (nullable `String(80)`), an index and the unique
+`(space_id, chunk_id)` constraint, then backfills `chunk_id = id` for the
+legacy `legacy-chunk-vecs` space. The global record primary key can no longer
+be the chunk id once a building space coexists with the active one; `chunk_id`
+is the space-local hydration handle the search path uses, while the record id
+is the deterministic `uuid5(space, chunk)` and `rowid` is the sqlite-vec rule
+over it. Downgrade drops the constraint/index/column; record rows are kept.
+The migration is part of the same single linear chain and is covered by the
+SQLite and PostgreSQL round-trip tests.
+
 ## Concurrent sessions (worktree renumbering)
 
 When two branches each add a revision, the later branch is renumbered onto the

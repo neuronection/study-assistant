@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "contract": "settings-map",
-  "updated": "2026-11-03",
+  "updated": "2026-11-04",
   "purpose": "One family taxonomy for settings surfaces: what a setting IS decides where it LIVES. Canonical per ADR-0033 / ADR-0031 (sync-and-gate): this file is the master; product repos vendor it byte-identical under contracts/ and scripts/verify-wiring.sh flags drift. A setting may not ship (or move) in any product without a domain entry (or adopter line) here.",
   "groups": {
     "ai": {
@@ -322,8 +322,8 @@
       "secrets": "none",
       "scope": "instance (admin)",
       "adopters": {
-        "career-assistant": "pending (plan 51 Q2)",
-        "study-assistant": "pending (plan 51 Q3)",
+        "career-assistant": "aligned (plan 51 Q2)",
+        "study-assistant": "aligned",
         "health-assistant/core": "n/a (no vector store yet)"
       }
     }
@@ -525,8 +525,10 @@
             {
               "id": "indexing",
               "domains": [
-                "tools.indexing"
-              ]
+                "tools.indexing",
+                "tools.retrieval"
+              ],
+              "note": "study hosts the admin retrieval controls inside Indexing (plan 51 Q3b); the tools.retrieval domain's canonical home section is not a separate tab here"
             },
             {
               "id": "skills",
@@ -613,6 +615,12 @@
                 "tools.extensions"
               ],
               "note": "plan 186 split the domains; the section id stays 'sources' until the UI split ships (plan 186 step 3) — one section hosting both domains keeps INV-7 true in the interim"
+            },
+            {
+              "id": "retrieval",
+              "domains": [
+                "tools.retrieval"
+              ]
             }
           ],
           "note": "plan 27 Phase 3: the former AI-config web tab split into web-search (SearXNG URL) + connectors (GitHub token); plan 32 Phase 1 broadened connectors to also host job-source connector instances (manifest catalog + x-secret slots + probes); plan 119 added the MCP server section (endpoint + token lifecycle, per-scope tool/resource visibility, opt-in write switch); plan 154 split the connectors section into mcp (the MCP server surface) and sources (job-source + extension ingestion); plan 186 split the sources domains into tools.job-sources + tools.extensions (section split pending)"

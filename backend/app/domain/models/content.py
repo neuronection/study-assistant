@@ -92,6 +92,9 @@ from .core import (
     datetime as datetime,
 )
 from .core import (
+    false as false,
+)
+from .core import (
     mapped_column as mapped_column,
 )
 from .core import (
@@ -344,7 +347,7 @@ class Material(Base):
     citation_doi: Mapped[str | None] = mapped_column(String(255))
     citation_container: Mapped[str | None] = mapped_column(String(300))
     citation_kind: Mapped[str | None] = mapped_column(String(30))
-    starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     source_url: Mapped[str | None] = mapped_column(String(2048))
     source_url_norm: Mapped[str | None] = mapped_column(String(2048))
@@ -633,7 +636,7 @@ class MaterialSource(Base):
     include_globs: Mapped[StringList | None] = mapped_column(JSON)
     course_id: Mapped[str] = mapped_column(_UUID, ForeignKey("courses.id", ondelete="CASCADE"))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    mirror_subdirs: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    mirror_subdirs: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     scan_interval_sec: Mapped[int | None] = mapped_column(Integer)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

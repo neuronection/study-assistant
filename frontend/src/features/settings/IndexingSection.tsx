@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { getProfilePreferences, updateProfilePreferences } from '@/lib/api'
+import { RetrievalStatusCard } from './RetrievalStatusCard'
 
 const MAX_EDGE_OPTIONS = [0, 1024, 1568, 2048] as const
 
@@ -32,6 +33,7 @@ export function IndexingSection() {
 
   return (
     <div className="space-y-4">
+      <RetrievalStatusCard />
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">{t('settings.searchTitle')}</CardTitle>

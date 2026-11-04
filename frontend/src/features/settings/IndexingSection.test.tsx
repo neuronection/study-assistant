@@ -11,6 +11,34 @@ vi.mock('@/lib/api', () => ({
   getProfilePreferences: () => getProfilePreferences(),
   updateProfilePreferences: (prefs: Record<string, unknown>) =>
     updateProfilePreferences(prefs),
+  getRetrievalOverview: () =>
+    Promise.resolve({
+      state: 'empty',
+      cold: true,
+      backend: null,
+      backend_label: null,
+      space: null,
+      coverage: { coverage: null },
+      recent_runs: [],
+      query_health: {},
+      notes: [],
+    }),
+  getRetrievalRuns: () => Promise.resolve({ runs: [] }),
+  getRetrievalSpaces: () =>
+    Promise.resolve({
+      spaces: [],
+      cold: true,
+      active_space_id: null,
+      notes: [],
+    }),
+  postRetrievalReindex: vi.fn(),
+  postRetrievalMaintenance: vi.fn(),
+  cancelRetrievalRun: vi.fn(),
+  retryRetrievalRun: vi.fn(),
+}))
+
+vi.mock('@/lib/auth-session', () => ({
+  getCurrentUser: () => ({ is_admin: false }),
 }))
 
 function renderTab() {

@@ -32,17 +32,26 @@ SCOPE_KINDS = (
 BASELINE_KINDS = ("video", "course", "article", "exercise", "other")
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def _values(members: tuple[str, ...]) -> str:
     return ", ".join(f"'{member}'" for member in members)
 
 
 def upgrade() -> None:
-    with op.batch_alter_table("material_suggestions", recreate="always") as batch:
+    with op.batch_alter_table("material_suggestions", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("kind_allowed", type_="check")
         batch.create_check_constraint("kind_allowed", f"kind IN ({_values(SCOPE_KINDS)})")
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("material_suggestions", recreate="always") as batch:
+    with op.batch_alter_table("material_suggestions", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("kind_allowed", type_="check")
         batch.create_check_constraint("kind_allowed", f"kind IN ({_values(BASELINE_KINDS)})")

@@ -23,6 +23,258 @@ Release history from before the public launch lives in the
   reports no changes the reconcile is skipped; any change falls through to the
   full window. The bind form is rendered entirely from the catalog's
   `setupFields`, so a new provider needs no UI change.
+### Added (retrieval alerts, generation tagging & canonical adoption — plan 51 Q3c3a)
+- **Ten retrieval alerts through the existing notification funnel.**
+  Migration `0015_retrieval_alerts` adds the boot-seeded
+  `notification_kinds` registry and deduped `notifications` event rows.
+  `services/platform/notifications.py` is the only emit seam and
+  `services/retrieval/alerts.py` evaluates coverage_low, reindex_failed,
+  reindex_stalled, quality_gate (fed by the real Q3c2b2 compare), query_slo,
+  degraded_rate, provider_unassigned, index_missing and space_drop_pending
+  on the existing `ScanScheduler` periodic seam — never the request path.
+  Dedup keys are released when a condition clears so recovery is honest;
+  admin fanout is bounded, daily caps come from the family `ALERT_DEFAULTS`,
+  payloads pass `assert_no_raw_text`, and every manage URL points at the
+  shipped Tools → Indexing (run detail included) or the AI task assignment.
+  `retrieval.budget_exhausted` reports `unavailable` rather than inventing a
+  token budget study does not have. The latency histogram writer now counts
+  overflow only above the largest finite bound (it double-counted every sample
+  before, so p95 was always 10000 ms and query_slo could never recover). `GET /notifications` carries the active
+  recipient-scoped alerts and the bell renders them.
+- **Generation-ledger tagging and an honest usage read.** Study's ledger is
+  `ai_interactions`; migration `0015` adds `metadata` + `metadata_schema_version`
+  and the caller supplies `space_id`/`kind`/`view`/`chunk_index` through
+  `GatewayEmbedder.embed`/`record_usage` (indexing, reindex, live search and
+  golden-query compares). `GET /admin/retrieval/usage` exposes calls/tokens by
+  day/space/kind with `reindex_calls`; it never selects `prompt`, reports
+  `errors_available=false` (the ledger has no status column) and `budget=null`
+  (no token budget), and marks untagged rows `unattributed` instead of guessing.
+- **Canonical settings-map/ledger adoption.** The `/dev` canonical settings map
+  marks career and study `tools.retrieval` aligned, study hosts it in the
+  `indexing` section, and the study vendored copy + `settingsMap.test.ts` match
+  it. `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's bytes
+  with the branch note; the parity runner now reports only
+  `adoption:study-main` until `/study-assistant` main carries the same bytes.
+- Tests: `test_retrieval_alerts.py` (one per kind, dedup/recovery, fanout,
+  caps, manage URLs, no raw text, empty/cold/quality fail),
+  `test_generation_tags.py`, the 0015 SQLite/PG migration round-trips,
+  `test_retrieval_ops_family_parity.py`, `NotificationBell.test.tsx` and
+  `settingsMap.test.ts`. Audit → Retrieval (Q3c3b) and the Q5 closeout remain.
+
+### Added (golden-query quality compare & gate — plan 51 Q3c2b2)
+- **Versioned admin golden-query sets.** `services/retrieval/quality.py`
+  loads `backend/app/data/retrieval/golden_queries.json` (empty by default —
+  no fabricated pass), selects the newest set by space id then name,
+  normalizes UUID-shaped expected ids, and validates every set through the
+  family contract. Query text stays fixture-only; every read DTO carries
+  query ids, document ids, scores and miss lists.
+- **Bounded real-backend compare.** `POST /admin/retrieval/quality/compare`
+  embeds each golden query once, searches the active and candidate space
+  through `StudyVectorStore.search_scored`, maps chunk hits to material
+  document ids, and returns the contract `QualityCompareDTO` plus a
+  deterministic (distance, chunk id) bad-match detail: chunk/document ids,
+  view, distance and score, never document or query text. The compare is
+  persisted on the `VECTOR_CUTOVER` job result with same-key idempotent
+  replay; `GET /admin/retrieval/quality` reports the newest evidence as
+  `no_golden_set` / `not_sampled` / `sampled` / `stale_compare`.
+- **The quality activation/cutover gate is real.** Activation verifies
+  physical health, coverage (`0.995`) and the golden-query compare;
+  `VECTOR_CUTOVER` backfills, enforces coverage, runs the compare and refuses
+  below the floor. Refusals are structured (`quality_gate_failed`) and persist
+  `quality`, `quality_state`, `bad_matches` and `activation_gate` on the failed
+  job. The old `quality="not_sampled"` success path is gone: only a missing or
+  blocked setup reports `not_sampled`/`blocked`, and never a pass. Repeating
+  an activation/cutover on an already-active space is an explicit
+  `already_active` no-op (no re-compare, no quality pass claimed).
+- **Tools → Indexing quality surface.** The card lists each space's quality
+  gate state, shows the set version/k, recall/precision vs floor, pass/fail,
+  the gate and a bad-match drawer; it can run the compare against the active
+  space, and activation/cutover refusals render the gate reasons. No Audit →
+  Retrieval tab yet (Q3c3).
+- **Cross-repo family parity runner.** `services/retrieval/parity.py` +
+  `tests/test_retrieval_ops_family_parity.py` compare the study/career
+  contract and fixture bytes, run every shared quality case through the
+  vendored scorer, pin the DTO shapes and record the sha plus sync-gate
+  status. It deliberately does not claim the family `--strict` gate while the
+  canonical ledger and settings map still record study as pending.
+- Tests: `test_retrieval_quality.py` (SQLite), the PG quality/gate twins in
+  `test_vector_backends_postgres.py`, the updated lifecycle/action/parity
+  walls, and the frontend card/panel tests. Alerts, generation tagging and
+  the canonical sync landed in plan 51 Q3c3a.
+
+### Added (vector backend & provisioning — plan 51 Q3c2a)
+- **The content space now runs on a real family vector backend.**
+  `storage/vector_backends.py` implements the vendored `VectorBackend`
+  protocol: pgvector + HNSW cosine with the scope joined before the ANN
+  scan (and an exact scan at or below the scoped threshold), sqlite-vec
+  `vec0` keyed by the `vector_records.rowid` map with bounded over-fetch /
+  post-filter, and an exact `LinearBackend` fallback that publishes
+  `ann=False`.
+- **Physical provisioning is one seam, off the request path.**
+  `storage/vector_provisioning.py` creates `vec_<8hex>` (pgvector
+  `vector(dim)` + HNSW, or sqlite-vec `float[dim]`) and writes
+  `vector_spaces.index_table` in the same transaction as the DDL.
+  `storage/vector_schema.py` owns the `vec_[0-9a-f]{8}` name guard and the
+  Alembic autogenerate exemption.
+- **Migration `0013_vector_space_provisioning` moves the legacy vectors.**
+  It provisions `vec_dfbcce9b`, copies `chunk_vecs` through
+  `chunk_vec_ids` into the metadata records, verifies the copied row count
+  and only then switches `index_table`. `chunk_vecs` is left intact and
+  stays the dual-written compatibility fallback; downgrade drops the new
+  table and resets the pointer.
+- **Search routes through the backend without changing fusion.**
+  `StudyVectorStore.search()` now scopes the vector query by
+  `course_id`/`material_ids`/`profile_id` before the ANN scan, falls back
+  to the legacy search when the backend is unavailable, and returns the
+  unchanged `(chunk id, distance)` shape; `retrieve_chunks_hybrid` and the
+  FTS/RRF weights are untouched.
+- **Status tells the truth.** `health()` / `space_status()` report the
+  active table, HNSW/vec0 presence, row count and partial/missing states
+  through the overview notes and `last_error`; `records` is the active
+  backend count, not the legacy one.
+- Tests: `test_vector_backends.py` (SQLite parity, scope, rowid map,
+  linear fallback, partial/missing health), `test_vector_backends_postgres.py`
+  (pgvector HNSW, exact vs ANN, scope, legacy fallback),
+  `test_search_vector_backend.py` (FTS/RRF regression and fallback), and
+  migrated SQLite/PostgreSQL 0013 round-trips.
+
+### Added (vector space lifecycle & cutover — plan 51 Q3c2b1)
+- **Real embedding-space lifecycle.** `services/retrieval/lifecycle.py`
+  builds a `building` space with real model/dim/prefix metadata, provisions
+  its `vec_<8hex>` backend, backfills it through the ordinary reindex writer,
+  activates it only when physical health and coverage pass, retires every
+  previous active row in one transaction, and supports typed retire/drop with
+  the 7-day grace period. The active space can never be dropped.
+- **Real cutover.** `VECTOR_CUTOVER` backfills the candidate, refuses a
+  non-`pass` coverage gate, activates it, retires the previous space and
+  reports `quality="not_sampled"` — no fake quality pass. `chunk_vecs` stays
+  as the compatibility store until the retired legacy space is explicitly
+  dropped.
+- **Two spaces coexist.** Migration `0014_vector_record_chunk_id` adds
+  `vector_records.chunk_id`; records use a deterministic per-space id and the
+  sqlite-vec rowid rule, while search hydrates back to the chunk id. Rollups,
+  coverage snapshots, run DTOs and query health follow the active real space
+  id.
+- **Management surface.** `POST /admin/retrieval/spaces`,
+  `/spaces/{id}/{activate,retire,drop}` and `/cutover` are wired to the
+  existing idempotency/lock/audit seam; Tools → Indexing lists spaces and
+  exposes build/cutover/retire/drop with typed confirmations and an explicit
+  quality-not-sampled note. `quality/compare` remains an honest Q3c2b2
+  refusal.
+- Tests: `test_vector_space_lifecycle.py` (build/backfill/activate/retire/
+  drop, coverage refusal, one-active pointer, cutover, legacy compatibility,
+  active-space identity), updated service/action/read/migration and frontend
+  card tests.
+
+### Fixed (PostgreSQL migration baseline — plan 51 Q3c1)
+- **The PostgreSQL migration chain now runs end to end** from
+  `0001_baseline` to `0012_vector_spaces` (PostgreSQL 16 + pgvector).
+  `tests/test_migrations_postgres.py` executes against the configured test
+  server instead of being skipped, and a fresh upgrade no longer fails at
+  `CREATE TABLE courses`.
+- Six boolean column defaults (`0`/`1`) became dialect-portable
+  `sa.false()`/`sa.true()`: `courses.hidden`,
+  `material_sources.mirror_subdirs`, `chat_sessions.quizme`,
+  `chat_quiz_pendings.awaiting_answer`, `materials.starred` and
+  `calendar_links.enabled`. The baseline decision-slot seed also casts its
+  bind parameter (PostgreSQL rejected the reused parameter as
+  `text` vs `character varying`).
+- Revisions 0002–0011 no longer force a full table copy on PostgreSQL
+  (`batch_alter_table(recreate="always")` broke dependent foreign keys when
+  it dropped the primary key). SQLite still copies; PostgreSQL alters in
+  place. Final schema and existing data are unchanged.
+- The PG suite now seeds a real legacy store and asserts the 0012
+  `content`/`legacy-chunk-vecs` space, document/record backfill shape,
+  rowid parity, content hashes, no fabricated coverage snapshot, model/dim
+  agreement with `vec_meta`, the Q3b partial indexes, and a
+  downgrade/upgrade that leaves `chunk_vecs` intact.
+- **PostgreSQL lexical search works again** (exposed by the now-runnable
+  chain): the FTS/trigram chunk and material joins compared a UUID
+  `materials.id` with the hex-keyed `material_fts*.material_id`, and the
+  swallowed operator error returned no hits. Both twins now compare the
+  hex form; SQLite behaviour is unchanged. Covered by
+  `test_search_postgres.py` and `test_search_parity.py`.
+
+### Added (vector storage foundation — plan 50 P3a)
+- **The family vector contract is vendored byte-identically**
+  (`storage/vector_contract.py` + its fixture table) with the canonical
+  sha256 recorded in `docs/dev/retrieval-ops.md`; `test_vector_contract.py`
+  runs every fixture group and the dev-checkout identity check.
+- **Migration `0012_vector_spaces`** adds the portable metadata layer —
+  `vector_spaces`, `vector_documents`, `vector_records` — and backfills the
+  one `content` space (`legacy-chunk-vecs`) from `vec_meta`, with documents
+  (materials) and records (chunk `body` + content hash + rowid reverse map)
+  from `chunk_vec_ids`. `chunk_vecs` is untouched; no coverage snapshot is
+  written.
+- **`storage/vector_store.py::StudyVectorStore`** is now the read/write seam:
+  search, embed writes, purge and the retrieval handlers use it. A
+  model/dimension change raises `VectorSpaceChangeRequired` instead of
+  silently dropping `chunk_vecs`; the old vectors remain readable until
+  plan 51 Q3c's explicit new-space/cutover.
+- **Honest state stays honest:** a cold store has no space row and no
+  coverage number; `backfill_metadata()` fills content hashes idempotently
+  for rows the SQL backfill mapped without them. The physical backend is
+  still the legacy `chunk_vecs` store — P3a exposes the port, it does not
+  claim the lifecycle yet.
+
+### Added (retrieval operations — plan 51 Q3b)
+- **Admin action API over the one legacy space.**
+  `POST /api/v1/admin/retrieval/{reindex,maintenance,runs/{id}/cancel,
+  runs/{id}/retry}` enqueues the existing `VECTOR_*` handlers; long work
+  never runs in the request. Lifecycle verbs (build/activate/retire/drop,
+  cutover, quality compare) answer with a structured `unsupported` 409
+  instead of faking a space.
+- **Idempotency and a database-level single-run lock** (migration
+  `0011_retrieval_run_actions`): `jobs.idempotency_key` replays the
+  original row inside the contract's 24 h window and 409s on a different
+  payload; `jobs.lock_key` is a partial unique index over queued/running
+  vector runs. `jobs.heartbeat_at` is written at worker progress
+  checkpoints and a bounded reaper fails stale running rows (15 min) so a
+  crash cannot block the space until restart.
+- **Actions are audited in the existing `audit_events` table** (no second
+  ledger): `vector.reindex.started`, `vector.reindex.cancelled`,
+  `vector.reindex.retried`, `vector.maintenance.started`,
+  `vector.run.stalled` and `vector.gate.failed` (full reconcile gate) —
+  ids-only resources, never document/query/prompt text.
+- **Tools → Indexing is now a real control surface** for admins: reindex
+  (verify or force), recent runs with queued≠finished status, cancel,
+  retry, orphan-sweep/vacuum/index-rebuild/retry-failed maintenance, an
+  orphan-sweep dry run, and structured refusal messages. The legacy-space
+  warning stays explicit. `tools.retrieval` is declared `aligned` in the
+  study settings map (dev canonical sync is a follow-up handoff).
+- **Read-DTO vocabulary parity test** pins study's run status, cold and
+  degraded tokens to the shared career/study fixture table.
+- **Deliberately not shipped (Q3c):** the real vector-space lifecycle and
+  cutover target, golden-query quality gates/compare, the full family
+  parity runner, alerts, and `ai_generations`-style metadata tagging.
+
+### Added (retrieval operations — plan 51 Q3a)
+- **The family retrieval-operations contract is vendored** (byte-identical
+  to `dev-vector-p0`, sha-gated by the fixture wall) with the exact
+  `VECTOR_REINDEX` / `VECTOR_MAINTENANCE` / `VECTOR_CUTOVER` job names.
+  Study's closed `JobType` vocabulary and `jobs.type` CHECK gain the three
+  slots; `jobs.result` carries the bounded
+  `scanned/embedded/skipped/failed/failed_ids/truncated/gate` contract.
+- **Bounded handlers over the existing legacy `chunk_vecs` store** — a
+  resumable-free, limit/batch-capped reconcile that verifies or re-embeds
+  chunks and publishes coverage only after a full pass; maintenance for
+  orphan sweep, vacuum, index rebuild and scoped retry; a cutover handler
+  that refuses honestly because study has no space lifecycle yet (Q3b).
+- **Two operational aggregates** (`retrieval_query_rollups`,
+  `retrieval_coverage_snapshots`, migration `0010_retrieval_ops`) with
+  30/90-day TTLs. Query health (latency, zero-result, candidates, degraded
+  reason) is buffered off the search hot path and flushed in 5-minute
+  buckets; no query text is recorded. Rollups are aggregates, not audit
+  history.
+- **Admin read surface** `GET /api/v1/admin/retrieval/{overview,spaces,
+  coverage,runs,query-health}` composed from the legacy store, jobs and the
+  aggregates; cold/empty/degraded states stay truthful. Settings → Tools →
+  Indexing gains a read-only status card for admins.
+- **At Q3a this was deliberately not shipped:** the management/action UI,
+  space lifecycle, quality gate, idempotency/single-active-run lock,
+  `ai_generations`-style metadata tagging, and `tools.retrieval` alignment.
+  Q3b (above) shipped the action API, lock, audit and Tools controls; the
+  lifecycle, quality gate and full parity runner remain Q3c.
 
 ### Added (cloud calendars — ADR-0052 / plan 52)
 - **A course can bind its own cloud calendar.** Providers come from the

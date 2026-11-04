@@ -23,15 +23,24 @@ depends_on = None
 PRESETS = ("folder", "vault")
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def upgrade() -> None:
-    with op.batch_alter_table("material_sources", recreate="always") as batch:
+    with op.batch_alter_table("material_sources", recreate=_recreate_mode()) as batch:
         batch.add_column(
             sa.Column("preset", sa.String(20), nullable=False, server_default="folder")
         )
         values = ", ".join(f"'{preset}'" for preset in PRESETS)
         batch.create_check_constraint("preset_allowed", f"preset IN ({values})")
 
-    with op.batch_alter_table("notes", recreate="always") as batch:
+    with op.batch_alter_table("notes", recreate=_recreate_mode()) as batch:
         batch.add_column(
             sa.Column(
                 "source_id",
@@ -91,13 +100,13 @@ def downgrade() -> None:
     op.drop_table("note_links")
     op.drop_index("ix_notes_content_hash", table_name="notes")
     op.drop_index("ix_notes_source_id", table_name="notes")
-    with op.batch_alter_table("notes", recreate="always") as batch:
+    with op.batch_alter_table("notes", recreate=_recreate_mode()) as batch:
         batch.drop_column("content_hash")
         batch.drop_column("file_size")
         batch.drop_column("file_mtime")
         batch.drop_column("external_path")
         batch.drop_column("source_id")
 
-    with op.batch_alter_table("material_sources", recreate="always") as batch:
+    with op.batch_alter_table("material_sources", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("preset_allowed", type_="check")
         batch.drop_column("preset")

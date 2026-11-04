@@ -35,12 +35,21 @@ DIRECTIONS = ("push", "pull", "two-way")
 STATUSES = ("ok", "degraded", "failing", "stale", "needs-auth", "needs-secret")
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def _values(members: tuple[str, ...]) -> str:
     return ", ".join(f"'{member}'" for member in members)
 
 
 def upgrade() -> None:
-    with op.batch_alter_table("plan_items", recreate="always") as batch:
+    with op.batch_alter_table("plan_items", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("kind_allowed", type_="check")
         batch.create_check_constraint("kind_allowed", f"kind IN ({_values(PLAN_ITEM_KINDS)})")
         batch.drop_constraint("origin_allowed", type_="check")
@@ -81,7 +90,7 @@ def upgrade() -> None:
         sa.Column("scopes", sa.JSON(), nullable=True),
         sa.Column("secret_ref", sa.String(200), nullable=True),
         sa.Column("direction", sa.String(20), nullable=False, server_default="push"),
-        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("status", sa.String(20), nullable=False, server_default="needs-auth"),
         sa.Column("last_error", sa.Text(), nullable=True),
         sa.Column("last_synced_at", sa.DateTime(timezone=True), nullable=True),
@@ -143,7 +152,7 @@ def downgrade() -> None:
     op.drop_index("ix_calendar_links_profile_id", table_name="calendar_links")
     op.drop_table("calendar_links")
 
-    with op.batch_alter_table("plan_items", recreate="always") as batch:
+    with op.batch_alter_table("plan_items", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("kind_allowed", type_="check")
         batch.create_check_constraint("kind_allowed", f"kind IN ({_values(BASELINE_KINDS)})")
         batch.drop_constraint("origin_allowed", type_="check")

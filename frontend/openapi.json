@@ -222,6 +222,55 @@
         "title": "AdminUserUpdateIn",
         "type": "object"
       },
+      "AlertEntryOut": {
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "title",
+          "link"
+        ],
+        "title": "AlertEntryOut",
+        "type": "object"
+      },
       "AllocationIn": {
         "properties": {
           "material_id": {
@@ -9891,6 +9940,14 @@
       },
       "NotificationsOut": {
         "properties": {
+          "alerts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AlertEntryOut"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
           "due_cards": {
             "title": "Due Cards",
             "type": "integer"
@@ -12911,6 +12968,2107 @@
         "title": "RestoreOut",
         "type": "object"
       },
+      "RetrievalActionKeyIn": {
+        "description": "Path-addressed action body; the Idempotency-Key header is preferred.",
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "title": "RetrievalActionKeyIn",
+        "type": "object"
+      },
+      "RetrievalActionOut": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "activation_gate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activation Gate"
+          },
+          "already_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Already Active"
+          },
+          "audit_event": {
+            "title": "Audit Event",
+            "type": "string"
+          },
+          "bad_matches": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalBadMatchOut"
+            },
+            "title": "Bad Matches",
+            "type": "array"
+          },
+          "baseline_space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Space Id"
+          },
+          "cancel_requested": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Requested"
+          },
+          "deduplicated": {
+            "default": false,
+            "title": "Deduplicated",
+            "type": "boolean"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate"
+          },
+          "http_status": {
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "maintenance_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Action"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "model_changed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Changed"
+          },
+          "new_degraded": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Degraded"
+          },
+          "no_baseline": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Baseline"
+          },
+          "old_degraded": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Degraded"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quality_compare": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityCompareOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quality_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality State"
+          },
+          "retry_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Of"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "space": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space"
+          },
+          "space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "action",
+          "accepted",
+          "audit_event",
+          "http_status"
+        ],
+        "title": "RetrievalActionOut",
+        "type": "object"
+      },
+      "RetrievalBadMatchOut": {
+        "properties": {
+          "hits": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "missing_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Document Ids",
+            "type": "array"
+          },
+          "query_id": {
+            "title": "Query Id",
+            "type": "string"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "query_id"
+        ],
+        "title": "RetrievalBadMatchOut",
+        "type": "object"
+      },
+      "RetrievalCoverageEnvelopeOut": {
+        "properties": {
+          "cold": {
+            "title": "Cold",
+            "type": "boolean"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalCoverageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "cold"
+        ],
+        "title": "RetrievalCoverageEnvelopeOut",
+        "type": "object"
+      },
+      "RetrievalCoverageOut": {
+        "properties": {
+          "ann_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ann Recall"
+          },
+          "ann_recall_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ann Recall K"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "embedded": {
+            "title": "Embedded",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "gate": {
+            "default": "unknown",
+            "title": "Gate",
+            "type": "string"
+          },
+          "missing": {
+            "title": "Missing",
+            "type": "integer"
+          },
+          "probe_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probe Size"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "space_id",
+          "as_of",
+          "total",
+          "missing",
+          "stale",
+          "failed",
+          "embedded",
+          "coverage"
+        ],
+        "title": "RetrievalCoverageOut",
+        "type": "object"
+      },
+      "RetrievalCutoverIn": {
+        "description": "Backfill a building space, enforce coverage, flip active and retire old.",
+        "properties": {
+          "batch_size": {
+            "default": 32,
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Batch Size",
+            "type": "integer"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "limit": {
+            "default": 500,
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "space_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id"
+        ],
+        "title": "RetrievalCutoverIn",
+        "type": "object"
+      },
+      "RetrievalMaintenanceIn": {
+        "description": "One typed maintenance action; retry-failed needs chunk_ids.",
+        "properties": {
+          "action": {
+            "enum": [
+              "orphan-sweep",
+              "vacuum",
+              "index-rebuild",
+              "retry-failed"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "chunk_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Ids"
+          },
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Id"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "RetrievalMaintenanceIn",
+        "type": "object"
+      },
+      "RetrievalOverviewOut": {
+        "properties": {
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          },
+          "backend_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Label"
+          },
+          "cold": {
+            "title": "Cold",
+            "type": "boolean"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/RetrievalCoverageOut"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "query_health": {
+            "$ref": "#/components/schemas/RetrievalQueryHealthEnvelopeOut"
+          },
+          "recent_runs": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalRunDetailOut"
+            },
+            "title": "Recent Runs",
+            "type": "array"
+          },
+          "space": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalSpaceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spaces": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalSpaceOut"
+            },
+            "title": "Spaces",
+            "type": "array"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "cold",
+          "coverage",
+          "query_health"
+        ],
+        "title": "RetrievalOverviewOut",
+        "type": "object"
+      },
+      "RetrievalQualityCompareIn": {
+        "description": "Score the versioned golden set on a candidate vs baseline space.",
+        "properties": {
+          "compare_space_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Compare Space Id",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "space_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "compare_space_id"
+        ],
+        "title": "RetrievalQualityCompareIn",
+        "type": "object"
+      },
+      "RetrievalQualityCompareOut": {
+        "properties": {
+          "floor_precision": {
+            "title": "Floor Precision",
+            "type": "number"
+          },
+          "floor_recall": {
+            "title": "Floor Recall",
+            "type": "number"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "new_precision_at_k": {
+            "title": "New Precision At K",
+            "type": "number"
+          },
+          "new_recall_at_k": {
+            "title": "New Recall At K",
+            "type": "number"
+          },
+          "new_space_id": {
+            "title": "New Space Id",
+            "type": "string"
+          },
+          "old_precision_at_k": {
+            "title": "Old Precision At K",
+            "type": "number"
+          },
+          "old_recall_at_k": {
+            "title": "Old Recall At K",
+            "type": "number"
+          },
+          "old_space_id": {
+            "title": "Old Space Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalQualityQueryOut"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "required_for_activation": {
+            "default": true,
+            "title": "Required For Activation",
+            "type": "boolean"
+          },
+          "set_version": {
+            "title": "Set Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "old_space_id",
+          "new_space_id",
+          "set_version",
+          "k",
+          "old_recall_at_k",
+          "old_precision_at_k",
+          "new_recall_at_k",
+          "new_precision_at_k",
+          "passed",
+          "floor_recall",
+          "floor_precision"
+        ],
+        "title": "RetrievalQualityCompareOut",
+        "type": "object"
+      },
+      "RetrievalQualityEnvelopeOut": {
+        "properties": {
+          "activation_gate": {
+            "default": "unknown",
+            "title": "Activation Gate",
+            "type": "string"
+          },
+          "bad_matches": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalBadMatchOut"
+            },
+            "title": "Bad Matches",
+            "type": "array"
+          },
+          "compare": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityCompareOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "compare_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Run Id"
+          },
+          "compare_set_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Set Version"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sampled": {
+            "default": false,
+            "title": "Sampled",
+            "type": "boolean"
+          },
+          "set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualitySetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "space_id"
+        ],
+        "title": "RetrievalQualityEnvelopeOut",
+        "type": "object"
+      },
+      "RetrievalQualityOut": {
+        "properties": {
+          "floor_precision": {
+            "title": "Floor Precision",
+            "type": "number"
+          },
+          "floor_recall": {
+            "title": "Floor Recall",
+            "type": "number"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "precision_at_k": {
+            "title": "Precision At K",
+            "type": "number"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalQualityQueryOut"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "recall_at_k": {
+            "title": "Recall At K",
+            "type": "number"
+          },
+          "set_version": {
+            "title": "Set Version",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "set_version",
+          "k",
+          "recall_at_k",
+          "precision_at_k",
+          "passed",
+          "floor_recall",
+          "floor_precision"
+        ],
+        "title": "RetrievalQualityOut",
+        "type": "object"
+      },
+      "RetrievalQualityQueryOut": {
+        "properties": {
+          "expected_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Document Ids",
+            "type": "array"
+          },
+          "missing_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Document Ids",
+            "type": "array"
+          },
+          "passed": {
+            "default": false,
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "precision_at_k": {
+            "title": "Precision At K",
+            "type": "number"
+          },
+          "query_id": {
+            "title": "Query Id",
+            "type": "string"
+          },
+          "recall_at_k": {
+            "title": "Recall At K",
+            "type": "number"
+          },
+          "retrieved_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Retrieved Document Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query_id",
+          "recall_at_k",
+          "precision_at_k"
+        ],
+        "title": "RetrievalQualityQueryOut",
+        "type": "object"
+      },
+      "RetrievalQualitySetOut": {
+        "properties": {
+          "floor_precision": {
+            "title": "Floor Precision",
+            "type": "number"
+          },
+          "floor_recall": {
+            "title": "Floor Recall",
+            "type": "number"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "query_count": {
+            "title": "Query Count",
+            "type": "integer"
+          },
+          "query_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Query Ids",
+            "type": "array"
+          },
+          "revision_key": {
+            "title": "Revision Key",
+            "type": "string"
+          },
+          "set_version": {
+            "title": "Set Version",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "set_version",
+          "k",
+          "floor_recall",
+          "floor_precision",
+          "query_count",
+          "revision_key"
+        ],
+        "title": "RetrievalQualitySetOut",
+        "type": "object"
+      },
+      "RetrievalQueryHealthEnvelopeOut": {
+        "properties": {
+          "candidates_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidates Avg"
+          },
+          "health": {
+            "$ref": "#/components/schemas/RetrievalQueryHealthOut"
+          },
+          "query_count": {
+            "title": "Query Count",
+            "type": "integer"
+          },
+          "window": {
+            "title": "Window",
+            "type": "string"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          }
+        },
+        "required": [
+          "window",
+          "window_start",
+          "window_end",
+          "query_count",
+          "health"
+        ],
+        "title": "RetrievalQueryHealthEnvelopeOut",
+        "type": "object"
+      },
+      "RetrievalQueryHealthOut": {
+        "properties": {
+          "ann_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ann Recall"
+          },
+          "ann_recall_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ann Recall K"
+          },
+          "candidate_p50": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate P50"
+          },
+          "candidate_p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate P95"
+          },
+          "degraded_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degraded Rate"
+          },
+          "degraded_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Degraded Reasons",
+            "type": "object"
+          },
+          "p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms"
+          },
+          "per_view_hits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Per View Hits",
+            "type": "object"
+          },
+          "probe_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probe Size"
+          },
+          "query_count": {
+            "default": 0,
+            "title": "Query Count",
+            "type": "integer"
+          },
+          "sample_size": {
+            "default": 0,
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "sampled": {
+            "default": false,
+            "title": "Sampled",
+            "type": "boolean"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          },
+          "zero_result_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zero Result Rate"
+          }
+        },
+        "required": [
+          "space_id",
+          "window_start",
+          "window_end"
+        ],
+        "title": "RetrievalQueryHealthOut",
+        "type": "object"
+      },
+      "RetrievalReindexIn": {
+        "description": "One bounded reindex of the legacy store; the header carries the key.",
+        "properties": {
+          "batch_size": {
+            "default": 32,
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Batch Size",
+            "type": "integer"
+          },
+          "chunk_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Ids"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "limit": {
+            "default": 500,
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Id"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View"
+          }
+        },
+        "title": "RetrievalReindexIn",
+        "type": "object"
+      },
+      "RetrievalRunDetailOut": {
+        "properties": {
+          "activation_gate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activation Gate"
+          },
+          "bad_matches": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Bad Matches",
+            "type": "array"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalRunResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run": {
+            "$ref": "#/components/schemas/RetrievalRunOut"
+          }
+        },
+        "required": [
+          "run"
+        ],
+        "title": "RetrievalRunDetailOut",
+        "type": "object"
+      },
+      "RetrievalRunOut": {
+        "properties": {
+          "budget_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Tokens"
+          },
+          "cancel_requested": {
+            "default": false,
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "heartbeat_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat At"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "job_type": {
+            "title": "Job Type",
+            "type": "string"
+          },
+          "lock_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lock Key"
+          },
+          "progress": {
+            "default": 0,
+            "title": "Progress",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/RetrievalRunScopeOut"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "space_id",
+          "job_type",
+          "status"
+        ],
+        "title": "RetrievalRunOut",
+        "type": "object"
+      },
+      "RetrievalRunResultOut": {
+        "properties": {
+          "embedded": {
+            "default": 0,
+            "title": "Embedded",
+            "type": "integer"
+          },
+          "failed": {
+            "default": 0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failed_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed Ids",
+            "type": "array"
+          },
+          "failed_ids_truncated": {
+            "default": false,
+            "title": "Failed Ids Truncated",
+            "type": "boolean"
+          },
+          "gate": {
+            "default": "unknown",
+            "title": "Gate",
+            "type": "string"
+          },
+          "scanned": {
+            "default": 0,
+            "title": "Scanned",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "title": "RetrievalRunResultOut",
+        "type": "object"
+      },
+      "RetrievalRunScopeOut": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View"
+          }
+        },
+        "title": "RetrievalRunScopeOut",
+        "type": "object"
+      },
+      "RetrievalRunsOut": {
+        "properties": {
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalRunDetailOut"
+            },
+            "title": "Runs",
+            "type": "array"
+          }
+        },
+        "title": "RetrievalRunsOut",
+        "type": "object"
+      },
+      "RetrievalSpaceBuildIn": {
+        "description": "Build a building space; model/dim default to the current assignment.",
+        "properties": {
+          "dim": {
+            "anyOf": [
+              {
+                "maximum": 3072.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dim"
+          },
+          "document_prefix": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Prefix"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "normalize": {
+            "default": true,
+            "title": "Normalize",
+            "type": "boolean"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "query_prefix": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Prefix"
+          }
+        },
+        "title": "RetrievalSpaceBuildIn",
+        "type": "object"
+      },
+      "RetrievalSpaceConfirmIn": {
+        "description": "Typed destructive confirmation (the space name) + replay key.",
+        "properties": {
+          "confirm_space_name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Confirm Space Name",
+            "type": "string"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "required": [
+          "confirm_space_name"
+        ],
+        "title": "RetrievalSpaceConfirmIn",
+        "type": "object"
+      },
+      "RetrievalSpaceOut": {
+        "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "dim": {
+            "title": "Dim",
+            "type": "integer"
+          },
+          "documents": {
+            "default": 0,
+            "title": "Documents",
+            "type": "integer"
+          },
+          "failed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed"
+          },
+          "gate": {
+            "default": "unknown",
+            "title": "Gate",
+            "type": "string"
+          },
+          "index_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index Table"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_reindex_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reindex At"
+          },
+          "metric": {
+            "default": "cosine",
+            "title": "Metric",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quality_gate": {
+            "default": "unknown",
+            "title": "Quality Gate",
+            "type": "string"
+          },
+          "quality_state": {
+            "default": "not_sampled",
+            "title": "Quality State",
+            "type": "string"
+          },
+          "records": {
+            "default": 0,
+            "title": "Records",
+            "type": "integer"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "stale": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "name",
+          "status",
+          "provider",
+          "model",
+          "dim",
+          "backend"
+        ],
+        "title": "RetrievalSpaceOut",
+        "type": "object"
+      },
+      "RetrievalSpacesOut": {
+        "properties": {
+          "active_space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Space Id"
+          },
+          "cold": {
+            "default": true,
+            "title": "Cold",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "spaces": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalSpaceOut"
+            },
+            "title": "Spaces",
+            "type": "array"
+          }
+        },
+        "title": "RetrievalSpacesOut",
+        "type": "object"
+      },
+      "RetrievalUsageOut": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget"
+          },
+          "errors_available": {
+            "default": false,
+            "title": "Errors Available",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalUsageRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "tokens_available": {
+            "default": false,
+            "title": "Tokens Available",
+            "type": "boolean"
+          },
+          "window": {
+            "title": "Window",
+            "type": "string"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          }
+        },
+        "required": [
+          "window",
+          "window_start",
+          "window_end"
+        ],
+        "title": "RetrievalUsageOut",
+        "type": "object"
+      },
+      "RetrievalUsageRowOut": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reindex_calls": {
+            "default": 0,
+            "title": "Reindex Calls",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "tokens_in": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens In"
+          },
+          "tokens_out": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Out"
+          }
+        },
+        "required": [
+          "day",
+          "space_id",
+          "kind",
+          "calls"
+        ],
+        "title": "RetrievalUsageRowOut",
+        "type": "object"
+      },
       "RetryFailedBody": {
         "properties": {
           "types": {
@@ -15812,6 +17970,11 @@
             ],
             "title": "Error"
           },
+          "linked_existing": {
+            "default": 0,
+            "title": "Linked Existing",
+            "type": "integer"
+          },
           "skipped": {
             "default": 0,
             "title": "Skipped",
@@ -15820,6 +17983,11 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "suggested": {
+            "default": 0,
+            "title": "Suggested",
+            "type": "integer"
           },
           "unlinked": {
             "default": 0,
@@ -18401,6 +20569,955 @@
         ]
       }
     },
+    "/api/v1/admin/retrieval/coverage": {
+      "get": {
+        "operationId": "get_coverage_api_v1_admin_retrieval_coverage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "space",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalCoverageEnvelopeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Coverage",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/cutover": {
+      "post": {
+        "operationId": "post_cutover_api_v1_admin_retrieval_cutover_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalCutoverIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Cutover",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/maintenance": {
+      "post": {
+        "operationId": "post_maintenance_api_v1_admin_retrieval_maintenance_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalMaintenanceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Maintenance",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/overview": {
+      "get": {
+        "operationId": "get_overview_api_v1_admin_retrieval_overview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "24h",
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalOverviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Overview",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/quality": {
+      "get": {
+        "operationId": "get_quality_api_v1_admin_retrieval_quality_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "space",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalQualityEnvelopeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quality",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/quality/compare": {
+      "post": {
+        "operationId": "post_quality_compare_api_v1_admin_retrieval_quality_compare_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalQualityCompareIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Quality Compare",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/query-health": {
+      "get": {
+        "operationId": "get_query_health_api_v1_admin_retrieval_query_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "24h",
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalQueryHealthEnvelopeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Query Health",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/reindex": {
+      "post": {
+        "operationId": "post_reindex_api_v1_admin_retrieval_reindex_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalReindexIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Reindex",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/runs": {
+      "get": {
+        "operationId": "get_runs_api_v1_admin_retrieval_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalRunsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Runs",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "post_cancel_run_api_v1_admin_retrieval_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RetrievalActionKeyIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Cancel Run",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/runs/{run_id}/retry": {
+      "post": {
+        "operationId": "post_retry_run_api_v1_admin_retrieval_runs__run_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RetrievalActionKeyIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Retry Run",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/spaces": {
+      "get": {
+        "operationId": "get_spaces_api_v1_admin_retrieval_spaces_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalSpacesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Spaces",
+        "tags": [
+          "retrieval"
+        ]
+      },
+      "post": {
+        "operationId": "post_build_space_api_v1_admin_retrieval_spaces_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalSpaceBuildIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Build Space",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/spaces/{space_id}/activate": {
+      "post": {
+        "operationId": "post_activate_space_api_v1_admin_retrieval_spaces__space_id__activate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "title": "Space Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RetrievalActionKeyIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Activate Space",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/spaces/{space_id}/drop": {
+      "post": {
+        "operationId": "post_drop_space_api_v1_admin_retrieval_spaces__space_id__drop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "title": "Space Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalSpaceConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Drop Space",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/spaces/{space_id}/retire": {
+      "post": {
+        "operationId": "post_retire_space_api_v1_admin_retrieval_spaces__space_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "title": "Space Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalSpaceConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Retire Space",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
+    "/api/v1/admin/retrieval/usage": {
+      "get": {
+        "operationId": "get_usage_api_v1_admin_retrieval_usage_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "24h",
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalUsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Usage",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "operationId": "list_users_api_v1_admin_users_get",
@@ -20079,6 +23196,86 @@
           }
         },
         "summary": "Test Link",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/calendar/oauth/callback": {
+      "get": {
+        "description": "Server-side OAuth callback (web deployments).\n\nDesktop/local never uses this: its loopback listener receives the\nredirect directly (RFC 8252). A web deployment sets ``SA_APP_URL`` and\nthe provider redirects **here** \u2014 the user's browser runs on another\nmachine, so a loopback redirect would land on their own localhost.\n\nSecurity: the flow's ``state`` is single-use, expiring and bound to the\nprofile that started it, and this route consumes it with the session's\nprofile. A foreign or replayed state is refused (ADR-0052 Rev 3 E12).",
+        "operationId": "oauth_callback_api_v1_calendar_oauth_callback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Callback",
         "tags": [
           "calendar"
         ]

@@ -20,6 +20,11 @@ from ..pipelines.genesis import make_genesis_handler
 from ..pipelines.image_ocr import make_image_ocr_handler
 from ..pipelines.ingest import make_ingest_handler
 from ..pipelines.postprocess import make_postprocess_handler
+from ..pipelines.retrieval_ops import (
+    make_vector_cutover_handler,
+    make_vector_maintenance_handler,
+    make_vector_reindex_handler,
+)
 from ..pipelines.url_import import make_url_import_handler
 from .runner import JobRunner
 
@@ -66,6 +71,13 @@ def build_job_runner(app: FastAPI) -> JobRunner:
             JobType.URL_IMPORT: make_url_import_handler(
                 app.state.blobs,
                 lambda: getattr(app.state, "search_transport", None),
+            ),
+            JobType.VECTOR_REINDEX: make_vector_reindex_handler(app.state.embedder.embed),
+            JobType.VECTOR_MAINTENANCE: make_vector_maintenance_handler(
+                app.state.embedder.embed
+            ),
+            JobType.VECTOR_CUTOVER: make_vector_cutover_handler(
+                app.state.embedder.embed
             ),
         },
         group_key=_chat_turn_group,

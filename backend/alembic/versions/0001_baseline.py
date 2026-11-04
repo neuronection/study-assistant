@@ -95,8 +95,9 @@ def _seed_decision_slots() -> None:
         bind.execute(
             sa.text(
                 "INSERT INTO default_task_assignments (requires, model_id, fallback_model_id) "
-                "SELECT :slot, NULL, NULL WHERE NOT EXISTS ("
-                "SELECT 1 FROM default_task_assignments WHERE requires = :slot)"
+                "SELECT CAST(:slot AS VARCHAR(40)), NULL, NULL WHERE NOT EXISTS ("
+                "SELECT 1 FROM default_task_assignments "
+                "WHERE requires = CAST(:slot AS VARCHAR(40)))"
             ),
             {"slot": slot},
         )
@@ -430,7 +431,7 @@ def upgrade() -> None:
         sa.Column("exam_date", sa.Date(), nullable=True),
         sa.Column("course_type_id", sa.Uuid(as_uuid=False), nullable=True),
         sa.Column("origin", sa.String(length=20), server_default="manual", nullable=False),
-        sa.Column("hidden", sa.Boolean(), server_default=sa.text("0"), nullable=False),
+        sa.Column("hidden", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("archived_at", sa.DateTime(timezone=True), nullable=True),
@@ -674,7 +675,7 @@ def upgrade() -> None:
         sa.Column("include_globs", sa.JSON(), nullable=True),
         sa.Column("course_id", sa.Uuid(as_uuid=False), nullable=False),
         sa.Column("enabled", sa.Boolean(), nullable=False),
-        sa.Column("mirror_subdirs", sa.Boolean(), server_default="0", nullable=False),
+        sa.Column("mirror_subdirs", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("scan_interval_sec", sa.Integer(), nullable=True),
         sa.Column("last_scan_error", sa.Text(), nullable=True),
         sa.Column("last_scanned_at", sa.DateTime(timezone=True), nullable=True),
@@ -830,7 +831,7 @@ def upgrade() -> None:
         sa.Column("context", sa.JSON(), nullable=True),
         sa.Column("mention_registry", sa.JSON(), nullable=True),
         sa.Column("active_root_id", sa.Uuid(as_uuid=False), nullable=True),
-        sa.Column("quizme", sa.Boolean(), server_default=sa.text("0"), nullable=False),
+        sa.Column("quizme", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["course_id"],
@@ -1151,7 +1152,7 @@ def upgrade() -> None:
         sa.Column("expected_latex", sa.String(length=500), nullable=True),
         sa.Column("expected_text", sa.String(length=500), nullable=True),
         sa.Column("accept", sa.JSON(), nullable=True),
-        sa.Column("awaiting_answer", sa.Boolean(), server_default=sa.text("0"), nullable=False),
+        sa.Column("awaiting_answer", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("verdict", sa.String(length=20), nullable=True),
         sa.Column("verdict_detail", sa.String(length=500), nullable=True),
         sa.Column("student_answer", sa.String(length=1000), nullable=True),
@@ -1293,7 +1294,7 @@ def upgrade() -> None:
         sa.Column("phash", sa.String(length=24), nullable=True),
         sa.Column("provenance", sa.JSON(), nullable=True),
         sa.Column("tags", sa.JSON(), nullable=True),
-        sa.Column("starred", sa.Boolean(), server_default="0", nullable=False),
+        sa.Column("starred", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("source_url", sa.String(length=2048), nullable=True),
         sa.Column("source_url_norm", sa.String(length=2048), nullable=True),

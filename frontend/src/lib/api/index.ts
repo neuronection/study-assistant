@@ -82,6 +82,7 @@ export type {
 } from './study'
 
 export type {
+  AlertEntry,
   DueReviewEntry,
   ExamEntry,
   Notifications,
@@ -717,3 +718,36 @@ export {
 
 export type { ExerciseOrderingItem } from './hand-types'
 export { HAND_TYPE_REGISTER } from './hand-types'
+
+export type {
+  RetrievalAction,
+  RetrievalCoverageEnvelope,
+  RetrievalCutoverRequest,
+  RetrievalMaintenanceRequest,
+  RetrievalOverview,
+  RetrievalQuality,
+  RetrievalQualityCompareRequest,
+  RetrievalReindexRequest,
+  RetrievalRuns,
+  RetrievalSpaceBuildRequest,
+  RetrievalSpaceConfirmRequest,
+  RetrievalSpaces,
+} from './retrieval'
+
+export {
+  activateRetrievalSpace,
+  cancelRetrievalRun,
+  dropRetrievalSpace,
+  getRetrievalCoverage,
+  getRetrievalOverview,
+  getRetrievalQuality,
+  getRetrievalRuns,
+  getRetrievalSpaces,
+  postRetrievalBuildSpace,
+  postRetrievalCutover,
+  postRetrievalMaintenance,
+  postRetrievalQualityCompare,
+  postRetrievalReindex,
+  retireRetrievalSpace,
+  retryRetrievalRun,
+} from './retrieval'

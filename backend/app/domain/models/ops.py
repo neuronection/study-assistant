@@ -11,8 +11,10 @@ from ...core.vocab import (
     JobType as JobType,
 )
 from ..payloads import (
+    AiInteractionMetadata,
     DistractorSelection,
     JobPayload,
+    JobResult,
     ProviderStatus,
     SkillContract,
     SkillParams,
@@ -55,6 +57,9 @@ from .core import (
     Mapped as Mapped,
 )
 from .core import (
+    SmallInteger as SmallInteger,
+)
+from .core import (
     String as String,
 )
 from .core import (
@@ -79,12 +84,31 @@ from .core import (
     utcnow as utcnow,
 )
 
+_ACTIVE_JOB_STATUS = "status IN ('queued', 'running')"
+
 
 class Job(Base):
     __tablename__ = "jobs"
     __table_args__ = (
         vocab_check("type", JobType),
         vocab_check("status", JobStatus),
+        Index(
+            "uq_jobs_idempotency_active",
+            "type",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text(f"idempotency_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"),
+            postgresql_where=text(
+                f"idempotency_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"
+            ),
+        ),
+        Index(
+            "uq_jobs_lock_key_active",
+            "lock_key",
+            unique=True,
+            sqlite_where=text(f"lock_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"),
+            postgresql_where=text(f"lock_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
@@ -93,7 +117,12 @@ class Job(Base):
     status: Mapped[str] = mapped_column(String(20), default="queued")
     progress: Mapped[int] = mapped_column(Integer, default=0)
     stage: Mapped[str | None] = mapped_column(String(120))
+    result: Mapped[JobResult | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
+    lock_key: Mapped[str | None] = mapped_column(String(120))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -373,4 +402,17 @@ class AiInteraction(Base):
     cached_input_tokens: Mapped[int | None] = mapped_column(Integer)
     cost_usd: Mapped[float | None] = mapped_column(Float)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
+    # The mapped attribute cannot be named ``metadata`` (SQLAlchemy reserves
+    # it); the schema-contract payload wall resolves the DB column to this
+    # attribute.
+    metadata_json: Mapped[AiInteractionMetadata] = mapped_column(
+        "metadata",
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'"),
+    )
+    metadata_schema_version: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=1, server_default="1"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

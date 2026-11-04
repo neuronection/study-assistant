@@ -10,7 +10,7 @@ import types
 from pathlib import Path
 from typing import get_args, get_type_hints
 
-from sqlalchemy import JSON, CheckConstraint, Integer
+from sqlalchemy import JSON, CheckConstraint, Integer, inspect
 
 from app.domain import (
     documents,
@@ -136,7 +136,10 @@ def test_every_json_column_has_a_named_payload_type() -> None:
         registered = getattr(payloads, name)
         table_name, _, column = key.partition(".")
         model_class = classes[table_name]
-        annotation = get_type_hints(model_class).get(column)
+        mapped_attribute = inspect(model_class).get_property_by_column(
+            Base.metadata.tables[table_name].columns[column]
+        )
+        annotation = get_type_hints(model_class).get(mapped_attribute.key)
         assert annotation is not None, f"{key} has no model annotation"
         inner = get_args(annotation)[0]
         candidates = [inner]

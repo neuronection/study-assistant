@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionPresets } from '@/lib/motion'
 import {
   AlarmClock,
+  AlertTriangle,
   Bell,
   CalendarClock,
   Inbox,
@@ -75,7 +76,8 @@ export function actionableTotal(data: Notifications | undefined): number | null 
     data.due_cards +
     data.plan_today.length +
     data.pending_proposals +
-    (data.staged_imports?.length ?? 0)
+    (data.staged_imports?.length ?? 0) +
+    (data.alerts?.length ?? 0)
   )
 }
 
@@ -120,6 +122,16 @@ export function NotificationBell() {
       params: { courseId: String(courseId) },
       search: { tab: 'planner' },
     })
+  const openAlert = (link: string) => {
+    const url = new URL(link, window.location.origin)
+    void navigate({
+      to: '/settings',
+      search: {
+        tab: url.searchParams.get('tab') ?? undefined,
+        section: url.searchParams.get('section') ?? undefined,
+      },
+    })
+  }
 
   const empty =
     data !== undefined &&
@@ -127,7 +139,8 @@ export function NotificationBell() {
     data.plan_today.length === 0 &&
     data.exams.length === 0 &&
     data.pending_proposals === 0 &&
-    (data.staged_imports?.length ?? 0) === 0
+    (data.staged_imports?.length ?? 0) === 0 &&
+    (data.alerts?.length ?? 0) === 0
 
   return (
     <Popover
@@ -168,6 +181,42 @@ export function NotificationBell() {
         <EmptyState icon={Bell} title={t('notifications.empty')} compact />
       ) : (
         <div className="space-y-3" aria-live="polite">
+          {data && (data.alerts?.length ?? 0) > 0 ? (
+            <motion.section {...presets.enter} className="space-y-1.5">
+              <SectionLabel icon={AlertTriangle} label={t('notifications.alerts')} />
+              {data.alerts.map((alert) => (
+                <button
+                  key={alert.id}
+                  type="button"
+                  className="hover:bg-subtle flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                  onClick={() => openAlert(alert.link)}
+                >
+                  <AlertTriangle
+                    className={cn(
+                      'mt-0.5 size-3.5 shrink-0',
+                      alert.severity === 'error'
+                        ? 'text-danger'
+                        : alert.severity === 'warning'
+                          ? 'text-warning'
+                          : 'text-primary'
+                    )}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="text-foreground block truncate font-medium">
+                      {alert.title}
+                    </span>
+                    {alert.body ? (
+                      <span className="text-muted-foreground block line-clamp-2 text-[10px]">
+                        {alert.body}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              ))}
+            </motion.section>
+          ) : null}
+
           {data && data.due_cards > 0 ? (
             <motion.section {...presets.enter} className="space-y-1.5">
               <SectionLabel icon={Layers} label={t('notifications.dueNow')} />

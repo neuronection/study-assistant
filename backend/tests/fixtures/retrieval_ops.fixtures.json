@@ -1,0 +1,2698 @@
+{
+  "schema": 1,
+  "adr": "ADR-0051 (proposed) / ADR-0044",
+  "plan": 51,
+  "contract": "retrieval-ops",
+  "contractVersion": "1",
+  "description": "Cross-product acceptance wall for the family retrieval-operations contract (plan 51 Q0). Every vendored copy of contracts/retrieval_ops.py must satisfy these rows: the read/action DTO vocabulary, the VECTOR_* job + run-result contract, the vector.* audit vocabulary, the two bounded rollup schemas, the single-active-run/idempotency seams, the alert defaults and the no-raw-text rule. Same law, one table, never per-repo edits.",
+  "vocabularies": {
+    "spaceStatuses": [
+      "active",
+      "building",
+      "retired"
+    ],
+    "runStatuses": [
+      "queued",
+      "running",
+      "succeeded",
+      "failed",
+      "cancelled"
+    ],
+    "activeRunStatuses": [
+      "queued",
+      "running"
+    ],
+    "terminalRunStatuses": [
+      "succeeded",
+      "failed",
+      "cancelled"
+    ],
+    "jobTypes": [
+      "VECTOR_REINDEX",
+      "VECTOR_CUTOVER",
+      "VECTOR_MAINTENANCE"
+    ],
+    "auditGroup": "vector",
+    "auditEvents": [
+      "vector.space.provisioned",
+      "vector.space.activated",
+      "vector.space.retired",
+      "vector.space.dropped",
+      "vector.space.reset",
+      "vector.reindex.started",
+      "vector.reindex.cancelled",
+      "vector.reindex.retried",
+      "vector.maintenance.started",
+      "vector.model.changed",
+      "vector.gate.failed",
+      "vector.run.stalled",
+      "vector.document.indexed"
+    ],
+    "views": [
+      "summary",
+      "requirements",
+      "responsibilities",
+      "skills",
+      "body"
+    ],
+    "backends": [
+      "pgvector",
+      "sqlite_vec",
+      "linear"
+    ],
+    "degradedReasons": [
+      "provider_unassigned",
+      "embed_failed",
+      "index_missing",
+      "space_mismatch",
+      "over_cap"
+    ],
+    "gateStatuses": [
+      "pass",
+      "fail",
+      "unknown"
+    ],
+    "failureKinds": [
+      "embed_provider",
+      "indexing",
+      "cutover_gate",
+      "maintenance"
+    ],
+    "maintenanceActions": [
+      "index-rebuild",
+      "vacuum",
+      "orphan-sweep",
+      "retry-failed"
+    ],
+    "actions": [
+      "reindex",
+      "cancel_run",
+      "retry_run",
+      "build_space",
+      "activate_space",
+      "retire_space",
+      "drop_space",
+      "maintenance",
+      "quality_compare"
+    ]
+  },
+  "spaces": [
+    {
+      "name": "active-content-space",
+      "dto": {
+        "space_id": "space-content",
+        "name": "content",
+        "status": "active",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content",
+        "documents": 1000,
+        "records": 2400,
+        "coverage": 0.999,
+        "stale": 3,
+        "failed": 0,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": null,
+        "last_reindex_at": "2026-11-02T22:00:00Z",
+        "last_error": null,
+        "gate": "pass",
+        "as_of": "2026-11-03T06:00:00Z"
+      },
+      "expect": {
+        "cold": false,
+        "coverageGate": "pass",
+        "status": "active"
+      }
+    },
+    {
+      "name": "empty-space-never-reconciled",
+      "dto": {
+        "space_id": "space-empty",
+        "name": "empty",
+        "status": "active",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": null,
+        "documents": 0,
+        "records": 0,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": null,
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null
+      },
+      "expect": {
+        "cold": true,
+        "coverageGate": "unknown",
+        "status": "active"
+      }
+    },
+    {
+      "name": "cold-space-with-stale-snapshot",
+      "dto": {
+        "space_id": "space-cold",
+        "name": "cold",
+        "status": "active",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content",
+        "documents": 12,
+        "records": 30,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null
+      },
+      "expect": {
+        "cold": true,
+        "coverageGate": "unknown",
+        "status": "active"
+      }
+    },
+    {
+      "name": "degraded-space",
+      "dto": {
+        "space_id": "space-degraded",
+        "name": "degraded",
+        "status": "active",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content",
+        "documents": 1000,
+        "records": 2400,
+        "coverage": 0.42,
+        "stale": 300,
+        "failed": 80,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": null,
+        "last_reindex_at": "2026-11-02T22:00:00Z",
+        "last_error": "provider_unassigned",
+        "gate": "fail",
+        "as_of": "2026-11-03T06:00:00Z"
+      },
+      "expect": {
+        "cold": false,
+        "coverageGate": "fail",
+        "status": "active"
+      }
+    },
+    {
+      "name": "building-space",
+      "dto": {
+        "space_id": "space-building",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 400,
+        "records": 900,
+        "coverage": 0.4,
+        "stale": 0,
+        "failed": 2,
+        "created_at": "2026-11-03T05:00:00Z",
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "fail",
+        "as_of": "2026-11-03T06:00:00Z"
+      },
+      "expect": {
+        "cold": false,
+        "coverageGate": "fail",
+        "status": "building"
+      }
+    },
+    {
+      "name": "retired-space",
+      "dto": {
+        "space_id": "space-retired",
+        "name": "content-v0",
+        "status": "retired",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": null,
+        "documents": 1000,
+        "records": 2400,
+        "coverage": 0.999,
+        "stale": 0,
+        "failed": 0,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": "2026-10-20T10:00:00Z",
+        "last_reindex_at": "2026-11-02T22:00:00Z",
+        "last_error": null,
+        "gate": "pass",
+        "as_of": "2026-10-20T09:00:00Z"
+      },
+      "expect": {
+        "cold": false,
+        "coverageGate": "pass",
+        "status": "retired"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "name": "cold-never-reconciled",
+      "dto": {
+        "space_id": "space-empty",
+        "as_of": null,
+        "total": 0,
+        "missing": 0,
+        "stale": 0,
+        "failed": 0,
+        "embedded": 0,
+        "coverage": null,
+        "gate": "unknown",
+        "ann_recall": null,
+        "ann_recall_k": null,
+        "probe_size": null
+      },
+      "expect": {
+        "cold": true,
+        "sampled": false
+      }
+    },
+    {
+      "name": "active-snapshot",
+      "dto": {
+        "space_id": "space-content",
+        "as_of": "2026-11-03T06:00:00Z",
+        "total": 1000,
+        "missing": 1,
+        "stale": 3,
+        "failed": 0,
+        "embedded": 999,
+        "coverage": 0.999,
+        "gate": "pass",
+        "ann_recall": 0.96,
+        "ann_recall_k": 10,
+        "probe_size": 1000
+      },
+      "expect": {
+        "cold": false,
+        "sampled": true
+      }
+    },
+    {
+      "name": "degraded-unsampled",
+      "dto": {
+        "space_id": "space-degraded",
+        "as_of": "2026-11-03T06:00:00Z",
+        "total": 1000,
+        "missing": 200,
+        "stale": 30,
+        "failed": 10,
+        "embedded": 760,
+        "coverage": 0.76,
+        "gate": "fail",
+        "ann_recall": null,
+        "ann_recall_k": null,
+        "probe_size": null
+      },
+      "expect": {
+        "cold": false,
+        "sampled": false
+      }
+    },
+    {
+      "name": "coverage-derived-when-omitted",
+      "dto": {
+        "space_id": "space-building",
+        "as_of": "2026-11-03T06:00:00Z",
+        "total": 400,
+        "missing": 200,
+        "stale": 0,
+        "failed": 0,
+        "embedded": 200,
+        "coverage": null,
+        "gate": "fail"
+      },
+      "expect": {
+        "coverage": 0.5,
+        "cold": false,
+        "sampled": false
+      }
+    }
+  ],
+  "runResults": [
+    {
+      "name": "clean-run",
+      "dto": {
+        "scanned": 100,
+        "embedded": 100,
+        "skipped": 0,
+        "failed": 0,
+        "failed_ids": [],
+        "failed_ids_truncated": false,
+        "gate": "pass"
+      },
+      "expect": {
+        "failedIdsCount": 0,
+        "truncated": false
+      }
+    },
+    {
+      "name": "partial-failures",
+      "dto": {
+        "scanned": 100,
+        "embedded": 90,
+        "skipped": 5,
+        "failed": 5,
+        "failed_ids": [
+          "doc-1",
+          "doc-2",
+          "doc-3",
+          "doc-4",
+          "doc-5"
+        ],
+        "failed_ids_truncated": false,
+        "gate": "fail"
+      },
+      "expect": {
+        "failedIdsCount": 5,
+        "truncated": false
+      }
+    },
+    {
+      "name": "truncated-failed-ids",
+      "dto": {
+        "scanned": 2500,
+        "embedded": 2000,
+        "skipped": 0,
+        "failed": 1200,
+        "failed_ids": [
+          "doc-0001",
+          "doc-0002",
+          "doc-0003",
+          "doc-0004",
+          "doc-0005",
+          "doc-0006",
+          "doc-0007",
+          "doc-0008",
+          "doc-0009",
+          "doc-0010",
+          "doc-0011",
+          "doc-0012",
+          "doc-0013",
+          "doc-0014",
+          "doc-0015",
+          "doc-0016",
+          "doc-0017",
+          "doc-0018",
+          "doc-0019",
+          "doc-0020",
+          "doc-0021",
+          "doc-0022",
+          "doc-0023",
+          "doc-0024",
+          "doc-0025",
+          "doc-0026",
+          "doc-0027",
+          "doc-0028",
+          "doc-0029",
+          "doc-0030",
+          "doc-0031",
+          "doc-0032",
+          "doc-0033",
+          "doc-0034",
+          "doc-0035",
+          "doc-0036",
+          "doc-0037",
+          "doc-0038",
+          "doc-0039",
+          "doc-0040",
+          "doc-0041",
+          "doc-0042",
+          "doc-0043",
+          "doc-0044",
+          "doc-0045",
+          "doc-0046",
+          "doc-0047",
+          "doc-0048",
+          "doc-0049",
+          "doc-0050",
+          "doc-0051",
+          "doc-0052",
+          "doc-0053",
+          "doc-0054",
+          "doc-0055",
+          "doc-0056",
+          "doc-0057",
+          "doc-0058",
+          "doc-0059",
+          "doc-0060",
+          "doc-0061",
+          "doc-0062",
+          "doc-0063",
+          "doc-0064",
+          "doc-0065",
+          "doc-0066",
+          "doc-0067",
+          "doc-0068",
+          "doc-0069",
+          "doc-0070",
+          "doc-0071",
+          "doc-0072",
+          "doc-0073",
+          "doc-0074",
+          "doc-0075",
+          "doc-0076",
+          "doc-0077",
+          "doc-0078",
+          "doc-0079",
+          "doc-0080",
+          "doc-0081",
+          "doc-0082",
+          "doc-0083",
+          "doc-0084",
+          "doc-0085",
+          "doc-0086",
+          "doc-0087",
+          "doc-0088",
+          "doc-0089",
+          "doc-0090",
+          "doc-0091",
+          "doc-0092",
+          "doc-0093",
+          "doc-0094",
+          "doc-0095",
+          "doc-0096",
+          "doc-0097",
+          "doc-0098",
+          "doc-0099",
+          "doc-0100",
+          "doc-0101",
+          "doc-0102",
+          "doc-0103",
+          "doc-0104",
+          "doc-0105",
+          "doc-0106",
+          "doc-0107",
+          "doc-0108",
+          "doc-0109",
+          "doc-0110",
+          "doc-0111",
+          "doc-0112",
+          "doc-0113",
+          "doc-0114",
+          "doc-0115",
+          "doc-0116",
+          "doc-0117",
+          "doc-0118",
+          "doc-0119",
+          "doc-0120",
+          "doc-0121",
+          "doc-0122",
+          "doc-0123",
+          "doc-0124",
+          "doc-0125",
+          "doc-0126",
+          "doc-0127",
+          "doc-0128",
+          "doc-0129",
+          "doc-0130",
+          "doc-0131",
+          "doc-0132",
+          "doc-0133",
+          "doc-0134",
+          "doc-0135",
+          "doc-0136",
+          "doc-0137",
+          "doc-0138",
+          "doc-0139",
+          "doc-0140",
+          "doc-0141",
+          "doc-0142",
+          "doc-0143",
+          "doc-0144",
+          "doc-0145",
+          "doc-0146",
+          "doc-0147",
+          "doc-0148",
+          "doc-0149",
+          "doc-0150",
+          "doc-0151",
+          "doc-0152",
+          "doc-0153",
+          "doc-0154",
+          "doc-0155",
+          "doc-0156",
+          "doc-0157",
+          "doc-0158",
+          "doc-0159",
+          "doc-0160",
+          "doc-0161",
+          "doc-0162",
+          "doc-0163",
+          "doc-0164",
+          "doc-0165",
+          "doc-0166",
+          "doc-0167",
+          "doc-0168",
+          "doc-0169",
+          "doc-0170",
+          "doc-0171",
+          "doc-0172",
+          "doc-0173",
+          "doc-0174",
+          "doc-0175",
+          "doc-0176",
+          "doc-0177",
+          "doc-0178",
+          "doc-0179",
+          "doc-0180",
+          "doc-0181",
+          "doc-0182",
+          "doc-0183",
+          "doc-0184",
+          "doc-0185",
+          "doc-0186",
+          "doc-0187",
+          "doc-0188",
+          "doc-0189",
+          "doc-0190",
+          "doc-0191",
+          "doc-0192",
+          "doc-0193",
+          "doc-0194",
+          "doc-0195",
+          "doc-0196",
+          "doc-0197",
+          "doc-0198",
+          "doc-0199",
+          "doc-0200",
+          "doc-0201",
+          "doc-0202",
+          "doc-0203",
+          "doc-0204",
+          "doc-0205",
+          "doc-0206",
+          "doc-0207",
+          "doc-0208",
+          "doc-0209",
+          "doc-0210",
+          "doc-0211",
+          "doc-0212",
+          "doc-0213",
+          "doc-0214",
+          "doc-0215",
+          "doc-0216",
+          "doc-0217",
+          "doc-0218",
+          "doc-0219",
+          "doc-0220",
+          "doc-0221",
+          "doc-0222",
+          "doc-0223",
+          "doc-0224",
+          "doc-0225",
+          "doc-0226",
+          "doc-0227",
+          "doc-0228",
+          "doc-0229",
+          "doc-0230",
+          "doc-0231",
+          "doc-0232",
+          "doc-0233",
+          "doc-0234",
+          "doc-0235",
+          "doc-0236",
+          "doc-0237",
+          "doc-0238",
+          "doc-0239",
+          "doc-0240",
+          "doc-0241",
+          "doc-0242",
+          "doc-0243",
+          "doc-0244",
+          "doc-0245",
+          "doc-0246",
+          "doc-0247",
+          "doc-0248",
+          "doc-0249",
+          "doc-0250",
+          "doc-0251",
+          "doc-0252",
+          "doc-0253",
+          "doc-0254",
+          "doc-0255",
+          "doc-0256",
+          "doc-0257",
+          "doc-0258",
+          "doc-0259",
+          "doc-0260",
+          "doc-0261",
+          "doc-0262",
+          "doc-0263",
+          "doc-0264",
+          "doc-0265",
+          "doc-0266",
+          "doc-0267",
+          "doc-0268",
+          "doc-0269",
+          "doc-0270",
+          "doc-0271",
+          "doc-0272",
+          "doc-0273",
+          "doc-0274",
+          "doc-0275",
+          "doc-0276",
+          "doc-0277",
+          "doc-0278",
+          "doc-0279",
+          "doc-0280",
+          "doc-0281",
+          "doc-0282",
+          "doc-0283",
+          "doc-0284",
+          "doc-0285",
+          "doc-0286",
+          "doc-0287",
+          "doc-0288",
+          "doc-0289",
+          "doc-0290",
+          "doc-0291",
+          "doc-0292",
+          "doc-0293",
+          "doc-0294",
+          "doc-0295",
+          "doc-0296",
+          "doc-0297",
+          "doc-0298",
+          "doc-0299",
+          "doc-0300",
+          "doc-0301",
+          "doc-0302",
+          "doc-0303",
+          "doc-0304",
+          "doc-0305",
+          "doc-0306",
+          "doc-0307",
+          "doc-0308",
+          "doc-0309",
+          "doc-0310",
+          "doc-0311",
+          "doc-0312",
+          "doc-0313",
+          "doc-0314",
+          "doc-0315",
+          "doc-0316",
+          "doc-0317",
+          "doc-0318",
+          "doc-0319",
+          "doc-0320",
+          "doc-0321",
+          "doc-0322",
+          "doc-0323",
+          "doc-0324",
+          "doc-0325",
+          "doc-0326",
+          "doc-0327",
+          "doc-0328",
+          "doc-0329",
+          "doc-0330",
+          "doc-0331",
+          "doc-0332",
+          "doc-0333",
+          "doc-0334",
+          "doc-0335",
+          "doc-0336",
+          "doc-0337",
+          "doc-0338",
+          "doc-0339",
+          "doc-0340",
+          "doc-0341",
+          "doc-0342",
+          "doc-0343",
+          "doc-0344",
+          "doc-0345",
+          "doc-0346",
+          "doc-0347",
+          "doc-0348",
+          "doc-0349",
+          "doc-0350",
+          "doc-0351",
+          "doc-0352",
+          "doc-0353",
+          "doc-0354",
+          "doc-0355",
+          "doc-0356",
+          "doc-0357",
+          "doc-0358",
+          "doc-0359",
+          "doc-0360",
+          "doc-0361",
+          "doc-0362",
+          "doc-0363",
+          "doc-0364",
+          "doc-0365",
+          "doc-0366",
+          "doc-0367",
+          "doc-0368",
+          "doc-0369",
+          "doc-0370",
+          "doc-0371",
+          "doc-0372",
+          "doc-0373",
+          "doc-0374",
+          "doc-0375",
+          "doc-0376",
+          "doc-0377",
+          "doc-0378",
+          "doc-0379",
+          "doc-0380",
+          "doc-0381",
+          "doc-0382",
+          "doc-0383",
+          "doc-0384",
+          "doc-0385",
+          "doc-0386",
+          "doc-0387",
+          "doc-0388",
+          "doc-0389",
+          "doc-0390",
+          "doc-0391",
+          "doc-0392",
+          "doc-0393",
+          "doc-0394",
+          "doc-0395",
+          "doc-0396",
+          "doc-0397",
+          "doc-0398",
+          "doc-0399",
+          "doc-0400",
+          "doc-0401",
+          "doc-0402",
+          "doc-0403",
+          "doc-0404",
+          "doc-0405",
+          "doc-0406",
+          "doc-0407",
+          "doc-0408",
+          "doc-0409",
+          "doc-0410",
+          "doc-0411",
+          "doc-0412",
+          "doc-0413",
+          "doc-0414",
+          "doc-0415",
+          "doc-0416",
+          "doc-0417",
+          "doc-0418",
+          "doc-0419",
+          "doc-0420",
+          "doc-0421",
+          "doc-0422",
+          "doc-0423",
+          "doc-0424",
+          "doc-0425",
+          "doc-0426",
+          "doc-0427",
+          "doc-0428",
+          "doc-0429",
+          "doc-0430",
+          "doc-0431",
+          "doc-0432",
+          "doc-0433",
+          "doc-0434",
+          "doc-0435",
+          "doc-0436",
+          "doc-0437",
+          "doc-0438",
+          "doc-0439",
+          "doc-0440",
+          "doc-0441",
+          "doc-0442",
+          "doc-0443",
+          "doc-0444",
+          "doc-0445",
+          "doc-0446",
+          "doc-0447",
+          "doc-0448",
+          "doc-0449",
+          "doc-0450",
+          "doc-0451",
+          "doc-0452",
+          "doc-0453",
+          "doc-0454",
+          "doc-0455",
+          "doc-0456",
+          "doc-0457",
+          "doc-0458",
+          "doc-0459",
+          "doc-0460",
+          "doc-0461",
+          "doc-0462",
+          "doc-0463",
+          "doc-0464",
+          "doc-0465",
+          "doc-0466",
+          "doc-0467",
+          "doc-0468",
+          "doc-0469",
+          "doc-0470",
+          "doc-0471",
+          "doc-0472",
+          "doc-0473",
+          "doc-0474",
+          "doc-0475",
+          "doc-0476",
+          "doc-0477",
+          "doc-0478",
+          "doc-0479",
+          "doc-0480",
+          "doc-0481",
+          "doc-0482",
+          "doc-0483",
+          "doc-0484",
+          "doc-0485",
+          "doc-0486",
+          "doc-0487",
+          "doc-0488",
+          "doc-0489",
+          "doc-0490",
+          "doc-0491",
+          "doc-0492",
+          "doc-0493",
+          "doc-0494",
+          "doc-0495",
+          "doc-0496",
+          "doc-0497",
+          "doc-0498",
+          "doc-0499",
+          "doc-0500"
+        ],
+        "failed_ids_truncated": true,
+        "gate": "fail"
+      },
+      "expect": {
+        "failedIdsCount": 500,
+        "truncated": true
+      }
+    }
+  ],
+  "runs": [
+    {
+      "name": "running-reindex",
+      "dto": {
+        "run_id": "run-1",
+        "space_id": "space-content",
+        "job_type": "VECTOR_REINDEX",
+        "status": "running",
+        "progress": 42,
+        "stage": "embed:summary",
+        "scope": {
+          "kind": "posting",
+          "view": "summary",
+          "since": "2026-11-01T00:00:00Z"
+        },
+        "budget_tokens": 500000,
+        "created_at": "2026-11-03T06:00:00Z",
+        "started_at": "2026-11-03T06:01:00Z",
+        "heartbeat_at": "2026-11-03T06:02:00Z",
+        "idempotency_key": "req-abc12345",
+        "lock_key": "vector_space:space-content"
+      },
+      "expect": {
+        "active": true,
+        "terminal": false
+      }
+    },
+    {
+      "name": "queued-cutover",
+      "dto": {
+        "run_id": "run-2",
+        "space_id": "space-building",
+        "job_type": "VECTOR_CUTOVER",
+        "status": "queued",
+        "progress": 0,
+        "stage": "queued",
+        "scope": {
+          "kind": null,
+          "view": null,
+          "since": null
+        },
+        "created_at": "2026-11-03T06:00:00Z",
+        "idempotency_key": "req-def12345",
+        "lock_key": "vector_space:space-building"
+      },
+      "expect": {
+        "active": true,
+        "terminal": false
+      }
+    },
+    {
+      "name": "failed-maintenance",
+      "dto": {
+        "run_id": "run-3",
+        "space_id": "space-content",
+        "job_type": "VECTOR_MAINTENANCE",
+        "status": "failed",
+        "progress": 100,
+        "stage": "index-rebuild",
+        "scope": {},
+        "error": "index rebuild failed",
+        "finished_at": "2026-11-03T06:30:00Z",
+        "idempotency_key": "req-ghi12345"
+      },
+      "expect": {
+        "active": false,
+        "terminal": true
+      }
+    }
+  ],
+  "runDetails": [
+    {
+      "name": "running-detail",
+      "run": "run-1",
+      "result": null,
+      "durationSeconds": 60.0
+    },
+    {
+      "name": "failed-detail-with-result",
+      "run": "run-3",
+      "result": {
+        "scanned": 10,
+        "embedded": 8,
+        "skipped": 0,
+        "failed": 2,
+        "failed_ids": [
+          "doc-8",
+          "doc-9"
+        ],
+        "failed_ids_truncated": false,
+        "gate": "fail"
+      },
+      "durationSeconds": 1800.0
+    }
+  ],
+  "failures": [
+    {
+      "name": "embed-provider",
+      "dto": {
+        "kind": "embed_provider",
+        "space_id": "space-degraded",
+        "count": 80,
+        "last_seen": "2026-11-03T06:10:00Z",
+        "document_ids": [
+          "doc-11",
+          "doc-12",
+          "doc-13"
+        ],
+        "reason": "embed_failed",
+        "retryable": true,
+        "run_id": "run-9"
+      },
+      "expect": {
+        "retryable": true
+      }
+    },
+    {
+      "name": "cutover-gate",
+      "dto": {
+        "kind": "cutover_gate",
+        "space_id": "space-building",
+        "count": 1,
+        "last_seen": "2026-11-03T06:20:00Z",
+        "document_ids": [],
+        "reason": "space_mismatch",
+        "retryable": false,
+        "run_id": "run-2"
+      },
+      "expect": {
+        "retryable": false
+      }
+    },
+    {
+      "name": "indexing",
+      "dto": {
+        "kind": "indexing",
+        "space_id": "space-content",
+        "count": 3,
+        "last_seen": "2026-11-03T06:25:00Z",
+        "document_ids": [
+          "doc-21",
+          "doc-22",
+          "doc-23"
+        ],
+        "reason": "index_missing",
+        "retryable": true
+      },
+      "expect": {
+        "retryable": true
+      }
+    },
+    {
+      "name": "maintenance",
+      "dto": {
+        "kind": "maintenance",
+        "space_id": "space-content",
+        "count": 1,
+        "last_seen": "2026-11-03T06:30:00Z",
+        "document_ids": [],
+        "reason": null,
+        "retryable": true,
+        "run_id": "run-3"
+      },
+      "expect": {
+        "retryable": true
+      }
+    }
+  ],
+  "queryHealth": [
+    {
+      "name": "empty-window",
+      "dto": {
+        "space_id": "space-empty",
+        "window_start": "2026-11-02T00:00:00Z",
+        "window_end": "2026-11-03T00:00:00Z",
+        "p50_ms": null,
+        "p95_ms": null,
+        "candidate_p50": null,
+        "candidate_p95": null,
+        "zero_result_rate": null,
+        "degraded_rate": null,
+        "degraded_reasons": {},
+        "per_view_hits": {},
+        "ann_recall": null,
+        "ann_recall_k": null,
+        "probe_size": null,
+        "sampled": false,
+        "sample_size": 0,
+        "query_count": 0
+      },
+      "expect": {
+        "degradedRate": null,
+        "sampled": false
+      }
+    },
+    {
+      "name": "degraded-window",
+      "dto": {
+        "space_id": "space-degraded",
+        "window_start": "2026-11-02T00:00:00Z",
+        "window_end": "2026-11-03T00:00:00Z",
+        "p50_ms": 180.0,
+        "p95_ms": 2200.0,
+        "candidate_p50": 20.0,
+        "candidate_p95": 80.0,
+        "zero_result_rate": 0.12,
+        "degraded_rate": 0.22,
+        "degraded_reasons": {
+          "provider_unassigned": 180,
+          "embed_failed": 40
+        },
+        "per_view_hits": {
+          "summary": 800,
+          "body": 400
+        },
+        "ann_recall": null,
+        "ann_recall_k": null,
+        "probe_size": null,
+        "sampled": false,
+        "sample_size": 0,
+        "query_count": 1000
+      },
+      "expect": {
+        "degradedRate": 0.22,
+        "sampled": false
+      }
+    },
+    {
+      "name": "active-window-sampled",
+      "dto": {
+        "space_id": "space-content",
+        "window_start": "2026-11-02T00:00:00Z",
+        "window_end": "2026-11-03T00:00:00Z",
+        "p50_ms": 35.0,
+        "p95_ms": 90.0,
+        "candidate_p50": 12.0,
+        "candidate_p95": 40.0,
+        "zero_result_rate": 0.01,
+        "degraded_rate": 0.0,
+        "degraded_reasons": {},
+        "per_view_hits": {
+          "summary": 3000,
+          "requirements": 1200,
+          "responsibilities": 800,
+          "skills": 600,
+          "body": 900
+        },
+        "ann_recall": 0.96,
+        "ann_recall_k": 10,
+        "probe_size": 1000,
+        "sampled": true,
+        "sample_size": 5000,
+        "query_count": 5000
+      },
+      "expect": {
+        "degradedRate": 0.0,
+        "sampled": true
+      }
+    }
+  ],
+  "usage": [
+    {
+      "name": "active-usage",
+      "dto": {
+        "window_start": "2026-11-02T00:00:00Z",
+        "window_end": "2026-11-03T00:00:00Z",
+        "rows": [
+          {
+            "day": "2026-11-02",
+            "space_id": "space-content",
+            "kind": "posting",
+            "calls": 1200,
+            "tokens_in": 240000,
+            "tokens_out": 0,
+            "reindex_calls": 1
+          },
+          {
+            "day": "2026-11-02",
+            "space_id": "space-content",
+            "kind": "profile",
+            "calls": 30,
+            "tokens_in": 6000,
+            "tokens_out": 0,
+            "reindex_calls": 0
+          }
+        ],
+        "budget": {
+          "window": "day",
+          "max_tokens": 500000,
+          "used_tokens": 246000
+        }
+      },
+      "expect": {
+        "exhausted": false,
+        "tokensTotal": 246000
+      }
+    },
+    {
+      "name": "budget-exhausted",
+      "dto": {
+        "window_start": "2026-11-02T00:00:00Z",
+        "window_end": "2026-11-03T00:00:00Z",
+        "rows": [],
+        "budget": {
+          "window": "day",
+          "max_tokens": 1000,
+          "used_tokens": 1000
+        }
+      },
+      "expect": {
+        "exhausted": true,
+        "tokensTotal": 0
+      }
+    }
+  ],
+  "quality": {
+    "floor": {
+      "recall": 0.8,
+      "precision": 0.5,
+      "k": 5
+    },
+    "goldenQueries": [
+      {
+        "queryId": "q-career-1",
+        "query": "senior python backend remote",
+        "expectedDocumentIds": [
+          "doc-101",
+          "doc-102"
+        ],
+        "k": 5
+      },
+      {
+        "queryId": "q-career-2",
+        "query": "data engineer berlin",
+        "expectedDocumentIds": [
+          "doc-201"
+        ],
+        "k": 5
+      }
+    ],
+    "cases": [
+      {
+        "name": "quality-pass",
+        "spaceId": "space-content",
+        "setVersion": 1,
+        "k": 5,
+        "retrieved": {
+          "q-career-1": [
+            "doc-101",
+            "doc-102",
+            "doc-999"
+          ],
+          "q-career-2": [
+            "doc-201",
+            "doc-888"
+          ]
+        },
+        "expect": {
+          "passed": true,
+          "recall": 1.0,
+          "precision": 1.0
+        }
+      },
+      {
+        "name": "quality-fail",
+        "spaceId": "space-building",
+        "setVersion": 1,
+        "k": 5,
+        "retrieved": {
+          "q-career-1": [
+            "doc-999"
+          ],
+          "q-career-2": []
+        },
+        "expect": {
+          "passed": false,
+          "recall": 0.0,
+          "precision": 0.0
+        }
+      },
+      {
+        "name": "quality-partial-miss",
+        "spaceId": "space-building",
+        "setVersion": 1,
+        "k": 5,
+        "retrieved": {
+          "q-career-1": [
+            "doc-101"
+          ],
+          "q-career-2": [
+            "doc-201"
+          ]
+        },
+        "expect": {
+          "passed": false,
+          "recall": 0.75,
+          "precision": 0.75
+        }
+      }
+    ],
+    "compare": [
+      {
+        "name": "compare-pass",
+        "oldSpaceId": "space-content",
+        "newSpaceId": "space-building",
+        "setVersion": 1,
+        "k": 5,
+        "oldRetrieved": {
+          "q-career-1": [
+            "doc-101"
+          ],
+          "q-career-2": [
+            "doc-201"
+          ]
+        },
+        "newRetrieved": {
+          "q-career-1": [
+            "doc-101",
+            "doc-102"
+          ],
+          "q-career-2": [
+            "doc-201"
+          ]
+        },
+        "expect": {
+          "passed": true,
+          "newRecall": 1.0,
+          "recallDelta": 0.25
+        }
+      },
+      {
+        "name": "compare-fail",
+        "oldSpaceId": "space-content",
+        "newSpaceId": "space-building",
+        "setVersion": 1,
+        "k": 5,
+        "oldRetrieved": {
+          "q-career-1": [
+            "doc-101",
+            "doc-102"
+          ],
+          "q-career-2": [
+            "doc-201"
+          ]
+        },
+        "newRetrieved": {
+          "q-career-1": [
+            "doc-999"
+          ],
+          "q-career-2": []
+        },
+        "expect": {
+          "passed": false,
+          "newRecall": 0.0,
+          "recallDelta": -1.0
+        }
+      }
+    ],
+    "rule": "golden-query text is admin-authored fixture input; QualityDTO/QualityCompareDTO expose ids, scores and miss lists only",
+    "goldenSets": [
+      {
+        "spaceId": "space-content",
+        "setVersion": 1,
+        "k": 5,
+        "floor": {
+          "recall": 0.8,
+          "precision": 0.5
+        },
+        "queries": [
+          {
+            "queryId": "q-career-1",
+            "query": "senior python backend remote",
+            "expectedDocumentIds": [
+              "doc-101",
+              "doc-102"
+            ],
+            "k": 5
+          },
+          {
+            "queryId": "q-career-2",
+            "query": "data engineer berlin",
+            "expectedDocumentIds": [
+              "doc-201"
+            ],
+            "k": 5
+          }
+        ]
+      },
+      {
+        "spaceId": "space-building",
+        "setVersion": 1,
+        "k": 5,
+        "floor": {
+          "recall": 0.8,
+          "precision": 0.5
+        },
+        "queries": [
+          {
+            "queryId": "q-career-1",
+            "query": "senior python backend remote",
+            "expectedDocumentIds": [
+              "doc-101",
+              "doc-102"
+            ],
+            "k": 5
+          },
+          {
+            "queryId": "q-career-2",
+            "query": "data engineer berlin",
+            "expectedDocumentIds": [
+              "doc-201"
+            ],
+            "k": 5
+          }
+        ]
+      }
+    ]
+  },
+  "actions": [
+    {
+      "name": "reindex-accepted",
+      "request": {
+        "action": "reindex",
+        "space_id": "space-content",
+        "kind": "posting",
+        "view": "summary",
+        "since": "2026-11-01T00:00:00Z",
+        "idempotency_key": "req-reindex-01"
+      },
+      "response": {
+        "action": "reindex",
+        "accepted": true,
+        "audit_event": "vector.reindex.started",
+        "run_id": "run-10",
+        "status": "queued",
+        "idempotency_key": "req-reindex-01",
+        "message": "reindex queued"
+      }
+    },
+    {
+      "name": "reindex-replay-deduplicated",
+      "request": {
+        "action": "reindex",
+        "space_id": "space-content",
+        "idempotency_key": "req-reindex-01"
+      },
+      "response": {
+        "action": "reindex",
+        "accepted": true,
+        "deduplicated": true,
+        "audit_event": "vector.reindex.started",
+        "run_id": "run-10",
+        "status": "queued",
+        "idempotency_key": "req-reindex-01",
+        "message": "replay of req-reindex-01"
+      }
+    },
+    {
+      "name": "drop-typed-confirm",
+      "request": {
+        "action": "drop_space",
+        "space_id": "space-retired",
+        "confirm_space_name": "space-retired",
+        "idempotency_key": "req-drop-0001"
+      },
+      "response": {
+        "action": "drop_space",
+        "accepted": true,
+        "audit_event": "vector.space.dropped",
+        "status": "queued",
+        "idempotency_key": "req-drop-0001",
+        "message": "drop queued"
+      }
+    },
+    {
+      "name": "maintenance-index-rebuild",
+      "request": {
+        "action": "maintenance",
+        "space_id": "space-content",
+        "maintenance_action": "index-rebuild",
+        "idempotency_key": "req-maint-0001",
+        "dry_run": true
+      },
+      "response": {
+        "action": "maintenance",
+        "accepted": true,
+        "audit_event": "vector.maintenance.started",
+        "status": "queued",
+        "idempotency_key": "req-maint-0001",
+        "message": "dry run accepted"
+      }
+    },
+    {
+      "name": "activate-space",
+      "request": {
+        "action": "activate_space",
+        "space_id": "space-building",
+        "idempotency_key": "req-activate1"
+      },
+      "response": {
+        "action": "activate_space",
+        "accepted": true,
+        "audit_event": "vector.space.activated",
+        "status": "queued",
+        "idempotency_key": "req-activate1",
+        "message": "activation queued"
+      }
+    },
+    {
+      "name": "quality-compare-read",
+      "request": {
+        "action": "quality_compare",
+        "space_id": "space-content",
+        "compare_space_id": "space-building"
+      },
+      "response": {
+        "action": "quality_compare",
+        "accepted": true,
+        "audit_event": "vector.gate.failed",
+        "http_status": 200,
+        "message": "compare complete"
+      }
+    }
+  ],
+  "alerts": [
+    {
+      "kind": "retrieval.coverage_low",
+      "condition": "coverage below the gate with no active building run",
+      "threshold": "coverage < 0.995",
+      "window_minutes": 0,
+      "dedup_key": "space",
+      "recovery": "coverage gate clears",
+      "manage_url": "/settings/tools?section=retrieval",
+      "daily_cap": 3
+    },
+    {
+      "kind": "retrieval.reindex_failed",
+      "condition": "a VECTOR_* run reaches terminal failed",
+      "threshold": "status == failed",
+      "window_minutes": 0,
+      "dedup_key": "space+kind",
+      "recovery": "next successful run",
+      "manage_url": "/settings/audit?tab=retrieval&section=runs&detail=<run_id>",
+      "daily_cap": 5
+    },
+    {
+      "kind": "retrieval.reindex_stalled",
+      "condition": "a non-terminal run makes no progress past the stall window",
+      "threshold": "no heartbeat/progress > 15 min",
+      "window_minutes": 15,
+      "dedup_key": "run_id",
+      "recovery": "progress resumes or the run is cancelled/reaped",
+      "manage_url": "/settings/audit?tab=retrieval&section=runs&detail=<run_id>",
+      "daily_cap": 3
+    },
+    {
+      "kind": "retrieval.quality_gate",
+      "condition": "the pre-cutover golden-query compare misses the floor",
+      "threshold": "recall < 0.8 or precision < 0.5",
+      "window_minutes": 0,
+      "dedup_key": "space",
+      "recovery": "the compare passes",
+      "manage_url": "/settings/audit?tab=retrieval&section=quality",
+      "daily_cap": 3
+    },
+    {
+      "kind": "retrieval.query_slo",
+      "condition": "query p95 exceeds the budget for the SLO window",
+      "threshold": "p95 > 1500 ms for 15 min",
+      "window_minutes": 15,
+      "dedup_key": "space",
+      "recovery": "p95 returns below budget",
+      "manage_url": "/settings/audit?tab=retrieval&section=query-health",
+      "daily_cap": 2
+    },
+    {
+      "kind": "retrieval.degraded_rate",
+      "condition": "the lexical-fallback share exceeds the threshold",
+      "threshold": "degraded > 5% over 15 min",
+      "window_minutes": 15,
+      "dedup_key": "space+reason",
+      "recovery": "the share returns below threshold",
+      "manage_url": "/settings/audit?tab=retrieval&section=query-health",
+      "daily_cap": 3
+    },
+    {
+      "kind": "retrieval.provider_unassigned",
+      "condition": "the embeddings task has no provider/model assignment",
+      "threshold": "ai.tasks embeddings slot unassigned",
+      "window_minutes": 0,
+      "dedup_key": "singleton",
+      "recovery": "an embeddings assignment is saved",
+      "manage_url": "/settings/tools?section=retrieval",
+      "daily_cap": 1
+    },
+    {
+      "kind": "retrieval.index_missing",
+      "condition": "the pgvector extension/index is absent on web",
+      "threshold": "extension or index absent",
+      "window_minutes": 0,
+      "dedup_key": "space",
+      "recovery": "provision/maintenance recreates it",
+      "manage_url": "/settings/tools?section=retrieval",
+      "daily_cap": 2
+    },
+    {
+      "kind": "retrieval.budget_exhausted",
+      "condition": "the token-denominated embed budget is exhausted",
+      "threshold": "AIBudget(task_type='embed') exhausted",
+      "window_minutes": 0,
+      "dedup_key": "window",
+      "recovery": "the next budget window opens",
+      "manage_url": "/settings/audit?tab=retrieval&section=usage",
+      "daily_cap": 1
+    },
+    {
+      "kind": "retrieval.space_drop_pending",
+      "condition": "a retired space is past the drop grace period",
+      "threshold": "retired > 7 days",
+      "window_minutes": 0,
+      "dedup_key": "space",
+      "recovery": "the space is dropped",
+      "manage_url": "/settings/tools?section=retrieval",
+      "daily_cap": 2
+    }
+  ],
+  "dataSeams": {
+    "aiGenerations": {
+      "metadata": {
+        "table": "ai_generations",
+        "column": "metadata",
+        "sql_type": "JSONB (JSON on SQLite)",
+        "nullable": false,
+        "default": "'{}'",
+        "note": "caller-supplied embedding tags: space_id, kind, view, chunk_index — passed through the gateway call like run_id/run_stage, never written by the gateway itself; no prompt/document text"
+      },
+      "schemaVersion": {
+        "table": "ai_generations",
+        "column": "metadata_schema_version",
+        "sql_type": "SMALLINT",
+        "nullable": false,
+        "default": "1",
+        "note": "sibling version pin for the metadata document; bump on an incompatible shape change"
+      },
+      "callerFields": [
+        "space_id",
+        "kind",
+        "view",
+        "chunk_index"
+      ],
+      "gatewayWritesMetadata": false,
+      "rule": "the caller passes space_id/kind/view/chunk_index through the gateway call like run_id/run_stage; the gateway never writes these tags itself"
+    },
+    "queryRollups": {
+      "table": "retrieval_query_rollups",
+      "dimensions": [
+        "space_id",
+        "kind",
+        "view",
+        "degraded_reason",
+        "bucket_start",
+        "bucket_width"
+      ],
+      "measures": [
+        "count",
+        "zero_results",
+        "candidates_sum",
+        "latency_histogram"
+      ],
+      "latency_buckets_ms": [
+        25,
+        50,
+        100,
+        250,
+        500,
+        1000,
+        2500,
+        5000,
+        10000
+      ],
+      "ttl_days": 30,
+      "lifecycle": "operational",
+      "inventory_rows": [
+        "retrieval_query_rollups :: operational",
+        "retrieval_query_rollups.latency_histogram :: keep-open bounded latency histogram (le buckets + overflow; TTL 30d)"
+      ],
+      "written_by": "plan 50 P2 telemetry hooks (batched off the request hot path)"
+    },
+    "coverageSnapshots": {
+      "table": "retrieval_coverage_snapshots",
+      "dimensions": [
+        "space_id",
+        "kind",
+        "as_of"
+      ],
+      "measures": [
+        "total",
+        "missing",
+        "stale",
+        "failed",
+        "embedded",
+        "ann_recall",
+        "ann_recall_k",
+        "probe_size"
+      ],
+      "latency_buckets_ms": [],
+      "ttl_days": 90,
+      "lifecycle": "operational",
+      "inventory_rows": [
+        "retrieval_coverage_snapshots :: operational"
+      ],
+      "written_by": "reconcile pass + periodic maintenance ANN-recall probe (never a dashboard request)"
+    },
+    "backgroundJobs": {
+      "idempotency_column": "idempotency_key",
+      "idempotency_unique_fields": [
+        "job_type",
+        "idempotency_key"
+      ],
+      "idempotency_ttl_seconds": 86400,
+      "lock_key_column": "lock_key",
+      "lock_key_prefix": "vector_space:",
+      "active_statuses": [
+        "queued",
+        "running"
+      ],
+      "heartbeat_interval_seconds": 30,
+      "heartbeat_stale_seconds": 900,
+      "reaper_interval_seconds": 60,
+      "reaper_action": "running row with heartbeat_at older than the stale window -> failed (error='stalled: no heartbeat for 15m'), emit vector.run.stalled, release lock_key"
+    },
+    "inventory": [
+      "ai_generations.metadata :: keep-open caller-supplied embedding tags (space_id/kind/view/chunk_index; schema version sibling; never text)",
+      "retrieval_query_rollups :: operational (TTL 30d — aggregate, not an audit ledger)",
+      "retrieval_coverage_snapshots :: operational (TTL 90d — latest snapshot wins; cold means never reconciled)",
+      "background_jobs.idempotency_key :: indexed request replay key (partial unique on job_type+idempotency_key; 24h TTL)",
+      "background_jobs.lock_key :: partial unique active-run lock (vector_space:<space_id>; queued/running only)"
+    ],
+    "quality": {
+      "fixtureVersion": 1,
+      "k": 5,
+      "floorRecall": 0.8,
+      "floorPrecision": 0.5,
+      "compareRequiredForActivation": true
+    }
+  },
+  "dtoSafety": {
+    "rule": "Retrieval DTOs and exports never carry prompt/document/query/output text; golden-query text is admin fixture input and never crosses a Quality DTO.",
+    "allowed": [
+      {
+        "name": "space-row",
+        "payload": {
+          "space_id": "space-content",
+          "name": "content",
+          "status": "active",
+          "provider": "openai",
+          "model": "text-embedding-3-small",
+          "dim": 1536,
+          "backend": "pgvector",
+          "metric": "cosine",
+          "index_table": "vector_content",
+          "documents": 1000,
+          "records": 2400,
+          "coverage": 0.999,
+          "stale": 3,
+          "failed": 0,
+          "created_at": "2026-10-01T08:00:00Z",
+          "activated_at": "2026-10-01T09:00:00Z",
+          "retired_at": null,
+          "last_reindex_at": "2026-11-02T22:00:00Z",
+          "last_error": null,
+          "gate": "pass",
+          "as_of": "2026-11-03T06:00:00Z"
+        }
+      },
+      {
+        "name": "coverage-row",
+        "payload": {
+          "space_id": "space-content",
+          "as_of": "2026-11-03T06:00:00Z",
+          "total": 1000,
+          "missing": 1,
+          "stale": 3,
+          "failed": 0,
+          "embedded": 999,
+          "coverage": 0.999,
+          "gate": "pass",
+          "ann_recall": 0.96,
+          "ann_recall_k": 10,
+          "probe_size": 1000
+        }
+      },
+      {
+        "name": "run-result",
+        "payload": {
+          "scanned": 100,
+          "embedded": 90,
+          "skipped": 5,
+          "failed": 5,
+          "failed_ids": [
+            "doc-1",
+            "doc-2",
+            "doc-3",
+            "doc-4",
+            "doc-5"
+          ],
+          "failed_ids_truncated": false,
+          "gate": "fail"
+        }
+      },
+      {
+        "name": "quality-result",
+        "payload": {
+          "space_id": "space-content",
+          "set_version": 1,
+          "k": 5,
+          "recall_at_k": 1.0,
+          "precision_at_k": 1.0,
+          "passed": true,
+          "queries": [
+            {
+              "query_id": "q-career-1",
+              "expected_document_ids": [
+                "doc-101"
+              ],
+              "retrieved_document_ids": [
+                "doc-101"
+              ],
+              "recall_at_k": 1.0,
+              "precision_at_k": 1.0,
+              "missing_document_ids": [],
+              "passed": true
+            }
+          ],
+          "floor_recall": 0.8,
+          "floor_precision": 0.5
+        }
+      }
+    ],
+    "forbidden": [
+      {
+        "name": "prompt-key",
+        "payload": {
+          "prompt": "secret document text"
+        }
+      },
+      {
+        "name": "nested-document-text",
+        "payload": {
+          "items": [
+            {
+              "document_text": "secret"
+            }
+          ]
+        }
+      },
+      {
+        "name": "query-text",
+        "payload": {
+          "query": "secret user query"
+        }
+      },
+      {
+        "name": "output-key",
+        "payload": {
+          "output": "model output"
+        }
+      }
+    ]
+  },
+  "invalidArgs": [
+    {
+      "name": "failed-ids-over-limit",
+      "call": "RunResultDTO",
+      "payload": {
+        "scanned": 600,
+        "embedded": 0,
+        "skipped": 0,
+        "failed": 501,
+        "failed_ids": [
+          "doc-0",
+          "doc-1",
+          "doc-2",
+          "doc-3",
+          "doc-4",
+          "doc-5",
+          "doc-6",
+          "doc-7",
+          "doc-8",
+          "doc-9",
+          "doc-10",
+          "doc-11",
+          "doc-12",
+          "doc-13",
+          "doc-14",
+          "doc-15",
+          "doc-16",
+          "doc-17",
+          "doc-18",
+          "doc-19",
+          "doc-20",
+          "doc-21",
+          "doc-22",
+          "doc-23",
+          "doc-24",
+          "doc-25",
+          "doc-26",
+          "doc-27",
+          "doc-28",
+          "doc-29",
+          "doc-30",
+          "doc-31",
+          "doc-32",
+          "doc-33",
+          "doc-34",
+          "doc-35",
+          "doc-36",
+          "doc-37",
+          "doc-38",
+          "doc-39",
+          "doc-40",
+          "doc-41",
+          "doc-42",
+          "doc-43",
+          "doc-44",
+          "doc-45",
+          "doc-46",
+          "doc-47",
+          "doc-48",
+          "doc-49",
+          "doc-50",
+          "doc-51",
+          "doc-52",
+          "doc-53",
+          "doc-54",
+          "doc-55",
+          "doc-56",
+          "doc-57",
+          "doc-58",
+          "doc-59",
+          "doc-60",
+          "doc-61",
+          "doc-62",
+          "doc-63",
+          "doc-64",
+          "doc-65",
+          "doc-66",
+          "doc-67",
+          "doc-68",
+          "doc-69",
+          "doc-70",
+          "doc-71",
+          "doc-72",
+          "doc-73",
+          "doc-74",
+          "doc-75",
+          "doc-76",
+          "doc-77",
+          "doc-78",
+          "doc-79",
+          "doc-80",
+          "doc-81",
+          "doc-82",
+          "doc-83",
+          "doc-84",
+          "doc-85",
+          "doc-86",
+          "doc-87",
+          "doc-88",
+          "doc-89",
+          "doc-90",
+          "doc-91",
+          "doc-92",
+          "doc-93",
+          "doc-94",
+          "doc-95",
+          "doc-96",
+          "doc-97",
+          "doc-98",
+          "doc-99",
+          "doc-100",
+          "doc-101",
+          "doc-102",
+          "doc-103",
+          "doc-104",
+          "doc-105",
+          "doc-106",
+          "doc-107",
+          "doc-108",
+          "doc-109",
+          "doc-110",
+          "doc-111",
+          "doc-112",
+          "doc-113",
+          "doc-114",
+          "doc-115",
+          "doc-116",
+          "doc-117",
+          "doc-118",
+          "doc-119",
+          "doc-120",
+          "doc-121",
+          "doc-122",
+          "doc-123",
+          "doc-124",
+          "doc-125",
+          "doc-126",
+          "doc-127",
+          "doc-128",
+          "doc-129",
+          "doc-130",
+          "doc-131",
+          "doc-132",
+          "doc-133",
+          "doc-134",
+          "doc-135",
+          "doc-136",
+          "doc-137",
+          "doc-138",
+          "doc-139",
+          "doc-140",
+          "doc-141",
+          "doc-142",
+          "doc-143",
+          "doc-144",
+          "doc-145",
+          "doc-146",
+          "doc-147",
+          "doc-148",
+          "doc-149",
+          "doc-150",
+          "doc-151",
+          "doc-152",
+          "doc-153",
+          "doc-154",
+          "doc-155",
+          "doc-156",
+          "doc-157",
+          "doc-158",
+          "doc-159",
+          "doc-160",
+          "doc-161",
+          "doc-162",
+          "doc-163",
+          "doc-164",
+          "doc-165",
+          "doc-166",
+          "doc-167",
+          "doc-168",
+          "doc-169",
+          "doc-170",
+          "doc-171",
+          "doc-172",
+          "doc-173",
+          "doc-174",
+          "doc-175",
+          "doc-176",
+          "doc-177",
+          "doc-178",
+          "doc-179",
+          "doc-180",
+          "doc-181",
+          "doc-182",
+          "doc-183",
+          "doc-184",
+          "doc-185",
+          "doc-186",
+          "doc-187",
+          "doc-188",
+          "doc-189",
+          "doc-190",
+          "doc-191",
+          "doc-192",
+          "doc-193",
+          "doc-194",
+          "doc-195",
+          "doc-196",
+          "doc-197",
+          "doc-198",
+          "doc-199",
+          "doc-200",
+          "doc-201",
+          "doc-202",
+          "doc-203",
+          "doc-204",
+          "doc-205",
+          "doc-206",
+          "doc-207",
+          "doc-208",
+          "doc-209",
+          "doc-210",
+          "doc-211",
+          "doc-212",
+          "doc-213",
+          "doc-214",
+          "doc-215",
+          "doc-216",
+          "doc-217",
+          "doc-218",
+          "doc-219",
+          "doc-220",
+          "doc-221",
+          "doc-222",
+          "doc-223",
+          "doc-224",
+          "doc-225",
+          "doc-226",
+          "doc-227",
+          "doc-228",
+          "doc-229",
+          "doc-230",
+          "doc-231",
+          "doc-232",
+          "doc-233",
+          "doc-234",
+          "doc-235",
+          "doc-236",
+          "doc-237",
+          "doc-238",
+          "doc-239",
+          "doc-240",
+          "doc-241",
+          "doc-242",
+          "doc-243",
+          "doc-244",
+          "doc-245",
+          "doc-246",
+          "doc-247",
+          "doc-248",
+          "doc-249",
+          "doc-250",
+          "doc-251",
+          "doc-252",
+          "doc-253",
+          "doc-254",
+          "doc-255",
+          "doc-256",
+          "doc-257",
+          "doc-258",
+          "doc-259",
+          "doc-260",
+          "doc-261",
+          "doc-262",
+          "doc-263",
+          "doc-264",
+          "doc-265",
+          "doc-266",
+          "doc-267",
+          "doc-268",
+          "doc-269",
+          "doc-270",
+          "doc-271",
+          "doc-272",
+          "doc-273",
+          "doc-274",
+          "doc-275",
+          "doc-276",
+          "doc-277",
+          "doc-278",
+          "doc-279",
+          "doc-280",
+          "doc-281",
+          "doc-282",
+          "doc-283",
+          "doc-284",
+          "doc-285",
+          "doc-286",
+          "doc-287",
+          "doc-288",
+          "doc-289",
+          "doc-290",
+          "doc-291",
+          "doc-292",
+          "doc-293",
+          "doc-294",
+          "doc-295",
+          "doc-296",
+          "doc-297",
+          "doc-298",
+          "doc-299",
+          "doc-300",
+          "doc-301",
+          "doc-302",
+          "doc-303",
+          "doc-304",
+          "doc-305",
+          "doc-306",
+          "doc-307",
+          "doc-308",
+          "doc-309",
+          "doc-310",
+          "doc-311",
+          "doc-312",
+          "doc-313",
+          "doc-314",
+          "doc-315",
+          "doc-316",
+          "doc-317",
+          "doc-318",
+          "doc-319",
+          "doc-320",
+          "doc-321",
+          "doc-322",
+          "doc-323",
+          "doc-324",
+          "doc-325",
+          "doc-326",
+          "doc-327",
+          "doc-328",
+          "doc-329",
+          "doc-330",
+          "doc-331",
+          "doc-332",
+          "doc-333",
+          "doc-334",
+          "doc-335",
+          "doc-336",
+          "doc-337",
+          "doc-338",
+          "doc-339",
+          "doc-340",
+          "doc-341",
+          "doc-342",
+          "doc-343",
+          "doc-344",
+          "doc-345",
+          "doc-346",
+          "doc-347",
+          "doc-348",
+          "doc-349",
+          "doc-350",
+          "doc-351",
+          "doc-352",
+          "doc-353",
+          "doc-354",
+          "doc-355",
+          "doc-356",
+          "doc-357",
+          "doc-358",
+          "doc-359",
+          "doc-360",
+          "doc-361",
+          "doc-362",
+          "doc-363",
+          "doc-364",
+          "doc-365",
+          "doc-366",
+          "doc-367",
+          "doc-368",
+          "doc-369",
+          "doc-370",
+          "doc-371",
+          "doc-372",
+          "doc-373",
+          "doc-374",
+          "doc-375",
+          "doc-376",
+          "doc-377",
+          "doc-378",
+          "doc-379",
+          "doc-380",
+          "doc-381",
+          "doc-382",
+          "doc-383",
+          "doc-384",
+          "doc-385",
+          "doc-386",
+          "doc-387",
+          "doc-388",
+          "doc-389",
+          "doc-390",
+          "doc-391",
+          "doc-392",
+          "doc-393",
+          "doc-394",
+          "doc-395",
+          "doc-396",
+          "doc-397",
+          "doc-398",
+          "doc-399",
+          "doc-400",
+          "doc-401",
+          "doc-402",
+          "doc-403",
+          "doc-404",
+          "doc-405",
+          "doc-406",
+          "doc-407",
+          "doc-408",
+          "doc-409",
+          "doc-410",
+          "doc-411",
+          "doc-412",
+          "doc-413",
+          "doc-414",
+          "doc-415",
+          "doc-416",
+          "doc-417",
+          "doc-418",
+          "doc-419",
+          "doc-420",
+          "doc-421",
+          "doc-422",
+          "doc-423",
+          "doc-424",
+          "doc-425",
+          "doc-426",
+          "doc-427",
+          "doc-428",
+          "doc-429",
+          "doc-430",
+          "doc-431",
+          "doc-432",
+          "doc-433",
+          "doc-434",
+          "doc-435",
+          "doc-436",
+          "doc-437",
+          "doc-438",
+          "doc-439",
+          "doc-440",
+          "doc-441",
+          "doc-442",
+          "doc-443",
+          "doc-444",
+          "doc-445",
+          "doc-446",
+          "doc-447",
+          "doc-448",
+          "doc-449",
+          "doc-450",
+          "doc-451",
+          "doc-452",
+          "doc-453",
+          "doc-454",
+          "doc-455",
+          "doc-456",
+          "doc-457",
+          "doc-458",
+          "doc-459",
+          "doc-460",
+          "doc-461",
+          "doc-462",
+          "doc-463",
+          "doc-464",
+          "doc-465",
+          "doc-466",
+          "doc-467",
+          "doc-468",
+          "doc-469",
+          "doc-470",
+          "doc-471",
+          "doc-472",
+          "doc-473",
+          "doc-474",
+          "doc-475",
+          "doc-476",
+          "doc-477",
+          "doc-478",
+          "doc-479",
+          "doc-480",
+          "doc-481",
+          "doc-482",
+          "doc-483",
+          "doc-484",
+          "doc-485",
+          "doc-486",
+          "doc-487",
+          "doc-488",
+          "doc-489",
+          "doc-490",
+          "doc-491",
+          "doc-492",
+          "doc-493",
+          "doc-494",
+          "doc-495",
+          "doc-496",
+          "doc-497",
+          "doc-498",
+          "doc-499",
+          "doc-500"
+        ],
+        "failed_ids_truncated": true,
+        "gate": "fail"
+      }
+    },
+    {
+      "name": "truncated-with-fewer-than-500",
+      "call": "RunResultDTO",
+      "payload": {
+        "scanned": 10,
+        "embedded": 0,
+        "skipped": 0,
+        "failed": 2,
+        "failed_ids": [
+          "d1"
+        ],
+        "failed_ids_truncated": true,
+        "gate": "fail"
+      }
+    },
+    {
+      "name": "failed-zero-with-ids",
+      "call": "RunResultDTO",
+      "payload": {
+        "scanned": 10,
+        "embedded": 10,
+        "skipped": 0,
+        "failed": 0,
+        "failed_ids": [
+          "d1"
+        ],
+        "failed_ids_truncated": false,
+        "gate": "pass"
+      }
+    },
+    {
+      "name": "space-dim-zero",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-content",
+        "name": "content",
+        "status": "active",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 0,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content",
+        "documents": 1000,
+        "records": 2400,
+        "coverage": 0.999,
+        "stale": 3,
+        "failed": 0,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": null,
+        "last_reindex_at": "2026-11-02T22:00:00Z",
+        "last_error": null,
+        "gate": "pass",
+        "as_of": "2026-11-03T06:00:00Z"
+      }
+    },
+    {
+      "name": "space-bad-backend",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-content",
+        "name": "content",
+        "status": "active",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "faiss",
+        "metric": "cosine",
+        "index_table": "vector_content",
+        "documents": 1000,
+        "records": 2400,
+        "coverage": 0.999,
+        "stale": 3,
+        "failed": 0,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": null,
+        "last_reindex_at": "2026-11-02T22:00:00Z",
+        "last_error": null,
+        "gate": "pass",
+        "as_of": "2026-11-03T06:00:00Z"
+      }
+    },
+    {
+      "name": "space-bad-status",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-content",
+        "name": "content",
+        "status": "dropped",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content",
+        "documents": 1000,
+        "records": 2400,
+        "coverage": 0.999,
+        "stale": 3,
+        "failed": 0,
+        "created_at": "2026-10-01T08:00:00Z",
+        "activated_at": "2026-10-01T09:00:00Z",
+        "retired_at": null,
+        "last_reindex_at": "2026-11-02T22:00:00Z",
+        "last_error": null,
+        "gate": "pass",
+        "as_of": "2026-11-03T06:00:00Z"
+      }
+    },
+    {
+      "name": "run-bad-job-type",
+      "call": "RunDTO",
+      "payload": {
+        "run_id": "run-x",
+        "space_id": "space-content",
+        "job_type": "EMBED_ALL",
+        "status": "queued"
+      }
+    },
+    {
+      "name": "run-progress-over-100",
+      "call": "RunDTO",
+      "payload": {
+        "run_id": "run-x",
+        "space_id": "space-content",
+        "job_type": "VECTOR_REINDEX",
+        "status": "running",
+        "progress": 101
+      }
+    },
+    {
+      "name": "coverage-ann-recall-over-one",
+      "call": "CoverageDTO",
+      "payload": {
+        "space_id": "s",
+        "as_of": "2026-11-03T00:00:00Z",
+        "total": 10,
+        "missing": 0,
+        "stale": 0,
+        "failed": 0,
+        "embedded": 10,
+        "coverage": 1.0,
+        "gate": "pass",
+        "ann_recall": 1.2,
+        "ann_recall_k": 10,
+        "probe_size": 10
+      }
+    },
+    {
+      "name": "query-health-unknown-reason",
+      "call": "QueryHealthDTO",
+      "payload": {
+        "space_id": "s",
+        "window_start": "a",
+        "window_end": "b",
+        "degraded_reasons": {
+          "no_such_reason": 1
+        }
+      }
+    },
+    {
+      "name": "quality-recall-over-one",
+      "call": "QualityDTO",
+      "payload": {
+        "space_id": "s",
+        "set_version": 1,
+        "k": 5,
+        "recall_at_k": 1.2,
+        "precision_at_k": 0.5,
+        "passed": false
+      }
+    },
+    {
+      "name": "drop-without-confirm",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "drop_space",
+        "space_id": "space-retired",
+        "idempotency_key": "req-drop-0001"
+      }
+    },
+    {
+      "name": "drop-wrong-confirm",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "drop_space",
+        "space_id": "space-retired",
+        "confirm_space_name": "space-content",
+        "idempotency_key": "req-drop-0001"
+      }
+    },
+    {
+      "name": "reindex-missing-idempotency",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "reindex",
+        "space_id": "space-content"
+      }
+    },
+    {
+      "name": "reindex-short-idempotency",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "reindex",
+        "space_id": "space-content",
+        "idempotency_key": "short"
+      }
+    },
+    {
+      "name": "maintenance-missing-action",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "maintenance",
+        "space_id": "space-content",
+        "idempotency_key": "req-maint-0001"
+      }
+    },
+    {
+      "name": "maintenance-bad-action",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "maintenance",
+        "space_id": "space-content",
+        "maintenance_action": "reindex-all",
+        "idempotency_key": "req-maint-0001"
+      }
+    },
+    {
+      "name": "quality-compare-same-space",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "quality_compare",
+        "space_id": "space-content",
+        "compare_space_id": "space-content"
+      }
+    },
+    {
+      "name": "quality-compare-missing-new-space",
+      "call": "RetrievalActionRequest",
+      "payload": {
+        "action": "quality_compare",
+        "space_id": "space-content"
+      }
+    },
+    {
+      "name": "response-unknown-audit-event",
+      "call": "RetrievalActionResponse",
+      "payload": {
+        "action": "reindex",
+        "accepted": true,
+        "audit_event": "vector.nope"
+      }
+    },
+    {
+      "name": "response-bad-http-status",
+      "call": "RetrievalActionResponse",
+      "payload": {
+        "action": "reindex",
+        "accepted": true,
+        "audit_event": "vector.reindex.started",
+        "http_status": 500
+      }
+    },
+    {
+      "name": "idempotency-scope-bad-job-type",
+      "call": "idempotency_scope",
+      "payload": {
+        "job_type": "EMBED_ALL",
+        "key": "req-reindex-01"
+      }
+    },
+    {
+      "name": "truncate-failed-ids-bad-limit",
+      "call": "truncate_failed_ids",
+      "payload": {
+        "ids": [
+          "d1"
+        ],
+        "limit": 0
+      }
+    }
+  ]
+}

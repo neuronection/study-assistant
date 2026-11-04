@@ -71,6 +71,9 @@ from .core import (
     datetime as datetime,
 )
 from .core import (
+    false as false,
+)
+from .core import (
     mapped_column as mapped_column,
 )
 from .core import (
@@ -121,7 +124,7 @@ class ChatSession(Base):
     context: Mapped[ChatSessionContext | None] = mapped_column(JSON)
     mention_registry: Mapped[MentionRegistryList | None] = mapped_column(JSON)
     active_root_id: Mapped[str | None] = mapped_column(_UUID)
-    quizme: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    quizme: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     quiz_pending_row: Mapped["ChatQuizPending | None"] = relationship(
@@ -144,7 +147,7 @@ class ChatQuizPending(Base):
     expected_latex: Mapped[str | None] = mapped_column(String(500))
     expected_text: Mapped[str | None] = mapped_column(String(500))
     accept: Mapped[StringList | None] = mapped_column(JSON)
-    awaiting_answer: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    awaiting_answer: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     verdict: Mapped[str | None] = mapped_column(String(20))
     verdict_detail: Mapped[str | None] = mapped_column(String(500))
     student_answer: Mapped[str | None] = mapped_column(String(1000))

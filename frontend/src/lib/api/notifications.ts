@@ -4,6 +4,7 @@ import { json, apiFetch } from './client'
 
 type Schemas = components['schemas']
 
+export type AlertEntry = Schemas['AlertEntryOut']
 export type DueReviewEntry = Schemas['DueReviewEntryOut']
 export type PlanEntry = Schemas['PlanEntryOut']
 export type ExamEntry = Schemas['ExamEntryOut']

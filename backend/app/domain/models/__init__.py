@@ -126,6 +126,12 @@ from .identity import (
 from .identity import (
     User as User,
 )
+from .notifications import (
+    Notification as Notification,
+)
+from .notifications import (
+    NotificationKindRow as NotificationKindRow,
+)
 from .ops import (
     AiInteraction as AiInteraction,
 )
@@ -173,6 +179,21 @@ from .ops import (
 )
 from .ops import (
     TaskAssignment as TaskAssignment,
+)
+from .retrieval import (
+    RetrievalCoverageSnapshot as RetrievalCoverageSnapshot,
+)
+from .retrieval import (
+    RetrievalQueryRollup as RetrievalQueryRollup,
+)
+from .retrieval import (
+    VectorDocument as VectorDocument,
+)
+from .retrieval import (
+    VectorRecord as VectorRecord,
+)
+from .retrieval import (
+    VectorSpace as VectorSpace,
 )
 from .study import (
     Activity as Activity,

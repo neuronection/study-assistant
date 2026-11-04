@@ -395,11 +395,22 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **ai_interactions**: id, context_type (chat/tutor/quiz_help/exgen/flashcards/
   note_action/**gateway**/…), context_id, direction, **task** (set on gateway
   ledger rows), model, input/output tokens, **cached_input_tokens?** (0037 —
-  provider cache-read tokens, cost discounted at 0.1×), cost_usd?, latency_ms —
+  provider cache-read tokens, cost discounted at 0.1×), cost_usd?, latency_ms,
+  **metadata JSON** + **metadata_schema_version** (0015 — caller-supplied
+  `space_id`/`kind`/`view`/`chunk_index` embedding tags only, never text) —
   every model call lands here; `context_type="gateway"` rows are the cost ledger
   (one per real API call, with real provider usage numbers since 37A)
+- **notification_kinds**: key (the closed `NotificationKind` vocabulary),
+  title, description, severity, admin_only, default_enabled, created_at —
+  boot-seeded config; unknown kinds notify nobody
+- **notifications**: id, kind (FK CASCADE), severity, title, body, payload JSON
+  (ids/counts/scores/reasons only), source_ref JSON?, recipients JSON (admin
+  user ids), dedup_key? (partial unique), dedup_expires_at?, created_at —
+  deduped, recoverable alert events; the bell reads active keys, history stays
 - **jobs**: id, type (ingest/postprocess/chat_turn/drawing_ocr), payload, status
-  (queued/running/done/failed/cancelled), progress, stage, error, timestamps
+  (queued/running/done/failed/cancelled), progress, stage, error, result
+  (bounded `VECTOR_*` run result), idempotency_key/lock_key/heartbeat_at/
+  cancel_requested (0011 retrieval action runtime), timestamps
 
 ## Derived structures (not in Alembic)
 
@@ -410,9 +421,29 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   candidate generation for the typo-tolerant fuzzy search tier (candidates verified
   per-token in Python before ranking); synced alongside `material_fts` and backfilled
   from it by 0045
-- **chunk_vecs** — sqlite-vec vec0 table (chunk_embedding float[dim], cosine),
-  created at runtime with the sqlite-vec extension; **vec_meta** stores dim + model;
-  changing embedding model drops and rebuilds the table automatically
+- **chunk_vecs** — sqlite-vec vec0 table (chunk_embedding float[dim], cosine)
+  on SQLite / pgvector + HNSW on PostgreSQL, created at runtime with the vector
+  extension; **vec_meta** stores dim + model; **chunk_vec_ids** keeps the
+  rowid→chunk UUID reverse map. A model/dimension change is **not** applied in
+  place (0012, plan 50 P3a): `storage/vectors.ensure_table` raises
+  `VectorSpaceChangeRequired` and the old table stays readable until an
+  explicit new-space/cutover handoff runs. Since 0013 (plan 51 Q3c2a) the
+  `content` space is dual-written to its provisioned `vec_dfbcce9b` backend
+  and `chunk_vecs` remains the compatibility fallback.
+- **vector_spaces / vector_documents / vector_records** (0012/0013/0014,
+  plan 50 P3a + plan 51 Q3c2b1) — the portable metadata mapping. The legacy
+  `content` space keeps the synthetic id `legacy-chunk-vecs`; 0013 updates its
+  `index_table` to `vec_dfbcce9b`, and Q3c2b1 adds real `building`/`active`/
+  `retired` spaces beside it. A document is a material (`kind='material'`,
+  `source_id` = material UUID); a record is a chunk's `body` view carrying
+  the family content hash, the study ``rowid`` (sqlite-vec map) and a
+  space-local `chunk_id` handle (0014). The record id is deterministic per
+  `(space, chunk)`, so two spaces can coexist without sharing the global
+  primary key. The metadata is derived/operational, hard-deleted with its
+  document, and never a second copy of text. `storage/vector_store.py` is the
+  only read/write seam; physical DDL lives in
+  `storage/vector_provisioning.py` and the dialect SQL in
+  `storage/vector_backends.py`.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
   rebuilt by the migration and maintained by `services/tree.py` (rebuildable at
   any time)
@@ -425,6 +456,54 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0015_retrieval_alerts (plan 51 Q3c3a)**: adds
+  `ai_interactions.metadata` (JSON, non-null, `{}`) and
+  `metadata_schema_version` (smallint, non-null, `1`) — caller-supplied
+  `space_id`/`kind`/`view`/`chunk_index` embedding tags, never text — plus
+  the boot-seeded `notification_kinds` registry and deduped `notifications`
+  event rows with admin recipient ids and a partial unique dedup key.
+  Downgrade drops both notification tables and the two ledger columns.
+- **0014_vector_record_chunk_id (plan 51 Q3c2b1)**: adds
+  `vector_records.chunk_id` (nullable `String(80)`), its index and the
+  unique `(space_id, chunk_id)` constraint, then backfills `chunk_id = id`
+  for the legacy `legacy-chunk-vecs` space. A building space coexists with
+  the active one, so the global record primary key can no longer be the
+  chunk id; `chunk_id` is the search hydration handle. Downgrade drops the
+  column/constraint/index; record rows stay.
+- **0012_vector_spaces (plan 50 P3a, ADR-0051 companion)**: adds
+  `vector_spaces` (one `active` space per name; `index_table` allows the
+  legacy `chunk_vecs`, NULL for linear, or a future `vec_<8hex>`),
+  `vector_documents` (material source handle + `profile_id`; unique per
+  space/kind/source) and `vector_records` (a chunk `body` record with
+  `content_hash`, optional `rowid` reverse map, unique
+  `(document, view, chunk_index)`). The one `content` space is backfilled
+  from `vec_meta`; documents/records are backfilled from
+  `chunk_vec_ids` + chunks/materials. Existing `chunk_vecs` rows are never
+  dropped or rewritten; content hashes left empty by the SQL backfill are
+  filled idempotently by `StudyVectorStore.backfill_metadata`. No coverage
+  snapshot is written. Downgrade drops only the three metadata tables.
+- **0011_retrieval_run_actions (plan 51 Q3b)**: `jobs` gains
+  `idempotency_key` (nullable, 8–120 chars), `lock_key`, `heartbeat_at`
+  and `cancel_requested` (boolean, default false). Two partial unique
+  indexes cover only `status IN ('queued','running')`:
+  `uq_jobs_idempotency_active (type, idempotency_key)` and
+  `uq_jobs_lock_key_active (lock_key)`. Terminal rows release both slots,
+  so retry/cancel/reaping never deadlock; the service additionally replays
+  terminal rows inside the contract's 24 h key window. Downgrade drops
+  both indexes and the four columns (batch mode on SQLite), leaving run
+  history intact.
+- **0010_retrieval_ops (plan 51 Q3a, ADR-0051 companion)**: the `jobs.type`
+  CHECK widens with the three family `VECTOR_*` names and `jobs.result`
+  (JSON, nullable) carries the bounded run-result document. New
+  `retrieval_query_rollups` (dimensions `space_id/kind/view/degraded_reason/
+  bucket_start/bucket_width`; count/zero/candidates measures + a versioned
+  latency histogram; 30-day operational TTL) and
+  `retrieval_coverage_snapshots` (one row per space/kind/as_of; nullable ANN
+  recall; 90-day TTL). Both key a string `space_id`; the `content` space's
+  id is that same string, and Q3c owns the lifecycle/cutover that changes
+  it. Downgrade drops the tables and the
+  result column and restores the old type CHECK; it fails loudly if a
+  `VECTOR_*` job row still exists rather than rewriting run history.
 - **0008_quiz_question_kinds (plan 87 B, ADR-217)**: the `questions.type`
   CHECK twin widens with the exercise-engine kinds (`matching`, `ordering`,
   `cloze`, `essay`); answer payloads reuse the existing JSON column (no new

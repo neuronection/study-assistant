@@ -367,6 +367,12 @@
               "description": "The durable job runner, job types, retries, cancellation and the schedulers."
             },
             {
+              "id": "retrieval-ops",
+              "file": "dev/retrieval-ops.md",
+              "title": "Retrieval operations",
+              "description": "Plan 51 Q3a: the vendored retrieval contract, VECTOR_* jobs over the legacy store, bounded telemetry and the admin read surface — plus the explicit Q3b gaps."
+            },
+            {
               "id": "migrations",
               "file": "dev/migrations.md",
               "title": "Migrations",

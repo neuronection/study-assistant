@@ -44,8 +44,17 @@ PROVIDER_BY_KIND = {
 }
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def upgrade() -> None:
-    with op.batch_alter_table("external_sources", recreate="always") as batch:
+    with op.batch_alter_table("external_sources", recreate=_recreate_mode()) as batch:
         batch.add_column(sa.Column("provider", sa.String(64), nullable=False, server_default="rss"))
         batch.add_column(
             sa.Column("auth_kind", sa.String(20), nullable=False, server_default="none")
@@ -67,7 +76,7 @@ def upgrade() -> None:
             ).bindparams(provider=provider, kind=kind)
         )
 
-    with op.batch_alter_table("exercises", recreate="always") as batch:
+    with op.batch_alter_table("exercises", recreate=_recreate_mode()) as batch:
         batch.add_column(sa.Column("external_uid", sa.String(200), nullable=True))
     op.create_index("ix_exercises_external_uid", "exercises", ["external_uid"])
 
@@ -106,10 +115,10 @@ def downgrade() -> None:
     op.drop_table("external_review_events")
 
     op.drop_index("ix_exercises_external_uid", table_name="exercises")
-    with op.batch_alter_table("exercises", recreate="always") as batch:
+    with op.batch_alter_table("exercises", recreate=_recreate_mode()) as batch:
         batch.drop_column("external_uid")
 
-    with op.batch_alter_table("external_sources", recreate="always") as batch:
+    with op.batch_alter_table("external_sources", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("auth_kind_allowed", type_="check")
         batch.drop_constraint("kind_allowed", type_="check")
         kind_values = ", ".join(f"'{kind}'" for kind in SOURCE_KINDS[:4])

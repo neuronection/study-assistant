@@ -513,7 +513,7 @@ def test_exercise_generate_receives_notes(tmp_path: Path) -> None:
 
 
 def test_hybrid_retrieval_uses_vector_hits(tmp_path: Path, monkeypatch: Any) -> None:
-    from app.storage import vectors as vectors_module
+    from app.storage.vector_store import StudyVectorStore
 
     gateway = make_gateway([])
     embedder = _FakeVectorEmbedder()
@@ -541,7 +541,9 @@ def test_hybrid_retrieval_uses_vector_hits(tmp_path: Path, monkeypatch: Any) -> 
         raw.close()
 
         monkeypatch.setattr(
-            vectors_module, "search", lambda session, qv, limit=24: [(chunk_id, 0.01)]
+            StudyVectorStore,
+            "search",
+            lambda self, qv, limit=24, **kwargs: [(chunk_id, 0.01)],
         )
         preview = client.post(
             "/api/v1/ai/context/preview",

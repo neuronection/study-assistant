@@ -94,6 +94,10 @@ extend-exclude = [
     "app/extensions/cloud/cloud_calendar.py",
     "app/extensions/cloud/cloud_files.py",
     "app/extensions/cloud/cloud_providers.py",
+    # Family retrieval-operations contract (plan 51 Q0): vendored
+    # byte-identical from dev/contracts/ — lint findings belong to the dev
+    # canonical, never to this copy.
+    "app/storage/retrieval_ops.py",
     "tests/cloud_conformance.py",
 ]
 
@@ -113,6 +117,7 @@ select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/extensions/contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/extensions/conformance.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/extensions/search/providers_contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+"app/storage/retrieval_ops.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
@@ -137,7 +142,7 @@ strict = true
 # is byte-identical to dev/contracts/contract.py — never edited in-repo, and
 # mypy-strict compliance is the dev canonical's duty (career carries the same
 # exclusion; the unification wave's sync introduced strict-mode findings here).
-exclude = ["^dist/", "app/extensions/contract.py"]
+exclude = ["^dist/", "app/extensions/contract.py", "app/storage/retrieval_ops.py"]
 
 [[tool.mypy.overrides]]
 module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]
@@ -167,6 +172,16 @@ ignore_errors = true
 # (both live in the family dev repo, not here).
 # (career/health carry the same accommodation per pyproject.)
 module = ["app.extensions.polite_http"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# The family retrieval-operations fixture wall drives the vendored contract
+# with dynamic JSON payloads (same shape as dev's checker); it is a runtime
+# acceptance table, not typed application code.
+module = [
+    "tests.test_retrieval_ops_contract",
+    "test_retrieval_ops_contract",
+]
 ignore_errors = true
 
 [tool.pytest.ini_options]
