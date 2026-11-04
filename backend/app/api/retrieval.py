@@ -1,17 +1,15 @@
-"""Admin-only retrieval-operations read and action surface (plan 51 Q3a/Q3b).
+"""Admin-only retrieval-operations read and action surface (plan 51).
 
-Q3a shipped the small read slice over the legacy store: overview, spaces,
-coverage, runs and query health. Q3b adds the one write seam — reindex,
-cancel/retry and typed maintenance — with persisted idempotency keys, the
-single-active-run lock, a stale-heartbeat reaper and ``vector.*`` audit rows
-in the existing ``audit_events`` table. Vector-space lifecycle verbs are
-answered with a structured ``unsupported`` refusal: study has one legacy
-``chunk_vecs`` space and no cutover target.
+Q3a shipped the read slice; Q3b the write seam with idempotency, the
+single-active-run lock, the reaper and ``vector.*`` audit; Q3c2b1 wires the
+real space lifecycle and cutover. The only thing still refused is the
+golden-query quality compare (Q3c2b2) — activation is coverage-gated and
+reports ``quality=not_sampled``.
 """
 
 from __future__ import annotations
 
-from typing import Any, Literal, NoReturn
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from nx_auth.deps import get_current_user
@@ -149,12 +147,14 @@ class RetrievalOverviewOut(BaseModel):
     coverage: RetrievalCoverageOut
     recent_runs: list[RetrievalRunDetailOut] = Field(default_factory=list)
     query_health: RetrievalQueryHealthEnvelopeOut
+    spaces: list[RetrievalSpaceOut] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
 
 class RetrievalSpacesOut(BaseModel):
     spaces: list[RetrievalSpaceOut] = Field(default_factory=list)
     cold: bool = True
+    active_space_id: str | None = None
     notes: list[str] = Field(default_factory=list)
 
 
@@ -201,6 +201,39 @@ class RetrievalActionKeyIn(BaseModel):
     idempotency_key: str | None = None
 
 
+class RetrievalSpaceBuildIn(BaseModel):
+    """Build a building space; model/dim default to the current assignment."""
+
+    name: str | None = Field(default=None, max_length=40)
+    provider: str | None = Field(default=None, max_length=60)
+    model: str | None = Field(default=None, max_length=120)
+    dim: int | None = Field(default=None, ge=1, le=3072)
+    normalize: bool = True
+    query_prefix: str | None = Field(default=None, max_length=80)
+    document_prefix: str | None = Field(default=None, max_length=80)
+    idempotency_key: str | None = None
+
+
+class RetrievalSpaceConfirmIn(BaseModel):
+    """Typed destructive confirmation (the space name) + replay key."""
+
+    confirm_space_name: str = Field(min_length=1, max_length=40)
+    force: bool = False
+    idempotency_key: str | None = None
+
+
+class RetrievalCutoverIn(BaseModel):
+    """Backfill a building space, enforce coverage, flip active and retire old."""
+
+    space_id: str = Field(min_length=1, max_length=80)
+    limit: int = Field(default=actions.DEFAULT_LIMIT, ge=1, le=actions.MAX_LIMIT)
+    batch_size: int = Field(
+        default=actions.DEFAULT_BATCH_SIZE, ge=1, le=actions.MAX_BATCH_SIZE
+    )
+    force: bool = False
+    idempotency_key: str | None = None
+
+
 class RetrievalActionOut(BaseModel):
     action: str
     accepted: bool
@@ -212,6 +245,11 @@ class RetrievalActionOut(BaseModel):
     idempotency_key: str | None = None
     message: str = ""
     space_id: str | None = None
+    space: dict[str, Any] | None = None
+    quality: str | None = None
+    activation_gate: dict[str, Any] | None = None
+    already_active: bool | None = None
+    model_changed: bool | None = None
     maintenance_action: str | None = None
     retry_of: str | None = None
     cancel_requested: bool | None = None
@@ -226,7 +264,14 @@ IDEMPOTENCY_HEADER = Header(
 
 def _resolve_key(
     header: str | None,
-    body: RetrievalReindexIn | RetrievalMaintenanceIn | RetrievalActionKeyIn,
+    body: (
+        RetrievalReindexIn
+        | RetrievalMaintenanceIn
+        | RetrievalActionKeyIn
+        | RetrievalSpaceBuildIn
+        | RetrievalSpaceConfirmIn
+        | RetrievalCutoverIn
+    ),
     *,
     required: bool,
     action: str,
@@ -435,46 +480,141 @@ def post_retry_run(
     return _respond(payload, response)
 
 
-def _unsupported(action: str) -> NoReturn:
-    raise _refused(actions.unsupported_lifecycle(action))
-
-
 @router.post("/spaces", response_model=RetrievalActionOut)
-def post_build_space(_admin: Principal = Depends(require_admin)) -> RetrievalActionOut:
-    return _unsupported("build_space")
+def post_build_space(
+    body: RetrievalSpaceBuildIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalActionOut:
+    key = _resolve_key(idempotency_key, body, required=True, action="build_space")
+    assert key is not None
+    try:
+        payload = actions.build_space(
+            session,
+            actor=_actor(admin),
+            idempotency_key=key,
+            name=body.name,
+            provider=body.provider,
+            model=body.model,
+            dim=body.dim,
+            normalize=body.normalize,
+            query_prefix=body.query_prefix,
+            document_prefix=body.document_prefix,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    return _respond(payload, response)
 
 
 @router.post("/spaces/{space_id}/activate", response_model=RetrievalActionOut)
 def post_activate_space(
-    space_id: str, _admin: Principal = Depends(require_admin)
+    space_id: str,
+    request: Request,
+    response: Response,
+    body: RetrievalActionKeyIn | None = None,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
 ) -> RetrievalActionOut:
-    del space_id
-    return _unsupported("activate_space")
+    key = _resolve_key(
+        idempotency_key,
+        body or RetrievalActionKeyIn(),
+        required=True,
+        action="activate_space",
+    )
+    assert key is not None
+    try:
+        payload = actions.activate_space(
+            session, actor=_actor(admin), space_id=space_id, idempotency_key=key
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    return _respond(payload, response)
 
 
 @router.post("/spaces/{space_id}/retire", response_model=RetrievalActionOut)
 def post_retire_space(
-    space_id: str, _admin: Principal = Depends(require_admin)
+    space_id: str,
+    body: RetrievalSpaceConfirmIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
 ) -> RetrievalActionOut:
-    del space_id
-    return _unsupported("retire_space")
+    key = _resolve_key(idempotency_key, body, required=True, action="retire_space")
+    assert key is not None
+    try:
+        payload = actions.retire_space(
+            session,
+            actor=_actor(admin),
+            space_id=space_id,
+            confirm_space_name=body.confirm_space_name,
+            idempotency_key=key,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    return _respond(payload, response)
 
 
 @router.post("/spaces/{space_id}/drop", response_model=RetrievalActionOut)
 def post_drop_space(
-    space_id: str, _admin: Principal = Depends(require_admin)
+    space_id: str,
+    body: RetrievalSpaceConfirmIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
 ) -> RetrievalActionOut:
-    del space_id
-    return _unsupported("drop_space")
+    key = _resolve_key(idempotency_key, body, required=True, action="drop_space")
+    assert key is not None
+    try:
+        payload = actions.drop_space(
+            session,
+            actor=_actor(admin),
+            space_id=space_id,
+            confirm_space_name=body.confirm_space_name,
+            force=body.force,
+            idempotency_key=key,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    return _respond(payload, response)
 
 
 @router.post("/cutover", response_model=RetrievalActionOut)
-def post_cutover(_admin: Principal = Depends(require_admin)) -> RetrievalActionOut:
-    return _unsupported("cutover")
+def post_cutover(
+    body: RetrievalCutoverIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalActionOut:
+    key = _resolve_key(idempotency_key, body, required=True, action="cutover")
+    assert key is not None
+    try:
+        payload = actions.cutover(
+            session,
+            actor=_actor(admin),
+            space_id=body.space_id,
+            idempotency_key=key,
+            limit=body.limit,
+            batch_size=body.batch_size,
+            force=body.force,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    _wake(request)
+    return _respond(payload, response)
 
 
 @router.post("/quality/compare", response_model=RetrievalActionOut)
 def post_quality_compare(
     _admin: Principal = Depends(require_admin),
 ) -> RetrievalActionOut:
-    return _unsupported("quality_compare")
+    raise _refused(actions.unsupported_lifecycle("quality_compare"))

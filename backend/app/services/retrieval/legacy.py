@@ -1,13 +1,12 @@
-"""The one retrieval space, read through the study vector-store adapter.
+"""The one active retrieval space, read through the study vector-store adapter.
 
 Plan 50 P3a added the ``vector_spaces``/``vector_documents``/
-``vector_records`` metadata layer, but the physical backend is still the
-legacy `chunk_vecs` store. This module therefore reports the **active
-configuration** honestly: the adapter resolves the ``content`` space
-(``legacy-chunk-vecs``) and its ``vec_meta`` model/dim, the dialect decides
+``vector_records`` metadata layer, Q3c2a moved the content space onto a real
+family backend, and Q3c2b1 added the lifecycle. This module therefore reports
+the **active** configuration honestly: the adapter resolves the one active
+space row (or the pre-migration ``vec_meta`` fallback), the dialect decides
 the backend, and coverage comes only from the latest
-``retrieval_coverage_snapshots`` row. A store with no ``vec_meta`` dim is
-cold — never a fabricated 0 %/100 % number.
+``retrieval_coverage_snapshots`` row for that real space id.
 
 Everything below is the adapter boundary: no retrieval DTO or route builds
 raw vector SQL itself.
@@ -42,10 +41,11 @@ from ...storage.vector_store import (
     StudyVectorStore,
     embedding_assignment,
 )
+from . import lifecycle
 
 LEGACY_SPACE_ID = CONTENT_SPACE_ID
 LEGACY_SPACE_NAME = CONTENT_SPACE_NAME
-LEGACY_KIND = "chunk"
+LEGACY_KIND = lifecycle.LEGACY_KIND
 COVERAGE_TTL_DAYS = 90
 
 
@@ -98,9 +98,9 @@ def _chunk_total(session: Session) -> int:
     return int(value or 0)
 
 
-def load_store(session: Session) -> LegacyStore | None:
-    """The active store through the adapter, or ``None`` when unprovisioned."""
-    store = StudyVectorStore(session)
+def load_store(session: Session, space_id: str | None = None) -> LegacyStore | None:
+    """One store through the adapter, or ``None`` when unprovisioned."""
+    store = StudyVectorStore(session, space_id=space_id)
     space = store.content_space()
     if space is None:
         return None
@@ -125,36 +125,42 @@ def load_store(session: Session) -> LegacyStore | None:
         status=space.status,
         health_ok=health.ok,
         health_detail=health.detail,
-        created_at=_row_time(session, "created_at"),
-        activated_at=_row_time(session, "activated_at"),
-        retired_at=_row_time(session, "retired_at"),
+        created_at=_row_time(session, space.space_id, "created_at"),
+        activated_at=_row_time(session, space.space_id, "activated_at"),
+        retired_at=_row_time(session, space.space_id, "retired_at"),
     )
 
 
-def _row_time(session: Session, field: str) -> str | None:
-    row = session.get(VectorSpace, CONTENT_SPACE_ID)
+def _row_time(session: Session, space_id: str, field: str) -> str | None:
+    row = session.get(VectorSpace, space_id)
     if row is None:
         return None
     return iso(getattr(row, field))
 
 
-def latest_coverage(session: Session) -> RetrievalCoverageSnapshot | None:
-    return session.scalars(
-        select(RetrievalCoverageSnapshot)
-        .where(
-            RetrievalCoverageSnapshot.space_id == LEGACY_SPACE_ID,
-            RetrievalCoverageSnapshot.kind == LEGACY_KIND,
-        )
-        .order_by(RetrievalCoverageSnapshot.as_of.desc())
-        .limit(1)
-    ).first()
+def latest_coverage(
+    session: Session, space_id: str | None = None
+) -> RetrievalCoverageSnapshot | None:
+    if space_id is None:
+        store = StudyVectorStore(session)
+        space = store.content_space()
+        if space is None:
+            return None
+        space_id = space.space_id
+    return lifecycle.latest_coverage(session, space_id)
 
 
-def coverage_dto(session: Session, store: LegacyStore | None = None) -> CoverageDTO:
-    snapshot = latest_coverage(session)
+def coverage_dto(
+    session: Session, store: LegacyStore | None = None, *, space_id: str | None = None
+) -> CoverageDTO:
+    target = space_id or (store.space_id if store is not None else None)
+    if target is None:
+        space = StudyVectorStore(session).content_space()
+        target = space.space_id if space is not None else LEGACY_SPACE_ID
+    snapshot = latest_coverage(session, target)
     if snapshot is None:
         return CoverageDTO(
-            space_id=store.space_id if store is not None else LEGACY_SPACE_ID,
+            space_id=target,
             as_of=None,
             total=0,
             missing=0,
@@ -187,7 +193,7 @@ def coverage_dto(session: Session, store: LegacyStore | None = None) -> Coverage
 
 
 def space_dto(session: Session, store: LegacyStore) -> SpaceDTO:
-    coverage = coverage_dto(session, store)
+    coverage = coverage_dto(session, store, space_id=store.space_id)
     return SpaceDTO(
         space_id=store.space_id,
         name=store.name,
@@ -223,27 +229,26 @@ def write_coverage_snapshot(
     ann_recall: float | None = None,
     ann_recall_k: int | None = None,
     probe_size: int | None = None,
+    space_id: str | None = None,
 ) -> RetrievalCoverageSnapshot:
-    """Append the reconcile pass's one honest coverage point."""
-    moment = utcnow()
-    row = RetrievalCoverageSnapshot(
-        space_id=LEGACY_SPACE_ID,
-        kind=LEGACY_KIND,
-        as_of=moment,
-        total=max(total, 0),
-        missing=max(missing, 0),
-        stale=max(stale, 0),
-        failed=max(failed, 0),
-        embedded=max(embedded, 0),
-        ann_recall=ann_recall,
-        ann_recall_k=ann_recall_k,
-        probe_size=probe_size,
-        created_at=moment,
-        updated_at=moment,
+    """Append the reconcile pass's one honest coverage point for its space."""
+    target = space_id
+    if target is None:
+        space = StudyVectorStore(session).content_space()
+        target = space.space_id if space is not None else LEGACY_SPACE_ID
+    row = lifecycle.write_coverage_snapshot(
+        session,
+        space_id=target,
+        total=total,
+        embedded=embedded,
+        missing=missing,
+        failed=failed,
+        stale=stale,
     )
-    session.add(row)
-    session.flush()
-    prune_coverage(session, now=moment)
+    row.ann_recall = ann_recall
+    row.ann_recall_k = ann_recall_k
+    row.probe_size = probe_size
+    prune_coverage(session, now=row.as_of)
     return row
 
 

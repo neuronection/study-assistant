@@ -175,6 +175,7 @@ class VectorRecord(Base):
         UniqueConstraint(
             "document_id", "view", "chunk_index", name="uq_vector_records_document_view_chunk"
         ),
+        UniqueConstraint("space_id", "chunk_id", name="uq_vector_records_space_chunk"),
         CheckConstraint(_VIEW_CHECK, name="view_allowed"),
         CheckConstraint("chunk_index >= 0", name="chunk_index_non_negative"),
         CheckConstraint(
@@ -191,6 +192,7 @@ class VectorRecord(Base):
     space_id: Mapped[str] = mapped_column(
         ForeignKey("vector_spaces.id", ondelete="CASCADE"), index=True
     )
+    chunk_id: Mapped[str | None] = mapped_column(String(80), index=True)
     view: Mapped[str] = mapped_column(String(32), default="body")
     chunk_index: Mapped[int] = mapped_column(Integer, default=0)
     rowid: Mapped[int | None] = mapped_column(BigInteger, unique=True)

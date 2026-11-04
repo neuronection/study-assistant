@@ -245,10 +245,10 @@ def test_maintenance_vacuum_runs_on_sqlite(db_session: Session, profile_id: str)
     assert payload["skipped"] == 1
 
 
-def test_cutover_refuses_honestly(db_session: Session) -> None:
+def test_cutover_refuses_without_a_candidate_space(db_session: Session) -> None:
     job = make_job(db_session, JobType.VECTOR_CUTOVER, {})
-    with pytest.raises(JobError, match="no vector-space lifecycle"):
-        make_vector_cutover_handler()(db_session, job, no_report)
+    with pytest.raises(JobError, match="no vector space"):
+        make_vector_cutover_handler(FakeEmbedder().embed)(db_session, job, no_report)
 
 
 def test_telemetry_batches_without_query_text(db_session: Session) -> None:
@@ -389,7 +389,7 @@ def test_read_surface_degraded_state(
     assert body["state"] == "degraded"
     assert body["coverage"]["failed"] == 1
     assert body["coverage"]["coverage"] == 0.0
-    assert any("lifecycle" in note for note in body["notes"])
+    assert any("Build/activate" in note for note in body["notes"])
     assert_no_raw_text(body)
 
 

@@ -9,6 +9,7 @@ physical vector store untouched.
 from __future__ import annotations
 
 import sqlite3
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -159,6 +160,12 @@ def test_vector_spaces_upgrade_backfills_and_downgrade_keeps_chunk_vecs(
         )
     }
     assert hashes == {content_hash("alpha"), content_hash("beta")}
+    assert {
+        str(uuid.UUID(str(row[0])))
+        for row in sqlite3.connect(db_path).execute(
+            "SELECT chunk_id FROM vector_records"
+        )
+    } == set(chunk_ids)
     assert _scalar(db_path, "SELECT count(*) FROM retrieval_coverage_snapshots") == 0
 
     command.downgrade(config, "0011_retrieval_run_actions")

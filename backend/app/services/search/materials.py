@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ...core.ids import hex_id, uuid_str
 from ...domain.models import MaterialLink, TreeNode
 from ...services.retrieval.telemetry import record_query
-from ...storage.vector_store import StudyVectorStore
+from ...storage.vector_store import StudyVectorStore, content_space_for
 from .fusion import (
     TIER_WEIGHT_EXACT,
     TIER_WEIGHT_PREFIX,
@@ -266,6 +266,15 @@ def hybrid_search(
         candidates=candidates,
         zero_results=not hits,
         kind="material",
+        space_id=_active_space_id(session),
         degraded_reason=degraded_reason,
     )
     return hits
+
+
+def _active_space_id(session: Session) -> str | None:
+    try:
+        space = content_space_for(session)
+    except Exception:
+        return None
+    return space.space_id if space is not None else None

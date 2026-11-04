@@ -462,15 +462,7 @@ def space_status(
         exists = table_dim is not None
         if exists:
             row_count = _table_rows(session, table)
-            index_present = (
-                session.execute(
-                    text(
-                        "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-                        "AND name = 'chunk_vec_ids'"
-                    )
-                ).first()
-                is not None
-            )
+            index_present = True
             detail = f"sqlite-vec: float[{table_dim}], {row_count} row(s)"
     return SpaceStatus(
         space_id=str(row.id),
@@ -484,6 +476,32 @@ def space_status(
         row_count=row_count,
         detail=detail,
     )
+
+
+def drop_space_index(session: Session, space: VectorSpaceRow | str) -> str | None:
+    """Drop one retired space's physical index (explicit drop action only).
+
+    The active space is refused by the lifecycle caller, never here. The
+    legacy ``content`` space also drops the compatibility ``chunk_vecs`` store
+    and its reverse map — that is the explicit retirement of the legacy
+    fallback, not an implicit cleanup.
+    """
+    row = _row_for(session, space)
+    table = row.index_table
+    if table is not None and table != "chunk_vecs":
+        validate_index_table(table)
+    dialect = session.get_bind().dialect.name
+    dropped: str | None = table
+    if table is not None:
+        suffix = " CASCADE" if dialect == "postgresql" else ""
+        session.execute(text(f"DROP TABLE IF EXISTS {table}{suffix}"))
+    if str(row.id) == "legacy-chunk-vecs":
+        for legacy in ("chunk_vecs", "chunk_vec_ids"):
+            if _table_exists(session, legacy):
+                session.execute(text(f"DROP TABLE IF EXISTS {legacy}"))
+        dropped = "chunk_vecs" if table in (None, "chunk_vecs") else dropped
+    session.flush()
+    return dropped
 
 
 def _table_exists(session: Session, table: str) -> bool:
@@ -513,6 +531,7 @@ __all__ = [
     "VectorProvisioningError",
     "VectorSpaceRowMissing",
     "backfill_from_legacy",
+    "drop_space_index",
     "legacy_backfill_count",
     "provision_space",
     "space_status",

@@ -76,7 +76,9 @@ def build_job_runner(app: FastAPI) -> JobRunner:
             JobType.VECTOR_MAINTENANCE: make_vector_maintenance_handler(
                 app.state.embedder.embed
             ),
-            JobType.VECTOR_CUTOVER: make_vector_cutover_handler(),
+            JobType.VECTOR_CUTOVER: make_vector_cutover_handler(
+                app.state.embedder.embed
+            ),
         },
         group_key=_chat_turn_group,
     )

@@ -1,30 +1,21 @@
-"""The study vector-store adapter (plan 50 P3a, plan 51 Q3c2a).
+"""The study vector-store adapter (plan 50 P3a, plan 51 Q3c2a/Q3c2b1).
 
 One seam owns the portable metadata layer (``vector_spaces`` /
 ``vector_documents`` / ``vector_records``) **and** the physical vector index.
 Search, embedding writes, purge paths and the retrieval-operations reads call
 this adapter instead of issuing vector SQL themselves.
 
-Q3c2a moves the ``content`` space onto a real family backend: a provisioned
-``vec_<8hex>`` table (pgvector + HNSW cosine, or sqlite-vec ``vec0``) is
-created by :mod:`storage.vector_provisioning` and addressed through
-:mod:`storage.vector_backends`. ``chunk_vecs`` is still dual-written as the
-compatibility store — it is the honest read fallback until a later cutover
-retires it, and it is never dropped here.
+Q3c2a moved the ``content`` space onto a real family backend; Q3c2b1 adds the
+space lifecycle. A store can now address any persisted space explicitly
+(``StudyVectorStore(session, space_id=...)``) or, by default, the one active
+space. A building space is written through the same writer as the active one:
+its records carry a deterministic id and a ``chunk_id`` handle, so two spaces
+can coexist without sharing primary keys.
 
-Metadata mapping:
-
-* document = a material (``kind='material'``, ``source_id`` = material id);
-* record = one chunk's ``body`` view, carrying its content hash and the
-  63-bit study rowid (the sqlite-vec rowid map);
-* space = the one ``content`` space, id ``legacy-chunk-vecs`` (the id Q3a/
-  Q3b already write into rollups/snapshots), model/dim read from ``vec_meta``.
-
-A model/dimension change is **not** applied in place: :func:`vectors.store`
-raises :class:`VectorSpaceChangeRequired` and the old table stays readable
-until the explicit new-space/cutover handoff runs. There is no fake coverage:
-metadata counts are real row counts and coverage still comes only from a
-``retrieval_coverage_snapshots`` row.
+``chunk_vecs`` remains the compatibility store. It is dual-written only while
+the legacy ``content`` space is active, and it is never dropped by this
+adapter — the audited drop of the retired legacy space is the explicit
+retirement step.
 """
 
 from __future__ import annotations
@@ -60,13 +51,15 @@ from .vector_backends import (
     choose_backend,
     document_scope,
     filter_scope,
+    rowid_for,
 )
-from .vector_contract import IndexRecord, ScopeSpec, content_hash, space_key
+from .vector_contract import IndexHit, IndexRecord, ScopeSpec, content_hash, space_key
 from .vector_contract import VectorSpace as ContractSpace
 from .vector_provisioning import (
     SpaceProvision,
     SpaceStatus,
     VectorProvisioningError,
+    VectorSpaceRowMissing,
     backfill_from_legacy,
     provision_space,
     space_status,
@@ -90,7 +83,7 @@ class EmbeddingAssignment:
 
 @dataclass(frozen=True)
 class ContentSpace:
-    """The adapter's honest view of the active space (metadata + legacy meta)."""
+    """The adapter's honest view of one space (metadata + legacy meta)."""
 
     space_id: str
     name: str
@@ -173,15 +166,33 @@ def _is_provisioned(index_table: str | None) -> bool:
     return bool(index_table) and str(index_table).startswith("vec_")
 
 
-class StudyVectorStore:
-    """Read/write seam over the metadata layer and the active backend."""
+def _record_id_for(space_id: str, chunk_id: str) -> str:
+    """Deterministic space-local record id (never a global chunk id collision)."""
+    try:
+        namespace = uuid.UUID(str(space_id))
+    except (TypeError, ValueError):
+        namespace = uuid.NAMESPACE_URL
+        name = f"study:{space_id}:{chunk_id}"
+    else:
+        name = f"study:{chunk_id}"
+    return str(uuid.uuid5(namespace, name))
 
-    def __init__(self, session: Session) -> None:
+
+class StudyVectorStore:
+    """Read/write seam over the metadata layer and one space's backend.
+
+    ``space_id=None`` addresses the active space (the reader/writer default).
+    An explicit id addresses that persisted space — the building-space
+    backfill uses it so the active space is never touched.
+    """
+
+    def __init__(self, session: Session, space_id: str | None = None) -> None:
         self.session = session
+        self.space_id = space_id
 
     @property
     def index_table(self) -> str:
-        """The active physical index table (legacy while unprovisioned)."""
+        """The addressed physical index table (legacy while unprovisioned)."""
         space = self.content_space()
         if space is not None and space.index_table:
             return str(space.index_table)
@@ -218,49 +229,105 @@ class StudyVectorStore:
                 return backend.count(space.as_contract())
             except VectorBackendError as exc:
                 logger.warning("vector_count backend failed: %s", exc)
-        return vectors.vector_count(self.session)
+        if space.space_id == CONTENT_SPACE_ID:
+            return vectors.vector_count(self.session)
+        return 0
 
     def stored_chunk_ids(self) -> dict[int, str]:
-        """``rowid -> chunk id`` from the legacy map plus the metadata rows."""
-        merged = dict(vectors.stored_chunk_ids(self.session))
-        rows = self.session.execute(
-            select(VectorRecord.rowid, VectorRecord.id).where(
-                VectorRecord.space_id == CONTENT_SPACE_ID,
-                VectorRecord.rowid.is_not(None),
-            )
-        )
-        for rowid, record_id in rows:
-            if rowid is not None:
-                merged.setdefault(int(rowid), str(record_id))
-        return merged
-
-    def orphan_rowids(self, live_chunk_ids: set[str]) -> tuple[list[int], list[int]]:
-        dangling, orphan = vectors.orphan_rowids(self.session, live_chunk_ids)
+        """``rowid -> chunk id`` for the addressed space."""
         space = self.content_space()
         if space is None:
-            return (dangling, orphan)
+            return {}
+        if space.space_id == CONTENT_SPACE_ID:
+            merged = dict(vectors.stored_chunk_ids(self.session))
+        else:
+            merged = {}
+        rows = self.session.execute(
+            select(VectorRecord.rowid, VectorRecord.chunk_id).where(
+                VectorRecord.space_id == space.space_id,
+                VectorRecord.rowid.is_not(None),
+                VectorRecord.chunk_id.is_not(None),
+            )
+        )
+        for rowid, chunk_id in rows:
+            if rowid is not None and chunk_id is not None:
+                merged.setdefault(int(rowid), str(chunk_id))
+        return merged
+
+    def stored_chunk_hashes(self) -> dict[str, str]:
+        """``chunk id -> content hash`` for the addressed space."""
+        space = self.content_space()
+        if space is None:
+            return {}
+        rows = self.session.execute(
+            select(VectorRecord.chunk_id, VectorRecord.content_hash).where(
+                VectorRecord.space_id == space.space_id,
+                VectorRecord.chunk_id.is_not(None),
+            )
+        )
+        return {
+            str(chunk_id): str(content or "")
+            for chunk_id, content in rows
+            if chunk_id is not None
+        }
+
+    def orphan_rowids(self, live_chunk_ids: set[str]) -> tuple[list[int], list[int]]:
+        space = self.content_space()
+        if space is None:
+            return ([], [])
+        if space.space_id == CONTENT_SPACE_ID:
+            dangling, orphan = vectors.orphan_rowids(self.session, live_chunk_ids)
+        else:
+            dangling, orphan = ([], [])
         records = self.session.execute(
-            select(VectorRecord.rowid, VectorRecord.id).where(
+            select(VectorRecord.rowid, VectorRecord.chunk_id).where(
                 VectorRecord.space_id == space.space_id,
                 VectorRecord.rowid.is_not(None),
             )
         )
         known = set(dangling) | set(orphan)
-        for rowid, record_id in records:
+        for rowid, chunk_id in records:
             if rowid is None or int(rowid) in known:
                 continue
-            if str(record_id) not in live_chunk_ids:
+            if chunk_id is None or str(chunk_id) not in live_chunk_ids:
                 orphan.append(int(rowid))
                 known.add(int(rowid))
         return (dangling, orphan)
 
     def content_space(self) -> ContentSpace | None:
-        """The active space without writing (a status read never mutates).
+        """The addressed/active space without writing."""
+        if self.space_id is not None:
+            row = self.session.get(VectorSpace, self.space_id)
+            if row is None:
+                if self.space_id == CONTENT_SPACE_ID:
+                    return self._ephemeral_space()
+                return None
+            return self._from_row(row)
+        row = self._active_row()
+        if row is not None:
+            return self._from_row(row)
+        if self._has_space_rows():
+            return None
+        return self._ephemeral_space()
 
-        The persisted metadata row is authoritative when present; otherwise an
-        ephemeral DTO is derived from ``vec_meta`` so a store that predates
-        the metadata migration still reads honestly.
-        """
+    def _active_row(self) -> VectorSpace | None:
+        rows = list(
+            self.session.scalars(
+                select(VectorSpace)
+                .where(VectorSpace.status == "active")
+                .order_by(VectorSpace.updated_at.desc(), VectorSpace.id)
+            )
+        )
+        if len(rows) > 1:
+            logger.warning("multiple active vector spaces: %s", len(rows))
+        return rows[0] if rows else None
+
+    def _has_space_rows(self) -> bool:
+        return bool(
+            self.session.scalar(select(func.count()).select_from(VectorSpace)) or 0
+        )
+
+    def _ephemeral_space(self) -> ContentSpace | None:
         meta = vectors.read_meta(self.session)
         raw_dim = meta.get("dim")
         if raw_dim is None:
@@ -273,24 +340,6 @@ class StudyVectorStore:
             return None
         assignment = embedding_assignment(self.session)
         model = meta.get("model") or assignment.model or "unknown"
-        row = self.session.get(VectorSpace, CONTENT_SPACE_ID)
-        if row is not None:
-            if row.dim != dim or (meta.get("model") and row.model != meta.get("model")):
-                raise vectors.VectorSpaceChangeRequired(
-                    current_model=row.model,
-                    current_dim=row.dim,
-                    requested_model=model,
-                    requested_dim=dim,
-                    detail="vector_spaces row disagrees with vec_meta",
-                )
-            return self._dto(
-                row,
-                provider=row.provider or assignment.provider,
-                model=row.model,
-                dim=row.dim,
-                index_table=row.index_table or vectors.VEC_TABLE,
-                metadata_row=True,
-            )
         return ContentSpace(
             space_id=CONTENT_SPACE_ID,
             name=CONTENT_SPACE_NAME,
@@ -313,12 +362,45 @@ class StudyVectorStore:
             metadata_row=False,
         )
 
+    def _from_row(self, row: VectorSpace) -> ContentSpace:
+        assignment = embedding_assignment(self.session)
+        if row.id == CONTENT_SPACE_ID:
+            meta = vectors.read_meta(self.session)
+            raw_dim = meta.get("dim")
+            if raw_dim is not None:
+                try:
+                    meta_dim = int(raw_dim)
+                except ValueError:
+                    meta_dim = None
+                meta_model = meta.get("model")
+                if (meta_dim is not None and meta_dim != row.dim) or (
+                    meta_model and meta_model != row.model
+                ):
+                    raise vectors.VectorSpaceChangeRequired(
+                        current_model=row.model,
+                        current_dim=row.dim,
+                        requested_model=meta_model or row.model,
+                        requested_dim=meta_dim or row.dim,
+                        detail="vector_spaces row disagrees with vec_meta",
+                    )
+        index_table = row.index_table or vectors.VEC_TABLE
+        backend = "linear" if row.index_table is None else backend_for(self.session)
+        return self._dto(
+            row,
+            provider=row.provider or assignment.provider,
+            model=row.model,
+            dim=row.dim,
+            index_table=index_table,
+            backend=backend,
+            metadata_row=True,
+        )
+
     def ensure_content_space(self, *, provider: str | None = None) -> ContentSpace | None:
-        """Create/refresh the one metadata row for the active legacy space.
+        """Create/refresh the legacy content row from ``vec_meta``.
 
         Called only from a write path (or an explicit backfill), never from a
-        status read. ``vec_meta`` remains the trusted model/dim in P3a; a
-        disagreement is an explicit error, not an in-place rewrite.
+        status read. A non-legacy active space owns writes; this is the
+        compatibility row, not a second active pointer.
         """
         meta = vectors.read_meta(self.session)
         raw_dim = meta.get("dim")
@@ -335,6 +417,12 @@ class StudyVectorStore:
         resolved_provider = provider or assignment.provider
         row = self.session.get(VectorSpace, CONTENT_SPACE_ID)
         if row is None:
+            active = self._active_row()
+            if active is not None and active.id != CONTENT_SPACE_ID:
+                raise VectorProvisioningError(
+                    "another vector space is active; the legacy compatibility row "
+                    "cannot become active again"
+                )
             row = VectorSpace(
                 id=CONTENT_SPACE_ID,
                 name=CONTENT_SPACE_NAME,
@@ -362,17 +450,14 @@ class StudyVectorStore:
             model=model,
             dim=dim,
             index_table=row.index_table or vectors.VEC_TABLE,
+            backend=backend_for(self.session),
             metadata_row=True,
         )
 
     def provision(self) -> SpaceProvision | None:
-        """Provision the content space's ``vec_<8hex>`` table and backfill it.
-
-        Off the read path by construction: callers are the one-time migration,
-        the ingest/reindex write path, or an explicit ops action. ``chunk_vecs``
-        is copied, never replaced or dropped; the index_table switch commits
-        with the caller's transaction.
-        """
+        """Provision the legacy content space's ``vec_<8hex>`` table and backfill."""
+        if self.space_id not in (None, CONTENT_SPACE_ID):
+            raise VectorProvisioningError("provision() only addresses the legacy content space")
         space = self.ensure_content_space()
         if space is None:
             return None
@@ -448,52 +533,134 @@ class StudyVectorStore:
         material_ids: Sequence[str] | None = None,
         profile_id: str | None = None,
     ) -> list[tuple[str, float]]:
-        """Top chunks by cosine, scoped before the ANN scan when possible.
-
-        Returns the legacy ``(chunk id, distance)`` shape so the FTS/RRF
-        fusion and hydration paths stay unchanged. When the provisioned
-        backend is unavailable (missing extension/table) the legacy
-        ``chunk_vecs`` path answers; a partial backfill never fabricates
-        coverage because the migration only switches ``index_table`` after
-        verifying its row count.
-        """
+        """Top chunks by cosine, scoped before the ANN scan when possible."""
         space = self.content_space()
         if space is None or space.dim != len(query_vector):
             return []
         backend = self._backend(space)
-        if backend is not None:
-            try:
-                hits = backend.search(
-                    space.as_contract(),
-                    list(query_vector),
-                    views=(CONTENT_VIEW,),
-                    scope=self._scope(
-                        course_id=course_id,
-                        material_ids=material_ids,
-                        profile_id=profile_id,
-                    ),
-                    limit=limit,
+        if backend is None:
+            return (
+                vectors.search(self.session, list(query_vector), limit=limit)
+                if space.space_id == CONTENT_SPACE_ID
+                else []
+            )
+        try:
+            hits = backend.search(
+                space.as_contract(),
+                list(query_vector),
+                views=(CONTENT_VIEW,),
+                scope=self._scope(
+                    course_id=course_id,
+                    material_ids=material_ids,
+                    profile_id=profile_id,
+                ),
+                limit=limit,
+            )
+        except VectorBackendError as exc:
+            logger.warning("vector backend search failed: %s", exc)
+            if space.space_id == CONTENT_SPACE_ID:
+                return vectors.search(self.session, list(query_vector), limit=limit)
+            return []
+        return self._chunk_hits(space, hits)
+
+    def _chunk_hits(
+        self, space: ContentSpace, hits: Sequence[IndexHit]
+    ) -> list[tuple[str, float]]:
+        record_ids = [str(hit.record_id) for hit in hits]
+        if not record_ids:
+            return []
+        mapping = {
+            str(record_id): str(chunk_id or record_id)
+            for record_id, chunk_id in self.session.execute(
+                select(VectorRecord.id, VectorRecord.chunk_id).where(
+                    VectorRecord.space_id == space.space_id,
+                    VectorRecord.id.in_([_canonical_id(value) for value in record_ids]),
                 )
-                return [(hit.record_id, hit.distance) for hit in hits]
-            except VectorBackendError as exc:
-                logger.warning("vector backend search failed, using legacy store: %s", exc)
-        return vectors.search(self.session, list(query_vector), limit=limit)
+            )
+        }
+        return [
+            (mapping.get(str(hit.record_id), str(hit.record_id)), float(hit.distance))
+            for hit in hits
+        ]
 
     def store(self, chunk_ids: list[str], vectors_batch: list[list[float]], model: str) -> None:
-        """Write physical vectors, then register their metadata mapping.
-
-        ``vectors.store`` first enforces the model/dim guard and maintains the
-        legacy mirror; only a successful physical write reaches the metadata
-        registration and the provisioned backend. A refused change never
-        leaves a metadata row or a copied vector behind.
-        """
+        """Write physical vectors for the addressed space, then register metadata."""
         if not chunk_ids or not vectors_batch:
             return
-        vectors.store(self.session, chunk_ids, vectors_batch, model)
-        space = self.ensure_content_space()
-        records = self._sync_records(chunk_ids)
+        space = self.content_space()
         if space is None:
+            if self.space_id not in (None, CONTENT_SPACE_ID):
+                raise VectorSpaceRowMissing(f"vector space {self.space_id!r} has no row")
+            if self.space_id is None and self._has_space_rows():
+                raise VectorProvisioningError(
+                    "no active vector space; activate a space before writing"
+                )
+            vectors.store(self.session, chunk_ids, vectors_batch, model)
+            space = self.ensure_content_space()
+            if space is None:
+                return
+            self._store_legacy(space, chunk_ids, vectors_batch, model, write_legacy=False)
             return
+        if space.space_id == CONTENT_SPACE_ID:
+            self._store_legacy(space, chunk_ids, vectors_batch, model)
+            return
+        self._store_space(space, chunk_ids, vectors_batch, model)
+
+    def _store_legacy(
+        self,
+        space: ContentSpace,
+        chunk_ids: list[str],
+        vectors_batch: list[list[float]],
+        model: str,
+        *,
+        write_legacy: bool = True,
+    ) -> None:
+        if write_legacy:
+            vectors.store(self.session, chunk_ids, vectors_batch, model)
+        records = self._sync_records_legacy(chunk_ids)
+        space = self._ensure_physical(space)
+        backend = self._backend(space)
+        if backend is None:
+            return
+        index_records = [
+            IndexRecord(
+                record_id=str(record.id),
+                document_id=str(record.document_id),
+                view=str(record.view),
+                chunk_index=int(record.chunk_index),
+                embedding=tuple(float(value) for value in vector),
+                content_hash=str(record.content_hash or ""),
+            )
+            for chunk_id, vector in zip(chunk_ids, vectors_batch, strict=True)
+            if (record := records.get(str(chunk_id))) is not None
+        ]
+        if index_records:
+            backend.upsert(space.as_contract(), index_records)
+
+    def _store_space(
+        self,
+        space: ContentSpace,
+        chunk_ids: list[str],
+        vectors_batch: list[list[float]],
+        model: str,
+    ) -> None:
+        if model != space.model:
+            raise vectors.VectorSpaceChangeRequired(
+                current_model=space.model,
+                current_dim=space.dim,
+                requested_model=model,
+                requested_dim=len(vectors_batch[0]) if vectors_batch else 0,
+                detail=f"space {space.name!r} owns writes; build a new space to change the model",
+            )
+        if any(len(vector) != space.dim for vector in vectors_batch):
+            raise vectors.VectorSpaceChangeRequired(
+                current_model=space.model,
+                current_dim=space.dim,
+                requested_model=model,
+                requested_dim=len(vectors_batch[0]) if vectors_batch else 0,
+                detail=f"space {space.name!r} expects dim {space.dim}",
+            )
+        records = self._sync_records_for_space(space, chunk_ids)
         space = self._ensure_physical(space)
         backend = self._backend(space)
         if backend is None:
@@ -516,53 +683,97 @@ class StudyVectorStore:
     def delete_for_extraction(self, chunk_ids: list[str]) -> None:
         if not chunk_ids:
             return
-        rowids = [vectors.rowid_for(chunk_id) for chunk_id in chunk_ids]
         space = self.content_space()
-        if space is not None:
-            backend = self._backend(space)
-            if backend is not None:
-                backend.delete_record_ids(space.as_contract(), list(chunk_ids))
-        vectors.delete_for_extraction(self.session, chunk_ids)
-        self._drop_records(rowids)
+        if space is None:
+            return
+        wanted = [_canonical_id(value) for value in chunk_ids]
+        rows = list(
+            self.session.scalars(
+                select(VectorRecord).where(
+                    VectorRecord.space_id == space.space_id,
+                    VectorRecord.chunk_id.in_(wanted),
+                )
+            )
+        )
+        backend = self._backend(space)
+        if backend is not None and rows:
+            backend.delete_record_ids(space.as_contract(), [str(row.id) for row in rows])
+        for record in rows:
+            self.session.delete(record)
+        self.session.flush()
+        if space.space_id == CONTENT_SPACE_ID:
+            vectors.delete_for_extraction(self.session, chunk_ids)
+        self._drop_empty_documents({str(row.document_id) for row in rows})
 
     def delete_rowids(self, rowids: list[int]) -> int:
         space = self.content_space()
-        if space is not None and rowids:
-            backend = self._backend(space)
-            if backend is not None:
-                record_ids = [
-                    str(record_id)
-                    for (record_id,) in self.session.execute(
-                        select(VectorRecord.id).where(
-                            VectorRecord.space_id == space.space_id,
-                            VectorRecord.rowid.in_([int(rowid) for rowid in rowids]),
-                        )
-                    )
-                ]
-                backend.delete_record_ids(space.as_contract(), record_ids)
-        removed = vectors.delete_rowids(self.session, rowids)
-        self._drop_records(rowids)
+        if space is None or not rowids:
+            return 0
+        wanted = [int(rowid) for rowid in rowids]
+        records = list(
+            self.session.scalars(
+                select(VectorRecord).where(
+                    VectorRecord.space_id == space.space_id,
+                    VectorRecord.rowid.in_(wanted),
+                )
+            )
+        )
+        backend = self._backend(space)
+        if backend is not None and records:
+            backend.delete_record_ids(space.as_contract(), [str(row.id) for row in records])
+        for record in records:
+            self.session.delete(record)
+        self.session.flush()
+        removed = (
+            vectors.delete_rowids(self.session, rowids)
+            if space.space_id == CONTENT_SPACE_ID
+            else len(records)
+        )
+        self._drop_empty_documents({str(row.document_id) for row in records})
         return removed
 
     def unregister_records(self, chunk_ids: Iterable[str]) -> int:
-        rowids = [vectors.rowid_for(chunk_id) for chunk_id in chunk_ids]
-        return self._drop_records(rowids)
+        space = self.content_space()
+        if space is None:
+            return 0
+        wanted = [_canonical_id(value) for value in chunk_ids]
+        if not wanted:
+            return 0
+        records = list(
+            self.session.scalars(
+                select(VectorRecord).where(
+                    VectorRecord.space_id == space.space_id,
+                    VectorRecord.chunk_id.in_(wanted),
+                )
+            )
+        )
+        for record in records:
+            self.session.delete(record)
+        self.session.flush()
+        self._drop_empty_documents({str(row.document_id) for row in records})
+        return len(records)
 
     def document_count(self, *, kind: str | None = None) -> int:
+        space = self.content_space()
+        if space is None:
+            return 0
         statement = (
             select(func.count())
             .select_from(VectorDocument)
-            .where(VectorDocument.space_id == CONTENT_SPACE_ID)
+            .where(VectorDocument.space_id == space.space_id)
         )
         if kind is not None:
             statement = statement.where(VectorDocument.kind == kind)
         return int(self.session.scalar(statement) or 0)
 
     def record_count(self, *, view: str | None = None) -> int:
+        space = self.content_space()
+        if space is None:
+            return 0
         statement = (
             select(func.count())
             .select_from(VectorRecord)
-            .where(VectorRecord.space_id == CONTENT_SPACE_ID)
+            .where(VectorRecord.space_id == space.space_id)
         )
         if view is not None:
             statement = statement.where(VectorRecord.view == view)
@@ -574,9 +785,12 @@ class StudyVectorStore:
         return physical > 0 and self.record_count(view=CONTENT_VIEW) >= physical
 
     def documents(self, *, limit: int | None = None) -> list[VectorDocument]:
+        space = self.content_space()
+        if space is None:
+            return []
         statement = (
             select(VectorDocument)
-            .where(VectorDocument.space_id == CONTENT_SPACE_ID)
+            .where(VectorDocument.space_id == space.space_id)
             .order_by(VectorDocument.id)
         )
         if limit is not None:
@@ -584,9 +798,12 @@ class StudyVectorStore:
         return list(self.session.scalars(statement))
 
     def records(self, *, limit: int | None = None) -> list[VectorRecord]:
+        space = self.content_space()
+        if space is None:
+            return []
         statement = (
             select(VectorRecord)
-            .where(VectorRecord.space_id == CONTENT_SPACE_ID)
+            .where(VectorRecord.space_id == space.space_id)
             .order_by(VectorRecord.rowid, VectorRecord.id)
         )
         if limit is not None:
@@ -594,29 +811,30 @@ class StudyVectorStore:
         return list(self.session.scalars(statement))
 
     def record_for_rowid(self, rowid: int) -> VectorRecord | None:
+        space = self.content_space()
+        if space is None:
+            return None
         return self.session.scalars(
-            select(VectorRecord).where(VectorRecord.rowid == int(rowid))
+            select(VectorRecord).where(
+                VectorRecord.space_id == space.space_id,
+                VectorRecord.rowid == int(rowid),
+            )
         ).first()
 
     def rowid_map(self) -> dict[int, str]:
-        """``rowid -> chunk id`` — the sqlite-vec rowid map (P3a legacy map)."""
+        """``rowid -> chunk id`` — the sqlite-vec rowid map for this space."""
         return self.stored_chunk_ids()
 
     def backfill_metadata(self, *, batch_size: int = 500) -> MetadataBackfill:
-        """Rebuild/refresh the mapping from the physical rowid reverse map.
-
-        Fills the content hashes and record rows the migration could not
-        compute in SQL. Idempotent: existing records are updated in place by
-        rowid, never duplicated.
-        """
+        """Rebuild/refresh the legacy mapping from the rowid reverse map."""
         self.ensure_content_space()
-        mapping = self.stored_chunk_ids()
+        mapping = dict(vectors.stored_chunk_ids(self.session))
         chunk_ids = list(mapping.values())
         scanned = 0
         for start in range(0, len(chunk_ids), max(1, batch_size)):
             batch = chunk_ids[start : start + batch_size]
             scanned += len(batch)
-            self._sync_records(batch)
+            self._sync_records_legacy(batch)
             self.session.flush()
         return MetadataBackfill(
             documents=self.document_count(),
@@ -626,9 +844,9 @@ class StudyVectorStore:
 
     def _backend(self, space: ContentSpace) -> SessionVectorBackend | None:
         """The backend that answers this space, or ``None`` for the legacy store."""
-        if space.index_table == LEGACY_INDEX_TABLE or not space.index_table:
-            if space.index_table is None:
-                return LinearBackend(self.session)
+        if space.index_table is None:
+            return LinearBackend(self.session)
+        if space.index_table == LEGACY_INDEX_TABLE:
             return None
         if not _is_provisioned(space.index_table):
             return None
@@ -636,8 +854,22 @@ class StudyVectorStore:
 
     def _ensure_physical(self, space: ContentSpace) -> ContentSpace:
         """Provision on the write path only; a failure keeps the legacy store."""
-        if space.index_table != LEGACY_INDEX_TABLE:
+        if _is_provisioned(space.index_table):
             return space
+        if space.space_id != CONTENT_SPACE_ID:
+            savepoint = self.session.begin_nested()
+            try:
+                provision_space(self.session, space.space_id)
+            except VectorProvisioningError as exc:
+                savepoint.rollback()
+                logger.warning(
+                    "vector_space_provision_deferred space_id=%s reason=%s",
+                    space.space_id,
+                    exc,
+                )
+                return space
+            savepoint.commit()
+            return self.content_space() or space
         row = self.session.get(VectorSpace, space.space_id)
         savepoint = self.session.begin_nested()
         try:
@@ -684,6 +916,7 @@ class StudyVectorStore:
         model: str,
         dim: int,
         index_table: str,
+        backend: str,
         metadata_row: bool,
     ) -> ContentSpace:
         return ContentSpace(
@@ -692,7 +925,7 @@ class StudyVectorStore:
             provider=provider,
             model=model,
             dim=dim,
-            backend=backend_for(self.session),
+            backend=backend,
             index_table=index_table,
             status=str(row.status),
             key=space_key(
@@ -708,13 +941,15 @@ class StudyVectorStore:
             metadata_row=metadata_row,
         )
 
-    def _document_for(self, *, source_id: str, profile_id: str | None) -> VectorDocument:
+    def _document_for(
+        self, *, space_id: str, source_id: str, profile_id: str | None
+    ) -> VectorDocument:
         candidates = {source_id}
         with contextlib.suppress(TypeError, ValueError):
             candidates.add(uuid.UUID(source_id).hex)
         document = self.session.scalars(
             select(VectorDocument).where(
-                VectorDocument.space_id == CONTENT_SPACE_ID,
+                VectorDocument.space_id == space_id,
                 VectorDocument.kind == CONTENT_SPACE_KIND,
                 VectorDocument.source_id.in_(candidates),
             )
@@ -722,7 +957,7 @@ class StudyVectorStore:
         if document is None:
             document = VectorDocument(
                 id=str(uuid.uuid4()),
-                space_id=CONTENT_SPACE_ID,
+                space_id=space_id,
                 kind=CONTENT_SPACE_KIND,
                 source_id=source_id,
                 profile_id=profile_id,
@@ -736,11 +971,12 @@ class StudyVectorStore:
             document.source_id = source_id
         return document
 
-    def _sync_records(self, chunk_ids: Sequence[str]) -> dict[str, VectorRecord]:
-        """Register/refresh metadata for ``chunk_ids``; record id = chunk id."""
-        if not chunk_ids:
-            return {}
+    def _chunk_rows(
+        self, chunk_ids: Sequence[str]
+    ) -> list[tuple[str, int, str, str, str | None, str]]:
         wanted = [str(chunk_id) for chunk_id in chunk_ids]
+        if not wanted:
+            return []
         rows = self.session.execute(
             select(
                 Chunk.id,
@@ -755,16 +991,21 @@ class StudyVectorStore:
             .where(Chunk.id.in_(wanted))
             .order_by(Material.id, Extraction.created_at, Chunk.ordinal)
         ).all()
-        by_material: dict[str, list[tuple[str, int, str, str, str | None, str]]] = {}
-        for chunk_id, ordinal, text, material_id, profile_id, markdown in rows:
-            key = str(material_id)
-            by_material.setdefault(key, []).append(
-                (str(chunk_id), int(ordinal), str(text), key, profile_id, markdown or "")
-            )
+        return [
+            (str(chunk_id), int(ordinal), str(text), str(material_id), profile_id, markdown or "")
+            for chunk_id, ordinal, text, material_id, profile_id, markdown in rows
+        ]
+
+    def _sync_records_legacy(self, chunk_ids: Sequence[str]) -> dict[str, VectorRecord]:
+        """Register/refresh legacy metadata; record id = chunk id."""
         registered: dict[str, VectorRecord] = {}
+        by_material: dict[str, list[tuple[str, int, str, str, str | None, str]]] = {}
+        for row in self._chunk_rows(chunk_ids):
+            by_material.setdefault(row[3], []).append(row)
         for material_id, chunks in by_material.items():
             source_id = _canonical_id(material_id)
             document = self._document_for(
+                space_id=CONTENT_SPACE_ID,
                 source_id=source_id,
                 profile_id=_canonical_id(chunks[0][4]) if chunks[0][4] else None,
             )
@@ -789,6 +1030,7 @@ class StudyVectorStore:
                         id=canonical_chunk,
                         document_id=document.id,
                         space_id=CONTENT_SPACE_ID,
+                        chunk_id=canonical_chunk,
                         view=CONTENT_VIEW,
                         chunk_index=next_index,
                         rowid=rowid,
@@ -798,24 +1040,86 @@ class StudyVectorStore:
                     existing[rowid] = record
                     next_index += 1
                 else:
+                    record.chunk_id = canonical_chunk
                     record.content_hash = content_hash(text)
                 registered[canonical_chunk] = record
             self.session.flush()
         return registered
 
-    def _drop_records(self, rowids: Sequence[int]) -> int:
-        wanted = [int(rowid) for rowid in rowids]
-        if not wanted:
-            return 0
-        records = list(
-            self.session.scalars(select(VectorRecord).where(VectorRecord.rowid.in_(wanted)))
-        )
-        if not records:
-            return 0
-        document_ids = {str(record.document_id) for record in records}
-        for record in records:
-            self.session.delete(record)
-        self.session.flush()
+    def _sync_records_for_space(
+        self, space: ContentSpace, chunk_ids: Sequence[str]
+    ) -> dict[str, VectorRecord]:
+        """Register/refresh records under a non-legacy space.
+
+        The record id is deterministic per ``(space, chunk)``; the rowid is the
+        sqlite-vec rowid rule over that record id. ``chunk_id`` keeps the
+        chunk hydration handle explicit, so a search hit maps back without a
+        second physical table.
+        """
+        registered: dict[str, VectorRecord] = {}
+        by_material: dict[str, list[tuple[str, int, str, str, str | None, str]]] = {}
+        for row in self._chunk_rows(chunk_ids):
+            by_material.setdefault(row[3], []).append(row)
+        for material_id, chunks in by_material.items():
+            source_id = _canonical_id(material_id)
+            document = self._document_for(
+                space_id=space.space_id,
+                source_id=source_id,
+                profile_id=_canonical_id(chunks[0][4]) if chunks[0][4] else None,
+            )
+            document.source_hash = content_hash(chunks[0][5])
+            document_records = list(
+                self.session.scalars(
+                    select(VectorRecord).where(
+                        VectorRecord.space_id == space.space_id,
+                        VectorRecord.document_id == document.id,
+                    )
+                )
+            )
+            existing = {
+                str(record.chunk_id): record
+                for record in document_records
+                if record.chunk_id is not None
+            }
+            next_index = max(
+                (int(record.chunk_index) for record in document_records), default=-1
+            ) + 1
+            for chunk_id, _ordinal, text, _material, _profile, _markdown in chunks:
+                canonical_chunk = _canonical_id(chunk_id)
+                record = existing.get(canonical_chunk)
+                if record is None:
+                    record_id = _record_id_for(space.space_id, canonical_chunk)
+                    record = VectorRecord(
+                        id=record_id,
+                        document_id=document.id,
+                        space_id=space.space_id,
+                        chunk_id=canonical_chunk,
+                        view=CONTENT_VIEW,
+                        chunk_index=next_index,
+                        rowid=self._allocate_rowid(record_id),
+                        content_hash=content_hash(text),
+                    )
+                    self.session.add(record)
+                    existing[canonical_chunk] = record
+                    next_index += 1
+                else:
+                    record.content_hash = content_hash(text)
+                registered[canonical_chunk] = record
+            self.session.flush()
+        return registered
+
+    def _allocate_rowid(self, record_id: str) -> int:
+        salt = 0
+        while True:
+            candidate = rowid_for(record_id, salt=salt)
+            owner = self.session.scalar(
+                select(VectorRecord.id).where(VectorRecord.rowid == candidate)
+            )
+            if owner is None or str(owner) == _canonical_id(record_id):
+                return candidate
+            salt += 1
+
+    def _drop_empty_documents(self, document_ids: set[str]) -> None:
         for document_id in document_ids:
             remaining = self.session.scalar(
                 select(func.count())
@@ -827,12 +1131,35 @@ class StudyVectorStore:
                 if document is not None:
                     self.session.delete(document)
         self.session.flush()
+
+    def _drop_records(self, rowids: Sequence[int]) -> int:
+        space = self.content_space()
+        if space is None or not rowids:
+            return 0
+        wanted = [int(rowid) for rowid in rowids]
+        records = list(
+            self.session.scalars(
+                select(VectorRecord).where(
+                    VectorRecord.space_id == space.space_id,
+                    VectorRecord.rowid.in_(wanted),
+                )
+            )
+        )
+        for record in records:
+            self.session.delete(record)
+        self.session.flush()
+        self._drop_empty_documents({str(record.document_id) for record in records})
         return len(records)
 
 
 def content_space_for(session: Session) -> ContentSpace | None:
     """Module-level read helper for call sites that only need the identity."""
     return StudyVectorStore(session).content_space()
+
+
+def space_for(session: Session, space_id: str) -> ContentSpace | None:
+    """Module-level read helper for one explicit persisted space."""
+    return StudyVectorStore(session, space_id=space_id).content_space()
 
 
 __all__ = [
@@ -850,4 +1177,5 @@ __all__ = [
     "backend_label",
     "content_space_for",
     "embedding_assignment",
+    "space_for",
 ]

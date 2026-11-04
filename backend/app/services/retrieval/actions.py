@@ -1,45 +1,52 @@
-"""The management/action seam over the legacy retrieval space (plan 51 Q3b).
+"""The management/action seam over the retrieval spaces (plan 51 Q3b/Q3c2b1).
 
-Every mutating action is admin-only at the router, idempotent for the two
-enqueue actions, serialized by the one-active-run lock, and audited through
-the family ``vector.*`` vocabulary in the existing ``audit_events`` table.
-Execution is never duplicated here: reindex and maintenance enqueue the same
-``VECTOR_*`` handlers Q3a shipped.
-
-Study has one synthetic legacy space (``legacy-chunk-vecs``) and no
-vector-space lifecycle. Lifecycle verbs are deliberately absent from this
-module; the router answers them with a structured ``unsupported`` refusal.
+Every mutating action is admin-only at the router, idempotent, serialized by
+the one-active-run lock and audited through the family ``vector.*`` vocabulary
+in the existing ``audit_events`` table. Reindex, maintenance and cutover
+enqueue the same ``VECTOR_*`` handlers Q3a shipped; the short lifecycle
+transitions (build/activate/retire/drop) execute under a real job row through
+:func:`run_vector_action`, so they keep the same replay and lock semantics.
 """
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
 from ...core.vocab import JobStatus, JobType
-from ...domain.models import Job, utcnow
+from ...domain.models import Job, VectorSpace, utcnow
 from ...jobs.cancellation import request_cancel
 from ...storage.retrieval_ops import (
+    SPACE_DROP_GRACE_DAYS,
     MaintenanceAction,
     RetrievalAction,
     RetrievalActionResponse,
     RunStatus,
     assert_no_raw_text,
+    run_lock_key,
 )
-from .audit import build_vector_event, run_resource, space_resource
+from ...storage.vector_provisioning import VectorProvisioningError
+from ...storage.vector_store import embedding_assignment
+from . import lifecycle
+from .audit import build_vector_event, run_resource
 from .jobs import (
     ACTIVE_STATUSES,
     REAPABLE_JOB_TYPES,
     RetrievalJobConflict,
     enqueue_vector_job,
     reap_stale_runs,
+    run_vector_action,
     validate_key,
 )
 from .legacy import LEGACY_KIND, LEGACY_SPACE_ID
 
 MAINTENANCE_ACTIONS = tuple(member.value for member in MaintenanceAction)
 DRY_RUN_ACTIONS = frozenset({MaintenanceAction.ORPHAN_SWEEP.value})
+_SYNC_ACTION_PAYLOADS = frozenset(
+    {"build_space", "activate_space", "retire_space", "drop_space"}
+)
 DEFAULT_LIMIT = 500
 MAX_LIMIT = 5_000
 DEFAULT_BATCH_SIZE = 32
@@ -119,14 +126,38 @@ def _chunk_ids(value: list[str] | None, *, required: bool = False) -> list[str] 
     return ids or None
 
 
-def _ensure_legacy_space(space_id: str | None) -> None:
-    if space_id not in (None, "", LEGACY_SPACE_ID):
+def _target_space(session: Session, space_id: str | None, *, allow_retired: bool = False) -> str:
+    if space_id in (None, ""):
+        active = lifecycle.active_space_row(session)
+        if active is not None:
+            return str(active.id)
+        return LEGACY_SPACE_ID
+    row = session.get(VectorSpace, str(space_id))
+    if row is None:
         raise RetrievalActionError(
-            "study exposes one legacy space (legacy-chunk-vecs); "
-            "vector-space lifecycle is not implemented in this build",
-            reason="unsupported_space",
+            f"no vector space {space_id!r}",
+            status_code=404,
+            reason="space_not_found",
             extra={"space_id": space_id},
         )
+    if row.status == "retired" and not allow_retired:
+        raise RetrievalActionError(
+            f"space {row.name!r} is retired; activate it or address the active space",
+            reason="space_retired",
+            extra={"space_id": str(row.id)},
+        )
+    return str(row.id)
+
+
+def _audit_for(
+    actor: str, action: str, space_id: str | None = None, *, outcome: str = "accepted"
+) -> Any:
+    return build_vector_event(
+        actor=_actor(actor),
+        action=action,
+        outcome=outcome,
+        resource=f"space:{space_id}"[:500] if space_id else "space:unknown",
+    )
 
 
 def _ensure_kind(kind: str | None) -> str | None:
@@ -194,10 +225,10 @@ def reindex(
     view: str | None = None,
     since: str | None = None,
 ) -> dict[str, Any]:
-    _ensure_legacy_space(space_id)
+    target = _target_space(session, space_id)
     if view is not None or since is not None:
         raise RetrievalActionError(
-            "view/since scoping is not supported by the legacy chunk store",
+            "view/since scoping is not supported by the chunk store",
             status_code=422,
             reason="unsupported_scope",
         )
@@ -208,7 +239,7 @@ def reindex(
     ids = _chunk_ids(chunk_ids)
     payload: dict[str, Any] = {
         "action": "reindex",
-        "space_id": LEGACY_SPACE_ID,
+        "space_id": target,
         "limit": bounded_limit,
         "batch_size": bounded_batch,
         "force": bool(force),
@@ -220,12 +251,7 @@ def reindex(
         payload["chunk_ids"] = ids
 
     reap_stale_runs(session)
-    audit = build_vector_event(
-        actor=_actor(actor),
-        action="vector.reindex.started",
-        outcome="accepted",
-        resource=space_resource(),
-    )
+    audit = _audit_for(actor, "vector.reindex.started", target)
     try:
         job, deduplicated = enqueue_vector_job(
             session,
@@ -233,6 +259,7 @@ def reindex(
             payload=payload,
             idempotency_key=idempotency_key,
             audit=audit,
+            space_id=target,
         )
     except RetrievalJobConflict as error:
         raise RetrievalActionError(
@@ -251,7 +278,7 @@ def reindex(
             if deduplicated
             else "reindex queued"
         ),
-        extra={"space_id": LEGACY_SPACE_ID},
+        extra={"space_id": target},
     )
 
 
@@ -265,7 +292,7 @@ def maintenance(
     chunk_ids: list[str] | None = None,
     space_id: str | None = None,
 ) -> dict[str, Any]:
-    _ensure_legacy_space(space_id)
+    target = _target_space(session, space_id)
     if action not in MAINTENANCE_ACTIONS:
         raise RetrievalActionError(
             f"unknown maintenance action {action!r}; expected one of {MAINTENANCE_ACTIONS}",
@@ -283,19 +310,14 @@ def maintenance(
     )
     payload: dict[str, Any] = {
         "action": action,
-        "space_id": LEGACY_SPACE_ID,
+        "space_id": target,
         "dry_run": bool(dry_run),
     }
     if ids is not None:
         payload["chunk_ids"] = ids
 
     reap_stale_runs(session)
-    audit = build_vector_event(
-        actor=_actor(actor),
-        action="vector.maintenance.started",
-        outcome="accepted",
-        resource=space_resource(),
-    )
+    audit = _audit_for(actor, "vector.maintenance.started", target)
     try:
         job, deduplicated = enqueue_vector_job(
             session,
@@ -303,6 +325,7 @@ def maintenance(
             payload=payload,
             idempotency_key=idempotency_key,
             audit=audit,
+            space_id=target,
         )
     except RetrievalJobConflict as error:
         raise RetrievalActionError(
@@ -321,7 +344,7 @@ def maintenance(
             if deduplicated
             else f"maintenance ({action}) queued"
         ),
-        extra={"space_id": LEGACY_SPACE_ID, "maintenance_action": action},
+        extra={"space_id": target, "maintenance_action": action},
     )
 
 
@@ -385,11 +408,6 @@ def retry_run(
 ) -> dict[str, Any]:
     reap_stale_runs(session)
     target = _vector_run(session, run_id)
-    if target.type == JobType.VECTOR_CUTOVER.value:
-        raise RetrievalActionError(
-            "cutover is unavailable in this build (no vector-space lifecycle)",
-            reason="unsupported_action",
-        )
     if target.status not in (JobStatus.FAILED.value, JobStatus.CANCELLED.value):
         raise RetrievalActionError(
             f"run {target.id} is {target.status}; only failed or cancelled runs retry",
@@ -397,7 +415,23 @@ def retry_run(
             extra={"run_id": target.id, "run_status": str(target.status)},
         )
     payload = dict(target.payload or {})
+    if str(payload.get("action")) in _SYNC_ACTION_PAYLOADS:
+        raise RetrievalActionError(
+            "short lifecycle actions replay by repeating the action with the same "
+            "Idempotency-Key; only reindex/maintenance/cutover runs retry",
+            reason="run_not_retriable",
+            extra={"run_id": target.id, "run_status": str(target.status)},
+        )
     payload["requeue_of"] = target.id
+    retry_space = str(payload.get("space_id") or "") or _target_space(session, None)
+    retry_row = session.get(VectorSpace, retry_space)
+    if retry_row is not None and retry_row.status == "retired":
+        raise RetrievalActionError(
+            f"space {retry_row.name!r} is retired; retries must target an active or "
+            "building space",
+            reason="space_retired",
+            extra={"space_id": retry_space},
+        )
     audit = build_vector_event(
         actor=_actor(actor),
         action="vector.reindex.retried",
@@ -411,6 +445,7 @@ def retry_run(
             payload=payload,
             idempotency_key=idempotency_key,
             audit=audit,
+            space_id=retry_space,
         )
     except RetrievalJobConflict as error:
         raise RetrievalActionError(
@@ -429,16 +464,482 @@ def retry_run(
             if deduplicated
             else f"retry of {target.id} queued"
         ),
-        extra={"retry_of": target.id, "space_id": LEGACY_SPACE_ID},
+        extra={"retry_of": target.id, "space_id": retry_space},
+    )
+
+
+def _lifecycle_response(
+    action: RetrievalAction,
+    job: Job,
+    *,
+    audit_event: str,
+    message: str,
+    space: dict[str, Any] | None = None,
+    deduplicated: bool = False,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return _response(
+        action,
+        job,
+        audit_event=audit_event,
+        http_status=200,
+        deduplicated=deduplicated,
+        status=RunStatus.SUCCEEDED,
+        message=message,
+        extra={"space": space, **(extra or {})} if space is not None else extra,
+    )
+
+
+def build_space(
+    session: Session,
+    *,
+    actor: str,
+    idempotency_key: str,
+    name: str | None = None,
+    provider: str | None = None,
+    model: str | None = None,
+    dim: int | None = None,
+    normalize: bool = True,
+    query_prefix: str | None = None,
+    document_prefix: str | None = None,
+) -> dict[str, Any]:
+    """Provision a real ``building`` space beside the active one."""
+    assignment = embedding_assignment(session)
+    active = lifecycle.active_space_row(session)
+    resolved_provider = provider or assignment.provider or (active.provider if active else "")
+    resolved_model = model or assignment.model or (active.model if active else "")
+    resolved_dim = dim or (int(active.dim) if active is not None else None)
+    if resolved_dim is None:
+        raise RetrievalActionError(
+            "dim is required when no active space or vec_meta dimension exists",
+            status_code=422,
+            reason="invalid_request",
+        )
+    resolved_name = (name or "content").strip()
+    payload = {
+        "action": "build_space",
+        "name": resolved_name,
+        "provider": resolved_provider,
+        "model": resolved_model,
+        "dim": int(resolved_dim),
+        "normalize": bool(normalize),
+        "query_prefix": query_prefix,
+        "document_prefix": document_prefix,
+    }
+    audit = _audit_for(actor, "vector.space.provisioned", None)
+    try:
+        response, deduplicated = run_vector_action(
+            session,
+            job_type=JobType.VECTOR_CUTOVER.value,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            lock_key=run_lock_key(resolved_name),
+            execute=lambda _job: _execute_build(
+                session, resolved_name, resolved_provider, resolved_model, int(resolved_dim),
+                bool(normalize), query_prefix, document_prefix, payload, actor,
+            ),
+            audit=audit,
+            failure_audit=_audit_for(
+                actor, "vector.space.provisioned", None, outcome="error"
+            ),
+        )
+    except lifecycle.SpaceStateError as error:
+        raise RetrievalActionError(str(error), reason="space_conflict") from error
+    except lifecycle.SpaceLifecycleError as error:
+        raise RetrievalActionError(str(error), reason="space_conflict") from error
+    except VectorProvisioningError as error:
+        raise RetrievalActionError(
+            str(error), reason="provisioning_failed"
+        ) from error
+    except RetrievalJobConflict as error:
+        raise RetrievalActionError(
+            str(error), reason=error.reason, extra=error.extra
+        ) from error
+    return _lifecycle_response(
+        RetrievalAction.BUILD_SPACE,
+        session.get(Job, response["run_id"]) or _job_stub(response),
+        audit_event="vector.space.provisioned",
+        message="building space provisioned" if not deduplicated else "replay of the space build",
+        deduplicated=deduplicated,
+        extra={
+            "space_id": response.get("space_id"),
+            "space": response.get("space"),
+            "quality": "not_sampled",
+        },
+    )
+
+
+def _execute_build(
+    session: Session,
+    name: str,
+    provider: str,
+    model: str,
+    dim: int,
+    normalize: bool,
+    query_prefix: str | None,
+    document_prefix: str | None,
+    payload: dict[str, Any],
+    actor: str,
+) -> dict[str, Any]:
+    built, model_changed = lifecycle.build_space(
+        session,
+        name=name,
+        provider=provider,
+        model=model,
+        dim=dim,
+        normalize=normalize,
+        query_prefix=query_prefix,
+        document_prefix=document_prefix,
+    )
+    session.add(_audit_for(actor, "vector.space.provisioned", built.space_id))
+    if model_changed:
+        session.add(_audit_for(actor, "vector.model.changed", built.space_id))
+    session.flush()
+    return {
+        "action": RetrievalAction.BUILD_SPACE.value,
+        "accepted": True,
+        "audit_event": "vector.space.provisioned",
+        "http_status": 200,
+        "deduplicated": False,
+        "run_id": "",
+        "status": RunStatus.SUCCEEDED.value,
+        "idempotency_key": payload.get("idempotency_key"),
+        "message": "building space provisioned",
+        "space_id": built.space_id,
+        "space": built.as_dict(),
+        "model_changed": model_changed,
+        "quality": "not_sampled",
+    }
+
+
+def _job_stub(payload: dict[str, Any]) -> Job:
+    return Job(
+        id=str(payload.get("run_id") or ""),
+        type=JobType.VECTOR_CUTOVER.value,
+        payload=payload,
+        status=JobStatus.DONE.value,
+    )
+
+
+def activate_space(
+    session: Session,
+    *,
+    actor: str,
+    space_id: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    row = session.get(VectorSpace, str(space_id))
+    if row is None:
+        raise RetrievalActionError(
+            f"no vector space {space_id!r}",
+            status_code=404,
+            reason="space_not_found",
+        )
+    payload = {"action": "activate_space", "space_id": str(row.id)}
+    try:
+        response, deduplicated = run_vector_action(
+            session,
+            job_type=JobType.VECTOR_CUTOVER.value,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            lock_key=run_lock_key(str(row.id)),
+            execute=lambda _job: _execute_activate(session, str(row.id), actor),
+            audit=_audit_for(actor, "vector.space.activated", str(row.id)),
+            failure_audit=_audit_for(
+                actor, "vector.gate.failed", str(row.id), outcome="fail"
+            ),
+        )
+    except lifecycle.SpaceCoverageError as error:
+        raise RetrievalActionError(
+            str(error),
+            reason="coverage_gate_failed",
+            extra={
+                "space_id": str(row.id),
+                "quality": "not_sampled",
+                "activation_gate": {
+                    "space_id": str(row.id),
+                    "quality": "not_sampled",
+                    "allowed": False,
+                    "reasons": [str(error)[:300]],
+                },
+            },
+        ) from error
+    except lifecycle.SpaceLifecycleError as error:
+        raise RetrievalActionError(
+            str(error), reason="space_state_invalid", extra={"space_id": str(row.id)}
+        ) from error
+    except RetrievalJobConflict as error:
+        raise RetrievalActionError(str(error), reason=error.reason, extra=error.extra) from error
+    job = session.get(Job, response.get("run_id")) or _job_stub(response)
+    return _lifecycle_response(
+        RetrievalAction.ACTIVATE_SPACE,
+        job,
+        audit_event="vector.space.activated",
+        message="space activated" if not deduplicated else "replay of the activation",
+        deduplicated=deduplicated,
+        extra={
+            "space_id": str(row.id),
+            "quality": "not_sampled",
+            "activation_gate": response.get("activation_gate"),
+            "space": response.get("space"),
+        },
+    )
+
+
+def _execute_activate(
+    session: Session, space_id: str, actor: str
+) -> dict[str, Any]:
+    activated = lifecycle.activate_space(session, space_id)
+    session.add(_audit_for(actor, "vector.space.activated", space_id))
+    session.flush()
+    payload = activated.as_dict()
+    gate = activated.gate.as_dict() if activated.gate is not None else None
+    return {
+        "action": RetrievalAction.ACTIVATE_SPACE.value,
+        "accepted": True,
+        "audit_event": "vector.space.activated",
+        "http_status": 200,
+        "deduplicated": False,
+        "run_id": "",
+        "status": RunStatus.SUCCEEDED.value,
+        "message": "space activated",
+        "space_id": space_id,
+        "space": payload,
+        "activation_gate": gate,
+        "quality": "not_sampled",
+        "already_active": payload.get("already_active", False),
+    }
+
+
+def retire_space(
+    session: Session,
+    *,
+    actor: str,
+    space_id: str,
+    confirm_space_name: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    row = session.get(VectorSpace, str(space_id))
+    if row is None:
+        raise RetrievalActionError(
+            f"no vector space {space_id!r}", status_code=404, reason="space_not_found"
+        )
+    if confirm_space_name != row.name:
+        raise RetrievalActionError(
+            f"typed confirmation must equal the space name {row.name!r}",
+            status_code=422,
+            reason="confirmation_mismatch",
+        )
+    payload = {"action": "retire_space", "space_id": str(row.id), "name": str(row.name)}
+    try:
+        response, deduplicated = run_vector_action(
+            session,
+            job_type=JobType.VECTOR_MAINTENANCE.value,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            lock_key=run_lock_key(str(row.id)),
+            execute=lambda _job: _execute_retire(session, str(row.id), actor),
+            audit=_audit_for(actor, "vector.space.retired", str(row.id)),
+            failure_audit=_audit_for(
+                actor, "vector.space.retired", str(row.id), outcome="error"
+            ),
+        )
+    except lifecycle.SpaceStateError as error:
+        raise RetrievalActionError(
+            str(error), reason="space_state_invalid", extra={"space_id": str(row.id)}
+        ) from error
+    except RetrievalJobConflict as error:
+        raise RetrievalActionError(str(error), reason=error.reason, extra=error.extra) from error
+    return _lifecycle_response(
+        RetrievalAction.RETIRE_SPACE,
+        session.get(Job, response.get("run_id")) or _job_stub(response),
+        audit_event="vector.space.retired",
+        message="space retired" if not deduplicated else "replay of the retirement",
+        deduplicated=deduplicated,
+        extra={"space_id": str(row.id), "space": response.get("space")},
+    )
+
+
+def _execute_retire(session: Session, space_id: str, actor: str) -> dict[str, Any]:
+    retired = lifecycle.retire_space(session, space_id)
+    session.add(_audit_for(actor, "vector.space.retired", space_id))
+    session.flush()
+    return {
+        "action": RetrievalAction.RETIRE_SPACE.value,
+        "accepted": True,
+        "audit_event": "vector.space.retired",
+        "http_status": 200,
+        "deduplicated": False,
+        "run_id": "",
+        "status": RunStatus.SUCCEEDED.value,
+        "message": "space retired",
+        "space_id": space_id,
+        "space": retired,
+    }
+
+
+def drop_space(
+    session: Session,
+    *,
+    actor: str,
+    space_id: str,
+    confirm_space_name: str,
+    force: bool,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    row = session.get(VectorSpace, str(space_id))
+    if row is None:
+        raise RetrievalActionError(
+            f"no vector space {space_id!r}", status_code=404, reason="space_not_found"
+        )
+    if confirm_space_name != row.name:
+        raise RetrievalActionError(
+            f"typed confirmation must equal the space name {row.name!r}",
+            status_code=422,
+            reason="confirmation_mismatch",
+        )
+    payload = {
+        "action": "drop_space",
+        "space_id": str(row.id),
+        "name": str(row.name),
+        "force": bool(force),
+    }
+    try:
+        response, deduplicated = run_vector_action(
+            session,
+            job_type=JobType.VECTOR_MAINTENANCE.value,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            lock_key=run_lock_key(str(row.id)),
+            execute=lambda _job: _execute_drop(session, str(row.id), str(row.name), actor, force),
+            audit=_audit_for(actor, "vector.space.dropped", str(row.id)),
+            failure_audit=_audit_for(
+                actor, "vector.space.dropped", str(row.id), outcome="error"
+            ),
+        )
+    except lifecycle.SpaceStateError as error:
+        raise RetrievalActionError(
+            str(error), reason="space_state_invalid", extra={"space_id": str(row.id)}
+        ) from error
+    except RetrievalJobConflict as error:
+        raise RetrievalActionError(str(error), reason=error.reason, extra=error.extra) from error
+    return _lifecycle_response(
+        RetrievalAction.DROP_SPACE,
+        session.get(Job, response.get("run_id")) or _job_stub(response),
+        audit_event="vector.space.dropped",
+        message="space dropped" if not deduplicated else "replay of the drop",
+        deduplicated=deduplicated,
+        extra={"space_id": str(row.id), "space": response.get("space")},
+    )
+
+
+def _execute_drop(
+    session: Session, space_id: str, name: str, actor: str, force: bool
+) -> dict[str, Any]:
+    dropped = lifecycle.drop_space(
+        session,
+        space_id,
+        confirm=name,
+        force=force,
+        grace=timedelta(days=SPACE_DROP_GRACE_DAYS),
+    )
+    session.add(_audit_for(actor, "vector.space.dropped", space_id))
+    session.flush()
+    return {
+        "action": RetrievalAction.DROP_SPACE.value,
+        "accepted": True,
+        "audit_event": "vector.space.dropped",
+        "http_status": 200,
+        "deduplicated": False,
+        "run_id": "",
+        "status": RunStatus.SUCCEEDED.value,
+        "message": "space dropped",
+        "space_id": space_id,
+        "space": dropped.as_dict(),
+    }
+
+
+def cutover(
+    session: Session,
+    *,
+    actor: str,
+    space_id: str,
+    idempotency_key: str,
+    limit: int = DEFAULT_LIMIT,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    force: bool = False,
+) -> dict[str, Any]:
+    row = session.get(VectorSpace, str(space_id))
+    if row is None:
+        raise RetrievalActionError(
+            f"no vector space {space_id!r}", status_code=404, reason="space_not_found"
+        )
+    if row.status == "retired":
+        raise RetrievalActionError(
+            f"space {row.name!r} is retired; only a building space can be cut over",
+            reason="space_state_invalid",
+            extra={"space_id": str(row.id)},
+        )
+    payload = {
+        "action": "cutover",
+        "space_id": str(row.id),
+        "limit": _bounded(limit, minimum=1, maximum=MAX_LIMIT, field="limit"),
+        "batch_size": _bounded(
+            batch_size, minimum=1, maximum=MAX_BATCH_SIZE, field="batch_size"
+        ),
+        "force": bool(force),
+    }
+    if row.status == "active":
+        response = {
+            "action": RetrievalAction.ACTIVATE_SPACE.value,
+            "accepted": True,
+            "audit_event": "vector.space.activated",
+            "http_status": 200,
+            "deduplicated": True,
+            "run_id": None,
+            "status": RunStatus.SUCCEEDED.value,
+            "idempotency_key": None,
+            "message": "space is already active",
+            "space_id": str(row.id),
+            "quality": "not_sampled",
+            "already_active": True,
+        }
+        return cast(dict[str, Any], assert_no_raw_text(response))
+    reap_stale_runs(session)
+    audit = _audit_for(actor, "vector.space.activated", str(row.id))
+    try:
+        job, deduplicated = enqueue_vector_job(
+            session,
+            job_type=JobType.VECTOR_CUTOVER.value,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            audit=audit,
+            space_id=str(row.id),
+        )
+    except RetrievalJobConflict as error:
+        raise RetrievalActionError(str(error), reason=error.reason, extra=error.extra) from error
+    return _response(
+        RetrievalAction.ACTIVATE_SPACE,
+        job,
+        audit_event="vector.space.activated",
+        http_status=200 if deduplicated else 202,
+        deduplicated=deduplicated,
+        message=(
+            "replay of the original cutover run"
+            if deduplicated
+            else "cutover queued: the candidate is backfilled, coverage-gated and activated"
+        ),
+        extra={"space_id": str(row.id), "quality": "not_sampled"},
     )
 
 
 def unsupported_lifecycle(action: str) -> RetrievalActionError:
     return RetrievalActionError(
-        f"{action} is unavailable: study has one legacy chunk_vecs space and "
-        "no vector-space lifecycle (plan 51 Q3c)",
-        reason="unsupported_action",
-        extra={"action": action, "space_id": LEGACY_SPACE_ID},
+        f"{action} is not part of this build: golden-query quality compare and the "
+        "quality activation gate are Q3c2b2; activation here is coverage-gated and "
+        "reports quality=not_sampled",
+        reason="quality_not_sampled",
+        extra={"action": action, "quality": "not_sampled"},
     )
 
 
@@ -448,9 +949,14 @@ __all__ = [
     "DRY_RUN_ACTIONS",
     "MAINTENANCE_ACTIONS",
     "RetrievalActionError",
+    "activate_space",
+    "build_space",
     "cancel_run",
+    "cutover",
+    "drop_space",
     "maintenance",
     "reindex",
+    "retire_space",
     "retry_run",
     "unsupported_lifecycle",
     "validate_key",

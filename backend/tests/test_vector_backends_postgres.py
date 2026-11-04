@@ -453,3 +453,67 @@ def test_pg_provisioning_is_idempotent_and_keeps_chunk_vecs_like_sqlite(
         vectors.rowid_for(chunk_id): chunk_id for chunk_id in chunk_ids
     }
     assert store.health().legacy_rows == 2
+
+
+def test_pg_space_lifecycle_backfill_activate_and_legacy_drop(
+    pg_session: Session,
+) -> None:
+    from app.services.retrieval import lifecycle
+
+    _profile, _course, _material, chunk_ids = seed_material(
+        pg_session, ["alpha", "beta"]
+    )
+    legacy_store = StudyVectorStore(pg_session)
+    legacy_store.store(chunk_ids, [basis(0), basis(1)], "fake-embed")
+    pg_session.commit()
+    legacy = legacy_store.content_space()
+    assert legacy is not None and legacy.space_id == CONTENT_SPACE_ID
+
+    built, model_changed = lifecycle.build_space(
+        pg_session,
+        name="content-v2",
+        provider="test",
+        model="fake-embed-v2",
+        dim=DIM,
+    )
+    assert model_changed is True
+    assert built.index_table is not None
+    pg_session.commit()
+
+    target = StudyVectorStore(pg_session, space_id=built.space_id)
+    target.store(chunk_ids, [basis(0), basis(1)], "fake-embed-v2")
+    pg_session.commit()
+    lifecycle.write_coverage_snapshot(
+        pg_session,
+        space_id=built.space_id,
+        total=2,
+        embedded=2,
+        missing=0,
+    )
+    pg_session.commit()
+
+    activated = lifecycle.activate_space(pg_session, built.space_id)
+    pg_session.commit()
+    assert activated.previous_space_id == CONTENT_SPACE_ID
+    assert activated.gate is not None
+    assert activated.gate.quality == "not_sampled"
+    assert activated.gate.coverage_status.value == "pass"
+    assert pg_session.get(VectorSpace, built.space_id).status == "active"  # type: ignore[union-attr]
+    assert pg_session.get(VectorSpace, CONTENT_SPACE_ID).status == "retired"  # type: ignore[union-attr]
+
+    store = StudyVectorStore(pg_session)
+    hits = store.search(basis(0), limit=2)
+    assert hits and {chunk_id for chunk_id, _ in hits} <= set(chunk_ids)
+
+    dropped = lifecycle.drop_space(
+        pg_session,
+        CONTENT_SPACE_ID,
+        confirm="content",
+        force=True,
+    )
+    pg_session.commit()
+    assert dropped.dropped is True
+    assert pg_session.get(VectorSpace, CONTENT_SPACE_ID) is None
+    assert _scalar(pg_session.get_bind(), "SELECT to_regclass('chunk_vecs')") is None
+    hits = StudyVectorStore(pg_session).search(basis(0), limit=2)
+    assert hits and {chunk_id for chunk_id, _ in hits} <= set(chunk_ids)

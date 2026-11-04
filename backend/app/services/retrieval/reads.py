@@ -1,13 +1,10 @@
-"""Composed retrieval-operations read model over the legacy store.
+"""Composed retrieval-operations read model over the real spaces.
 
-Plan 51 Q3a. Every reader composes what already exists — ``jobs`` (the
-VECTOR_* run rows), ``chunks``/``chunk_vecs`` (the store), the two bounded
-rollups — and shapes the family contract DTOs. Nothing here carries raw
-query, prompt or document text, and coverage is always the latest snapshot
-(``as_of=None`` means never reconciled, never a fake percentage).
-
-Study has no space lifecycle, so the read model exposes exactly one mapped
-content space. The management UI, cutover and activation gates are Q3c.
+Plan 51 Q3a/Q3c2b1. Every reader composes what already exists — ``jobs`` (the
+VECTOR_* run rows), the vector metadata/backends, the two bounded rollups — and
+shapes the family contract DTOs. Nothing here carries raw query, prompt or
+document text, and coverage is always the latest snapshot of the addressed
+real space (``as_of=None`` means never reconciled, never a fake percentage).
 """
 
 from __future__ import annotations
@@ -20,7 +17,7 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...domain.models import Job, RetrievalQueryRollup
+from ...domain.models import Job, RetrievalQueryRollup, VectorSpace
 from ...storage.retrieval_ops import (
     VECTOR_JOB_TYPES,
     GateStatus,
@@ -32,6 +29,7 @@ from ...storage.retrieval_ops import (
     SpaceDTO,
 )
 from ...storage.vector_store import backend_label
+from . import lifecycle
 from .legacy import (
     LEGACY_KIND,
     LEGACY_SPACE_ID,
@@ -100,21 +98,19 @@ def _run_dto(row: Job) -> RunDTO | None:
     payload = row.payload if isinstance(row.payload, dict) else {}
     scope = RunScope(
         kind=str(payload["kind"]) if payload.get("kind") else None,
-        view=None,
-        since=None,
+        view=str(payload["view"]) if payload.get("view") else None,
+        since=str(payload["since"]) if payload.get("since") else None,
     )
     budget = payload.get("budget")
     return RunDTO(
         run_id=row.id,
-        space_id=LEGACY_SPACE_ID,
+        space_id=str(payload.get("space_id") or LEGACY_SPACE_ID),
         job_type=job_type,
         status=status,
         progress=max(0, min(int(row.progress or 0), 100)),
         stage=row.stage,
         scope=scope,
-        budget_tokens=(
-            int(str(budget)) if budget is not None else None
-        ),
+        budget_tokens=(int(str(budget)) if budget is not None else None),
         created_at=iso(row.created_at),
         started_at=iso(row.started_at),
         finished_at=iso(row.finished_at),
@@ -151,36 +147,48 @@ def list_runs(session: Session, *, limit: int = RUN_LIMIT) -> list[dict[str, Any
     return [payload for payload in payloads if payload["run"] is not None]
 
 
-def _last_reindex(session: Session) -> str | None:
-    row = session.scalars(
+def _last_reindex(session: Session, space_id: str) -> str | None:
+    rows = session.scalars(
         select(Job)
         .where(Job.type == "VECTOR_REINDEX", Job.status == "done")
         .order_by(Job.finished_at.desc(), Job.created_at.desc())
-        .limit(1)
-    ).first()
-    return iso(row.finished_at or row.created_at) if row is not None else None
+        .limit(RUN_MAX)
+    ).all()
+    for row in rows:
+        payload = row.payload if isinstance(row.payload, dict) else {}
+        if str(payload.get("space_id") or LEGACY_SPACE_ID) == space_id:
+            return iso(row.finished_at or row.created_at)
+    return None
 
 
 def _space(session: Session, store: LegacyStore) -> SpaceDTO:
-    return replace(space_dto(session, store), last_reindex_at=_last_reindex(session))
+    return replace(
+        space_dto(session, store),
+        last_reindex_at=_last_reindex(session, store.space_id),
+    )
+
+
+def _active_space_id(session: Session) -> str | None:
+    return lifecycle.active_space_id(session)
 
 
 def query_health(session: Session, *, window: str | None = None) -> dict[str, Any]:
     start, end, key = _window(window)
+    target = _active_space_id(session) or LEGACY_SPACE_ID
     rows = session.scalars(
         select(RetrievalQueryRollup)
         .where(
-            RetrievalQueryRollup.space_id == LEGACY_SPACE_ID,
-            RetrievalQueryRollup.kind == LEGACY_KIND,
+            RetrievalQueryRollup.space_id == target,
+            RetrievalQueryRollup.kind.in_((LEGACY_KIND, "material", "chunk")),
             RetrievalQueryRollup.bucket_start >= start,
             RetrievalQueryRollup.bucket_start < end,
         )
         .order_by(RetrievalQueryRollup.bucket_start)
     ).all()
     metrics = aggregate_rows(list(rows))
-    snapshot = latest_coverage(session)
+    snapshot = latest_coverage(session, target)
     dto = QueryHealthDTO(
-        space_id=LEGACY_SPACE_ID,
+        space_id=target,
         window_start=iso(start) or "",
         window_end=iso(end) or "",
         p50_ms=metrics["p50_ms"],
@@ -190,7 +198,7 @@ def query_health(session: Session, *, window: str | None = None) -> dict[str, An
         zero_result_rate=metrics["zero_result_rate"],
         degraded_rate=metrics["degraded_rate"],
         degraded_reasons=metrics["degraded_reasons"],
-        per_view_hits={},
+        per_view_hits=metrics["per_view_hits"],
         ann_recall=snapshot.ann_recall if snapshot is not None else None,
         ann_recall_k=snapshot.ann_recall_k if snapshot is not None else None,
         probe_size=snapshot.probe_size if snapshot is not None else None,
@@ -210,13 +218,15 @@ def query_health(session: Session, *, window: str | None = None) -> dict[str, An
 
 def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
     store = load_store(session)
-    coverage = coverage_dto(session, store)
+    target = store.space_id if store is not None else (_active_space_id(session) or LEGACY_SPACE_ID)
+    coverage = coverage_dto(session, store, space_id=target)
     runs = list_runs(session, limit=5)
     health = query_health(session, window=window)
+    spaces = list_spaces(session)
     notes: list[str] = [
-        "Space lifecycle management (build/activate/retire/cutover) is not "
-        "available in this build — plan 51 Q3c2; the content space is mapped "
-        "onto its provisioned physical backend."
+        "Build/activate/retire/drop and cutover are available. Activation is "
+        "coverage-gated; golden-query quality compare is not sampled in this "
+        "build (Q3c2b2)."
     ]
     if store is not None:
         notes.append(f"Storage: {store.health_detail}.")
@@ -225,9 +235,19 @@ def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
                 "The provisioned vector backend reports a problem; search falls "
                 "back to the legacy store or lexical matching."
             )
+        if store.space_id != LEGACY_SPACE_ID and lifecycle.legacy_compat_present(session):
+            notes.append(
+                "The retired legacy chunk_vecs compatibility store is retained; "
+                "drop the retired legacy space to remove it."
+            )
+    for building in lifecycle.building_spaces(session):
+        notes.append(
+            f"Building space {building.name!r} ({building.model}, dim {building.dim}); "
+            "it is not searchable until it is activated."
+        )
     if store is None and coverage.as_of is None:
         state = "empty"
-        notes.append("The legacy vector store has no vec_meta yet (nothing embedded).")
+        notes.append("The vector store has no active space yet (nothing embedded).")
     elif coverage.as_of is None:
         state = "cold"
         notes.append("Never reconciled — run a vector reindex to publish coverage.")
@@ -256,33 +276,58 @@ def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
         "recent_runs": runs,
         "query_health": health,
         "notes": notes,
+        "spaces": spaces["spaces"],
+    }
+
+
+def list_spaces(session: Session) -> dict[str, Any]:
+    active_id = _active_space_id(session)
+    rows: list[dict[str, Any]] = []
+    for row in session.scalars(
+        select(VectorSpace).order_by(VectorSpace.created_at, VectorSpace.id)
+    ):
+        store = load_store(session, space_id=str(row.id))
+        if store is None:
+            continue
+        rows.append(_space(session, store).to_dict())
+    active = next((entry for entry in rows if entry["space_id"] == active_id), None)
+    return {
+        "spaces": rows,
+        "cold": active is None or active.get("as_of") is None,
+        "active_space_id": active_id,
+        "notes": [] if rows else ["No vector space is provisioned; spaces is empty."],
     }
 
 
 def spaces(session: Session) -> dict[str, Any]:
-    store = load_store(session)
-    rows = [_space(session, store).to_dict()] if store is not None else []
-    return {
-        "spaces": rows,
-        "cold": not rows or coverage_dto(session, store).as_of is None,
-        "notes": (
-            []
-            if store is not None
-            else ["No legacy vector store is provisioned; spaces is empty."]
-        ),
-    }
+    return list_spaces(session)
 
 
 def coverage(session: Session, *, space: str | None = None) -> dict[str, Any]:
-    store = load_store(session)
-    if store is not None and space not in (None, "", store.space_id):
+    target = space
+    if target in (None, ""):
+        target = _active_space_id(session)
+    if target in (None, ""):
+        store = load_store(session)
+        if store is not None:
+            target = store.space_id
+    if target in (None, ""):
+        dto = coverage_dto(session, space_id=LEGACY_SPACE_ID)
         return {
-            "space_id": space,
+            "space_id": dto.space_id,
+            "cold": True,
+            "coverage": dto.to_dict(),
+            "notes": ["No vector space is provisioned."],
+        }
+    row = session.get(VectorSpace, str(target))
+    if row is None:
+        return {
+            "space_id": str(target),
             "cold": True,
             "coverage": None,
-            "notes": [f"No such space {space!r}; study exposes one legacy space."],
+            "notes": [f"No such space {target!r}."],
         }
-    dto = coverage_dto(session, store)
+    dto = coverage_dto(session, space_id=str(row.id))
     return {
         "space_id": dto.space_id,
         "cold": dto.as_of is None,
@@ -300,6 +345,7 @@ __all__ = [
     "READ_WINDOWS",
     "coverage",
     "list_runs",
+    "list_spaces",
     "overview",
     "query_health",
     "spaces",

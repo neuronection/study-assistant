@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...core.ids import hex_id, uuid_str
 from ...services.retrieval.telemetry import degraded_reason_for_warning, record_query
-from ...storage.vector_store import StudyVectorStore
+from ...storage.vector_store import StudyVectorStore, content_space_for
 from .fusion import RRF_K
 from .matching import Match, or_terms_match, trigram_match
 from .scoring import fuzzy_text_match
@@ -199,6 +199,7 @@ def retrieve_chunks_hybrid(
     embedding_warning: Callable[[str], None] | None = None,
 ) -> list[dict[str, Any]]:
     started = time.monotonic()
+    space_id = _active_space_id(session)
     fts_rows = retrieve_chunks(
         session,
         query,
@@ -213,6 +214,7 @@ def retrieve_chunks_hybrid(
             candidates=len(fts_rows),
             zero_results=not fts_rows,
             kind="chunk",
+            space_id=space_id,
             degraded_reason=None,
         )
         return fts_rows[:limit]
@@ -233,6 +235,7 @@ def retrieve_chunks_hybrid(
             candidates=len(fts_rows),
             zero_results=not hits,
             kind="chunk",
+            space_id=space_id,
             degraded_reason=degraded_reason_for_warning(warning),
         )
         return hits
@@ -250,6 +253,7 @@ def retrieve_chunks_hybrid(
         candidates=len(fts_rows) + len(vector_rows),
         zero_results=not hits,
         kind="chunk",
+        space_id=space_id,
         degraded_reason=degraded_reason_for_warning(warning),
     )
     return hits
@@ -284,3 +288,11 @@ def retrieve_chunks(
         seen = {row["chunk_id"] for row in rows}
         rows.extend(row for row in fuzzy_rows if row["chunk_id"] not in seen)
     return rows[:limit]
+
+
+def _active_space_id(session: Session) -> str | None:
+    try:
+        space = content_space_for(session)
+    except Exception:
+        return None
+    return space.space_id if space is not None else None

@@ -311,24 +311,33 @@ def test_maintenance_actions_and_dry_run(
     assert cast(dict[str, Any], retry_job.payload)["chunk_ids"] == ["missing-chunk"]
 
 
-def test_lifecycle_verbs_are_structured_unsupported_refusals(
+def test_quality_compare_is_an_explicit_q3c2b2_refusal(
     client: TestClient,
 ) -> None:
     _stop_worker(client)
-    cases = [
-        ("spaces", None),
-        ("spaces/legacy-chunk-vecs/activate", None),
-        ("spaces/legacy-chunk-vecs/retire", None),
-        ("spaces/legacy-chunk-vecs/drop", None),
-        ("cutover", None),
-        ("quality/compare", None),
-    ]
-    for path, _ in cases:
-        response = client.post(f"{BASE}/{path}")
-        assert response.status_code == 409, (path, response.text)
-        detail = response.json()["detail"]
-        assert detail["reason"] == "unsupported_action"
-        assert detail["space_id"] == LEGACY_SPACE_ID
+    response = client.post(f"{BASE}/quality/compare")
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["reason"] == "quality_not_sampled"
+    assert detail["quality"] == "not_sampled"
+    assert "Q3c2b2" in detail["message"]
+
+
+def test_lifecycle_verbs_require_a_space_and_key(
+    client: TestClient,
+) -> None:
+    _stop_worker(client)
+    missing_body = client.post(f"{BASE}/cutover")
+    assert missing_body.status_code == 422
+    unknown = client.post(
+        f"{BASE}/spaces/no-such-space/activate",
+        headers=_key("activate-key-missing"),
+    )
+    assert unknown.status_code == 404
+    assert unknown.json()["detail"]["reason"] == "space_not_found"
+    missing_key = client.post(f"{BASE}/spaces", json={})
+    assert missing_key.status_code == 422
+    assert missing_key.json()["detail"]["reason"] == "idempotency_key_required"
 
 
 def test_actions_require_admin(raw_client: TestClient) -> None:

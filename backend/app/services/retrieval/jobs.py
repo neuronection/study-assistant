@@ -20,9 +20,9 @@ Semantics:
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from sqlalchemy import select
@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from ...core.vocab import JobStatus, JobType
 from ...domain.models import AuditEvent as AuditEventRow
 from ...domain.models import Job
+from ...jobs.payloads import JobResult
 from ...storage.retrieval_ops import (
     HEARTBEAT_STALE_SECONDS,
     IDEMPOTENCY_TTL_SECONDS,
@@ -178,18 +179,20 @@ def enqueue_vector_job(
     payload: dict[str, Any],
     idempotency_key: str,
     audit: AuditEventRow | Sequence[AuditEventRow] | None = None,
+    space_id: str | None = None,
 ) -> tuple[Job, bool]:
     """Queue a vector run with replay and one-active-run semantics."""
     if job_type not in VECTOR_TYPE_SET:
         raise ValueError(f"{job_type!r} is not a vector job type")
     key = validate_key(idempotency_key)
+    lock_key = run_lock_key(space_id) if space_id else default_lock_key()
     replay = _replay_or_conflict(
         session, job_type=job_type, payload=payload, key=key
     )
     if replay is not None:
         return replay, True
 
-    active = active_run(session)
+    active = active_run(session, lock_key=lock_key)
     if active is not None:
         raise _active_conflict(active)
 
@@ -199,7 +202,7 @@ def enqueue_vector_job(
         status=JobStatus.QUEUED.value,
         progress=0,
         idempotency_key=key,
-        lock_key=default_lock_key(),
+        lock_key=lock_key,
     )
     session.add(job)
     _add_audit(session, audit)
@@ -212,7 +215,7 @@ def enqueue_vector_job(
         )
         if replay is not None:
             return replay, True
-        active = active_run(session)
+        active = active_run(session, lock_key=lock_key)
         if active is not None:
             raise _active_conflict(active) from None
         raise RetrievalJobConflict(
@@ -221,6 +224,99 @@ def enqueue_vector_job(
         ) from None
     session.refresh(job)
     return job, False
+
+
+def run_vector_action(
+    session: Session,
+    *,
+    job_type: str,
+    payload: dict[str, Any],
+    idempotency_key: str,
+    lock_key: str,
+    execute: Callable[[Job], dict[str, Any]],
+    audit: AuditEventRow | Sequence[AuditEventRow] | None = None,
+    failure_audit: AuditEventRow | None = None,
+) -> tuple[dict[str, Any], bool]:
+    """Run one short lifecycle action as a real job row (sync, under the lock).
+
+    The row gives the action the same idempotency replay, one-active-run lock
+    and audit trail as the queued reindex/maintenance actions. It is never
+    visible as ``queued``: it is created ``running`` and finishes in this
+    request.
+    """
+    if job_type not in VECTOR_TYPE_SET:
+        raise ValueError(f"{job_type!r} is not a vector job type")
+    key = validate_key(idempotency_key)
+    replay = _replay_or_conflict(session, job_type=job_type, payload=payload, key=key)
+    if replay is not None:
+        stored = (
+            (replay.result or {}).get("response")
+            if isinstance(replay.result, dict)
+            else None
+        )
+        if isinstance(stored, dict):
+            return cast(dict[str, Any], stored), True
+    active = active_run(session, lock_key=lock_key)
+    if active is not None:
+        raise _active_conflict(active)
+    moment = _utcnow()
+    job = Job(
+        type=job_type,
+        payload=payload,
+        status=JobStatus.RUNNING.value,
+        progress=1,
+        idempotency_key=key,
+        lock_key=lock_key,
+        started_at=moment,
+        heartbeat_at=moment,
+    )
+    session.add(job)
+    _add_audit(session, audit)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        replay = _replay_or_conflict(session, job_type=job_type, payload=payload, key=key)
+        if replay is not None:
+            stored = (
+                (replay.result or {}).get("response")
+                if isinstance(replay.result, dict)
+                else None
+            )
+            if isinstance(stored, dict):
+                return cast(dict[str, Any], stored), True
+        active = active_run(session, lock_key=lock_key)
+        if active is not None:
+            raise _active_conflict(active) from None
+        raise RetrievalJobConflict(
+            "a concurrent retrieval action collided on the same key or lock; retry",
+            reason="concurrent_action",
+        ) from None
+    try:
+        response = execute(job)
+        if isinstance(response, dict):
+            response["run_id"] = job.id
+    except Exception as error:
+        session.rollback()
+        failed = session.get(Job, job.id)
+        if failed is not None:
+            failed.status = JobStatus.FAILED.value
+            failed.error = str(error)[:500]
+            failed.finished_at = _utcnow()
+            failed.lock_key = None
+            if failure_audit is not None:
+                session.add(failure_audit)
+            session.commit()
+        raise
+    job = session.get(Job, job.id) or job
+    job.status = JobStatus.DONE.value
+    job.progress = 100
+    job.finished_at = _utcnow()
+    job.heartbeat_at = job.finished_at
+    job.lock_key = None
+    job.result = cast(JobResult, {"response": response})
+    session.commit()
+    return response, False
 
 
 def reap_stale_runs(
@@ -278,5 +374,6 @@ __all__ = [
     "find_replay",
     "reap_stale_runs",
     "replay_cutoff",
+    "run_vector_action",
     "validate_key",
 ]

@@ -314,6 +314,7 @@ def record_query(
     candidates: int,
     zero_results: bool,
     kind: str = LEGACY_KIND,
+    space_id: str | None = None,
     view: str | None = None,
     degraded_reason: str | None = None,
 ) -> None:
@@ -327,6 +328,7 @@ def record_query(
             candidates=candidates,
             zero_results=zero_results,
             kind=kind,
+            space_id=space_id or LEGACY_SPACE_ID,
             view=view,
             degraded_reason=degraded_reason,
         )

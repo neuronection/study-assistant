@@ -341,8 +341,8 @@ def search(session: Session, query_vector: list[float], limit: int = 24) -> list
 
 
 def vector_count(session: Session) -> int:
-    meta = _load_meta(session)
-    if "dim" not in meta:
+    meta = read_meta(session)
+    if "dim" not in meta or not table_exists(session):
         return 0
     count: Any = session.execute(text(f"SELECT count(*) FROM {VEC_TABLE}")).scalar()
     return int(count or 0)
