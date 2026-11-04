@@ -162,8 +162,8 @@ database.
 
 ## PostgreSQL chain (plan 51 Q3c1)
 
-The chain is green from `0001_baseline` to `0013_vector_space_provisioning` on
-PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
+The chain is green from `0001_baseline` to
+`0014_vector_record_chunk_id` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
 scratch database, upgrades the whole chain and asserts the result whenever
 `SA_TEST_DATABASE_URL` points at a disposable server; it skips only when the
 variable is unset (the SQLite suite always runs). The repaired pre-0012
@@ -224,6 +224,19 @@ application code) and shares its shape with
 `storage/vector_schema.index_table_name`: eight lowercase hex characters
 derived from the space id (`vec_dfbcce9b` for `legacy-chunk-vecs`). The
 migration tests pin both the table name and the copied rows.
+
+## Vector record chunk identity (plan 51 Q3c2b1)
+
+`0014_vector_record_chunk_id` adds
+`vector_records.chunk_id` (nullable `String(80)`), an index and the unique
+`(space_id, chunk_id)` constraint, then backfills `chunk_id = id` for the
+legacy `legacy-chunk-vecs` space. The global record primary key can no longer
+be the chunk id once a building space coexists with the active one; `chunk_id`
+is the space-local hydration handle the search path uses, while the record id
+is the deterministic `uuid5(space, chunk)` and `rowid` is the sqlite-vec rule
+over it. Downgrade drops the constraint/index/column; record rows are kept.
+The migration is part of the same single linear chain and is covered by the
+SQLite and PostgreSQL round-trip tests.
 
 ## Concurrent sessions (worktree renumbering)
 

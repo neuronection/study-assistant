@@ -47,6 +47,34 @@ Release history from before the public launch lives in the
   `test_search_vector_backend.py` (FTS/RRF regression and fallback), and
   migrated SQLite/PostgreSQL 0013 round-trips.
 
+### Added (vector space lifecycle & cutover — plan 51 Q3c2b1)
+- **Real embedding-space lifecycle.** `services/retrieval/lifecycle.py`
+  builds a `building` space with real model/dim/prefix metadata, provisions
+  its `vec_<8hex>` backend, backfills it through the ordinary reindex writer,
+  activates it only when physical health and coverage pass, retires every
+  previous active row in one transaction, and supports typed retire/drop with
+  the 7-day grace period. The active space can never be dropped.
+- **Real cutover.** `VECTOR_CUTOVER` backfills the candidate, refuses a
+  non-`pass` coverage gate, activates it, retires the previous space and
+  reports `quality="not_sampled"` — no fake quality pass. `chunk_vecs` stays
+  as the compatibility store until the retired legacy space is explicitly
+  dropped.
+- **Two spaces coexist.** Migration `0014_vector_record_chunk_id` adds
+  `vector_records.chunk_id`; records use a deterministic per-space id and the
+  sqlite-vec rowid rule, while search hydrates back to the chunk id. Rollups,
+  coverage snapshots, run DTOs and query health follow the active real space
+  id.
+- **Management surface.** `POST /admin/retrieval/spaces`,
+  `/spaces/{id}/{activate,retire,drop}` and `/cutover` are wired to the
+  existing idempotency/lock/audit seam; Tools → Indexing lists spaces and
+  exposes build/cutover/retire/drop with typed confirmations and an explicit
+  quality-not-sampled note. `quality/compare` remains an honest Q3c2b2
+  refusal.
+- Tests: `test_vector_space_lifecycle.py` (build/backfill/activate/retire/
+  drop, coverage refusal, one-active pointer, cutover, legacy compatibility,
+  active-space identity), updated service/action/read/migration and frontend
+  card tests.
+
 ### Fixed (PostgreSQL migration baseline — plan 51 Q3c1)
 - **The PostgreSQL migration chain now runs end to end** from
   `0001_baseline` to `0012_vector_spaces` (PostgreSQL 16 + pgvector).

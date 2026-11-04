@@ -421,16 +421,19 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   explicit new-space/cutover handoff runs. Since 0013 (plan 51 Q3c2a) the
   `content` space is dual-written to its provisioned `vec_dfbcce9b` backend
   and `chunk_vecs` remains the compatibility fallback.
-- **vector_spaces / vector_documents / vector_records** (0012, plan 50 P3a) —
-  the portable metadata mapping. One `content` space keeps the synthetic id
-  `legacy-chunk-vecs` (so Q3a/Q3b rollups and coverage snapshots keep
-  working); 0013 updates its `index_table` to `vec_dfbcce9b`. A document is a
-  material (`kind='material'`, `source_id` = material UUID) and a record is a
-  chunk's `body` view carrying the family content hash and the study ``rowid``
-  (the sqlite-vec rowid map; the record id is the chunk id). The metadata is
-  derived/operational, hard-deleted with its document, and never a second copy
-  of text. `storage/vector_store.py` is the only read/write seam; physical
-  DDL lives in `storage/vector_provisioning.py` and the dialect SQL in
+- **vector_spaces / vector_documents / vector_records** (0012/0013/0014,
+  plan 50 P3a + plan 51 Q3c2b1) — the portable metadata mapping. The legacy
+  `content` space keeps the synthetic id `legacy-chunk-vecs`; 0013 updates its
+  `index_table` to `vec_dfbcce9b`, and Q3c2b1 adds real `building`/`active`/
+  `retired` spaces beside it. A document is a material (`kind='material'`,
+  `source_id` = material UUID); a record is a chunk's `body` view carrying
+  the family content hash, the study ``rowid`` (sqlite-vec map) and a
+  space-local `chunk_id` handle (0014). The record id is deterministic per
+  `(space, chunk)`, so two spaces can coexist without sharing the global
+  primary key. The metadata is derived/operational, hard-deleted with its
+  document, and never a second copy of text. `storage/vector_store.py` is the
+  only read/write seam; physical DDL lives in
+  `storage/vector_provisioning.py` and the dialect SQL in
   `storage/vector_backends.py`.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
   rebuilt by the migration and maintained by `services/tree.py` (rebuildable at
@@ -444,6 +447,13 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0014_vector_record_chunk_id (plan 51 Q3c2b1)**: adds
+  `vector_records.chunk_id` (nullable `String(80)`), its index and the
+  unique `(space_id, chunk_id)` constraint, then backfills `chunk_id = id`
+  for the legacy `legacy-chunk-vecs` space. A building space coexists with
+  the active one, so the global record primary key can no longer be the
+  chunk id; `chunk_id` is the search hydration handle. Downgrade drops the
+  column/constraint/index; record rows stay.
 - **0012_vector_spaces (plan 50 P3a, ADR-0051 companion)**: adds
   `vector_spaces` (one `active` space per name; `index_table` allows the
   legacy `chunk_vecs`, NULL for linear, or a future `vec_<8hex>`),
