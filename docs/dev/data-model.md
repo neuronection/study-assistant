@@ -412,9 +412,23 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   candidate generation for the typo-tolerant fuzzy search tier (candidates verified
   per-token in Python before ranking); synced alongside `material_fts` and backfilled
   from it by 0045
-- **chunk_vecs** — sqlite-vec vec0 table (chunk_embedding float[dim], cosine),
-  created at runtime with the sqlite-vec extension; **vec_meta** stores dim + model;
-  changing embedding model drops and rebuilds the table automatically
+- **chunk_vecs** — sqlite-vec vec0 table (chunk_embedding float[dim], cosine)
+  on SQLite / pgvector + HNSW on PostgreSQL, created at runtime with the vector
+  extension; **vec_meta** stores dim + model; **chunk_vec_ids** keeps the
+  rowid→chunk UUID reverse map. A model/dimension change is **not** applied in
+  place (0012, plan 50 P3a): `storage/vectors.ensure_table` raises
+  `VectorSpaceChangeRequired` and the old table stays readable until an
+  explicit new-space/cutover handoff runs.
+- **vector_spaces / vector_documents / vector_records** (0012, plan 50 P3a) —
+  the portable metadata mapping over the legacy store. One `content` space
+  keeps the synthetic id `legacy-chunk-vecs` (so Q3a/Q3b rollups and coverage
+  snapshots keep working) with `index_table = 'chunk_vecs'`; a document is a
+  material (`kind='material'`, `source_id` = material UUID) and a record is a
+  chunk's `body` view carrying the family content hash and the existing
+  ``rowid`` reverse map. The metadata is derived/operational, hard-deleted
+  with its document, and never a second copy of text. `storage/vector_store.py`
+  is the only read/write seam; the physical backend is intentionally still
+  legacy in P3a.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
   rebuilt by the migration and maintained by `services/tree.py` (rebuildable at
   any time)
@@ -427,6 +441,18 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0012_vector_spaces (plan 50 P3a, ADR-0051 companion)**: adds
+  `vector_spaces` (one `active` space per name; `index_table` allows the
+  legacy `chunk_vecs`, NULL for linear, or a future `vec_<8hex>`),
+  `vector_documents` (material source handle + `profile_id`; unique per
+  space/kind/source) and `vector_records` (a chunk `body` record with
+  `content_hash`, optional `rowid` reverse map, unique
+  `(document, view, chunk_index)`). The one `content` space is backfilled
+  from `vec_meta`; documents/records are backfilled from
+  `chunk_vec_ids` + chunks/materials. Existing `chunk_vecs` rows are never
+  dropped or rewritten; content hashes left empty by the SQL backfill are
+  filled idempotently by `StudyVectorStore.backfill_metadata`. No coverage
+  snapshot is written. Downgrade drops only the three metadata tables.
 - **0011_retrieval_run_actions (plan 51 Q3b)**: `jobs` gains
   `idempotency_key` (nullable, 8–120 chars), `lock_key`, `heartbeat_at`
   and `cancel_requested` (boolean, default false). Two partial unique
@@ -444,8 +470,9 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
   bucket_start/bucket_width`; count/zero/candidates measures + a versioned
   latency histogram; 30-day operational TTL) and
   `retrieval_coverage_snapshots` (one row per space/kind/as_of; nullable ANN
-  recall; 90-day TTL). Both key a string `space_id` because study has no
-  vector-space lifecycle yet (Q3b). Downgrade drops the tables and the
+  recall; 90-day TTL). Both key a string `space_id`; the `content` space's
+  id is that same string, and Q3c owns the lifecycle/cutover that changes
+  it. Downgrade drops the tables and the
   result column and restores the old type CHECK; it fails loudly if a
   `VECTOR_*` job row still exists rather than rewriting run history.
 - **0008_quiz_question_kinds (plan 87 B, ADR-217)**: the `questions.type`

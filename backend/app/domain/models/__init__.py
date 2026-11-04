@@ -180,6 +180,15 @@ from .retrieval import (
 from .retrieval import (
     RetrievalQueryRollup as RetrievalQueryRollup,
 )
+from .retrieval import (
+    VectorDocument as VectorDocument,
+)
+from .retrieval import (
+    VectorRecord as VectorRecord,
+)
+from .retrieval import (
+    VectorSpace as VectorSpace,
+)
 from .study import (
     Activity as Activity,
 )

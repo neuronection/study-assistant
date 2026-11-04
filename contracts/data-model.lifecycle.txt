@@ -76,6 +76,9 @@ questions :: record
 quiz_help_events :: operational
 quizme_answers :: record
 retrieval_coverage_snapshots :: operational
+vector_documents :: operational
+vector_records :: operational
+vector_spaces :: operational
 retrieval_query_rollups :: operational
 review_log :: record
 skill_versions :: record

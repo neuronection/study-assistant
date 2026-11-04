@@ -248,6 +248,9 @@ PROFILE_SCOPE: dict[str, str] = {
     "study_sessions": "profile_id",
     "task_assignments": INSTANCE,
     "tree_nodes": "course_id → courses.profile_id",
+    "vector_documents": "profile_id (source material's profile)",
+    "vector_records": "document_id → vector_documents.profile_id",
+    "vector_spaces": "global derived index configuration (operational)",
     "users": IDENTITY,
 }
 
