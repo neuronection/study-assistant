@@ -31,7 +31,7 @@ _CHUNK_SELECT_PG = (
     "SELECT chunks.id AS chunk_id, chunks.text AS chunk_text, chunks.ordinal, "
     "materials.id AS material_id, materials.title AS title, {table}.markdown AS markdown "
     "FROM {table} "
-    "JOIN materials ON materials.id = {table}.material_id "
+    "JOIN materials ON replace(materials.id::text, '-', '') = {table}.material_id "
     "JOIN extractions ON extractions.material_id = materials.id "
     "JOIN chunks ON chunks.extraction_id = extractions.id "
     "WHERE {where} {course_filter}{extra} "

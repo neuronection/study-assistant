@@ -33,6 +33,11 @@ def _is_postgres(session: Session) -> bool:
     return session.get_bind().dialect.name == "postgresql"
 
 
+def _material_join(table: str) -> str:
+    """Join the hex-keyed FTS twin to the UUID material row on both dialects."""
+    return f"replace(materials.id::text, '-', '') = {table}.material_id"
+
+
 def _fts_ranking(
     session: Session,
     match: Match,
@@ -47,12 +52,13 @@ def _fts_ranking(
     try:
         if _is_postgres(session):
             expr = match.pg.sql
+            join = _material_join(table)
             rows = session.execute(
                 text(
                     f"SELECT {table}.material_id AS material_id, materials.title AS title, "
                     f"ts_headline('simple', {table}.markdown, ({expr}), "
                     f"{_PG_HEADLINE_OPTIONS}) AS snippet "
-                    f"FROM {table} JOIN materials ON materials.id = {table}.material_id "
+                    f"FROM {table} JOIN materials ON {join} "
                     f"WHERE {table}.tsv @@ ({expr}) {course_filter} "
                     f"ORDER BY ts_rank({table}.tsv, ({expr})) DESC LIMIT :limit"
                 ),
@@ -94,6 +100,7 @@ def _trigram_ranking(
     course_filter = _COURSE_FILTER if course_id is not None else ""
     try:
         if _is_postgres(session):
+            join = _material_join("material_fts_trigram")
             rows = session.execute(
                 text(
                     "SELECT material_fts_trigram.material_id AS material_id, "
@@ -101,7 +108,7 @@ def _trigram_ranking(
                     "material_fts_trigram.markdown AS markdown, "
                     f"{_PG_TRIGRAM_SNIPPET} AS snippet "
                     "FROM material_fts_trigram "
-                    "JOIN materials ON materials.id = material_fts_trigram.material_id "
+                    f"JOIN materials ON {join} "
                     f"WHERE {match.pg.sql} {course_filter} "
                     f"ORDER BY {_PG_TRIGRAM_ORDER} LIMIT :limit"
                 ),
