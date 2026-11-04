@@ -11,6 +11,28 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (vector storage foundation — plan 50 P3a)
+- **The family vector contract is vendored byte-identically**
+  (`storage/vector_contract.py` + its fixture table) with the canonical
+  sha256 recorded in `docs/dev/retrieval-ops.md`; `test_vector_contract.py`
+  runs every fixture group and the dev-checkout identity check.
+- **Migration `0012_vector_spaces`** adds the portable metadata layer —
+  `vector_spaces`, `vector_documents`, `vector_records` — and backfills the
+  one `content` space (`legacy-chunk-vecs`) from `vec_meta`, with documents
+  (materials) and records (chunk `body` + content hash + rowid reverse map)
+  from `chunk_vec_ids`. `chunk_vecs` is untouched; no coverage snapshot is
+  written.
+- **`storage/vector_store.py::StudyVectorStore`** is now the read/write seam:
+  search, embed writes, purge and the retrieval handlers use it. A
+  model/dimension change raises `VectorSpaceChangeRequired` instead of
+  silently dropping `chunk_vecs`; the old vectors remain readable until
+  plan 51 Q3c's explicit new-space/cutover.
+- **Honest state stays honest:** a cold store has no space row and no
+  coverage number; `backfill_metadata()` fills content hashes idempotently
+  for rows the SQL backfill mapped without them. The physical backend is
+  still the legacy `chunk_vecs` store — P3a exposes the port, it does not
+  claim the lifecycle yet.
+
 ### Added (retrieval operations — plan 51 Q3b)
 - **Admin action API over the one legacy space.**
   `POST /api/v1/admin/retrieval/{reindex,maintenance,runs/{id}/cancel,
