@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..ai.gateway import ProviderError, TaskUnassigned
+from ..ai.tokenizers import embedding_accounting, token_count
 from ..core.vocab import AttemptMode, QuestionType
 from ..domain.models import (
     Activity,
@@ -1187,14 +1188,16 @@ def recognize_handwriting(
     from ..math.leak_guard import extract_math
 
     candidates = [entry for entry in extract_math(markdown) if entry.strip()]
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="notes_ocr",
             direction="quiz answer recognition",
             model=None,
-            input_tokens=max(1, len(markdown) // 4),
-            output_tokens=max(1, len(markdown) // 4),
+            input_tokens=token_count(markdown, accounting),
+            output_tokens=token_count(markdown, accounting),
             latency_ms=None,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()

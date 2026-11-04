@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from ..ai.contracts.contracts import Constraint, validate
 from ..ai.gateway import LLMGateway, Message, ProviderError, TaskUnassigned
 from ..ai.skills import NOTE_ACTION_SYSTEM, NOTE_COMPOSE_SYSTEM
+from ..ai.tokenizers import embedding_accounting, token_count
 from ..domain.models import (
     AiInteraction,
     Course,
@@ -307,6 +308,7 @@ def compose_note(
     note.search_text = note_search_text(note)
     session.add(note)
     session.flush()
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="note_compose",
@@ -314,9 +316,10 @@ def compose_note(
             direction="compose",
             model=None,
             skill_version_id=skill_version_id,
-            input_tokens=max(1, len(prompt) // 4),
-            output_tokens=max(1, len(output) // 4),
+            input_tokens=token_count(prompt, accounting),
+            output_tokens=token_count(output, accounting),
             latency_ms=None,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()
@@ -876,6 +879,7 @@ def run_note_action(
             feedback = ""
             break
         feedback = validation.feedback()
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="note_action",
@@ -883,9 +887,10 @@ def run_note_action(
             direction=body.action,
             model=None,
             skill_version_id=skill_version_id,
-            input_tokens=max(1, len(prompt) // 4),
-            output_tokens=max(1, len(output) // 4),
+            input_tokens=token_count(prompt, accounting),
+            output_tokens=token_count(output, accounting),
             latency_ms=None,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()

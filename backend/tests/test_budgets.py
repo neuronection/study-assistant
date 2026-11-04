@@ -107,8 +107,8 @@ def test_generate_ledger_records_tokens_and_cost(session_factory: Any) -> None:
         ).one()
     assert row[0] == "chat"
     assert row[1] == "costy"
-    assert row[2] == 100
-    assert row[3] == 1
+    assert row[2] == 250
+    assert row[3] == 2
     assert row[4] is not None and row[4] > 0
 
 

@@ -11,6 +11,29 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (offline tokenizer + real token accounting — plan 52 T5a)
+- **Family contracts synced byte-identically**: `tokenizer_contract.py` +
+  fixtures, the token-aware `vector_contract.py` (stored space key, v2 space
+  identity, `IndexRecord` token fields) and the token-aware
+  `retrieval_ops.py` DTOs (space/run tokenizer + chunk, bounded run progress
+  detail). Vendored copies stay canonical; the dev ledgers record study.
+- **Real offline tokenizer**: `app/ai/tokenizers/` bundles
+  `cl100k_base.tiktoken.gz` with gzip + BPE SHA-256 verification and builds
+  the encoding directly — no `tiktoken.get_encoding`, no `tiktoken_ext`, no
+  network, no `sentencepiece`/HF download. Bounded LRU, `count`/`encode`/
+  `decode`/`encode_with_offsets`, and a visibly labelled heuristic fallback.
+- **One accounting seam**: `app/ai/tokenizers/accounting.py` resolves the
+  effective tokenizer for the assigned embedding model (curated OpenAI
+  embeddings → exact `cl100k_base`; anything else → `exact=False` heuristic,
+  no model-name guessing). Ingest, trash restore, material edit/course
+  import, chat context/trace, tutor/quiz help, note actions and the gateway
+  ledger now use real local counts; the `len//4` estimate is gone. The
+  exact/approximate label travels on `TokenCount` and the interaction
+  metadata (same `ai_interactions` row).
+- **Not in this slice**: token-aware chunk writes/offsets, `space_key` v2
+  stamping, cutover, progress emission or UI (T5b/T5c). `Chunk.token_count`
+  counts the existing character chunks only.
+
 ### Fixed (calendar identity + delta safety — ADR-0052 / E9 / M4)
 - **A calendar link's `uid` is now the LOCAL uid**, with the provider's handle
   in `remote_id`. Providers may mint their own (Graph's `iCalUId` is

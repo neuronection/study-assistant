@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.extensions.errors import ExtensionError
 
+from ...ai.tokenizers import embedding_accounting, token_count
 from ...domain.models import (
     Activity,
     Answer,
@@ -338,13 +339,14 @@ def import_course_bundle(
             session.add(row)
             session.flush()
             chunk_source = f"{markdown}\n\n{drawing_ocr}" if drawing_ocr else markdown
+            accounting = embedding_accounting(session)
             for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
                 session.add(
                     Chunk(
                         extraction_id=row.id,
                         ordinal=ordinal,
                         text=chunk_text,
-                        token_count=max(1, len(chunk_text) // 4),
+                        token_count=token_count(chunk_text, accounting),
                     )
                 )
             sync_material_fts(session, material, markdown, drawing_ocr)

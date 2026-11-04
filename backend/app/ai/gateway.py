@@ -28,6 +28,8 @@ from .speech import (
     speak_with,
 )
 from .structured import dump_structured
+from .tokenizers.accounting import accounting_for, default_accounting
+from .tokenizers.accounting import token_count as _token_count
 from .transcribe import (
     TranscriptionResult,
     TranscriptionUnsupported,
@@ -133,10 +135,6 @@ _CACHED_TASK_NAMES = frozenset({"chat"})
 CACHE_READ_RATE = 0.1
 
 
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
-
-
 def _resolve_model(session: Session, model_id: str) -> tuple[AiModel, Provider]:
     model = session.get(AiModel, model_id)
     if model is None:
@@ -208,9 +206,19 @@ class LLMGateway:
             return
         from ..domain.models import AiInteraction
 
-        tokens_in = usage.tokens_in if usage is not None else _estimate_tokens(prompt)
-        tokens_out = usage.tokens_out if usage is not None else _estimate_tokens(output)
-        cached_in = usage.cache_read if usage is not None else 0
+        if usage is not None:
+            tokens_in = usage.tokens_in
+            tokens_out = usage.tokens_out
+            cached_in = usage.cache_read
+        else:
+            accounting = (
+                accounting_for(resolved.provider_type, resolved.external_id)
+                if resolved is not None
+                else default_accounting()
+            )
+            tokens_in = _token_count(prompt, accounting)
+            tokens_out = _token_count(output, accounting)
+            cached_in = 0
         cost: float | None = None
         if resolved is not None and resolved.cost_in is not None:
             rate_out = resolved.cost_out if resolved.cost_out is not None else 0.0

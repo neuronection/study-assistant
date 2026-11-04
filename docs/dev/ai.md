@@ -749,8 +749,11 @@ answered. **Resolution order (ADR-088):** a task's explicit `model_id`/`fallback
 win; any unset slot falls back to its capability's **default** (`default_task_assignments`
 keyed by `requires`), so "inherit default" tasks resolve to the default and partial
 overrides keep the default fallback. Token counts come from the provider's real
-`usage_metadata` (the `len//4`
-estimate is kept only for the offline/mock path). **Native tool calling (37B/ADR-082):** a
+`usage_metadata`; when a call has no usage (offline/mock or the embedding
+endpoint), the `app/ai/tokenizers/accounting.py` seam counts locally with the
+effective embedding tokenizer — the bundled exact `cl100k_base` for curated
+OpenAI embedding models, or the conservative heuristic labelled
+`exact=False` (plan 52 T5a). The character-divisor estimate is gone. **Native tool calling (37B/ADR-082):** a
 `tools`-capable model gets the chat tool schemas bound via `.bind_tools()` — schemas generated
 from the same catalogs as the prompt — and the stream surfaces each complete structured call as
 a `tool_call` event; the chat service runs the same deterministic tool implementations and
@@ -771,7 +774,7 @@ wraps `.with_structured_output()` (cap-gated on `tools`) as a fast path for the 
 tasks (quizgen/exgen/flashcards/rubric/pattern.discover) — permissive Pydantic schemas guide
 shape, the deterministic validators still gate content, and any schema-unsupported error
 degrades to the plain generate path. Since plan 38 it calls `.with_structured_output(include_raw=True)`
-so the ledger bills **real `usage_metadata` tokens** (not `len//4` estimates) for structured
+so the ledger bills **real `usage_metadata` tokens** for structured
 tasks, and it **pre-gates the fast path on the model profile**
 (`model.profile["structured_output"]`): a profile that confidently says "unsupported" skips
 the round trip and falls through to the next model, while unknown-profile endpoints keep the

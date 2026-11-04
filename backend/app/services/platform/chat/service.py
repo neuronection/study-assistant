@@ -38,6 +38,13 @@ from ....ai.proposals import (
     strip_proposal_fences,
 )
 from ....ai.skills import CHAT_ANSWER_SYSTEM
+from ....ai.tokenizers import (
+    TokenAccounting,
+    embedding_accounting,
+)
+from ....ai.tokenizers import (
+    token_count as _token_count,
+)
 from ....ai.tools import CHAT_TOOL_DOC, QUIZ_TOOL_DOC
 from ....ai.widgets import CHAT_WIDGET_DOC
 from ....core.vocab import ChatProposalStatus
@@ -115,8 +122,8 @@ class TurnPrep:
     proposal_feedback: str | None = None
 
 
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+def _count_tokens(text: str, accounting: TokenAccounting) -> int:
+    return _token_count(text, accounting)
 
 
 class ChatService(ToolsMixin, TurnContextMixin):
@@ -314,8 +321,9 @@ class ChatService(ToolsMixin, TurnContextMixin):
         latency_ms: int,
         skill_version_id: str | None = None,
     ) -> None:
-        input_tokens = _estimate_tokens(prompt)
-        output_tokens = _estimate_tokens(output)
+        accounting = embedding_accounting(self._session)
+        input_tokens = _count_tokens(prompt, accounting)
+        output_tokens = _count_tokens(output, accounting)
         self._session.add(
             AiInteraction(
                 context_type="chat",
@@ -327,6 +335,7 @@ class ChatService(ToolsMixin, TurnContextMixin):
                 output_tokens=output_tokens,
                 cost_usd=None,
                 latency_ms=latency_ms,
+                metadata_json=accounting.metadata(),
             )
         )
 
@@ -606,12 +615,14 @@ class ChatService(ToolsMixin, TurnContextMixin):
             )
 
         latency_ms = int((time.monotonic() - started) * 1000)
+        accounting = embedding_accounting(self._session)
         trace: dict[str, Any] = {
             "run_id": run_id,
             "model": model_name,
             "latency_ms": latency_ms,
-            "input_tokens": _estimate_tokens(prompt_snapshot),
-            "output_tokens": _estimate_tokens(final_output),
+            "input_tokens": _count_tokens(prompt_snapshot, accounting),
+            "output_tokens": _count_tokens(final_output, accounting),
+            "token_accounting": accounting.metadata(),
             "repair_rounds": repair_rounds,
             "rounds": trace_rounds,
         }

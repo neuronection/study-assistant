@@ -4,6 +4,7 @@ import fitz
 from sqlalchemy.orm import Session
 
 from ..ai.gateway import LLMGateway, TaskUnassigned
+from ..ai.tokenizers import embedding_accounting, token_count
 from ..core.vocab import (
     ExtractionMode,
     MaterialKind,
@@ -109,13 +110,14 @@ def _store_extraction(
 
     ocr = _embedded_ocr_text(material)
     chunk_source = f"{markdown}\n\n{ocr}" if ocr else markdown
+    accounting = embedding_accounting(session)
     for ordinal, chunk_text in enumerate(chunk_markdown(chunk_source)):
         session.add(
             Chunk(
                 extraction_id=extraction.id,
                 ordinal=ordinal,
                 text=chunk_text,
-                token_count=max(1, len(chunk_text) // 4),
+                token_count=token_count(chunk_text, accounting),
             )
         )
     words = len(markdown.split())

@@ -10,6 +10,7 @@ from ..domain.models import AiInteraction
 from ..services.platform.skills import SkillService
 from .gateway import LLMGateway, Message
 from .parsing import estimate_tokens, extract_json_object
+from .tokenizers import embedding_accounting
 
 DEFAULT_MAX_ROUNDS = 2
 
@@ -122,6 +123,7 @@ class TaskRunner:
         latency_ms = int((time.monotonic() - started) * 1000)
         label = self.model_label(task, course_id)
         if audit is not None:
+            accounting = embedding_accounting(self._session)
             self._session.add(
                 AiInteraction(
                     context_type=audit.context_type,
@@ -130,8 +132,8 @@ class TaskRunner:
                     task=task,
                     model=label,
                     skill_version_id=skill_version_id,
-                    input_tokens=estimate_tokens(prompt),
-                    output_tokens=estimate_tokens(text),
+                    input_tokens=estimate_tokens(prompt, accounting),
+                    output_tokens=estimate_tokens(text, accounting),
                     latency_ms=latency_ms,
                 )
             )
@@ -194,6 +196,7 @@ class TaskRunner:
         latency_ms = int((time.monotonic() - started) * 1000)
         label = self.model_label(task, course_id)
         if audit is not None:
+            accounting = embedding_accounting(self._session)
             self._session.add(
                 AiInteraction(
                     context_type=audit.context_type,
@@ -202,8 +205,8 @@ class TaskRunner:
                     task=task,
                     model=label,
                     skill_version_id=skill_version_id,
-                    input_tokens=estimate_tokens(prompt),
-                    output_tokens=estimate_tokens(text),
+                    input_tokens=estimate_tokens(prompt, accounting),
+                    output_tokens=estimate_tokens(text, accounting),
                     latency_ms=latency_ms,
                 )
             )
@@ -286,6 +289,7 @@ class TaskRunner:
         latency_ms = int((time.monotonic() - started) * 1000)
         label = self.model_label(task, course_id)
         if audit is not None:
+            accounting = embedding_accounting(self._session)
             self._session.add(
                 AiInteraction(
                     context_type=audit.context_type,
@@ -294,8 +298,8 @@ class TaskRunner:
                     task=task,
                     model=label,
                     skill_version_id=skill_version_id,
-                    input_tokens=estimate_tokens(prompt),
-                    output_tokens=estimate_tokens(text),
+                    input_tokens=estimate_tokens(prompt, accounting),
+                    output_tokens=estimate_tokens(text, accounting),
                     latency_ms=latency_ms,
                 )
             )

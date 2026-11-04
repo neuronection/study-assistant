@@ -14,6 +14,7 @@ from ..ai.flow_events_chat import flow_failed_event
 from ..ai.gateway import ProviderError, TaskUnassigned
 from ..ai.mentions import registry_from_json
 from ..ai.proposals import GENERATE_ACTIONS
+from ..ai.tokenizers import embedding_accounting, token_count
 from ..core.errors import sanitize_error_detail
 from ..core.events import EventBus
 from ..core.jsonpatch import apply_patch
@@ -512,16 +513,18 @@ def patch_message_state(
     if len(json.dumps(state, ensure_ascii=False, default=str)) > MAX_STATE_BYTES:
         raise HTTPException(status_code=422, detail="widget state too large")
     message.state = state
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="widget_state",
             context_id=message_id,
             direction="patch",
             model=None,
-            input_tokens=max(1, len(json.dumps(body.delta)) // 4),
+            input_tokens=token_count(json.dumps(body.delta), accounting),
             output_tokens=0,
             cost_usd=None,
             latency_ms=0,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()
@@ -666,16 +669,18 @@ def approve_proposal(
     proposal.status = ChatProposalStatus.EXECUTED.value
     proposal.result = cast(ProposalResult, result)
     proposal.executed_at = utcnow()
+    accounting = embedding_accounting(session)
     session.add(
         AiInteraction(
             context_type="proposal",
             context_id=proposal.id,
             direction=f"execute {proposal.action}",
             model=None,
-            input_tokens=max(1, len(str(proposal.payload)) // 4),
+            input_tokens=token_count(str(proposal.payload), accounting),
             output_tokens=0,
             cost_usd=None,
             latency_ms=0,
+            metadata_json=accounting.metadata(),
         )
     )
     session.commit()

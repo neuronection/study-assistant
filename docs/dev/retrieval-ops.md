@@ -712,10 +712,9 @@ dedup/recovery/admin fanout/daily caps, the `ai_interactions` metadata seam +
 usage read, and the canonical settings-map/ledger adoption. The canonical
 `/dev` settings map now marks both career and study `tools.retrieval`
 `aligned`; `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's
-bytes with the branch note. `/study-assistant` main now carries the same
-vendored bytes; the adoption check passes and the parity runner reports
-`strict=true` with no blockers. The `dev-vector-p0` settings-map copy is older than `/dev`
-and is not the settings canonical the runner reads.
+bytes with the branch note. At the Q3c3a checkpoint `/study-assistant` main
+carried the same vendored bytes and the adoption check passed; the plan 52
+T5a re-sync above supersedes those bytes, so main adoption follows its merge.
 
 **Q3c3b shipped** (above): the read-only observation card inside Tools →
 Indexing, its URL-synced sections and the pinned `detail=` drawers, composed
@@ -729,3 +728,66 @@ route or a second audit stack.
    `--strict` claim once main adopts, the no-raw-vector-SQL/no-second-audit/
    settings-map/audit-vocabulary/no-`vector_events`/no-`prompt` checks, and
    the shared UI promotion under the two-app rule.
+
+## Plan 52 T5a — tokenizer accounting (T5b handoff)
+
+T5a is the **accounting-only** study slice. It vendors the family tokenizer
+contract and the token-aware `vector_contract`/`retrieval_ops` DTOs, ships a
+real offline tokenizer, and removes the character-divisor estimate. It does
+**not** write token-aware chunks, change `space_key`, add token columns to
+`vector_records`, run a cutover, or add progress UI.
+
+**Contracts (byte-identical, dev canonical → study).**
+`app/storage/tokenizer_contract.py` + `tests/fixtures/tokenizer_contract.fixtures.json`;
+`app/storage/vector_contract.py` + `tests/fixtures/vector_contract.fixtures.json`
+(stored key, v2 space identity, `IndexRecord` token fields);
+`app/storage/retrieval_ops.py` + `tests/fixtures/retrieval_ops.fixtures.json`
+(`SpaceTokenizerDTO`/`SpaceChunkDTO`, token-aware space/run fields, the
+bounded run progress detail). The dev ledgers record study for all three.
+The DTOs are accepted but study does not emit token/progress fields yet.
+
+**Tokenizer service.** `app/ai/tokenizers/service.py` bundles
+`app/data/tokenizers/cl100k_base.tiktoken.gz` (gzip + uncompressed BPE
+checksums pinned) and builds `tiktoken.Encoding` directly. It never calls
+`tiktoken.get_encoding`, imports `tiktoken_ext`, or opens a socket. The
+bounded LRU is keyed by `TokenizerSpec.cache_key`; `count`, `encode`,
+`decode` and `encode_with_offsets` are available for T5b. Missing/corrupt
+assets return a structured `TokenizerUnavailable(reason=…)` and degrade to
+the labelled heuristic. Hugging Face is an interface only
+(`hf_tokenizer_spec`); study has no concrete HF mapping, so that kind
+degrades with `unsupported_tokenizer_kind`. `sentencepiece` stays reserved.
+
+**Accounting seam.** `app/ai/tokenizers/accounting.py` resolves **one**
+effective tokenizer for the assigned embedding model
+(`TaskAssignment`/`DefaultTaskAssignment` → provider type + external id):
+
+- curated OpenAI embedding models (`text-embedding-3-small`,
+  `text-embedding-3-large`, `text-embedding-ada-002`) use the bundled exact
+  `cl100k_base`;
+- everything else uses the conservative UTF-8/codepoint heuristic
+  (`ceil(bytes/2) + ceil(codepoints/8)`), always `exact=False`.
+
+No model-name substring ever selects a tokenizer. `TokenCount` carries
+`exact` and the tokenizer identity; callers that persist interaction rows put
+`tokenizer`/`tokenizer_exact`/`tokenizer_source` in the same
+`ai_interactions.metadata` row (no second ledger, no raw text). Ingest,
+trash restore, material editing/course import, chat trace/interactions,
+tutor/quiz help, note actions and the gateway ledger all use the seam.
+`Chunk.token_count` still stores an integer over the **existing**
+character-chunked records; it is not a token-aware chunk write.
+
+**T5b handoff (explicit, not built here).**
+1. Use `TokenizerService.encode_with_offsets` to replace `pipelines/chunking.py`
+   character windows with token windows for a v2 space only; keep the v1
+   character path intact.
+2. Add the token columns/offsets to the study vector record model + migration,
+   matching the already-vendored `vector_contract.IndexRecord` fields; write
+   `token_count/token_start/token_end` on new records.
+3. Stamp `vector_spaces.space_key` from the vendored v2 pre-image and
+   `ChunkConfig`/tokenizer pair; build/backfill a candidate space, compare
+   coverage/quality, then cut over (v1 retained).
+4. Extend the accounting seam with the study model-profile registry / admin
+   override if T5b needs per-model chunk defaults; do not infer a tokenizer
+   from a model name.
+5. T5c/T5d: progress DTO emission and UI are still out of scope. The contract
+   fields are accepted today; nothing writes `progress_detail`.

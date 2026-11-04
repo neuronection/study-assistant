@@ -3,12 +3,14 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from .tokenizers.accounting import TokenAccounting, token_count
+
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 _FENCE_RE = re.compile(r"^\s*```[a-zA-Z0-9_-]*\s*\n?|```\s*$", re.DOTALL)
 
 
-def estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+def estimate_tokens(text: str, accounting: TokenAccounting | None = None) -> int:
+    return token_count(text, accounting)
 
 
 def strip_code_fence(text: str) -> str:

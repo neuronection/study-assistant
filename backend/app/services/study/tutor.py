@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...ai.contracts.contracts import Constraint, validate
 from ...ai.gateway import LLMGateway, Message
+from ...ai.tokenizers import TokenAccounting, embedding_accounting, token_count
 from ...domain.models import (
     AiInteraction,
     Attempt,
@@ -39,8 +40,8 @@ class TutorError(ValueError):
     pass
 
 
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+def _count_tokens(text: str, accounting: TokenAccounting) -> int:
+    return token_count(text, accounting)
 
 
 def _blocks_md(blocks: Sequence[Mapping[str, Any]] | None) -> str:
@@ -219,6 +220,7 @@ class TutorService:
             feedback = validation.feedback()
         latency_ms = int((time.monotonic() - started) * 1000)
 
+        accounting = embedding_accounting(self._session)
         self._session.add(
             AiInteraction(
                 context_type="tutor",
@@ -226,9 +228,10 @@ class TutorService:
                 direction=f"hint level {level}",
                 model=model_name,
                 skill_version_id=skill_version_id,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(output),
+                input_tokens=_count_tokens(prompt, accounting),
+                output_tokens=_count_tokens(output, accounting),
                 latency_ms=latency_ms,
+                metadata_json=accounting.metadata(),
             )
         )
         self._session.flush()
@@ -317,6 +320,7 @@ class TutorService:
             feedback = validation.feedback()
         latency_ms = int((time.monotonic() - started) * 1000)
 
+        accounting = embedding_accounting(self._session)
         self._session.add(
             AiInteraction(
                 context_type="quiz_help",
@@ -324,9 +328,10 @@ class TutorService:
                 direction=f"hint level {level} q{question.id}",
                 model=model_name,
                 skill_version_id=skill_version_id,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(output),
+                input_tokens=_count_tokens(prompt, accounting),
+                output_tokens=_count_tokens(output, accounting),
                 latency_ms=latency_ms,
+                metadata_json=accounting.metadata(),
             )
         )
         self._session.flush()
