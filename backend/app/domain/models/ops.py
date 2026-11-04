@@ -11,6 +11,7 @@ from ...core.vocab import (
     JobType as JobType,
 )
 from ..payloads import (
+    AiInteractionMetadata,
     DistractorSelection,
     JobPayload,
     JobResult,
@@ -54,6 +55,9 @@ from .core import (
 )
 from .core import (
     Mapped as Mapped,
+)
+from .core import (
+    SmallInteger as SmallInteger,
 )
 from .core import (
     String as String,
@@ -398,4 +402,17 @@ class AiInteraction(Base):
     cached_input_tokens: Mapped[int | None] = mapped_column(Integer)
     cost_usd: Mapped[float | None] = mapped_column(Float)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
+    # The mapped attribute cannot be named ``metadata`` (SQLAlchemy reserves
+    # it); the schema-contract payload wall resolves the DB column to this
+    # attribute.
+    metadata_json: Mapped[AiInteractionMetadata] = mapped_column(
+        "metadata",
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'"),
+    )
+    metadata_schema_version: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=1, server_default="1"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

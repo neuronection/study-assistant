@@ -19,6 +19,7 @@ answers.error_tags :: keep-open tag list
 answers.feedback :: keep-open feedback document list
 answers.help_events :: keep-open help audit trail
 answers.response :: keep-open graded response document
+ai_interactions.metadata :: keep-open caller-supplied embedding tags (space_id/kind/view/chunk_index; schema version sibling; never text)
 attempts.meta :: keep-open attempt metadata
 calendar_links.options :: keep-open sync options (mapping, acceptance, policy)
 calendar_links.scopes :: keep-open granted OAuth scope list
@@ -76,6 +77,9 @@ note_versions.body :: keep-open content blocks behind body_schema_version
 note_versions.tags :: keep-open tag list
 notes.body :: keep-open content blocks behind body_schema_version
 notes.tags :: keep-open tag list
+notifications.payload :: keep-open alert evidence document (ids/counts/scores/reasons; never text)
+notifications.recipients :: keep-open admin recipient id list
+notifications.source_ref :: keep-open typed source handle document
 profiles.preferences :: keep-open extension-owned sections + typed known keys
 providers.status :: keep-open provider health snapshot
 questions.answer :: keep-open answer document

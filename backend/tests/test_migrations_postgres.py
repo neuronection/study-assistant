@@ -248,6 +248,27 @@ def test_retrieval_ops_tables_and_job_result(migrated_pg: Engine) -> None:
     assert "VECTOR_CUTOVER" in check
 
 
+def test_alerts_and_generation_tag_tables(migrated_pg: Engine) -> None:
+    interactions = _columns(migrated_pg, "ai_interactions")
+    assert interactions["metadata"]["data_type"] == "json"
+    assert interactions["metadata"]["is_nullable"] == "NO"
+    assert interactions["metadata_schema_version"]["data_type"] == "smallint"
+    assert interactions["metadata_schema_version"]["is_nullable"] == "NO"
+    for table in ("notification_kinds", "notifications"):
+        assert _relation_exists(migrated_pg, table)
+    assert _columns(migrated_pg, "notifications")["dedup_key"]["is_nullable"] == "YES"
+    with migrated_pg.connect() as conn:
+        index = conn.execute(
+            text(
+                "SELECT indexdef FROM pg_indexes WHERE indexname = "
+                "'uq_notifications_dedup_key'"
+            )
+        ).scalar_one()
+    assert "UNIQUE" in index
+    assert "WHERE" in index
+    assert "dedup_key IS NOT NULL" in index
+
+
 def test_baseline_boolean_defaults_are_dialect_portable(migrated_pg: Engine) -> None:
     """Boolean ``server_default=0/1`` is a PostgreSQL DDL error.
 

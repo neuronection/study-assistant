@@ -73,3 +73,51 @@ def test_retrieval_ops_upgrade_and_downgrade(tmp_path: Path) -> None:
         "retrieval_coverage_snapshots",
     } <= _tables(db_path)
     assert "result" in _columns(db_path, "jobs")
+
+
+def test_alerts_and_generation_tags_upgrade_and_downgrade(tmp_path: Path) -> None:
+    db_path = tmp_path / "alerts-migration.db"
+    config = _cfg(db_path)
+    command.upgrade(config, "0014_vector_record_chunk_id")
+
+    interactions = _columns(db_path, "ai_interactions")
+    assert "metadata" not in interactions
+    assert "metadata_schema_version" not in interactions
+    assert "notifications" not in _tables(db_path)
+
+    command.upgrade(config, "head")
+    interactions = _columns(db_path, "ai_interactions")
+    assert interactions["metadata"][0] == "JSON"
+    assert interactions["metadata"][1] is True
+    assert interactions["metadata_schema_version"][0] == "SMALLINT"
+    assert interactions["metadata_schema_version"][1] is True
+    assert {"notification_kinds", "notifications"} <= _tables(db_path)
+
+    columns = _columns(db_path, "notifications")
+    assert columns["dedup_key"][1] is False
+    assert columns["payload"][0] == "JSON"
+    assert columns["recipients"][0] == "JSON"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO notification_kinds (key, title, description, severity, admin_only, "
+            "default_enabled, created_at) VALUES "
+            "('retrieval.quality_gate', 'Quality', '', 'warning', 1, 1, CURRENT_TIMESTAMP)"
+        )
+        connection.execute(
+            "INSERT INTO notifications (id, kind, severity, title, body, payload, "
+            "recipients, dedup_key, dedup_expires_at, created_at) VALUES "
+            "('n-1', 'retrieval.quality_gate', 'warning', 'Quality', '', '{}', "
+            "'[]', 'retrieval.quality_gate:space-a', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
+        connection.commit()
+
+    command.downgrade(config, "0014_vector_record_chunk_id")
+    assert "notifications" not in _tables(db_path)
+    assert "notification_kinds" not in _tables(db_path)
+    interactions = _columns(db_path, "ai_interactions")
+    assert "metadata" not in interactions
+    assert "metadata_schema_version" not in interactions
+
+    command.upgrade(config, "head")
+    assert {"notification_kinds", "notifications"} <= _tables(db_path)
+    assert "metadata" in _columns(db_path, "ai_interactions")

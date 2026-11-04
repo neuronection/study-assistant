@@ -69,6 +69,8 @@ note_drawings :: record
 note_links :: record
 note_versions :: record
 notes :: record
+notification_kinds :: record
+notifications :: operational
 plan_items :: record
 profiles :: record
 providers :: record

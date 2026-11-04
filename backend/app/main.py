@@ -15,6 +15,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -42,6 +43,7 @@ from .services.platform.backup import (
 )
 from .services.platform.external_source_scheduler import ExternalSourceScheduler
 from .services.platform.scan_scheduler import ScanScheduler
+from .services.retrieval.alerts import evaluate_retrieval_alerts
 from .services.retrieval.telemetry import (
     QueryRollupRecorder,
     configure_recorder,
@@ -91,6 +93,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             app.state.settings.checkpoint_ttl_days,
             engine=app.state.engine,
         )
+        from .services.platform.notifications import seed_notification_kinds
+
+        with app.state.session_factory() as session:
+            seed_notification_kinds(session)
+            session.commit()
         jobs: JobRunner = app.state.jobs
         jobs.start()
         scheduler: ScanScheduler = app.state.scans
@@ -213,6 +220,10 @@ def create_app(
         app.include_router(desktop_router, prefix="/api/v1")
     app.include_router(ws_router.router)
 
+    def _retrieval_alert_pass() -> dict[str, Any]:
+        with app.state.session_factory() as session:
+            return evaluate_retrieval_alerts(session)
+
     app.state.scans = ScanScheduler(
         app.state.session_factory,
         settings.blobs_dir,
@@ -220,6 +231,7 @@ def create_app(
         app.state.bus.publish_threadsafe,
         interval_sec=settings.source_scan_interval_sec,
         inbox_dir=settings.inbox_dir,
+        retrieval_alerts=_retrieval_alert_pass,
     )
     app.state.external_scans = ExternalSourceScheduler(
         app.state.session_factory,

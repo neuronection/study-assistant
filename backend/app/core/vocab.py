@@ -422,6 +422,27 @@ class CalendarStatus(StrVocab):
     NEEDS_SECRET = "needs-secret"
 
 
+class NotificationKind(StrVocab):
+    """The boot-seeded family retrieval alerts (plan 51 Q1c/Q3c3a)."""
+
+    RETRIEVAL_COVERAGE_LOW = "retrieval.coverage_low"
+    RETRIEVAL_REINDEX_FAILED = "retrieval.reindex_failed"
+    RETRIEVAL_REINDEX_STALLED = "retrieval.reindex_stalled"
+    RETRIEVAL_QUALITY_GATE = "retrieval.quality_gate"
+    RETRIEVAL_QUERY_SLO = "retrieval.query_slo"
+    RETRIEVAL_DEGRADED_RATE = "retrieval.degraded_rate"
+    RETRIEVAL_PROVIDER_UNASSIGNED = "retrieval.provider_unassigned"
+    RETRIEVAL_INDEX_MISSING = "retrieval.index_missing"
+    RETRIEVAL_BUDGET_EXHAUSTED = "retrieval.budget_exhausted"
+    RETRIEVAL_SPACE_DROP_PENDING = "retrieval.space_drop_pending"
+
+
+class NotificationSeverity(StrVocab):
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+
+
 class WsTopic:
     @staticmethod
     def jobs(job_id: str) -> str:

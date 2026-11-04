@@ -35,6 +35,9 @@ from sqlalchemy import (
     Integer as Integer,
 )
 from sqlalchemy import (
+    SmallInteger as SmallInteger,
+)
+from sqlalchemy import (
     String as String,
 )
 from sqlalchemy import (

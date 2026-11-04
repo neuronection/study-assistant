@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from nx_auth.deps import get_optional_principal
+from nx_auth.principal import Principal
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -62,6 +64,16 @@ class StagedImportOut(BaseModel):
     question_count: int
 
 
+class AlertEntryOut(BaseModel):
+    id: str
+    kind: str
+    severity: str
+    title: str
+    body: str = ""
+    link: str
+    created_at: str | None = None
+
+
 class NotificationsOut(BaseModel):
     due_cards: int
     due_reviews: list[DueReviewEntryOut]
@@ -70,6 +82,7 @@ class NotificationsOut(BaseModel):
     exams: list[ExamEntryOut]
     pending_proposals: int
     staged_imports: list[StagedImportOut] = []
+    alerts: list[AlertEntryOut] = []
     generated_at: str
 
 
@@ -93,7 +106,13 @@ def _staged_imports(inbox_dir: Path) -> list[StagedImportOut]:
 
 
 @router.get("", response_model=NotificationsOut)
-def notifications(request: Request, session: Session = Depends(get_session)) -> dict[str, Any]:
+def notifications(
+    request: Request,
+    user: Principal | None = Depends(get_optional_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    from ..services.platform.notifications import active_alerts
+
     profile = ensure_default_profile(session)
     now = utcnow()
     today = now.date()
@@ -188,5 +207,6 @@ def notifications(request: Request, session: Session = Depends(get_session)) -> 
         "exams": exams,
         "pending_proposals": pending_proposals,
         "staged_imports": _staged_imports(request.app.state.settings.inbox_dir),
+        "alerts": active_alerts(session, user.user_id if user is not None else None),
         "generated_at": generated_at,
     }

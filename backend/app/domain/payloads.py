@@ -609,6 +609,15 @@ class JobResult(TypedDict, total=False):
 
 type LatencyHistogram = dict[str, int]
 
+# Caller-supplied embedding tags (plan 51 Q3c3a): space_id/kind/view/
+# chunk_index and future open caller keys. Never prompt/document/query text.
+AiInteractionMetadata = dict[str, Any]
+
+# One notification event's structured evidence and typed source handle. Both
+# carry ids/counts/scores/reasons only (no raw text).
+NotificationPayload = dict[str, Any]
+NotificationSourceRef = dict[str, Any]
+
 
 class JobPayload(TypedDict, total=False):
     """The union of every job-type payload (the type column selects the shape)."""
@@ -653,6 +662,10 @@ class JobPayload(TypedDict, total=False):
 
 PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "activities.config": "ActivityConfig",
+    "ai_interactions.metadata": "AiInteractionMetadata",
+    "notifications.payload": "NotificationPayload",
+    "notifications.recipients": "StringList",
+    "notifications.source_ref": "NotificationSourceRef",
     "activities.generated_from": "ActivityGeneratedFrom",
     "answers.error_tags": "StringList",
     "answers.feedback": "FeedbackList",

@@ -126,6 +126,12 @@ from .identity import (
 from .identity import (
     User as User,
 )
+from .notifications import (
+    Notification as Notification,
+)
+from .notifications import (
+    NotificationKindRow as NotificationKindRow,
+)
 from .ops import (
     AiInteraction as AiInteraction,
 )
