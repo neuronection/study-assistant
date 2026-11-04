@@ -11,6 +11,37 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (retrieval operations — plan 51 Q3b)
+- **Admin action API over the one legacy space.**
+  `POST /api/v1/admin/retrieval/{reindex,maintenance,runs/{id}/cancel,
+  runs/{id}/retry}` enqueues the existing `VECTOR_*` handlers; long work
+  never runs in the request. Lifecycle verbs (build/activate/retire/drop,
+  cutover, quality compare) answer with a structured `unsupported` 409
+  instead of faking a space.
+- **Idempotency and a database-level single-run lock** (migration
+  `0011_retrieval_run_actions`): `jobs.idempotency_key` replays the
+  original row inside the contract's 24 h window and 409s on a different
+  payload; `jobs.lock_key` is a partial unique index over queued/running
+  vector runs. `jobs.heartbeat_at` is written at worker progress
+  checkpoints and a bounded reaper fails stale running rows (15 min) so a
+  crash cannot block the space until restart.
+- **Actions are audited in the existing `audit_events` table** (no second
+  ledger): `vector.reindex.started`, `vector.reindex.cancelled`,
+  `vector.reindex.retried`, `vector.maintenance.started`,
+  `vector.run.stalled` and `vector.gate.failed` (full reconcile gate) —
+  ids-only resources, never document/query/prompt text.
+- **Tools → Indexing is now a real control surface** for admins: reindex
+  (verify or force), recent runs with queued≠finished status, cancel,
+  retry, orphan-sweep/vacuum/index-rebuild/retry-failed maintenance, an
+  orphan-sweep dry run, and structured refusal messages. The legacy-space
+  warning stays explicit. `tools.retrieval` is declared `aligned` in the
+  study settings map (dev canonical sync is a follow-up handoff).
+- **Read-DTO vocabulary parity test** pins study's run status, cold and
+  degraded tokens to the shared career/study fixture table.
+- **Deliberately not shipped (Q3c):** the real vector-space lifecycle and
+  cutover target, golden-query quality gates/compare, the full family
+  parity runner, alerts, and `ai_generations`-style metadata tagging.
+
 ### Added (retrieval operations — plan 51 Q3a)
 - **The family retrieval-operations contract is vendored** (byte-identical
   to `dev-vector-p0`, sha-gated by the fixture wall) with the exact
@@ -33,10 +64,11 @@ Release history from before the public launch lives in the
   coverage,runs,query-health}` composed from the legacy store, jobs and the
   aggregates; cold/empty/degraded states stay truthful. Settings → Tools →
   Indexing gains a read-only status card for admins.
-- **Deliberately not shipped:** the management/action UI, space lifecycle,
-  quality gate, idempotency/single-active-run lock, `ai_generations`-style
-  metadata tagging, and `tools.retrieval` alignment — all recorded as the
-  Q3b handoff in `docs/dev/retrieval-ops.md`.
+- **At Q3a this was deliberately not shipped:** the management/action UI,
+  space lifecycle, quality gate, idempotency/single-active-run lock,
+  `ai_generations`-style metadata tagging, and `tools.retrieval` alignment.
+  Q3b (above) shipped the action API, lock, audit and Tools controls; the
+  lifecycle, quality gate and full parity runner remain Q3c.
 
 ### Added (cloud calendars — ADR-0052 / plan 52)
 - **A course can bind its own cloud calendar.** Providers come from the

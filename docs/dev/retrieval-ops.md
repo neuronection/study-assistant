@@ -1,9 +1,11 @@
-# Retrieval operations (plan 51 Q3a)
+# Retrieval operations (plan 51 Q3a/Q3b)
 
-Status: **Q3a foundation only** (2026-11-04). The family contract, the
-`VECTOR_*` job slot, the two bounded aggregates, the first admin read surface
-and a truthful Tools → Indexing status card are shipped. The management UI,
-space lifecycle and action API are Q3b.
+Status: **Q3b shipped** (2026-11-04). The family contract, the `VECTOR_*`
+job slot, the two bounded aggregates, the admin read surface, the
+management/action seam (idempotency, single-active-run lock, stale reaper,
+audit) and the Tools → Indexing controls are shipped. The real vector-space
+lifecycle/cutover, golden-query quality gates and the full family parity
+runner remain Q3c.
 
 ## Contract
 
@@ -100,23 +102,107 @@ Admin-only, under `/api/v1/admin/retrieval`:
 - `GET /query-health?window=`
 
 DTOs are shaped by the vendored contract; no payload selects `prompt`,
-document text or query text. The Tools → Indexing card reads `/overview` and
-shows cold/degraded/ready truth plus the backend label; it has no action
-buttons and no fake space lifecycle.
+document text or query text.
 
-## Q3b handoff (explicitly not shipped)
+## Action surface (Q3b)
+
+Admin-only `POST` under the same namespace. Long work never runs inside the
+request: enqueue actions reuse the Q3a `VECTOR_*` handlers.
+
+| Endpoint | Body | Behaviour |
+|---|---|---|
+| `POST /reindex` | `limit` (≤5000), `batch_size` (≤256), `force`, `chunk_ids?` (≤500), `kind?`, `space_id?` | Enqueues `VECTOR_REINDEX`; `Idempotency-Key` required. `force=false` verifies existing vectors at zero provider cost, `force=true` re-embeds. `chunk_ids` is the scoped-retry path. |
+| `POST /maintenance` | `action: orphan-sweep\|vacuum\|index-rebuild\|retry-failed`, `dry_run`, `chunk_ids?` | Enqueues `VECTOR_MAINTENANCE`; required key. `dry_run` is supported only for `orphan-sweep` (counts without deleting); `retry-failed` requires `chunk_ids`. SQLite `index-rebuild` returns the honest “run a full reindex” note. |
+| `POST /runs/{id}/cancel` | — | Queued rows become `cancelled` immediately; running rows get the cooperative cancel flag (`cancel_requested=true`) and finish through the runner checkpoint. Terminal rows → 409. |
+| `POST /runs/{id}/retry` | `Idempotency-Key` required | Failed/cancelled vector runs enqueue a **new** row with `requeue_of` and a fresh lock; done/running/cutover rows → 409. |
+| `POST /spaces`, `/spaces/{id}/{activate,retire,drop}`, `/cutover`, `/quality/compare` | — | Structured `409 {"reason":"unsupported_action", ...}` — there is one legacy space and no lifecycle target. No fake success. |
+
+Responses use the contract shape (`action`, `accepted`, `audit_event`,
+`http_status`, `deduplicated`, `run_id`, `status`, `idempotency_key`,
+`message`). First enqueue → 202; an idempotent replay → 200 with
+`deduplicated=true`; refusals → 409 with `{"reason","message",…}` (the
+frontend surfaces `message`).
+
+## Idempotency, lock and stale recovery
+
+Migration `0011_retrieval_run_actions` adds four `jobs` columns and two
+partial unique indexes (active statuses only):
+
+- `idempotency_key` (8–120 chars). The service first looks for the same
+  `(type, key)` inside the contract's 24 hour window: same payload returns
+  the original row; a different payload is a 409 `idempotency_mismatch`.
+  After the window, terminal rows no longer block reuse.
+- `lock_key = vector_space:legacy-chunk-vecs`. The partial unique index over
+  `queued|running` is the DB-level **one active vector run** invariant, so
+  two concurrent admins cannot both start work; a different key while one is
+  active is a 409 `run_in_progress`.
+- `heartbeat_at` is written when the runner claims a vector job and at every
+  `report()` checkpoint. `reap_stale_runs` (called at the start of every
+  action) fails a `running` row older than 15 minutes, records
+  `vector.run.stalled`, clears the lock and lets the next action proceed —
+  no restart required. A reaped row is an ordinary failed run that can be
+  retried.
+- `cancel_requested` is the honest “asked, not yet observed” flag the run
+  DTO renders.
+
+Only vector rows carry these handles; the generic job enqueue contract is
+unchanged for every other job family.
+
+**Cancel/retry keys:** enqueue actions (`reindex`, `maintenance`, and the new
+row created by `retry`) require a key. Cancel is state-driven (repeat on a
+terminal run is a 409), so it carries no key.
+
+## Audit
+
+Actions write the existing family `audit_events` table through the small
+`services/retrieval/audit.py` emitter — **no second ledger**:
+
+| Event | When | Outcome |
+|---|---|---|
+| `vector.reindex.started` | reindex accepted/enqueued | `accepted` |
+| `vector.maintenance.started` | maintenance accepted/enqueued | `accepted` |
+| `vector.reindex.cancelled` | queued cancel or running cancel request | `accepted` |
+| `vector.reindex.retried` | a new retry row is enqueued | `accepted` |
+| `vector.run.stalled` | stale reaper fails a running row | `error` |
+| `vector.gate.failed` | a full reconcile finishes with `gate=fail` | `fail` |
+
+`actor` is the admin email (`system` for reaper/gate), `resource` is
+`space:legacy-chunk-vecs` or `run:<id>`, and `outcome` is a short token.
+No raw document/query/prompt text is written or returned.
+
+## Tools → Indexing and settings map
+
+`RetrievalStatusCard` (inside Settings → Tools → Indexing, admin-only) is the
+control surface: reindex (verify/force), recent runs with true
+queued/running/succeeded/failed/cancelled states and result counters, cancel
+and retry, typed maintenance with the orphan-sweep dry run, and structured
+refusal text. Every mutation sends a fresh `Idempotency-Key`; a replay shows
+the original run instead of a second one. The legacy-space warning
+("no build/activate/cutover lifecycle") stays visible.
+
+The study settings map (`contracts/settings-map.json`) marks
+`tools.retrieval` **aligned** and hosts it in the `indexing` section;
+`tools.indexing` remains the user-scoped semantic-search/OCR domain. The dev
+canonical still says `pending (plan 51 Q3)` — re-vendoring it (plus career's
+copy) is the sync handoff when this branch is ready for adoption.
+
+## Parity
+
+`tests/test_retrieval_ops_parity.py` pins study's emitted run-status, cold
+and degraded tokens to the shared career/study fixture table: every status
+maps into the contract `RunStatus`, a cold store reports `as_of=null`,
+`coverage=null`, `gate=unknown`, and degraded reasons stay inside the closed
+set. This is fixture-level parity, not the full family runner.
+
+## Q3c handoff (explicitly not shipped)
 
 - Vector-space lifecycle: `vector_spaces`/`vector_documents`/`vector_records`
-  (build, activate, retire, drop) and a real space id in the rollups. Until
-  then `VECTOR_CUTOVER` refuses and the read surface exposes one legacy space.
-- Management/action API: reindex/maintenance/cancel/retry actions,
-  idempotency keys, one-active-run lock + stale-heartbeat reaper, audit
-  `vector.*` events, alerts.
-- Coverage/quality gates and the golden-query compare; no quality surface.
-- `ai_generations` tagging: study's equivalent ledger is `ai_interactions`,
-  which has no metadata column and no `prompt` column. No second ledger was
-  invented; caller-supplied retrieval tags need a Q3b schema decision.
-- Settings-map `tools.retrieval` stays `pending (plan 51 Q3)` until the
-  management surface ships; `tools.indexing` remains user-scoped.
-- Family parity test (same status payload semantics on both dialects) is Q5,
-  after the lifecycle exists.
+  (build, activate, retire, drop), a real space id in the rollups and the
+  `VECTOR_CUTOVER` target. Until then cutover refuses and the API returns
+  `unsupported_action`.
+- Golden-query quality gates and the pre-cutover compare/quality surface.
+- The full family parity/family gate and PG baseline repair if the existing
+  chain is still blocked.
+- Alerts (`retrieval.*` notification kinds) and `ai_generations`-style
+  metadata tagging. Study's equivalent ledger is `ai_interactions`, which
+  still has no metadata/prompt column; no second ledger was invented.
