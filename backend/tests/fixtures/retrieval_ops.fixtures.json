@@ -32,6 +32,9 @@
       "VECTOR_CUTOVER",
       "VECTOR_MAINTENANCE"
     ],
+    "tokenizerJobTypes": [
+      "TOKENIZER_FETCH"
+    ],
     "auditGroup": "vector",
     "auditEvents": [
       "vector.space.provisioned",
@@ -44,6 +47,9 @@
       "vector.reindex.retried",
       "vector.maintenance.started",
       "vector.model.changed",
+      "vector.tokenizer.fetch_requested",
+      "vector.tokenizer.fetched",
+      "vector.tokenizer.fetch_failed",
       "vector.gate.failed",
       "vector.run.stalled",
       "vector.document.indexed"
@@ -94,6 +100,18 @@
       "drop_space",
       "maintenance",
       "quality_compare"
+    ],
+    "tokenizerKinds": [
+      "tiktoken",
+      "hf_tokenizers",
+      "sentencepiece",
+      "heuristic"
+    ],
+    "tokenizerSources": [
+      "provider",
+      "curated",
+      "admin",
+      "fallback"
     ]
   },
   "spaces": [
@@ -281,6 +299,52 @@
         "cold": false,
         "coverageGate": "pass",
         "status": "retired"
+      }
+    },
+    {
+      "name": "token-aware-building-space",
+      "dto": {
+        "space_id": "space-v2",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 400,
+        "records": 900,
+        "coverage": 0.4,
+        "stale": 0,
+        "failed": 0,
+        "created_at": "2026-11-04T08:00:00Z",
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "fail",
+        "as_of": "2026-11-04T08:30:00Z",
+        "token_aware": true,
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191,
+          "source": "curated"
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600
+        }
+      },
+      "expect": {
+        "cold": false,
+        "coverageGate": "fail",
+        "status": "building"
       }
     }
   ],
@@ -945,7 +1009,27 @@
         "started_at": "2026-11-03T06:01:00Z",
         "heartbeat_at": "2026-11-03T06:02:00Z",
         "idempotency_key": "req-abc12345",
-        "lock_key": "vector_space:space-content"
+        "lock_key": "vector_space:space-content",
+        "progress_detail": {
+          "phase": "embedding",
+          "processed_documents": 120,
+          "total_documents": 500,
+          "processed_chunks": 340,
+          "pending_chunks": 1110,
+          "total_chunks": 1450,
+          "chunks_estimated": true,
+          "embedded_chunks": 320,
+          "skipped_chunks": 20,
+          "failed_chunks": 0,
+          "embedded_documents": 118,
+          "skipped_documents": 2,
+          "failed_documents": 0,
+          "tokens": 184000,
+          "tokens_estimated": false,
+          "embed_calls": 7,
+          "exact_tokenizer": true,
+          "done": false
+        }
       },
       "expect": {
         "active": true,
@@ -988,6 +1072,65 @@
         "error": "index rebuild failed",
         "finished_at": "2026-11-03T06:30:00Z",
         "idempotency_key": "req-ghi12345"
+      },
+      "expect": {
+        "active": false,
+        "terminal": true
+      }
+    },
+    {
+      "name": "token-aware-reindex",
+      "dto": {
+        "run_id": "run-4",
+        "space_id": "space-v2",
+        "job_type": "VECTOR_REINDEX",
+        "status": "succeeded",
+        "progress": 100,
+        "stage": "done",
+        "scope": {
+          "kind": "posting",
+          "view": "body",
+          "since": null
+        },
+        "created_at": "2026-11-04T08:00:00Z",
+        "finished_at": "2026-11-04T08:20:00Z",
+        "idempotency_key": "req-v2abc123",
+        "lock_key": "vector_space:space-v2",
+        "progress_detail": {
+          "phase": "done",
+          "processed_documents": 400,
+          "total_documents": 400,
+          "processed_chunks": 900,
+          "pending_chunks": 0,
+          "total_chunks": 900,
+          "chunks_estimated": false,
+          "embedded_chunks": 900,
+          "skipped_chunks": 0,
+          "failed_chunks": 0,
+          "embedded_documents": 400,
+          "skipped_documents": 0,
+          "failed_documents": 0,
+          "tokens": 184000,
+          "tokens_estimated": false,
+          "embed_calls": 7,
+          "exact_tokenizer": true,
+          "done": true
+        },
+        "token_aware": true,
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191,
+          "source": "curated"
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600
+        }
       },
       "expect": {
         "active": false,
@@ -1761,7 +1904,8 @@
       "retrieval_query_rollups :: operational (TTL 30d — aggregate, not an audit ledger)",
       "retrieval_coverage_snapshots :: operational (TTL 90d — latest snapshot wins; cold means never reconciled)",
       "background_jobs.idempotency_key :: indexed request replay key (partial unique on job_type+idempotency_key; 24h TTL)",
-      "background_jobs.lock_key :: partial unique active-run lock (vector_space:<space_id>; queued/running only)"
+      "background_jobs.lock_key :: partial unique active-run lock (vector_space:<space_id>; queued/running only)",
+      "background_jobs.progress_detail :: bounded live counters (documents/chunks/tokens; no ids or text; pruned when the final result commits)"
     ],
     "quality": {
       "fixtureVersion": 1,
@@ -2692,6 +2836,211 @@
           "d1"
         ],
         "limit": 0
+      }
+    },
+    {
+      "name": "progress-phase",
+      "call": "RunProgressDTO",
+      "payload": {
+        "phase": "bogus"
+      }
+    },
+    {
+      "name": "progress-negative-counter",
+      "call": "RunProgressDTO",
+      "payload": {
+        "processed_documents": -1
+      }
+    },
+    {
+      "name": "space-token-aware-without-chunk",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-v2",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 0,
+        "records": 0,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": null,
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null,
+        "token_aware": true,
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191,
+          "source": "curated"
+        }
+      }
+    },
+    {
+      "name": "space-token-aware-flag-without-tokenizer",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-v2",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 0,
+        "records": 0,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": null,
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null,
+        "token_aware": true
+      }
+    },
+    {
+      "name": "space-heuristic-claims-exact",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-v2",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 0,
+        "records": 0,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": null,
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null,
+        "token_aware": true,
+        "tokenizer": {
+          "kind": "heuristic",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": null,
+          "exact": true,
+          "max_input_tokens": 8191,
+          "source": "curated"
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600
+        }
+      }
+    },
+    {
+      "name": "space-chunk-overlap-too-large",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-v2",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 0,
+        "records": 0,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": null,
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null,
+        "token_aware": true,
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191,
+          "source": "curated"
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 256,
+          "max_chars": 1600
+        }
+      }
+    },
+    {
+      "name": "space-chunk-over-input-limit",
+      "call": "SpaceDTO",
+      "payload": {
+        "space_id": "space-v2",
+        "name": "content-v2",
+        "status": "building",
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "backend": "pgvector",
+        "metric": "cosine",
+        "index_table": "vector_content_v2",
+        "documents": 0,
+        "records": 0,
+        "coverage": null,
+        "stale": null,
+        "failed": null,
+        "created_at": null,
+        "activated_at": null,
+        "retired_at": null,
+        "last_reindex_at": null,
+        "last_error": null,
+        "gate": "unknown",
+        "as_of": null,
+        "token_aware": true,
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 256,
+          "source": "curated"
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600
+        }
       }
     }
   ]

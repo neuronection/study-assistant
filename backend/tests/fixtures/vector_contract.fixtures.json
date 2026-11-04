@@ -2,90 +2,854 @@
   "schema": 1,
   "adr": "ADR-0051 (proposed)",
   "plan": 50,
-  "description": "Cross-product acceptance wall for the family vector-retrieval contract (ADR-0051 / plan 50 P0). Every vendored copy of contracts/vector_contract.py must satisfy these rows — score math, chunk aggregation, weighted RRF fusion, space-key stability, content-hash normalization, the v1 caps/defaults and the degradation vocabulary. Same law, one table, never per-repo edits.",
+  "description": "Cross-product acceptance wall for the family vector-retrieval contract (ADR-0051 / plan 50 P0). Every vendored copy of contracts/vector_contract.py must satisfy these rows — score math, chunk aggregation, weighted RRF fusion, space-key stability and stored-key precedence, content-hash normalization, the v1 caps/defaults and the degradation vocabulary. Same law, one table, never per-repo edits.",
   "cosine": [
-    { "name": "identical-vectors", "a": [1, 2, 3], "b": [1, 2, 3], "expected": 1.0 },
-    { "name": "orthogonal-vectors", "a": [1, 0, 1], "b": [1, 1, 0], "expected": 0.5 },
-    { "name": "pythagorean-triple", "a": [3, 4], "b": [4, 3], "expected": 0.96 },
-    { "name": "opposite-vectors", "a": [1, 0], "b": [-1, 0], "expected": -1.0 },
-    { "name": "dim-mismatch-scores-zero-never-crashes", "a": [1, 2], "b": [1, 2, 3], "expected": 0.0 },
-    { "name": "empty-scores-zero", "a": [], "b": [], "expected": 0.0 },
-    { "name": "zero-vector-scores-zero", "a": [0, 0], "b": [1, 2], "expected": 0.0 }
+    {
+      "name": "identical-vectors",
+      "a": [
+        1,
+        2,
+        3
+      ],
+      "b": [
+        1,
+        2,
+        3
+      ],
+      "expected": 1.0
+    },
+    {
+      "name": "orthogonal-vectors",
+      "a": [
+        1,
+        0,
+        1
+      ],
+      "b": [
+        1,
+        1,
+        0
+      ],
+      "expected": 0.5
+    },
+    {
+      "name": "pythagorean-triple",
+      "a": [
+        3,
+        4
+      ],
+      "b": [
+        4,
+        3
+      ],
+      "expected": 0.96
+    },
+    {
+      "name": "opposite-vectors",
+      "a": [
+        1,
+        0
+      ],
+      "b": [
+        -1,
+        0
+      ],
+      "expected": -1.0
+    },
+    {
+      "name": "dim-mismatch-scores-zero-never-crashes",
+      "a": [
+        1,
+        2
+      ],
+      "b": [
+        1,
+        2,
+        3
+      ],
+      "expected": 0.0
+    },
+    {
+      "name": "empty-scores-zero",
+      "a": [],
+      "b": [],
+      "expected": 0.0
+    },
+    {
+      "name": "zero-vector-scores-zero",
+      "a": [
+        0,
+        0
+      ],
+      "b": [
+        1,
+        2
+      ],
+      "expected": 0.0
+    }
   ],
   "normalize": [
-    { "name": "l2-unit", "vector": [3, 4], "expected": [0.6, 0.8] },
-    { "name": "negative-component", "vector": [-3, 4], "expected": [-0.6, 0.8] },
-    { "name": "already-unit", "vector": [1, 0], "expected": [1.0, 0.0] },
-    { "name": "zero-vector-stays-zero", "vector": [0, 0], "expected": [0.0, 0.0] },
-    { "name": "empty-stays-empty", "vector": [], "expected": [] }
+    {
+      "name": "l2-unit",
+      "vector": [
+        3,
+        4
+      ],
+      "expected": [
+        0.6,
+        0.8
+      ]
+    },
+    {
+      "name": "negative-component",
+      "vector": [
+        -3,
+        4
+      ],
+      "expected": [
+        -0.6,
+        0.8
+      ]
+    },
+    {
+      "name": "already-unit",
+      "vector": [
+        1,
+        0
+      ],
+      "expected": [
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "zero-vector-stays-zero",
+      "vector": [
+        0,
+        0
+      ],
+      "expected": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "empty-stays-empty",
+      "vector": [],
+      "expected": []
+    }
   ],
   "textHash": [
-    { "name": "whitespace-fold-and-case", "text": "  Hello\tWorld  ", "expectedNormalized": "hello world", "expectedHash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9" },
-    { "name": "newlines-and-tabs-fold", "text": "A\n\tB ", "expectedNormalized": "a b", "expectedHash": "c8687a08aa5d6ed2044328fa6a697ab8e96dc34291e8c2034ae8c38e6fcc6d65" },
-    { "name": "runs-of-spaces-fold", "text": "Multiple   spaces", "expectedNormalized": "multiple spaces", "expectedHash": "cdbb2583932f122c57ad2c34c022329fb9587e3609c1501f2192bf3cf71b86f1" },
-    { "name": "mixed-case-lowercased", "text": "MiXeD CaSe", "expectedNormalized": "mixed case", "expectedHash": "938c14299c2810673b77d4a3a05ef9c7ba32e39acfb6ff723da7e1afdbaef31e" },
-    { "name": "already-normalized", "text": "already normal", "expectedNormalized": "already normal", "expectedHash": "7c65441e02222b6a3755c4c0ba85925d8c6ea838cdcd630111720e6fc16fdf04" }
+    {
+      "name": "whitespace-fold-and-case",
+      "text": "  Hello\tWorld  ",
+      "expectedNormalized": "hello world",
+      "expectedHash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+    },
+    {
+      "name": "newlines-and-tabs-fold",
+      "text": "A\n\tB ",
+      "expectedNormalized": "a b",
+      "expectedHash": "c8687a08aa5d6ed2044328fa6a697ab8e96dc34291e8c2034ae8c38e6fcc6d65"
+    },
+    {
+      "name": "runs-of-spaces-fold",
+      "text": "Multiple   spaces",
+      "expectedNormalized": "multiple spaces",
+      "expectedHash": "cdbb2583932f122c57ad2c34c022329fb9587e3609c1501f2192bf3cf71b86f1"
+    },
+    {
+      "name": "mixed-case-lowercased",
+      "text": "MiXeD CaSe",
+      "expectedNormalized": "mixed case",
+      "expectedHash": "938c14299c2810673b77d4a3a05ef9c7ba32e39acfb6ff723da7e1afdbaef31e"
+    },
+    {
+      "name": "already-normalized",
+      "text": "already normal",
+      "expectedNormalized": "already normal",
+      "expectedHash": "7c65441e02222b6a3755c4c0ba85925d8c6ea838cdcd630111720e6fc16fdf04"
+    }
   ],
   "spaceKeyStability": [
     {
       "name": "case-and-whitespace-never-split-a-space",
-      "a": { "provider": "OpenAI", "model": "Text-Embedding-3-Small ", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "a": {
+        "provider": "OpenAI",
+        "model": "Text-Embedding-3-Small ",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "same": true
     },
     {
       "name": "no-prefix-null-equals-empty",
-      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": "", "documentPrefix": "  ", "chunkerVersion": "1", "composerVersion": "1" },
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": "",
+        "documentPrefix": "  ",
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "same": true
     },
     {
       "name": "dimension-change-changes-the-key",
-      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1024, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1024,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "same": false
     },
     {
       "name": "model-change-changes-the-key",
-      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "openai", "model": "text-embedding-3-large", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-large",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "same": false
     },
     {
       "name": "chunker-version-changes-the-key",
-      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "2", "composerVersion": "1" },
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1"
+      },
       "same": false
     },
     {
       "name": "swapped-prefix-roles-change-the-key",
-      "a": { "provider": "intfloat", "model": "e5-large-v2", "dim": 1024, "normalize": true, "queryPrefix": "query: ", "documentPrefix": "passage: ", "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "intfloat", "model": "e5-large-v2", "dim": 1024, "normalize": true, "queryPrefix": "passage: ", "documentPrefix": "query: ", "chunkerVersion": "1", "composerVersion": "1" },
+      "a": {
+        "provider": "intfloat",
+        "model": "e5-large-v2",
+        "dim": 1024,
+        "normalize": true,
+        "queryPrefix": "query: ",
+        "documentPrefix": "passage: ",
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "intfloat",
+        "model": "e5-large-v2",
+        "dim": 1024,
+        "normalize": true,
+        "queryPrefix": "passage: ",
+        "documentPrefix": "query: ",
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "same": false
     },
     {
       "name": "normalization-toggle-changes-the-key",
-      "a": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
-      "b": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": false, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": false,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "same": false
+    },
+    {
+      "name": "v2-same-config-same-key",
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "same": true
+    },
+    {
+      "name": "v2-tokenizer-revision-changes-the-key",
+      "a": {
+        "provider": "ollama",
+        "model": "embeddinggemma-2:440m",
+        "dim": 768,
+        "normalize": true,
+        "queryPrefix": "query: ",
+        "documentPrefix": "passage: ",
+        "chunkerVersion": "2",
+        "composerVersion": "3",
+        "tokenizer": {
+          "kind": "hf_tokenizers",
+          "identifier": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+          "artifact_sha256": "21106b6d7dab2952c1d496fb21d5dc9db75c28ed361a05f5020bbba27810dd08",
+          "exact": true,
+          "max_input_tokens": 8192
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "b": {
+        "provider": "ollama",
+        "model": "embeddinggemma-2:440m",
+        "dim": 768,
+        "normalize": true,
+        "queryPrefix": "query: ",
+        "documentPrefix": "passage: ",
+        "chunkerVersion": "2",
+        "composerVersion": "3",
+        "tokenizer": {
+          "kind": "hf_tokenizers",
+          "identifier": "BAAI/bge-m3",
+          "revision": "0000000000000000000000000000000000000000",
+          "artifact_sha256": "21106b6d7dab2952c1d496fb21d5dc9db75c28ed361a05f5020bbba27810dd08",
+          "exact": true,
+          "max_input_tokens": 8192
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "same": false
+    },
+    {
+      "name": "v2-tokenizer-checksum-changes-the-key",
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "same": false
+    },
+    {
+      "name": "v2-chunk-fingerprint-changes-the-key",
+      "a": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "b": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 128,
+          "overlap_tokens": 16,
+          "max_chars": 800,
+          "fingerprint": "be093425f1851c0c73d93b24beb443b37e8fe08229b6fdbcc5eb894159ba1c3f"
+        }
+      },
+      "same": false
+    },
+    {
+      "name": "v2-heuristic-needs-no-revision-or-checksum",
+      "a": {
+        "provider": "mock",
+        "model": "mock-embed",
+        "dim": 64,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "heuristic",
+          "identifier": "utf8-heuristic-v1",
+          "revision": null,
+          "artifact_sha256": null,
+          "exact": false,
+          "max_input_tokens": 2048
+        },
+        "chunk": {
+          "max_chunk_tokens": 256,
+          "overlap_tokens": 32,
+          "max_chars": 800,
+          "fingerprint": "494e84e0c9fb22888594ce0c9e94d5e1ee3ab5a673ee364857e4e9a53e998443"
+        }
+      },
+      "b": {
+        "provider": "mock",
+        "model": "mock-embed",
+        "dim": 64,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "heuristic",
+          "identifier": "utf8-heuristic-v1",
+          "revision": null,
+          "artifact_sha256": null,
+          "exact": false,
+          "max_input_tokens": 2048
+        },
+        "chunk": {
+          "max_chunk_tokens": 256,
+          "overlap_tokens": 32,
+          "max_chars": 800,
+          "fingerprint": "494e84e0c9fb22888594ce0c9e94d5e1ee3ab5a673ee364857e4e9a53e998443"
+        }
+      },
+      "same": true
     }
   ],
   "spaceKeyPinned": [
     {
       "name": "openai-1536-no-prefix",
-      "space": { "provider": "openai", "model": "text-embedding-3-small", "dim": 1536, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" },
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      },
       "expected": "15b568bcad93c4580ddf7e77e3c8c25a49994239631f64f376e8367fea16ecd3"
     },
     {
       "name": "ollama-asymmetric-768",
-      "space": { "provider": "ollama", "model": "embeddinggemma-2:440m", "dim": 768, "normalize": true, "queryPrefix": "query: ", "documentPrefix": "passage: ", "chunkerVersion": "2", "composerVersion": "3" },
+      "space": {
+        "provider": "ollama",
+        "model": "embeddinggemma-2:440m",
+        "dim": 768,
+        "normalize": true,
+        "queryPrefix": "query: ",
+        "documentPrefix": "passage: ",
+        "chunkerVersion": "2",
+        "composerVersion": "3"
+      },
       "expected": "70815a9b4592bbddca6ff1ab5b55316cc2d7e833d2182f9ad7185698359994fb"
+    }
+  ],
+  "spaceKeyV2": [
+    {
+      "name": "openai-cl100k-512-64",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "expected": "04b3c8076a537d6bcdd342256f1032c74c09f7913fed69855651efa1d6c9429a",
+      "expectedV1": "0f25f4959455509604dd75a2e30d41f5421607ce7639cedcfad3281d21c7fb63"
+    },
+    {
+      "name": "ollama-hf-asymmetric-768",
+      "space": {
+        "provider": "ollama",
+        "model": "embeddinggemma-2:440m",
+        "dim": 768,
+        "normalize": true,
+        "queryPrefix": "query: ",
+        "documentPrefix": "passage: ",
+        "chunkerVersion": "2",
+        "composerVersion": "3",
+        "tokenizer": {
+          "kind": "hf_tokenizers",
+          "identifier": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+          "artifact_sha256": "21106b6d7dab2952c1d496fb21d5dc9db75c28ed361a05f5020bbba27810dd08",
+          "exact": true,
+          "max_input_tokens": 8192
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      },
+      "expected": "5678f2327d46bef0b4180c985fbed18348e1569a32fc6f9956b5a2208533b44b",
+      "expectedV1": "70815a9b4592bbddca6ff1ab5b55316cc2d7e833d2182f9ad7185698359994fb"
+    },
+    {
+      "name": "mock-heuristic-fallback-64",
+      "space": {
+        "provider": "mock",
+        "model": "mock-embed",
+        "dim": 64,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "heuristic",
+          "identifier": "utf8-heuristic-v1",
+          "revision": null,
+          "artifact_sha256": null,
+          "exact": false,
+          "max_input_tokens": 2048
+        },
+        "chunk": {
+          "max_chunk_tokens": 256,
+          "overlap_tokens": 32,
+          "max_chars": 800,
+          "fingerprint": "494e84e0c9fb22888594ce0c9e94d5e1ee3ab5a673ee364857e4e9a53e998443"
+        }
+      },
+      "expected": "bdaaaeb05280fe675b34b5db3310d3069629f101bffe9165441b5e935c8fdf72",
+      "expectedV1": "5cfd6e251df87af4260454d0295f0bb4b22315f0d7f3dd00d57f2cacb4f9cac8"
+    }
+  ],
+  "spaceKeyStored": [
+    {
+      "name": "stored-key-wins-over-the-current-preimage",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1",
+        "storedKey": "0f25f4959455509604dd75a2e30d41f5421607ce7639cedcfad3281d21c7fb63"
+      },
+      "expected": "0f25f4959455509604dd75a2e30d41f5421607ce7639cedcfad3281d21c7fb63",
+      "recomputed": "15b568bcad93c4580ddf7e77e3c8c25a49994239631f64f376e8367fea16ecd3",
+      "differs": true
+    },
+    {
+      "name": "stored-key-equal-to-the-preimage-is-still-returned-verbatim",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1",
+        "storedKey": "15b568bcad93c4580ddf7e77e3c8c25a49994239631f64f376e8367fea16ecd3"
+      },
+      "expected": "15b568bcad93c4580ddf7e77e3c8c25a49994239631f64f376e8367fea16ecd3",
+      "recomputed": "15b568bcad93c4580ddf7e77e3c8c25a49994239631f64f376e8367fea16ecd3",
+      "differs": false
+    },
+    {
+      "name": "stored-key-is-opaque-and-never-recomputed",
+      "space": {
+        "provider": "ollama",
+        "model": "legacy-model:7b",
+        "dim": 768,
+        "normalize": false,
+        "queryPrefix": "query: ",
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "3",
+        "storedKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "expected": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "recomputed": "fae4e90caf423c70d8c4bbfd31ceff1ad3674446d133d36e252f99fcd49ef124",
+      "differs": true
+    }
+  ],
+  "indexRecordTokens": [
+    {
+      "name": "legacy-record-has-no-token-fields",
+      "record": {
+        "record_id": "r-legacy",
+        "document_id": "d-1",
+        "view": "summary",
+        "chunk_index": 0,
+        "embedding": [
+          0.1,
+          0.2
+        ]
+      },
+      "expected": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "name": "whole-view-token-window",
+      "record": {
+        "record_id": "r-whole",
+        "document_id": "d-1",
+        "view": "summary",
+        "chunk_index": 0,
+        "embedding": [
+          0.1,
+          0.2
+        ],
+        "token_count": 12,
+        "token_start": 0,
+        "token_end": 12
+      },
+      "expected": [
+        12,
+        0,
+        12
+      ]
+    },
+    {
+      "name": "overlapping-token-window",
+      "record": {
+        "record_id": "r-window",
+        "document_id": "d-1",
+        "view": "body",
+        "chunk_index": 3,
+        "embedding": [
+          0.1,
+          0.2
+        ],
+        "char_start": 400,
+        "char_end": 900,
+        "token_count": 64,
+        "token_start": 448,
+        "token_end": 512
+      },
+      "expected": [
+        64,
+        448,
+        512
+      ]
     }
   ],
   "rrfMerge": [
     {
       "name": "two-rankings-k60",
-      "lists": [["d1", "d2"], ["d2", "d3"]],
+      "lists": [
+        [
+          "d1",
+          "d2"
+        ],
+        [
+          "d2",
+          "d3"
+        ]
+      ],
       "k": 60,
       "weights": null,
       "expectedScores": {
@@ -93,34 +857,72 @@
         "d2": 0.03252247488101534,
         "d3": 0.016129032258064516
       },
-      "expectedOrder": ["d2", "d1", "d3"]
+      "expectedOrder": [
+        "d2",
+        "d1",
+        "d3"
+      ]
     },
     {
       "name": "weighted-views",
-      "lists": [["d1", "d2"], ["d2", "d3"]],
+      "lists": [
+        [
+          "d1",
+          "d2"
+        ],
+        [
+          "d2",
+          "d3"
+        ]
+      ],
       "k": 60,
-      "weights": [2.0, 1.0],
+      "weights": [
+        2.0,
+        1.0
+      ],
       "expectedScores": {
         "d1": 0.03278688524590164,
         "d2": 0.048651507139079855,
         "d3": 0.016129032258064516
       },
-      "expectedOrder": ["d2", "d1", "d3"]
+      "expectedOrder": [
+        "d2",
+        "d1",
+        "d3"
+      ]
     },
     {
       "name": "tie-breaks-on-id-ascending",
-      "lists": [["b", "a"], ["a", "b"]],
+      "lists": [
+        [
+          "b",
+          "a"
+        ],
+        [
+          "a",
+          "b"
+        ]
+      ],
       "k": 60,
       "weights": null,
       "expectedScores": {
         "a": 0.03252247488101534,
         "b": 0.03252247488101534
       },
-      "expectedOrder": ["a", "b"]
+      "expectedOrder": [
+        "a",
+        "b"
+      ]
     },
     {
       "name": "single-ranking-is-its-own-order",
-      "lists": [["x", "y", "z"]],
+      "lists": [
+        [
+          "x",
+          "y",
+          "z"
+        ]
+      ],
       "k": 60,
       "weights": null,
       "expectedScores": {
@@ -128,33 +930,168 @@
         "y": 0.016129032258064516,
         "z": 0.015873015873015872
       },
-      "expectedOrder": ["x", "y", "z"]
+      "expectedOrder": [
+        "x",
+        "y",
+        "z"
+      ]
     }
   ],
   "fusedOrder": [
     {
       "name": "score-descending",
-      "scores": { "a": 0.2, "b": 0.9, "c": 0.5 },
-      "expected": ["b", "c", "a"]
+      "scores": {
+        "a": 0.2,
+        "b": 0.9,
+        "c": 0.5
+      },
+      "expected": [
+        "b",
+        "c",
+        "a"
+      ]
     },
     {
       "name": "ties-break-on-id-ascending",
-      "scores": { "z": 0.4, "m": 0.4, "a": 0.4 },
-      "expected": ["a", "m", "z"]
+      "scores": {
+        "z": 0.4,
+        "m": 0.4,
+        "a": 0.4
+      },
+      "expected": [
+        "a",
+        "m",
+        "z"
+      ]
     }
   ],
   "maxsim": [
-    { "name": "identical-single-vector", "queries": [[1, 0]], "documents": [[1, 0]], "expected": 1.0 },
-    { "name": "best-chunk-wins", "queries": [[1, 0]], "documents": [[0, 1], [1, 1]], "expected": 0.7071067811865475 },
-    { "name": "sum-over-query-vectors", "queries": [[1, 0], [0, 1]], "documents": [[1, 0], [0, 1]], "expected": 2.0 },
-    { "name": "no-documents-scores-zero", "queries": [[1, 0]], "documents": [], "expected": 0.0 },
-    { "name": "dim-mismatch-scores-zero", "queries": [[1, 0, 0]], "documents": [[1, 0]], "expected": 0.0 }
+    {
+      "name": "identical-single-vector",
+      "queries": [
+        [
+          1,
+          0
+        ]
+      ],
+      "documents": [
+        [
+          1,
+          0
+        ]
+      ],
+      "expected": 1.0
+    },
+    {
+      "name": "best-chunk-wins",
+      "queries": [
+        [
+          1,
+          0
+        ]
+      ],
+      "documents": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "expected": 0.7071067811865475
+    },
+    {
+      "name": "sum-over-query-vectors",
+      "queries": [
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "documents": [
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "expected": 2.0
+    },
+    {
+      "name": "no-documents-scores-zero",
+      "queries": [
+        [
+          1,
+          0
+        ]
+      ],
+      "documents": [],
+      "expected": 0.0
+    },
+    {
+      "name": "dim-mismatch-scores-zero",
+      "queries": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "documents": [
+        [
+          1,
+          0
+        ]
+      ],
+      "expected": 0.0
+    }
   ],
   "topMean": [
-    { "name": "top-2-mean", "scores": [0.9, 0.5, 0.3], "n": 2, "expected": 0.7 },
-    { "name": "n-exceeds-count-means-all", "scores": [0.9, 0.5, 0.3], "n": 5, "expected": 0.5666666666666667 },
-    { "name": "n1-is-max", "scores": [0.2, 0.8, 0.4], "n": 1, "expected": 0.8 },
-    { "name": "empty-scores-zero", "scores": [], "n": 2, "expected": 0.0 }
+    {
+      "name": "top-2-mean",
+      "scores": [
+        0.9,
+        0.5,
+        0.3
+      ],
+      "n": 2,
+      "expected": 0.7
+    },
+    {
+      "name": "n-exceeds-count-means-all",
+      "scores": [
+        0.9,
+        0.5,
+        0.3
+      ],
+      "n": 5,
+      "expected": 0.5666666666666667
+    },
+    {
+      "name": "n1-is-max",
+      "scores": [
+        0.2,
+        0.8,
+        0.4
+      ],
+      "n": 1,
+      "expected": 0.8
+    },
+    {
+      "name": "empty-scores-zero",
+      "scores": [],
+      "n": 2,
+      "expected": 0.0
+    }
   ],
   "defaults": {
     "rrfK": 60,
@@ -169,28 +1106,299 @@
     "sqliteVecRecommendedRows": 100000
   },
   "vocabularies": {
-    "backends": ["pgvector", "sqlite_vec", "linear"],
-    "spaceStatuses": ["active", "building", "retired"],
-    "degradedReasons": ["provider_unassigned", "embed_failed", "index_missing", "space_mismatch", "over_cap"],
-    "views": ["summary", "requirements", "responsibilities", "skills", "body"],
+    "backends": [
+      "pgvector",
+      "sqlite_vec",
+      "linear"
+    ],
+    "spaceStatuses": [
+      "active",
+      "building",
+      "retired"
+    ],
+    "degradedReasons": [
+      "provider_unassigned",
+      "embed_failed",
+      "index_missing",
+      "space_mismatch",
+      "over_cap"
+    ],
+    "views": [
+      "summary",
+      "requirements",
+      "responsibilities",
+      "skills",
+      "body"
+    ],
     "metric": "cosine"
   },
   "backendCaps": {
-    "pgvector": { "ann": true, "maxDim": 3072, "maxRecommendedRows": 10000000, "scopeEnforcement": "pre_join" },
-    "sqlite_vec": { "ann": true, "maxDim": 3072, "maxRecommendedRows": 100000, "scopeEnforcement": "overfetch_postfilter" },
-    "linear": { "ann": false, "maxDim": 3072, "maxRecommendedRows": 50000, "scopeEnforcement": "in_scan" }
+    "pgvector": {
+      "ann": true,
+      "maxDim": 3072,
+      "maxRecommendedRows": 10000000,
+      "scopeEnforcement": "pre_join"
+    },
+    "sqlite_vec": {
+      "ann": true,
+      "maxDim": 3072,
+      "maxRecommendedRows": 100000,
+      "scopeEnforcement": "overfetch_postfilter"
+    },
+    "linear": {
+      "ann": false,
+      "maxDim": 3072,
+      "maxRecommendedRows": 50000,
+      "scopeEnforcement": "in_scan"
+    }
   },
   "degradation": [
-    { "condition": "no embeddings provider assigned", "reason": "provider_unassigned" },
-    { "condition": "embed call fails or times out", "reason": "embed_failed" },
-    { "condition": "space missing or no index table", "reason": "index_missing" },
-    { "condition": "writer resolves a model or dim different from the space", "reason": "space_mismatch" },
-    { "condition": "desktop over the backend row cap", "reason": "over_cap" }
+    {
+      "condition": "no embeddings provider assigned",
+      "reason": "provider_unassigned"
+    },
+    {
+      "condition": "embed call fails or times out",
+      "reason": "embed_failed"
+    },
+    {
+      "condition": "space missing or no index table",
+      "reason": "index_missing"
+    },
+    {
+      "condition": "writer resolves a model or dim different from the space",
+      "reason": "space_mismatch"
+    },
+    {
+      "condition": "desktop over the backend row cap",
+      "reason": "over_cap"
+    }
   ],
   "invalidArgs": [
-    { "name": "top-mean-n-zero", "call": "topMean", "scores": [0.5], "n": 0 },
-    { "name": "rrf-k-zero", "call": "rrfMerge", "lists": [["a"]], "k": 0 },
-    { "name": "rrf-weight-count-mismatch", "call": "rrfMerge", "lists": [["a"], ["b"]], "k": 60, "weights": [1.0] },
-    { "name": "space-dim-zero", "call": "space", "space": { "provider": "openai", "model": "text-embedding-3-small", "dim": 0, "normalize": true, "queryPrefix": null, "documentPrefix": null, "chunkerVersion": "1", "composerVersion": "1" } }
+    {
+      "name": "top-mean-n-zero",
+      "call": "topMean",
+      "scores": [
+        0.5
+      ],
+      "n": 0
+    },
+    {
+      "name": "rrf-k-zero",
+      "call": "rrfMerge",
+      "lists": [
+        [
+          "a"
+        ]
+      ],
+      "k": 0
+    },
+    {
+      "name": "rrf-weight-count-mismatch",
+      "call": "rrfMerge",
+      "lists": [
+        [
+          "a"
+        ],
+        [
+          "b"
+        ]
+      ],
+      "k": 60,
+      "weights": [
+        1.0
+      ]
+    },
+    {
+      "name": "space-dim-zero",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 0,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1"
+      }
+    },
+    {
+      "name": "space-stored-key-uppercase",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1",
+        "storedKey": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+      }
+    },
+    {
+      "name": "space-stored-key-too-short",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1",
+        "storedKey": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "name": "space-stored-key-non-hex",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1",
+        "storedKey": "zbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "name": "tokenizer-without-chunk",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        }
+      }
+    },
+    {
+      "name": "chunk-without-tokenizer",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "2",
+        "composerVersion": "1",
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      }
+    },
+    {
+      "name": "v2-space-with-v1-chunker-version",
+      "call": "space",
+      "space": {
+        "provider": "openai",
+        "model": "text-embedding-3-small",
+        "dim": 1536,
+        "normalize": true,
+        "queryPrefix": null,
+        "documentPrefix": null,
+        "chunkerVersion": "1",
+        "composerVersion": "1",
+        "tokenizer": {
+          "kind": "tiktoken",
+          "identifier": "cl100k_base",
+          "revision": null,
+          "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+          "exact": true,
+          "max_input_tokens": 8191
+        },
+        "chunk": {
+          "max_chunk_tokens": 512,
+          "overlap_tokens": 64,
+          "max_chars": 1600,
+          "fingerprint": "cb9b3264e5a779ef74127fd59ff8f50d7004a0b485fe9852d5794edae6af02de"
+        }
+      }
+    },
+    {
+      "name": "token-count-without-range",
+      "call": "indexRecord",
+      "record": {
+        "record_id": "r-bad",
+        "document_id": "d-1",
+        "view": "summary",
+        "chunk_index": 0,
+        "embedding": [
+          0.1
+        ],
+        "token_count": 3
+      }
+    },
+    {
+      "name": "negative-token-start",
+      "call": "indexRecord",
+      "record": {
+        "record_id": "r-bad",
+        "document_id": "d-1",
+        "view": "summary",
+        "chunk_index": 0,
+        "embedding": [
+          0.1
+        ],
+        "token_count": 0,
+        "token_start": -1,
+        "token_end": -1
+      }
+    },
+    {
+      "name": "unordered-token-range",
+      "call": "indexRecord",
+      "record": {
+        "record_id": "r-bad",
+        "document_id": "d-1",
+        "view": "summary",
+        "chunk_index": 0,
+        "embedding": [
+          0.1
+        ],
+        "token_count": 0,
+        "token_start": 5,
+        "token_end": 4
+      }
+    },
+    {
+      "name": "token-count-mismatch",
+      "call": "indexRecord",
+      "record": {
+        "record_id": "r-bad",
+        "document_id": "d-1",
+        "view": "summary",
+        "chunk_index": 0,
+        "embedding": [
+          0.1
+        ],
+        "token_count": 7,
+        "token_start": 0,
+        "token_end": 8
+      }
+    }
   ]
 }

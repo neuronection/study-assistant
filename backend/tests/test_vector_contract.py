@@ -1,4 +1,4 @@
-"""Family vector-contract wall (ADR-0051 / plan 50 P3a).
+"""Family vector-contract wall (ADR-0051 / plan 50 P3, plan 52 T5a).
 
 Runs the canonical fixture table against the vendored contract copy in
 ``app/storage/vector_contract.py`` — the same checks as dev's
@@ -15,7 +15,7 @@ import json
 import math
 import os
 from pathlib import Path
-from typing import Any, cast
+from types import SimpleNamespace
 
 import pytest
 
@@ -40,6 +40,9 @@ GROUPS = (
     "textHash",
     "spaceKeyStability",
     "spaceKeyPinned",
+    "spaceKeyV2",
+    "spaceKeyStored",
+    "indexRecordTokens",
     "rrfMerge",
     "fusedOrder",
     "maxsim",
@@ -54,15 +57,25 @@ GROUPS = (
 META = {"schema", "adr", "plan", "description"}
 
 
-def _fixtures() -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads(FIXTURES.read_text(encoding="utf-8")))
+def _fixtures() -> dict:
+    return json.loads(FIXTURES.read_text(encoding="utf-8"))
 
 
 def _close(actual: float, expected: float) -> bool:
     return math.isclose(actual, expected, rel_tol=1e-9, abs_tol=1e-12)
 
 
-def _space(row: dict[str, Any]) -> vc.VectorSpace:
+def _tokenizer(row: dict) -> SimpleNamespace | None:
+    payload = row.get("tokenizer")
+    return None if payload is None else SimpleNamespace(**payload)
+
+
+def _chunk(row: dict) -> SimpleNamespace | None:
+    payload = row.get("chunk")
+    return None if payload is None else SimpleNamespace(**payload)
+
+
+def _space(row: dict) -> vc.VectorSpace:
     return vc.VectorSpace(
         name="fixture",
         provider=row["provider"],
@@ -73,10 +86,26 @@ def _space(row: dict[str, Any]) -> vc.VectorSpace:
         document_prefix=row.get("documentPrefix"),
         chunker_version=row["chunkerVersion"],
         composer_version=row["composerVersion"],
+        stored_key=row.get("storedKey"),
+        tokenizer=_tokenizer(row),
+        chunk=_chunk(row),
     )
 
 
-def test_fixture_meta_and_group_inventory() -> None:
+def _preimage_key(row: dict) -> str:
+    return vc.space_key(
+        row["provider"],
+        row["model"],
+        row["dim"],
+        row["normalize"],
+        row.get("queryPrefix"),
+        row.get("documentPrefix"),
+        row["chunkerVersion"],
+        row["composerVersion"],
+    )
+
+
+def test_fixture_meta_and_group_inventory():
     fixtures = _fixtures()
     assert fixtures["schema"] == 1
     assert "ADR-0051" in str(fixtures["adr"])
@@ -89,7 +118,7 @@ def test_fixture_meta_and_group_inventory() -> None:
         assert fixtures[group], f"{group} is empty"
 
 
-def test_vendored_contract_imports_stdlib_only() -> None:
+def test_vendored_contract_imports_stdlib_only():
     tree = ast.parse(CONTRACT.read_text(encoding="utf-8"))
     found: set[str] = set()
     for node in ast.walk(tree):
@@ -100,7 +129,7 @@ def test_vendored_contract_imports_stdlib_only() -> None:
     assert not found - ALLOWED_IMPORTS, f"non-stdlib imports: {sorted(found - ALLOWED_IMPORTS)}"
 
 
-def test_cosine_fixtures() -> None:
+def test_cosine_fixtures():
     for row in _fixtures()["cosine"]:
         actual = vc.cosine(row["a"], row["b"])
         assert _close(actual, row["expected"]), (
@@ -108,7 +137,7 @@ def test_cosine_fixtures() -> None:
         )
 
 
-def test_normalize_fixtures() -> None:
+def test_normalize_fixtures():
     for row in _fixtures()["normalize"]:
         actual = vc.normalize(row["vector"])
         assert len(actual) == len(row["expected"]), f"{row['name']}: length changed"
@@ -117,24 +146,48 @@ def test_normalize_fixtures() -> None:
         )
 
 
-def test_text_hash_fixtures() -> None:
+def test_text_hash_fixtures():
     for row in _fixtures()["textHash"]:
         assert vc.normalize_text(row["text"]) == row["expectedNormalized"], row["name"]
         assert vc.content_hash(row["text"]) == row["expectedHash"], row["name"]
 
 
-def test_space_key_stability_fixtures() -> None:
+def test_space_key_stability_fixtures():
     for row in _fixtures()["spaceKeyStability"]:
         same = _space(row["a"]).key == _space(row["b"]).key
         assert same is row["same"], f"{row['name']}: expected same={row['same']}"
 
 
-def test_pinned_space_keys() -> None:
+def test_pinned_space_keys():
     for row in _fixtures()["spaceKeyPinned"]:
         assert _space(row["space"]).key == row["expected"], row["name"]
 
 
-def test_rrf_merge_fixtures() -> None:
+def test_pinned_v2_space_keys_differ_from_v1():
+    for row in _fixtures()["spaceKeyV2"]:
+        assert _space(row["space"]).key == row["expected"], row["name"]
+        assert _preimage_key(row["space"]) == row["expectedV1"], row["name"]
+        assert row["expected"] != row["expectedV1"], row["name"]
+
+
+def test_index_record_token_fields_are_optional_and_ordered():
+    for row in _fixtures()["indexRecordTokens"]:
+        record = vc.IndexRecord(**row["record"])
+        assert [record.token_count, record.token_start, record.token_end] == row["expected"], row[
+            "name"
+        ]
+
+
+def test_stored_space_key_wins_over_the_current_preimage():
+    for row in _fixtures()["spaceKeyStored"]:
+        recomputed = _preimage_key(row["space"])
+        assert recomputed == row["recomputed"], f"{row['name']}: v1 pre-image drifted"
+        assert _space(row["space"]).key == row["expected"], row["name"]
+        if row.get("differs"):
+            assert row["expected"] != recomputed, row["name"]
+
+
+def test_rrf_merge_fixtures():
     for row in _fixtures()["rrfMerge"]:
         scores = vc.rrf_merge(row["lists"], k=row["k"], weights=row.get("weights"))
         expected = row["expectedScores"]
@@ -144,24 +197,24 @@ def test_rrf_merge_fixtures() -> None:
         assert vc.fused_order(scores) == row["expectedOrder"], row["name"]
 
 
-def test_fused_order_fixtures() -> None:
+def test_fused_order_fixtures():
     for row in _fixtures()["fusedOrder"]:
         assert vc.fused_order(row["scores"]) == row["expected"], row["name"]
 
 
-def test_maxsim_fixtures() -> None:
+def test_maxsim_fixtures():
     for row in _fixtures()["maxsim"]:
         actual = vc.maxsim(row["queries"], row["documents"])
         assert _close(actual, row["expected"]), f"{row['name']}: got {actual}"
 
 
-def test_top_mean_fixtures() -> None:
+def test_top_mean_fixtures():
     for row in _fixtures()["topMean"]:
         actual = vc.top_mean(row["scores"], row["n"])
         assert _close(actual, row["expected"]), f"{row['name']}: got {actual}"
 
 
-def test_v1_defaults_are_pinned() -> None:
+def test_v1_defaults_are_pinned():
     expected = _fixtures()["defaults"]
     mapping = {
         "rrfK": "RRF_K",
@@ -180,7 +233,7 @@ def test_v1_defaults_are_pinned() -> None:
         assert getattr(vc, attribute) == expected[key], attribute
 
 
-def test_closed_vocabularies() -> None:
+def test_closed_vocabularies():
     data = _fixtures()["vocabularies"]
     expected = {
         "backends": [vc.BACKEND_PGVECTOR, vc.BACKEND_SQLITE_VEC, vc.BACKEND_LINEAR],
@@ -194,7 +247,7 @@ def test_closed_vocabularies() -> None:
         assert data[key] == value, key
 
 
-def test_backend_capabilities() -> None:
+def test_backend_capabilities():
     data = _fixtures()["backendCaps"]
     assert set(data) == set(vc.BACKEND_CAPS)
     for backend, row in data.items():
@@ -207,13 +260,13 @@ def test_backend_capabilities() -> None:
         } == row, backend
 
 
-def test_degradation_matrix_covers_the_closed_enum() -> None:
+def test_degradation_matrix_covers_the_closed_enum():
     rows = _fixtures()["degradation"]
     reasons = {str(member) for member in vc.DegradedReason}
     assert {row["reason"] for row in rows} == reasons
 
 
-def test_invalid_arguments_raise_value_error() -> None:
+def test_invalid_arguments_raise_value_error():
     for row in _fixtures()["invalidArgs"]:
         with pytest.raises(ValueError):
             if row["call"] == "topMean":
@@ -222,6 +275,8 @@ def test_invalid_arguments_raise_value_error() -> None:
                 vc.rrf_merge(row["lists"], k=row["k"], weights=row.get("weights"))
             elif row["call"] == "space":
                 _space(row["space"])
+            elif row["call"] == "indexRecord":
+                vc.IndexRecord(**row["record"])
             else:  # pragma: no cover - a new fixture call must be wired
                 pytest.fail(f"unknown invalidArgs call {row['call']}")
 
@@ -235,7 +290,7 @@ def _dev_canonical() -> Path | None:
     return next((path for path in candidates if (path / "vector_contract.py").is_file()), None)
 
 
-def test_vendored_files_are_byte_identical_to_the_dev_canonical() -> None:
+def test_vendored_files_are_byte_identical_to_the_dev_canonical():
     canonical = _dev_canonical()
     if canonical is None:
         pytest.skip("dev canonical not present (CI/public clone) — vendored copy only")

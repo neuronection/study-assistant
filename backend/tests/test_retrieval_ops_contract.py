@@ -118,6 +118,9 @@ def test_closed_vocabularies_match_the_fixture():
         "activeRunStatuses": [member.value for member in ops.VECTOR_RUN_ACTIVE_STATUSES],
         "terminalRunStatuses": [member.value for member in ops.VECTOR_RUN_TERMINAL_STATUSES],
         "jobTypes": list(ops.VECTOR_JOB_TYPES),
+        "tokenizerJobTypes": list(ops.TOKENIZER_JOB_TYPES),
+        "tokenizerKinds": list(ops.TOKENIZER_KINDS),
+        "tokenizerSources": list(ops.TOKENIZER_SOURCES),
         "auditGroup": ops.VECTOR_AUDIT_GROUP,
         "auditEvents": list(ops.VECTOR_AUDIT_EVENTS),
         "views": list(ops.V1_VIEWS),
@@ -177,6 +180,39 @@ def test_run_fixtures_and_lock_key_derivation():
         if dto.lock_key:
             assert dto.lock_key == ops.run_lock_key(dto.space_id), case["name"]
         dto.to_dict()
+
+
+def test_token_aware_space_and_run_fixtures_pin_the_identity():
+    fixture = _fixtures()
+    aware_spaces = 0
+    for case in fixture["spaces"]:
+        dto = _build("SpaceDTO", case["dto"])
+        if not dto.token_aware:
+            continue
+        aware_spaces += 1
+        assert dto.tokenizer is not None, case["name"]
+        assert dto.chunk is not None, case["name"]
+        assert dto.tokenizer.kind in ops.TOKENIZER_KINDS, case["name"]
+        assert dto.tokenizer.source in ops.TOKENIZER_SOURCES, case["name"]
+        assert dto.tokenizer.exact is True, case["name"]
+        assert dto.chunk.max_chunk_tokens <= dto.tokenizer.max_input_tokens, case["name"]
+        dto.to_dict()
+    assert aware_spaces >= 1, "the canonical wall must exercise a token-aware space"
+
+    aware_runs = 0
+    for case in fixture["runs"]:
+        dto = _build("RunDTO", case["dto"])
+        if dto.token_aware:
+            aware_runs += 1
+            assert dto.tokenizer is not None, case["name"]
+            assert dto.chunk is not None, case["name"]
+        if dto.progress_detail is not None:
+            detail = dto.progress_detail
+            assert detail.pending_documents >= 0, case["name"]
+            assert detail.pending_chunks >= 0, case["name"]
+            assert detail.phase in ops.RUN_PROGRESS_PHASES, case["name"]
+        dto.to_dict()
+    assert aware_runs >= 1, "the canonical wall must exercise a token-aware run"
 
 
 def test_run_detail_fixtures_compose_result_and_duration():

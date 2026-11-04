@@ -1,7 +1,12 @@
-# VENDORED FILE — family canonical (ADR-0031 / ADR-0051).
-# Synced byte-identically from the family contract and checked by the family
-# wiring verifier; the shared fixture table loads alongside it. NEVER edit the
-# vendored copy in-repo — change the family canonical, then re-run the sync.
+# VENDORED FILE — family canonical (ADR-0031 / ADR-0051). Source of truth:
+# dev/contracts/retrieval_ops.py; vendored byte-identical into
+# career-assistant in plan 51 Q1 (backend/app/storage/retrieval_ops.py) and
+# study-assistant in Q3 by scripts/sync-retrieval-ops.sh, sha-checked by
+# scripts/verify-wiring.sh, accepted by the shared fixture table
+# (dev/contracts/retrieval-ops.fixtures.json — vendored alongside, loaded by
+# every repo's retrieval-ops contract test). NEVER edit the vendored copy
+# in-repo — change the dev canonical, then re-run the sync (contract changes
+# = one dev commit + one sync run, never per-repo edits).
 """Family retrieval-operations contract (plan 51 Q0) — read/action vocabulary.
 
 This module is the companion to :mod:`vector_contract` (ADR-0051). The
@@ -43,6 +48,12 @@ from typing import Any
 
 RETRIEVAL_CONTRACT_VERSION = "1"
 RETRIEVAL_SCHEMA_VERSION = 1
+
+#: Plan 52: a space/run may pin a tokenizer and a token-aware chunk config.
+#: These vocabularies mirror ``tokenizer_contract`` without importing it — the
+#: retrieval DTO only travels the selection, never the loader.
+TOKENIZER_KINDS = ("tiktoken", "hf_tokenizers", "sentencepiece", "heuristic")
+TOKENIZER_SOURCES = ("provider", "curated", "admin", "fallback")
 
 # ---------------------------------------------------------------------------
 # closed vocabularies
@@ -123,6 +134,10 @@ VECTOR_JOB_TYPES = (
     "VECTOR_CUTOVER",
     "VECTOR_MAINTENANCE",
 )
+#: Plan 52 T2b: a bounded admin fetch of a pinned tokenizer asset. It is not
+#: a space run — it never takes a ``vector_space:`` lock and is not a
+#: ``RunDTO``/``VECTOR_JOB_TYPES`` member.
+TOKENIZER_JOB_TYPES = ("TOKENIZER_FETCH",)
 VECTOR_RUN_ACTIVE_STATUSES = (RunStatus.QUEUED, RunStatus.RUNNING)
 VECTOR_RUN_TERMINAL_STATUSES = (
     RunStatus.SUCCEEDED,
@@ -144,12 +159,19 @@ VECTOR_AUDIT_EVENTS = (
     "vector.reindex.retried",
     "vector.maintenance.started",
     "vector.model.changed",
+    "vector.tokenizer.fetch_requested",
+    "vector.tokenizer.fetched",
+    "vector.tokenizer.fetch_failed",
     "vector.gate.failed",
     "vector.run.stalled",
     "vector.document.indexed",
 )
 
 FAILED_IDS_LIMIT = 500
+#: The live indexing phases a run's ``progress_detail`` may report. ``queued``
+#: is the pre-claim state; ``done`` is the terminal report before the result
+#: replaces the detail (the detail is pruned when the result commits).
+RUN_PROGRESS_PHASES = ("queued", "scanning", "embedding", "writing", "done")
 COVERAGE_GATE = 0.995
 QUALITY_K_DEFAULT = 5
 QUALITY_FLOOR_RECALL = 0.80
@@ -348,6 +370,130 @@ class RunScope(_DTO):
 
 
 @dataclass(frozen=True)
+class SpaceTokenizerDTO(_DTO):
+    """The pinned tokenizer identity a token-aware space (or run) carries.
+
+    Counts-only evidence: kind, identifier, pinned revision, artifact
+    checksum, exactness, the model input limit and where the selection came
+    from. It never carries tokenizer assets or document text.
+    """
+
+    kind: str
+    identifier: str
+    exact: bool
+    max_input_tokens: int
+    revision: str | None = None
+    artifact_sha256: str | None = None
+    source: str | None = None
+
+    def __post_init__(self) -> None:
+        kind = _text(self.kind, "tokenizer.kind", required=True, maximum=30)
+        if kind not in TOKENIZER_KINDS:
+            raise _bad("tokenizer.kind", f"must be one of {TOKENIZER_KINDS}")
+        object.__setattr__(self, "kind", kind)
+        object.__setattr__(
+            self,
+            "identifier",
+            _text(self.identifier, "tokenizer.identifier", required=True, maximum=200),
+        )
+        object.__setattr__(self, "exact", bool(self.exact))
+        object.__setattr__(
+            self,
+            "max_input_tokens",
+            _int(self.max_input_tokens, "tokenizer.max_input_tokens", minimum=1),
+        )
+        revision = _optional_text(self.revision, "tokenizer.revision", maximum=120)
+        checksum = _optional_text(
+            self.artifact_sha256, "tokenizer.artifact_sha256", maximum=64
+        )
+        if checksum is not None:
+            checksum = checksum.lower()
+            if len(checksum) != 64 or any(
+                character not in "0123456789abcdef" for character in checksum
+            ):
+                raise _bad(
+                    "tokenizer.artifact_sha256",
+                    "must be a 64-character lowercase sha256",
+                )
+        source = _optional_text(self.source, "tokenizer.source", maximum=20)
+        if source is not None and source not in TOKENIZER_SOURCES:
+            raise _bad("tokenizer.source", f"must be one of {TOKENIZER_SOURCES}")
+        if kind == "heuristic":
+            if self.exact:
+                raise _bad(
+                    "tokenizer.exact", "a heuristic tokenizer is always exact=false"
+                )
+            if revision is not None or checksum is not None:
+                raise _bad(
+                    "tokenizer",
+                    "a heuristic tokenizer carries no revision or artifact checksum",
+                )
+        elif not self.exact:
+            raise _bad("tokenizer.exact", f"a {kind} tokenizer is always exact=true")
+        elif checksum is None:
+            raise _bad(
+                "tokenizer.artifact_sha256",
+                f"a {kind} tokenizer needs an artifact checksum",
+            )
+        elif kind in ("hf_tokenizers", "sentencepiece") and revision is None:
+            raise _bad(
+                "tokenizer.revision", f"a {kind} tokenizer needs a pinned revision"
+            )
+        object.__setattr__(self, "revision", revision)
+        object.__setattr__(self, "artifact_sha256", checksum)
+        object.__setattr__(self, "source", source)
+
+
+@dataclass(frozen=True)
+class SpaceChunkDTO(_DTO):
+    """The token-aware chunk budget a v2 space was built with (no text)."""
+
+    max_chunk_tokens: int
+    overlap_tokens: int = 0
+    max_chars: int = 1
+
+    def __post_init__(self) -> None:
+        maximum = _int(self.max_chunk_tokens, "chunk.max_chunk_tokens", minimum=32)
+        overlap = _int(self.overlap_tokens, "chunk.overlap_tokens", minimum=0)
+        if overlap * 2 >= maximum:
+            raise _bad(
+                "chunk.overlap_tokens",
+                "must stay below half of chunk.max_chunk_tokens",
+            )
+        object.__setattr__(self, "max_chunk_tokens", maximum)
+        object.__setattr__(self, "overlap_tokens", overlap)
+        object.__setattr__(
+            self, "max_chars", _int(self.max_chars, "chunk.max_chars", minimum=1)
+        )
+
+
+def _token_aware_parts(
+    tokenizer: Any, chunk: Any
+) -> tuple[SpaceTokenizerDTO | None, SpaceChunkDTO | None]:
+    if tokenizer is None and chunk is None:
+        return None, None
+    if tokenizer is None or chunk is None:
+        raise _bad(
+            "token_aware",
+            "tokenizer and chunk must be present together on a token-aware space/run",
+        )
+    tokenizer_dto = (
+        tokenizer
+        if isinstance(tokenizer, SpaceTokenizerDTO)
+        else SpaceTokenizerDTO(**dict(tokenizer))
+    )
+    chunk_dto = (
+        chunk if isinstance(chunk, SpaceChunkDTO) else SpaceChunkDTO(**dict(chunk))
+    )
+    if chunk_dto.max_chunk_tokens > tokenizer_dto.max_input_tokens:
+        raise _bad(
+            "chunk.max_chunk_tokens",
+            "must not exceed tokenizer.max_input_tokens",
+        )
+    return tokenizer_dto, chunk_dto
+
+
+@dataclass(frozen=True)
 class SpaceDTO(_DTO):
     """One row of the Spaces section / active-space card."""
 
@@ -372,6 +518,9 @@ class SpaceDTO(_DTO):
     last_error: str | None = None
     gate: GateStatus = GateStatus.UNKNOWN
     as_of: str | None = None
+    token_aware: bool = False
+    tokenizer: SpaceTokenizerDTO | None = None
+    chunk: SpaceChunkDTO | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -412,6 +561,15 @@ class SpaceDTO(_DTO):
             "as_of",
         ):
             object.__setattr__(self, name, _optional_text(getattr(self, name), name))
+        tokenizer, chunk = _token_aware_parts(self.tokenizer, self.chunk)
+        if self.token_aware != (tokenizer is not None):
+            raise _bad(
+                "token_aware",
+                "must be true exactly when a tokenizer and chunk are present",
+            )
+        object.__setattr__(self, "token_aware", bool(self.token_aware))
+        object.__setattr__(self, "tokenizer", tokenizer)
+        object.__setattr__(self, "chunk", chunk)
 
     @property
     def cold(self) -> bool:
@@ -511,6 +669,80 @@ class RunResultDTO(_DTO):
 
 
 @dataclass(frozen=True)
+class RunProgressDTO(_DTO):
+    """Bounded live indexing counters (plan 52 T4) — counts only, never ids/text.
+
+    ``total_documents`` is exact at scan start (and carried across a chained
+    reconcile). Chunk totals are cumulative/estimated because no full corpus
+    pre-scan exists: ``chunks_estimated`` says so explicitly and
+    ``pending_chunks`` is the estimated remainder, never a fake exact number.
+    ``tokens`` is the local tokenizer's count (``exact_tokenizer`` decides
+    whether it is exact); ``None`` means the run did not measure tokens.
+    """
+
+    phase: str = "queued"
+    processed_documents: int = 0
+    total_documents: int = 0
+    processed_chunks: int = 0
+    pending_chunks: int = 0
+    total_chunks: int | None = None
+    chunks_estimated: bool = True
+    embedded_chunks: int = 0
+    skipped_chunks: int = 0
+    failed_chunks: int = 0
+    embedded_documents: int = 0
+    skipped_documents: int = 0
+    failed_documents: int = 0
+    tokens: int | None = None
+    tokens_estimated: bool = False
+    embed_calls: int = 0
+    exact_tokenizer: bool = False
+    done: bool = False
+
+    def __post_init__(self) -> None:
+        phase = _text(self.phase, "phase", required=True, maximum=40)
+        if phase not in RUN_PROGRESS_PHASES:
+            raise _bad("phase", f"must be one of {RUN_PROGRESS_PHASES}")
+        object.__setattr__(self, "phase", phase)
+        for name in (
+            "processed_documents",
+            "total_documents",
+            "processed_chunks",
+            "pending_chunks",
+            "embedded_chunks",
+            "skipped_chunks",
+            "failed_chunks",
+            "embedded_documents",
+            "skipped_documents",
+            "failed_documents",
+            "embed_calls",
+        ):
+            object.__setattr__(self, name, _int(getattr(self, name), name))
+        object.__setattr__(
+            self, "total_chunks", _optional_int(self.total_chunks, "total_chunks")
+        )
+        object.__setattr__(self, "tokens", _optional_int(self.tokens, "tokens"))
+        for name in (
+            "chunks_estimated",
+            "tokens_estimated",
+            "exact_tokenizer",
+            "done",
+        ):
+            object.__setattr__(self, name, bool(getattr(self, name)))
+
+    @property
+    def document_share(self) -> float | None:
+        """Processed/total documents, or ``None`` when the scan had no rows."""
+        if self.total_documents <= 0:
+            return None
+        return min(self.processed_documents / self.total_documents, 1.0)
+
+    @property
+    def pending_documents(self) -> int:
+        return max(self.total_documents - self.processed_documents, 0)
+
+
+@dataclass(frozen=True)
 class RunDTO(_DTO):
     """One row of the Runs section (result only on the detail read)."""
 
@@ -530,6 +762,10 @@ class RunDTO(_DTO):
     cancel_requested: bool = False
     idempotency_key: str | None = None
     lock_key: str | None = None
+    progress_detail: RunProgressDTO | None = None
+    token_aware: bool = False
+    tokenizer: SpaceTokenizerDTO | None = None
+    chunk: SpaceChunkDTO | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -570,6 +806,25 @@ class RunDTO(_DTO):
         ):
             object.__setattr__(self, name, _optional_text(getattr(self, name), name))
         object.__setattr__(self, "cancel_requested", bool(self.cancel_requested))
+        detail = self.progress_detail
+        if detail is None:
+            parsed = None
+        elif isinstance(detail, RunProgressDTO):
+            parsed = detail
+        elif isinstance(detail, Mapping):
+            parsed = RunProgressDTO(**dict(detail))
+        else:
+            raise _bad("progress_detail", "must be a progress detail object")
+        object.__setattr__(self, "progress_detail", parsed)
+        tokenizer, chunk = _token_aware_parts(self.tokenizer, self.chunk)
+        if self.token_aware != (tokenizer is not None):
+            raise _bad(
+                "token_aware",
+                "must be true exactly when a tokenizer and chunk are present",
+            )
+        object.__setattr__(self, "token_aware", bool(self.token_aware))
+        object.__setattr__(self, "tokenizer", tokenizer)
+        object.__setattr__(self, "chunk", chunk)
 
     @property
     def active(self) -> bool:
@@ -1593,6 +1848,7 @@ DATA_SEAM_INVENTORY = (
     "retrieval_coverage_snapshots :: operational (TTL 90d — latest snapshot wins; cold means never reconciled)",
     "background_jobs.idempotency_key :: indexed request replay key (partial unique on job_type+idempotency_key; 24h TTL)",
     "background_jobs.lock_key :: partial unique active-run lock (vector_space:<space_id>; queued/running only)",
+    "background_jobs.progress_detail :: bounded live counters (documents/chunks/tokens; no ids or text; pruned when the final result commits)",
 )
 
 
@@ -1656,8 +1912,12 @@ __all__ = [
     "RETRIEVAL_COVERAGE_SNAPSHOTS",
     "RETRIEVAL_QUERY_ROLLUPS",
     "RETRIEVAL_SCHEMA_VERSION",
+    "RUN_PROGRESS_PHASES",
     "SPACE_DROP_GRACE_DAYS",
     "STALL_MINUTES",
+    "TOKENIZER_JOB_TYPES",
+    "TOKENIZER_KINDS",
+    "TOKENIZER_SOURCES",
     "V1_VIEWS",
     "VECTOR_AUDIT_EVENTS",
     "VECTOR_AUDIT_GROUP",
@@ -1685,11 +1945,14 @@ __all__ = [
     "RollupSpec",
     "RunDTO",
     "RunDetailDTO",
+    "RunProgressDTO",
     "RunResultDTO",
     "RunScope",
     "RunStatus",
+    "SpaceChunkDTO",
     "SpaceDTO",
     "SpaceStatus",
+    "SpaceTokenizerDTO",
     "UsageDTO",
     "UsageRowDTO",
     "assert_no_raw_text",
