@@ -54,12 +54,21 @@ DEGRADED_REASONS = (
 )
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def _values(members: tuple[str, ...]) -> str:
     return ", ".join(f"'{member}'" for member in members)
 
 
 def upgrade() -> None:
-    with op.batch_alter_table("jobs", recreate="always") as batch:
+    with op.batch_alter_table("jobs", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("type_allowed", type_="check")
         batch.create_check_constraint("type_allowed", f"type IN ({_values(VECTOR_JOB_TYPES)})")
         batch.add_column(sa.Column("result", sa.JSON(), nullable=True))
@@ -167,7 +176,7 @@ def downgrade() -> None:
     op.drop_index("uq_retrieval_query_rollups_dims", table_name="retrieval_query_rollups")
     op.drop_table("retrieval_query_rollups")
 
-    with op.batch_alter_table("jobs", recreate="always") as batch:
+    with op.batch_alter_table("jobs", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("type_allowed", type_="check")
         batch.create_check_constraint(
             "type_allowed", f"type IN ({_values(BASELINE_JOB_TYPES)})"

@@ -40,6 +40,15 @@ _IDEMPOTENCY_WHERE = sa.text(f"idempotency_key IS NOT NULL AND {_ACTIVE}")
 _LOCK_KEY_WHERE = sa.text(f"lock_key IS NOT NULL AND {_ACTIVE}")
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def upgrade() -> None:
     op.add_column("jobs", sa.Column("idempotency_key", sa.String(length=120), nullable=True))
     op.add_column("jobs", sa.Column("lock_key", sa.String(length=120), nullable=True))
@@ -75,7 +84,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("uq_jobs_lock_key_active", table_name="jobs")
     op.drop_index("uq_jobs_idempotency_active", table_name="jobs")
-    with op.batch_alter_table("jobs", recreate="always") as batch:
+    with op.batch_alter_table("jobs", recreate=_recreate_mode()) as batch:
         batch.drop_column("cancel_requested")
         batch.drop_column("heartbeat_at")
         batch.drop_column("lock_key")

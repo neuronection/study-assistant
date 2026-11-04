@@ -47,7 +47,13 @@ from sqlalchemy import (
     Uuid as Uuid,
 )
 from sqlalchemy import (
+    false as false,
+)
+from sqlalchemy import (
     text as text,
+)
+from sqlalchemy import (
+    true as true,
 )
 from sqlalchemy.orm import Mapped as Mapped
 from sqlalchemy.orm import mapped_column as mapped_column
@@ -120,7 +126,7 @@ class Course(Base):
         _UUID, ForeignKey("course_types.id", ondelete="SET NULL")
     )
     origin: Mapped[str] = mapped_column(String(20), default="manual", server_default="manual")
-    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow

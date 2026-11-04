@@ -104,6 +104,9 @@ from .core import (
     datetime as datetime,
 )
 from .core import (
+    false as false,
+)
+from .core import (
     mapped_column as mapped_column,
 )
 from .core import (
@@ -114,6 +117,9 @@ from .core import (
 )
 from .core import (
     text as text,
+)
+from .core import (
+    true as true,
 )
 from .core import (
     utcnow as utcnow,
@@ -526,7 +532,7 @@ class CalendarLink(Base):
     scopes: Mapped[StringList | None] = mapped_column(JSON)
     secret_ref: Mapped[str | None] = mapped_column(String(200))
     direction: Mapped[str] = mapped_column(String(20), default="push", server_default="push")
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     status: Mapped[str] = mapped_column(
         String(20), default="needs-auth", server_default="needs-auth"
     )

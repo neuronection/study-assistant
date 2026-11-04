@@ -33,8 +33,17 @@ CITATION_KINDS = (
 )
 
 
+def _recreate_mode() -> str:
+    """SQLite copies the table; PostgreSQL alters it in place.
+
+    A PostgreSQL ``recreate="always"`` copy drops the primary key and fails
+    while dependent foreign keys still reference it.
+    """
+    return "always" if op.get_bind().dialect.name == "sqlite" else "auto"
+
+
 def upgrade() -> None:
-    with op.batch_alter_table("materials", recreate="always") as batch:
+    with op.batch_alter_table("materials", recreate=_recreate_mode()) as batch:
         batch.add_column(sa.Column("citation_title", sa.String(500), nullable=True))
         batch.add_column(sa.Column("citation_authors", sa.JSON(), nullable=True))
         batch.add_column(sa.Column("citation_year", sa.Integer(), nullable=True))
@@ -49,7 +58,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("materials", recreate="always") as batch:
+    with op.batch_alter_table("materials", recreate=_recreate_mode()) as batch:
         batch.drop_constraint("citation_kind_allowed", type_="check")
         batch.drop_column("citation_kind")
         batch.drop_column("citation_container")
