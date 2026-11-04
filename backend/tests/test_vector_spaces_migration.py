@@ -21,6 +21,7 @@ from app.domain.models import Chunk, Course, Extraction, Material, Profile, User
 from app.storage import vectors
 from app.storage.db import make_engine, make_session_factory
 from app.storage.vector_contract import content_hash
+from app.storage.vector_schema import index_table_name
 from app.storage.vector_store import StudyVectorStore
 
 DIM = 4
@@ -124,7 +125,22 @@ def test_vector_spaces_upgrade_backfills_and_downgrade_keeps_chunk_vecs(
     space = sqlite3.connect(db_path).execute(
         "SELECT id, name, model, dim, index_table, status FROM vector_spaces"
     ).fetchone()
-    assert space == ("legacy-chunk-vecs", "content", "legacy-model", DIM, "chunk_vecs", "active")
+    physical = index_table_name("legacy-chunk-vecs")
+    assert physical == "vec_dfbcce9b"
+    assert space == (
+        "legacy-chunk-vecs",
+        "content",
+        "legacy-model",
+        DIM,
+        physical,
+        "active",
+    )
+    assert physical in _tables(db_path)
+    assert _scalar(db_path, f"SELECT count(*) FROM {physical}") == 2
+    assert _scalar(
+        db_path,
+        f"SELECT count(*) FROM {physical} v JOIN vector_records r ON r.rowid = v.record_rowid",
+    ) == 2
     assert _scalar(db_path, "SELECT count(*) FROM vector_documents") == 1
     assert _scalar(db_path, "SELECT kind FROM vector_documents") == "material"
     assert _scalar(db_path, "SELECT count(*) FROM vector_records") == 2
@@ -151,11 +167,14 @@ def test_vector_spaces_upgrade_backfills_and_downgrade_keeps_chunk_vecs(
         "vector_documents",
         "vector_records",
     }.isdisjoint(_tables(db_path))
+    assert physical not in _tables(db_path)
     assert _scalar(db_path, "SELECT count(*) FROM chunk_vecs") == 2
 
     command.upgrade(config, "head")
     assert _scalar(db_path, "SELECT count(*) FROM vector_spaces") == 1
     assert _scalar(db_path, "SELECT count(*) FROM vector_records") == 2
+    assert physical in _tables(db_path)
+    assert _scalar(db_path, f"SELECT count(*) FROM {physical}") == 2
 
     with _factory(db_path)() as session:
         store = StudyVectorStore(session)

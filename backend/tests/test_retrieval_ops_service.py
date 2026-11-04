@@ -389,7 +389,7 @@ def test_read_surface_degraded_state(
     assert body["state"] == "degraded"
     assert body["coverage"]["failed"] == 1
     assert body["coverage"]["coverage"] == 0.0
-    assert any("Q3b" in note for note in body["notes"])
+    assert any("lifecycle" in note for note in body["notes"])
     assert_no_raw_text(body)
 
 

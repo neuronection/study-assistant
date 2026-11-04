@@ -26,6 +26,7 @@ from alembic import command
 from app.domain.models import Chunk, Course, Extraction, Material, Profile, User
 from app.storage import vectors
 from app.storage.vector_contract import content_hash
+from app.storage.vector_schema import index_table_name
 
 # gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
 DATABASE_URL = os.environ.get("SA_TEST_DATABASE_URL", "")
@@ -306,13 +307,27 @@ def test_vector_space_backfill_shape_and_round_trip(
     space = _rows(
         engine, "SELECT id, name, model, dim, index_table, status, normalize FROM vector_spaces"
     )[0]
+    physical = index_table_name("legacy-chunk-vecs")
+    assert physical == "vec_dfbcce9b"
     assert space["id"] == "legacy-chunk-vecs"
     assert space["name"] == "content"
     assert space["model"] == "legacy-model"
     assert space["dim"] == 4
-    assert space["index_table"] == "chunk_vecs"
+    assert space["index_table"] == physical
     assert space["status"] == "active"
     assert space["normalize"] is True
+    assert _relation_exists(engine, physical)
+    assert _scalar(engine, f"SELECT count(*) FROM {physical}") == 2
+    assert _scalar(
+        engine,
+        f"SELECT count(*) FROM {physical} v JOIN vector_records r ON r.id = v.record_id",
+    ) == 2
+    assert _scalar(
+        engine,
+        "SELECT 1 FROM pg_indexes WHERE tablename = :table AND indexname = :index",
+        {"table": physical, "index": f"ix_{physical}_hnsw"},
+    ) == 1
+    assert _scalar(engine, "SELECT count(*) FROM chunk_vecs") == 2
 
     legacy_meta = {
         row["key"]: row["value"] for row in _rows(engine, "SELECT key, value FROM vec_meta")
@@ -391,6 +406,7 @@ def test_vector_space_backfill_shape_and_round_trip(
         command.downgrade(alembic_cfg, "0011_retrieval_run_actions")
     for table in ("vector_spaces", "vector_documents", "vector_records"):
         assert not _relation_exists(engine, table)
+    assert not _relation_exists(engine, physical)
     assert _scalar(engine, "SELECT count(*) FROM chunk_vecs") == 2
     assert _scalar(engine, "SELECT count(*) FROM chunk_vec_ids") == 2
     assert _scalar(engine, "SELECT value FROM vec_meta WHERE key = 'model'") == "legacy-model"
@@ -401,3 +417,6 @@ def test_vector_space_backfill_shape_and_round_trip(
     assert _scalar(engine, "SELECT count(*) FROM vector_documents") == 1
     assert _scalar(engine, "SELECT count(*) FROM vector_records") == 2
     assert _scalar(engine, "SELECT count(*) FROM retrieval_coverage_snapshots") == 0
+    assert _relation_exists(engine, physical)
+    assert _scalar(engine, f"SELECT count(*) FROM {physical}") == 2
+    assert _rows(engine, "SELECT index_table FROM vector_spaces")[0]["index_table"] == physical

@@ -25,6 +25,7 @@ from app.domain.models import (
 from app.services.retrieval import reads
 from app.storage import vectors
 from app.storage.vector_contract import content_hash
+from app.storage.vector_schema import index_table_name
 from app.storage.vector_store import (
     CONTENT_SPACE_ID,
     CONTENT_SPACE_NAME,
@@ -91,9 +92,18 @@ def test_adapter_round_trip_search_delete_and_rowid_map(
     assert space.name == CONTENT_SPACE_NAME
     assert space.model == "fake-embed"
     assert space.dim == DIM
-    assert space.index_table == vectors.VEC_TABLE
+    assert space.index_table == index_table_name(CONTENT_SPACE_ID)
+    assert space.backend == "sqlite_vec"
     assert space.metadata_row is True
     assert space.key
+
+    assert vectors.table_exists(db_session) is True
+    assert vectors.vector_count(db_session) == 2
+    health = store.health()
+    assert health.ok is True
+    assert health.provisioned is True
+    assert health.index_table == index_table_name(CONTENT_SPACE_ID)
+    assert health.legacy_rows == 2
 
     documents = store.documents()
     assert len(documents) == 1
