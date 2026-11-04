@@ -118,11 +118,11 @@ def _run_dto(row: Job) -> RunDTO | None:
         created_at=iso(row.created_at),
         started_at=iso(row.started_at),
         finished_at=iso(row.finished_at),
-        heartbeat_at=None,
+        heartbeat_at=iso(row.heartbeat_at),
         error=row.error,
-        cancel_requested=False,
-        idempotency_key=None,
-        lock_key=None,
+        cancel_requested=bool(row.cancel_requested),
+        idempotency_key=row.idempotency_key,
+        lock_key=row.lock_key,
     )
 
 

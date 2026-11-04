@@ -26,6 +26,7 @@ from ..core.vocab import JobType
 from ..domain.models import Chunk, Job
 from ..jobs.payloads import JobResult
 from ..jobs.runner import JobError
+from ..services.retrieval.audit import build_vector_event, space_resource
 from ..services.retrieval.legacy import (
     load_store,
     write_coverage_snapshot,
@@ -93,6 +94,15 @@ def _finish(
         gate=gate,
     )
     job.result = cast(JobResult, result.to_dict())
+    if gate == GateStatus.FAIL:
+        session.add(
+            build_vector_event(
+                actor="system",
+                action="vector.gate.failed",
+                outcome="fail",
+                resource=space_resource(),
+            )
+        )
     session.commit()
     return result
 
@@ -271,10 +281,13 @@ def make_vector_maintenance_handler(
     def handler(session: Session, job: Job, report: Progress) -> None:
         payload = _payload(job)
         action = str(payload.get("action") or "")
+        dry_run = bool(payload.get("dry_run"))
         if action not in MAINTENANCE_ACTIONS:
             raise JobError(
                 f"unknown maintenance action {action!r}; expected one of {MAINTENANCE_ACTIONS}"
             )
+        if dry_run and action != "orphan-sweep":
+            raise JobError("dry-run is only supported for orphan-sweep")
         report(1, action)
         if action == "retry-failed":
             ids = payload.get("chunk_ids")
@@ -325,6 +338,26 @@ def make_vector_maintenance_handler(
 
         live_ids = {str(chunk_id) for chunk_id in session.scalars(select(Chunk.id)).all()}
         dangling, orphan = vectors.orphan_rowids(session, live_ids)
+        if dry_run:
+            job.result = cast(
+                JobResult,
+                {
+                    "scanned": len(live_ids) + len(dangling) + len(orphan),
+                    "embedded": 0,
+                    "skipped": len(live_ids),
+                    "failed": 0,
+                    "failed_ids": [],
+                    "failed_ids_truncated": False,
+                    "gate": GateStatus.UNKNOWN.value,
+                    "action": action,
+                    "dry_run": True,
+                    "removed": 0,
+                    "would_remove": len(dangling) + len(orphan),
+                },
+            )
+            session.commit()
+            report(100, "orphan sweep dry-run complete")
+            return
         removed = vectors.delete_rowids(session, [*dangling, *orphan])
         session.commit()
         job.result = cast(

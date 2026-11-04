@@ -80,12 +80,31 @@ from .core import (
     utcnow as utcnow,
 )
 
+_ACTIVE_JOB_STATUS = "status IN ('queued', 'running')"
+
 
 class Job(Base):
     __tablename__ = "jobs"
     __table_args__ = (
         vocab_check("type", JobType),
         vocab_check("status", JobStatus),
+        Index(
+            "uq_jobs_idempotency_active",
+            "type",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text(f"idempotency_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"),
+            postgresql_where=text(
+                f"idempotency_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"
+            ),
+        ),
+        Index(
+            "uq_jobs_lock_key_active",
+            "lock_key",
+            unique=True,
+            sqlite_where=text(f"lock_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"),
+            postgresql_where=text(f"lock_key IS NOT NULL AND {_ACTIVE_JOB_STATUS}"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(_UUID, primary_key=True, default=new_uuid)
@@ -96,6 +115,10 @@ class Job(Base):
     stage: Mapped[str | None] = mapped_column(String(120))
     result: Mapped[JobResult | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120))
+    lock_key: Mapped[str | None] = mapped_column(String(120))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

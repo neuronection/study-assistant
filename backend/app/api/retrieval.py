@@ -1,21 +1,25 @@
-"""Admin-only retrieval-operations read surface (plan 51 Q3a).
+"""Admin-only retrieval-operations read and action surface (plan 51 Q3a/Q3b).
 
-A deliberately small first slice over the legacy store: overview, spaces,
-coverage, runs and query health. The management/action API, quality surface
-and space lifecycle are Q3b — no route here mutates the store.
+Q3a shipped the small read slice over the legacy store: overview, spaces,
+coverage, runs and query health. Q3b adds the one write seam — reindex,
+cancel/retry and typed maintenance — with persisted idempotency keys, the
+single-active-run lock, a stale-heartbeat reaper and ``vector.*`` audit rows
+in the existing ``audit_events`` table. Vector-space lifecycle verbs are
+answered with a structured ``unsupported`` refusal: study has one legacy
+``chunk_vecs`` space and no cutover target.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from nx_auth.deps import get_current_user
 from nx_auth.principal import Principal
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..services.retrieval import reads
+from ..services.retrieval import actions, reads
 from .deps import get_session
 
 router = APIRouter(prefix="/admin/retrieval", tags=["retrieval"])
@@ -165,6 +169,117 @@ class RetrievalRunsOut(BaseModel):
     runs: list[RetrievalRunDetailOut] = Field(default_factory=list)
 
 
+class RetrievalReindexIn(BaseModel):
+    """One bounded reindex of the legacy store; the header carries the key."""
+
+    space_id: str | None = None
+    limit: int = Field(default=actions.DEFAULT_LIMIT, ge=1, le=actions.MAX_LIMIT)
+    batch_size: int = Field(
+        default=actions.DEFAULT_BATCH_SIZE, ge=1, le=actions.MAX_BATCH_SIZE
+    )
+    force: bool = False
+    chunk_ids: list[str] | None = Field(default=None, max_length=actions.MAX_CHUNK_IDS)
+    kind: str | None = None
+    view: str | None = None
+    since: str | None = None
+    idempotency_key: str | None = None
+
+
+class RetrievalMaintenanceIn(BaseModel):
+    """One typed maintenance action; retry-failed needs chunk_ids."""
+
+    action: Literal["orphan-sweep", "vacuum", "index-rebuild", "retry-failed"]
+    dry_run: bool = False
+    chunk_ids: list[str] | None = Field(default=None, max_length=actions.MAX_CHUNK_IDS)
+    space_id: str | None = None
+    idempotency_key: str | None = None
+
+
+class RetrievalActionKeyIn(BaseModel):
+    """Path-addressed action body; the Idempotency-Key header is preferred."""
+
+    idempotency_key: str | None = None
+
+
+class RetrievalActionOut(BaseModel):
+    action: str
+    accepted: bool
+    audit_event: str
+    http_status: int
+    deduplicated: bool = False
+    run_id: str | None = None
+    status: str | None = None
+    idempotency_key: str | None = None
+    message: str = ""
+    space_id: str | None = None
+    maintenance_action: str | None = None
+    retry_of: str | None = None
+    cancel_requested: bool | None = None
+
+
+IDEMPOTENCY_HEADER = Header(
+    default=None,
+    alias="Idempotency-Key",
+    description="Client-generated replay key (8-120 chars); repeats with the same body replay",
+)
+
+
+def _resolve_key(
+    header: str | None,
+    body: RetrievalReindexIn | RetrievalMaintenanceIn | RetrievalActionKeyIn,
+    *,
+    required: bool,
+    action: str,
+) -> str | None:
+    value = header or body.idempotency_key
+    if value is None or str(value).strip() == "":
+        if required:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "reason": "idempotency_key_required",
+                    "message": (
+                        "an Idempotency-Key header (or idempotency_key field) "
+                        f"is required for {action}"
+                    ),
+                },
+            )
+        return None
+    try:
+        return actions.validate_key(value)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={"reason": "invalid_idempotency_key", "message": str(error)},
+        ) from error
+
+
+def _refused(error: actions.RetrievalActionError) -> HTTPException:
+    return HTTPException(
+        status_code=error.status_code,
+        detail={
+            "reason": error.reason,
+            "message": str(error),
+            **error.extra,
+        },
+    )
+
+
+def _respond(payload: dict[str, Any], response: Response) -> RetrievalActionOut:
+    response.status_code = int(payload.get("http_status") or 202)
+    return RetrievalActionOut.model_validate(payload)
+
+
+def _actor(user: Principal) -> str:
+    return str(user.email or user.user_id)
+
+
+def _wake(request: Request) -> None:
+    runner = getattr(request.app.state, "jobs", None)
+    if runner is not None:
+        runner.wake()
+
+
 @router.get("/overview", response_model=RetrievalOverviewOut)
 def get_overview(
     window: str = Query(default=reads.DEFAULT_WINDOW),
@@ -212,3 +327,154 @@ def get_query_health(
     return RetrievalQueryHealthEnvelopeOut.model_validate(
         reads.query_health(session, window=window)
     )
+
+
+@router.post("/reindex", response_model=RetrievalActionOut)
+def post_reindex(
+    body: RetrievalReindexIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalActionOut:
+    key = _resolve_key(idempotency_key, body, required=True, action="reindex")
+    assert key is not None
+    try:
+        payload = actions.reindex(
+            session,
+            actor=_actor(admin),
+            idempotency_key=key,
+            limit=body.limit,
+            batch_size=body.batch_size,
+            force=body.force,
+            chunk_ids=body.chunk_ids,
+            kind=body.kind,
+            space_id=body.space_id,
+            view=body.view,
+            since=body.since,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    _wake(request)
+    return _respond(payload, response)
+
+
+@router.post("/maintenance", response_model=RetrievalActionOut)
+def post_maintenance(
+    body: RetrievalMaintenanceIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalActionOut:
+    key = _resolve_key(idempotency_key, body, required=True, action="maintenance")
+    assert key is not None
+    try:
+        payload = actions.maintenance(
+            session,
+            actor=_actor(admin),
+            idempotency_key=key,
+            action=body.action,
+            dry_run=body.dry_run,
+            chunk_ids=body.chunk_ids,
+            space_id=body.space_id,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    _wake(request)
+    return _respond(payload, response)
+
+
+@router.post("/runs/{run_id}/cancel", response_model=RetrievalActionOut)
+def post_cancel_run(
+    run_id: str,
+    request: Request,
+    response: Response,
+    body: RetrievalActionKeyIn | None = None,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalActionOut:
+    del body
+    try:
+        payload = actions.cancel_run(session, actor=_actor(admin), run_id=run_id)
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    _wake(request)
+    return _respond(payload, response)
+
+
+@router.post("/runs/{run_id}/retry", response_model=RetrievalActionOut)
+def post_retry_run(
+    run_id: str,
+    request: Request,
+    response: Response,
+    body: RetrievalActionKeyIn | None = None,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalActionOut:
+    key = _resolve_key(
+        idempotency_key,
+        body or RetrievalActionKeyIn(),
+        required=True,
+        action="retry",
+    )
+    assert key is not None
+    try:
+        payload = actions.retry_run(
+            session,
+            actor=_actor(admin),
+            run_id=run_id,
+            idempotency_key=key,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    _wake(request)
+    return _respond(payload, response)
+
+
+def _unsupported(action: str) -> NoReturn:
+    raise _refused(actions.unsupported_lifecycle(action))
+
+
+@router.post("/spaces", response_model=RetrievalActionOut)
+def post_build_space(_admin: Principal = Depends(require_admin)) -> RetrievalActionOut:
+    return _unsupported("build_space")
+
+
+@router.post("/spaces/{space_id}/activate", response_model=RetrievalActionOut)
+def post_activate_space(
+    space_id: str, _admin: Principal = Depends(require_admin)
+) -> RetrievalActionOut:
+    del space_id
+    return _unsupported("activate_space")
+
+
+@router.post("/spaces/{space_id}/retire", response_model=RetrievalActionOut)
+def post_retire_space(
+    space_id: str, _admin: Principal = Depends(require_admin)
+) -> RetrievalActionOut:
+    del space_id
+    return _unsupported("retire_space")
+
+
+@router.post("/spaces/{space_id}/drop", response_model=RetrievalActionOut)
+def post_drop_space(
+    space_id: str, _admin: Principal = Depends(require_admin)
+) -> RetrievalActionOut:
+    del space_id
+    return _unsupported("drop_space")
+
+
+@router.post("/cutover", response_model=RetrievalActionOut)
+def post_cutover(_admin: Principal = Depends(require_admin)) -> RetrievalActionOut:
+    return _unsupported("cutover")
+
+
+@router.post("/quality/compare", response_model=RetrievalActionOut)
+def post_quality_compare(
+    _admin: Principal = Depends(require_admin),
+) -> RetrievalActionOut:
+    return _unsupported("quality_compare")

@@ -36,6 +36,14 @@ GroupKey = Callable[[Job], str | None]
 
 INTERRUPTED_ERROR = "interrupted: the backend restarted before this job finished — please retry"
 
+VECTOR_JOB_TYPES = frozenset(
+    {
+        JobType.VECTOR_REINDEX.value,
+        JobType.VECTOR_MAINTENANCE.value,
+        JobType.VECTOR_CUTOVER.value,
+    }
+)
+
 
 class JobError(Exception):
     pass
@@ -150,10 +158,16 @@ class JobRunner:
             for job in candidates:
                 if self._blocked_by_group(session, job):
                     continue
+                values: dict[str, Any] = {
+                    "status": "running",
+                    "started_at": utcnow(),
+                }
+                if job.type in VECTOR_JOB_TYPES:
+                    values["heartbeat_at"] = utcnow()
                 claimed = session.execute(
                     update(Job)
                     .where(Job.id == job.id, Job.status == JobStatus.QUEUED)
-                    .values(status="running", started_at=utcnow())
+                    .values(**values)
                 )
                 session.commit()
                 if not bool(cast(Any, claimed).rowcount):
@@ -219,6 +233,8 @@ class JobRunner:
                         raise JobCancelled(CANCELLED_ERROR)
                     job_row.progress = max(0, min(100, progress))
                     job_row.stage = stage
+                    if job_row.type in VECTOR_JOB_TYPES:
+                        job_row.heartbeat_at = utcnow()
                     session.commit()
                     self.publish_progress(job_id, progress, stage, "running")
 
@@ -231,6 +247,10 @@ class JobRunner:
                         job_row.status = JobStatus.DONE
                         job_row.progress = 100
                         job_row.finished_at = utcnow()
+                        if job_row.type in VECTOR_JOB_TYPES:
+                            job_row.heartbeat_at = job_row.finished_at
+                            job_row.lock_key = None
+                            job_row.cancel_requested = False
                         session.commit()
                         self.publish_progress(job_id, 100, job_row.stage or "", "done")
                         logger.info("job_done", job_id=job_id, job_type=job_type)
@@ -259,6 +279,10 @@ class JobRunner:
             cancelled.status = JobStatus.CANCELLED
             cancelled.error = sanitize_error_detail(str(error), 4000)
             cancelled.finished_at = utcnow()
+            if cancelled.type in VECTOR_JOB_TYPES:
+                cancelled.heartbeat_at = cancelled.finished_at
+                cancelled.lock_key = None
+                cancelled.cancel_requested = False
             session.commit()
             self._bus.publish_threadsafe(
                 WsTopic.jobs(job_id),
@@ -278,6 +302,10 @@ class JobRunner:
             failed.status = JobStatus.FAILED
             failed.error = sanitize_error_detail(str(error), 4000)
             failed.finished_at = utcnow()
+            if failed.type in VECTOR_JOB_TYPES:
+                failed.heartbeat_at = failed.finished_at
+                failed.lock_key = None
+                failed.cancel_requested = False
             session.commit()
             self._bus.publish_threadsafe(
                 WsTopic.jobs(job_id),

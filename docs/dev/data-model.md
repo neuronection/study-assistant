@@ -399,7 +399,9 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   every model call lands here; `context_type="gateway"` rows are the cost ledger
   (one per real API call, with real provider usage numbers since 37A)
 - **jobs**: id, type (ingest/postprocess/chat_turn/drawing_ocr), payload, status
-  (queued/running/done/failed/cancelled), progress, stage, error, timestamps
+  (queued/running/done/failed/cancelled), progress, stage, error, result
+  (bounded `VECTOR_*` run result), idempotency_key/lock_key/heartbeat_at/
+  cancel_requested (0011 retrieval action runtime), timestamps
 
 ## Derived structures (not in Alembic)
 
@@ -425,6 +427,16 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0011_retrieval_run_actions (plan 51 Q3b)**: `jobs` gains
+  `idempotency_key` (nullable, 8–120 chars), `lock_key`, `heartbeat_at`
+  and `cancel_requested` (boolean, default false). Two partial unique
+  indexes cover only `status IN ('queued','running')`:
+  `uq_jobs_idempotency_active (type, idempotency_key)` and
+  `uq_jobs_lock_key_active (lock_key)`. Terminal rows release both slots,
+  so retry/cancel/reaping never deadlock; the service additionally replays
+  terminal rows inside the contract's 24 h key window. Downgrade drops
+  both indexes and the four columns (batch mode on SQLite), leaving run
+  history intact.
 - **0010_retrieval_ops (plan 51 Q3a, ADR-0051 companion)**: the `jobs.type`
   CHECK widens with the three family `VECTOR_*` names and `jobs.result`
   (JSON, nullable) carries the bounded run-result document. New
