@@ -229,3 +229,24 @@ def test_exact_counting_makes_no_network_call(monkeypatch):
     spec = resolve_tokenizer_spec("openai_compatible", "text-embedding-3-small")
     assert service.count(spec, "offline " * 100) >= 100
     assert service.decode(spec, service.encode(spec, "still offline")) == "still offline"
+
+
+def test_reference_corpus_and_counts_match_the_career_fixtures():
+    import os
+
+    override = os.environ.get("STUDY_TOKENIZER_CAREER_REPO")
+    candidates = ([Path(override)] if override else []) + [
+        Path(__file__).resolve().parents[3] / "career-tokenizer-p52",
+        Path(__file__).resolve().parents[3] / "career-assistant",
+    ]
+    career = next((path for path in candidates if (path / "backend").is_dir()), None)
+    if career is None:
+        pytest.skip("career tokenizer reference checkout not present — vendored fixtures only")
+    career_reference = (
+        career / "backend" / "app" / "data" / "tokenizers" / "reference_corpus.json"
+    )
+    career_fixture = (
+        career / "backend" / "tests" / "fixtures" / "tokenizer_tiktoken.fixtures.json"
+    )
+    assert REFERENCE.read_bytes() == career_reference.read_bytes()
+    assert FIXTURES.read_bytes() == career_fixture.read_bytes()
