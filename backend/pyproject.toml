@@ -191,6 +191,8 @@ ignore_errors = true
 module = [
     "tests.test_retrieval_ops_contract",
     "test_retrieval_ops_contract",
+    "tests.test_vector_contract",
+    "test_vector_contract",
     "tests.test_tokenizer_contract",
     "test_tokenizer_contract",
     "tests.test_tokenizer_service",
