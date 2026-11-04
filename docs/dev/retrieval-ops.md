@@ -461,7 +461,8 @@ every vocabulary, quality-floor, quality-case and DTO-shape check passes.
 At Q3c2b2 `strict=false` with blockers `sync-ledger:study-assistant` (the
 ledger had no study row; `ledger:study-assistant=""`) and
 `settings-map:canonical-study-pending` (canonical adopter
-`pending (plan 51 Q3)`).
+`pending (plan 51 Q3)`). After the Q3c3a canonical adoption and the
+study-main merge, both are green and `strict=true`.
 
 **Q3c3a update.** The `/dev` settings canonical now has both career and study
 `tools.retrieval: aligned`; `dev-vector-p0/contracts/retrieval-ops.sync.json`
@@ -469,10 +470,9 @@ records study's two vendored sha values (with a branch-adoption note). The
 runner reads the settings canonical from `/dev` (contract ledger/bytes stay in
 `dev-vector-p0`) and adds a `study-main-adoption` check against
 `/study-assistant`. Result now: every vocabulary/quality/DTO/byte/ledger/
-settings check passes, `strict=false` with the **single exact blocker**
-`adoption:study-main`; when main carries the same bytes the check passes. If
-the main checkout is absent the runner records `adoption:study-main-unverified`
-instead of claiming strict.
+settings/adoption check passes, `strict=true` with no blockers. If the main
+checkout is absent the runner records `adoption:study-main-unverified` instead
+of claiming strict.
 
 Q3c2a adds backend parity assertions on both dialects:
 `tests/test_vector_backends.py` (SQLite) and
@@ -664,10 +664,9 @@ dedup/recovery/admin fanout/daily caps, the `ai_interactions` metadata seam +
 usage read, and the canonical settings-map/ledger adoption. The canonical
 `/dev` settings map now marks both career and study `tools.retrieval`
 `aligned`; `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's
-bytes with the branch note. The parity runner reports `strict=false` with the
-single exact blocker `adoption:study-main` until `/study-assistant` main
-carries the same vendored bytes; once it does, the adoption check passes and
-no blocker remains. The `dev-vector-p0` settings-map copy is older than `/dev`
+bytes with the branch note. `/study-assistant` main now carries the same
+vendored bytes; the adoption check passes and the parity runner reports
+`strict=true` with no blockers. The `dev-vector-p0` settings-map copy is older than `/dev`
 and is not the settings canonical the runner reads.
 
 **Remaining** (explicitly not built here):

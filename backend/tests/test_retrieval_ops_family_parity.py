@@ -55,7 +55,7 @@ def test_career_and_study_quality_dto_semantics_match() -> None:
         assert report.shas["career:fixtures"] == report.shas["study:fixtures"]
 
 
-def test_strict_gate_stays_closed_until_main_adopts_the_branch() -> None:
+def test_strict_gate_is_green_after_study_main_adoption() -> None:
     report = parity.run_family_parity()
     if report.dev_repo is None:
         assert report.strict is False
@@ -64,17 +64,11 @@ def test_strict_gate_stays_closed_until_main_adopts_the_branch() -> None:
     checks = {check.name: check for check in report.checks}
     assert checks["dev-canonical-contract-byte-identity"].status == "pass"
     assert checks["dev-canonical-fixture-byte-identity"].status == "pass"
-    assert report.strict is False
-    blockers = set(report.strict_blockers)
-
-    ledger = report.shas.get("ledger:study-assistant", "")
-    if ledger == report.shas["study:contract"]:
-        assert checks["sync-ledger"].status == "pass"
-        assert "sync-ledger:study-assistant" not in blockers
-    if checks["settings-map-adopter"].status == "pass":
-        assert "settings-map:canonical-study-pending" not in blockers
-    if checks["study-main-adoption"].status != "pass":
-        assert any(blocker.startswith("adoption:study-main") for blocker in blockers)
+    assert checks["sync-ledger"].status == "pass"
+    assert checks["settings-map-adopter"].status == "pass"
+    assert checks["study-main-adoption"].status == "pass"
+    assert report.strict is True
+    assert report.strict_blockers == ()
 
 
 def test_strict_gate_names_only_the_remaining_main_adoption_blocker() -> None:
