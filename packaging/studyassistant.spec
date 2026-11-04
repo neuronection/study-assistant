@@ -60,6 +60,7 @@ datas = [
     (FRONTEND_DIST, "frontend/dist"),
     (os.path.join(ROOT, "backend", "alembic"), "alembic"),
     (os.path.join(ROOT, "backend", "alembic.ini"), "."),
+    (os.path.join(ROOT, "backend", "app", "data"), "app/data"),
 ]
 datas += collect_data_files("webview")
 binaries = collect_dynamic_libs("sqlite_vec")

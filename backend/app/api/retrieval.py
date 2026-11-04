@@ -1,10 +1,10 @@
 """Admin-only retrieval-operations read and action surface (plan 51).
 
 Q3a shipped the read slice; Q3b the write seam with idempotency, the
-single-active-run lock, the reaper and ``vector.*`` audit; Q3c2b1 wires the
-real space lifecycle and cutover. The only thing still refused is the
-golden-query quality compare (Q3c2b2) — activation is coverage-gated and
-reports ``quality=not_sampled``.
+single-active-run lock, the reaper and ``vector.*`` audit; Q3c2b1 the real
+space lifecycle and cutover; Q3c2b2 the golden-query quality compare and the
+quality activation/cutover gate. A missing or below-floor quality setup is a
+structured refusal, never a silent pass.
 """
 
 from __future__ import annotations
@@ -68,6 +68,9 @@ class RetrievalRunDetailOut(BaseModel):
     run: RetrievalRunOut
     result: RetrievalRunResultOut | None = None
     duration_seconds: float | None = None
+    quality: dict[str, Any] | None = None
+    bad_matches: list[dict[str, Any]] = Field(default_factory=list)
+    activation_gate: dict[str, Any] | None = None
 
 
 class RetrievalSpaceOut(BaseModel):
@@ -92,6 +95,8 @@ class RetrievalSpaceOut(BaseModel):
     last_error: str | None = None
     gate: str = "unknown"
     as_of: str | None = None
+    quality_state: str = "not_sampled"
+    quality_gate: str = "unknown"
 
 
 class RetrievalCoverageOut(BaseModel):
@@ -136,6 +141,80 @@ class RetrievalQueryHealthEnvelopeOut(BaseModel):
     query_count: int
     candidates_avg: float | None = None
     health: RetrievalQueryHealthOut
+
+
+class RetrievalQualitySetOut(BaseModel):
+    space_id: str
+    set_version: int
+    k: int
+    floor_recall: float
+    floor_precision: float
+    query_count: int
+    query_ids: list[str] = Field(default_factory=list)
+    revision_key: str
+
+
+class RetrievalQualityQueryOut(BaseModel):
+    query_id: str
+    expected_document_ids: list[str] = Field(default_factory=list)
+    retrieved_document_ids: list[str] = Field(default_factory=list)
+    recall_at_k: float
+    precision_at_k: float
+    missing_document_ids: list[str] = Field(default_factory=list)
+    passed: bool = False
+
+
+class RetrievalQualityOut(BaseModel):
+    space_id: str
+    set_version: int
+    k: int
+    recall_at_k: float
+    precision_at_k: float
+    passed: bool
+    queries: list[RetrievalQualityQueryOut] = Field(default_factory=list)
+    floor_recall: float
+    floor_precision: float
+    generated_at: str | None = None
+
+
+class RetrievalQualityCompareOut(BaseModel):
+    old_space_id: str
+    new_space_id: str
+    set_version: int
+    k: int
+    old_recall_at_k: float
+    old_precision_at_k: float
+    new_recall_at_k: float
+    new_precision_at_k: float
+    passed: bool
+    floor_recall: float
+    floor_precision: float
+    required_for_activation: bool = True
+    queries: list[RetrievalQualityQueryOut] = Field(default_factory=list)
+    generated_at: str | None = None
+
+
+class RetrievalBadMatchOut(BaseModel):
+    space_id: str
+    query_id: str
+    missing_document_ids: list[str] = Field(default_factory=list)
+    hits: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class RetrievalQualityEnvelopeOut(BaseModel):
+    state: str
+    space_id: str
+    name: str = ""
+    sampled: bool = False
+    set: RetrievalQualitySetOut | None = None
+    quality: RetrievalQualityOut | None = None
+    compare: RetrievalQualityCompareOut | None = None
+    bad_matches: list[RetrievalBadMatchOut] = Field(default_factory=list)
+    compare_run_id: str | None = None
+    compare_set_version: int | None = None
+    activation_gate: str = "unknown"
+    reason: str | None = None
+    notes: list[str] = Field(default_factory=list)
 
 
 class RetrievalOverviewOut(BaseModel):
@@ -234,6 +313,14 @@ class RetrievalCutoverIn(BaseModel):
     idempotency_key: str | None = None
 
 
+class RetrievalQualityCompareIn(BaseModel):
+    """Score the versioned golden set on a candidate vs baseline space."""
+
+    space_id: str = Field(min_length=1, max_length=80)
+    compare_space_id: str = Field(min_length=1, max_length=80)
+    idempotency_key: str | None = None
+
+
 class RetrievalActionOut(BaseModel):
     action: str
     accepted: bool
@@ -245,8 +332,16 @@ class RetrievalActionOut(BaseModel):
     idempotency_key: str | None = None
     message: str = ""
     space_id: str | None = None
+    baseline_space_id: str | None = None
     space: dict[str, Any] | None = None
-    quality: str | None = None
+    quality: RetrievalQualityOut | None = None
+    quality_compare: RetrievalQualityCompareOut | None = None
+    quality_state: str | None = None
+    bad_matches: list[RetrievalBadMatchOut] = Field(default_factory=list)
+    gate: str | None = None
+    old_degraded: str | None = None
+    new_degraded: str | None = None
+    no_baseline: bool | None = None
     activation_gate: dict[str, Any] | None = None
     already_active: bool | None = None
     model_changed: bool | None = None
@@ -271,6 +366,7 @@ def _resolve_key(
         | RetrievalSpaceBuildIn
         | RetrievalSpaceConfirmIn
         | RetrievalCutoverIn
+        | RetrievalQualityCompareIn
     ),
     *,
     required: bool,
@@ -371,6 +467,17 @@ def get_query_health(
 ) -> RetrievalQueryHealthEnvelopeOut:
     return RetrievalQueryHealthEnvelopeOut.model_validate(
         reads.query_health(session, window=window)
+    )
+
+
+@router.get("/quality", response_model=RetrievalQualityEnvelopeOut)
+def get_quality(
+    space: str | None = Query(default=None),
+    _admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalQualityEnvelopeOut:
+    return RetrievalQualityEnvelopeOut.model_validate(
+        reads.quality_evidence(session, space=space)
     )
 
 
@@ -528,7 +635,11 @@ def post_activate_space(
     assert key is not None
     try:
         payload = actions.activate_space(
-            session, actor=_actor(admin), space_id=space_id, idempotency_key=key
+            session,
+            actor=_actor(admin),
+            space_id=space_id,
+            idempotency_key=key,
+            embed=request.app.state.embedder.embed,
         )
     except actions.RetrievalActionError as error:
         raise _refused(error) from error
@@ -615,6 +726,24 @@ def post_cutover(
 
 @router.post("/quality/compare", response_model=RetrievalActionOut)
 def post_quality_compare(
-    _admin: Principal = Depends(require_admin),
+    body: RetrievalQualityCompareIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str | None = IDEMPOTENCY_HEADER,
+    admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
 ) -> RetrievalActionOut:
-    raise _refused(actions.unsupported_lifecycle("quality_compare"))
+    key = _resolve_key(idempotency_key, body, required=True, action="quality_compare")
+    assert key is not None
+    try:
+        payload = actions.compare_quality(
+            session,
+            actor=_actor(admin),
+            space_id=body.space_id,
+            compare_space_id=body.compare_space_id,
+            idempotency_key=key,
+            embed=request.app.state.embedder.embed,
+        )
+    except actions.RetrievalActionError as error:
+        raise _refused(error) from error
+    return _respond(payload, response)

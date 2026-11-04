@@ -304,6 +304,20 @@ def run_vector_action(
             failed.error = str(error)[:500]
             failed.finished_at = _utcnow()
             failed.lock_key = None
+            reason = getattr(error, "reason", None)
+            extra = getattr(error, "extra", None)
+            if isinstance(reason, str) and isinstance(extra, dict):
+                failed.result = cast(
+                    JobResult,
+                    {
+                        "refusal": {
+                            "reason": reason,
+                            "message": str(error)[:500],
+                            **extra,
+                        },
+                        **extra,
+                    },
+                )
             if failure_audit is not None:
                 session.add(failure_audit)
             session.commit()
@@ -314,7 +328,21 @@ def run_vector_action(
     job.finished_at = _utcnow()
     job.heartbeat_at = job.finished_at
     job.lock_key = None
-    job.result = cast(JobResult, {"response": response})
+    stored = {"response": response}
+    for key in (
+        "quality_compare",
+        "bad_matches",
+        "activation_gate",
+        "space",
+        "gate",
+    ):
+        if key in response:
+            stored[key] = response[key]
+    if response.get("quality_compare") is not None:
+        stored["quality"] = response["quality_compare"]
+    elif response.get("quality") is not None:
+        stored["quality"] = response["quality"]
+    job.result = cast(JobResult, stored)
     session.commit()
     return response, False
 

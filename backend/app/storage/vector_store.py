@@ -115,6 +115,23 @@ class MetadataBackfill:
 
 
 @dataclass(frozen=True)
+class ScoredHit:
+    """One scored search hit with the evidence the quality compare reports.
+
+    ``distance`` is the backend's cosine distance (``1 - similarity``); the
+    ``view`` is the record's view (study indexes ``body``). No document text.
+    """
+
+    chunk_id: str
+    view: str
+    distance: float
+
+    @property
+    def score(self) -> float:
+        return 1.0 - self.distance
+
+
+@dataclass(frozen=True)
 class StoreHealth:
     """The backend/table truth the admin read surface reports."""
 
@@ -534,16 +551,41 @@ class StudyVectorStore:
         profile_id: str | None = None,
     ) -> list[tuple[str, float]]:
         """Top chunks by cosine, scoped before the ANN scan when possible."""
+        return [
+            (hit.chunk_id, hit.distance)
+            for hit in self.search_scored(
+                query_vector,
+                limit,
+                course_id=course_id,
+                material_ids=material_ids,
+                profile_id=profile_id,
+            )
+        ]
+
+    def search_scored(
+        self,
+        query_vector: Sequence[float],
+        limit: int = 24,
+        *,
+        course_id: str | None = None,
+        material_ids: Sequence[str] | None = None,
+        profile_id: str | None = None,
+    ) -> list[ScoredHit]:
+        """Top chunks with distance/view evidence, deterministic ordering.
+
+        Same path and fallbacks as :meth:`search`; the extra evidence is what
+        the golden-query compare records for a bad match. Hits sort by
+        ``(distance, chunk_id)`` so equal distances never reorder between runs.
+        """
         space = self.content_space()
         if space is None or space.dim != len(query_vector):
             return []
         backend = self._backend(space)
         if backend is None:
-            return (
-                vectors.search(self.session, list(query_vector), limit=limit)
-                if space.space_id == CONTENT_SPACE_ID
-                else []
-            )
+            if space.space_id != CONTENT_SPACE_ID:
+                return []
+            pairs = vectors.search(self.session, list(query_vector), limit=limit)
+            return self._scored_from_pairs(pairs)
         try:
             hits = backend.search(
                 space.as_contract(),
@@ -559,29 +601,63 @@ class StudyVectorStore:
         except VectorBackendError as exc:
             logger.warning("vector backend search failed: %s", exc)
             if space.space_id == CONTENT_SPACE_ID:
-                return vectors.search(self.session, list(query_vector), limit=limit)
+                return self._scored_from_pairs(
+                    vectors.search(self.session, list(query_vector), limit=limit)
+                )
             return []
-        return self._chunk_hits(space, hits)
+        return self._scored_hits(space, hits)
 
-    def _chunk_hits(
-        self, space: ContentSpace, hits: Sequence[IndexHit]
-    ) -> list[tuple[str, float]]:
+    def _scored_hits(self, space: ContentSpace, hits: Sequence[IndexHit]) -> list[ScoredHit]:
         record_ids = [str(hit.record_id) for hit in hits]
         if not record_ids:
             return []
-        mapping = {
-            str(record_id): str(chunk_id or record_id)
-            for record_id, chunk_id in self.session.execute(
-                select(VectorRecord.id, VectorRecord.chunk_id).where(
-                    VectorRecord.space_id == space.space_id,
-                    VectorRecord.id.in_([_canonical_id(value) for value in record_ids]),
-                )
+        rows = self.session.execute(
+            select(VectorRecord.id, VectorRecord.chunk_id, VectorRecord.view).where(
+                VectorRecord.space_id == space.space_id,
+                VectorRecord.id.in_([_canonical_id(value) for value in record_ids]),
             )
+        )
+        mapping = {
+            str(record_id): (str(chunk_id or record_id), str(view or CONTENT_VIEW))
+            for record_id, chunk_id, view in rows
         }
-        return [
-            (mapping.get(str(hit.record_id), str(hit.record_id)), float(hit.distance))
+        scored = [
+            ScoredHit(
+                chunk_id=mapping.get(str(hit.record_id), (str(hit.record_id), CONTENT_VIEW))[0],
+                view=mapping.get(str(hit.record_id), (str(hit.record_id), CONTENT_VIEW))[1],
+                distance=float(hit.distance),
+            )
             for hit in hits
         ]
+        scored.sort(key=lambda hit: (hit.distance, hit.chunk_id))
+        return scored
+
+    def _scored_from_pairs(
+        self, pairs: Sequence[tuple[str, float]]
+    ) -> list[ScoredHit]:
+        chunk_ids = [str(chunk_id) for chunk_id, _distance in pairs]
+        views: dict[str, str] = {}
+        if chunk_ids:
+            rows = self.session.execute(
+                select(VectorRecord.chunk_id, VectorRecord.view).where(
+                    VectorRecord.chunk_id.in_([_canonical_id(value) for value in chunk_ids]),
+                )
+            )
+            views = {
+                str(chunk_id): str(view or CONTENT_VIEW)
+                for chunk_id, view in rows
+                if chunk_id is not None
+            }
+        scored = [
+            ScoredHit(
+                chunk_id=chunk_id,
+                view=views.get(_canonical_id(chunk_id), CONTENT_VIEW),
+                distance=float(distance),
+            )
+            for chunk_id, distance in pairs
+        ]
+        scored.sort(key=lambda hit: (hit.distance, hit.chunk_id))
+        return scored
 
     def store(self, chunk_ids: list[str], vectors_batch: list[list[float]], model: str) -> None:
         """Write physical vectors for the addressed space, then register metadata."""
@@ -1171,6 +1247,7 @@ __all__ = [
     "ContentSpace",
     "EmbeddingAssignment",
     "MetadataBackfill",
+    "ScoredHit",
     "StoreHealth",
     "StudyVectorStore",
     "backend_for",

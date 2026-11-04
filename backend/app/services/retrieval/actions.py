@@ -10,6 +10,7 @@ transitions (build/activate/retire/drop) execute under a real job row through
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, cast
 
@@ -20,6 +21,7 @@ from ...domain.models import Job, VectorSpace, utcnow
 from ...jobs.cancellation import request_cancel
 from ...storage.retrieval_ops import (
     SPACE_DROP_GRACE_DAYS,
+    GateStatus,
     MaintenanceAction,
     RetrievalAction,
     RetrievalActionResponse,
@@ -29,7 +31,7 @@ from ...storage.retrieval_ops import (
 )
 from ...storage.vector_provisioning import VectorProvisioningError
 from ...storage.vector_store import embedding_assignment
-from . import lifecycle
+from . import lifecycle, quality
 from .audit import build_vector_event, run_resource
 from .jobs import (
     ACTIVE_STATUSES,
@@ -564,7 +566,8 @@ def build_space(
         extra={
             "space_id": response.get("space_id"),
             "space": response.get("space"),
-            "quality": "not_sampled",
+            "quality_state": "not_sampled",
+            "quality": None,
         },
     )
 
@@ -608,7 +611,8 @@ def _execute_build(
         "space_id": built.space_id,
         "space": built.as_dict(),
         "model_changed": model_changed,
-        "quality": "not_sampled",
+        "quality_state": "not_sampled",
+        "quality": None,
     }
 
 
@@ -621,12 +625,131 @@ def _job_stub(payload: dict[str, Any]) -> Job:
     )
 
 
+@dataclass(frozen=True)
+class _QualityGate:
+    """The quality half of the activation/cutover gate."""
+
+    status: GateStatus
+    state: str
+    compare: dict[str, Any] | None = None
+    quality: dict[str, Any] | None = None
+    bad_matches: tuple[dict[str, Any], ...] = ()
+    reasons: tuple[str, ...] = ()
+
+    def as_extra(self) -> dict[str, Any]:
+        return {
+            "quality": self.quality,
+            "quality_compare": self.compare,
+            "quality_state": self.state,
+            "bad_matches": list(self.bad_matches),
+            "gate": self.status.value,
+        }
+
+
+def _quality_gate_for(
+    session: Session,
+    candidate: VectorSpace,
+    *,
+    embed: quality.EmbedFn,
+) -> _QualityGate:
+    """Measure the candidate against the golden set; never fabricate a pass.
+
+    Reuses the newest persisted compare for the same candidate, baseline,
+    set version and ``k`` (the standalone endpoint's evidence), otherwise runs
+    the bounded compare in-place. A missing set is an explicit not-sampled
+    refusal; an unassigned/failed embedder is a blocked refusal.
+    """
+    golden = quality.select_golden_set(candidate, quality.load_golden_sets())
+    if golden is None:
+        return _QualityGate(
+            status=GateStatus.FAIL,
+            state="not_sampled",
+            reasons=("quality_no_golden_set",),
+        )
+    active = lifecycle.active_space_row(session)
+    baseline = (
+        active
+        if active is not None and str(active.id) != str(candidate.id)
+        else None
+    )
+    persisted = quality.latest_persisted_compare(
+        session, candidate=candidate, baseline=baseline, golden=golden
+    )
+    if persisted is not None:
+        _job, compare, stored_bad = persisted
+        return _QualityGate(
+            status=GateStatus.PASS if compare.passed else GateStatus.FAIL,
+            state="sampled",
+            compare=compare.to_dict(),
+            quality=quality.quality_from_compare(compare).to_dict(),
+            bad_matches=tuple(stored_bad),
+            reasons=() if compare.passed else ("quality_below_floor",),
+        )
+    try:
+        outcome = quality.compare_spaces(
+            session,
+            baseline,
+            candidate,
+            embed=embed,
+            golden_sets=(golden,),
+        )
+    except quality.GoldenSetMissing:
+        return _QualityGate(
+            status=GateStatus.FAIL,
+            state="not_sampled",
+            reasons=("quality_no_golden_set",),
+        )
+    except quality.QualitySetupBlocked:
+        return _QualityGate(
+            status=GateStatus.FAIL,
+            state="blocked",
+            reasons=("quality_blocked",),
+        )
+    return _QualityGate(
+        status=outcome.gate,
+        state="sampled",
+        compare=outcome.compare.to_dict(),
+        quality=quality.quality_from_compare(outcome.compare).to_dict(),
+        bad_matches=outcome.bad_matches,
+        reasons=() if outcome.passed else ("quality_below_floor",),
+    )
+
+
+def _gate_refusal(
+    row: VectorSpace,
+    gate: lifecycle.ActivationGate,
+    quality_gate: _QualityGate,
+    *,
+    action: RetrievalAction,
+    job: Job | None = None,
+) -> RetrievalActionError:
+    quality_reasons = [
+        reason
+        for reason in gate.reasons
+        if reason.startswith("quality_")
+    ]
+    reason = "quality_gate_failed" if quality_reasons else "coverage_gate_failed"
+    extra = {
+        "space_id": str(row.id),
+        "activation_gate": gate.as_dict(),
+        "coverage": dict(gate.coverage),
+        **quality_gate.as_extra(),
+    }
+    del job, action
+    return RetrievalActionError(
+        str(gate.reasons[0]) if gate.reasons else "activation refused",
+        reason=reason,
+        extra=extra,
+    )
+
+
 def activate_space(
     session: Session,
     *,
     actor: str,
     space_id: str,
     idempotency_key: str,
+    embed: quality.EmbedFn,
 ) -> dict[str, Any]:
     row = session.get(VectorSpace, str(space_id))
     if row is None:
@@ -643,27 +766,14 @@ def activate_space(
             payload=payload,
             idempotency_key=idempotency_key,
             lock_key=run_lock_key(str(row.id)),
-            execute=lambda _job: _execute_activate(session, str(row.id), actor),
+            execute=lambda job: _execute_activate(
+                session, str(row.id), actor, embed, job
+            ),
             audit=_audit_for(actor, "vector.space.activated", str(row.id)),
             failure_audit=_audit_for(
                 actor, "vector.gate.failed", str(row.id), outcome="fail"
             ),
         )
-    except lifecycle.SpaceCoverageError as error:
-        raise RetrievalActionError(
-            str(error),
-            reason="coverage_gate_failed",
-            extra={
-                "space_id": str(row.id),
-                "quality": "not_sampled",
-                "activation_gate": {
-                    "space_id": str(row.id),
-                    "quality": "not_sampled",
-                    "allowed": False,
-                    "reasons": [str(error)[:300]],
-                },
-            },
-        ) from error
     except lifecycle.SpaceLifecycleError as error:
         raise RetrievalActionError(
             str(error), reason="space_state_invalid", extra={"space_id": str(row.id)}
@@ -679,7 +789,11 @@ def activate_space(
         deduplicated=deduplicated,
         extra={
             "space_id": str(row.id),
-            "quality": "not_sampled",
+            "quality": response.get("quality"),
+            "quality_compare": response.get("quality_compare"),
+            "quality_state": response.get("quality_state"),
+            "bad_matches": response.get("bad_matches"),
+            "gate": response.get("gate"),
             "activation_gate": response.get("activation_gate"),
             "space": response.get("space"),
         },
@@ -687,9 +801,67 @@ def activate_space(
 
 
 def _execute_activate(
-    session: Session, space_id: str, actor: str
+    session: Session,
+    space_id: str,
+    actor: str,
+    embed: quality.EmbedFn,
+    job: Job,
 ) -> dict[str, Any]:
-    activated = lifecycle.activate_space(session, space_id)
+    row = session.get(VectorSpace, space_id)
+    if row is None:
+        raise RetrievalActionError(
+            f"no vector space {space_id!r}", status_code=404, reason="space_not_found"
+        )
+    if row.status == "active":
+        return {
+            "action": RetrievalAction.ACTIVATE_SPACE.value,
+            "accepted": True,
+            "audit_event": "vector.space.activated",
+            "http_status": 200,
+            "deduplicated": False,
+            "run_id": "",
+            "status": RunStatus.SUCCEEDED.value,
+            "message": "space is already active",
+            "space_id": space_id,
+            "space": lifecycle.ActivationResult(
+                space_id=str(row.id),
+                name=str(row.name),
+                space_key=lifecycle.space_key_for(row),
+                already_active=True,
+            ).as_dict(),
+            "activation_gate": {
+                "space_id": str(row.id),
+                "coverage": "unknown",
+                "quality": "unknown",
+                "quality_state": "not_sampled",
+                "allowed": True,
+                "reasons": ["already_active"],
+            },
+            "quality": None,
+            "quality_compare": None,
+            "quality_state": "not_sampled",
+            "bad_matches": [],
+            "gate": "unknown",
+            "already_active": True,
+        }
+    quality_gate = _quality_gate_for(session, row, embed=embed)
+    try:
+        activated = lifecycle.activate_space(
+            session,
+            space_id,
+            quality=quality_gate.status,
+            quality_state=quality_gate.state,
+            quality_compare=quality_gate.compare,
+            quality_reasons=quality_gate.reasons,
+        )
+    except lifecycle.SpaceActivationRefused as refused:
+        raise _gate_refusal(
+            row,
+            refused.gate,
+            quality_gate,
+            action=RetrievalAction.ACTIVATE_SPACE,
+            job=job,
+        ) from refused
     session.add(_audit_for(actor, "vector.space.activated", space_id))
     session.flush()
     payload = activated.as_dict()
@@ -706,7 +878,7 @@ def _execute_activate(
         "space_id": space_id,
         "space": payload,
         "activation_gate": gate,
-        "quality": "not_sampled",
+        **quality_gate.as_extra(),
         "already_active": payload.get("already_active", False),
     }
 
@@ -901,7 +1073,9 @@ def cutover(
             "idempotency_key": None,
             "message": "space is already active",
             "space_id": str(row.id),
-            "quality": "not_sampled",
+            "quality": None,
+            "quality_state": "not_sampled",
+            "bad_matches": [],
             "already_active": True,
         }
         return cast(dict[str, Any], assert_no_raw_text(response))
@@ -927,20 +1101,159 @@ def cutover(
         message=(
             "replay of the original cutover run"
             if deduplicated
-            else "cutover queued: the candidate is backfilled, coverage-gated and activated"
+            else "cutover queued: the candidate is backfilled, quality-gated and activated"
         ),
-        extra={"space_id": str(row.id), "quality": "not_sampled"},
+        extra={
+            "space_id": str(row.id),
+            "quality": None,
+            "quality_state": "pending",
+            "bad_matches": [],
+        },
     )
 
 
-def unsupported_lifecycle(action: str) -> RetrievalActionError:
-    return RetrievalActionError(
-        f"{action} is not part of this build: golden-query quality compare and the "
-        "quality activation gate are Q3c2b2; activation here is coverage-gated and "
-        "reports quality=not_sampled",
-        reason="quality_not_sampled",
-        extra={"action": action, "quality": "not_sampled"},
+def compare_quality(    session: Session,
+    *,
+    actor: str,
+    space_id: str,
+    compare_space_id: str,
+    idempotency_key: str,
+    embed: quality.EmbedFn,
+) -> dict[str, Any]:
+    """Run the versioned golden set against old and new space; persist the result."""
+    try:
+        new_space = lifecycle.resolve_space(session, space_id)
+        old_space = lifecycle.resolve_space(session, compare_space_id)
+    except lifecycle.SpaceNotFound as error:
+        raise RetrievalActionError(
+            str(error), status_code=404, reason="space_not_found"
+        ) from error
+    if str(new_space.id) == str(old_space.id):
+        raise RetrievalActionError(
+            "compare spaces must differ",
+            status_code=422,
+            reason="invalid_request",
+        )
+    payload = {
+        "action": RetrievalAction.QUALITY_COMPARE.value,
+        "space_id": str(new_space.id),
+        "compare_space_id": str(old_space.id),
+    }
+    try:
+        response, deduplicated = run_vector_action(
+            session,
+            job_type=JobType.VECTOR_CUTOVER.value,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            lock_key=run_lock_key(str(new_space.id)),
+            execute=lambda job: _execute_compare(
+                session, job, new_space, old_space, actor, embed
+            ),
+            failure_audit=_audit_for(
+                actor, "vector.gate.failed", str(new_space.id), outcome="fail"
+            ),
+        )
+    except RetrievalJobConflict as error:
+        raise RetrievalActionError(str(error), reason=error.reason, extra=error.extra) from error
+    job = session.get(Job, response.get("run_id")) or _job_stub(response)
+    return _response(
+        RetrievalAction.QUALITY_COMPARE,
+        job,
+        audit_event="vector.gate.failed",
+        http_status=200,
+        deduplicated=deduplicated,
+        message=(
+            "replay of the original quality compare"
+            if deduplicated
+            else "quality compare complete"
+        ),
+        extra={
+            "space_id": str(new_space.id),
+            "baseline_space_id": str(old_space.id),
+            **{
+                key: response.get(key)
+                for key in (
+                    "quality",
+                    "quality_compare",
+                    "quality_state",
+                    "bad_matches",
+                    "gate",
+                    "old_degraded",
+                    "new_degraded",
+                    "no_baseline",
+                )
+            },
+        },
     )
+
+
+def _execute_compare(
+    session: Session,
+    job: Job,
+    new_space: VectorSpace,
+    old_space: VectorSpace,
+    actor: str,
+    embed: quality.EmbedFn,
+) -> dict[str, Any]:
+    try:
+        outcome = quality.compare_spaces(
+            session, old_space, new_space, embed=embed
+        )
+    except quality.GoldenSetMissing as error:
+        raise RetrievalActionError(
+            str(error),
+            reason="quality_no_golden_set",
+            extra={
+                "space_id": str(new_space.id),
+                "quality": None,
+                "quality_state": "not_sampled",
+                "bad_matches": [],
+                "gate": GateStatus.FAIL.value,
+            },
+        ) from error
+    except quality.QualitySetupBlocked as error:
+        raise RetrievalActionError(
+            str(error),
+            reason="quality_blocked",
+            extra={
+                "space_id": str(new_space.id),
+                "quality": None,
+                "quality_state": "blocked",
+                "bad_matches": [],
+                "gate": GateStatus.FAIL.value,
+            },
+        ) from error
+    if not outcome.passed:
+        session.add(
+            _audit_for(
+                actor,
+                "vector.gate.failed",
+                str(new_space.id),
+                outcome="fail",
+            )
+        )
+    session.flush()
+    return {
+        "action": RetrievalAction.QUALITY_COMPARE.value,
+        "accepted": True,
+        "audit_event": "vector.gate.failed",
+        "http_status": 200,
+        "deduplicated": False,
+        "run_id": job.id,
+        "status": RunStatus.SUCCEEDED.value,
+        "idempotency_key": job.idempotency_key,
+        "message": "quality compare complete",
+        "space_id": str(new_space.id),
+        "baseline_space_id": str(old_space.id),
+        "quality": quality.quality_from_compare(outcome.compare).to_dict(),
+        "quality_compare": outcome.compare.to_dict(),
+        "quality_state": "sampled",
+        "bad_matches": list(outcome.bad_matches),
+        "gate": outcome.gate.value,
+        "old_degraded": outcome.old_degraded,
+        "new_degraded": outcome.new_degraded,
+        "no_baseline": outcome.no_baseline,
+    }
 
 
 __all__ = [
@@ -952,12 +1265,12 @@ __all__ = [
     "activate_space",
     "build_space",
     "cancel_run",
+    "compare_quality",
     "cutover",
     "drop_space",
     "maintenance",
     "reindex",
     "retire_space",
     "retry_run",
-    "unsupported_lifecycle",
     "validate_key",
 ]

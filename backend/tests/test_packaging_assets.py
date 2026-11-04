@@ -15,6 +15,7 @@ def test_spec_bundles_spa_alembic_and_entry() -> None:
     for needle in (
         '"frontend/dist"',
         '"alembic"',
+        '"app/data"',
         "alembic.ini",
         "studyassistant",
         "__main__.py",

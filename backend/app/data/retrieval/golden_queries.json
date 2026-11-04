@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "description": "Admin-authored, versioned golden-query sets per study vector space (plan 51 Q3c2b2). Query text is lawful only here: Retrieval DTOs expose query ids, expected/retrieved material document ids and scores, never the input text. Empty by default — the Quality section reports no_golden_set until an admin records a set, and activation refuses rather than fabricating a pass. A set row uses the family shape: {spaceId, setVersion, k, floor: {recall, precision}, queries: [{queryId, query, expectedDocumentIds, k}]}. For the study content space, expectedDocumentIds are material ids (vector_documents.source_id for kind=material); chunk ids appear only in the bad-match evidence. The floor is the family contract floor (recall 0.80, precision 0.50).",
+  "sets": []
+}

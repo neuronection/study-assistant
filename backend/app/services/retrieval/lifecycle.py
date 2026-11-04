@@ -7,10 +7,10 @@ and coverage gates, then flip the one active pointer and retire the previous
 row. Readers follow the active row, so the cutover has no downtime.
 
 The lifecycle service writes DDL through :mod:`storage.vector_provisioning`
-(the only seam allowed to create/drop a vector table). Activation is
-coverage-gated here; the golden-query quality gate is deliberately **not**
-part of this slice (Q3c2b2) and every activation reports
-``quality="not_sampled"`` rather than a fake pass.
+(the only seam allowed to create/drop a vector table). Activation requires
+physical health, coverage **and** the pre-cutover golden-query quality compare
+(Q3c2b2): a missing or blocked quality setup is a structured refusal, never a
+silent pass.
 
 ``chunk_vecs`` is not dropped on activation. It is the compatibility store
 until the retired legacy space is explicitly dropped (the cutover/retirement
@@ -71,6 +71,18 @@ class SpaceCoverageError(SpaceLifecycleError):
     """The building space is not covered well enough to activate."""
 
 
+class SpaceActivationRefused(SpaceLifecycleError):
+    """Physical/coverage/quality evidence did not clear the activation gate."""
+
+    def __init__(self, gate: ActivationGate) -> None:
+        self.gate = gate
+        reasons = ", ".join(gate.reasons) or "gate"
+        super().__init__(
+            f"space activation refused ({reasons}): coverage="
+            f"{gate.coverage_status.value}, quality={gate.quality.value}"
+        )
+
+
 @dataclass(frozen=True)
 class SpaceBuildResult:
     space_id: str
@@ -103,13 +115,15 @@ class SpaceBuildResult:
 
 @dataclass(frozen=True)
 class ActivationGate:
-    """The evidence activation required and the coverage it measured."""
+    """The evidence activation required: coverage, quality and physical health."""
 
     space_id: str
     coverage_gate: float
     coverage: dict[str, float]
     coverage_status: GateStatus
-    quality: str = "not_sampled"
+    quality: GateStatus = GateStatus.UNKNOWN
+    quality_state: str = "not_sampled"
+    quality_compare: dict[str, Any] | None = None
     snapshots: dict[str, dict[str, Any]] | None = None
     allowed: bool = True
     reasons: tuple[str, ...] = ()
@@ -120,7 +134,9 @@ class ActivationGate:
             "coverage_gate": self.coverage_gate,
             "coverage": dict(self.coverage),
             "coverage_status": self.coverage_status.value,
-            "quality": self.quality,
+            "quality": self.quality.value,
+            "quality_state": self.quality_state,
+            "quality_compare": self.quality_compare,
             "snapshots": self.snapshots or {},
             "allowed": self.allowed,
             "reasons": list(self.reasons),
@@ -192,6 +208,11 @@ def _space_key(row: VectorSpace) -> str:
         str(row.chunker_version),
         str(row.composer_version),
     )
+
+
+def space_key_for(row: VectorSpace) -> str:
+    """The public space-key helper for the action responses."""
+    return _space_key(row)
 
 
 def resolve_space(session: Session, ref: str) -> VectorSpace:
@@ -426,23 +447,22 @@ def _assert_physical(session: Session, row: VectorSpace) -> PhysicalStatus:
     return physical
 
 
-def _assert_coverage(
+def _coverage_evidence(
     session: Session,
     row: VectorSpace,
     *,
     coverage_gate: float,
-) -> ActivationGate:
+) -> tuple[GateStatus, dict[str, float], dict[str, dict[str, Any]], str | None]:
+    """Coverage status plus the honest refusal reason (never a fabricated pass)."""
     snapshot = latest_coverage(session, str(row.id))
     if snapshot is None:
-        raise SpaceCoverageError(
-            f"space {row.name!r} has no coverage snapshot; backfill it first"
+        return (
+            GateStatus.UNKNOWN,
+            {},
+            {},
+            f"space {row.name!r} has no coverage snapshot; backfill it first",
         )
     fraction = coverage_fraction(snapshot)
-    if fraction is None:
-        raise SpaceCoverageError(
-            f"space {row.name!r} has no embeddable chunks; coverage is unknown"
-        )
-    status = GateStatus.PASS if fraction >= coverage_gate else GateStatus.FAIL
     snapshots = {
         LEGACY_KIND: {
             "as_of": snapshot.as_of.isoformat() if snapshot.as_of else None,
@@ -453,18 +473,59 @@ def _assert_coverage(
             "failed": snapshot.failed,
         }
     }
+    if fraction is None:
+        return (
+            GateStatus.UNKNOWN,
+            {},
+            snapshots,
+            f"space {row.name!r} has no embeddable chunks; coverage is unknown",
+        )
+    status = GateStatus.PASS if fraction >= coverage_gate else GateStatus.FAIL
+    reason = None
     if status is GateStatus.FAIL:
-        raise SpaceCoverageError(
+        reason = (
             f"space {row.name!r} is below the coverage gate {coverage_gate:.4f}: "
             f"{LEGACY_KIND}={fraction:.4f}"
         )
+    return (status, {LEGACY_KIND: fraction}, snapshots, reason)
+
+
+def build_activation_gate(
+    session: Session,
+    row: VectorSpace,
+    *,
+    coverage_gate: float = COVERAGE_GATE,
+    quality: GateStatus = GateStatus.UNKNOWN,
+    quality_state: str = "not_sampled",
+    quality_compare: dict[str, Any] | None = None,
+    quality_reasons: tuple[str, ...] = (),
+) -> ActivationGate:
+    """Compose coverage + quality into the one gate activation/cutover reads."""
+    coverage_status, coverage, snapshots, coverage_reason = _coverage_evidence(
+        session, row, coverage_gate=float(coverage_gate)
+    )
+    reasons: list[str] = []
+    if coverage_status is not GateStatus.PASS:
+        reasons.append(
+            "coverage_fail" if coverage_status is GateStatus.FAIL else "coverage_unknown"
+        )
+        if coverage_reason:
+            reasons.append(coverage_reason[:300])
+    if quality is not GateStatus.PASS:
+        reasons.extend(quality_reasons)
+        if not quality_reasons:
+            reasons.append("quality_not_sampled")
     return ActivationGate(
         space_id=str(row.id),
         coverage_gate=float(coverage_gate),
-        coverage={LEGACY_KIND: fraction},
-        coverage_status=status,
+        coverage=coverage,
+        coverage_status=coverage_status,
+        quality=quality,
+        quality_state=quality_state,
+        quality_compare=quality_compare,
         snapshots=snapshots,
-        allowed=True,
+        allowed=coverage_status is GateStatus.PASS and quality is GateStatus.PASS,
+        reasons=tuple(reasons),
     )
 
 
@@ -473,8 +534,17 @@ def activate_space(
     space_id: str,
     *,
     coverage_gate: float = COVERAGE_GATE,
+    quality: GateStatus = GateStatus.UNKNOWN,
+    quality_state: str = "not_sampled",
+    quality_compare: dict[str, Any] | None = None,
+    quality_reasons: tuple[str, ...] = (),
 ) -> ActivationResult:
-    """Flip one active pointer atomically; retire every previous active row."""
+    """Flip one active pointer atomically; retire every previous active row.
+
+    Physical health is asserted first. Coverage and quality are both required:
+    a missing quality compare is a refusal (``quality_state="not_sampled"``),
+    never a pass, and a below-floor compare is ``quality="fail"``.
+    """
     if not 0.0 <= float(coverage_gate) <= 1.0:
         raise ValueError("coverage_gate must be between 0 and 1")
     row = resolve_space(session, space_id)
@@ -489,7 +559,17 @@ def activate_space(
             legacy_compat_retained=legacy_compat_present(session),
         )
     physical = _assert_physical(session, row)
-    gate = _assert_coverage(session, row, coverage_gate=float(coverage_gate))
+    gate = build_activation_gate(
+        session,
+        row,
+        coverage_gate=float(coverage_gate),
+        quality=quality,
+        quality_state=quality_state,
+        quality_compare=quality_compare,
+        quality_reasons=quality_reasons,
+    )
+    if not gate.allowed:
+        raise SpaceActivationRefused(gate)
     now = _now()
     statement = select(VectorSpace).where(VectorSpace.status == "active")
     if session.get_bind().dialect.name == "postgresql":
@@ -616,6 +696,7 @@ __all__ = [
     "SPACE_DROP_GRACE",
     "ActivationGate",
     "ActivationResult",
+    "SpaceActivationRefused",
     "SpaceBuildResult",
     "SpaceCoverageError",
     "SpaceDropResult",
@@ -625,6 +706,7 @@ __all__ = [
     "activate_space",
     "active_space_id",
     "active_space_row",
+    "build_activation_gate",
     "build_space",
     "building_spaces",
     "coverage_fraction",
@@ -634,6 +716,7 @@ __all__ = [
     "resolve_space",
     "retire_space",
     "space_health",
+    "space_key_for",
     "space_status_dto",
     "write_coverage_snapshot",
 ]

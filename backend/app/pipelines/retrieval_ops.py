@@ -10,8 +10,9 @@ Every handler writes the contract's
 ``jobs.result`` and reports through the runner's cancel checkpoint. A coverage
 snapshot is written only when the pass actually covered the full corpus — a
 partial or cancelled run never publishes a misleading coverage point.
-Activation in this slice is coverage-gated only; quality is reported as
-``not_sampled`` until Q3c2b2.
+Activation/cutover require physical health, coverage **and** the golden-query
+quality compare (Q3c2b2); a missing or below-floor set is a structured refusal
+with the compare persisted on the run result.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from ..core.vocab import JobType
 from ..domain.models import Chunk, Job, VectorSpace
 from ..jobs.payloads import JobResult
 from ..jobs.runner import JobError
-from ..services.retrieval import lifecycle
+from ..services.retrieval import lifecycle, quality
 from ..services.retrieval.audit import build_vector_event
 from ..services.retrieval.legacy import load_store, write_coverage_snapshot
 from ..services.retrieval.telemetry import degraded_reason_for_warning
@@ -477,12 +478,14 @@ def make_vector_cutover_handler(
                     "action": "cutover",
                     "space_id": target,
                     "already_active": True,
-                    "quality": "not_sampled",
+                    "quality": None,
+                    "quality_state": "not_sampled",
+                    "bad_matches": [],
                     "message": "space is already active; nothing to cut over",
                     "space": lifecycle.ActivationResult(
                         space_id=str(row.id),
                         name=str(row.name),
-                        space_key=lifecycle._space_key(row),
+                        space_key=lifecycle.space_key_for(row),
                         already_active=True,
                     ).as_dict(),
                 },
@@ -501,9 +504,90 @@ def make_vector_cutover_handler(
                 f"cutover refused: space {row.name!r} is not fully covered "
                 f"(gate={result.gate.value}); backfill it before cutover"
             )
-        report(90, "coverage gate passed; activating")
+        report(85, "coverage gate passed; evaluating golden-query quality")
+        active = lifecycle.active_space_row(session)
+        baseline = (
+            active
+            if active is not None and str(active.id) != str(row.id)
+            else None
+        )
         try:
-            activated = lifecycle.activate_space(session, target)
+            outcome = quality.compare_spaces(
+                session, baseline, row, embed=embed
+            )
+        except quality.GoldenSetMissing as error:
+            _finish(
+                session,
+                job,
+                scanned=result.scanned,
+                embedded=result.embedded,
+                skipped=result.skipped,
+                failed=result.failed,
+                failed_ids=list(result.failed_ids),
+                gate=GateStatus.FAIL,
+                space_id=target,
+                extra={
+                    "action": "cutover",
+                    "quality": None,
+                    "quality_state": "not_sampled",
+                    "bad_matches": [],
+                    "gate_reasons": ["quality_no_golden_set"],
+                },
+            )
+            raise JobError(f"cutover refused: {error}") from error
+        except quality.QualitySetupBlocked as error:
+            _finish(
+                session,
+                job,
+                scanned=result.scanned,
+                embedded=result.embedded,
+                skipped=result.skipped,
+                failed=result.failed,
+                failed_ids=list(result.failed_ids),
+                gate=GateStatus.FAIL,
+                space_id=target,
+                extra={
+                    "action": "cutover",
+                    "quality": None,
+                    "quality_state": "blocked",
+                    "bad_matches": [],
+                    "gate_reasons": ["quality_blocked"],
+                },
+            )
+            raise JobError(f"cutover refused: {error}") from error
+        if not outcome.passed:
+            _finish(
+                session,
+                job,
+                scanned=result.scanned,
+                embedded=result.embedded,
+                skipped=result.skipped,
+                failed=result.failed,
+                failed_ids=list(result.failed_ids),
+                gate=GateStatus.FAIL,
+                space_id=target,
+                extra={
+                    "action": "cutover",
+                    "quality": outcome.compare.to_dict(),
+                    "quality_state": "sampled",
+                    "bad_matches": list(outcome.bad_matches),
+                    "gate_reasons": ["quality_below_floor"],
+                },
+            )
+            raise JobError(
+                f"cutover refused: space {row.name!r} is below the golden-query "
+                f"quality floor (recall={outcome.compare.new_recall_at_k:.4f}, "
+                f"precision={outcome.compare.new_precision_at_k:.4f})"
+            )
+        report(90, "coverage and quality gates passed; activating")
+        try:
+            activated = lifecycle.activate_space(
+                session,
+                target,
+                quality=GateStatus.PASS,
+                quality_state="sampled",
+                quality_compare=outcome.compare.to_dict(),
+            )
         except lifecycle.SpaceLifecycleError as error:
             raise JobError(f"cutover refused: {error}") from error
         session.commit()
@@ -520,7 +604,12 @@ def make_vector_cutover_handler(
                 "action": "cutover",
                 "space_id": target,
                 "space": activated.as_dict(),
-                "quality": "not_sampled",
+                "quality": outcome.compare.to_dict(),
+                "quality_state": "sampled",
+                "bad_matches": list(outcome.bad_matches),
+                "activation_gate": (
+                    activated.gate.as_dict() if activated.gate is not None else None
+                ),
                 "legacy_compat_retained": activated.legacy_compat_retained,
             },
         )

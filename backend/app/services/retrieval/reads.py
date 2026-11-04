@@ -10,7 +10,7 @@ real space (``as_of=None`` means never reconciled, never a fake percentage).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
@@ -21,6 +21,8 @@ from ...domain.models import Job, RetrievalQueryRollup, VectorSpace
 from ...storage.retrieval_ops import (
     VECTOR_JOB_TYPES,
     GateStatus,
+    GoldenQuerySet,
+    QualityCompareDTO,
     QueryHealthDTO,
     RunDTO,
     RunResultDTO,
@@ -29,7 +31,7 @@ from ...storage.retrieval_ops import (
     SpaceDTO,
 )
 from ...storage.vector_store import backend_label
-from . import lifecycle
+from . import lifecycle, quality
 from .legacy import (
     LEGACY_KIND,
     LEGACY_SPACE_ID,
@@ -125,6 +127,11 @@ def _run_dto(row: Job) -> RunDTO | None:
 def _run_payload(row: Job) -> dict[str, Any]:
     dto = _run_dto(row)
     result = _result(row)
+    raw = row.result if isinstance(row.result, dict) else {}
+    compare = quality.parse_persisted_compare(raw)
+    activation_gate = (
+        raw.get("activation_gate") if isinstance(raw.get("activation_gate"), dict) else None
+    )
     duration: float | None = None
     if row.started_at is not None and row.finished_at is not None:
         duration = max((row.finished_at - row.started_at).total_seconds(), 0.0)
@@ -132,6 +139,9 @@ def _run_payload(row: Job) -> dict[str, Any]:
         "run": dto.to_dict() if dto is not None else None,
         "result": result.to_dict() if result is not None else None,
         "duration_seconds": duration,
+        "quality": compare.to_dict() if compare is not None else None,
+        "bad_matches": quality.parse_persisted_bad_matches(raw),
+        "activation_gate": activation_gate,
     }
 
 
@@ -170,6 +180,156 @@ def _space(session: Session, store: LegacyStore) -> SpaceDTO:
 
 def _active_space_id(session: Session) -> str | None:
     return lifecycle.active_space_id(session)
+
+
+def _quality_space(session: Session, ref: str | None) -> VectorSpace | None:
+    if ref not in (None, ""):
+        row = session.get(VectorSpace, str(ref))
+        if row is not None:
+            return row
+        return session.scalars(
+            select(VectorSpace)
+            .where(VectorSpace.name == str(ref))
+            .order_by(VectorSpace.created_at.desc(), VectorSpace.id)
+        ).first()
+    return lifecycle.active_space_row(session)
+
+
+@dataclass(frozen=True)
+class _QualityEvidence:
+    job: Job
+    compare: QualityCompareDTO
+    bad_matches: list[dict[str, Any]]
+
+
+def _quality_evidence_index(session: Session) -> dict[str, _QualityEvidence]:
+    """Newest persisted compare per candidate space (ids/scores only)."""
+    rows = session.scalars(
+        select(Job)
+        .where(Job.type == "VECTOR_CUTOVER", Job.status == "done")
+        .order_by(Job.created_at.desc(), Job.id.desc())
+        .limit(RUN_MAX)
+    ).all()
+    index: dict[str, _QualityEvidence] = {}
+    for job in rows:
+        payload = job.payload if isinstance(job.payload, dict) else {}
+        if payload.get("action") not in (
+            "quality_compare",
+            "activate_space",
+            "cutover",
+        ):
+            continue
+        compare = quality.parse_persisted_compare(job.result)
+        if compare is None or compare.new_space_id in index:
+            continue
+        index[compare.new_space_id] = _QualityEvidence(
+            job=job,
+            compare=compare,
+            bad_matches=quality.parse_persisted_bad_matches(job.result),
+        )
+    return index
+
+
+def _quality_state(
+    space: VectorSpace,
+    golden: GoldenQuerySet | None,
+    evidence: _QualityEvidence | None,
+) -> tuple[str, str]:
+    """``(state, gate)`` for one space without claiming an unmeasured pass."""
+    if golden is None:
+        return "no_golden_set", GateStatus.UNKNOWN.value
+    if evidence is None:
+        return "not_sampled", GateStatus.UNKNOWN.value
+    compare = evidence.compare
+    if compare.set_version != golden.set_version or compare.k != golden.k:
+        return "stale_compare", GateStatus.UNKNOWN.value
+    return "sampled", (GateStatus.PASS if compare.passed else GateStatus.FAIL).value
+
+
+def quality_evidence(session: Session, *, space: str | None = None) -> dict[str, Any]:
+    """The versioned golden set plus the newest compare for one space.
+
+    ``no_golden_set`` and ``not_sampled`` are honest states: the card never
+    shows a pass until a compare actually ran for the current set version.
+    """
+    row = _quality_space(session, space)
+    if row is None:
+        return {
+            "state": "no_such_space" if space not in (None, "") else "no_space",
+            "space_id": str(space or ""),
+            "name": "",
+            "sampled": False,
+            "set": None,
+            "quality": None,
+            "compare": None,
+            "bad_matches": [],
+            "compare_run_id": None,
+            "compare_set_version": None,
+            "activation_gate": GateStatus.UNKNOWN.value,
+            "reason": "no_space",
+            "notes": ["No vector space to score; pass ?space=<id|name>."],
+        }
+    sets = quality.load_golden_sets()
+    golden = quality.select_golden_set(row, sets)
+    evidence = _quality_evidence_index(session).get(str(row.id))
+    state, gate = _quality_state(row, golden, evidence)
+    if golden is None:
+        return {
+            "state": state,
+            "space_id": str(row.id),
+            "name": str(row.name),
+            "sampled": False,
+            "set": None,
+            "quality": None,
+            "compare": None,
+            "bad_matches": [],
+            "compare_run_id": None,
+            "compare_set_version": None,
+            "activation_gate": gate,
+            "reason": "no_golden_set",
+            "notes": [
+                "No versioned golden-query set is recorded for this space; "
+                "activation refuses until an admin records one."
+            ],
+        }
+    summary = quality.golden_set_summary(golden)
+    if evidence is None:
+        return {
+            "state": state,
+            "space_id": str(row.id),
+            "name": str(row.name),
+            "sampled": False,
+            "set": summary,
+            "quality": None,
+            "compare": None,
+            "bad_matches": [],
+            "compare_run_id": None,
+            "compare_set_version": None,
+            "activation_gate": gate,
+            "reason": "compare_not_run",
+            "notes": ["The golden set exists; run a quality compare to measure it."],
+        }
+    compare = evidence.compare
+    candidate = quality.quality_from_compare(compare)
+    return {
+        "state": state,
+        "space_id": str(row.id),
+        "name": str(row.name),
+        "sampled": True,
+        "set": summary,
+        "quality": candidate.to_dict(),
+        "compare": compare.to_dict(),
+        "bad_matches": evidence.bad_matches,
+        "compare_run_id": evidence.job.id,
+        "compare_set_version": compare.set_version,
+        "activation_gate": gate,
+        "reason": None if state == "sampled" else "stale_compare",
+        "notes": (
+            ["The stored compare predates the current set version or k."]
+            if state != "sampled"
+            else []
+        ),
+    }
 
 
 def query_health(session: Session, *, window: str | None = None) -> dict[str, Any]:
@@ -224,9 +384,9 @@ def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
     health = query_health(session, window=window)
     spaces = list_spaces(session)
     notes: list[str] = [
-        "Build/activate/retire/drop and cutover are available. Activation is "
-        "coverage-gated; golden-query quality compare is not sampled in this "
-        "build (Q3c2b2)."
+        "Build/activate/retire/drop and cutover are available. Activation and "
+        "cutover require physical health, coverage and the golden-query quality "
+        "compare; a missing or below-floor set is a structured refusal."
     ]
     if store is not None:
         notes.append(f"Storage: {store.health_detail}.")
@@ -282,6 +442,8 @@ def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
 
 def list_spaces(session: Session) -> dict[str, Any]:
     active_id = _active_space_id(session)
+    sets = quality.load_golden_sets()
+    evidence = _quality_evidence_index(session)
     rows: list[dict[str, Any]] = []
     for row in session.scalars(
         select(VectorSpace).order_by(VectorSpace.created_at, VectorSpace.id)
@@ -289,7 +451,15 @@ def list_spaces(session: Session) -> dict[str, Any]:
         store = load_store(session, space_id=str(row.id))
         if store is None:
             continue
-        rows.append(_space(session, store).to_dict())
+        entry = _space(session, store).to_dict()
+        state, gate = _quality_state(
+            row,
+            quality.select_golden_set(row, sets),
+            evidence.get(str(row.id)),
+        )
+        entry["quality_state"] = state
+        entry["quality_gate"] = gate
+        rows.append(entry)
     active = next((entry for entry in rows if entry["space_id"] == active_id), None)
     return {
         "spaces": rows,
@@ -347,6 +517,7 @@ __all__ = [
     "list_runs",
     "list_spaces",
     "overview",
+    "quality_evidence",
     "query_health",
     "spaces",
 ]

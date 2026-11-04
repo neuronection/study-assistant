@@ -35,6 +35,7 @@ from app.domain.models import (
     VectorRecord,
     VectorSpace,
 )
+from app.storage import retrieval_ops as ops
 from app.storage import vectors
 from app.storage.vector_backends import (
     LinearBackend,
@@ -458,9 +459,9 @@ def test_pg_provisioning_is_idempotent_and_keeps_chunk_vecs_like_sqlite(
 def test_pg_space_lifecycle_backfill_activate_and_legacy_drop(
     pg_session: Session,
 ) -> None:
-    from app.services.retrieval import lifecycle
+    from app.services.retrieval import lifecycle, quality
 
-    _profile, _course, _material, chunk_ids = seed_material(
+    _profile, _course, material_id, chunk_ids = seed_material(
         pg_session, ["alpha", "beta"]
     )
     legacy_store = StudyVectorStore(pg_session)
@@ -492,11 +493,44 @@ def test_pg_space_lifecycle_backfill_activate_and_legacy_drop(
     )
     pg_session.commit()
 
-    activated = lifecycle.activate_space(pg_session, built.space_id)
+    candidate = pg_session.get(VectorSpace, built.space_id)
+    active_row = pg_session.get(VectorSpace, CONTENT_SPACE_ID)
+    assert candidate is not None and active_row is not None
+    golden = ops.GoldenQuerySet(
+        space_id=built.space_id,
+        set_version=1,
+        k=1,
+        queries=(
+            ops.GoldenQueryFixture(
+                query_id="q-pg",
+                query="SECRET-PG-QUERY",
+                expected_document_ids=(material_id,),
+                k=1,
+            ),
+        ),
+    )
+    outcome = quality.compare_spaces(
+        pg_session,
+        active_row,
+        candidate,
+        embed=lambda _texts: ("fake-embed-v2", [basis(0)]),
+        golden_sets=(golden,),
+    )
+    assert outcome.passed is True
+    assert outcome.compare.new_recall_at_k == pytest.approx(1.0)
+
+    activated = lifecycle.activate_space(
+        pg_session,
+        built.space_id,
+        quality=outcome.gate,
+        quality_state="sampled",
+        quality_compare=outcome.compare.to_dict(),
+    )
     pg_session.commit()
     assert activated.previous_space_id == CONTENT_SPACE_ID
     assert activated.gate is not None
-    assert activated.gate.quality == "not_sampled"
+    assert activated.gate.quality.value == "pass"
+    assert activated.gate.quality_state == "sampled"
     assert activated.gate.coverage_status.value == "pass"
     assert pg_session.get(VectorSpace, built.space_id).status == "active"  # type: ignore[union-attr]
     assert pg_session.get(VectorSpace, CONTENT_SPACE_ID).status == "retired"  # type: ignore[union-attr]
@@ -517,3 +551,80 @@ def test_pg_space_lifecycle_backfill_activate_and_legacy_drop(
     assert _scalar(pg_session.get_bind(), "SELECT to_regclass('chunk_vecs')") is None
     hits = StudyVectorStore(pg_session).search(basis(0), limit=2)
     assert hits and {chunk_id for chunk_id, _ in hits} <= set(chunk_ids)
+
+
+def test_pg_quality_compare_below_floor_refuses_activation(pg_session: Session) -> None:
+    from app.services.retrieval import lifecycle, quality
+
+    _profile_a, _course_a, _material_a, chunks_a = seed_material(
+        pg_session, ["alpha"], title="A"
+    )
+    _profile_b, _course_b, material_b, chunks_b = seed_material(
+        pg_session, ["beta"], title="B"
+    )
+    StudyVectorStore(pg_session).store(
+        [*chunks_a, *chunks_b], [basis(0), basis(1)], "fake-embed"
+    )
+    pg_session.commit()
+    active = lifecycle.active_space_row(pg_session)
+    assert active is not None
+
+    built, _changed = lifecycle.build_space(
+        pg_session,
+        name="content-v2",
+        provider="test",
+        model="fake-embed-v2",
+        dim=DIM,
+    )
+    pg_session.commit()
+    StudyVectorStore(pg_session, space_id=built.space_id).store(
+        [*chunks_a, *chunks_b], [basis(0), basis(1)], "fake-embed-v2"
+    )
+    pg_session.commit()
+    lifecycle.write_coverage_snapshot(
+        pg_session,
+        space_id=built.space_id,
+        total=2,
+        embedded=2,
+        missing=0,
+    )
+    pg_session.commit()
+    candidate = pg_session.get(VectorSpace, built.space_id)
+    assert candidate is not None
+
+    golden = ops.GoldenQuerySet(
+        space_id=built.space_id,
+        set_version=1,
+        k=1,
+        queries=(
+            ops.GoldenQueryFixture(
+                query_id="q-pg-miss",
+                query="SECRET-PG-QUERY",
+                expected_document_ids=(material_b,),
+                k=1,
+            ),
+        ),
+    )
+    outcome = quality.compare_spaces(
+        pg_session,
+        active,
+        candidate,
+        embed=lambda _texts: ("fake-embed-v2", [basis(0)]),
+        golden_sets=(golden,),
+    )
+    assert outcome.passed is False
+    assert outcome.bad_matches
+    assert outcome.bad_matches[0]["hits"][0]["chunk_id"] == chunks_a[0]
+
+    with pytest.raises(lifecycle.SpaceActivationRefused) as refused:
+        lifecycle.activate_space(
+            pg_session,
+            built.space_id,
+            quality=outcome.gate,
+            quality_state="sampled",
+            quality_compare=outcome.compare.to_dict(),
+            quality_reasons=("quality_below_floor",),
+        )
+    assert "quality_below_floor" in refused.value.gate.reasons
+    assert refused.value.gate.quality.value == "fail"
+    assert pg_session.get(VectorSpace, built.space_id).status == "building"  # type: ignore[union-attr]

@@ -311,16 +311,25 @@ def test_maintenance_actions_and_dry_run(
     assert cast(dict[str, Any], retry_job.payload)["chunk_ids"] == ["missing-chunk"]
 
 
-def test_quality_compare_is_an_explicit_q3c2b2_refusal(
+def test_quality_compare_requires_a_body_key_and_real_spaces(
     client: TestClient,
 ) -> None:
     _stop_worker(client)
-    response = client.post(f"{BASE}/quality/compare")
-    assert response.status_code == 409
-    detail = response.json()["detail"]
-    assert detail["reason"] == "quality_not_sampled"
-    assert detail["quality"] == "not_sampled"
-    assert "Q3c2b2" in detail["message"]
+    missing_body = client.post(f"{BASE}/quality/compare")
+    assert missing_body.status_code == 422
+    missing_key = client.post(
+        f"{BASE}/quality/compare",
+        json={"space_id": "a", "compare_space_id": "b"},
+    )
+    assert missing_key.status_code == 422
+    assert missing_key.json()["detail"]["reason"] == "idempotency_key_required"
+    unknown = client.post(
+        f"{BASE}/quality/compare",
+        json={"space_id": "no-such-space", "compare_space_id": "other"},
+        headers=_key("quality-key-0001"),
+    )
+    assert unknown.status_code == 404
+    assert unknown.json()["detail"]["reason"] == "space_not_found"
 
 
 def test_lifecycle_verbs_require_a_space_and_key(
