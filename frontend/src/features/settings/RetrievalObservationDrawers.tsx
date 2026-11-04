@@ -39,10 +39,12 @@ function MetaRow({
 
 export function RunDetailDrawer({
   runId,
+  loading,
   entry,
   onClose,
 }: {
   runId: string | null
+  loading: boolean
   entry: RunEntry | null
   onClose: () => void
 }) {
@@ -63,7 +65,11 @@ export function RunDetailDrawer({
       title={t('settings.retrievalObsRunDrawerTitle')}
       data-testid="retrieval-observation-run-drawer"
     >
-      {!run ? (
+      {loading ? (
+        <p className="text-muted-foreground text-sm">
+          {t('settings.retrievalObsLoading')}
+        </p>
+      ) : !run ? (
         <p className="text-muted-foreground text-sm">
           {t('settings.retrievalObsDetailNotFound')}
         </p>
@@ -180,10 +186,12 @@ export function RunDetailDrawer({
 
 export function SpaceDetailDrawer({
   spaceId,
+  loading,
   space,
   onClose,
 }: {
   spaceId: string | null
+  loading: boolean
   space: SpaceEntry | null
   onClose: () => void
 }) {
@@ -198,7 +206,11 @@ export function SpaceDetailDrawer({
       title={t('settings.retrievalObsSpaceDrawerTitle')}
       data-testid="retrieval-observation-space-drawer"
     >
-      {!space ? (
+      {loading ? (
+        <p className="text-muted-foreground text-sm">
+          {t('settings.retrievalObsLoading')}
+        </p>
+      ) : !space ? (
         <p className="text-muted-foreground text-sm">
           {t('settings.retrievalObsDetailNotFound')}
         </p>

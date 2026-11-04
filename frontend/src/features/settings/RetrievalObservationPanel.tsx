@@ -150,11 +150,13 @@ function RetrievalObservationPanelInner() {
 
   const isLoading =
     (section === 'overview' && overview.isLoading) ||
-    ((section === 'spaces' || section === 'quality') && spaces.isLoading) ||
+    (section === 'spaces' && spaces.isLoading) ||
+    (section === 'quality' && (spaces.isLoading || quality.isLoading)) ||
     (section === 'runs' && runs.isLoading) ||
     (section === 'query-health' && health.isLoading) ||
     (section === 'usage' && usage.isLoading) ||
-    (section === 'failures' && (runs.isLoading || health.isLoading || spaces.isLoading))
+    (section === 'failures' &&
+      (runs.isLoading || health.isLoading || spaces.isLoading || quality.isLoading))
 
   const isError =
     (section === 'overview' && overview.isError) ||
@@ -164,7 +166,7 @@ function RetrievalObservationPanelInner() {
     (section === 'query-health' && health.isError) ||
     (section === 'usage' && usage.isError) ||
     (section === 'failures' &&
-      (runs.isError || health.isError || spaces.isError))
+      (runs.isError || health.isError || spaces.isError || quality.isError))
 
   const failureGroups = collectFailureGroups({
     runs: runs.data?.runs ?? [],
@@ -306,6 +308,7 @@ function RetrievalObservationPanelInner() {
 
       <RunDetailDrawer
         runId={runDetailId}
+        loading={Boolean(runDetailId) && runs.isLoading}
         entry={
           runDetailId
             ? (runs.data?.runs ?? []).find(
@@ -317,6 +320,7 @@ function RetrievalObservationPanelInner() {
       />
       <SpaceDetailDrawer
         spaceId={spaceDetailId}
+        loading={Boolean(spaceDetailId) && spaces.isLoading}
         space={
           spaceDetailId
             ? (spaces.data?.spaces ?? []).find(
