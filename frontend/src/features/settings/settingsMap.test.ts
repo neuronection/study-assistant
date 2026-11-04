@@ -6,12 +6,19 @@ import { AI_TAB_SECTIONS, SETTINGS_TABS, TOOLS_TAB_SECTIONS } from './SettingsPa
 
 // Settings-structure conformance wall (ADR-0033 / plan 27): the settings
 // nav in this app must match the family contract vendored at
-// contracts/settings-map.json. Placement changes go through the dev
-// canonical copy first — never by editing the vendored file (which
-// scripts/verify-wiring.sh keeps byte-identical) or the arrays alone.
+// contracts/settings-map.json. Structural placement changes go through the
+// dev canonical copy first — never by editing the vendored file (which
+// scripts/verify-wiring.sh keeps byte-identical) or the arrays alone. An
+// adopter flip for a surface that actually ships (plan 51 Q3b) is the one
+// product-local edit, reported as a canonical sync handoff.
 const map = JSON.parse(
   readFileSync(join(__dirname, '..', '..', '..', '..', 'contracts', 'settings-map.json'), 'utf8'),
 ) as {
+  domains: {
+    id: string
+    scope?: string
+    adopters?: Record<string, string>
+  }[]
   products: Record<
     string,
     { tabs: { id: string; group: string; sections?: { id: string; domains: string[]; status?: string }[] }[] }
@@ -70,5 +77,17 @@ describe('settings-map contract', () => {
     expect((tools.sections ?? []).flatMap((section) => section.domains)).toEqual(
       expect.arrayContaining(['tools.web-search', 'tools.discovery', 'tools.indexing']),
     )
+  })
+
+  test('tools.retrieval is aligned for study and hosted by the indexing section', () => {
+    const retrieval = map.domains.find((domain) => domain.id === 'tools.retrieval')
+    expect(retrieval).toBeDefined()
+    expect(retrieval!.adopters?.['study-assistant']).toBe('aligned')
+    expect(retrieval!.scope).toBe('instance (admin)')
+
+    const indexing = declared
+      .find((tab) => tab.id === 'tools')
+      ?.sections?.find((section) => section.id === 'indexing')
+    expect(indexing?.domains).toEqual(['tools.indexing', 'tools.retrieval'])
   })
 })

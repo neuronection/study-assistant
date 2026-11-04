@@ -69,6 +69,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/retrieval/cutover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Cutover */
+        post: operations["post_cutover_api_v1_admin_retrieval_cutover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Maintenance */
+        post: operations["post_maintenance_api_v1_admin_retrieval_maintenance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/retrieval/overview": {
         parameters: {
             query?: never;
@@ -80,6 +114,23 @@ export interface paths {
         get: operations["get_overview_api_v1_admin_retrieval_overview_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/quality/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Quality Compare */
+        post: operations["post_quality_compare_api_v1_admin_retrieval_quality_compare_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -103,6 +154,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/retrieval/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Reindex */
+        post: operations["post_reindex_api_v1_admin_retrieval_reindex_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/retrieval/runs": {
         parameters: {
             query?: never;
@@ -120,6 +188,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/retrieval/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Cancel Run */
+        post: operations["post_cancel_run_api_v1_admin_retrieval_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/runs/{run_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Retry Run */
+        post: operations["post_retry_run_api_v1_admin_retrieval_runs__run_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/retrieval/spaces": {
         parameters: {
             query?: never;
@@ -130,7 +232,59 @@ export interface paths {
         /** Get Spaces */
         get: operations["get_spaces_api_v1_admin_retrieval_spaces_get"];
         put?: never;
-        post?: never;
+        /** Post Build Space */
+        post: operations["post_build_space_api_v1_admin_retrieval_spaces_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/spaces/{space_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Activate Space */
+        post: operations["post_activate_space_api_v1_admin_retrieval_spaces__space_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/spaces/{space_id}/drop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Drop Space */
+        post: operations["post_drop_space_api_v1_admin_retrieval_spaces__space_id__drop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/retrieval/spaces/{space_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Retire Space */
+        post: operations["post_retire_space_api_v1_admin_retrieval_spaces__space_id__retire_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9470,6 +9624,49 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * RetrievalActionKeyIn
+         * @description Path-addressed action body; the Idempotency-Key header is preferred.
+         */
+        RetrievalActionKeyIn: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
+        /** RetrievalActionOut */
+        RetrievalActionOut: {
+            /** Accepted */
+            accepted: boolean;
+            /** Action */
+            action: string;
+            /** Audit Event */
+            audit_event: string;
+            /** Cancel Requested */
+            cancel_requested?: boolean | null;
+            /**
+             * Deduplicated
+             * @default false
+             */
+            deduplicated: boolean;
+            /** Http Status */
+            http_status: number;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Maintenance Action */
+            maintenance_action?: string | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Retry Of */
+            retry_of?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Space Id */
+            space_id?: string | null;
+            /** Status */
+            status?: string | null;
+        };
         /** RetrievalCoverageEnvelopeOut */
         RetrievalCoverageEnvelopeOut: {
             /** Cold */
@@ -9509,6 +9706,28 @@ export interface components {
             stale: number;
             /** Total */
             total: number;
+        };
+        /**
+         * RetrievalMaintenanceIn
+         * @description One typed maintenance action; retry-failed needs chunk_ids.
+         */
+        RetrievalMaintenanceIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "orphan-sweep" | "vacuum" | "index-rebuild" | "retry-failed";
+            /** Chunk Ids */
+            chunk_ids?: string[] | null;
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Space Id */
+            space_id?: string | null;
         };
         /** RetrievalOverviewOut */
         RetrievalOverviewOut: {
@@ -9591,6 +9810,39 @@ export interface components {
             window_start: string;
             /** Zero Result Rate */
             zero_result_rate?: number | null;
+        };
+        /**
+         * RetrievalReindexIn
+         * @description One bounded reindex of the legacy store; the header carries the key.
+         */
+        RetrievalReindexIn: {
+            /**
+             * Batch Size
+             * @default 32
+             */
+            batch_size: number;
+            /** Chunk Ids */
+            chunk_ids?: string[] | null;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /**
+             * Limit
+             * @default 500
+             */
+            limit: number;
+            /** Since */
+            since?: string | null;
+            /** Space Id */
+            space_id?: string | null;
+            /** View */
+            view?: string | null;
         };
         /** RetrievalRunDetailOut */
         RetrievalRunDetailOut: {
@@ -11667,6 +11919,62 @@ export interface operations {
             };
         };
     };
+    post_cutover_api_v1_admin_retrieval_cutover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+        };
+    };
+    post_maintenance_api_v1_admin_retrieval_maintenance_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalMaintenanceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_overview_api_v1_admin_retrieval_overview_get: {
         parameters: {
             query?: {
@@ -11698,6 +12006,26 @@ export interface operations {
             };
         };
     };
+    post_quality_compare_api_v1_admin_retrieval_quality_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+        };
+    };
     get_query_health_api_v1_admin_retrieval_query_health_get: {
         parameters: {
             query?: {
@@ -11716,6 +12044,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RetrievalQueryHealthEnvelopeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_reindex_api_v1_admin_retrieval_reindex_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalReindexIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
                 };
             };
             /** @description Validation Error */
@@ -11760,6 +12124,79 @@ export interface operations {
             };
         };
     };
+    post_cancel_run_api_v1_admin_retrieval_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RetrievalActionKeyIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_retry_run_api_v1_admin_retrieval_runs__run_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RetrievalActionKeyIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_spaces_api_v1_admin_retrieval_spaces_get: {
         parameters: {
             query?: never;
@@ -11776,6 +12213,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RetrievalSpacesOut"];
+                };
+            };
+        };
+    };
+    post_build_space_api_v1_admin_retrieval_spaces_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+        };
+    };
+    post_activate_space_api_v1_admin_retrieval_spaces__space_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_drop_space_api_v1_admin_retrieval_spaces__space_id__drop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_retire_space_api_v1_admin_retrieval_spaces__space_id__retire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                space_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

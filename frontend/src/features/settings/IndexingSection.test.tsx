@@ -23,6 +23,15 @@ vi.mock('@/lib/api', () => ({
       query_health: {},
       notes: [],
     }),
+  getRetrievalRuns: () => Promise.resolve({ runs: [] }),
+  postRetrievalReindex: vi.fn(),
+  postRetrievalMaintenance: vi.fn(),
+  cancelRetrievalRun: vi.fn(),
+  retryRetrievalRun: vi.fn(),
+}))
+
+vi.mock('@/lib/auth-session', () => ({
+  getCurrentUser: () => ({ is_admin: false }),
 }))
 
 function renderTab() {

@@ -719,15 +719,22 @@ export type { ExerciseOrderingItem } from './hand-types'
 export { HAND_TYPE_REGISTER } from './hand-types'
 
 export type {
+  RetrievalAction,
   RetrievalCoverageEnvelope,
+  RetrievalMaintenanceRequest,
   RetrievalOverview,
+  RetrievalReindexRequest,
   RetrievalRuns,
   RetrievalSpaces,
 } from './retrieval'
 
 export {
+  cancelRetrievalRun,
   getRetrievalCoverage,
   getRetrievalOverview,
   getRetrievalRuns,
   getRetrievalSpaces,
+  postRetrievalMaintenance,
+  postRetrievalReindex,
+  retryRetrievalRun,
 } from './retrieval'

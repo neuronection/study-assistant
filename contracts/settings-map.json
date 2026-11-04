@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "contract": "settings-map",
-  "updated": "2026-11-03",
+  "updated": "2026-11-04",
   "purpose": "One family taxonomy for settings surfaces: what a setting IS decides where it LIVES. Canonical per ADR-0033 / ADR-0031 (sync-and-gate): this file is the master; product repos vendor it byte-identical under contracts/ and scripts/verify-wiring.sh flags drift. A setting may not ship (or move) in any product without a domain entry (or adopter line) here.",
   "groups": {
     "ai": {
@@ -323,7 +323,7 @@
       "scope": "instance (admin)",
       "adopters": {
         "career-assistant": "pending (plan 51 Q2)",
-        "study-assistant": "pending (plan 51 Q3)",
+        "study-assistant": "aligned",
         "health-assistant/core": "n/a (no vector store yet)"
       }
     }
@@ -525,8 +525,10 @@
             {
               "id": "indexing",
               "domains": [
-                "tools.indexing"
-              ]
+                "tools.indexing",
+                "tools.retrieval"
+              ],
+              "note": "study hosts the admin retrieval controls inside Indexing (plan 51 Q3b); the tools.retrieval domain's canonical home section is not a separate tab here"
             },
             {
               "id": "skills",
