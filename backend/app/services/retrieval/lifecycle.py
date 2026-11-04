@@ -196,17 +196,32 @@ def _as_utc(value: datetime | None) -> datetime | None:
 
 
 def _space_key(row: VectorSpace) -> str:
+    """The row's persisted identity — never a key recomputed from its fields."""
+    return str(row.space_key)
+
+
+def _computed_v1_key(
+    *,
+    provider: str,
+    model: str,
+    dim: int,
+    normalize: bool,
+    query_prefix: str | None,
+    document_prefix: str | None,
+    chunker_version: str,
+    composer_version: str,
+) -> str:
     from ...storage.vector_contract import space_key
 
     return space_key(
-        row.provider,
-        row.model,
-        row.dim,
-        bool(row.normalize),
-        row.query_prefix,
-        row.document_prefix,
-        str(row.chunker_version),
-        str(row.composer_version),
+        provider,
+        model,
+        dim,
+        normalize,
+        query_prefix,
+        document_prefix,
+        chunker_version,
+        composer_version,
     )
 
 
@@ -344,18 +359,20 @@ def build_space(
     if metric not in METRICS:
         raise ValueError(f"unsupported metric {metric!r}; expected one of {METRICS}")
     normalized_name = str(name).strip()
+    requested_key = _computed_v1_key(
+        provider=str(provider),
+        model=str(model),
+        dim=int(dim),
+        normalize=bool(normalize),
+        query_prefix=query_prefix,
+        document_prefix=document_prefix,
+        chunker_version=str(chunker_version),
+        composer_version=str(composer_version),
+    )
     for existing in building_spaces(session):
         if existing.name != normalized_name:
             continue
-        same = (
-            existing.provider == provider
-            and existing.model == model
-            and int(existing.dim) == int(dim)
-            and bool(existing.normalize) == bool(normalize)
-            and existing.query_prefix == query_prefix
-            and existing.document_prefix == document_prefix
-        )
-        if same:
+        if existing.space_key == requested_key:
             provision = provision_space(session, existing)
             return (
                 _build_result(existing, provision, created=False),
@@ -363,7 +380,8 @@ def build_space(
             )
         raise SpaceStateError(
             f"building space {normalized_name!r} already exists with a different "
-            "configuration; retire or drop it before building another"
+            f"stored identity; retire or drop it before building another "
+            f"(row={existing.space_key!r}, requested={requested_key!r})"
         )
     row = VectorSpace(
         id=str(uuid.uuid4()),
@@ -377,6 +395,7 @@ def build_space(
         document_prefix=document_prefix,
         chunker_version=str(chunker_version),
         composer_version=str(composer_version),
+        space_key=requested_key,
         index_table=None,
         status="building",
         created_at=_now(),

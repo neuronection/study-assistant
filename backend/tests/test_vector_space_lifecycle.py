@@ -244,6 +244,10 @@ def test_backfill_activate_retires_previous_and_keeps_chunk_vecs(
     ).all()
     assert snapshots and snapshots[-1].embedded == 2
 
+    stored_before_cutover = "f" * 64
+    legacy.space_key = stored_before_cutover
+    db_session.commit()
+
     _stub_quality(
         monkeypatch,
         client,
@@ -254,6 +258,7 @@ def test_backfill_activate_retires_previous_and_keeps_chunk_vecs(
     assert activated["_status"] == 200, activated
     assert activated["space"]["space_id"] == candidate_id
     assert activated["space"]["previous_space_id"] == LEGACY_SPACE_ID
+    assert activated["space"]["previous_space_key"] == stored_before_cutover
     assert activated["quality"]["passed"] is True
     assert activated["quality_state"] == "sampled"
     assert activated["gate"] == "pass"

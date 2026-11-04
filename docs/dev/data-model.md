@@ -443,7 +443,12 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   document, and never a second copy of text. `storage/vector_store.py` is the
   only read/write seam; physical DDL lives in
   `storage/vector_provisioning.py` and the dialect SQL in
-  `storage/vector_backends.py`.
+  `storage/vector_backends.py`. Since 0016 every space carries the non-null
+  `space_key` stamped once at creation/cutover (the frozen v1 pre-image for
+  legacy rows); remap/status reads use that stored value and never recompute
+  it. 0017 adds the nullable tokenizer/chunk identity and token-offset columns
+  that plan 52 T5b2 will write; existing rows stay NULL and character chunking
+  is unchanged.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
   rebuilt by the migration and maintained by `services/tree.py` (rebuildable at
   any time)
@@ -456,6 +461,20 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0017_vector_token_schema (plan 52 T5b1)**: adds the nullable tokenizer
+  (`kind`/`identifier`/`revision`/`artifact_sha256`/`exact`/`max_input_tokens`)
+  and chunk (`max_tokens`/`overlap_tokens`/`max_chars`) scalars to
+  `vector_spaces`, and nullable `token_count`/`token_start`/`token_end` to
+  `vector_records`. All existing rows stay NULL. CHECKs enforce
+  all-or-none, kind/exact/provenance, chunk bounds,
+  `chunker_version='2'` when a tokenizer is present, and ordered/consistent
+  token offsets. Downgrade drops these columns/checks but keeps `space_key`.
+  No write path uses them yet (T5b2).
+- **0016_vector_space_stored_key (plan 52 T5b1)**: adds non-null
+  `vector_spaces.space_key` (`String(64)`) and stamps every existing row once
+  with the frozen v1 eight-field pre-image before enforcing NOT NULL. The
+  stored value is the remap/cutover identity; consumers never recompute it.
+  Downgrade drops the column.
 - **0015_retrieval_alerts (plan 51 Q3c3a)**: adds
   `ai_interactions.metadata` (JSON, non-null, `{}`) and
   `metadata_schema_version` (smallint, non-null, `1`) — caller-supplied

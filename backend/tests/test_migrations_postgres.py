@@ -23,9 +23,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from alembic import command
-from app.domain.models import Chunk, Course, Extraction, Material, Profile, User
+from app.domain.models import (
+    Chunk,
+    Course,
+    Extraction,
+    Material,
+    Profile,
+    User,
+    VectorSpace,
+)
 from app.storage import vectors
-from app.storage.vector_contract import content_hash
+from app.storage.vector_contract import content_hash, space_key
 from app.storage.vector_schema import index_table_name
 
 # gate-allow: DATABASE_URL (module local; the env read is SA_TEST_DATABASE_URL)
@@ -441,3 +449,124 @@ def test_vector_space_backfill_shape_and_round_trip(
     assert _relation_exists(engine, physical)
     assert _scalar(engine, f"SELECT count(*) FROM {physical}") == 2
     assert _rows(engine, "SELECT index_table FROM vector_spaces")[0]["index_table"] == physical
+
+
+def test_vector_space_key_and_token_columns_round_trip(
+    seeded_vector_pg: tuple[Config, Engine, dict[str, Any]],
+) -> None:
+    """0016 stamps populated keys; 0017 drops only the token columns."""
+    alembic_cfg, engine, _seeded = seeded_vector_pg
+    with _MIGRATION_LOCK:
+        command.downgrade(alembic_cfg, "0015_retrieval_alerts")
+    assert "space_key" not in _columns(engine, "vector_spaces")
+    assert "tokenizer_kind" not in _columns(engine, "vector_spaces")
+
+    space_id = str(uuid.uuid4())
+    name = f"pg-key-{uuid.uuid4().hex[:8]}"
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO vector_spaces "
+                "(id, name, provider, model, dim, metric, normalize, "
+                " chunker_version, composer_version, index_table, status, "
+                " created_at, updated_at) "
+                "VALUES (:id, :name, 'openai', 'text-embedding-3-small', 384, "
+                "        'cosine', true, '1', '1', NULL, 'building', now(), now())"
+            ),
+            {"id": space_id, "name": name},
+        )
+
+    with _MIGRATION_LOCK:
+        command.upgrade(alembic_cfg, "head")
+
+    expected = space_key(
+        "openai", "text-embedding-3-small", 384, True, None, None, "1", "1"
+    )
+    stored = {
+        str(row["id"]): str(row["space_key"])
+        for row in _rows(engine, "SELECT id, space_key FROM vector_spaces")
+    }
+    assert stored[space_id] == expected
+    assert stored["legacy-chunk-vecs"] == space_key(
+        "unassigned", "legacy-model", 4, True, None, None, "1", "1"
+    )
+    for column in (
+        "tokenizer_kind",
+        "tokenizer_identifier",
+        "tokenizer_revision",
+        "tokenizer_artifact_sha256",
+        "tokenizer_exact",
+        "max_input_tokens",
+        "chunk_max_tokens",
+        "chunk_overlap_tokens",
+        "chunk_max_chars",
+    ):
+        assert _columns(engine, "vector_spaces")[column]["is_nullable"] == "YES"
+    for column in ("token_count", "token_start", "token_end"):
+        assert _columns(engine, "vector_records")[column]["is_nullable"] == "YES"
+    assert (
+        _scalar(engine, "SELECT count(*) FROM vector_spaces WHERE tokenizer_kind IS NOT NULL")
+        == 0
+    )
+    assert (
+        _scalar(engine, "SELECT count(*) FROM vector_records WHERE token_count IS NOT NULL")
+        == 0
+    )
+
+    with engine.connect() as conn:
+        constraints = {
+            str(row[0])
+            for row in conn.execute(
+                text(
+                    "SELECT conname FROM pg_constraint WHERE conname IN ("
+                    "'ck_vector_spaces_tokenizer_group_all_or_none', "
+                    "'ck_vector_records_token_fields_consistent')"
+                )
+            )
+        }
+    assert constraints == {
+        "ck_vector_spaces_tokenizer_group_all_or_none",
+        "ck_vector_records_token_fields_consistent",
+    }
+
+    with _MIGRATION_LOCK:
+        command.downgrade(alembic_cfg, "0016_vector_space_stored_key")
+    assert "tokenizer_kind" not in _columns(engine, "vector_spaces")
+    assert "token_count" not in _columns(engine, "vector_records")
+    assert (
+        _scalar(
+            engine,
+            "SELECT space_key FROM vector_spaces WHERE id = :id",
+            {"id": space_id},
+        )
+        == expected
+    )
+
+    with _MIGRATION_LOCK:
+        command.upgrade(alembic_cfg, "head")
+
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with factory() as session:
+        row = VectorSpace(
+            id=str(uuid.uuid4()),
+            name=f"pg-new-{uuid.uuid4().hex[:8]}",
+            provider="openai",
+            model="text-embedding-3-small",
+            dim=4,
+            normalize=True,
+            chunker_version="1",
+            composer_version="1",
+            status="building",
+        )
+        session.add(row)
+        session.commit()
+        new_key = row.space_key
+        new_id = row.id
+    assert new_key == space_key(
+        "openai", "text-embedding-3-small", 4, True, None, None, "1", "1"
+    )
+    assert _scalar(
+        engine,
+        "SELECT space_key FROM vector_spaces WHERE id = :id",
+        {"id": new_id},
+    ) == new_key

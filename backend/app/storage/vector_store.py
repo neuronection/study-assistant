@@ -104,6 +104,7 @@ class ContentSpace:
             dim=self.dim,
             space_id=self.space_id,
             index_table=self.index_table,
+            stored_key=self.key,
         )
 
 
@@ -1004,16 +1005,7 @@ class StudyVectorStore:
             backend=backend,
             index_table=index_table,
             status=str(row.status),
-            key=space_key(
-                provider,
-                model,
-                dim,
-                bool(row.normalize),
-                row.query_prefix,
-                row.document_prefix,
-                str(row.chunker_version),
-                str(row.composer_version),
-            ),
+            key=str(row.space_key),
             metadata_row=metadata_row,
         )
 

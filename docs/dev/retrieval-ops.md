@@ -776,14 +776,14 @@ tutor/quiz help, note actions and the gateway ledger all use the seam.
 `Chunk.token_count` still stores an integer over the **existing**
 character-chunked records; it is not a token-aware chunk write.
 
-**T5b handoff (explicit, not built here).**
+**T5b handoff (T5b1 landed the stored key + schema; the write switch is T5b2).**
 1. Use `TokenizerService.encode_with_offsets` to replace `pipelines/chunking.py`
    character windows with token windows for a v2 space only; keep the v1
    character path intact.
-2. Add the token columns/offsets to the study vector record model + migration,
-   matching the already-vendored `vector_contract.IndexRecord` fields; write
-   `token_count/token_start/token_end` on new records.
-3. Stamp `vector_spaces.space_key` from the vendored v2 pre-image and
+2. Write `token_count/token_start/token_end` on new token-aware records using
+   the columns added by T5b1 (the vendored `vector_contract.IndexRecord`
+   shape).
+3. Stamp a new v2 space's `space_key` from the vendored v2 pre-image and the
    `ChunkConfig`/tokenizer pair; build/backfill a candidate space, compare
    coverage/quality, then cut over (v1 retained).
 4. Extend the accounting seam with the study model-profile registry / admin
@@ -791,3 +791,65 @@ character-chunked records; it is not a token-aware chunk write.
    from a model name.
 5. T5c/T5d: progress DTO emission and UI are still out of scope. The contract
    fields are accepted today; nothing writes `progress_detail`.
+
+## Plan 52 T5b1 — stored space key + token schema (T5b2 handoff)
+
+T5b1 is the **compatibility and schema** half of T5b. It persists the vector
+space identity and adds the columns T5b2 will write, but it does **not** make
+any chunking token-aware, write token offsets, build a v2 space or cut over.
+Existing character chunking, chunk counts and write behavior are unchanged.
+
+**Stored key (migration `0016_vector_space_stored_key`).** Adds the non-null
+`vector_spaces.space_key` (`String(64)`). Every existing row is stamped once
+with the frozen v1 eight-field pre-image (inlined in the migration, like
+Career's `0095`) before the column is made non-null. SQLite upgrades through
+batch mode; PostgreSQL alters the nullable column in place. Downgrade drops
+the column (the v1 value is rebuildable, not audit data).
+
+The stored value wins everywhere: `StudyVectorStore`'s `ContentSpace.key` /
+`as_contract().key`, `services/retrieval/lifecycle.space_key_for`, build
+idempotency (`building`/active comparison), activation's
+`previous_space_key`, status/DTO reads and `legacy.load_store` all return the
+row's value instead of recomputing it. `build_space` computes and persists the
+v1 key for a new space. A direct ORM insert without `space_key` stamps the v1
+key; an insert carrying tokenizer columns but no explicit key is refused
+(T5b2 owns the v2 pre-image). This closes the pre-image boundary: a later
+tokenizer/chunker change can never make an existing row look like a different
+live space during remap/cutover.
+
+**Schema for T5b2 (migration `0017_vector_token_schema`).**
+`vector_spaces` gains `tokenizer_kind`, `tokenizer_identifier`,
+`tokenizer_revision`, `tokenizer_artifact_sha256`, `tokenizer_exact`,
+`max_input_tokens`, `chunk_max_tokens`, `chunk_overlap_tokens` and
+`chunk_max_chars` (all NULL on every existing/legacy row).
+`vector_records` gains nullable `token_count`, `token_start`, `token_end`
+(NULL on every existing character chunk). The CHECKs enforce:
+
+- tokenizer/chunk columns are all-or-none;
+- the kind is closed and exact/provenance match it (heuristic is
+  `exact=false` with no revision/checksum; HF/sentencepiece need a pinned
+  revision + checksum; tiktoken needs a checksum);
+- the chunk budget is valid (`>= 32` tokens, `overlap * 2 < max`,
+  `max_chunk_tokens <= max_input_tokens`, positive chars);
+- a populated tokenizer requires `chunker_version='2'`;
+- record token offsets are all-or-none, non-negative, ordered and
+  `token_count == token_end - token_start`.
+
+Downgrade drops the tokenizer/chunk/token columns and their checks but keeps
+`space_key`: a stored v2 key remains a v2 key even if the columns that explain
+it are removed.
+
+**T5b2 handoff (explicit, not built here).**
+1. Implement the explicit v2 model default/`build_space` path: a row carrying
+   the complete tokenizer/chunk pair computes `space_key_v2` and forces
+   `chunker_version='2'` instead of refusing the implicit key.
+2. Add the token-aware chunk path (`encode_with_offsets`) for a v2 space only;
+   keep the v1 character path byte-identical and do not re-chunk in place.
+3. Write `token_count/token_start/token_end` from the tokenizer offsets on new
+   v2 records; leave legacy records NULL.
+4. Select the tokenizer/chunk from the study model-profile/accounting seam,
+   persist it on the space, and expose it on the status/read DTOs
+   (`token_aware`, tokenizer, chunk) for the build/cutover UI.
+5. Build a candidate v2 space, compare coverage/quality, cut over with the
+   stored-key activation path, and retain the v1 space. Progress detail/UI
+   stay T5c/T5d.

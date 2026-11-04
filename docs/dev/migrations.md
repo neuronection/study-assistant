@@ -163,7 +163,7 @@ database.
 ## PostgreSQL chain (plan 51 Q3c1)
 
 The chain is green from `0001_baseline` to
-`0015_retrieval_alerts` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
+`0017_vector_token_schema` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
 scratch database, upgrades the whole chain and asserts the result whenever
 `SA_TEST_DATABASE_URL` points at a disposable server; it skips only when the
 variable is unset (the SQLite suite always runs). The repaired pre-0012
@@ -236,6 +236,21 @@ unique index over `dedup_key IS NOT NULL`. Both the SQLite round-trip
 partial index, including downgrade/upgrade. A revision id longer than 32
 characters would overflow Alembic's `alembic_version.version_num` on
 PostgreSQL; the short `0015_retrieval_alerts` id is deliberate.
+
+## Stored space key + token schema (plan 52 T5b1)
+
+`0016_vector_space_stored_key` adds `vector_spaces.space_key` and stamps every
+populated row once with the frozen v1 pre-image (the hash is inlined in the
+migration, as Career's `0095` does), then enforces NOT NULL. SQLite uses
+`batch_alter_table`; PostgreSQL alters the column in place. `0017_vector_token_schema`
+adds the nullable tokenizer/chunk columns to `vector_spaces` and the nullable
+token offsets to `vector_records`, with all-or-none/kind/provenance/bounds/
+`chunker_version='2'` and ordered/consistent-token CHECKs. Both migrations are
+covered by populated SQLite round-trips
+(`tests/test_vector_space_token_migration.py`) and the PostgreSQL chain
+(`tests/test_migrations_postgres.py`), including the deliberate downgrade
+asymmetry: 0017 drops its token columns but keeps the stored `space_key`.
+Revision ids stay under 32 characters.
 
 ## Vector record chunk identity (plan 51 Q3c2b1)
 

@@ -11,6 +11,25 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (stored space key + tokenizer/chunk schema — plan 52 T5b1)
+- **Stored space identity**: migration `0016_vector_space_stored_key` adds
+  non-null `vector_spaces.space_key` and stamps every existing row once with
+  the frozen v1 pre-image before enforcing NOT NULL. `ContentSpace`,
+  `space_key_for`, build idempotency, activation (`previous_space_key`),
+  status/DTO reads and `load_store` use the stored value instead of
+  recomputing it; new spaces persist the v1 key. A direct insert carrying
+  tokenizer columns without an explicit key is refused (T5b2 owns v2).
+- **Schema for T5b2**: migration `0017_vector_token_schema` adds nullable
+  tokenizer/chunk identity columns to `vector_spaces` and nullable
+  `token_count`/`token_start`/`token_end` to `vector_records`, with
+  all-or-none, kind/provenance/bounds, `chunker_version='2'` and
+  ordered/consistent-token CHECKs. Downgrade drops the token columns but keeps
+  `space_key`.
+- **Not in this slice**: token-aware chunking/writes, v2 builds or cutover,
+  progress detail or UI. Character chunking, token counts and write behavior
+  are unchanged; the T5b2 handoff is in
+  [dev/retrieval-ops.md](docs/dev/retrieval-ops.md).
+
 ### Added (offline tokenizer + real token accounting — plan 52 T5a)
 - **Family contracts synced byte-identically**: `tokenizer_contract.py` +
   fixtures, the token-aware `vector_contract.py` (stored space key, v2 space

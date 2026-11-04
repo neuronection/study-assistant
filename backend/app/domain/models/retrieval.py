@@ -18,10 +18,14 @@ is the adapter's business (``storage/vector_store.py``), not a source-table
 foreign key.
 """
 
+from typing import Any
+
 from sqlalchemy import BigInteger, LargeBinary
 
 from ...core.vocab import DegradedReason
+from ...storage.tokenizer_contract import TokenizerKind
 from ...storage.vector_contract import METRICS, V1_VIEWS, SpaceStatus
+from ...storage.vector_contract import space_key as make_space_key
 from ..payloads import LatencyHistogram
 from ..schema_contract import vocab_check
 from .core import (
@@ -60,6 +64,70 @@ _INDEX_TABLE_CHECK = (
     f"{LEGACY_INDEX_TABLE}' OR "
     "(index_table LIKE 'vec_%' AND length(index_table) = 12)"
 )
+_TOKENIZER_GROUP_CHECK = (
+    "(tokenizer_kind IS NULL AND tokenizer_identifier IS NULL "
+    "AND tokenizer_revision IS NULL AND tokenizer_artifact_sha256 IS NULL "
+    "AND tokenizer_exact IS NULL AND max_input_tokens IS NULL "
+    "AND chunk_max_tokens IS NULL AND chunk_overlap_tokens IS NULL "
+    "AND chunk_max_chars IS NULL) OR "
+    "(tokenizer_kind IS NOT NULL AND tokenizer_identifier IS NOT NULL "
+    "AND tokenizer_exact IS NOT NULL AND max_input_tokens IS NOT NULL "
+    "AND chunk_max_tokens IS NOT NULL AND chunk_overlap_tokens IS NOT NULL "
+    "AND chunk_max_chars IS NOT NULL)"
+)
+_TOKENIZER_KIND_CHECK = (
+    f"tokenizer_kind IS NULL OR tokenizer_kind IN "
+    f"({_quoted(tuple(member.value for member in TokenizerKind))})"
+)
+_TOKENIZER_EXACT_CHECK = (
+    "tokenizer_kind IS NULL OR "
+    "(tokenizer_kind = 'heuristic' AND tokenizer_exact = false) OR "
+    "(tokenizer_kind <> 'heuristic' AND tokenizer_exact = true)"
+)
+_TOKENIZER_PROVENANCE_CHECK = (
+    "tokenizer_kind IS NULL OR "
+    "(tokenizer_kind = 'heuristic' AND tokenizer_revision IS NULL "
+    "AND tokenizer_artifact_sha256 IS NULL) OR "
+    "(tokenizer_kind IN ('hf_tokenizers', 'sentencepiece') "
+    "AND tokenizer_revision IS NOT NULL AND tokenizer_artifact_sha256 IS NOT NULL) OR "
+    "(tokenizer_kind = 'tiktoken' AND tokenizer_artifact_sha256 IS NOT NULL)"
+)
+_TOKENIZER_BOUNDS_CHECK = (
+    "tokenizer_kind IS NULL OR "
+    "(max_input_tokens > 0 AND chunk_max_tokens >= 32 "
+    "AND chunk_overlap_tokens >= 0 AND chunk_overlap_tokens * 2 < chunk_max_tokens "
+    "AND chunk_max_chars > 0 AND chunk_max_tokens <= max_input_tokens)"
+)
+_TOKENIZER_CHUNKER_VERSION_CHECK = "tokenizer_kind IS NULL OR chunker_version = '2'"
+_TOKEN_FIELDS_CHECK = (
+    "(token_count IS NULL AND token_start IS NULL AND token_end IS NULL) OR "
+    "(token_count IS NOT NULL AND token_start IS NOT NULL AND token_end IS NOT NULL "
+    "AND token_count = token_end - token_start)"
+)
+
+
+def _computed_space_key(context: Any) -> str:
+    """Stamp a new v1 row once; a token-aware row must carry its own key.
+
+    No application path writes the tokenizer/chunk columns in T5b1. Refusing
+    the implicit default here means a direct insert cannot silently stamp a
+    v2 space with a v1 key; T5b2 owns the explicit v2 pre-image.
+    """
+    values = context.get_current_parameters()
+    if values.get("tokenizer_kind") is not None:
+        raise ValueError(
+            "a token-aware space must persist its v2 space_key explicitly (plan 52 T5b2)"
+        )
+    return make_space_key(
+        values["provider"],
+        values["model"],
+        int(values["dim"]),
+        bool(values.get("normalize", True)),
+        values.get("query_prefix"),
+        values.get("document_prefix"),
+        str(values.get("chunker_version") or "1"),
+        str(values.get("composer_version") or "1"),
+    )
 
 
 class VectorSpace(Base):
@@ -82,6 +150,12 @@ class VectorSpace(Base):
         CheckConstraint(_METRIC_CHECK, name="metric_allowed"),
         CheckConstraint("dim > 0", name="dim_positive"),
         CheckConstraint(_INDEX_TABLE_CHECK, name="index_table_shape"),
+        CheckConstraint(_TOKENIZER_GROUP_CHECK, name="tokenizer_group_all_or_none"),
+        CheckConstraint(_TOKENIZER_KIND_CHECK, name="tokenizer_kind_allowed"),
+        CheckConstraint(_TOKENIZER_EXACT_CHECK, name="tokenizer_exact_matches_kind"),
+        CheckConstraint(_TOKENIZER_PROVENANCE_CHECK, name="tokenizer_provenance_by_kind"),
+        CheckConstraint(_TOKENIZER_BOUNDS_CHECK, name="tokenizer_chunk_bounds"),
+        CheckConstraint(_TOKENIZER_CHUNKER_VERSION_CHECK, name="tokenizer_requires_chunker_v2"),
         UniqueConstraint("index_table", name="uq_vector_spaces_index_table"),
         Index(
             "uq_vector_spaces_name_active",
@@ -106,6 +180,16 @@ class VectorSpace(Base):
     document_prefix: Mapped[str | None] = mapped_column(String(80))
     chunker_version: Mapped[str] = mapped_column(String(20), default="1", server_default="1")
     composer_version: Mapped[str] = mapped_column(String(20), default="1", server_default="1")
+    tokenizer_kind: Mapped[str | None] = mapped_column(String(30))
+    tokenizer_identifier: Mapped[str | None] = mapped_column(String(200))
+    tokenizer_revision: Mapped[str | None] = mapped_column(String(120))
+    tokenizer_artifact_sha256: Mapped[str | None] = mapped_column(String(64))
+    tokenizer_exact: Mapped[bool | None] = mapped_column(Boolean)
+    max_input_tokens: Mapped[int | None] = mapped_column(Integer)
+    chunk_max_tokens: Mapped[int | None] = mapped_column(Integer)
+    chunk_overlap_tokens: Mapped[int | None] = mapped_column(Integer)
+    chunk_max_chars: Mapped[int | None] = mapped_column(Integer)
+    space_key: Mapped[str] = mapped_column(String(64), default=_computed_space_key)
     index_table: Mapped[str | None] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(
         String(12), default=SpaceStatus.ACTIVE.value, server_default=SpaceStatus.ACTIVE.value
@@ -182,6 +266,14 @@ class VectorRecord(Base):
             "char_start IS NULL OR char_end IS NULL OR char_end >= char_start",
             name="char_range_ordered",
         ),
+        CheckConstraint("token_count IS NULL OR token_count >= 0", name="token_count_non_negative"),
+        CheckConstraint("token_start IS NULL OR token_start >= 0", name="token_start_non_negative"),
+        CheckConstraint("token_end IS NULL OR token_end >= 0", name="token_end_non_negative"),
+        CheckConstraint(
+            "token_start IS NULL OR token_end IS NULL OR token_end >= token_start",
+            name="token_range_ordered",
+        ),
+        CheckConstraint(_TOKEN_FIELDS_CHECK, name="token_fields_consistent"),
         Index("ix_vector_records_space_view", "space_id", "view"),
     )
 
@@ -198,6 +290,9 @@ class VectorRecord(Base):
     rowid: Mapped[int | None] = mapped_column(BigInteger, unique=True)
     char_start: Mapped[int | None] = mapped_column(Integer)
     char_end: Mapped[int | None] = mapped_column(Integer)
+    token_count: Mapped[int | None] = mapped_column(Integer)
+    token_start: Mapped[int | None] = mapped_column(Integer)
+    token_end: Mapped[int | None] = mapped_column(Integer)
     content_hash: Mapped[str] = mapped_column(String(64), default="", server_default="")
     embedding: Mapped[bytes | None] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
