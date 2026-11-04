@@ -20,6 +20,10 @@ dependencies = [
     "langchain-core>=1.6,<2",
     "langchain-google-genai>=4.3,<5",
     "langchain-openai>=1.6,<2",
+    # Plan 52 T5a: exact local token counting for the curated embedding
+    # models. The encoding ships as data under app/data/tokenizers — never
+    # fetched at request or boot time.
+    "tiktoken>=0.14,<0.15",
     "langgraph>=1.2,<2",
     "langgraph-checkpoint-postgres>=3,<4",
     "langgraph-checkpoint-sqlite>=3,<4",
@@ -98,6 +102,10 @@ extend-exclude = [
     # byte-identical from the family contract canonical — lint findings belong to the family
     # canonical, never to this copy.
     "app/storage/retrieval_ops.py",
+    # Family vector-retrieval and tokenizer/chunk contracts (plan 50 /
+    # plan 52): vendored byte-identical from the family canonical.
+    "app/storage/vector_contract.py",
+    "app/storage/tokenizer_contract.py",
     "tests/cloud_conformance.py",
 ]
 
@@ -118,6 +126,8 @@ select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/extensions/conformance.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/extensions/search/providers_contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 "app/storage/retrieval_ops.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+"app/storage/vector_contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+"app/storage/tokenizer_contract.py" = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
@@ -142,7 +152,7 @@ strict = true
 # is byte-identical to the family extension contract — never edited in-repo, and
 # mypy-strict compliance is the family canonical's duty (career carries the same
 # exclusion; the unification wave's sync introduced strict-mode findings here).
-exclude = ["^dist/", "app/extensions/contract.py", "app/storage/retrieval_ops.py"]
+exclude = ["^dist/", "app/extensions/contract.py", "app/storage/retrieval_ops.py", "app/storage/vector_contract.py", "app/storage/tokenizer_contract.py"]
 
 [[tool.mypy.overrides]]
 module = ["webview", "fitz", "sqlite_vec", "sympy", "sympy.parsing.sympy_parser", "filelock", "mammoth", "ebooklib"]
@@ -181,6 +191,12 @@ ignore_errors = true
 module = [
     "tests.test_retrieval_ops_contract",
     "test_retrieval_ops_contract",
+    "tests.test_tokenizer_contract",
+    "test_tokenizer_contract",
+    "tests.test_tokenizer_service",
+    "test_tokenizer_service",
+    "tests.test_token_accounting",
+    "test_token_accounting",
 ]
 ignore_errors = true
 

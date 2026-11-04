@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "encoding": "cl100k_base",
+  "artifact_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+  "samples": [
+    {
+      "language": "english",
+      "chars": 179,
+      "tokens": 32
+    },
+    {
+      "language": "greek",
+      "chars": 163,
+      "tokens": 153
+    },
+    {
+      "language": "german",
+      "chars": 192,
+      "tokens": 48
+    },
+    {
+      "language": "cjk",
+      "chars": 51,
+      "tokens": 73
+    },
+    {
+      "language": "code_markdown",
+      "chars": 164,
+      "tokens": 40
+    }
+  ]
+}

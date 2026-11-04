@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "encoding": "cl100k_base",
+  "samples": [
+    {
+      "language": "english",
+      "label": "English",
+      "text": "Senior backend engineer to design, build, and operate distributed data services. You will own reliability, observability, and the on-call rotation while mentoring three engineers.",
+      "chars": 179,
+      "utf8_bytes": 179
+    },
+    {
+      "language": "greek",
+      "label": "Greek",
+      "text": "Αναζητούμε έμπειρο μηχανικό λογισμικού για την ανάπτυξη κατανεμημένων υπηρεσιών, με ευθύνη για την αξιοπιστία, την παρακολούθηση και την τεκμηρίωση των συστημάτων.",
+      "chars": 163,
+      "utf8_bytes": 303
+    },
+    {
+      "language": "german",
+      "label": "German",
+      "text": "Wir suchen eine erfahrene Softwareentwicklerin für die Entwicklung verteilter Datendienste. Sie übernehmen Verantwortung für Zuverlässigkeit, Beobachtbarkeit und die Dokumentation der Systeme.",
+      "chars": 192,
+      "utf8_bytes": 196
+    },
+    {
+      "language": "cjk",
+      "label": "CJK",
+      "text": "我們正在尋找一位有經驗的後端工程師，負責設計、建置與維運分散式資料服務，並確保系統的可靠性與可觀測性。",
+      "chars": 51,
+      "utf8_bytes": 153
+    },
+    {
+      "language": "code_markdown",
+      "label": "Code / Markdown",
+      "text": "## Responsibilities\n\n```python\ndef index(docs: list[str]) -> int:\n    return sum(len(doc) for doc in docs)\n```\n\n- Own the ingestion pipeline\n- Review pull requests\n",
+      "chars": 164,
+      "utf8_bytes": 164
+    }
+  ]
+}
