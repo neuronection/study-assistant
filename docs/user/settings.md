@@ -89,7 +89,12 @@ The Tools tab gathers every web-facing and indexing surface:
   and, for parse tools, a URL pattern. Failures are recorded honestly on the
   row. See the [feature catalog](features.md) for details.
 - **Search & OCR** — semantic search on/off, the OCR image-size cap and local
-  AI engine detection.
+  AI engine detection. Admin accounts also get the **Indexing** controls
+  (reindex, embedding spaces, cutover, maintenance and the quality compare)
+  and a read-only **Retrieval observation** card for the active space, runs,
+  quality, query health, structured failures and embed usage. The observation
+  card never writes: every action stays in the controls above it. See
+  [Retrieval operations](../dev/retrieval-ops.md).
 - **Skills** — the prompt library; see [Skills & prompt library](skills.md).
 
 ## Users
