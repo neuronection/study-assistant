@@ -11,6 +11,42 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (vector backend & provisioning — plan 51 Q3c2a)
+- **The content space now runs on a real family vector backend.**
+  `storage/vector_backends.py` implements the vendored `VectorBackend`
+  protocol: pgvector + HNSW cosine with the scope joined before the ANN
+  scan (and an exact scan at or below the scoped threshold), sqlite-vec
+  `vec0` keyed by the `vector_records.rowid` map with bounded over-fetch /
+  post-filter, and an exact `LinearBackend` fallback that publishes
+  `ann=False`.
+- **Physical provisioning is one seam, off the request path.**
+  `storage/vector_provisioning.py` creates `vec_<8hex>` (pgvector
+  `vector(dim)` + HNSW, or sqlite-vec `float[dim]`) and writes
+  `vector_spaces.index_table` in the same transaction as the DDL.
+  `storage/vector_schema.py` owns the `vec_[0-9a-f]{8}` name guard and the
+  Alembic autogenerate exemption.
+- **Migration `0013_vector_space_provisioning` moves the legacy vectors.**
+  It provisions `vec_dfbcce9b`, copies `chunk_vecs` through
+  `chunk_vec_ids` into the metadata records, verifies the copied row count
+  and only then switches `index_table`. `chunk_vecs` is left intact and
+  stays the dual-written compatibility fallback; downgrade drops the new
+  table and resets the pointer.
+- **Search routes through the backend without changing fusion.**
+  `StudyVectorStore.search()` now scopes the vector query by
+  `course_id`/`material_ids`/`profile_id` before the ANN scan, falls back
+  to the legacy search when the backend is unavailable, and returns the
+  unchanged `(chunk id, distance)` shape; `retrieve_chunks_hybrid` and the
+  FTS/RRF weights are untouched.
+- **Status tells the truth.** `health()` / `space_status()` report the
+  active table, HNSW/vec0 presence, row count and partial/missing states
+  through the overview notes and `last_error`; `records` is the active
+  backend count, not the legacy one.
+- Tests: `test_vector_backends.py` (SQLite parity, scope, rowid map,
+  linear fallback, partial/missing health), `test_vector_backends_postgres.py`
+  (pgvector HNSW, exact vs ANN, scope, legacy fallback),
+  `test_search_vector_backend.py` (FTS/RRF regression and fallback), and
+  migrated SQLite/PostgreSQL 0013 round-trips.
+
 ### Fixed (PostgreSQL migration baseline — plan 51 Q3c1)
 - **The PostgreSQL migration chain now runs end to end** from
   `0001_baseline` to `0012_vector_spaces` (PostgreSQL 16 + pgvector).

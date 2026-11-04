@@ -418,17 +418,20 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   rowid→chunk UUID reverse map. A model/dimension change is **not** applied in
   place (0012, plan 50 P3a): `storage/vectors.ensure_table` raises
   `VectorSpaceChangeRequired` and the old table stays readable until an
-  explicit new-space/cutover handoff runs.
+  explicit new-space/cutover handoff runs. Since 0013 (plan 51 Q3c2a) the
+  `content` space is dual-written to its provisioned `vec_dfbcce9b` backend
+  and `chunk_vecs` remains the compatibility fallback.
 - **vector_spaces / vector_documents / vector_records** (0012, plan 50 P3a) —
-  the portable metadata mapping over the legacy store. One `content` space
-  keeps the synthetic id `legacy-chunk-vecs` (so Q3a/Q3b rollups and coverage
-  snapshots keep working) with `index_table = 'chunk_vecs'`; a document is a
+  the portable metadata mapping. One `content` space keeps the synthetic id
+  `legacy-chunk-vecs` (so Q3a/Q3b rollups and coverage snapshots keep
+  working); 0013 updates its `index_table` to `vec_dfbcce9b`. A document is a
   material (`kind='material'`, `source_id` = material UUID) and a record is a
-  chunk's `body` view carrying the family content hash and the existing
-  ``rowid`` reverse map. The metadata is derived/operational, hard-deleted
-  with its document, and never a second copy of text. `storage/vector_store.py`
-  is the only read/write seam; the physical backend is intentionally still
-  legacy in P3a.
+  chunk's `body` view carrying the family content hash and the study ``rowid``
+  (the sqlite-vec rowid map; the record id is the chunk id). The metadata is
+  derived/operational, hard-deleted with its document, and never a second copy
+  of text. `storage/vector_store.py` is the only read/write seam; physical
+  DDL lives in `storage/vector_provisioning.py` and the dialect SQL in
+  `storage/vector_backends.py`.
 - **tree_nodes.path / sort_path** — materialized from parent_id + order_idx;
   rebuilt by the migration and maintained by `services/tree.py` (rebuildable at
   any time)

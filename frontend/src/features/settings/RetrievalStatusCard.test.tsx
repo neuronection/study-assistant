@@ -161,7 +161,7 @@ describe('RetrievalStatusCard', () => {
     expect(screen.queryByText(/coverage:/i)).not.toBeInTheDocument()
     expect(screen.getByText(/never reconciled/i)).toBeInTheDocument()
     expect(
-      screen.getByText(/no build\/activate\/cutover lifecycle/i)
+      screen.getByText(/chunk_vecs remains the compatibility fallback/i)
     ).toBeInTheDocument()
   })
 

@@ -952,7 +952,7 @@
     "retrievalBackendUnknown": "Backend unknown",
     "retrievalCounts": "{{documents}} documents · {{records}} vectors",
     "retrievalCoverage": "Coverage: {{percent}}%",
-    "retrievalLegacyWarning": "Legacy chunk_vecs store — there is no build/activate/cutover lifecycle in this build.",
+    "retrievalLegacyWarning": "The content space moves onto a provisioned vec_<8hex> backend; chunk_vecs remains the compatibility fallback until the build/activate/cutover lifecycle ships.",
     "retrievalReindex": "Reindex index",
     "retrievalReindexForce": "Force re-embed",
     "retrievalRunActiveHint": "A vector run is queued or running — wait for it to finish or cancel it.",

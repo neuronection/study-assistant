@@ -1,15 +1,16 @@
-# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b)
+# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a)
 
-Status: **Q3b shipped, plan 50 P3a storage foundation and Q3c1 PostgreSQL
-baseline repair shipped** (2026-11-04). The family contracts, the `VECTOR_*`
-job slot, the two bounded aggregates, the admin read surface, the
-management/action seam (idempotency, single-active-run lock, stale reaper,
-audit) and the Tools → Indexing controls are shipped. Plan 50 P3a adds the
-portable vector metadata and the `StudyVectorStore` adapter seam over the
-legacy physical store; Q3c1 repairs the PostgreSQL chain through
-`0012_vector_spaces` and pins the metadata backfill on that dialect. The real
-vector-space lifecycle/cutover, golden-query quality gates and the full
-family parity runner remain Q3c2.
+Status: **Q3b shipped, plan 50 P3a storage foundation, Q3c1 PostgreSQL
+baseline repair and Q3c2a vector backend/provisioning shipped** (2026-11-04).
+The family contracts, the `VECTOR_*` job slot, the two bounded aggregates,
+the admin read surface, the management/action seam (idempotency,
+single-active-run lock, stale reaper, audit) and the Tools → Indexing
+controls are shipped. Plan 50 P3a adds the portable vector metadata; Q3c1
+repairs the PostgreSQL chain through `0012_vector_spaces`; Q3c2a implements
+the family `VectorBackend` protocol over that metadata, provisions the
+content space's real `vec_<8hex>` table (pgvector/HNSW or sqlite-vec), and
+migrates the legacy vectors onto it. The space lifecycle/cutover, golden-query
+quality gates and the full family parity runner remain **Q3c2b**.
 
 ## Contracts
 
@@ -49,12 +50,22 @@ There is no `VECTOR_RECONCILE` in Q0. The canonical job names are
 `VECTOR_REINDEX`, `VECTOR_MAINTENANCE`, `VECTOR_CUTOVER`; the reconcile pass
 runs as `VECTOR_REINDEX`.
 
-## Vector storage adapter (plan 50 P3a)
+## Vector storage adapter (plan 50 P3a / plan 51 Q3c2a)
 
 `storage/vector_store.py::StudyVectorStore` is the one seam over the
-physical index **and** the new metadata layer. Search, embedding writes,
-purge paths and the retrieval handlers call it; no retrieval DTO or route
-issues vector SQL itself.
+physical index **and** the metadata layer. Search, embedding writes, purge
+paths and the retrieval handlers call it; no retrieval DTO or route issues
+vector SQL itself. Q3c2a adds the two app-side pieces behind that seam:
+
+- `storage/vector_backends.py` — the family `VectorBackend` protocol
+  implemented per dialect (`PgVectorBackend`, `SqliteVecBackend`,
+  `LinearBackend`). Every backend shares the caller's session, so a write
+  and its metadata registration commit together.
+- `storage/vector_provisioning.py` — the only seam allowed to
+  `CREATE TABLE` a vector index; it writes `vector_spaces.index_table` in
+  the same transaction as the DDL.
+- `storage/vector_schema.py` — the `vec_<8hex>` naming/validation rule and
+  the Alembic autogenerate exemption for extension-managed tables.
 
 ### What is real now
 
@@ -62,13 +73,14 @@ Migration `0012_vector_spaces` adds:
 
 - `vector_spaces` — one `content` space (`id = legacy-chunk-vecs`, the id
   Q3a/Q3b rollups already carry), model/dim from `vec_meta`, provider from
-  the embeddings assignment, `index_table = 'chunk_vecs'`, status `active`.
+  the embeddings assignment, status `active`.
 - `vector_documents` — a material source handle (`kind='material'`,
   `source_id` = material UUID, `profile_id` scope), unique per
   space/kind/source.
 - `vector_records` — a chunk's `body` view with the family `content_hash`,
-  `chunk_index`, and the legacy `rowid` reverse map; unique
-  `(document, view, chunk_index)`.
+  `chunk_index`, and the study `rowid`; unique
+  `(document, view, chunk_index)`. The record id **is** the chunk id, so a
+  search hit maps to the chunk without a second lookup.
 
 The migration backfills the space from `vec_meta` and documents/records from
 `chunk_vec_ids` + chunks/materials. It never writes coverage. Rows the SQL
@@ -76,11 +88,92 @@ backfill maps without hashing stay `content_hash=''` until
 `StudyVectorStore.backfill_metadata()` (idempotent, batch-bounded) fills
 them.
 
+### Physical provisioning and the content migration (Q3c2a)
+
+| Family concept | Study source (Q3c2a) |
+|---|---|
+| space | one `content` space, id `legacy-chunk-vecs` |
+| model / dim | `vec_meta` (mirrored in `vector_spaces`) |
+| backend | `pgvector` (PostgreSQL) / `sqlite_vec` (SQLite) / `linear` fallback |
+| index table | `vec_<8hex>` (`vec_dfbcce9b` for the content space) |
+| rowid map | `vector_records.rowid` (sqlite-vec); pgvector keys `record_id` |
+| document | material (`vector_documents`) |
+| record | chunk `body` (`vector_records`, id = chunk id) |
+| coverage | latest `retrieval_coverage_snapshots` row only |
+| runs | `jobs` rows with the three `VECTOR_*` types |
+| query health | `retrieval_query_rollups` |
+
+The physical name is deterministic: a UUID space id uses its first eight hex
+characters; study's string id `legacy-chunk-vecs` uses four BLAKE2b bytes
+(`vec_dfbcce9b`). Only `vec_` + eight lowercase hex is accepted, which is
+also the boundary for the dynamic SQL the backends issue.
+
+- **PostgreSQL** — `CREATE EXTENSION vector` (hard prerequisite),
+  `record_id UUID PRIMARY KEY REFERENCES vector_records(id) ON DELETE
+  CASCADE`, `embedding vector(dim) NOT NULL`, and
+  `ix_<table>_hnsw USING hnsw (embedding vector_cosine_ops)`. HNSW supports
+  at most 2,000 dimensions; runtime provisioning refuses a larger space and
+  the one-time migration leaves it on the legacy store rather than silently
+  creating an unindexed table. Scope is joined into the ANN query
+  (`r.space_id`, view and the
+  document predicate), never a Python post-filter; `hnsw.ef_search` is set
+  per transaction and at or below `EXACT_SCAN_THRESHOLD` scoped candidates
+  the scan is forced exact.
+- **SQLite** — `vec0(record_rowid INTEGER PRIMARY KEY, embedding
+  float[dim] distance_metric=cosine)`. `vector_records.rowid` is the rowid
+  map, matching `chunk_vec_ids` for the content space. vec0 is brute force,
+  so it answers exactly when the whole scoped index is requested; above the
+  threshold it over-fetches `k` and post-filters against metadata, with the
+  allowed set always coming from SQL (never from the ANN result).
+- **Linear** — exact cosine over `vector_records.embedding`, `ann=False`,
+  capped at `LINEAR_CAP_ROWS`, deterministic tie-breaking. It is the
+  factory's honest fallback when the extension/driver probe fails and the
+  backend used by an explicitly linear space.
+
+Migration `0013_vector_space_provisioning` is the one-time content move: it
+provisions `vec_dfbcce9b` for every space still on `chunk_vecs`, copies the
+legacy rows (`chunk_vecs ⨝ chunk_vec_ids ⨝ vector_records`), verifies the
+copied row count, and only then updates `vector_spaces.index_table` — all in
+the migration transaction. `chunk_vecs` and `chunk_vec_ids` are left intact
+and are still dual-written while the space is `active`. A dialect without
+the extension (or a dimension above the HNSW ceiling) keeps the legacy
+store and does not fail the upgrade; the read path stays honest and the
+write path reports the deferred provisioning.
+
+A model/dimension change still never drops a table. `vectors.ensure_table`
+raises `VectorSpaceChangeRequired` (old/new model+dim, "chunk_vecs was left
+untouched"); the old vectors remain searchable until Q3c2b's explicit
+new-space/cutover handoff. The metadata row must agree with `vec_meta`; a
+disagreement is the same explicit error, never an in-place rewrite.
+
+### Compatibility boundary (`chunk_vecs` is still the fallback)
+
+Until Q3c2b retires it, `chunk_vecs` is the compatibility store:
+
+- writes go to both the provisioned backend (primary) and `chunk_vecs`
+  (mirror) in the caller's transaction;
+- search reads the provisioned backend; if the extension or table is
+  missing it falls back to the legacy `vector` search, and a partial
+  backfill is never reported as coverage (coverage comes only from a
+  snapshot);
+- `VECTOR_REINDEX` verifies existing vectors through
+  `stored_chunk_ids()`, which is the legacy map merged with the metadata
+  rowids, and writes each new batch through the backend;
+- the maintenance actions address the active table:
+  `VECTOR_MAINTENANCE` vacuum uses `StudyVectorStore.index_table`, and
+  PostgreSQL `index-rebuild` rebuilds `ix_<active>_hnsw` (a legacy or
+  unprovisioned space gets the honest "run a full VECTOR_REINDEX" note).
+
+Cold/partial states are explicit: no `vec_meta` dim → no space row and
+`empty`; a provisioned table with missing rows → `health()` says `partial`
+and the backend keeps returning what exists; a missing table → healthy
+`ok=false` detail and the legacy fallback answers.
+
 ### PostgreSQL chain and backfill assertions (plan 51 Q3c1)
 
 `tests/test_migrations_postgres.py` now runs on the pgvector test container
 instead of skipping, and the full chain `0001_baseline` →
-`0012_vector_spaces` is green. Repaired pre-0012 incompatibilities (final
+`0013_vector_space_provisioning` is green. Repaired pre-0012 incompatibilities (final
 schema unchanged; details in [migrations.md](migrations.md#postgresql-chain-plan-51-q3c1)):
 
 - six boolean `server_default` values (`0`/`1`) became `sa.false()` /
@@ -93,57 +186,38 @@ schema unchanged; details in [migrations.md](migrations.md#postgresql-chain-plan
 
 The PG suite seeds a real legacy store at 0011 (`vec_meta`, `chunk_vecs`,
 `chunk_vec_ids` + materials/chunks) and, after upgrading, asserts the
-`content`/`legacy-chunk-vecs` space row and `chunk_vecs` index table, the
-document/record backfill shape, rowid parity with the reverse map, content
-hashes, no fabricated coverage snapshot, model/dim agreement with `vec_meta`,
-the Q3b partial indexes on `jobs`, and a 0012 downgrade/upgrade that leaves
-`chunk_vecs` intact.
-
-| Family concept | Study source (P3a) |
-|---|---|
-| space | one `content` space, id `legacy-chunk-vecs` |
-| model / dim | `vec_meta` (mirrored in `vector_spaces`) |
-| backend | dialect: `pgvector` on PostgreSQL, `sqlite_vec` on SQLite |
-| index table | `chunk_vecs` (+ `chunk_vec_ids` reverse map) |
-| document | material (`vector_documents`) |
-| record | chunk `body` (`vector_records`, `rowid` = reverse map) |
-| coverage | latest `retrieval_coverage_snapshots` row only |
-| runs | `jobs` rows with the three `VECTOR_*` types |
-| query health | `retrieval_query_rollups` |
+`content`/`legacy-chunk-vecs` space row, the document/record backfill shape,
+rowid parity with the reverse map, content hashes, no fabricated coverage
+snapshot, model/dim agreement with `vec_meta`, the Q3b partial indexes on
+`jobs`, and a 0013 downgrade/upgrade that leaves `chunk_vecs` intact. Since
+0013 runs at head, the assertion also pins the provisioned
+`vec_dfbcce9b` table, its HNSW index and copied rows.
 
 A store with no `vec_meta` dim is `empty` and has **no** space row; an
 existing store with no snapshot is `cold`/`never reconciled`; no number is
 invented.
 
-### What is still legacy (honest boundary)
-
-The physical backend is deliberately unchanged in P3a: `chunk_vecs` is still
-the index table, `vec_meta` still decides model/dim, and no `vec_*` table is
-provisioned. The adapter exposes the storage port, not a completed storage
-port: build/activate/retire/drop do not exist yet.
-
-A model/dimension change no longer drops the table. `vectors.ensure_table`
-raises `VectorSpaceChangeRequired` (old/new model+dim, "chunk_vecs was left
-untouched"); the old vectors remain searchable until Q3c's explicit
-new-space/cutover handoff. The metadata row must agree with `vec_meta`; a
-disagreement is the same explicit error, never an in-place rewrite.
-
 ### Adapter surface
 
 - identity/read: `content_space()`, `content_space_for()`, `read_meta()`,
-  `vector_count()`, `stored_chunk_ids()`, `rowid_map()`,
-  `document_count()`, `record_count()`, `documents()`, `records()`,
-  `record_for_rowid()`, `metadata_complete()`;
-- writes: `store()` (physical write + model guard + metadata registration),
-  `delete_for_extraction()`, `delete_rowids()`, `unregister_records()`,
-  `backfill_metadata()`, `ensure_content_space()`;
-- reads: `search()`.
+  `index_table`, `index_name`, `vector_count()`, `stored_chunk_ids()`,
+  `rowid_map()`, `document_count()`, `record_count()`, `documents()`,
+  `records()`, `record_for_rowid()`, `metadata_complete()`, `health()`,
+  `space_status()`;
+- writes: `store()` (model guard + legacy mirror + metadata registration +
+  backend upsert), `delete_for_extraction()`, `delete_rowids()`,
+  `unregister_records()`, `backfill_metadata()`, `ensure_content_space()`,
+  `provision()`, `backfill_physical()`;
+- reads: `search()` with optional `course_id` / `material_ids` /
+  `profile_id` scope, returning the unchanged `(chunk id, distance)` shape.
 
 `legacy.load_store()` resolves the active space through this adapter, so the
-admin read surface now reports the metadata space identity while keeping the
-physical vector count. `metadata_complete()` gates the metadata document
-count; an unmapped physical store falls back to the distinct-material count
-instead of reporting a fabricated `0`.
+admin read surface reports the metadata space identity, the real active
+table and the backend's row count. `health()`/`space_status()` supply the
+truthful detail rendered in the overview notes and `last_error`;
+`metadata_complete()` gates the metadata document count, and an unmapped
+physical store falls back to the distinct-material count instead of
+reporting a fabricated `0`.
 
 ## Jobs and handlers
 
@@ -159,12 +233,12 @@ instead of reporting a fabricated `0`.
   publishes none.
 - **`VECTOR_MAINTENANCE`** — `orphan-sweep` (vectors/mappings whose chunk is
   gone), `vacuum` (autocommit; PostgreSQL/SQLite), `index-rebuild`
-  (`REINDEX INDEX CONCURRENTLY` on PostgreSQL; SQLite returns an honest
-  "run a full reindex" note), `retry-failed` (scoped reindex over
+  (`REINDEX INDEX CONCURRENTLY` on the active `ix_<vec_>_hnsw` on
+  PostgreSQL; SQLite returns an honest "run a full reindex" note), `retry-failed` (scoped reindex over
   `chunk_ids`).
 - **`VECTOR_CUTOVER`** — registered so the closed `JobType` registry stays
   complete, but it **fails honestly**: there is no space lifecycle to cut
-  over to. This is Q3c work, not a fake success.
+  over to. This is Q3c2b work, not a fake success.
 
 Cancellation goes through the runner's `report()` checkpoint; a cancelled
 reindex leaves no coverage snapshot and no result counters.
@@ -274,8 +348,10 @@ control surface: reindex (verify/force), recent runs with true
 queued/running/succeeded/failed/cancelled states and result counters, cancel
 and retry, typed maintenance with the orphan-sweep dry run, and structured
 refusal text. Every mutation sends a fresh `Idempotency-Key`; a replay shows
-the original run instead of a second one. The legacy-space warning
-("no build/activate/cutover lifecycle") stays visible.
+the original run instead of a second one. The status card still warns that
+the build/activate/cutover lifecycle is not shipped, and now says the
+`chunk_vecs` compatibility store remains the fallback behind the provisioned
+`vec_<8hex>` backend.
 
 The study settings map (`contracts/settings-map.json`) marks
 `tools.retrieval` **aligned** and hosts it in the `indexing` section;
@@ -291,34 +367,66 @@ maps into the contract `RunStatus`, a cold store reports `as_of=null`,
 `coverage=null`, `gate=unknown`, and degraded reasons stay inside the closed
 set. This is fixture-level parity, not the full family runner.
 
-## Q3c handoff (explicitly not shipped)
+Q3c2a adds backend parity assertions on both dialects:
+`tests/test_vector_backends.py` (SQLite) and
+`tests/test_vector_backends_postgres.py` compare sqlite-vec/pgvector against
+the exact `LinearBackend` over the same unit vectors (identical top-k and
+distances), pin the rowid map against `chunk_vec_ids`, and exercise
+scope/empty-scope/profile isolation. The PostgreSQL test also switches the
+scoped threshold to run the exact and ANN branches and asserts they agree.
+`tests/test_search_vector_backend.py` pins FTS/RRF invariance across the
+provisioned and forced-legacy paths. The full cross-repo parity runner
+remains Q3c2b.
 
-Plan 50 P3a ships the foundation only; Q3c1 shipped the PostgreSQL baseline
-repair and the metadata assertions. Q3c2 still owns the vector backend and
-lifecycle:
+## Q3c2a shipped vs Q3c2b handoff
 
-- **Real lifecycle**: create a `building` space with a provisioned
-  `vec_<8hex>` index table (pgvector/HNSW or sqlite-vec + rowid map), then
-  activate/retire/drop with the audited action seam. The metadata tables and
-  unique keys exist; the physical provisioning seam does not.
-- **Cutover**: compose records for the same materials into the building
-  space (new per-space document/record ids), enforce the writer guard, move
-  `vector_spaces` active state, enqueue the app-side `POSTING_REMAP`-style
-  invalidation, and only then retire the legacy `content` space. Until then
-  `VECTOR_CUTOVER` refuses honestly.
-- **Space identity migration**: rollups/coverage still key
-  `legacy-chunk-vecs`; Q3c decides when/how the active space's id replaces it
-  (and whether old operational aggregates are re-keyed or TTL-expire).
-- **Backend protocol adoption**: implement the family `VectorBackend`
-  protocol for pgvector/sqlite-vec/linear over the metadata layer; P3a keeps
-  the legacy SQL and exposes only the `StudyVectorStore` boundary.
-- **Search adoption**: route `retrieve_chunks_hybrid` through a
-  `retrieve()`-style fused path; FTS5/tsvector/trigram twins and RRF weights
-  stay unchanged.
-- **Quality**: versioned golden-query sets, recall/precision@k compare and
-  the coverage+quality activation gate.
-- **Full family parity/family gate** (the PG baseline repair landed in
-  Q3c1; the runner itself is still Q3c2).
-- **Alerts** (`retrieval.*` notification kinds) and `ai_generations`-style
-  metadata tagging. Study's equivalent ledger is `ai_interactions`, which
-  still has no metadata/prompt column; no second ledger was invented.
+Q3c2a (this slice) shipped the backend and provisioning boundary:
+
+- **Backend protocol**: `PgVectorBackend` (filtered HNSW cosine, exact below
+  the scoped threshold), `SqliteVecBackend` (vec0 + `vector_records.rowid`
+  map, exact/over-fetch post-filter), and `LinearBackend` (exact scan over
+  `vector_records.embedding`, honest `ann=False`) implement every method of
+  the vendored protocol. The factory probes the extension/driver and never
+  fakes ANN.
+- **Physical provisioning**: `vec_<8hex>` creation, HNSW/vec0 DDL and the
+  atomic `index_table` write live in `storage/vector_provisioning.py`.
+  Writes provision off the request path; reads never issue DDL.
+- **Content migration**: migration `0013_vector_space_provisioning` copies
+  `chunk_vecs` into `vec_dfbcce9b`, verifies counts and switches
+  `index_table`; `chunk_vecs` remains the dual-written fallback.
+- **Search adoption**: `StudyVectorStore.search()` routes the content space
+  through the backend with a hard document scope (`course_id` /
+  `material_ids` / `profile_id`), and falls back to the legacy search when
+  the backend is unavailable. `retrieve_chunks_hybrid` and the FTS/RRF
+  weights are untouched.
+- **Truthful status**: `health()`/`space_status()` feed the overview notes
+  and `last_error`; `records` is the active backend count; a partial
+  backfill says `partial`, a missing table says `ok=false`.
+
+**Q3c2b still owns** (explicitly not built here):
+
+1. **Lifecycle actions** — `POST /spaces` (create a `building` space),
+   `/spaces/{id}/{activate,retire,drop}`, with the audited action seam and
+   the `vector_spaces` status/timestamp transitions. The metadata unique
+   keys (`uq_vector_spaces_name_active`, `uq_vector_spaces_index_table`)
+   and the provisioning seam exist; the request handlers currently answer
+   the structured `unsupported` 409.
+2. **Cutover** — compose the same materials into the building space (new
+   per-space document/record ids so the two spaces can coexist), enforce the
+   writer guard, move the active pointer, enqueue the app-side
+   `POSTING_REMAP`-style invalidation, then retire the legacy `content`
+   space. `VECTOR_CUTOVER` still fails honestly.
+3. **Legacy retirement** — stop the `chunk_vecs` dual write, drop
+   `chunk_vecs`/`chunk_vec_ids` after the purge grace period, and make
+   `StudyVectorStore._ensure_physical` a no-op for the provisioned space.
+4. **Space identity migration** — rollups/coverage still key
+   `legacy-chunk-vecs`; Q3c2b decides whether a cutover re-keys the old
+   operational aggregates or lets the 30/90-day TTL expire them.
+5. **Quality gates** — versioned golden-query sets, recall/precision@k
+   compare and the coverage+quality activation gate (no quality endpoints
+   or runner were added).
+6. **Full family parity/family gate** — the PG baseline repair landed in
+   Q3c1; the cross-repo parity runner and sha gate are Q3c2b.
+7. **Alerts** (`retrieval.*` notification kinds) and `ai_generations`-style
+   metadata tagging. Study's equivalent ledger is `ai_interactions`, which
+   still has no metadata/prompt column; no second ledger was invented.

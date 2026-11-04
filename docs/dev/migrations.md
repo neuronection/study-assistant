@@ -162,7 +162,7 @@ database.
 
 ## PostgreSQL chain (plan 51 Q3c1)
 
-The chain is green from `0001_baseline` to `0012_vector_spaces` on
+The chain is green from `0001_baseline` to `0013_vector_space_provisioning` on
 PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
 scratch database, upgrades the whole chain and asserts the result whenever
 `SA_TEST_DATABASE_URL` points at a disposable server; it skips only when the
@@ -196,6 +196,34 @@ decision slots, and a full 0011→0012 round-trip over a real legacy store
 document/record backfill shape, rowid parity, content hashes, absence of a
 fabricated coverage snapshot, model/dim agreement with `vec_meta`, the Q3b
 partial indexes, and a downgrade/upgrade that leaves `chunk_vecs` intact.
+
+## Vector-space provisioning (plan 51 Q3c2a)
+
+`0013_vector_space_provisioning` performs the one-time physical move from the
+legacy `chunk_vecs` store to the provisioned `vec_<8hex>` table:
+
+- PostgreSQL creates the `vector` extension when available, then
+  `vec_<8hex> (record_id UUID PRIMARY KEY REFERENCES vector_records(id) ON
+  DELETE CASCADE, embedding vector(dim) NOT NULL)` plus
+  `ix_<table>_hnsw USING hnsw (embedding vector_cosine_ops)`. HNSW supports
+  at most 2,000 dimensions; a larger space is left on the legacy store.
+- SQLite loads `sqlite-vec` defensively and creates
+  `vec_<8hex> USING vec0(record_rowid INTEGER PRIMARY KEY, embedding
+  float[dim] distance_metric=cosine)`. `vector_records.rowid` is the rowid
+  map; no second mapping table exists.
+- The copy is `chunk_vecs ⨝ chunk_vec_ids ⨝ vector_records`, keyed by record
+  identity. The new table's row count is verified before
+  `vector_spaces.index_table` is updated, all inside the migration
+  transaction; a failed copy leaves both the pointer and the legacy tables
+  untouched.
+- `chunk_vecs` / `chunk_vec_ids` are never dropped or rewritten. Downgrade
+  drops the provisioned table(s) and resets `index_table = 'chunk_vecs'`.
+
+The naming rule is frozen in the migration (a migration must not import
+application code) and shares its shape with
+`storage/vector_schema.index_table_name`: eight lowercase hex characters
+derived from the space id (`vec_dfbcce9b` for `legacy-chunk-vecs`). The
+migration tests pin both the table name and the copied rows.
 
 ## Concurrent sessions (worktree renumbering)
 
