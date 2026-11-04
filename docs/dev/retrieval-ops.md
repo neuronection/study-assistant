@@ -1,13 +1,15 @@
 # Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b)
 
-Status: **Q3b shipped, plan 50 P3a storage foundation shipped**
-(2026-11-04). The family contracts, the `VECTOR_*` job slot, the two bounded
-aggregates, the admin read surface, the management/action seam
-(idempotency, single-active-run lock, stale reaper, audit) and the Tools →
-Indexing controls are shipped. Plan 50 P3a adds the portable vector metadata
-and the `StudyVectorStore` adapter seam over the legacy physical store. The
-real vector-space lifecycle/cutover, golden-query quality gates and the full
-family parity runner remain Q3c.
+Status: **Q3b shipped, plan 50 P3a storage foundation and Q3c1 PostgreSQL
+baseline repair shipped** (2026-11-04). The family contracts, the `VECTOR_*`
+job slot, the two bounded aggregates, the admin read surface, the
+management/action seam (idempotency, single-active-run lock, stale reaper,
+audit) and the Tools → Indexing controls are shipped. Plan 50 P3a adds the
+portable vector metadata and the `StudyVectorStore` adapter seam over the
+legacy physical store; Q3c1 repairs the PostgreSQL chain through
+`0012_vector_spaces` and pins the metadata backfill on that dialect. The real
+vector-space lifecycle/cutover, golden-query quality gates and the full
+family parity runner remain Q3c2.
 
 ## Contracts
 
@@ -73,6 +75,29 @@ The migration backfills the space from `vec_meta` and documents/records from
 backfill maps without hashing stay `content_hash=''` until
 `StudyVectorStore.backfill_metadata()` (idempotent, batch-bounded) fills
 them.
+
+### PostgreSQL chain and backfill assertions (plan 51 Q3c1)
+
+`tests/test_migrations_postgres.py` now runs on the pgvector test container
+instead of skipping, and the full chain `0001_baseline` →
+`0012_vector_spaces` is green. Repaired pre-0012 incompatibilities (final
+schema unchanged; details in [migrations.md](migrations.md#postgresql-chain-plan-51-q3c1)):
+
+- six boolean `server_default` values (`0`/`1`) became `sa.false()` /
+  `sa.true()`; PostgreSQL rejects `BOOLEAN DEFAULT 0` at `CREATE TABLE`;
+- the baseline decision-slot seed casts its bind parameter, fixing
+  PostgreSQL's `AmbiguousParameter` (`text` vs `character varying`);
+- the 0002–0011 `batch_alter_table(recreate="always")` calls use a local
+  `_recreate_mode()` (`always` on SQLite, `auto` on PostgreSQL), because a
+  PostgreSQL table copy drops the primary key while dependent FKs exist.
+
+The PG suite seeds a real legacy store at 0011 (`vec_meta`, `chunk_vecs`,
+`chunk_vec_ids` + materials/chunks) and, after upgrading, asserts the
+`content`/`legacy-chunk-vecs` space row and `chunk_vecs` index table, the
+document/record backfill shape, rowid parity with the reverse map, content
+hashes, no fabricated coverage snapshot, model/dim agreement with `vec_meta`,
+the Q3b partial indexes on `jobs`, and a 0012 downgrade/upgrade that leaves
+`chunk_vecs` intact.
 
 | Family concept | Study source (P3a) |
 |---|---|
@@ -268,7 +293,9 @@ set. This is fixture-level parity, not the full family runner.
 
 ## Q3c handoff (explicitly not shipped)
 
-Plan 50 P3a ships the foundation only. Q3c still owns:
+Plan 50 P3a ships the foundation only; Q3c1 shipped the PostgreSQL baseline
+repair and the metadata assertions. Q3c2 still owns the vector backend and
+lifecycle:
 
 - **Real lifecycle**: create a `building` space with a provisioned
   `vec_<8hex>` index table (pgvector/HNSW or sqlite-vec + rowid map), then
@@ -290,8 +317,8 @@ Plan 50 P3a ships the foundation only. Q3c still owns:
   stay unchanged.
 - **Quality**: versioned golden-query sets, recall/precision@k compare and
   the coverage+quality activation gate.
-- **Full family parity/family gate** and PG baseline repair if the existing
-  chain is still blocked.
+- **Full family parity/family gate** (the PG baseline repair landed in
+  Q3c1; the runner itself is still Q3c2).
 - **Alerts** (`retrieval.*` notification kinds) and `ai_generations`-style
   metadata tagging. Study's equivalent ledger is `ai_interactions`, which
   still has no metadata/prompt column; no second ledger was invented.

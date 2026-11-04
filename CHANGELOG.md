@@ -11,6 +11,35 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Fixed (PostgreSQL migration baseline — plan 51 Q3c1)
+- **The PostgreSQL migration chain now runs end to end** from
+  `0001_baseline` to `0012_vector_spaces` (PostgreSQL 16 + pgvector).
+  `tests/test_migrations_postgres.py` executes against the configured test
+  server instead of being skipped, and a fresh upgrade no longer fails at
+  `CREATE TABLE courses`.
+- Six boolean column defaults (`0`/`1`) became dialect-portable
+  `sa.false()`/`sa.true()`: `courses.hidden`,
+  `material_sources.mirror_subdirs`, `chat_sessions.quizme`,
+  `chat_quiz_pendings.awaiting_answer`, `materials.starred` and
+  `calendar_links.enabled`. The baseline decision-slot seed also casts its
+  bind parameter (PostgreSQL rejected the reused parameter as
+  `text` vs `character varying`).
+- Revisions 0002–0011 no longer force a full table copy on PostgreSQL
+  (`batch_alter_table(recreate="always")` broke dependent foreign keys when
+  it dropped the primary key). SQLite still copies; PostgreSQL alters in
+  place. Final schema and existing data are unchanged.
+- The PG suite now seeds a real legacy store and asserts the 0012
+  `content`/`legacy-chunk-vecs` space, document/record backfill shape,
+  rowid parity, content hashes, no fabricated coverage snapshot, model/dim
+  agreement with `vec_meta`, the Q3b partial indexes, and a
+  downgrade/upgrade that leaves `chunk_vecs` intact.
+- **PostgreSQL lexical search works again** (exposed by the now-runnable
+  chain): the FTS/trigram chunk and material joins compared a UUID
+  `materials.id` with the hex-keyed `material_fts*.material_id`, and the
+  swallowed operator error returned no hits. Both twins now compare the
+  hex form; SQLite behaviour is unchanged. Covered by
+  `test_search_postgres.py` and `test_search_parity.py`.
+
 ### Added (vector storage foundation — plan 50 P3a)
 - **The family vector contract is vendored byte-identically**
   (`storage/vector_contract.py` + its fixture table) with the canonical
