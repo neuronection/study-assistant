@@ -8,9 +8,9 @@ import { AI_TAB_SECTIONS, SETTINGS_TABS, TOOLS_TAB_SECTIONS } from './SettingsPa
 // nav in this app must match the family contract vendored at
 // contracts/settings-map.json. Structural placement changes go through the
 // dev canonical copy first — never by editing the vendored file (which
-// scripts/verify-wiring.sh keeps byte-identical) or the arrays alone. An
-// adopter flip for a surface that actually ships (plan 51 Q3b) is the one
-// product-local edit, reported as a canonical sync handoff.
+// scripts/verify-wiring.sh keeps byte-identical) or the arrays alone.
+// Plan 51 Q3c3a re-vendored the dev canonical with study's tools.retrieval
+// aligned; career's aligned line is preserved.
 const map = JSON.parse(
   readFileSync(join(__dirname, '..', '..', '..', '..', 'contracts', 'settings-map.json'), 'utf8'),
 ) as {
@@ -83,6 +83,7 @@ describe('settings-map contract', () => {
     const retrieval = map.domains.find((domain) => domain.id === 'tools.retrieval')
     expect(retrieval).toBeDefined()
     expect(retrieval!.adopters?.['study-assistant']).toBe('aligned')
+    expect(retrieval!.adopters?.['career-assistant']).toBe('aligned (plan 51 Q2)')
     expect(retrieval!.scope).toBe('instance (admin)')
 
     const indexing = declared

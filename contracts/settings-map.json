@@ -322,7 +322,7 @@
       "secrets": "none",
       "scope": "instance (admin)",
       "adopters": {
-        "career-assistant": "pending (plan 51 Q2)",
+        "career-assistant": "aligned (plan 51 Q2)",
         "study-assistant": "aligned",
         "health-assistant/core": "n/a (no vector store yet)"
       }
@@ -615,6 +615,12 @@
                 "tools.extensions"
               ],
               "note": "plan 186 split the domains; the section id stays 'sources' until the UI split ships (plan 186 step 3) — one section hosting both domains keeps INV-7 true in the interim"
+            },
+            {
+              "id": "retrieval",
+              "domains": [
+                "tools.retrieval"
+              ]
             }
           ],
           "note": "plan 27 Phase 3: the former AI-config web tab split into web-search (SearXNG URL) + connectors (GitHub token); plan 32 Phase 1 broadened connectors to also host job-source connector instances (manifest catalog + x-secret slots + probes); plan 119 added the MCP server section (endpoint + token lifecycle, per-scope tool/resource visibility, opt-in write switch); plan 154 split the connectors section into mcp (the MCP server surface) and sources (job-source + extension ingestion); plan 186 split the sources domains into tools.job-sources + tools.extensions (section split pending)"

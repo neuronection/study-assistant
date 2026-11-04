@@ -781,7 +781,11 @@ OpenAI's automatic prefix caching is accounted via `input_token_details.cache_re
 `ai_interactions` ledger records `cached_input_tokens` (migration 0037) and discounts cached
 input at 0.1×. **Query embeddings can be disabled** (Settings → Tools → Search & OCR semantic-search toggle +
 per-chat ✦ toggle in the chat header, migration 0039): when off, chat retrieval is FTS keyword
-search only and the live query-embedding call is skipped (query text stays local). The suite
+search only and the live query-embedding call is skipped (query text stays local); when it
+runs, the caller tags it `space_id`/`kind=query`/`view` on the ledger. Since plan 51 Q3c3a the
+`ai_interactions` ledger also carries caller-supplied embedding tags
+(`metadata`: `space_id`/`kind`/`view`/`chunk_index`) with a schema-version sibling; the gateway
+writes only what the caller passes and never prompt/document/query text. The suite
 runs with sockets blocked (a conftest guard) so no test can touch the network.
 
 ## Chat-turn graph engine (`app/ai/graphs/` — family AI-alignment Phase 5)

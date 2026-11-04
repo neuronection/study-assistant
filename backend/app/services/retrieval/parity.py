@@ -99,6 +99,27 @@ def _repo_paths() -> tuple[Path | None, Path | None]:
     return career, dev
 
 
+def _settings_dev_root() -> Path | None:
+    """The family settings-map canonical (``/dev``), separate from the
+    retrieval-contract canonical (``/dev-vector-p0``)."""
+    override = os.environ.get("STUDY_SETTINGS_DEV_ROOT")
+    if override:
+        return Path(override)
+    for name in ("dev", "dev-vector-p0"):
+        candidate = REPO_ROOT.parent / name
+        if (candidate / "contracts" / "settings-map.json").is_file():
+            return candidate
+    return None
+
+
+def _adoption_root() -> Path | None:
+    """The adopter checkout on ``main`` (the branch has not landed until it
+    carries the same bytes as this worktree)."""
+    override = os.environ.get("STUDY_RETRIEVAL_ADOPTION_REPO")
+    candidate = Path(override) if override else REPO_ROOT.parent / "study-assistant"
+    return candidate if candidate.exists() else None
+
+
 def _fixture(study_repo: Path) -> dict[str, Any]:
     path = study_repo / FIXTURE_RELATIVE
     return dict(json.loads(path.read_text(encoding="utf-8")))
@@ -347,7 +368,12 @@ def _sync_gate(
         checks.append(_skip("sync-ledger", "contracts/retrieval-ops.sync.json not found"))
         blockers.append("sync-ledger:missing")
 
-    settings_map = dev_repo / "contracts" / "settings-map.json"
+    settings_dev = _settings_dev_root()
+    settings_map = (
+        settings_dev / "contracts" / "settings-map.json"
+        if settings_dev is not None
+        else Path()
+    )
     canonical_aligned = False
     if settings_map.is_file():
         document = json.loads(settings_map.read_text(encoding="utf-8"))
@@ -380,7 +406,38 @@ def _sync_gate(
         checks.append(_skip("settings-map-adopter", "canonical settings map not found"))
         blockers.append("settings-map:missing")
 
-    if adopted and canonical_aligned:
+    adoption = _adoption_root()
+    adoption_ok = False
+    if adoption is None:
+        checks.append(
+            _skip("study-main-adoption", "study-assistant main checkout not present")
+        )
+        blockers.append("adoption:study-main-unverified")
+    else:
+        main_contract = adoption / CONTRACT_RELATIVE
+        main_fixture = adoption / FIXTURE_RELATIVE
+        adoption_ok = (
+            main_contract.is_file()
+            and main_fixture.is_file()
+            and main_contract.read_bytes() == (study_repo / CONTRACT_RELATIVE).read_bytes()
+            and main_fixture.read_bytes() == (study_repo / FIXTURE_RELATIVE).read_bytes()
+        )
+        checks.append(
+            _check(
+                "study-main-adoption",
+                adoption_ok,
+                "study-assistant main carries the same vendored retrieval contract",
+            )
+            if adoption_ok
+            else _skip(
+                "study-main-adoption",
+                "study-assistant main has not adopted the Q3c3a contract bytes yet",
+            )
+        )
+        if not adoption_ok:
+            blockers.append("adoption:study-main")
+
+    if adopted and canonical_aligned and adoption_ok:
         blockers.clear()
     return checks, blockers, shas
 

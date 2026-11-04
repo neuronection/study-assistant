@@ -11,6 +11,42 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (retrieval alerts, generation tagging & canonical adoption — plan 51 Q3c3a)
+- **Ten retrieval alerts through the existing notification funnel.**
+  Migration `0015_retrieval_alerts` adds the boot-seeded
+  `notification_kinds` registry and deduped `notifications` event rows.
+  `services/platform/notifications.py` is the only emit seam and
+  `services/retrieval/alerts.py` evaluates coverage_low, reindex_failed,
+  reindex_stalled, quality_gate (fed by the real Q3c2b2 compare), query_slo,
+  degraded_rate, provider_unassigned, index_missing and space_drop_pending
+  on the existing `ScanScheduler` periodic seam — never the request path.
+  Dedup keys are released when a condition clears so recovery is honest;
+  admin fanout is bounded, daily caps come from the family `ALERT_DEFAULTS`,
+  payloads pass `assert_no_raw_text`, and every manage URL points at the
+  shipped Tools → Indexing (run detail included) or the AI task assignment.
+  `retrieval.budget_exhausted` reports `unavailable` rather than inventing a
+  token budget study does not have. `GET /notifications` carries the active
+  recipient-scoped alerts and the bell renders them.
+- **Generation-ledger tagging and an honest usage read.** Study's ledger is
+  `ai_interactions`; migration `0015` adds `metadata` + `metadata_schema_version`
+  and the caller supplies `space_id`/`kind`/`view`/`chunk_index` through
+  `GatewayEmbedder.embed`/`record_usage` (indexing, reindex, live search and
+  golden-query compares). `GET /admin/retrieval/usage` exposes calls/tokens by
+  day/space/kind with `reindex_calls`; it never selects `prompt`, reports
+  `errors_available=false` (the ledger has no status column) and `budget=null`
+  (no token budget), and marks untagged rows `unattributed` instead of guessing.
+- **Canonical settings-map/ledger adoption.** The `/dev` canonical settings map
+  marks career and study `tools.retrieval` aligned, study hosts it in the
+  `indexing` section, and the study vendored copy + `settingsMap.test.ts` match
+  it. `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's bytes
+  with the branch note; the parity runner now reports only
+  `adoption:study-main` until `/study-assistant` main carries the same bytes.
+- Tests: `test_retrieval_alerts.py` (one per kind, dedup/recovery, fanout,
+  caps, manage URLs, no raw text, empty/cold/quality fail),
+  `test_generation_tags.py`, the 0015 SQLite/PG migration round-trips,
+  `test_retrieval_ops_family_parity.py`, `NotificationBell.test.tsx` and
+  `settingsMap.test.ts`. Audit → Retrieval (Q3c3b) and the Q5 closeout remain.
+
 ### Added (golden-query quality compare & gate — plan 51 Q3c2b2)
 - **Versioned admin golden-query sets.** `services/retrieval/quality.py`
   loads `backend/app/data/retrieval/golden_queries.json` (empty by default —
@@ -50,7 +86,7 @@ Release history from before the public launch lives in the
 - Tests: `test_retrieval_quality.py` (SQLite), the PG quality/gate twins in
   `test_vector_backends_postgres.py`, the updated lifecycle/action/parity
   walls, and the frontend card/panel tests. Alerts, generation tagging and
-  the canonical sync remain plan 51 Q3c3.
+  the canonical sync landed in plan 51 Q3c3a.
 
 ### Added (vector backend & provisioning — plan 51 Q3c2a)
 - **The content space now runs on a real family vector backend.**

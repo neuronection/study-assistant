@@ -1,14 +1,17 @@
-# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1/Q3c2b2)
+# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1/Q3c2b2/Q3c3a)
 
 Status: **Q3b shipped, plan 50 P3a storage foundation, Q3c1 PostgreSQL
 baseline repair, Q3c2a vector backend/provisioning, Q3c2b1
-lifecycle/cutover and Q3c2b2 golden-query quality + gate shipped**
-(2026-11-04). The family contracts, the `VECTOR_*` job slot, the two bounded
-aggregates, the admin read surface, the management/action seam (idempotency,
+lifecycle/cutover, Q3c2b2 golden-query quality + gate and Q3c3a
+alerts/generation tagging/canonical adoption shipped** (2026-11-04). The
+family contracts, the `VECTOR_*` job slot, the two bounded aggregates, the
+admin read surface, the management/action seam (idempotency,
 single-active-run lock, stale reaper, audit), the Tools → Indexing controls,
-the versioned golden-query quality compare and the cross-repo parity runner
-are shipped. Activation and cutover require physical health, coverage **and**
-the pre-cutover quality compare; alerts and generation tagging remain Q3c3.
+the versioned golden-query quality compare, the ten boot-seeded alerts, the
+caller-supplied embedding tags and the cross-repo parity runner are shipped.
+Activation and cutover require physical health, coverage **and** the
+pre-cutover quality compare. The optional Audit → Retrieval tab and the
+family closeout remain Q3c3b/Q5.
 
 ## Contracts
 
@@ -326,6 +329,10 @@ Admin-only, under `/api/v1/admin/retrieval`:
 - `GET /coverage?space=` (any persisted space; cold/unknown is honest)
 - `GET /runs?limit=`
 - `GET /query-health?window=` (the active space's real id)
+- `GET /quality?space=` (the versioned set + newest sampled compare)
+- `GET /usage?window=` (embed calls/tokens by day, space and kind from the
+  caller-supplied `ai_interactions.metadata` tags; `errors` and token budget
+  are honest gaps, never invented)
 
 DTOs are shaped by the vendored contract; no payload selects `prompt`,
 document text or query text.
@@ -451,10 +458,21 @@ both vendored files match career and the dev canonical byte-for-byte —
 `retrieval-ops.fixtures.json` sha256
 `4463cb45ff115ea1fe98838e7b81b46c4bdac9afe3ff865bac7d369c26d8de52` — and
 every vocabulary, quality-floor, quality-case and DTO-shape check passes.
-`strict=false` with blockers `sync-ledger:study-assistant` (the ledger has no
-study row; `ledger:study-assistant=""`) and
+At Q3c2b2 `strict=false` with blockers `sync-ledger:study-assistant` (the
+ledger had no study row; `ledger:study-assistant=""`) and
 `settings-map:canonical-study-pending` (canonical adopter
 `pending (plan 51 Q3)`).
+
+**Q3c3a update.** The `/dev` settings canonical now has both career and study
+`tools.retrieval: aligned`; `dev-vector-p0/contracts/retrieval-ops.sync.json`
+records study's two vendored sha values (with a branch-adoption note). The
+runner reads the settings canonical from `/dev` (contract ledger/bytes stay in
+`dev-vector-p0`) and adds a `study-main-adoption` check against
+`/study-assistant`. Result now: every vocabulary/quality/DTO/byte/ledger/
+settings check passes, `strict=false` with the **single exact blocker**
+`adoption:study-main`; when main carries the same bytes the check passes. If
+the main checkout is absent the runner records `adoption:study-main-unverified`
+instead of claiming strict.
 
 Q3c2a adds backend parity assertions on both dialects:
 `tests/test_vector_backends.py` (SQLite) and
@@ -540,6 +558,77 @@ retires the previous space and keeps `chunk_vecs` until the retired legacy
 space is dropped. A below-floor cutover leaves the candidate `building` and
 the evidence on the failed run.
 
+## Alerts and generation tagging (Q3c3a)
+
+### Alerts through the one notification funnel
+
+Study's bell aggregate (`GET /notifications`, ADR-151) remains the only
+delivery surface. Q3c3a adds its missing durable side: migration `0015`
+creates the boot-seeded `notification_kinds` registry and the deduped
+`notifications` event rows. Every emitter goes through
+`services/platform/notifications.py::NotificationService.emit`; there is no
+second funnel or mail/webhook path. The ten kinds are the closed
+`NotificationKind` vocabulary, seeded from the vendored `ALERT_DEFAULTS`
+(kind, threshold, window, dedup scope, daily cap) — adopting the real budget
+later only fills the remaining evaluator.
+
+`services/retrieval/alerts.py` evaluates the ten conditions over the Q3a/Q3b/
+Q3c read model only (latest coverage snapshot, recent `VECTOR_*` runs, the
+persisted quality compare, the 15-minute query rollups, the embeddings
+assignment, pgvector extension/table state). It runs on the **existing**
+`ScanScheduler` periodic seam (`retrieval_alerts=` callback), never in a
+request, and is bounded (`RUN_SCAN_LIMIT`, `DEDUP_ROW_LIMIT`,
+`ADMIN_FANOUT_LIMIT=20`).
+
+| Kind | Evaluator |
+|---|---|
+| `retrieval.coverage_low` | latest coverage snapshot < `0.995` and no active run lock for that space |
+| `retrieval.reindex_failed` | latest terminal `VECTOR_*` run per `(space, scope kind)` is `failed` |
+| `retrieval.reindex_stalled` | `running` row with no heartbeat/progress for `15 min` |
+| `retrieval.quality_gate` | newest persisted golden-query compare `passed=false` (the Q3c2b2 sampled result) |
+| `retrieval.query_slo` | 15-minute p95 > `1500 ms` |
+| `retrieval.degraded_rate` | one degraded reason > `5%` of 15-minute queries |
+| `retrieval.provider_unassigned` | no embeddings task/default assignment |
+| `retrieval.index_missing` | PostgreSQL only: `vector` extension or the declared `index_table` absent |
+| `retrieval.budget_exhausted` | **honest `unavailable`**: study has no token-denominated embed budget yet; its `monthly_cap_usd` is monetary and is not invented as a token budget |
+| `retrieval.space_drop_pending` | retired space past the 7-day drop grace |
+
+Dedup and recovery are one operation: active keys are the currently true
+conditions; a key whose condition cleared (or whose TTL expired) is released
+so a later recurrence is a new event, while the history row stays. Events fan
+out to at most 20 active admins (the fixture user is admin), respect the
+contract daily cap, and carry structured ids/counts/scores/reasons only.
+`assert_no_raw_text` runs on every payload. Manage URLs point at the **shipped**
+Tools → Indexing controls: `/settings?tab=tools&section=indexing` (run alerts
+add `&detail=<run_id>`); the embeddings-assignment/budget kinds point at
+`/settings?tab=ai&section=tasks`. There is no Audit → Retrieval URL yet.
+
+`GET /notifications` gains `alerts` (active, recipient-scoped, still deduped)
+and the bell renders them; recovery removes the alert from the bell without
+deleting the event history. Migration `0015_retrieval_alerts` runs both
+dialects and drops cleanly.
+
+### Generation-ledger tagging and usage
+
+Study's ledger is `ai_interactions`, not `ai_generations`; migration `0015`
+adds the same minimal seam to it: `metadata` (JSON, non-null, `{}`) and
+`metadata_schema_version` (non-null, `1`). The **caller** supplies
+`space_id`/`kind`/`view`/`chunk_index` through the embed call:
+`GatewayEmbedder.embed(..., metadata=...)` → `LLMGateway.record_usage` →
+the existing ledger row. `embed_with_tags` keeps legacy one-argument test
+embedders working; the real writer paths tag indexing (`kind=material`,
+`view=body`, `chunk_index` when the batch is one chunk), reindex (the run's
+space/kind/view), live search and the golden-query compare (`kind=query`).
+The gateway never invents a tag and no text enters `metadata`.
+
+`GET /admin/retrieval/usage?window=` exposes calls/tokens by day, space and
+kind from those tags, with `reindex_calls` separated from query embeds. It
+never selects `prompt` (or document/query text). Two honest gaps are explicit
+instead of fabricated: study's ledger has no status/error column
+(`errors_available=false`) and no token-denominated budget (`budget=null`,
+notes say so); missing token counts report `tokens_available=false`.
+Untagged legacy rows are `unattributed`, never guessed.
+
 ## Q3c2b2 shipped vs Q3c3 handoff
 
 Q3c2b2 shipped:
@@ -563,19 +652,25 @@ Q3c2b2 shipped:
 - **Tests** — SQLite + PostgreSQL quality/gate twins, no-raw-text payload
   assertions, replay/persistence, frontend card/panel coverage.
 
-**Q3c3 still owns** (explicitly not built here):
+**Q3c3a shipped** (above): the ten boot-seeded alerts with
+dedup/recovery/admin fanout/daily caps, the `ai_interactions` metadata seam +
+usage read, and the canonical settings-map/ledger adoption. The canonical
+`/dev` settings map now marks both career and study `tools.retrieval`
+`aligned`; `dev-vector-p0/contracts/retrieval-ops.sync.json` records study's
+bytes with the branch note. The parity runner reports `strict=false` with the
+single exact blocker `adoption:study-main` until `/study-assistant` main
+carries the same vendored bytes; once it does, the adoption check passes and
+no blocker remains. The `dev-vector-p0` settings-map copy is older than `/dev`
+and is not the settings canonical the runner reads.
 
-1. **Alerts** — the ten boot-seeded `retrieval.*` notification kinds,
-   threshold/dedup/recovery, admin fanout and daily caps. The
-   `retrieval.quality_gate` alert is declared in `ALERT_DEFAULTS` but nothing
-   emits it yet.
-2. **Generation tagging** — the caller-supplied
-   `ai_generations.metadata` (`space_id`/`kind`/`view`/`chunk_index`) seam and
-   the embed-call usage line; no retrieval DTO may ever select `prompt`.
-3. **Canonical settings-map/ledger sync** — re-vendor the dev canonical
-   settings map and record study in `contracts/retrieval-ops.sync.json` so
-   the parity runner can claim `strict=True`; until then it reports the exact
-   blockers.
-4. **Audit → Retrieval tab** — study adopts the composed audit read surface
-   in Q3 closeout; this slice keeps the read-only quality evidence in the
-   Tools card/drawer.
+**Remaining** (explicitly not built here):
+
+1. **Q3c3b — Audit → Retrieval tab** — study adopts the composed audit read
+   surface (overview/spaces/runs/quality/query-health/failures/usage with the
+   pinned `?section=`/`?detail=` deep links and CSV exports); this slice keeps
+   the read-only quality evidence in the Tools card/drawer and the alerts in
+   the existing bell. No second audit stack, no new ledger.
+2. **Q5 — family closeout** — study parity/health gate evidence, the family
+   `--strict` claim once main adopts, the no-raw-vector-SQL/no-second-audit/
+   settings-map/audit-vocabulary/no-`vector_events`/no-`prompt` checks, and
+   the shared UI promotion under the two-app rule.

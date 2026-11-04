@@ -55,7 +55,7 @@ def test_career_and_study_quality_dto_semantics_match() -> None:
         assert report.shas["career:fixtures"] == report.shas["study:fixtures"]
 
 
-def test_strict_gate_is_not_claimed_while_the_family_ledger_is_pending() -> None:
+def test_strict_gate_stays_closed_until_main_adopts_the_branch() -> None:
     report = parity.run_family_parity()
     if report.dev_repo is None:
         assert report.strict is False
@@ -66,10 +66,34 @@ def test_strict_gate_is_not_claimed_while_the_family_ledger_is_pending() -> None
     assert checks["dev-canonical-fixture-byte-identity"].status == "pass"
     assert report.strict is False
     blockers = set(report.strict_blockers)
-    assert "sync-ledger:study-assistant" in blockers
-    assert "settings-map:canonical-study-pending" in blockers
+
     ledger = report.shas.get("ledger:study-assistant", "")
-    assert ledger != report.shas["study:contract"]
+    if ledger == report.shas["study:contract"]:
+        assert checks["sync-ledger"].status == "pass"
+        assert "sync-ledger:study-assistant" not in blockers
+    if checks["settings-map-adopter"].status == "pass":
+        assert "settings-map:canonical-study-pending" not in blockers
+    if checks["study-main-adoption"].status != "pass":
+        assert any(blocker.startswith("adoption:study-main") for blocker in blockers)
+
+
+def test_strict_gate_names_only_the_remaining_main_adoption_blocker() -> None:
+    report = parity.run_family_parity()
+    checks = {check.name: check for check in report.checks}
+    if (
+        report.dev_repo is None
+        or checks.get("sync-ledger") is None
+        or checks.get("settings-map-adopter") is None
+        or checks["sync-ledger"].status != "pass"
+        or checks["settings-map-adopter"].status != "pass"
+        or checks["study-main-adoption"].status == "pass"
+    ):
+        return
+    assert set(report.strict_blockers) <= {
+        "adoption:study-main",
+        "adoption:study-main-unverified",
+    }
+    assert len(report.strict_blockers) == 1
 
 
 def test_fixture_quality_cases_run_through_the_vendored_contract() -> None:

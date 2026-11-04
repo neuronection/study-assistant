@@ -163,7 +163,7 @@ database.
 ## PostgreSQL chain (plan 51 Q3c1)
 
 The chain is green from `0001_baseline` to
-`0014_vector_record_chunk_id` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
+`0015_retrieval_alerts` on PostgreSQL 16 + pgvector. `tests/test_migrations_postgres.py` creates a
 scratch database, upgrades the whole chain and asserts the result whenever
 `SA_TEST_DATABASE_URL` points at a disposable server; it skips only when the
 variable is unset (the SQLite suite always runs). The repaired pre-0012
@@ -224,6 +224,18 @@ application code) and shares its shape with
 `storage/vector_schema.index_table_name`: eight lowercase hex characters
 derived from the space id (`vec_dfbcce9b` for `legacy-chunk-vecs`). The
 migration tests pin both the table name and the copied rows.
+
+## Retrieval alerts and generation tags (plan 51 Q3c3a)
+
+`0015_retrieval_alerts` adds the ledger's `metadata`/`metadata_schema_version`
+columns and the two notification-funnel tables. The `metadata` column is
+non-null with a `{}` server default; the notification dedup key is a partial
+unique index over `dedup_key IS NOT NULL`. Both the SQLite round-trip
+(`tests/test_retrieval_ops_migration.py`) and the PostgreSQL chain
+(`tests/test_migrations_postgres.py`) pin the columns, tables, foreign key and
+partial index, including downgrade/upgrade. A revision id longer than 32
+characters would overflow Alembic's `alembic_version.version_num` on
+PostgreSQL; the short `0015_retrieval_alerts` id is deliberate.
 
 ## Vector record chunk identity (plan 51 Q3c2b1)
 

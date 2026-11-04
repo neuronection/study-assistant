@@ -86,12 +86,20 @@ def _merged_histogram(
 
 
 def _histogram_for(latency_ms: int) -> dict[str, int]:
-    bounds = [*LATENCY_BUCKETS_MS, float("inf")]
+    """One cumulative ``le`` histogram point plus a true >max overflow.
+
+    The finite buckets are cumulative counts (a 120 ms sample increments
+    250/500/.../10000); the overflow bucket is only the samples above the
+    largest finite bound. Counting a normal sample in both the last finite
+    bucket and overflow double-counted the total and made every p95 look
+    like 10000 ms.
+    """
     histogram = _empty_histogram()
-    for bound in bounds:
-        key = OVERFLOW_KEY if bound == float("inf") else str(bound)
+    for bound in LATENCY_BUCKETS_MS:
         if latency_ms <= bound:
-            histogram[key] = 1
+            histogram[str(bound)] = 1
+    if latency_ms > LATENCY_BUCKETS_MS[-1]:
+        histogram[OVERFLOW_KEY] = 1
     return histogram
 
 

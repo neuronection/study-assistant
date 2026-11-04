@@ -395,9 +395,18 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
 - **ai_interactions**: id, context_type (chat/tutor/quiz_help/exgen/flashcards/
   note_action/**gateway**/…), context_id, direction, **task** (set on gateway
   ledger rows), model, input/output tokens, **cached_input_tokens?** (0037 —
-  provider cache-read tokens, cost discounted at 0.1×), cost_usd?, latency_ms —
+  provider cache-read tokens, cost discounted at 0.1×), cost_usd?, latency_ms,
+  **metadata JSON** + **metadata_schema_version** (0015 — caller-supplied
+  `space_id`/`kind`/`view`/`chunk_index` embedding tags only, never text) —
   every model call lands here; `context_type="gateway"` rows are the cost ledger
   (one per real API call, with real provider usage numbers since 37A)
+- **notification_kinds**: key (the closed `NotificationKind` vocabulary),
+  title, description, severity, admin_only, default_enabled, created_at —
+  boot-seeded config; unknown kinds notify nobody
+- **notifications**: id, kind (FK CASCADE), severity, title, body, payload JSON
+  (ids/counts/scores/reasons only), source_ref JSON?, recipients JSON (admin
+  user ids), dedup_key? (partial unique), dedup_expires_at?, created_at —
+  deduped, recoverable alert events; the bell reads active keys, history stays
 - **jobs**: id, type (ingest/postprocess/chat_turn/drawing_ocr), payload, status
   (queued/running/done/failed/cancelled), progress, stage, error, result
   (bounded `VECTOR_*` run result), idempotency_key/lock_key/heartbeat_at/
@@ -447,6 +456,13 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0015_retrieval_alerts (plan 51 Q3c3a)**: adds
+  `ai_interactions.metadata` (JSON, non-null, `{}`) and
+  `metadata_schema_version` (smallint, non-null, `1`) — caller-supplied
+  `space_id`/`kind`/`view`/`chunk_index` embedding tags, never text — plus
+  the boot-seeded `notification_kinds` registry and deduped `notifications`
+  event rows with admin recipient ids and a partial unique dedup key.
+  Downgrade drops both notification tables and the two ledger columns.
 - **0014_vector_record_chunk_id (plan 51 Q3c2b1)**: adds
   `vector_records.chunk_id` (nullable `String(80)`), its index and the
   unique `(space_id, chunk_id)` constraint, then backfills `chunk_id = id`
