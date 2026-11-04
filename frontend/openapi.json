@@ -12966,6 +12966,24 @@
             "title": "Audit Event",
             "type": "string"
           },
+          "bad_matches": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalBadMatchOut"
+            },
+            "title": "Bad Matches",
+            "type": "array"
+          },
+          "baseline_space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Space Id"
+          },
           "cancel_requested": {
             "anyOf": [
               {
@@ -12981,6 +12999,17 @@
             "default": false,
             "title": "Deduplicated",
             "type": "boolean"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate"
           },
           "http_status": {
             "title": "Http Status",
@@ -13024,7 +13053,7 @@
             ],
             "title": "Model Changed"
           },
-          "quality": {
+          "new_degraded": {
             "anyOf": [
               {
                 "type": "string"
@@ -13033,7 +13062,60 @@
                 "type": "null"
               }
             ],
-            "title": "Quality"
+            "title": "New Degraded"
+          },
+          "no_baseline": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Baseline"
+          },
+          "old_degraded": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Degraded"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quality_compare": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityCompareOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quality_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality State"
           },
           "retry_of": {
             "anyOf": [
@@ -13099,6 +13181,39 @@
           "http_status"
         ],
         "title": "RetrievalActionOut",
+        "type": "object"
+      },
+      "RetrievalBadMatchOut": {
+        "properties": {
+          "hits": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "missing_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Document Ids",
+            "type": "array"
+          },
+          "query_id": {
+            "title": "Query Id",
+            "type": "string"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "query_id"
+        ],
+        "title": "RetrievalBadMatchOut",
         "type": "object"
       },
       "RetrievalCoverageEnvelopeOut": {
@@ -13423,6 +13538,401 @@
         "title": "RetrievalOverviewOut",
         "type": "object"
       },
+      "RetrievalQualityCompareIn": {
+        "description": "Score the versioned golden set on a candidate vs baseline space.",
+        "properties": {
+          "compare_space_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Compare Space Id",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "space_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "compare_space_id"
+        ],
+        "title": "RetrievalQualityCompareIn",
+        "type": "object"
+      },
+      "RetrievalQualityCompareOut": {
+        "properties": {
+          "floor_precision": {
+            "title": "Floor Precision",
+            "type": "number"
+          },
+          "floor_recall": {
+            "title": "Floor Recall",
+            "type": "number"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "new_precision_at_k": {
+            "title": "New Precision At K",
+            "type": "number"
+          },
+          "new_recall_at_k": {
+            "title": "New Recall At K",
+            "type": "number"
+          },
+          "new_space_id": {
+            "title": "New Space Id",
+            "type": "string"
+          },
+          "old_precision_at_k": {
+            "title": "Old Precision At K",
+            "type": "number"
+          },
+          "old_recall_at_k": {
+            "title": "Old Recall At K",
+            "type": "number"
+          },
+          "old_space_id": {
+            "title": "Old Space Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalQualityQueryOut"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "required_for_activation": {
+            "default": true,
+            "title": "Required For Activation",
+            "type": "boolean"
+          },
+          "set_version": {
+            "title": "Set Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "old_space_id",
+          "new_space_id",
+          "set_version",
+          "k",
+          "old_recall_at_k",
+          "old_precision_at_k",
+          "new_recall_at_k",
+          "new_precision_at_k",
+          "passed",
+          "floor_recall",
+          "floor_precision"
+        ],
+        "title": "RetrievalQualityCompareOut",
+        "type": "object"
+      },
+      "RetrievalQualityEnvelopeOut": {
+        "properties": {
+          "activation_gate": {
+            "default": "unknown",
+            "title": "Activation Gate",
+            "type": "string"
+          },
+          "bad_matches": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalBadMatchOut"
+            },
+            "title": "Bad Matches",
+            "type": "array"
+          },
+          "compare": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityCompareOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "compare_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Run Id"
+          },
+          "compare_set_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Set Version"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sampled": {
+            "default": false,
+            "title": "Sampled",
+            "type": "boolean"
+          },
+          "set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalQualitySetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "space_id"
+        ],
+        "title": "RetrievalQualityEnvelopeOut",
+        "type": "object"
+      },
+      "RetrievalQualityOut": {
+        "properties": {
+          "floor_precision": {
+            "title": "Floor Precision",
+            "type": "number"
+          },
+          "floor_recall": {
+            "title": "Floor Recall",
+            "type": "number"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "precision_at_k": {
+            "title": "Precision At K",
+            "type": "number"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalQualityQueryOut"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "recall_at_k": {
+            "title": "Recall At K",
+            "type": "number"
+          },
+          "set_version": {
+            "title": "Set Version",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "set_version",
+          "k",
+          "recall_at_k",
+          "precision_at_k",
+          "passed",
+          "floor_recall",
+          "floor_precision"
+        ],
+        "title": "RetrievalQualityOut",
+        "type": "object"
+      },
+      "RetrievalQualityQueryOut": {
+        "properties": {
+          "expected_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Document Ids",
+            "type": "array"
+          },
+          "missing_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Document Ids",
+            "type": "array"
+          },
+          "passed": {
+            "default": false,
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "precision_at_k": {
+            "title": "Precision At K",
+            "type": "number"
+          },
+          "query_id": {
+            "title": "Query Id",
+            "type": "string"
+          },
+          "recall_at_k": {
+            "title": "Recall At K",
+            "type": "number"
+          },
+          "retrieved_document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Retrieved Document Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query_id",
+          "recall_at_k",
+          "precision_at_k"
+        ],
+        "title": "RetrievalQualityQueryOut",
+        "type": "object"
+      },
+      "RetrievalQualitySetOut": {
+        "properties": {
+          "floor_precision": {
+            "title": "Floor Precision",
+            "type": "number"
+          },
+          "floor_recall": {
+            "title": "Floor Recall",
+            "type": "number"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "query_count": {
+            "title": "Query Count",
+            "type": "integer"
+          },
+          "query_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Query Ids",
+            "type": "array"
+          },
+          "revision_key": {
+            "title": "Revision Key",
+            "type": "string"
+          },
+          "set_version": {
+            "title": "Set Version",
+            "type": "integer"
+          },
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "set_version",
+          "k",
+          "floor_recall",
+          "floor_precision",
+          "query_count",
+          "revision_key"
+        ],
+        "title": "RetrievalQualitySetOut",
+        "type": "object"
+      },
       "RetrievalQueryHealthEnvelopeOut": {
         "properties": {
           "candidates_avg": {
@@ -13729,6 +14239,26 @@
       },
       "RetrievalRunDetailOut": {
         "properties": {
+          "activation_gate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activation Gate"
+          },
+          "bad_matches": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Bad Matches",
+            "type": "array"
+          },
           "duration_seconds": {
             "anyOf": [
               {
@@ -13739,6 +14269,18 @@
               }
             ],
             "title": "Duration Seconds"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
           },
           "result": {
             "anyOf": [
@@ -14246,6 +14788,16 @@
           },
           "provider": {
             "title": "Provider",
+            "type": "string"
+          },
+          "quality_gate": {
+            "default": "unknown",
+            "title": "Quality Gate",
+            "type": "string"
+          },
+          "quality_state": {
+            "default": "not_sampled",
+            "title": "Quality State",
             "type": "string"
           },
           "records": {
@@ -20046,9 +20598,88 @@
         ]
       }
     },
+    "/api/v1/admin/retrieval/quality": {
+      "get": {
+        "operationId": "get_quality_api_v1_admin_retrieval_quality_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "space",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Space"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalQualityEnvelopeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quality",
+        "tags": [
+          "retrieval"
+        ]
+      }
+    },
     "/api/v1/admin/retrieval/quality/compare": {
       "post": {
         "operationId": "post_quality_compare_api_v1_admin_retrieval_quality_compare_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalQualityCompareIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -20059,6 +20690,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Post Quality Compare",

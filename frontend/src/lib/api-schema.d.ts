@@ -120,6 +120,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/retrieval/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quality */
+        get: operations["get_quality_api_v1_admin_retrieval_quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/retrieval/quality/compare": {
         parameters: {
             query?: never;
@@ -9646,6 +9663,10 @@ export interface components {
             already_active?: boolean | null;
             /** Audit Event */
             audit_event: string;
+            /** Bad Matches */
+            bad_matches?: components["schemas"]["RetrievalBadMatchOut"][];
+            /** Baseline Space Id */
+            baseline_space_id?: string | null;
             /** Cancel Requested */
             cancel_requested?: boolean | null;
             /**
@@ -9653,6 +9674,8 @@ export interface components {
              * @default false
              */
             deduplicated: boolean;
+            /** Gate */
+            gate?: string | null;
             /** Http Status */
             http_status: number;
             /** Idempotency Key */
@@ -9666,8 +9689,16 @@ export interface components {
             message: string;
             /** Model Changed */
             model_changed?: boolean | null;
-            /** Quality */
-            quality?: string | null;
+            /** New Degraded */
+            new_degraded?: string | null;
+            /** No Baseline */
+            no_baseline?: boolean | null;
+            /** Old Degraded */
+            old_degraded?: string | null;
+            quality?: components["schemas"]["RetrievalQualityOut"] | null;
+            quality_compare?: components["schemas"]["RetrievalQualityCompareOut"] | null;
+            /** Quality State */
+            quality_state?: string | null;
             /** Retry Of */
             retry_of?: string | null;
             /** Run Id */
@@ -9680,6 +9711,19 @@ export interface components {
             space_id?: string | null;
             /** Status */
             status?: string | null;
+        };
+        /** RetrievalBadMatchOut */
+        RetrievalBadMatchOut: {
+            /** Hits */
+            hits?: {
+                [key: string]: unknown;
+            }[];
+            /** Missing Document Ids */
+            missing_document_ids?: string[];
+            /** Query Id */
+            query_id: string;
+            /** Space Id */
+            space_id: string;
         };
         /** RetrievalCoverageEnvelopeOut */
         RetrievalCoverageEnvelopeOut: {
@@ -9788,6 +9832,149 @@ export interface components {
             /** State */
             state: string;
         };
+        /**
+         * RetrievalQualityCompareIn
+         * @description Score the versioned golden set on a candidate vs baseline space.
+         */
+        RetrievalQualityCompareIn: {
+            /** Compare Space Id */
+            compare_space_id: string;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Space Id */
+            space_id: string;
+        };
+        /** RetrievalQualityCompareOut */
+        RetrievalQualityCompareOut: {
+            /** Floor Precision */
+            floor_precision: number;
+            /** Floor Recall */
+            floor_recall: number;
+            /** Generated At */
+            generated_at?: string | null;
+            /** K */
+            k: number;
+            /** New Precision At K */
+            new_precision_at_k: number;
+            /** New Recall At K */
+            new_recall_at_k: number;
+            /** New Space Id */
+            new_space_id: string;
+            /** Old Precision At K */
+            old_precision_at_k: number;
+            /** Old Recall At K */
+            old_recall_at_k: number;
+            /** Old Space Id */
+            old_space_id: string;
+            /** Passed */
+            passed: boolean;
+            /** Queries */
+            queries?: components["schemas"]["RetrievalQualityQueryOut"][];
+            /**
+             * Required For Activation
+             * @default true
+             */
+            required_for_activation: boolean;
+            /** Set Version */
+            set_version: number;
+        };
+        /** RetrievalQualityEnvelopeOut */
+        RetrievalQualityEnvelopeOut: {
+            /**
+             * Activation Gate
+             * @default unknown
+             */
+            activation_gate: string;
+            /** Bad Matches */
+            bad_matches?: components["schemas"]["RetrievalBadMatchOut"][];
+            compare?: components["schemas"]["RetrievalQualityCompareOut"] | null;
+            /** Compare Run Id */
+            compare_run_id?: string | null;
+            /** Compare Set Version */
+            compare_set_version?: number | null;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Notes */
+            notes?: string[];
+            quality?: components["schemas"]["RetrievalQualityOut"] | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Sampled
+             * @default false
+             */
+            sampled: boolean;
+            set?: components["schemas"]["RetrievalQualitySetOut"] | null;
+            /** Space Id */
+            space_id: string;
+            /** State */
+            state: string;
+        };
+        /** RetrievalQualityOut */
+        RetrievalQualityOut: {
+            /** Floor Precision */
+            floor_precision: number;
+            /** Floor Recall */
+            floor_recall: number;
+            /** Generated At */
+            generated_at?: string | null;
+            /** K */
+            k: number;
+            /** Passed */
+            passed: boolean;
+            /** Precision At K */
+            precision_at_k: number;
+            /** Queries */
+            queries?: components["schemas"]["RetrievalQualityQueryOut"][];
+            /** Recall At K */
+            recall_at_k: number;
+            /** Set Version */
+            set_version: number;
+            /** Space Id */
+            space_id: string;
+        };
+        /** RetrievalQualityQueryOut */
+        RetrievalQualityQueryOut: {
+            /** Expected Document Ids */
+            expected_document_ids?: string[];
+            /** Missing Document Ids */
+            missing_document_ids?: string[];
+            /**
+             * Passed
+             * @default false
+             */
+            passed: boolean;
+            /** Precision At K */
+            precision_at_k: number;
+            /** Query Id */
+            query_id: string;
+            /** Recall At K */
+            recall_at_k: number;
+            /** Retrieved Document Ids */
+            retrieved_document_ids?: string[];
+        };
+        /** RetrievalQualitySetOut */
+        RetrievalQualitySetOut: {
+            /** Floor Precision */
+            floor_precision: number;
+            /** Floor Recall */
+            floor_recall: number;
+            /** K */
+            k: number;
+            /** Query Count */
+            query_count: number;
+            /** Query Ids */
+            query_ids?: string[];
+            /** Revision Key */
+            revision_key: string;
+            /** Set Version */
+            set_version: number;
+            /** Space Id */
+            space_id: string;
+        };
         /** RetrievalQueryHealthEnvelopeOut */
         RetrievalQueryHealthEnvelopeOut: {
             /** Candidates Avg */
@@ -9887,8 +10074,20 @@ export interface components {
         };
         /** RetrievalRunDetailOut */
         RetrievalRunDetailOut: {
+            /** Activation Gate */
+            activation_gate?: {
+                [key: string]: unknown;
+            } | null;
+            /** Bad Matches */
+            bad_matches?: {
+                [key: string]: unknown;
+            }[];
             /** Duration Seconds */
             duration_seconds?: number | null;
+            /** Quality */
+            quality?: {
+                [key: string]: unknown;
+            } | null;
             result?: components["schemas"]["RetrievalRunResultOut"] | null;
             run: components["schemas"]["RetrievalRunOut"];
         };
@@ -10064,6 +10263,16 @@ export interface components {
             name: string;
             /** Provider */
             provider: string;
+            /**
+             * Quality Gate
+             * @default unknown
+             */
+            quality_gate: string;
+            /**
+             * Quality State
+             * @default not_sampled
+             */
+            quality_state: string;
             /**
              * Records
              * @default 0
@@ -12105,9 +12314,11 @@ export interface operations {
             };
         };
     };
-    post_quality_compare_api_v1_admin_retrieval_quality_compare_post: {
+    get_quality_api_v1_admin_retrieval_quality_get: {
         parameters: {
-            query?: never;
+            query?: {
+                space?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -12120,7 +12331,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["RetrievalQualityEnvelopeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_quality_compare_api_v1_admin_retrieval_quality_compare_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalQualityCompareIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

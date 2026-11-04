@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card'
 import {
   activateRetrievalSpace,
+  ApiError,
   cancelRetrievalRun,
   dropRetrievalSpace,
   getRetrievalOverview,
@@ -32,6 +33,8 @@ import type {
   RetrievalSpaces,
 } from '@/lib/api'
 import { getCurrentUser } from '@/lib/auth-session'
+
+import { RetrievalQualityPanel } from './RetrievalQualityPanel'
 
 type MaintenanceAction = NonNullable<RetrievalMaintenanceRequest['action']>
 
@@ -89,6 +92,7 @@ export function RetrievalStatusCard() {
   const [dryRun, setDryRun] = useState(false)
   const [candidateName, setCandidateName] = useState('content-candidate')
   const [confirmations, setConfirmations] = useState<Record<string, string>>({})
+  const [gateReasons, setGateReasons] = useState<string[]>([])
 
   const overview = useQuery({
     queryKey: ['retrieval-overview'],
@@ -119,6 +123,7 @@ export function RetrievalStatusCard() {
   }
   const accepted = (data: RetrievalAction) => {
     setProblem(null)
+    setGateReasons([])
     setNotice(
       data.deduplicated
         ? t('settings.retrievalActionDedup')
@@ -133,6 +138,12 @@ export function RetrievalStatusCard() {
         ? error.message
         : t('settings.retrievalActionFailed')
     )
+    const detail =
+      error instanceof ApiError && error.detail && typeof error.detail === 'object'
+        ? (error.detail as { activation_gate?: { reasons?: unknown } })
+        : null
+    const reasons = detail?.activation_gate?.reasons
+    setGateReasons(Array.isArray(reasons) ? reasons.map(String) : [])
   }
 
   const reindex = useMutation({
@@ -226,6 +237,8 @@ export function RetrievalStatusCard() {
     spaces.find((entry) => entry.space_id === spacesData?.active_space_id) ??
     data?.space ??
     null
+  const candidateSpace =
+    spaces.find((entry) => entry.status === 'building') ?? null
 
   return (
     <Card>
@@ -313,6 +326,17 @@ export function RetrievalStatusCard() {
           <p role="alert" className="text-[11px] text-destructive">
             {problem}
           </p>
+        ) : null}
+        {gateReasons.length > 0 ? (
+          <ul
+            role="alert"
+            aria-label={t('settings.retrievalGateReasons')}
+            className="text-[11px] text-destructive"
+          >
+            {gateReasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
         ) : null}
 
         <div className="space-y-2 border-t pt-3">
@@ -405,9 +429,6 @@ export function RetrievalStatusCard() {
           <p className="text-muted-foreground text-[11px]">
             {t('settings.retrievalSpacesHint')}
           </p>
-          <p className="text-warning text-[11px]">
-            {t('settings.retrievalQualityNotSampled')}
-          </p>
           <ul className="space-y-2">
             {spaces.map((space) => {
               const isActive = space.space_id === spacesData?.active_space_id
@@ -433,8 +454,22 @@ export function RetrievalStatusCard() {
                       table: space.index_table ?? '',
                     })}
                   </p>
+                  <p className="text-muted-foreground">
+                    {t('settings.retrievalSpaceQuality', {
+                      state: space.quality_state ?? 'not_sampled',
+                      gate: space.quality_gate ?? 'unknown',
+                    })}
+                  </p>
                   {isBuilding ? (
                     <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy || Boolean(activeRun)}
+                        onClick={() => activateSpace.mutate(space.space_id)}
+                      >
+                        {t('settings.retrievalActivate')}
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
@@ -543,6 +578,21 @@ export function RetrievalStatusCard() {
               {t('settings.retrievalBuildCandidate')}
             </Button>
           </div>
+          <RetrievalQualityPanel
+            spaceId={
+              candidateSpace?.space_id ?? activeSpace?.space_id ?? null
+            }
+            activeSpaceId={spacesData?.active_space_id ?? null}
+            onChanged={refresh}
+            onNotice={(message) => {
+              setProblem(null)
+              setNotice(message)
+            }}
+            onProblem={(message) => {
+              setNotice(null)
+              setProblem(message)
+            }}
+          />
         </div>
 
         <div className="space-y-2 border-t pt-3">

@@ -14,6 +14,8 @@ export type RetrievalSpaceBuildRequest = Schemas['RetrievalSpaceBuildIn']
 export type RetrievalSpaceConfirmRequest = Schemas['RetrievalSpaceConfirmIn']
 export type RetrievalCutoverRequest = Schemas['RetrievalCutoverIn']
 export type RetrievalAction = Schemas['RetrievalActionOut']
+export type RetrievalQuality = Schemas['RetrievalQualityEnvelopeOut']
+export type RetrievalQualityCompareRequest = Schemas['RetrievalQualityCompareIn']
 
 export async function getRetrievalOverview(): Promise<RetrievalOverview> {
   const response = await apiFetch('/api/v1/admin/retrieval/overview')
@@ -36,6 +38,14 @@ export async function getRetrievalCoverage(
 export async function getRetrievalRuns(): Promise<RetrievalRuns> {
   const response = await apiFetch('/api/v1/admin/retrieval/runs')
   return json<RetrievalRuns>(response)
+}
+
+export async function getRetrievalQuality(
+  space?: string
+): Promise<RetrievalQuality> {
+  const search = space ? `?space=${encodeURIComponent(space)}` : ''
+  const response = await apiFetch(`/api/v1/admin/retrieval/quality${search}`)
+  return json<RetrievalQuality>(response)
 }
 
 function actionHeaders(idempotencyKey?: string): Record<string, string> {
@@ -129,6 +139,18 @@ export async function postRetrievalCutover(
   idempotencyKey: string
 ): Promise<RetrievalAction> {
   const response = await apiFetch('/api/v1/admin/retrieval/cutover', {
+    method: 'POST',
+    headers: actionHeaders(idempotencyKey),
+    body: JSON.stringify(body),
+  })
+  return json<RetrievalAction>(response)
+}
+
+export async function postRetrievalQualityCompare(
+  body: RetrievalQualityCompareRequest,
+  idempotencyKey: string
+): Promise<RetrievalAction> {
+  const response = await apiFetch('/api/v1/admin/retrieval/quality/compare', {
     method: 'POST',
     headers: actionHeaders(idempotencyKey),
     body: JSON.stringify(body),

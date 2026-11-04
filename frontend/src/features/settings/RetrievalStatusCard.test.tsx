@@ -7,6 +7,8 @@ import { RetrievalStatusCard } from './RetrievalStatusCard'
 const getRetrievalOverview = vi.fn()
 const getRetrievalRuns = vi.fn()
 const getRetrievalSpaces = vi.fn()
+const getRetrievalQuality = vi.fn()
+const postRetrievalQualityCompare = vi.fn()
 const postRetrievalReindex = vi.fn()
 const postRetrievalMaintenance = vi.fn()
 const postRetrievalBuildSpace = vi.fn()
@@ -17,10 +19,27 @@ const dropRetrievalSpace = vi.fn()
 const cancelRetrievalRun = vi.fn()
 const retryRetrievalRun = vi.fn()
 
+const { MockApiError } = vi.hoisted(() => {
+  class MockApiError extends Error {
+    status = 409
+    detail: unknown
+
+    constructor(message: string, detail?: unknown) {
+      super(message)
+      this.detail = detail
+    }
+  }
+  return { MockApiError }
+})
+
 vi.mock('@/lib/api', () => ({
+  ApiError: MockApiError,
   getRetrievalOverview: () => getRetrievalOverview(),
   getRetrievalRuns: () => getRetrievalRuns(),
   getRetrievalSpaces: () => getRetrievalSpaces(),
+  getRetrievalQuality: (space?: string) => getRetrievalQuality(space),
+  postRetrievalQualityCompare: (body: unknown, key: string) =>
+    postRetrievalQualityCompare(body, key),
   postRetrievalReindex: (body: unknown, key: string) =>
     postRetrievalReindex(body, key),
   postRetrievalMaintenance: (body: unknown, key: string) =>
@@ -144,6 +163,8 @@ describe('RetrievalStatusCard', () => {
     getRetrievalOverview.mockReset()
     getRetrievalRuns.mockReset()
     getRetrievalSpaces.mockReset()
+    getRetrievalQuality.mockReset()
+    postRetrievalQualityCompare.mockReset()
     postRetrievalReindex.mockReset()
     postRetrievalMaintenance.mockReset()
     postRetrievalBuildSpace.mockReset()
@@ -158,6 +179,21 @@ describe('RetrievalStatusCard', () => {
       spaces: [],
       cold: true,
       active_space_id: null,
+      notes: [],
+    })
+    getRetrievalQuality.mockResolvedValue({
+      state: 'no_golden_set',
+      space_id: 'legacy-chunk-vecs',
+      name: 'content',
+      sampled: false,
+      set: null,
+      quality: null,
+      compare: null,
+      bad_matches: [],
+      compare_run_id: null,
+      compare_set_version: null,
+      activation_gate: 'unknown',
+      reason: 'no_golden_set',
       notes: [],
     })
   })
@@ -304,7 +340,7 @@ describe('RetrievalStatusCard', () => {
     renderCard()
 
     expect(
-      await screen.findByText(/golden-query quality compare is not sampled/i)
+      await screen.findByText(/no versioned golden-query set is recorded/i)
     ).toBeInTheDocument()
     expect(await screen.findByText('content-v2')).toBeInTheDocument()
     fireEvent.click(
@@ -339,5 +375,192 @@ describe('RetrievalStatusCard', () => {
       /already active/i
     )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  test('shows the activation gate reasons and quality evidence on refusal', async () => {
+    getRetrievalOverview.mockResolvedValue(overview())
+    getRetrievalSpaces.mockResolvedValue({
+      spaces: [
+        {
+          space_id: 'legacy-chunk-vecs',
+          name: 'content',
+          status: 'active',
+          provider: 'openai',
+          model: 'text-embedding-3-small',
+          dim: 1536,
+          backend: 'sqlite_vec',
+          index_table: 'vec_dfbcce9b',
+          documents: 3,
+          records: 12,
+          coverage: 1,
+          quality_state: 'sampled',
+          quality_gate: 'pass',
+        },
+        {
+          space_id: 'space-new',
+          name: 'content-v2',
+          status: 'building',
+          provider: 'openai',
+          model: 'text-embedding-3-large',
+          dim: 3072,
+          backend: 'sqlite_vec',
+          index_table: 'vec_12345678',
+          documents: 3,
+          records: 12,
+          coverage: 1,
+          quality_state: 'sampled',
+          quality_gate: 'fail',
+        },
+      ],
+      cold: false,
+      active_space_id: 'legacy-chunk-vecs',
+      notes: [],
+    })
+    activateRetrievalSpace.mockRejectedValue(
+      new MockApiError('activation refused', {
+        reason: 'quality_gate_failed',
+        activation_gate: {
+          quality: 'fail',
+          allowed: false,
+          reasons: ['coverage_pass', 'quality_below_floor'],
+        },
+      })
+    )
+    getRetrievalQuality.mockResolvedValue({
+      state: 'sampled',
+      space_id: 'space-new',
+      name: 'content-v2',
+      sampled: true,
+      set: {
+        space_id: 'space-new',
+        set_version: 1,
+        k: 5,
+        floor_recall: 0.8,
+        floor_precision: 0.5,
+        query_count: 1,
+        query_ids: ['q-1'],
+        revision_key: 'space-new:v1',
+      },
+      quality: {
+        space_id: 'space-new',
+        set_version: 1,
+        k: 5,
+        recall_at_k: 0.4,
+        precision_at_k: 0.4,
+        passed: false,
+        queries: [],
+        floor_recall: 0.8,
+        floor_precision: 0.5,
+      },
+      compare: null,
+      bad_matches: [
+        {
+          space_id: 'space-new',
+          query_id: 'q-1',
+          missing_document_ids: ['doc-a'],
+          hits: [
+            {
+              chunk_id: 'chunk-1',
+              document_id: 'doc-b',
+              view: 'body',
+              distance: 0.4,
+              score: 0.6,
+            },
+          ],
+        },
+      ],
+      compare_run_id: 'run-q',
+      compare_set_version: 1,
+      activation_gate: 'fail',
+      reason: null,
+      notes: [],
+    })
+    renderCard()
+
+    expect(await screen.findByText(/quality gate: fail/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/quality: sampled · gate fail/i)
+    ).toBeInTheDocument()
+    fireEvent.click(
+      await screen.findByRole('button', { name: /show bad matches/i })
+    )
+    expect(await screen.findByText(/missing document ids: doc-a/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/chunk chunk-1 · document doc-b · body · score 0.600/i)
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /compare with active space/i })
+    )
+    await waitFor(() => expect(postRetrievalQualityCompare).toHaveBeenCalled())
+    const [body, key] = postRetrievalQualityCompare.mock.calls[0]
+    expect(body).toMatchObject({
+      space_id: 'space-new',
+      compare_space_id: 'legacy-chunk-vecs',
+    })
+    expect(typeof key).toBe('string')
+  })
+
+  test('renders the gate reasons returned by a refused activation', async () => {
+    getRetrievalOverview.mockResolvedValue(overview())
+    getRetrievalSpaces.mockResolvedValue({
+      spaces: [
+        {
+          space_id: 'legacy-chunk-vecs',
+          name: 'content',
+          status: 'active',
+          provider: 'openai',
+          model: 'text-embedding-3-small',
+          dim: 1536,
+          backend: 'sqlite_vec',
+          index_table: 'vec_dfbcce9b',
+          documents: 3,
+          records: 12,
+          coverage: 1,
+          quality_state: 'sampled',
+          quality_gate: 'pass',
+        },
+        {
+          space_id: 'space-new',
+          name: 'content-v2',
+          status: 'building',
+          provider: 'openai',
+          model: 'text-embedding-3-large',
+          dim: 3072,
+          backend: 'sqlite_vec',
+          index_table: 'vec_12345678',
+          documents: 3,
+          records: 12,
+          coverage: 1,
+          quality_state: 'not_sampled',
+          quality_gate: 'unknown',
+        },
+      ],
+      cold: false,
+      active_space_id: 'legacy-chunk-vecs',
+      notes: [],
+    })
+    activateRetrievalSpace.mockRejectedValue(
+      new MockApiError('activation refused', {
+        reason: 'quality_gate_failed',
+        activation_gate: {
+          quality: 'fail',
+          allowed: false,
+          reasons: ['quality_below_floor'],
+        },
+      })
+    )
+    renderCard()
+
+    expect(
+      await screen.findByText(/no versioned golden-query set is recorded/i)
+    ).toBeInTheDocument()
+    fireEvent.click(
+      await screen.findByRole('button', { name: /activate space/i })
+    )
+    await waitFor(() => expect(activateRetrievalSpace).toHaveBeenCalled())
+    expect(
+      await screen.findByText('quality_below_floor')
+    ).toBeInTheDocument()
   })
 })
