@@ -203,7 +203,7 @@ export function RetrievalStatusCard() {
                 {note}
               </p>
             ))}
-            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+            <p className="text-warning text-[11px]">
               {t('settings.retrievalLegacyWarning')}
             </p>
           </div>
@@ -236,7 +236,7 @@ export function RetrievalStatusCard() {
         </div>
 
         {notice ? (
-          <p role="status" className="text-[11px] text-emerald-600 dark:text-emerald-400">
+          <p role="status" className="text-success text-[11px]">
             {notice}
           </p>
         ) : null}
