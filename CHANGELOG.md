@@ -11,6 +11,45 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (golden-query quality compare & gate — plan 51 Q3c2b2)
+- **Versioned admin golden-query sets.** `services/retrieval/quality.py`
+  loads `backend/app/data/retrieval/golden_queries.json` (empty by default —
+  no fabricated pass), selects the newest set by space id then name,
+  normalizes UUID-shaped expected ids, and validates every set through the
+  family contract. Query text stays fixture-only; every read DTO carries
+  query ids, document ids, scores and miss lists.
+- **Bounded real-backend compare.** `POST /admin/retrieval/quality/compare`
+  embeds each golden query once, searches the active and candidate space
+  through `StudyVectorStore.search_scored`, maps chunk hits to material
+  document ids, and returns the contract `QualityCompareDTO` plus a
+  deterministic (distance, chunk id) bad-match detail: chunk/document ids,
+  view, distance and score, never document or query text. The compare is
+  persisted on the `VECTOR_CUTOVER` job result with same-key idempotent
+  replay; `GET /admin/retrieval/quality` reports the newest evidence as
+  `no_golden_set` / `not_sampled` / `sampled` / `stale_compare`.
+- **The quality activation/cutover gate is real.** Activation verifies
+  physical health, coverage (`0.995`) and the golden-query compare;
+  `VECTOR_CUTOVER` backfills, enforces coverage, runs the compare and refuses
+  below the floor. Refusals are structured (`quality_gate_failed`) and persist
+  `quality`, `quality_state`, `bad_matches` and `activation_gate` on the failed
+  job. The old `quality="not_sampled"` success path is gone: only a missing or
+  blocked setup reports `not_sampled`/`blocked`, and never a pass.
+- **Tools → Indexing quality surface.** The card lists each space's quality
+  gate state, shows the set version/k, recall/precision vs floor, pass/fail,
+  the gate and a bad-match drawer; it can run the compare against the active
+  space, and activation/cutover refusals render the gate reasons. No Audit →
+  Retrieval tab yet (Q3c3).
+- **Cross-repo family parity runner.** `services/retrieval/parity.py` +
+  `tests/test_retrieval_ops_family_parity.py` compare the study/career
+  contract and fixture bytes, run every shared quality case through the
+  vendored scorer, pin the DTO shapes and record the sha plus sync-gate
+  status. It deliberately does not claim the family `--strict` gate while the
+  canonical ledger and settings map still record study as pending.
+- Tests: `test_retrieval_quality.py` (SQLite), the PG quality/gate twins in
+  `test_vector_backends_postgres.py`, the updated lifecycle/action/parity
+  walls, and the frontend card/panel tests. Alerts, generation tagging and
+  the canonical sync remain plan 51 Q3c3.
+
 ### Added (vector backend & provisioning — plan 51 Q3c2a)
 - **The content space now runs on a real family vector backend.**
   `storage/vector_backends.py` implements the vendored `VectorBackend`

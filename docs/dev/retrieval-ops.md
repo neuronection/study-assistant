@@ -1,15 +1,14 @@
-# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1)
+# Retrieval operations (plan 50 P3a / plan 51 Q3a/Q3b/Q3c2a/Q3c2b1/Q3c2b2)
 
 Status: **Q3b shipped, plan 50 P3a storage foundation, Q3c1 PostgreSQL
-baseline repair, Q3c2a vector backend/provisioning and Q3c2b1
-lifecycle/cutover shipped** (2026-11-04). The family contracts, the
-`VECTOR_*` job slot, the two bounded aggregates, the admin read surface, the
-management/action seam (idempotency, single-active-run lock, stale reaper,
-audit) and the Tools → Indexing controls are shipped. Q3c2a implements the
-family `VectorBackend` protocol and provisions real `vec_<8hex>` tables;
-Q3c2b1 adds real build/backfill/activate/retire/drop and the `VECTOR_CUTOVER`
-handler over that boundary. Golden-query quality compare, the quality
-activation gate and the full family parity runner remain **Q3c2b2**.
+baseline repair, Q3c2a vector backend/provisioning, Q3c2b1
+lifecycle/cutover and Q3c2b2 golden-query quality + gate shipped**
+(2026-11-04). The family contracts, the `VECTOR_*` job slot, the two bounded
+aggregates, the admin read surface, the management/action seam (idempotency,
+single-active-run lock, stale reaper, audit), the Tools → Indexing controls,
+the versioned golden-query quality compare and the cross-repo parity runner
+are shipped. Activation and cutover require physical health, coverage **and**
+the pre-cutover quality compare; alerts and generation tagging remain Q3c3.
 
 ## Contracts
 
@@ -163,17 +162,20 @@ the HTTP/action seam wraps it, never duplicates it.
   untouched. `vector_records.chunk_id` (migration `0014`) is the space-local
   hydration handle, while the global primary key stays the deterministic
   `uuid5(space, chunk)` record id.
-- **Activate** verifies the physical table/dim/ANN index and the latest
-  coverage snapshot, retires every previous `active` row, then flips the one
-  active pointer in one transaction. It is coverage-gated only:
-  `quality="not_sampled"` is reported explicitly (Q3c2b2).
+- **Activate** verifies the physical table/dim/ANN index, the latest
+  coverage snapshot **and** the pre-cutover golden-query compare, retires
+  every previous `active` row, then flips the one active pointer in one
+  transaction. Missing/blocked quality is a structured refusal
+  (`quality_state="not_sampled"`/`"blocked"`); a below-floor compare is
+  `quality="fail"`. There is no `quality=not_sampled` success path.
 - **Retire** accepts a non-active space (building or already retired).
   **Drop** requires a retired space, the typed space name, and the 7-day grace
   period unless `force` is set together with the typed name. The active space
   can never be dropped.
 - **Cutover** (`VECTOR_CUTOVER`) runs the same backfill, refuses a
-  non-`pass` coverage gate, activates, retires the previous space and reports
-  the activated/previous ids plus `quality="not_sampled"`. Reindex,
+  non-`pass` coverage gate, runs the golden-query compare, refuses below the
+  floor, then activates and retires the previous space. The run result
+  carries the compare DTO, bad matches and the activation gate. Reindex,
   maintenance and cutover keep the Q3b idempotency key, one-active-run lock,
   cancel and retry; build/activate/retire/drop execute as a real job row under
   the same lock and replay semantics.
@@ -285,10 +287,13 @@ reporting a fabricated `0`.
   PostgreSQL; SQLite returns an honest "run a full reindex" note), `retry-failed` (scoped reindex over
   `chunk_ids`).
 - **`VECTOR_CUTOVER`** — backfills the candidate (`space_id`), enforces the
-  coverage gate, activates it, retires the previous active space and reports
-  `quality="not_sampled"`. A partial/limited pass fails explicitly; an
-  already-active candidate is an idempotent success. The retired legacy
-  `chunk_vecs` store is retained until an explicit drop.
+  coverage gate, runs the golden-query quality compare and refuses below the
+  floor, then activates and retires the previous active space. The run result
+  carries `quality` (the compare DTO), `bad_matches`, `quality_state` and
+  `activation_gate`. A partial/limited pass fails explicitly; an
+  already-active candidate is an idempotent success with
+  `quality_state="not_sampled"`. The retired legacy `chunk_vecs` store is
+  retained until an explicit drop.
 
 Cancellation goes through the runner's `report()` checkpoint; a cancelled
 reindex leaves no coverage snapshot and no result counters.
@@ -337,11 +342,12 @@ request: enqueue actions reuse the Q3a `VECTOR_*` handlers.
 | `POST /runs/{id}/cancel` | — | Queued rows become `cancelled` immediately; running rows get the cooperative cancel flag (`cancel_requested=true`) and finish through the runner checkpoint. Terminal rows → 409. |
 | `POST /runs/{id}/retry` | `Idempotency-Key` required | Failed/cancelled vector runs enqueue a **new** row with `requeue_of` and a fresh lock; done/running/cutover rows → 409. |
 | `POST /spaces` | `name?`, `provider?`, `model?`, `dim?`, `normalize?`, prefixes | Build/provision a real `building` space; returns its id/key/table. Required key; a matching building space replays. |
-| `POST /spaces/{id}/activate` | `Idempotency-Key` | Physical + coverage gate; retires every previous active and flips the pointer. Reports `quality="not_sampled"`. |
+| `POST /spaces/{id}/activate` | `Idempotency-Key` | Physical + coverage + golden-query quality gate; retires every previous active and flips the pointer. A below-floor compare refuses with `quality_gate_failed` and the persisted `quality`/`activation_gate`; a missing/blocked set refuses with `quality_state="not_sampled"`/`"blocked"`. |
 | `POST /spaces/{id}/retire` | `confirm_space_name`, key | Typed non-active retirement; active → 409. |
 | `POST /spaces/{id}/drop` | `confirm_space_name`, `force`, key | Typed retired-space drop after the 7-day grace (or forced); active/building → 409. |
-| `POST /cutover` | `space_id`, `limit`, `batch_size`, `force`, key | Enqueues `VECTOR_CUTOVER`: backfill, coverage gate, activate, retire previous, keep legacy compatibility. |
-| `POST /quality/compare` | — | Structured `409 {"reason":"quality_not_sampled", ...}` — golden-query compare is Q3c2b2, never faked. |
+| `POST /cutover` | `space_id`, `limit`, `batch_size`, `force`, key | Enqueues `VECTOR_CUTOVER`: backfill, coverage gate, quality gate, activate, retire previous, keep legacy compatibility. The enqueue response reports `quality_state="pending"`; the run result carries the gate evidence. |
+| `POST /quality/compare` | `space_id`, `compare_space_id`, `Idempotency-Key` | Runs the versioned golden set against the baseline and candidate through the real backend; returns `quality` (candidate block), `quality_compare` (the contract DTO), `bad_matches` and `gate`. Persists the compare on a `VECTOR_CUTOVER` job result (no new ledger); same-key replay returns it. |
+| `GET /quality?space=` | — | The versioned set summary plus the newest persisted compare: `state` is `no_golden_set`/`not_sampled`/`sampled`/`stale_compare`, with recall/precision vs floor, bad matches and the gate. Query text never appears. |
 
 Responses use the contract shape (`action`, `accepted`, `audit_event`,
 `http_status`, `deduplicated`, `run_id`, `status`, `idempotency_key`,
@@ -407,12 +413,15 @@ No raw document/query/prompt text is written or returned.
 control surface: reindex (verify/force), recent runs with true
 queued/running/succeeded/failed/cancelled states and result counters, cancel
 and retry, typed maintenance with the orphan-sweep dry run, and structured
-refusal text. Q3c2b1 adds the minimal space controls: build a candidate from
-the active space's model/dim, list building/active/retired spaces, cut over or
-retire a building space, and drop a retired space only after typing its exact
-name. It states explicitly that activation is coverage-gated and quality is
-not sampled (Q3c2b2). Every mutation sends a fresh `Idempotency-Key`; a replay
-shows the original run instead of a second one.
+refusal text. It lists spaces with their coverage **and quality gate** state,
+builds a candidate from the active space's model/dim, and exposes activate,
+cutover, retire and typed drop. `RetrievalQualityPanel` shows the golden set
+version/k, recall/precision against the floor, pass/fail, the gate state and a
+bad-match drawer (chunk/document ids, view, distance/score — never document or
+query text). It can run the compare against the active space. Activation and
+cutover refusals render the structured `activation_gate.reasons`. Every
+mutation sends a fresh `Idempotency-Key`; a replay shows the original run
+instead of a second one.
 
 The study settings map (`contracts/settings-map.json`) marks
 `tools.retrieval` **aligned** and hosts it in the `indexing` section;
@@ -422,11 +431,18 @@ copy) is the sync handoff when this branch is ready for adoption.
 
 ## Parity
 
-`tests/test_retrieval_ops_parity.py` pins study's emitted run-status, cold
-and degraded tokens to the shared career/study fixture table: every status
-maps into the contract `RunStatus`, a cold store reports `as_of=null`,
-`coverage=null`, `gate=unknown`, and degraded reasons stay inside the closed
-set. This is fixture-level parity, not the full family runner.
+`tests/test_retrieval_ops_parity.py` pins study's emitted run-status, cold,
+degraded, quality and gate tokens to the shared career/study fixture table:
+every status maps into the contract `RunStatus`, a cold store reports
+`as_of=null`, `coverage=null`, `gate=unknown`, and the quality read reports a
+gate token from the fixture set with no query text. `tests/
+test_retrieval_ops_family_parity.py` runs `services/retrieval/parity.py` over
+the sibling career checkout and the dev canonical: it compares the vendored
+contract/fixture bytes, runs every shared quality case through the vendored
+scorer, pins the DTO shapes and records the sha plus the sync-gate status. It
+does **not** claim the family `--strict` gate: the canonical ledger still
+records only career, and the canonical settings map still says
+`pending (plan 51 Q3)` for study.
 
 Q3c2a adds backend parity assertions on both dialects:
 `tests/test_vector_backends.py` (SQLite) and
@@ -435,45 +451,119 @@ the exact `LinearBackend` over the same unit vectors (identical top-k and
 distances), pin the rowid map against `chunk_vec_ids`, and exercise
 scope/empty-scope/profile isolation. The PostgreSQL test also switches the
 scoped threshold to run the exact and ANN branches and asserts they agree.
-`tests/test_search_vector_backend.py` pins FTS/RRF invariance across the
-provisioned and forced-legacy paths. The full cross-repo parity runner
-remains Q3c2b.
+Q3c2b2 adds the PG quality twin: the golden compare scores the same
+recall/precision and the activation gate refuses/passes identically on
+pgvector and SQLite-vec. `tests/test_search_vector_backend.py` pins FTS/RRF
+invariance across the provisioned and forced-legacy paths.
 
-## Q3c2b1 shipped vs Q3c2b2 handoff
+## Quality set, compare and gate runbook (Q3c2b2)
 
-Q3c2b1 (this slice) shipped the lifecycle and cutover:
+**Authoring a golden set.** The admin fixture is
+`backend/app/data/retrieval/golden_queries.json` (packaged with the app). It
+ships **empty** on purpose: a fresh install has no admin-authored set, so
+activation/cutover refuse rather than inventing a pass. Record one versioned
+set per space:
 
-- **Real lifecycle**: build (metadata + `vec_<8hex>` provisioning), bounded
-  backfill through the ordinary writer, physical+coverage activation,
-  previous-active retirement, typed retire/drop with the 7-day grace.
-- **Real cutover**: `VECTOR_CUTOVER` backfills, refuses a non-`pass`
-  coverage gate, activates, retires the previous space and keeps the legacy
-  compatibility store until an explicit drop. `quality="not_sampled"` is
-  reported everywhere instead of a fake quality pass.
-- **Two coexisting spaces**: `vector_records.chunk_id` (migration `0014`)
-  gives every space-local record a chunk hydration handle; the record id is
-  deterministic per `(space, chunk)`, and the rowid is the sqlite-vec rule
-  over that id.
-- **Space identity**: rollups, coverage snapshots, run DTOs and query health
-  all carry the active real space id. The 30/90-day TTL remains the prune
-  owner; old-space rows are not rewritten into the new space's history.
-- **Search/legacy**: search reads the active space through the backend and
-  hydrates `record_id -> chunk_id`; a non-legacy space never falls back to
-  the legacy store, and FTS/RRF semantics are unchanged.
-- **Tools**: the Indexing card lists spaces and exposes build/cutover/
-  retire/drop with typed names and the quality-not-sampled note.
+```json
+{
+  "schemaVersion": 1,
+  "sets": [
+    {
+      "spaceId": "content",
+      "setVersion": 1,
+      "k": 5,
+      "floor": { "recall": 0.8, "precision": 0.5 },
+      "queries": [
+        {
+          "queryId": "q-vectors-1",
+          "query": "cross product definition",
+          "expectedDocumentIds": ["<material-uuid>"],
+          "k": 5
+        }
+      ]
+    }
+  ]
+}
+```
 
-**Q3c2b2 still owns** (explicitly not built here):
+`spaceId` is the persisted space id (preferred) or its name; the newest
+`setVersion` wins. `expectedDocumentIds` are **material ids** for the study
+content space (`vector_documents.source_id` where `kind="material"`);
+chunk ids appear only in the bad-match evidence. UUID-shaped ids are
+normalized, so a hex-form fixture still matches. The floor is validated
+through the family contract; the contract defaults are recall `0.80` and
+precision `0.50`.
 
-1. **Golden-query quality compare** — versioned sets, recall/precision@k,
-   before/after space compare, the bad-match drawer, and the HTTP
-   `quality/compare` runner. The endpoint answers `quality_not_sampled`
-   today.
-2. **Full quality activation gate** — activation here requires physical
-   health + coverage only. Wiring the quality compare into activation (and
-   the `vector.gate.failed` reason vocabulary for quality) is Q3c2b2.
-3. **Full family parity runner** — fixture-level status/cold/degraded parity
-   and the backend parity tests exist; the cross-repo runner and sha gate
-   are Q3c2b2.
-4. **Alerts** (`retrieval.*`) and `ai_generations`-style metadata tagging
-   remain Q3c3/Q4; no second ledger was invented.
+**Running the compare.** `POST /admin/retrieval/quality/compare` with
+`{space_id, compare_space_id}` and an `Idempotency-Key`. It embeds each golden
+query once, runs the same bounded backend search the live path uses on both
+spaces, maps hits to material ids, and scores recall/precision@k through
+`storage/retrieval_ops.evaluate_quality_compare`. The compare is deterministic
+(hits sort by `(distance, chunk_id)`, ids are de-duplicated in hit order) and
+bounded (at most `k × 3`, capped at 300 hits; no full-document work). The
+result is persisted on the `VECTOR_CUTOVER` job's `result.quality` (the
+contract `QualityCompareDTO`), `result.bad_matches`, and `result.gate`; a
+same-key replay returns that response and the `GET /quality` read shows the
+newest evidence. No second ledger is created.
+
+**Gate.** Activation and cutover both require physical health, coverage
+(`0.995`) and quality. Outcomes:
+
+- compare passes → `quality="pass"`, `quality_state="sampled"`, `gate="pass"`;
+- compare runs but misses the floor → 409 `quality_gate_failed`,
+  `quality="fail"`, `quality_state="sampled"`, with `bad_matches` and the
+  `activation_gate` persisted on the failed job's `result.refusal`;
+- no versioned set → 409 `quality_gate_failed`,
+  `quality_state="not_sampled"`, `reasons=["quality_no_golden_set"]`;
+- embedder unassigned/failed → 409 `quality_gate_failed`,
+  `quality_state="blocked"`, `reasons=["quality_blocked"]`.
+
+`quality="not_sampled"` never appears on a success path.
+
+**Cutover runbook.** 1) author/update the set for the candidate space;
+2) build the candidate; 3) run `POST /quality/compare` (or let activation/
+cutover run it) and inspect `bad_matches`; 4) enqueue `POST /cutover` and watch
+the run; 5) the handler backfills, enforces coverage + quality, activates,
+retires the previous space and keeps `chunk_vecs` until the retired legacy
+space is dropped. A below-floor cutover leaves the candidate `building` and
+the evidence on the failed run.
+
+## Q3c2b2 shipped vs Q3c3 handoff
+
+Q3c2b2 shipped:
+
+- **Golden-query sets** — a versioned, admin-authored fixture
+  (`app/data/retrieval/golden_queries.json`), loader/selector by space id or
+  name, id normalization, and a fixture wall that refuses a malformed set.
+- **Quality compare** — the bounded real-backend recall/precision@k compare,
+  the contract `QualityCompareDTO`, per-query misses and a bad-match detail
+  (chunk/document ids, view, distance/score) with no raw text; persisted on
+  the job result with idempotent replay.
+- **Quality gate** — activation and both cutover paths require coverage,
+  physical health and the compare; refusals carry structured
+  `quality`/`quality_state`/`activation_gate` evidence on the failed job.
+- **Tools** — the Indexing card shows set/version, scores vs floor,
+  pass/fail, gate state, a compare action and a bad-match drawer; gate
+  reasons render on refusal.
+- **Family parity runner** — `services/retrieval/parity.py` plus the
+  cross-repo test; shas and the pending ledger/settings-map blockers are
+  recorded, and `strict` stays `false` until the family gate records study.
+- **Tests** — SQLite + PostgreSQL quality/gate twins, no-raw-text payload
+  assertions, replay/persistence, frontend card/panel coverage.
+
+**Q3c3 still owns** (explicitly not built here):
+
+1. **Alerts** — the ten boot-seeded `retrieval.*` notification kinds,
+   threshold/dedup/recovery, admin fanout and daily caps. The
+   `retrieval.quality_gate` alert is declared in `ALERT_DEFAULTS` but nothing
+   emits it yet.
+2. **Generation tagging** — the caller-supplied
+   `ai_generations.metadata` (`space_id`/`kind`/`view`/`chunk_index`) seam and
+   the embed-call usage line; no retrieval DTO may ever select `prompt`.
+3. **Canonical settings-map/ledger sync** — re-vendor the dev canonical
+   settings map and record study in `contracts/retrieval-ops.sync.json` so
+   the parity runner can claim `strict=True`; until then it reports the exact
+   blockers.
+4. **Audit → Retrieval tab** — study adopts the composed audit read surface
+   in Q3 closeout; this slice keeps the read-only quality evidence in the
+   Tools card/drawer.
