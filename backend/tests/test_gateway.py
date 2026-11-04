@@ -891,7 +891,13 @@ def test_embedder_records_embeddings_in_ledger(tmp_path: object) -> None:
         return httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1, 0.2]}]})
 
     gateway = LLMGateway(factory, transport=httpx.MockTransport(handler))
-    result = GatewayEmbedder(gateway).embed(["derivative chain rule"])
+    tags = {
+        "space_id": "space-a",
+        "kind": "material",
+        "view": "body",
+        "chunk_index": 3,
+    }
+    result = GatewayEmbedder(gateway).embed(["derivative chain rule"], metadata=tags)
     assert result is not None
     assert result[0] == "nomic"
     assert result[1] == [[0.1, 0.2]]
@@ -901,3 +907,6 @@ def test_embedder_records_embeddings_in_ledger(tmp_path: object) -> None:
         assert row.model == "nomic"
         assert row.input_tokens > 0
         assert row.latency_ms >= 0
+        assert row.metadata_json == tags
+        assert row.metadata_schema_version == 1
+        assert "derivative chain rule" not in str(row.metadata_json)

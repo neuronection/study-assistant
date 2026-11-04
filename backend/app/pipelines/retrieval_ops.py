@@ -25,6 +25,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from ..ai.embeddings import embed_with_tags
 from ..core.vocab import JobType
 from ..domain.models import Chunk, Job, VectorSpace
 from ..jobs.payloads import JobResult
@@ -193,9 +194,16 @@ def _reindex(
             return
         texts = [chunk.text for chunk in pending]
         ids = [chunk.id for chunk in pending]
+        tags: dict[str, Any] = {
+            "space_id": target,
+            "kind": str(payload.get("kind") or "material"),
+            "view": str(payload.get("view") or "body"),
+        }
+        if len(pending) == 1:
+            tags["chunk_index"] = int(pending[0].ordinal)
         pending.clear()
         try:
-            result = embed(texts)
+            result = embed_with_tags(embed, texts, tags)
         except Exception as error:
             logger.warning(
                 "vector_reindex_embed_failed",

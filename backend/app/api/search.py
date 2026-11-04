@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
+from ..ai.embeddings import embed_with_tags
+from ..services.retrieval import lifecycle
+from ..services.retrieval.legacy import LEGACY_SPACE_ID
 from ..services.search import hybrid_search, node_placements_for_materials
 from .deps import get_session
 from .schemas import SearchHit, SearchHitNode, SearchOut
@@ -17,8 +20,12 @@ def search(
     session: Session = Depends(get_session),
 ) -> SearchOut:
     def embed_query(query: str) -> tuple[str, list[list[float]]] | None:
-        result: tuple[str, list[list[float]]] | None = request.app.state.embedder.embed([query])
-        return result
+        tags = {
+            "space_id": lifecycle.active_space_id(session) or LEGACY_SPACE_ID,
+            "kind": "query",
+            "view": "body",
+        }
+        return embed_with_tags(request.app.state.embedder.embed, [query], tags)
 
     hits = hybrid_search(session, q, limit, embed_query, course_id)
     placements = node_placements_for_materials(session, [str(hit["material_id"]) for hit in hits])

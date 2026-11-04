@@ -17,7 +17,7 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...domain.models import Job, RetrievalQueryRollup, VectorSpace
+from ...domain.models import AiInteraction, Job, RetrievalQueryRollup, VectorSpace
 from ...storage.retrieval_ops import (
     VECTOR_JOB_TYPES,
     GateStatus,
@@ -376,6 +376,87 @@ def query_health(session: Session, *, window: str | None = None) -> dict[str, An
     }
 
 
+def usage(session: Session, *, window: str | None = None) -> dict[str, Any]:
+    """Embedding calls/tokens by day, space and kind (no prompt/text selected).
+
+    Study's ledger is ``ai_interactions``; it has no status/error column, so
+    ``errors`` is honestly unavailable instead of fabricated. Token counts are
+    the recorded estimate/sum and stay ``None`` when the ledger has none.
+    """
+    start, end, key = _window(window)
+    rows = list(
+        session.scalars(
+            select(AiInteraction)
+            .where(
+                AiInteraction.task == "embeddings",
+                AiInteraction.created_at >= start,
+                AiInteraction.created_at < end,
+            )
+            .order_by(AiInteraction.created_at, AiInteraction.id)
+            .limit(10_000)
+        )
+    )
+    buckets: dict[tuple[str, str, str], dict[str, Any]] = {}
+    tokens_seen = False
+    for row in rows:
+        metadata = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+        space_id = str(metadata.get("space_id") or "unattributed")
+        kind = str(metadata.get("kind") or "unknown")
+        moment = row.created_at or start
+        day = (moment.replace(tzinfo=UTC) if moment.tzinfo is None else moment).date().isoformat()
+        entry = buckets.setdefault(
+            (day, space_id, kind),
+            {
+                "day": day,
+                "space_id": space_id,
+                "kind": kind,
+                "calls": 0,
+                "tokens_in": None,
+                "tokens_out": None,
+                "reindex_calls": 0,
+            },
+        )
+        entry["calls"] += 1
+        if kind not in ("query", "golden_query"):
+            entry["reindex_calls"] += 1
+        if row.input_tokens is not None:
+            tokens_seen = True
+            entry["tokens_in"] = int(entry["tokens_in"] or 0) + int(row.input_tokens)
+        if row.output_tokens is not None:
+            tokens_seen = True
+            entry["tokens_out"] = int(entry["tokens_out"] or 0) + int(row.output_tokens)
+    ordered = [buckets[item] for item in sorted(buckets)]
+    notes: list[str] = []
+    if not tokens_seen:
+        notes.append(
+            "No embedding token counts are recorded in this window — the gap is "
+            "reported, not estimated here."
+        )
+    notes.append(
+        "Error counts are unavailable: study's ai_interactions ledger has no "
+        "status/error column; failed embed calls are visible in run results."
+    )
+    if any(entry["space_id"] == "unattributed" for entry in ordered):
+        notes.append(
+            "Rows without caller tags predate retrieval metadata (plan 51 Q3c3a) "
+            "and are reported as unattributed, not guessed."
+        )
+    notes.append(
+        "Study has no token-denominated embed budget; TaskAssignment.monthly_cap_usd "
+        "is monetary and is not reported as a token budget."
+    )
+    return {
+        "window": key,
+        "window_start": iso(start),
+        "window_end": iso(end),
+        "rows": ordered,
+        "tokens_available": tokens_seen,
+        "errors_available": False,
+        "budget": None,
+        "notes": notes,
+    }
+
+
 def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
     store = load_store(session)
     target = store.space_id if store is not None else (_active_space_id(session) or LEGACY_SPACE_ID)
@@ -520,4 +601,5 @@ __all__ = [
     "quality_evidence",
     "query_health",
     "spaces",
+    "usage",
 ]

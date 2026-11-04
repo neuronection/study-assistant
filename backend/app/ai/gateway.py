@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from typing import Any
 from uuid import uuid4
 
@@ -202,6 +202,7 @@ class LLMGateway:
         output: str,
         latency_ms: int,
         usage: Usage | None = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> None:
         if self._session_factory is None:
             return
@@ -221,18 +222,19 @@ class LLMGateway:
             )
         try:
             with self._session_factory() as session:
-                session.add(
-                    AiInteraction(
-                        context_type="gateway",
-                        task=task,
-                        model=resolved.label if resolved else None,
-                        input_tokens=tokens_in,
-                        output_tokens=tokens_out,
-                        cached_input_tokens=cached_in or None,
-                        cost_usd=cost,
-                        latency_ms=latency_ms,
-                    )
+                row = AiInteraction(
+                    context_type="gateway",
+                    task=task,
+                    model=resolved.label if resolved else None,
+                    input_tokens=tokens_in,
+                    output_tokens=tokens_out,
+                    cached_input_tokens=cached_in or None,
+                    cost_usd=cost,
+                    latency_ms=latency_ms,
                 )
+                if metadata:
+                    row.metadata_json = dict(metadata)
+                session.add(row)
                 session.commit()
         except Exception as error:
             logger.warning(
@@ -328,9 +330,15 @@ class LLMGateway:
         return self._resolve_chain(task, None, course_id)[0]
 
     def record_usage(
-        self, task: str, resolved: ResolvedModel, prompt: str, latency_ms: int
+        self,
+        task: str,
+        resolved: ResolvedModel,
+        prompt: str,
+        latency_ms: int,
+        *,
+        metadata: Mapping[str, Any] | None = None,
     ) -> None:
-        self._ledger(task, resolved, prompt, "", latency_ms, None)
+        self._ledger(task, resolved, prompt, "", latency_ms, None, metadata=metadata)
 
     def _sleep_backoff(self, attempt: int) -> None:
         time.sleep(min(self._retry_wait * (2**attempt), 5.0))

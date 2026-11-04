@@ -29,6 +29,7 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ...ai.embeddings import embed_with_tags
 from ...domain.models import Chunk, Extraction, Job, Material, VectorSpace
 from ...storage.retrieval_ops import (
     GateStatus,
@@ -174,9 +175,10 @@ def _retrieve(
     degraded: str | None = None
     blocked: str | None = None
     limit = _hit_limit(golden.k)
+    tags = {"space_id": str(space.id), "kind": "query", "view": "body"}
     for query in golden.queries:
         try:
-            embedded = embed([query.query])
+            embedded = embed_with_tags(embed, [query.query], tags)
         except Exception:
             degraded = degraded or "embed_failed"
             blocked = blocked or "embed_failed"

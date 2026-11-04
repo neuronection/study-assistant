@@ -217,6 +217,27 @@ class RetrievalQualityEnvelopeOut(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class RetrievalUsageRowOut(BaseModel):
+    day: str
+    space_id: str
+    kind: str
+    calls: int
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    reindex_calls: int = 0
+
+
+class RetrievalUsageOut(BaseModel):
+    window: str
+    window_start: str | None
+    window_end: str | None
+    rows: list[RetrievalUsageRowOut] = Field(default_factory=list)
+    tokens_available: bool = False
+    errors_available: bool = False
+    budget: dict[str, Any] | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
 class RetrievalOverviewOut(BaseModel):
     state: str
     cold: bool
@@ -468,6 +489,15 @@ def get_query_health(
     return RetrievalQueryHealthEnvelopeOut.model_validate(
         reads.query_health(session, window=window)
     )
+
+
+@router.get("/usage", response_model=RetrievalUsageOut)
+def get_usage(
+    window: str = Query(default=reads.DEFAULT_WINDOW),
+    _admin: Principal = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> RetrievalUsageOut:
+    return RetrievalUsageOut.model_validate(reads.usage(session, window=window))
 
 
 @router.get("/quality", response_model=RetrievalQualityEnvelopeOut)

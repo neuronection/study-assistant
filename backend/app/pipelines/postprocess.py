@@ -5,12 +5,18 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..ai.embeddings import embed_with_tags
 from ..ai.gateway import ProviderError
 from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import ensure_target_exists
 from ..jobs.payloads import PostprocessPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
-from ..storage.vector_store import StudyVectorStore
+from ..storage.vector_store import (
+    CONTENT_SPACE_ID,
+    CONTENT_SPACE_KIND,
+    CONTENT_VIEW,
+    StudyVectorStore,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -44,18 +50,26 @@ def embed_extraction(session: Session, extraction: Extraction, embedder: Embedde
     )
     if not chunks:
         return 0
+    store = StudyVectorStore(session)
+    space = store.content_space()
+    space_id = space.space_id if space is not None else CONTENT_SPACE_ID
     embedded = 0
     for start in range(0, len(chunks), EMBED_BATCH):
         batch = chunks[start : start + EMBED_BATCH]
-        result = embedder([chunk.text for chunk in batch])
+        tags: dict[str, object] = {
+            "space_id": space_id,
+            "kind": CONTENT_SPACE_KIND,
+            "view": CONTENT_VIEW,
+        }
+        if len(batch) == 1:
+            tags["chunk_index"] = int(batch[0].ordinal)
+        result = embed_with_tags(embedder, [chunk.text for chunk in batch], tags)
         if result is None:
             return embedded
         model, vectors_batch = result
         if not vectors_batch or len(vectors_batch[0]) == 0:
             return embedded
-        StudyVectorStore(session).store(
-            [chunk.id for chunk in batch], vectors_batch, model
-        )
+        store.store([chunk.id for chunk in batch], vectors_batch, model)
         session.commit()
         embedded += len(batch)
     return embedded
