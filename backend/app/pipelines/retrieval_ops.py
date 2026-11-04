@@ -479,7 +479,7 @@ def make_vector_cutover_handler(
                     "space_id": target,
                     "already_active": True,
                     "quality": None,
-                    "quality_state": "not_sampled",
+                    "quality_state": "already_active",
                     "bad_matches": [],
                     "message": "space is already active; nothing to cut over",
                     "space": lifecycle.ActivationResult(

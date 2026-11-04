@@ -291,9 +291,9 @@ reporting a fabricated `0`.
   floor, then activates and retires the previous active space. The run result
   carries `quality` (the compare DTO), `bad_matches`, `quality_state` and
   `activation_gate`. A partial/limited pass fails explicitly; an
-  already-active candidate is an idempotent success with
-  `quality_state="not_sampled"`. The retired legacy `chunk_vecs` store is
-  retained until an explicit drop.
+  already-active candidate is an idempotent no-op with
+  `quality_state="already_active"` (no re-compare, no quality pass claimed).
+  The retired legacy `chunk_vecs` store is retained until an explicit drop.
 
 Cancellation goes through the runner's `report()` checkpoint; a cancelled
 reindex leaves no coverage snapshot and no result counters.

@@ -629,6 +629,14 @@ def test_activation_requires_and_passes_coverage_and_quality(
     )
     assert SECRET not in json.dumps(body)
 
+    replay_status, replay = _activate(
+        client, str(candidate.id), "activate-quality-pass-replay"
+    )
+    assert replay_status == 200
+    assert replay["already_active"] is True
+    assert replay["quality"] is None
+    assert replay["quality_state"] == "already_active"
+
 
 def test_activation_refuses_below_the_quality_floor_and_persists_evidence(
     client: TestClient,

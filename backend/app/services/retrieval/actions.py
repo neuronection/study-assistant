@@ -796,6 +796,7 @@ def activate_space(
             "gate": response.get("gate"),
             "activation_gate": response.get("activation_gate"),
             "space": response.get("space"),
+            "already_active": response.get("already_active"),
         },
     )
 
@@ -833,13 +834,13 @@ def _execute_activate(
                 "space_id": str(row.id),
                 "coverage": "unknown",
                 "quality": "unknown",
-                "quality_state": "not_sampled",
+                "quality_state": "already_active",
                 "allowed": True,
                 "reasons": ["already_active"],
             },
             "quality": None,
             "quality_compare": None,
-            "quality_state": "not_sampled",
+            "quality_state": "already_active",
             "bad_matches": [],
             "gate": "unknown",
             "already_active": True,
@@ -1074,7 +1075,7 @@ def cutover(
             "message": "space is already active",
             "space_id": str(row.id),
             "quality": None,
-            "quality_state": "not_sampled",
+            "quality_state": "already_active",
             "bad_matches": [],
             "already_active": True,
         }

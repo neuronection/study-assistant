@@ -33,7 +33,9 @@ Release history from before the public launch lives in the
   below the floor. Refusals are structured (`quality_gate_failed`) and persist
   `quality`, `quality_state`, `bad_matches` and `activation_gate` on the failed
   job. The old `quality="not_sampled"` success path is gone: only a missing or
-  blocked setup reports `not_sampled`/`blocked`, and never a pass.
+  blocked setup reports `not_sampled`/`blocked`, and never a pass. Repeating
+  an activation/cutover on an already-active space is an explicit
+  `already_active` no-op (no re-compare, no quality pass claimed).
 - **Tools → Indexing quality surface.** The card lists each space's quality
   gate state, shows the set version/k, recall/precision vs floor, pass/fail,
   the gate and a bad-match drawer; it can run the compare against the active
