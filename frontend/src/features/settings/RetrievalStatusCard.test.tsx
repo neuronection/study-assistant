@@ -6,18 +6,35 @@ import { RetrievalStatusCard } from './RetrievalStatusCard'
 
 const getRetrievalOverview = vi.fn()
 const getRetrievalRuns = vi.fn()
+const getRetrievalSpaces = vi.fn()
 const postRetrievalReindex = vi.fn()
 const postRetrievalMaintenance = vi.fn()
+const postRetrievalBuildSpace = vi.fn()
+const postRetrievalCutover = vi.fn()
+const activateRetrievalSpace = vi.fn()
+const retireRetrievalSpace = vi.fn()
+const dropRetrievalSpace = vi.fn()
 const cancelRetrievalRun = vi.fn()
 const retryRetrievalRun = vi.fn()
 
 vi.mock('@/lib/api', () => ({
   getRetrievalOverview: () => getRetrievalOverview(),
   getRetrievalRuns: () => getRetrievalRuns(),
+  getRetrievalSpaces: () => getRetrievalSpaces(),
   postRetrievalReindex: (body: unknown, key: string) =>
     postRetrievalReindex(body, key),
   postRetrievalMaintenance: (body: unknown, key: string) =>
     postRetrievalMaintenance(body, key),
+  postRetrievalBuildSpace: (body: unknown, key: string) =>
+    postRetrievalBuildSpace(body, key),
+  postRetrievalCutover: (body: unknown, key: string) =>
+    postRetrievalCutover(body, key),
+  activateRetrievalSpace: (spaceId: string, key: string) =>
+    activateRetrievalSpace(spaceId, key),
+  retireRetrievalSpace: (spaceId: string, name: string, key: string) =>
+    retireRetrievalSpace(spaceId, name, key),
+  dropRetrievalSpace: (spaceId: string, name: string, key: string, force: boolean) =>
+    dropRetrievalSpace(spaceId, name, key, force),
   cancelRetrievalRun: (runId: string) => cancelRetrievalRun(runId),
   retryRetrievalRun: (runId: string, key: string) =>
     retryRetrievalRun(runId, key),
@@ -126,11 +143,23 @@ describe('RetrievalStatusCard', () => {
   beforeEach(() => {
     getRetrievalOverview.mockReset()
     getRetrievalRuns.mockReset()
+    getRetrievalSpaces.mockReset()
     postRetrievalReindex.mockReset()
     postRetrievalMaintenance.mockReset()
+    postRetrievalBuildSpace.mockReset()
+    postRetrievalCutover.mockReset()
+    activateRetrievalSpace.mockReset()
+    retireRetrievalSpace.mockReset()
+    dropRetrievalSpace.mockReset()
     cancelRetrievalRun.mockReset()
     retryRetrievalRun.mockReset()
     getRetrievalRuns.mockResolvedValue({ runs: [] })
+    getRetrievalSpaces.mockResolvedValue({
+      spaces: [],
+      cold: true,
+      active_space_id: null,
+      notes: [],
+    })
   })
 
   test('shows a cold store honestly and never invents coverage', async () => {
@@ -233,6 +262,69 @@ describe('RetrievalStatusCard', () => {
     const [body, key] = postRetrievalMaintenance.mock.calls[0]
     expect(body).toMatchObject({ action: 'orphan-sweep', dry_run: true })
     expect(typeof key).toBe('string')
+  })
+
+  test('builds a candidate space and gates destructive actions on the typed name', async () => {
+    getRetrievalOverview.mockResolvedValue(overview())
+    getRetrievalSpaces.mockResolvedValue({
+      spaces: [
+        {
+          space_id: 'legacy-chunk-vecs',
+          name: 'content',
+          status: 'active',
+          provider: 'openai',
+          model: 'text-embedding-3-small',
+          dim: 1536,
+          backend: 'sqlite_vec',
+          index_table: 'vec_dfbcce9b',
+          documents: 3,
+          records: 12,
+          coverage: 1,
+        },
+        {
+          space_id: 'space-new',
+          name: 'content-v2',
+          status: 'building',
+          provider: 'openai',
+          model: 'text-embedding-3-large',
+          dim: 3072,
+          backend: 'sqlite_vec',
+          index_table: 'vec_12345678',
+          documents: 0,
+          records: 0,
+          coverage: null,
+        },
+      ],
+      cold: false,
+      active_space_id: 'legacy-chunk-vecs',
+      notes: [],
+    })
+    postRetrievalBuildSpace.mockResolvedValue({ accepted: true })
+    retireRetrievalSpace.mockResolvedValue({ accepted: true })
+    renderCard()
+
+    expect(
+      await screen.findByText(/golden-query quality compare is not sampled/i)
+    ).toBeInTheDocument()
+    expect(await screen.findByText('content-v2')).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: /build candidate space/i })
+    )
+    await waitFor(() => expect(postRetrievalBuildSpace).toHaveBeenCalled())
+    const [body, key] = postRetrievalBuildSpace.mock.calls[0]
+    expect(body).toMatchObject({
+      name: 'content-candidate',
+      model: 'text-embedding-3-small',
+      dim: 1536,
+    })
+    expect(typeof key).toBe('string')
+
+    const retire = screen.getByRole('button', { name: /^retire$/i })
+    expect(retire).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/type content-v2 to confirm/i), {
+      target: { value: 'content-v2' },
+    })
+    expect(retire).toBeEnabled()
   })
 
   test('surfaces a structured 409 refusal instead of pretending success', async () => {

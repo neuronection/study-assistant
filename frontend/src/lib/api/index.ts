@@ -721,20 +721,28 @@ export { HAND_TYPE_REGISTER } from './hand-types'
 export type {
   RetrievalAction,
   RetrievalCoverageEnvelope,
+  RetrievalCutoverRequest,
   RetrievalMaintenanceRequest,
   RetrievalOverview,
   RetrievalReindexRequest,
   RetrievalRuns,
+  RetrievalSpaceBuildRequest,
+  RetrievalSpaceConfirmRequest,
   RetrievalSpaces,
 } from './retrieval'
 
 export {
+  activateRetrievalSpace,
   cancelRetrievalRun,
+  dropRetrievalSpace,
   getRetrievalCoverage,
   getRetrievalOverview,
   getRetrievalRuns,
   getRetrievalSpaces,
+  postRetrievalBuildSpace,
+  postRetrievalCutover,
   postRetrievalMaintenance,
   postRetrievalReindex,
+  retireRetrievalSpace,
   retryRetrievalRun,
 } from './retrieval'

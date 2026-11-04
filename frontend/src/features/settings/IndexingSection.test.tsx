@@ -24,6 +24,13 @@ vi.mock('@/lib/api', () => ({
       notes: [],
     }),
   getRetrievalRuns: () => Promise.resolve({ runs: [] }),
+  getRetrievalSpaces: () =>
+    Promise.resolve({
+      spaces: [],
+      cold: true,
+      active_space_id: null,
+      notes: [],
+    }),
   postRetrievalReindex: vi.fn(),
   postRetrievalMaintenance: vi.fn(),
   cancelRetrievalRun: vi.fn(),

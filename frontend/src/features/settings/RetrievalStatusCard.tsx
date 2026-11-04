@@ -12,17 +12,24 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import {
+  activateRetrievalSpace,
   cancelRetrievalRun,
+  dropRetrievalSpace,
   getRetrievalOverview,
   getRetrievalRuns,
+  getRetrievalSpaces,
+  postRetrievalBuildSpace,
+  postRetrievalCutover,
   postRetrievalMaintenance,
   postRetrievalReindex,
+  retireRetrievalSpace,
   retryRetrievalRun,
 } from '@/lib/api'
 import type {
   RetrievalAction,
   RetrievalMaintenanceRequest,
   RetrievalOverview,
+  RetrievalSpaces,
 } from '@/lib/api'
 import { getCurrentUser } from '@/lib/auth-session'
 
@@ -80,6 +87,8 @@ export function RetrievalStatusCard() {
   const [maintenanceAction, setMaintenanceAction] =
     useState<MaintenanceAction>('orphan-sweep')
   const [dryRun, setDryRun] = useState(false)
+  const [candidateName, setCandidateName] = useState('content-candidate')
+  const [confirmations, setConfirmations] = useState<Record<string, string>>({})
 
   const overview = useQuery({
     queryKey: ['retrieval-overview'],
@@ -95,10 +104,18 @@ export function RetrievalStatusCard() {
     retry: false,
     staleTime: 15_000,
   })
+  const spacesQuery = useQuery({
+    queryKey: ['retrieval-spaces'],
+    queryFn: getRetrievalSpaces,
+    enabled: isAdmin,
+    retry: false,
+    staleTime: 15_000,
+  })
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['retrieval-overview'] })
     void queryClient.invalidateQueries({ queryKey: ['retrieval-runs'] })
+    void queryClient.invalidateQueries({ queryKey: ['retrieval-spaces'] })
   }
   const accepted = (data: RetrievalAction) => {
     setProblem(null)
@@ -143,10 +160,49 @@ export function RetrievalStatusCard() {
     onSuccess: accepted,
     onError: refused,
   })
+  const buildSpace = useMutation({
+    mutationFn: (body: {
+      name: string
+      provider: string
+      model: string
+      dim: number
+      normalize: boolean
+    }) => postRetrievalBuildSpace(body, newIdempotencyKey()),
+    onSuccess: accepted,
+    onError: refused,
+  })
+  const activateSpace = useMutation({
+    mutationFn: (spaceId: string) =>
+      activateRetrievalSpace(spaceId, newIdempotencyKey()),
+    onSuccess: accepted,
+    onError: refused,
+  })
+  const retireSpace = useMutation({
+    mutationFn: (input: { spaceId: string; name: string }) =>
+      retireRetrievalSpace(input.spaceId, input.name, newIdempotencyKey()),
+    onSuccess: accepted,
+    onError: refused,
+  })
+  const dropSpace = useMutation({
+    mutationFn: (input: { spaceId: string; name: string }) =>
+      dropRetrievalSpace(input.spaceId, input.name, newIdempotencyKey()),
+    onSuccess: accepted,
+    onError: refused,
+  })
+  const cutover = useMutation({
+    mutationFn: (spaceId: string) =>
+      postRetrievalCutover(
+        { space_id: spaceId, limit: 5000, batch_size: 32, force: false },
+        newIdempotencyKey()
+      ),
+    onSuccess: accepted,
+    onError: refused,
+  })
 
   if (!isAdmin) return null
 
   const data: RetrievalOverview | undefined = overview.data
+  const spacesData: RetrievalSpaces | undefined = spacesQuery.data
   const coverage = data?.coverage.coverage
   const runs = runsQuery.data?.runs ?? []
   const activeRun = runs.find(
@@ -156,7 +212,20 @@ export function RetrievalStatusCard() {
     runs.find((entry) => (entry.result?.failed_ids?.length ?? 0) > 0)?.result
       ?.failed_ids ?? []
   const busy =
-    reindex.isPending || cancel.isPending || retry.isPending || maintenance.isPending
+    reindex.isPending ||
+    cancel.isPending ||
+    retry.isPending ||
+    maintenance.isPending ||
+    buildSpace.isPending ||
+    activateSpace.isPending ||
+    retireSpace.isPending ||
+    dropSpace.isPending ||
+    cutover.isPending
+  const spaces = spacesData?.spaces ?? []
+  const activeSpace =
+    spaces.find((entry) => entry.space_id === spacesData?.active_space_id) ??
+    data?.space ??
+    null
 
   return (
     <Card>
@@ -327,6 +396,153 @@ export function RetrievalStatusCard() {
               )
             })}
           </ul>
+        </div>
+
+        <div className="space-y-2 border-t pt-3">
+          <h3 className="text-xs font-medium">
+            {t('settings.retrievalSpacesTitle')}
+          </h3>
+          <p className="text-muted-foreground text-[11px]">
+            {t('settings.retrievalSpacesHint')}
+          </p>
+          <p className="text-warning text-[11px]">
+            {t('settings.retrievalQualityNotSampled')}
+          </p>
+          <ul className="space-y-2">
+            {spaces.map((space) => {
+              const isActive = space.space_id === spacesData?.active_space_id
+              const isBuilding = space.status === 'building'
+              const isRetired = space.status === 'retired'
+              const typed = confirmations[space.space_id] ?? ''
+              const confirmed = typed === space.name
+              return (
+                <li
+                  key={space.space_id}
+                  className="border-border space-y-1 rounded-md border px-2 py-1.5 text-xs"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{space.name}</span>
+                    <span className="text-muted-foreground">
+                      {t(`settings.retrievalSpace${space.status}` as const)}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {t('settings.retrievalSpaceMeta', {
+                      model: space.model,
+                      dim: space.dim,
+                      table: space.index_table ?? '',
+                    })}
+                  </p>
+                  {isBuilding ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy || Boolean(activeRun)}
+                        onClick={() => cutover.mutate(space.space_id)}
+                      >
+                        {t('settings.retrievalCutover')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy || !confirmed}
+                        onClick={() =>
+                          retireSpace.mutate({
+                            spaceId: space.space_id,
+                            name: space.name,
+                          })
+                        }
+                      >
+                        {t('settings.retrievalRetire')}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {isBuilding || isRetired ? (
+                    <input
+                      aria-label={t('settings.retrievalTypeSpaceName', {
+                        name: space.name,
+                      })}
+                      placeholder={t('settings.retrievalTypeSpaceName', {
+                        name: space.name,
+                      })}
+                      value={typed}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setConfirmations((current) => ({
+                          ...current,
+                          [space.space_id]: event.target.value,
+                        }))
+                      }
+                      className="border-border bg-surface w-full rounded-md border px-2 py-1 text-xs"
+                    />
+                  ) : null}
+                  {isRetired ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      disabled={busy || !confirmed}
+                      onClick={() =>
+                        dropSpace.mutate({
+                          spaceId: space.space_id,
+                          name: space.name,
+                        })
+                      }
+                    >
+                      {t('settings.retrievalDrop')}
+                    </Button>
+                  ) : null}
+                  {isActive ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled
+                    >
+                      {t('settings.retrievalSpaceActiveLabel')}
+                    </Button>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-muted-foreground flex flex-col gap-1 text-[11px]">
+              {t('settings.retrievalCandidateName')}
+              <input
+                aria-label={t('settings.retrievalCandidateName')}
+                value={candidateName}
+                disabled={busy}
+                onChange={(event) => setCandidateName(event.target.value)}
+                className="border-border bg-surface w-48 rounded-md border px-2 py-1 text-xs"
+              />
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={
+                busy ||
+                !activeSpace ||
+                candidateName.trim().length === 0 ||
+                Boolean(activeRun)
+              }
+              onClick={() => {
+                if (!activeSpace) return
+                buildSpace.mutate({
+                  name: candidateName.trim(),
+                  provider: activeSpace.provider,
+                  model: activeSpace.model,
+                  dim: activeSpace.dim,
+                  normalize: true,
+                })
+              }}
+            >
+              {t('settings.retrievalBuildCandidate')}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2 border-t pt-3">

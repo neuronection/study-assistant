@@ -10,6 +10,9 @@ export type RetrievalCoverageEnvelope = Schemas['RetrievalCoverageEnvelopeOut']
 export type RetrievalRuns = Schemas['RetrievalRunsOut']
 export type RetrievalReindexRequest = Schemas['RetrievalReindexIn']
 export type RetrievalMaintenanceRequest = Schemas['RetrievalMaintenanceIn']
+export type RetrievalSpaceBuildRequest = Schemas['RetrievalSpaceBuildIn']
+export type RetrievalSpaceConfirmRequest = Schemas['RetrievalSpaceConfirmIn']
+export type RetrievalCutoverRequest = Schemas['RetrievalCutoverIn']
 export type RetrievalAction = Schemas['RetrievalActionOut']
 
 export async function getRetrievalOverview(): Promise<RetrievalOverview> {
@@ -58,6 +61,74 @@ export async function postRetrievalMaintenance(
   idempotencyKey: string
 ): Promise<RetrievalAction> {
   const response = await apiFetch('/api/v1/admin/retrieval/maintenance', {
+    method: 'POST',
+    headers: actionHeaders(idempotencyKey),
+    body: JSON.stringify(body),
+  })
+  return json<RetrievalAction>(response)
+}
+
+export async function postRetrievalBuildSpace(
+  body: RetrievalSpaceBuildRequest,
+  idempotencyKey: string
+): Promise<RetrievalAction> {
+  const response = await apiFetch('/api/v1/admin/retrieval/spaces', {
+    method: 'POST',
+    headers: actionHeaders(idempotencyKey),
+    body: JSON.stringify(body),
+  })
+  return json<RetrievalAction>(response)
+}
+
+export async function activateRetrievalSpace(
+  spaceId: string,
+  idempotencyKey: string
+): Promise<RetrievalAction> {
+  const response = await apiFetch(
+    `/api/v1/admin/retrieval/spaces/${encodeURIComponent(spaceId)}/activate`,
+    { method: 'POST', headers: actionHeaders(idempotencyKey) }
+  )
+  return json<RetrievalAction>(response)
+}
+
+export async function retireRetrievalSpace(
+  spaceId: string,
+  confirmSpaceName: string,
+  idempotencyKey: string
+): Promise<RetrievalAction> {
+  const response = await apiFetch(
+    `/api/v1/admin/retrieval/spaces/${encodeURIComponent(spaceId)}/retire`,
+    {
+      method: 'POST',
+      headers: actionHeaders(idempotencyKey),
+      body: JSON.stringify({ confirm_space_name: confirmSpaceName }),
+    }
+  )
+  return json<RetrievalAction>(response)
+}
+
+export async function dropRetrievalSpace(
+  spaceId: string,
+  confirmSpaceName: string,
+  idempotencyKey: string,
+  force = false
+): Promise<RetrievalAction> {
+  const response = await apiFetch(
+    `/api/v1/admin/retrieval/spaces/${encodeURIComponent(spaceId)}/drop`,
+    {
+      method: 'POST',
+      headers: actionHeaders(idempotencyKey),
+      body: JSON.stringify({ confirm_space_name: confirmSpaceName, force }),
+    }
+  )
+  return json<RetrievalAction>(response)
+}
+
+export async function postRetrievalCutover(
+  body: RetrievalCutoverRequest,
+  idempotencyKey: string
+): Promise<RetrievalAction> {
+  const response = await apiFetch('/api/v1/admin/retrieval/cutover', {
     method: 'POST',
     headers: actionHeaders(idempotencyKey),
     body: JSON.stringify(body),

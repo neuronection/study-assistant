@@ -12939,6 +12939,29 @@
             "title": "Action",
             "type": "string"
           },
+          "activation_gate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activation Gate"
+          },
+          "already_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Already Active"
+          },
           "audit_event": {
             "title": "Audit Event",
             "type": "string"
@@ -12990,6 +13013,28 @@
             "title": "Message",
             "type": "string"
           },
+          "model_changed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Changed"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
+          },
           "retry_of": {
             "anyOf": [
               {
@@ -13011,6 +13056,18 @@
               }
             ],
             "title": "Run Id"
+          },
+          "space": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space"
           },
           "space_id": {
             "anyOf": [
@@ -13179,6 +13236,52 @@
         "title": "RetrievalCoverageOut",
         "type": "object"
       },
+      "RetrievalCutoverIn": {
+        "description": "Backfill a building space, enforce coverage, flip active and retire old.",
+        "properties": {
+          "batch_size": {
+            "default": 32,
+            "maximum": 256.0,
+            "minimum": 1.0,
+            "title": "Batch Size",
+            "type": "integer"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "limit": {
+            "default": 500,
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "space_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Space Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id"
+        ],
+        "title": "RetrievalCutoverIn",
+        "type": "object"
+      },
       "RetrievalMaintenanceIn": {
         "description": "One typed maintenance action; retry-failed needs chunk_ids.",
         "properties": {
@@ -13298,6 +13401,13 @@
                 "type": "null"
               }
             ]
+          },
+          "spaces": {
+            "items": {
+              "$ref": "#/components/schemas/RetrievalSpaceOut"
+            },
+            "title": "Spaces",
+            "type": "array"
           },
           "state": {
             "title": "State",
@@ -13885,6 +13995,134 @@
         "title": "RetrievalRunsOut",
         "type": "object"
       },
+      "RetrievalSpaceBuildIn": {
+        "description": "Build a building space; model/dim default to the current assignment.",
+        "properties": {
+          "dim": {
+            "anyOf": [
+              {
+                "maximum": 3072.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dim"
+          },
+          "document_prefix": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Prefix"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "normalize": {
+            "default": true,
+            "title": "Normalize",
+            "type": "boolean"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "query_prefix": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Prefix"
+          }
+        },
+        "title": "RetrievalSpaceBuildIn",
+        "type": "object"
+      },
+      "RetrievalSpaceConfirmIn": {
+        "description": "Typed destructive confirmation (the space name) + replay key.",
+        "properties": {
+          "confirm_space_name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Confirm Space Name",
+            "type": "string"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "required": [
+          "confirm_space_name"
+        ],
+        "title": "RetrievalSpaceConfirmIn",
+        "type": "object"
+      },
       "RetrievalSpaceOut": {
         "properties": {
           "activated_at": {
@@ -14060,6 +14298,17 @@
       },
       "RetrievalSpacesOut": {
         "properties": {
+          "active_space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Space Id"
+          },
           "cold": {
             "default": true,
             "title": "Cold",
@@ -19635,6 +19884,36 @@
     "/api/v1/admin/retrieval/cutover": {
       "post": {
         "operationId": "post_cutover_api_v1_admin_retrieval_cutover_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalCutoverIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -19645,6 +19924,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Post Cutover",
@@ -20085,6 +20374,36 @@
       },
       "post": {
         "operationId": "post_build_space_api_v1_admin_retrieval_spaces_post",
+        "parameters": [
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalSpaceBuildIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -20095,6 +20414,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Post Build Space",
@@ -20115,8 +20444,43 @@
               "title": "Space Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RetrievalActionKeyIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -20157,8 +20521,36 @@
               "title": "Space Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalSpaceConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -20199,8 +20591,36 @@
               "title": "Space Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Client-generated replay key (8-120 chars); repeats with the same body replay",
+              "title": "Idempotency-Key"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalSpaceConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

@@ -9638,6 +9638,12 @@ export interface components {
             accepted: boolean;
             /** Action */
             action: string;
+            /** Activation Gate */
+            activation_gate?: {
+                [key: string]: unknown;
+            } | null;
+            /** Already Active */
+            already_active?: boolean | null;
             /** Audit Event */
             audit_event: string;
             /** Cancel Requested */
@@ -9658,10 +9664,18 @@ export interface components {
              * @default
              */
             message: string;
+            /** Model Changed */
+            model_changed?: boolean | null;
+            /** Quality */
+            quality?: string | null;
             /** Retry Of */
             retry_of?: string | null;
             /** Run Id */
             run_id?: string | null;
+            /** Space */
+            space?: {
+                [key: string]: unknown;
+            } | null;
             /** Space Id */
             space_id?: string | null;
             /** Status */
@@ -9708,6 +9722,31 @@ export interface components {
             total: number;
         };
         /**
+         * RetrievalCutoverIn
+         * @description Backfill a building space, enforce coverage, flip active and retire old.
+         */
+        RetrievalCutoverIn: {
+            /**
+             * Batch Size
+             * @default 32
+             */
+            batch_size: number;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Limit
+             * @default 500
+             */
+            limit: number;
+            /** Space Id */
+            space_id: string;
+        };
+        /**
          * RetrievalMaintenanceIn
          * @description One typed maintenance action; retry-failed needs chunk_ids.
          */
@@ -9744,6 +9783,8 @@ export interface components {
             /** Recent Runs */
             recent_runs?: components["schemas"]["RetrievalRunDetailOut"][];
             space?: components["schemas"]["RetrievalSpaceOut"] | null;
+            /** Spaces */
+            spaces?: components["schemas"]["RetrievalSpaceOut"][];
             /** State */
             state: string;
         };
@@ -9940,6 +9981,46 @@ export interface components {
             /** Runs */
             runs?: components["schemas"]["RetrievalRunDetailOut"][];
         };
+        /**
+         * RetrievalSpaceBuildIn
+         * @description Build a building space; model/dim default to the current assignment.
+         */
+        RetrievalSpaceBuildIn: {
+            /** Dim */
+            dim?: number | null;
+            /** Document Prefix */
+            document_prefix?: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Name */
+            name?: string | null;
+            /**
+             * Normalize
+             * @default true
+             */
+            normalize: boolean;
+            /** Provider */
+            provider?: string | null;
+            /** Query Prefix */
+            query_prefix?: string | null;
+        };
+        /**
+         * RetrievalSpaceConfirmIn
+         * @description Typed destructive confirmation (the space name) + replay key.
+         */
+        RetrievalSpaceConfirmIn: {
+            /** Confirm Space Name */
+            confirm_space_name: string;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
         /** RetrievalSpaceOut */
         RetrievalSpaceOut: {
             /** Activated At */
@@ -9999,6 +10080,8 @@ export interface components {
         };
         /** RetrievalSpacesOut */
         RetrievalSpacesOut: {
+            /** Active Space Id */
+            active_space_id?: string | null;
             /**
              * Cold
              * @default true
@@ -11922,11 +12005,18 @@ export interface operations {
     post_cutover_api_v1_admin_retrieval_cutover_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalCutoverIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -11935,6 +12025,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RetrievalActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -12220,11 +12319,18 @@ export interface operations {
     post_build_space_api_v1_admin_retrieval_spaces_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalSpaceBuildIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -12235,18 +12341,34 @@ export interface operations {
                     "application/json": components["schemas"]["RetrievalActionOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     post_activate_space_api_v1_admin_retrieval_spaces__space_id__activate_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 space_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RetrievalActionKeyIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -12271,13 +12393,20 @@ export interface operations {
     post_drop_space_api_v1_admin_retrieval_spaces__space_id__drop_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 space_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalSpaceConfirmIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -12302,13 +12431,20 @@ export interface operations {
     post_retire_space_api_v1_admin_retrieval_spaces__space_id__retire_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Client-generated replay key (8-120 chars); repeats with the same body replay */
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 space_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetrievalSpaceConfirmIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
