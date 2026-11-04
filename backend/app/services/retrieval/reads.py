@@ -6,8 +6,8 @@ rollups — and shapes the family contract DTOs. Nothing here carries raw
 query, prompt or document text, and coverage is always the latest snapshot
 (``as_of=None`` means never reconciled, never a fake percentage).
 
-Study has no space lifecycle, so the read model exposes exactly one synthetic
-legacy space. The management UI, cutover and activation gates are Q3b.
+Study has no space lifecycle, so the read model exposes exactly one mapped
+content space. The management UI, cutover and activation gates are Q3c.
 """
 
 from __future__ import annotations
@@ -31,11 +31,11 @@ from ...storage.retrieval_ops import (
     RunStatus,
     SpaceDTO,
 )
+from ...storage.vector_store import backend_label
 from .legacy import (
     LEGACY_KIND,
     LEGACY_SPACE_ID,
     LegacyStore,
-    backend_label,
     coverage_dto,
     iso,
     latest_coverage,
@@ -215,7 +215,8 @@ def overview(session: Session, *, window: str | None = None) -> dict[str, Any]:
     health = query_health(session, window=window)
     notes: list[str] = [
         "Space lifecycle management (build/activate/retire/cutover) is not "
-        "available in this build — plan 51 Q3b."
+        "available in this build — plan 51 Q3b/Q3c; the P3a metadata layer "
+        "only maps the legacy content space."
     ]
     if store is None and coverage.as_of is None:
         state = "empty"

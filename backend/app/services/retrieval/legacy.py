@@ -1,11 +1,13 @@
-"""The legacy `chunk_vecs` store read as one synthetic retrieval space.
+"""The one retrieval space, read through the study vector-store adapter.
 
-Study has no vector-space lifecycle table (plan 50's ``vector_spaces`` never
-landed here). Q3a therefore reports the **active legacy configuration**
-honestly: ``vec_meta`` decides the model/dim, the dialect decides the
-backend, ``chunk_vecs`` is the index table, and coverage comes only from the
-latest ``retrieval_coverage_snapshots`` row. A store with no ``vec_meta`` dim
-is cold — never a fabricated 0 %/100 % number.
+Plan 50 P3a added the ``vector_spaces``/``vector_documents``/
+``vector_records`` metadata layer, but the physical backend is still the
+legacy `chunk_vecs` store. This module therefore reports the **active
+configuration** honestly: the adapter resolves the ``content`` space
+(``legacy-chunk-vecs``) and its ``vec_meta`` model/dim, the dialect decides
+the backend, and coverage comes only from the latest
+``retrieval_coverage_snapshots`` row. A store with no ``vec_meta`` dim is
+cold — never a fabricated 0 %/100 % number.
 
 Everything below is the adapter boundary: no retrieval DTO or route builds
 raw vector SQL itself.
@@ -19,16 +21,11 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ...ai.embeddings import EMBEDDINGS_TASK
 from ...domain.models import (
-    AiModel,
     Chunk,
-    DefaultTaskAssignment,
     Extraction,
     Material,
-    Provider,
     RetrievalCoverageSnapshot,
-    TaskAssignment,
 )
 from ...storage import vectors
 from ...storage.retrieval_ops import (
@@ -38,9 +35,15 @@ from ...storage.retrieval_ops import (
     SpaceDTO,
     SpaceStatus,
 )
+from ...storage.vector_store import (
+    CONTENT_SPACE_ID,
+    CONTENT_SPACE_NAME,
+    StudyVectorStore,
+    embedding_assignment,
+)
 
-LEGACY_SPACE_ID = "legacy-chunk-vecs"
-LEGACY_SPACE_NAME = "content (legacy chunk_vecs)"
+LEGACY_SPACE_ID = CONTENT_SPACE_ID
+LEGACY_SPACE_NAME = CONTENT_SPACE_NAME
 LEGACY_KIND = "chunk"
 COVERAGE_TTL_DAYS = 90
 
@@ -69,41 +72,8 @@ class LegacyStore:
     records: int
     chunk_total: int
     meta: dict[str, str]
-
-
-@dataclass(frozen=True)
-class EmbeddingAssignment:
-    provider: str
-    model: str
-    dim: int | None
-
-
-def backend_for(session: Session) -> str:
-    return "pgvector" if session.get_bind().dialect.name == "postgresql" else "sqlite_vec"
-
-
-def backend_label(backend: str) -> str:
-    if backend == "pgvector":
-        return "PostgreSQL pgvector/HNSW"
-    if backend == "sqlite_vec":
-        return "SQLite sqlite-vec"
-    return "Linear fallback — desktop scale"
-
-
-def embedding_assignment(session: Session) -> EmbeddingAssignment:
-    assignment = session.get(TaskAssignment, EMBEDDINGS_TASK)
-    model_id = assignment.model_id if assignment is not None else None
-    if model_id is None:
-        default = session.get(DefaultTaskAssignment, "embeddings")
-        model_id = default.model_id if default is not None else None
-    if model_id is None:
-        return EmbeddingAssignment(provider="unassigned", model="unassigned", dim=None)
-    model = session.get(AiModel, model_id)
-    if model is None:
-        return EmbeddingAssignment(provider="unassigned", model="unassigned", dim=None)
-    provider = session.get(Provider, model.provider_id)
-    label = provider.name if provider is not None else "unknown"
-    return EmbeddingAssignment(provider=label, model=model.external_id, dim=None)
+    key: str = ""
+    metadata_row: bool = False
 
 
 def _distinct_documents(session: Session) -> int:
@@ -122,31 +92,32 @@ def _chunk_total(session: Session) -> int:
 
 
 def load_store(session: Session) -> LegacyStore | None:
-    """The active legacy store, or ``None`` when it was never provisioned."""
-    meta = vectors.read_meta(session)
-    raw_dim = meta.get("dim")
-    if raw_dim is None:
-        return None
-    try:
-        dim = int(raw_dim)
-    except ValueError:
-        return None
-    if dim <= 0:
+    """The active store through the adapter, or ``None`` when unprovisioned."""
+    store = StudyVectorStore(session)
+    space = store.content_space()
+    if space is None:
         return None
     assignment = embedding_assignment(session)
-    model = meta.get("model") or assignment.model
+    physical_records = vectors.vector_count(session)
+    metadata_ready = store.metadata_complete()
     return LegacyStore(
-        space_id=LEGACY_SPACE_ID,
-        name=LEGACY_SPACE_NAME,
-        provider=assignment.provider,
-        model=model,
-        dim=dim,
-        backend=backend_for(session),
-        index_table=vectors.VEC_TABLE,
-        documents=_distinct_documents(session),
-        records=vectors.vector_count(session),
+        space_id=space.space_id,
+        name=space.name,
+        provider=assignment.provider if assignment.provider else space.provider,
+        model=space.model,
+        dim=space.dim,
+        backend=space.backend,
+        index_table=space.index_table,
+        documents=(
+            store.document_count()
+            if metadata_ready
+            else _distinct_documents(session)
+        ),
+        records=physical_records,
         chunk_total=_chunk_total(session),
-        meta=meta,
+        meta=vectors.read_meta(session),
+        key=space.key,
+        metadata_row=space.metadata_row,
     )
 
 

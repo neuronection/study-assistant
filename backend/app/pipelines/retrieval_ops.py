@@ -32,7 +32,6 @@ from ..services.retrieval.legacy import (
     write_coverage_snapshot,
 )
 from ..services.retrieval.telemetry import degraded_reason_for_warning
-from ..storage import vectors
 from ..storage.retrieval_ops import (
     COVERAGE_GATE,
     FAILED_IDS_LIMIT,
@@ -41,6 +40,7 @@ from ..storage.retrieval_ops import (
     RunResultDTO,
     truncate_failed_ids,
 )
+from ..storage.vector_store import StudyVectorStore
 
 logger = structlog.get_logger(__name__)
 
@@ -141,7 +141,8 @@ def make_vector_reindex_handler(embed: EmbedFn) -> Callable[[Session, Job, Progr
         total = int(session.execute(count_statement).scalar() or 0)
         chunks = session.scalars(statement.limit(limit)).all()
         limited = len(chunks) < total
-        stored = set(vectors.stored_chunk_ids(session).values())
+        store = StudyVectorStore(session)
+        stored = set(store.stored_chunk_ids().values())
 
         scanned = 0
         embedded = 0
@@ -179,7 +180,7 @@ def make_vector_reindex_handler(embed: EmbedFn) -> Callable[[Session, Job, Progr
                 failed += len(ids)
                 failed_ids.extend(ids)
                 return
-            vectors.store(session, ids, batch, model)
+            store.store(ids, batch, model)
             session.commit()
             embedded += len(ids)
 
@@ -199,7 +200,7 @@ def make_vector_reindex_handler(embed: EmbedFn) -> Callable[[Session, Job, Progr
 
         gate = GateStatus.UNKNOWN
         if not limited and only_ids is None:
-            store = load_store(session)
+            legacy_store = load_store(session)
             embedded_total = max(total - failed, 0)
             coverage = write_coverage_snapshot(
                 session,
@@ -225,11 +226,11 @@ def make_vector_reindex_handler(embed: EmbedFn) -> Callable[[Session, Job, Progr
                     ),
                 )
             )
-            if store is not None and store.chunk_total != coverage.total:
+            if legacy_store is not None and legacy_store.chunk_total != coverage.total:
                 logger.warning(
                     "vector_reindex_coverage_mismatch",
                     job_id=job.id,
-                    store_chunks=store.chunk_total,
+                    store_chunks=legacy_store.chunk_total,
                     snapshot_total=coverage.total,
                 )
         _finish(
@@ -297,7 +298,7 @@ def make_vector_maintenance_handler(
             return
 
         if action == "vacuum":
-            _vacuum(session, vectors.VEC_TABLE)
+            _vacuum(session, StudyVectorStore(session).index_table)
             job.result = cast(
                 JobResult,
                 {
@@ -337,7 +338,8 @@ def make_vector_maintenance_handler(
             return
 
         live_ids = {str(chunk_id) for chunk_id in session.scalars(select(Chunk.id)).all()}
-        dangling, orphan = vectors.orphan_rowids(session, live_ids)
+        store = StudyVectorStore(session)
+        dangling, orphan = store.orphan_rowids(live_ids)
         if dry_run:
             job.result = cast(
                 JobResult,
@@ -358,7 +360,7 @@ def make_vector_maintenance_handler(
             session.commit()
             report(100, "orphan sweep dry-run complete")
             return
-        removed = vectors.delete_rowids(session, [*dangling, *orphan])
+        removed = store.delete_rowids([*dangling, *orphan])
         session.commit()
         job.result = cast(
             JobResult,
@@ -385,7 +387,8 @@ def make_vector_cutover_handler() -> Callable[[Session, Job, Progress], None]:
         del session, job, report
         raise JobError(
             "vector cutover is unavailable: study has no vector-space lifecycle "
-            "(plan 51 Q3b); the active legacy chunk_vecs store is the only space"
+            "cutover target yet (plan 51 Q3c); the legacy content space remains "
+            "readable"
         )
 
     return handler

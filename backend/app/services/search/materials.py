@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ...core.ids import hex_id, uuid_str
 from ...domain.models import MaterialLink, TreeNode
 from ...services.retrieval.telemetry import record_query
-from ...storage import vectors
+from ...storage.vector_store import StudyVectorStore
 from .fusion import (
     TIER_WEIGHT_EXACT,
     TIER_WEIGHT_PREFIX,
@@ -160,7 +160,7 @@ def _vector_ranking(
             return ([], "provider_unassigned")
         _model, vectors_batch = embedded
         query_vector = vectors_batch[0]
-        hits = vectors.search(session, query_vector, limit=limit)
+        hits = StudyVectorStore(session).search(query_vector, limit=limit)
     except Exception:
         return ([], "embed_failed")
     if not hits:

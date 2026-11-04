@@ -14,6 +14,39 @@ VEC_IDS = "chunk_vec_ids"
 _ROWID_MASK = 0x7FFF_FFFF_FFFF_FFFF
 
 
+class VectorSpaceChangeRequired(RuntimeError):
+    """A model/dimension change needs an explicit new space, never a drop.
+
+    Plan 50 P3 makes the active ``content`` space immutable in place: a new
+    embedding model/dimension becomes a *building* space and a cutover
+    (plan 51 Q3c). P3a therefore refuses the write and leaves ``chunk_vecs``
+    untouched — the old vectors stay readable until the operator runs the
+    explicit migration/cutover handoff.
+    """
+
+    def __init__(
+        self,
+        *,
+        current_model: str | None,
+        current_dim: int | None,
+        requested_model: str,
+        requested_dim: int,
+        detail: str = "",
+    ) -> None:
+        self.current_model = current_model
+        self.current_dim = current_dim
+        self.requested_model = requested_model
+        self.requested_dim = requested_dim
+        message = (
+            "the legacy vector store is configured for "
+            f"model={current_model!r} dim={current_dim}, but this write needs "
+            f"model={requested_model!r} dim={requested_dim}. A model/dimension "
+            "change is a new vector space plus cutover (plan 50 P3 / plan 51 Q3c); "
+            "chunk_vecs was left untouched"
+        )
+        super().__init__(f"{message}{f' ({detail})' if detail else ''}")
+
+
 def rowid_for(chunk_id: str) -> int:
     """Stable 63-bit rowid for a UUID chunk id.
 
@@ -47,13 +80,43 @@ def _load_meta(session: Session) -> dict[str, str]:
 
 
 def ensure_table(session: Session, dim: int, model: str) -> bool:
+    """Create the legacy table once; never drop it on a model/dim change.
+
+    P3a replaces the old drop-and-rebuild behaviour with an explicit
+    :class:`VectorSpaceChangeRequired` handoff: the new embedding
+    configuration is a separate space and a cutover, so the existing vectors
+    (and their read path) survive until that runs.
+    """
     meta = _load_meta(session)
     current_dim = meta.get("dim")
     current_model = meta.get("model")
-    if current_dim == str(dim) and current_model == model:
-        return False
-    if current_dim is not None:
-        session.execute(text(f"DROP TABLE IF EXISTS {VEC_TABLE}"))
+    try:
+        current_dim_int = int(current_dim) if current_dim is not None else None
+    except ValueError:
+        current_dim_int = None
+    exists = table_exists(session)
+    same = current_dim == str(dim) and (current_model is None or current_model == model)
+    if same:
+        if not exists:
+            current_dim = None
+        else:
+            if current_model is None:
+                session.execute(
+                    text(
+                        f"INSERT INTO {VEC_META} (key, value) VALUES ('model', :model) "
+                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+                    ),
+                    {"model": model},
+                )
+            return False
+    if current_dim is not None or exists:
+        raise VectorSpaceChangeRequired(
+            current_model=current_model,
+            current_dim=current_dim_int,
+            requested_model=model,
+            requested_dim=int(dim),
+            detail="table exists" if exists and current_dim is None else "",
+        )
     if _is_postgres(session):
         # ADR-0022 S3 twin: sqlite-vec vec0 → pgvector + HNSW (cosine).
         session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

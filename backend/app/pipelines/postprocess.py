@@ -10,7 +10,7 @@ from ..domain.models import Chunk, Extraction, Material, MaterialIndexCard
 from ..jobs.cancellation import ensure_target_exists
 from ..jobs.payloads import PostprocessPayload
 from ..jobs.runner import JobError, JobHandler, ProgressReporter
-from ..storage import vectors
+from ..storage.vector_store import StudyVectorStore
 
 logger = structlog.get_logger(__name__)
 
@@ -53,7 +53,9 @@ def embed_extraction(session: Session, extraction: Extraction, embedder: Embedde
         model, vectors_batch = result
         if not vectors_batch or len(vectors_batch[0]) == 0:
             return embedded
-        vectors.store(session, [chunk.id for chunk in batch], vectors_batch, model)
+        StudyVectorStore(session).store(
+            [chunk.id for chunk in batch], vectors_batch, model
+        )
         session.commit()
         embedded += len(batch)
     return embedded
@@ -93,8 +95,8 @@ def make_postprocess_handler(embedder: Embedder, describer: Describer) -> JobHan
             raise JobError("material not found")
         replaced_chunk_ids = payload.get("replaced_chunk_ids") or []
         if replaced_chunk_ids:
-            vectors.delete_for_extraction(
-                session, [str(chunk_id) for chunk_id in replaced_chunk_ids]
+            StudyVectorStore(session).delete_for_extraction(
+                [str(chunk_id) for chunk_id in replaced_chunk_ids]
             )
         extraction = _latest_extraction(session, payload.get("extraction_id"), material.id)
         report(20, "embedding")

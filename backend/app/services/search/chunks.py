@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...core.ids import hex_id, uuid_str
 from ...services.retrieval.telemetry import degraded_reason_for_warning, record_query
-from ...storage import vectors
+from ...storage.vector_store import StudyVectorStore
 from .fusion import RRF_K
 from .matching import Match, or_terms_match, trigram_match
 from .scoring import fuzzy_text_match
@@ -98,7 +98,7 @@ def _vector_chunk_ranking(
         if embedded is None or not embedded[1]:
             return [], "no embeddings model is assigned (Settings → Tasks)"
         _model, vectors_batch = embedded
-        hits = vectors.search(session, vectors_batch[0], limit=limit * 3)
+        hits = StudyVectorStore(session).search(vectors_batch[0], limit=limit * 3)
     except Exception as error:
         return [], f"the embeddings request failed ({type(error).__name__})"
     rows = _chunk_rows(

@@ -26,9 +26,9 @@ from ...jobs.cancellation import cancel_jobs_for_material
 from ...jobs.payloads import IngestPayload
 from ...jobs.runner import JobRunner
 from ...pipelines.chunking import chunk_markdown
-from ...storage import vectors
 from ...storage.blobs import BlobStore
 from ...storage.fts import delete_material_fts, sync_material_fts
+from ...storage.vector_store import StudyVectorStore
 from .discovery import revert_suggestions_for_material
 from .drawings import (
     apply_drawing_view,
@@ -137,7 +137,7 @@ def purge_material(session: Session, material: Material) -> None:
         else []
     )
     if chunk_ids:
-        vectors.delete_for_extraction(session, chunk_ids)
+        StudyVectorStore(session).delete_for_extraction(chunk_ids)
     if extraction_ids:
         session.execute(delete(Chunk).where(Chunk.extraction_id.in_(extraction_ids)))
         session.execute(delete(Extraction).where(Extraction.id.in_(extraction_ids)))
