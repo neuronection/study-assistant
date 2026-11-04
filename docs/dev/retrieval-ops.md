@@ -444,6 +444,18 @@ does **not** claim the family `--strict` gate: the canonical ledger still
 records only career, and the canonical settings map still says
 `pending (plan 51 Q3)` for study.
 
+**Parity evidence recorded 2026-11-04** (`run_family_parity()`):
+both vendored files match career and the dev canonical byte-for-byte —
+`retrieval_ops.py` sha256
+`4d3db17c795280a700fc6b39d1ef4383fc67f5e478dce08bae706430ee529551`,
+`retrieval-ops.fixtures.json` sha256
+`4463cb45ff115ea1fe98838e7b81b46c4bdac9afe3ff865bac7d369c26d8de52` — and
+every vocabulary, quality-floor, quality-case and DTO-shape check passes.
+`strict=false` with blockers `sync-ledger:study-assistant` (the ledger has no
+study row; `ledger:study-assistant=""`) and
+`settings-map:canonical-study-pending` (canonical adopter
+`pending (plan 51 Q3)`).
+
 Q3c2a adds backend parity assertions on both dialects:
 `tests/test_vector_backends.py` (SQLite) and
 `tests/test_vector_backends_postgres.py` compare sqlite-vec/pgvector against
