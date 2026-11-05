@@ -1,13 +1,8 @@
-# VENDORED FILE — family canonical (ADR-0031 / ADR-0051). Source of truth:
-# dev/contracts/vector_contract.py; synced byte-identical to
-# backend/app/storage/vector_contract.py in career-assistant (the first
-# vendored target, plan 50 P1; study-assistant re-syncs at P3) by
-# dev/scripts/sync-vector-contract.sh, sha-checked by
-# dev/scripts/verify-wiring.sh, accepted by the shared fixture table
-# (dev/contracts/vector-contract.fixtures.json — vendored alongside, loaded
-# by every repo's vector-contract contract test). NEVER edit the vendored
-# copy in-repo — change the dev canonical, then re-run the sync (contract
-# changes = one dev commit + one sync run, never per-repo edits).
+# VENDORED FILE — family canonical (ADR-0031 / ADR-0051).
+# Synced byte-identically from the family vector-retrieval contract and
+# checked by the family wiring verifier; the shared fixture table loads
+# alongside it. NEVER edit the vendored copy in-repo — change the family
+# canonical, then re-run the sync.
 """Family vector-retrieval contract (ADR-0051, proposed / plan 50) — the shared law.
 
 One logical store, three deployment backends: **pgvector** on web,

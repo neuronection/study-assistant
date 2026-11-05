@@ -1,12 +1,8 @@
-# VENDORED FILE — family canonical (ADR-0031 / ADR-0051). Source of truth:
-# dev/contracts/tokenizer_contract.py; synced byte-identical to
-# backend/app/storage/tokenizer_contract.py in career-assistant by
-# dev/scripts/sync-tokenizer-contract.sh, sha-checked by
-# dev/scripts/verify-wiring.sh, accepted by the shared fixture table
-# (dev/contracts/tokenizer-contract.fixtures.json — vendored alongside,
-# loaded by every repo's tokenizer-contract test). NEVER edit the vendored
-# copy in-repo — change the dev canonical, then re-run the sync (contract
-# changes = one dev commit + one sync run, never per-repo edits).
+# VENDORED FILE — family canonical (ADR-0031 / ADR-0051).
+# Synced byte-identically from the family tokenizer contract and
+# checked by the family wiring verifier; the shared fixture table loads
+# alongside it. NEVER edit the vendored copy in-repo — change the family
+# canonical, then re-run the sync.
 """Family tokenizer and chunk-configuration contract (plan 52 T0) — the law.
 
 This module is additive to :mod:`vector_contract` and :mod:`retrieval_ops`:
