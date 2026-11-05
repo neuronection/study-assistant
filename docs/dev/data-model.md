@@ -408,9 +408,11 @@ depth-first ordering uses `sort_path`; both are derived data rebuildable from
   user ids), dedup_key? (partial unique), dedup_expires_at?, created_at —
   deduped, recoverable alert events; the bell reads active keys, history stays
 - **jobs**: id, type (ingest/postprocess/chat_turn/drawing_ocr), payload, status
-  (queued/running/done/failed/cancelled), progress, stage, error, result
-  (bounded `VECTOR_*` run result), idempotency_key/lock_key/heartbeat_at/
-  cancel_requested (0011 retrieval action runtime), timestamps
+  (queued/running/done/failed/cancelled), progress, stage, progress_detail
+  (bounded live-indexing counters; NULL outside an active vector run and
+  pruned with the final result), error, result (bounded `VECTOR_*` run
+  result), idempotency_key/lock_key/heartbeat_at/cancel_requested (0011
+  retrieval action runtime), timestamps
 
 ## Derived structures (not in Alembic)
 
@@ -464,6 +466,14 @@ see the 0059 note below. Phase 9B+ (UI work) adds no schema.
 
 ## Migration notes
 
+- **0019_job_progress_detail (plan 52 T5c)**: adds the nullable
+  `jobs.progress_detail` JSON document (`JSON` on SQLite and PostgreSQL).
+  Vector handlers write bounded counts only (phase, processed/total
+  documents, cumulative/estimated chunks, embedded/skipped/failed, local
+  tokens, embed calls, exactness, done) in the same per-document progress
+  UPDATE as `progress`/`stage`; no ids or text. The column stays NULL for
+  every other job family and is pruned when the final `result` commits.
+  Downgrade drops the column (live telemetry, never audit data).
 - **0018_vector_record_token_windows (plan 52 T5b2)**: widens the two
   `vector_records` unique keys to include `chunk_id`/`chunk_index` —
   `(document_id, view, chunk_id, chunk_index)` and

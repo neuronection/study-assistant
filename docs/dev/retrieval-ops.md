@@ -948,3 +948,89 @@ embedding model resolves the exact bundled `cl100k_base`, anything else shows
    v1 drop; no new ledger and no Study-only contract edit.
 4. Run the full re-embed/parity benchmark and close the family T5 parity
    evidence once main carries these bytes.
+
+## Plan 52 T5c — bounded live progress and read-only parity (T5d handoff)
+
+T5c is the **visibility** slice. It emits the vendored family
+`RunProgressDTO` shape from the Study retrieval pipeline, exposes it on the
+run read DTO/API, and renders it in Settings → Indexing plus the read-only
+observation drawers. It does **not** change token-aware chunking, writes,
+space identity, cutover gates or any T5b2 semantics.
+
+**Column.** Migration `0019_job_progress_detail` adds nullable
+`jobs.progress_detail` (`JSON` on SQLite and PostgreSQL). Existing rows read
+as NULL; every non-vector job family keeps its old progress semantics.
+Downgrade drops the column — the detail is live telemetry, never audit data.
+
+**Write path.** `services/progress.py` owns the closed bounded shape
+(`MAX_PROGRESS_DETAIL_BYTES = 2048`, unknown keys dropped, counters clamped,
+phase from `RUN_PROGRESS_PHASES`). The job runner writes
+`progress`/`stage`/`heartbeat_at` and the bounded detail in **one** UPDATE —
+the pipeline never issues a second per-document write. The pipeline's meter
+tracks:
+
+- `processed_documents`/`total_documents` — the exact selected chunk count at
+  scan start (or the carried total on a continuation);
+- `processed_chunks` — the v1 count is one record per chunk; the v2 count is
+  the sum of token windows, so `chunks_estimated=true` and
+  `pending_chunks` is the running-average estimate (never a fake exact
+  corpus total);
+- `embedded/skipped/failed` documents and chunks;
+- `tokens` from the local tokenizer only (`embedding_accounting` for v1,
+  the persisted v2 tokenizer for windows) with `tokens_estimated` and
+  `exact_tokenizer`; provider billing remains `ai_interactions`;
+- `embed_calls` and the phase (`scanning`/`done`/`writing`).
+
+No document text, chunk/document ids, failed-id lists or query text may enter
+the detail; the payload wall and the live-progress tests pin that.
+
+**Carry + prune.** A limited pass returns its counters as `progress_carry`.
+`retry_run` seeds the queued continuation from the failed/cancelled run's
+stored detail (or its carried payload), so the bar resumes instead of
+resetting; counters are cumulative and never rewritten. When the final
+`result` commits, the runner writes `progress_detail = NULL`; the result
+counters remain authoritative. A malformed stored row reads as absent on the
+read surface.
+
+**Read/API.** `services/retrieval/reads.py` validates the stored document
+through `RunProgressDTO` and adds it to `RunDTO`/the run list. The API model
+`RetrievalRunProgressOut` and the generated OpenAPI/types carry the same
+optional field; the token-aware/tokenizer/chunk fields stay as T5b2 shipped,
+with `tokenizer.source` derived from the persisted kind
+(`heuristic → fallback`, otherwise `curated`). The label is read-only
+evidence, not a re-resolution.
+
+**UI.** `RetrievalProgress` renders an accessible `role=progressbar` driven by
+processed/total documents with pending/estimated chunk text, embedded/
+skipped/failed, approximate tokens (`~`) and embed calls, and an exact/
+approximate tokenizer label. `RetrievalTokenizerLabel` renders token-aware vs
+legacy v1. Both appear in the Settings run list/space rows and the read-only
+observation runs table, run drawer and space drawer; compact mode keeps rows
+narrow on mobile. The observation surface still exposes no write control.
+
+**Operator runbook addition.** While a vector run is active, read
+`GET /api/v1/admin/retrieval/runs`: `progress_detail.total_documents` is the
+exact selected document count, `pending_chunks` is explicitly estimated for a
+v2 space, and `exact_tokenizer=false` means the token count is the labelled
+fallback. Do not treat the live counters as the audit result — the final
+`result` (`scanned/embedded/skipped/failed/failed_ids/gate`) is authoritative
+and the live detail disappears when it commits.
+
+**T5d handoff (exact, not built here).**
+1. Re-vendor nothing: T5c writes **no** contract bytes. Confirm the dev
+   canonical ledgers still name study and that
+   `backend/app/storage/retrieval_ops.py` +
+   `backend/tests/fixtures/retrieval_ops.fixtures.json` remain byte-identical
+   to `dev-vector-p0/contracts` (sha check) before publication.
+2. Run the family parity wall with both overrides
+   (`STUDY_RETRIEVAL_CAREER_REPO=<career-tokenizer-p52>`,
+   `STUDY_RETRIEVAL_ADOPTION_REPO=<study-tokenizer-p52>`) and record the one
+   expected `adoption:study-main` blocker separately; the branch bytes are
+   not main adoption. Do not claim `strict=True` until main carries them.
+3. Rollout docs/publication: add the user-facing live-progress note to the
+   release changelog and the operator sequence (v2 build → backfill with the
+   live bar → coverage/quality compare → cutover → retain v1 → explicit
+   drop), including the exact/fallback warning and the fact that a limited
+   run leaves a visible pending remainder.
+4. Full re-embed/parity benchmark and the T5 family evidence/closeout. No new
+   ledger, no second audit stack, no write/cutover change in T5d.

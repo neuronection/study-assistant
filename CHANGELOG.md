@@ -11,6 +11,32 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+### Added (bounded live indexing progress + read-only parity — plan 52 T5c)
+- **Live detail**: migration `0019_job_progress_detail` adds nullable
+  `jobs.progress_detail`. The Study retrieval pipeline folds one bounded
+  counters document into its existing per-document progress UPDATE — phase,
+  exact scan-start `total_documents`, cumulative/estimated chunks,
+  embedded/skipped/failed documents and chunks, local-tokenizer tokens,
+  embed calls and the exactness flag — with no second write, no source ids
+  and no document text. The v1 character path labels chunks exact; the v2
+  window path labels them estimated.
+- **Continuation + pruning**: a limited pass exposes its counters as
+  `progress_carry`; a retry seeds the new run from the stored detail so the
+  bar resumes instead of resetting. The detail is pruned when the final
+  `result` commits — the result stays authoritative.
+- **Read surface**: `GET /admin/retrieval/runs` (and the composed overview)
+  carries the optional `progress_detail` additively; a malformed row reads
+  as absent. Run/space DTOs keep `token_aware` and now expose the persisted
+  tokenizer `source` beside kind/identifier/exactness.
+- **UI**: Settings → Indexing and the read-only observation run drawer render
+  an accessible `role=progressbar` bar with processed/total documents,
+  pending and estimated chunks, embedded/skipped/failed, approximate-token
+  and embed-call counters, and a token-aware/legacy + exact/approximate
+  label. Compact rows keep mobile width; the observation surface adds no
+  action controls.
+- **Not in this slice**: rollout docs/publication (T5d) and any token-aware
+  write/cutover change.
+
 ### Added (token-aware writes + v2 cutover — plan 52 T5b2)
 - **Profile + identity**: `services/retrieval/chunk_profile.py` resolves one
   effective tokenizer/chunk pair (explicit admin pair → curated OpenAI exact
