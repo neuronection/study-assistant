@@ -56,6 +56,7 @@ extractions.blocks :: keep-open content blocks behind blocks_schema_version
 extractions.confidence :: keep-open extractor confidence scores
 item_stats.distractor_selection :: keep-open distractor choice counts
 jobs.payload :: keep-open job-type payload union
+jobs.progress_detail :: keep-open bounded live indexing counters (documents/chunks/tokens; no ids or text; pruned with the final result)
 jobs.result :: keep-open bounded VECTOR_* run-result counters (scanned/embedded/skipped/failed/failed_ids)
 material_drawings.ocr_blocks :: keep-open OCR blocks behind ocr_blocks_schema_version
 material_drawings.strokes :: keep-open ink strokes behind strokes_schema_version

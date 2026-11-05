@@ -607,6 +607,35 @@ class JobResult(TypedDict, total=False):
     note: str
 
 
+class RunProgressDetail(TypedDict, total=False):
+    """Bounded live indexing counters (plan 52 T5c) — counts only.
+
+    ``jobs.progress_detail`` carries exactly this shape: the phase, exact
+    scan-start document total, cumulative/estimated chunk counters, embedded/
+    skipped/failed counts, local-tokenizer tokens and embed calls. It never
+    carries document/query text, source ids or failed-id lists.
+    """
+
+    phase: str
+    processed_documents: int
+    total_documents: int
+    processed_chunks: int
+    pending_chunks: int
+    total_chunks: int | None
+    chunks_estimated: bool
+    embedded_chunks: int
+    skipped_chunks: int
+    failed_chunks: int
+    embedded_documents: int
+    skipped_documents: int
+    failed_documents: int
+    tokens: int | None
+    tokens_estimated: bool
+    embed_calls: int
+    exact_tokenizer: bool
+    done: bool
+
+
 type LatencyHistogram = dict[str, int]
 
 # Caller-supplied embedding tags (plan 51 Q3c3a): space_id/kind/view/
@@ -658,6 +687,7 @@ class JobPayload(TypedDict, total=False):
     limit: int | None
     budget: int | None
     chunk_ids: list[str] | None
+    progress_carry: dict[str, Any] | None
 
 
 PAYLOAD_TYPE_NAMES: dict[str, str] = {
@@ -706,6 +736,7 @@ PAYLOAD_TYPE_NAMES: dict[str, str] = {
     "extractions.confidence": "ExtractionConfidence",
     "item_stats.distractor_selection": "DistractorSelection",
     "jobs.payload": "JobPayload",
+    "jobs.progress_detail": "RunProgressDetail",
     "jobs.result": "JobResult",
     "material_drawings.ocr_blocks": "BlockList",
     "material_drawings.strokes": "StrokeList",
@@ -774,6 +805,7 @@ PAYLOAD_TYPES: dict[str, object] = {
     "FeedbackList": FeedbackList,
     "HelpEventList": HelpEventList,
     "JobPayload": JobPayload,
+    "RunProgressDetail": RunProgressDetail,
     "CoverageReport": CoverageReport,
     "MaterialProvenance": MaterialProvenance,
     "MentionList": MentionList,

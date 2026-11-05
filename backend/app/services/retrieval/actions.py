@@ -10,6 +10,7 @@ transitions (build/activate/retire/drop) execute under a real job row through
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, cast
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session
 from ...core.vocab import JobStatus, JobType
 from ...domain.models import Job, VectorSpace, utcnow
 from ...jobs.cancellation import request_cancel
+from ...services.progress import carry_from_detail
 from ...storage.retrieval_ops import (
     SPACE_DROP_GRACE_DAYS,
     GateStatus,
@@ -426,6 +428,17 @@ def retry_run(
             extra={"run_id": target.id, "run_status": str(target.status)},
         )
     payload["requeue_of"] = target.id
+    carried = carry_from_detail(target.progress_detail)
+    if not carried:
+        previous = payload.get("progress_carry")
+        try:
+            carried = carry_from_detail(previous) if isinstance(previous, Mapping) else {}
+        except ValueError:
+            carried = {}
+    if carried:
+        payload["progress_carry"] = carried
+    else:
+        payload.pop("progress_carry", None)
     retry_space = str(payload.get("space_id") or "") or _target_space(session, None)
     retry_row = session.get(VectorSpace, retry_space)
     if retry_row is not None and retry_row.status == "retired":

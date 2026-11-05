@@ -135,6 +135,7 @@ JSON_SPECIES: dict[str, str] = {
     "extractions.confidence": STATE,
     "item_stats.distractor_selection": STATE,
     "jobs.payload": STATE,
+    "jobs.progress_detail": STATE,
     "jobs.result": STATE,
     "material_drawings.ocr_blocks": DOCUMENT,
     "material_drawings.strokes": DOCUMENT,

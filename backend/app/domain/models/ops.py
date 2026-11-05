@@ -16,6 +16,7 @@ from ..payloads import (
     JobPayload,
     JobResult,
     ProviderStatus,
+    RunProgressDetail,
     SkillContract,
     SkillParams,
     StringList,
@@ -118,6 +119,7 @@ class Job(Base):
     progress: Mapped[int] = mapped_column(Integer, default=0)
     stage: Mapped[str | None] = mapped_column(String(120))
     result: Mapped[JobResult | None] = mapped_column(JSON)
+    progress_detail: Mapped[RunProgressDetail | None] = mapped_column(JSON)
     error: Mapped[str | None] = mapped_column(Text)
     idempotency_key: Mapped[str | None] = mapped_column(String(120))
     lock_key: Mapped[str | None] = mapped_column(String(120))

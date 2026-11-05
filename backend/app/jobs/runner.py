@@ -11,6 +11,7 @@ from app.core.errors import sanitize_error_detail
 from ..core.events import EventBus
 from ..core.vocab import JobStatus, JobType, WsTopic
 from ..domain.models import Job, utcnow
+from ..services.progress import bound_progress_detail
 from .cancellation import (
     CANCELLED_ERROR,
     JobCancelled,
@@ -30,7 +31,7 @@ from .payloads import (
 
 logger = structlog.get_logger(__name__)
 
-ProgressReporter = Callable[[int, str], None]
+ProgressReporter = Callable[..., None]
 JobHandler = Callable[[Session, Job, ProgressReporter], None]
 GroupKey = Callable[[Job], str | None]
 
@@ -228,11 +229,18 @@ class JobRunner:
                 if job_row.status != JobStatus.RUNNING:
                     return
 
-                def report(progress: int, stage: str) -> None:
+                def report(
+                    progress: int,
+                    stage: str,
+                    detail: dict[str, Any] | None = None,
+                ) -> None:
                     if is_cancel_requested(job_id):
                         raise JobCancelled(CANCELLED_ERROR)
                     job_row.progress = max(0, min(100, progress))
                     job_row.stage = stage
+                    bounded = bound_progress_detail(detail)
+                    if bounded is not None:
+                        job_row.progress_detail = cast(Any, bounded)
                     if job_row.type in VECTOR_JOB_TYPES:
                         job_row.heartbeat_at = utcnow()
                     session.commit()
@@ -251,6 +259,7 @@ class JobRunner:
                             job_row.heartbeat_at = job_row.finished_at
                             job_row.lock_key = None
                             job_row.cancel_requested = False
+                        job_row.progress_detail = None
                         session.commit()
                         self.publish_progress(job_id, 100, job_row.stage or "", "done")
                         logger.info("job_done", job_id=job_id, job_type=job_type)

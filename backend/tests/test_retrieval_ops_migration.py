@@ -121,3 +121,33 @@ def test_alerts_and_generation_tags_upgrade_and_downgrade(tmp_path: Path) -> Non
     command.upgrade(config, "head")
     assert {"notification_kinds", "notifications"} <= _tables(db_path)
     assert "metadata" in _columns(db_path, "ai_interactions")
+
+
+def test_job_progress_detail_upgrade_and_downgrade(tmp_path: Path) -> None:
+    db_path = tmp_path / "progress-migration.db"
+    config = _cfg(db_path)
+    command.upgrade(config, "0018_vector_record_token_windows")
+    assert "progress_detail" not in _columns(db_path, "jobs")
+
+    command.upgrade(config, "head")
+    jobs = _columns(db_path, "jobs")
+    assert jobs["progress_detail"][0] == "JSON"
+    assert jobs["progress_detail"][1] is False
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO jobs (id, type, status, progress, progress_detail, created_at) "
+            "VALUES ('job-progress', 'VECTOR_REINDEX', 'running', 42, "
+            '\'{"phase": "embedding", "processed_documents": 2}\', CURRENT_TIMESTAMP)'
+        )
+        stored = connection.execute(
+            "SELECT progress_detail FROM jobs WHERE id = 'job-progress'"
+        ).fetchone()[0]
+        assert "embedding" in stored
+        connection.commit()
+
+    command.downgrade(config, "0018_vector_record_token_windows")
+    assert "progress_detail" not in _columns(db_path, "jobs")
+
+    command.upgrade(config, "head")
+    assert "progress_detail" in _columns(db_path, "jobs")

@@ -570,3 +570,35 @@ def test_vector_space_key_and_token_columns_round_trip(
         "SELECT space_key FROM vector_spaces WHERE id = :id",
         {"id": new_id},
     ) == new_key
+
+
+def test_job_progress_detail_round_trip(migrated_pg: Engine) -> None:
+    """0019 adds/drops the nullable JSON counters document on PostgreSQL."""
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option(
+        "sqlalchemy.url", migrated_pg.url.render_as_string(hide_password=False)
+    )
+    assert _columns(migrated_pg, "jobs")["progress_detail"]["data_type"] == "json"
+    assert _columns(migrated_pg, "jobs")["progress_detail"]["is_nullable"] == "YES"
+
+    with migrated_pg.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO jobs (id, type, status, progress, progress_detail, created_at) "
+                "VALUES (:id, 'VECTOR_REINDEX', 'running', 42, "
+                "        '{\"phase\": \"embedding\", \"processed_documents\": 2}', now())"
+            ),
+            {"id": str(uuid.uuid4())},
+        )
+    assert (
+        _scalar(migrated_pg, "SELECT count(*) FROM jobs WHERE progress_detail IS NOT NULL")
+        == 1
+    )
+
+    with _MIGRATION_LOCK:
+        command.downgrade(alembic_cfg, "0018_vector_record_token_windows")
+    assert "progress_detail" not in _columns(migrated_pg, "jobs")
+
+    with _MIGRATION_LOCK:
+        command.upgrade(alembic_cfg, "head")
+    assert "progress_detail" in _columns(migrated_pg, "jobs")

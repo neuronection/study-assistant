@@ -17,7 +17,8 @@ with the compare persisted on the run result.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 import structlog
@@ -26,11 +27,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from ..ai.embeddings import embed_with_tags
+from ..ai.tokenizers.accounting import TokenAccounting, embedding_accounting
 from ..core.vocab import JobType
 from ..domain.models import Chunk, Job, VectorSpace
 from ..jobs.payloads import JobResult
 from ..jobs.runner import JobError
 from ..pipelines.chunking import InputTooLong
+from ..services.progress import parse_progress_carry
 from ..services.retrieval import lifecycle, quality
 from ..services.retrieval.audit import build_vector_event
 from ..services.retrieval.chunk_profile import (
@@ -55,13 +58,139 @@ from ..storage.vector_store import CONTENT_SPACE_ID, StudyVectorStore, VectorRec
 logger = structlog.get_logger(__name__)
 
 EmbedFn = Callable[[list[str]], tuple[str, list[list[float]]] | None]
-Progress = Callable[[int, str], None]
+Progress = Callable[[int, str, dict[str, Any] | None], None]
 
 DEFAULT_LIMIT = 500
 MAX_LIMIT = 5_000
 DEFAULT_BATCH_SIZE = 32
 MAX_BATCH_SIZE = 256
 MAINTENANCE_ACTIONS = ("orphan-sweep", "vacuum", "index-rebuild", "retry-failed")
+
+
+@dataclass
+class _ProgressMeter:
+    """Cumulative live counters for one reindex run (plan 52 T5c).
+
+    ``total_documents`` is exact at scan start (or carried by a continuation).
+    Chunk totals are exact only for the v1 one-record-per-chunk path; the v2
+    window count is estimated from the running average, and the detail always
+    says which it is. The meter never stores ids or text.
+    """
+
+    total_documents: int
+    processed_documents: int = 0
+    processed_chunks: int = 0
+    embedded_chunks: int = 0
+    skipped_chunks: int = 0
+    failed_chunks: int = 0
+    embedded_documents: int = 0
+    skipped_documents: int = 0
+    failed_documents: int = 0
+    tokens: int | None = 0
+    tokens_exact: bool = False
+    embed_calls: int = 0
+    chunks_estimated: bool = True
+
+    @classmethod
+    def from_carry(cls, carry: Mapping[str, Any], total_documents: int) -> _ProgressMeter:
+        carried_total = int(carry.get("total_documents") or 0)
+        tokens = carry.get("tokens")
+        return cls(
+            total_documents=carried_total or total_documents,
+            processed_documents=int(carry.get("processed_documents") or 0),
+            processed_chunks=int(carry.get("processed_chunks") or 0),
+            embedded_chunks=int(carry.get("embedded_chunks") or 0),
+            skipped_chunks=int(carry.get("skipped_chunks") or 0),
+            failed_chunks=int(carry.get("failed_chunks") or 0),
+            embedded_documents=int(carry.get("embedded_documents") or 0),
+            skipped_documents=int(carry.get("skipped_documents") or 0),
+            failed_documents=int(carry.get("failed_documents") or 0),
+            tokens=tokens if isinstance(tokens, int) and not isinstance(tokens, bool) else 0,
+            tokens_exact=bool(carry.get("tokens_exact")),
+            embed_calls=int(carry.get("embed_calls") or 0),
+        )
+
+    @property
+    def pending_documents(self) -> int:
+        return max(self.total_documents - self.processed_documents, 0)
+
+    def detail(self, phase: str, *, done: bool = False) -> dict[str, Any]:
+        """The bounded detail for one progress write (counts only)."""
+        pending_documents = self.pending_documents
+        if self.processed_documents > 0:
+            average = self.processed_chunks / self.processed_documents
+            pending_chunks = max(round(average * pending_documents), 0)
+        elif not self.chunks_estimated:
+            pending_chunks = pending_documents
+        else:
+            pending_chunks = 0
+        return {
+            "phase": phase,
+            "processed_documents": self.processed_documents,
+            "total_documents": self.total_documents,
+            "processed_chunks": self.processed_chunks,
+            "pending_chunks": pending_chunks,
+            "total_chunks": self.processed_chunks + pending_chunks,
+            "chunks_estimated": self.chunks_estimated,
+            "embedded_chunks": self.embedded_chunks,
+            "skipped_chunks": self.skipped_chunks,
+            "failed_chunks": self.failed_chunks,
+            "embedded_documents": self.embedded_documents,
+            "skipped_documents": self.skipped_documents,
+            "failed_documents": self.failed_documents,
+            "tokens": self.tokens,
+            "tokens_estimated": self.tokens is not None and not self.tokens_exact,
+            "embed_calls": self.embed_calls,
+            "exact_tokenizer": self.tokens is not None and self.tokens_exact,
+            "done": done,
+        }
+
+    def carry(self) -> dict[str, Any]:
+        return {
+            "processed_documents": self.processed_documents,
+            "total_documents": self.total_documents,
+            "processed_chunks": self.processed_chunks,
+            "embedded_chunks": self.embedded_chunks,
+            "skipped_chunks": self.skipped_chunks,
+            "failed_chunks": self.failed_chunks,
+            "embedded_documents": self.embedded_documents,
+            "skipped_documents": self.skipped_documents,
+            "failed_documents": self.failed_documents,
+            "tokens": self.tokens,
+            "tokens_exact": self.tokens_exact,
+            "embed_calls": self.embed_calls,
+        }
+
+
+def _report(
+    report: Progress,
+    value: int,
+    stage: str,
+    detail: Mapping[str, Any] | None = None,
+) -> None:
+    report(value, stage, dict(detail) if detail is not None else None)
+
+
+def _percent(processed: int, total: int) -> int:
+    return max(1, min(99, int(processed * 100 / max(total, 1))))
+
+
+def _carry_for(payload: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        return parse_progress_carry(payload.get("progress_carry"))
+    except ValueError as error:
+        raise JobError(str(error)) from error
+
+
+def _count_v1_tokens(accounting: TokenAccounting, texts: Sequence[str]) -> tuple[int, bool]:
+    """The local tokenizer count for one v1 batch (never provider-billed)."""
+    total = 0
+    exact = True
+    for value in texts:
+        count = accounting.count(value)
+        total += count.tokens
+        exact = exact and count.exact
+    return total, exact
 
 
 def _payload(job: Job) -> dict[str, Any]:
@@ -183,6 +312,7 @@ def _reindex(
     total = int(session.execute(count_statement).scalar() or 0)
     chunks = session.scalars(statement.limit(limit)).all()
     limited = len(chunks) < total
+    carry = _carry_for(payload)
     store = StudyVectorStore(session, space_id=target)
     profile = profile_from_row(session.get(VectorSpace, target))
     if profile is not None:
@@ -200,9 +330,16 @@ def _reindex(
             limited=limited,
             only_ids=only_ids,
             batch_size=batch_size,
+            carry=carry,
         )
     stored_hashes = store.stored_chunk_hashes()
     stored_ids = set(store.stored_chunk_ids().values())
+    accounting = embedding_accounting(session)
+    meter = _ProgressMeter.from_carry(carry, total)
+    meter.chunks_estimated = False
+    if carry.get("tokens") is None:
+        meter.tokens = 0
+        meter.tokens_exact = accounting.exact
 
     scanned = 0
     embedded = 0
@@ -210,10 +347,23 @@ def _reindex(
     failed = 0
     failed_ids: list[str] = []
     pending: list[Chunk] = []
-    report(1, "scanning chunks")
+    _report(
+        report,
+        _percent(meter.processed_documents, meter.total_documents),
+        "scanning chunks",
+        meter.detail("scanning"),
+    )
+
+    def mark_failed(ids: Sequence[str]) -> None:
+        nonlocal failed, failed_ids
+        failed += len(ids)
+        failed_ids.extend(ids)
+        meter.failed_documents += len(ids)
+        meter.failed_chunks += len(ids)
+        meter.processed_chunks += len(ids)
 
     def flush_pending() -> None:
-        nonlocal embedded, failed, failed_ids
+        nonlocal embedded
         if not pending:
             return
         texts = [chunk.text for chunk in pending]
@@ -226,6 +376,7 @@ def _reindex(
         if len(pending) == 1:
             tags["chunk_index"] = int(pending[0].ordinal)
         pending.clear()
+        meter.embed_calls += 1
         try:
             result = embed_with_tags(embed, texts, tags)
         except Exception as error:
@@ -235,35 +386,47 @@ def _reindex(
                 count=len(ids),
                 error=str(error)[:300],
             )
-            failed += len(ids)
-            failed_ids.extend(ids)
+            mark_failed(ids)
             return
         if result is None:
-            failed += len(ids)
-            failed_ids.extend(ids)
+            mark_failed(ids)
             return
         model, batch = result
         if len(batch) != len(ids):
-            failed += len(ids)
-            failed_ids.extend(ids)
+            mark_failed(ids)
             return
         store.store(ids, batch, model)
         session.commit()
         embedded += len(ids)
+        meter.embedded_documents += len(ids)
+        meter.embedded_chunks += len(ids)
+        meter.processed_chunks += len(ids)
+        tokens, exact = _count_v1_tokens(accounting, texts)
+        meter.tokens = (meter.tokens or 0) + tokens
+        meter.tokens_exact = meter.tokens_exact and exact
 
     for chunk in chunks:
-        report(
-            max(1, min(99, int(scanned * 100 / max(total, 1)))),
+        _report(
+            report,
+            _percent(meter.processed_documents, meter.total_documents),
             f"reindex {scanned}/{len(chunks)}",
+            meter.detail("scanning"),
         )
         scanned += 1
+        meter.processed_documents += 1
         if not force:
             current = stored_hashes.get(str(chunk.id))
             if current is not None and current == content_hash(chunk.text):
                 skipped += 1
+                meter.skipped_documents += 1
+                meter.skipped_chunks += 1
+                meter.processed_chunks += 1
                 continue
             if current is None and target == CONTENT_SPACE_ID and chunk.id in stored_ids:
                 skipped += 1
+                meter.skipped_documents += 1
+                meter.skipped_chunks += 1
+                meter.processed_chunks += 1
                 continue
         pending.append(chunk)
         if len(pending) >= batch_size:
@@ -293,9 +456,7 @@ def _reindex(
                 stale=coverage.stale,
                 failed=coverage.failed,
                 embedded=coverage.embedded,
-                coverage=(
-                    coverage.embedded / coverage.total if coverage.total > 0 else None
-                ),
+                coverage=(coverage.embedded / coverage.total if coverage.total > 0 else None),
             )
         )
         if (
@@ -321,7 +482,15 @@ def _reindex(
         gate=gate,
         space_id=target,
     )
-    report(100, "reindex complete")
+    terminal = str(job.type) == JobType.VECTOR_REINDEX.value
+    _report(
+        report,
+        100,
+        "reindex complete",
+        meter.detail(
+            "done" if terminal and not limited else "writing", done=terminal and not limited
+        ),
+    )
     return RunResultDTO(
         scanned=scanned,
         embedded=embedded,
@@ -348,10 +517,16 @@ def _reindex_tokens(
     limited: bool,
     only_ids: set[str] | None,
     batch_size: int,
+    carry: Mapping[str, Any],
 ) -> RunResultDTO:
     """Token-aware reindex: windows are the write unit, chunks the coverage unit."""
     force = bool(payload.get("force"))
     stored = store.stored_record_hashes()
+    meter = _ProgressMeter.from_carry(carry, total)
+    meter.chunks_estimated = True
+    if carry.get("tokens") is None:
+        meter.tokens = 0
+        meter.tokens_exact = profile.exact
     scanned = 0
     embedded = 0
     skipped = 0
@@ -359,7 +534,12 @@ def _reindex_tokens(
     failed_ids: list[str] = []
     embedded_chunks: set[str] = set()
     too_long = 0
-    report(1, "scanning chunks")
+    _report(
+        report,
+        _percent(meter.processed_documents, meter.total_documents),
+        "scanning chunks",
+        meter.detail("scanning"),
+    )
 
     def write(specs: list[Any]) -> None:
         nonlocal embedded, failed, failed_ids
@@ -373,6 +553,7 @@ def _reindex_tokens(
         }
         if len(chunk_ids) == 1:
             tags["chunk_index"] = int(specs[0].window_index)
+        meter.embed_calls += 1
         try:
             result = embed_with_tags(embed, [str(spec.text) for spec in specs], tags)
         except Exception as error:
@@ -384,15 +565,21 @@ def _reindex_tokens(
             )
             failed += len(chunk_ids)
             failed_ids.extend(sorted(chunk_ids))
+            meter.failed_documents += len(chunk_ids)
+            meter.failed_chunks += len(specs)
             return
         if result is None:
             failed += len(chunk_ids)
             failed_ids.extend(sorted(chunk_ids))
+            meter.failed_documents += len(chunk_ids)
+            meter.failed_chunks += len(specs)
             return
         model, batch = result
         if len(batch) != len(specs):
             failed += len(chunk_ids)
             failed_ids.extend(sorted(chunk_ids))
+            meter.failed_documents += len(chunk_ids)
+            meter.failed_chunks += len(specs)
             return
         store.store_specs(
             [
@@ -414,13 +601,20 @@ def _reindex_tokens(
         session.commit()
         embedded_chunks.update(chunk_ids)
         embedded = len(embedded_chunks)
+        meter.embedded_documents += len(chunk_ids)
+        meter.embedded_chunks += len(specs)
+        meter.tokens = (meter.tokens or 0) + sum(int(spec.token_count) for spec in specs)
+        meter.tokens_exact = meter.tokens_exact and profile.exact
 
     for chunk in chunks:
-        report(
-            max(1, min(99, int(scanned * 100 / max(total, 1)))),
+        _report(
+            report,
+            _percent(meter.processed_documents, meter.total_documents),
             f"reindex {scanned}/{len(chunks)}",
+            meter.detail("scanning"),
         )
         scanned += 1
+        meter.processed_documents += 1
         try:
             specs = window_specs_for_chunk(chunk, profile)
         except InputTooLong as error:
@@ -433,16 +627,20 @@ def _reindex_tokens(
             )
             failed += 1
             failed_ids.append(str(chunk.id))
+            meter.failed_documents += 1
+            meter.failed_chunks += 1
             too_long += 1
             continue
+        meter.processed_chunks += len(specs)
         changed = [
             spec
             for spec in specs
-            if force
-            or stored.get((spec.chunk_id, spec.window_index)) != spec.content_hash
+            if force or stored.get((spec.chunk_id, spec.window_index)) != spec.content_hash
         ]
         if not changed:
             skipped += 1
+            meter.skipped_documents += 1
+            meter.skipped_chunks += len(specs)
             continue
         for batch in batch_window_specs(changed, profile, max_items=batch_size):
             write(batch)
@@ -468,9 +666,7 @@ def _reindex_tokens(
                 stale=coverage.stale,
                 failed=coverage.failed,
                 embedded=coverage.embedded,
-                coverage=(
-                    coverage.embedded / coverage.total if coverage.total > 0 else None
-                ),
+                coverage=(coverage.embedded / coverage.total if coverage.total > 0 else None),
             )
         )
     _finish(
@@ -485,7 +681,15 @@ def _reindex_tokens(
         space_id=target,
         extra={"failed_reason": "input_too_long"} if too_long else None,
     )
-    report(100, "reindex complete")
+    terminal = str(job.type) == JobType.VECTOR_REINDEX.value
+    _report(
+        report,
+        100,
+        "reindex complete",
+        meter.detail(
+            "done" if terminal and not limited else "writing", done=terminal and not limited
+        ),
+    )
     return RunResultDTO(
         scanned=scanned,
         embedded=embedded,
@@ -549,7 +753,7 @@ def make_vector_maintenance_handler(
             )
         if dry_run and action != "orphan-sweep":
             raise JobError("dry-run is only supported for orphan-sweep")
-        report(1, action)
+        _report(report, 1, action)
         if action == "retry-failed":
             ids = payload.get("chunk_ids")
             if not isinstance(ids, list) or not ids:
@@ -576,7 +780,7 @@ def make_vector_maintenance_handler(
                 },
             )
             session.commit()
-            report(100, "vacuum complete")
+            _report(report, 100, "vacuum complete")
             return
 
         if action == "index-rebuild":
@@ -597,7 +801,7 @@ def make_vector_maintenance_handler(
                 },
             )
             session.commit()
-            report(100, "index rebuild complete")
+            _report(report, 100, "index rebuild complete")
             return
 
         live_ids = {str(chunk_id) for chunk_id in session.scalars(select(Chunk.id)).all()}
@@ -622,7 +826,7 @@ def make_vector_maintenance_handler(
                 },
             )
             session.commit()
-            report(100, "orphan sweep dry-run complete")
+            _report(report, 100, "orphan sweep dry-run complete")
             return
         removed = store.delete_rowids([*dangling, *orphan])
         session.commit()
@@ -642,7 +846,7 @@ def make_vector_maintenance_handler(
             },
         )
         session.commit()
-        report(100, "orphan sweep complete")
+        _report(report, 100, "orphan sweep complete")
 
     return handler
 
@@ -687,20 +891,20 @@ def make_vector_cutover_handler(
                 },
             )
             session.commit()
-            report(100, "space already active")
+            _report(report, 100, "space already active")
             return
         if row.status != "building":
             raise JobError(
                 f"space {row.name!r} is {row.status}; only a building space can be cut over"
             )
-        report(5, "backfilling candidate space")
+        _report(report, 5, "backfilling candidate space")
         result = _reindex(session, job, report, embed, payload)
         if result.gate is not GateStatus.PASS:
             raise JobError(
                 f"cutover refused: space {row.name!r} is not fully covered "
                 f"(gate={result.gate.value}); backfill it before cutover"
             )
-        report(85, "coverage gate passed; evaluating golden-query quality")
+        _report(report, 85, "coverage gate passed; evaluating golden-query quality")
         active = lifecycle.active_space_row(session)
         baseline = (
             active
@@ -775,7 +979,7 @@ def make_vector_cutover_handler(
                 f"quality floor (recall={outcome.compare.new_recall_at_k:.4f}, "
                 f"precision={outcome.compare.new_precision_at_k:.4f})"
             )
-        report(90, "coverage and quality gates passed; activating")
+        _report(report, 90, "coverage and quality gates passed; activating")
         try:
             activated = lifecycle.activate_space(
                 session,
@@ -810,7 +1014,7 @@ def make_vector_cutover_handler(
             },
         )
         session.commit()
-        report(100, "cutover complete")
+        _report(report, 100, "cutover complete")
 
     return handler
 
