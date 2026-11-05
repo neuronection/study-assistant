@@ -298,7 +298,7 @@ jobs:
           cp StudyAssistant-*-windows-x64.exe StudyAssistant-windows-x64.exe
           cp StudyAssistant-*-x86_64.AppImage StudyAssistant-x86_64.AppImage
           cp studyassistant_*_amd64.deb studyassistant_amd64.deb
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: release/*
           generate_release_notes: true
