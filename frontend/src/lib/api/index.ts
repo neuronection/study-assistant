@@ -729,6 +729,7 @@ export type {
   RetrievalQualityCompareRequest,
   RetrievalQueryHealth,
   RetrievalReindexRequest,
+  RetrievalRunProgress,
   RetrievalRuns,
   RetrievalUsage,
   RetrievalSpaceBuildRequest,

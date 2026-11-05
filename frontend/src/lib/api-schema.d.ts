@@ -10165,6 +10165,7 @@ export interface components {
              * @default 0
              */
             progress: number;
+            progress_detail?: components["schemas"]["RetrievalRunProgressOut"] | null;
             /** Run Id */
             run_id: string;
             scope?: components["schemas"]["RetrievalRunScopeOut"];
@@ -10185,6 +10186,96 @@ export interface components {
             tokenizer?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * RetrievalRunProgressOut
+         * @description Bounded live indexing counters (plan 52 T5c) — counts only, no ids/text.
+         */
+        RetrievalRunProgressOut: {
+            /**
+             * Chunks Estimated
+             * @default true
+             */
+            chunks_estimated: boolean;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /**
+             * Embed Calls
+             * @default 0
+             */
+            embed_calls: number;
+            /**
+             * Embedded Chunks
+             * @default 0
+             */
+            embedded_chunks: number;
+            /**
+             * Embedded Documents
+             * @default 0
+             */
+            embedded_documents: number;
+            /**
+             * Exact Tokenizer
+             * @default false
+             */
+            exact_tokenizer: boolean;
+            /**
+             * Failed Chunks
+             * @default 0
+             */
+            failed_chunks: number;
+            /**
+             * Failed Documents
+             * @default 0
+             */
+            failed_documents: number;
+            /**
+             * Pending Chunks
+             * @default 0
+             */
+            pending_chunks: number;
+            /**
+             * Phase
+             * @default queued
+             */
+            phase: string;
+            /**
+             * Processed Chunks
+             * @default 0
+             */
+            processed_chunks: number;
+            /**
+             * Processed Documents
+             * @default 0
+             */
+            processed_documents: number;
+            /**
+             * Skipped Chunks
+             * @default 0
+             */
+            skipped_chunks: number;
+            /**
+             * Skipped Documents
+             * @default 0
+             */
+            skipped_documents: number;
+            /** Tokens */
+            tokens?: number | null;
+            /**
+             * Tokens Estimated
+             * @default false
+             */
+            tokens_estimated: boolean;
+            /** Total Chunks */
+            total_chunks?: number | null;
+            /**
+             * Total Documents
+             * @default 0
+             */
+            total_documents: number;
         };
         /** RetrievalRunResultOut */
         RetrievalRunResultOut: {

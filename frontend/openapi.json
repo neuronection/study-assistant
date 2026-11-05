@@ -14464,6 +14464,16 @@
             "title": "Progress",
             "type": "integer"
           },
+          "progress_detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalRunProgressOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -14526,6 +14536,115 @@
           "status"
         ],
         "title": "RetrievalRunOut",
+        "type": "object"
+      },
+      "RetrievalRunProgressOut": {
+        "description": "Bounded live indexing counters (plan 52 T5c) \u2014 counts only, no ids/text.",
+        "properties": {
+          "chunks_estimated": {
+            "default": true,
+            "title": "Chunks Estimated",
+            "type": "boolean"
+          },
+          "done": {
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "embed_calls": {
+            "default": 0,
+            "title": "Embed Calls",
+            "type": "integer"
+          },
+          "embedded_chunks": {
+            "default": 0,
+            "title": "Embedded Chunks",
+            "type": "integer"
+          },
+          "embedded_documents": {
+            "default": 0,
+            "title": "Embedded Documents",
+            "type": "integer"
+          },
+          "exact_tokenizer": {
+            "default": false,
+            "title": "Exact Tokenizer",
+            "type": "boolean"
+          },
+          "failed_chunks": {
+            "default": 0,
+            "title": "Failed Chunks",
+            "type": "integer"
+          },
+          "failed_documents": {
+            "default": 0,
+            "title": "Failed Documents",
+            "type": "integer"
+          },
+          "pending_chunks": {
+            "default": 0,
+            "title": "Pending Chunks",
+            "type": "integer"
+          },
+          "phase": {
+            "default": "queued",
+            "title": "Phase",
+            "type": "string"
+          },
+          "processed_chunks": {
+            "default": 0,
+            "title": "Processed Chunks",
+            "type": "integer"
+          },
+          "processed_documents": {
+            "default": 0,
+            "title": "Processed Documents",
+            "type": "integer"
+          },
+          "skipped_chunks": {
+            "default": 0,
+            "title": "Skipped Chunks",
+            "type": "integer"
+          },
+          "skipped_documents": {
+            "default": 0,
+            "title": "Skipped Documents",
+            "type": "integer"
+          },
+          "tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens"
+          },
+          "tokens_estimated": {
+            "default": false,
+            "title": "Tokens Estimated",
+            "type": "boolean"
+          },
+          "total_chunks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Chunks"
+          },
+          "total_documents": {
+            "default": 0,
+            "title": "Total Documents",
+            "type": "integer"
+          }
+        },
+        "title": "RetrievalRunProgressOut",
         "type": "object"
       },
       "RetrievalRunResultOut": {

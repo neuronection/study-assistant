@@ -18,6 +18,7 @@ export type RetrievalQuality = Schemas['RetrievalQualityEnvelopeOut']
 export type RetrievalQualityCompareRequest = Schemas['RetrievalQualityCompareIn']
 export type RetrievalQueryHealth = Schemas['RetrievalQueryHealthEnvelopeOut']
 export type RetrievalUsage = Schemas['RetrievalUsageOut']
+export type RetrievalRunProgress = Schemas['RetrievalRunProgressOut']
 
 export async function getRetrievalOverview(
   window?: string

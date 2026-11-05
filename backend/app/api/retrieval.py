@@ -45,6 +45,29 @@ class RetrievalRunResultOut(BaseModel):
     gate: str = "unknown"
 
 
+class RetrievalRunProgressOut(BaseModel):
+    """Bounded live indexing counters (plan 52 T5c) — counts only, no ids/text."""
+
+    phase: str = "queued"
+    processed_documents: int = 0
+    total_documents: int = 0
+    processed_chunks: int = 0
+    pending_chunks: int = 0
+    total_chunks: int | None = None
+    chunks_estimated: bool = True
+    embedded_chunks: int = 0
+    skipped_chunks: int = 0
+    failed_chunks: int = 0
+    embedded_documents: int = 0
+    skipped_documents: int = 0
+    failed_documents: int = 0
+    tokens: int | None = None
+    tokens_estimated: bool = False
+    embed_calls: int = 0
+    exact_tokenizer: bool = False
+    done: bool = False
+
+
 class RetrievalRunOut(BaseModel):
     run_id: str
     space_id: str
@@ -62,6 +85,7 @@ class RetrievalRunOut(BaseModel):
     cancel_requested: bool = False
     idempotency_key: str | None = None
     lock_key: str | None = None
+    progress_detail: RetrievalRunProgressOut | None = None
     token_aware: bool = False
     tokenizer: dict[str, Any] | None = None
     chunk: dict[str, Any] | None = None

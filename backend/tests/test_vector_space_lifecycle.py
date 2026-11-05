@@ -226,6 +226,7 @@ def test_build_token_aware_persists_and_exposes_the_pair(
     assert body["space"]["token_aware"] is True
     assert body["space"]["tokenizer"]["kind"] == "heuristic"
     assert body["space"]["tokenizer"]["exact"] is False
+    assert body["space"]["tokenizer"]["source"] == "fallback"
     assert body["space"]["chunk"]["max_chunk_tokens"] >= 32
 
     row = db_session.get(VectorSpace, body["space_id"])

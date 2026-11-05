@@ -25,6 +25,7 @@ from ...storage.retrieval_ops import (
     QualityCompareDTO,
     QueryHealthDTO,
     RunDTO,
+    RunProgressDTO,
     RunResultDTO,
     RunScope,
     RunStatus,
@@ -106,6 +107,23 @@ def _token_dtos(
     )
 
 
+def _progress_detail(row: Job) -> RunProgressDTO | None:
+    """The stored live counters, validated through the family contract.
+
+    ``None`` for jobs that never wrote a detail (every non-vector family) and
+    for a malformed row; the run itself still reads normally. Counts only —
+    the column never carries ids or text.
+    """
+    raw = row.progress_detail
+    if not isinstance(raw, Mapping):
+        return None
+    try:
+        values: dict[str, Any] = dict(raw)
+        return RunProgressDTO(**values)
+    except (TypeError, ValueError):
+        return None
+
+
 def _run_dto(session: Session, row: Job) -> RunDTO | None:
     job_type = str(row.type)
     if job_type not in VECTOR_JOB_TYPES:
@@ -138,6 +156,7 @@ def _run_dto(session: Session, row: Job) -> RunDTO | None:
         cancel_requested=bool(row.cancel_requested),
         idempotency_key=row.idempotency_key,
         lock_key=row.lock_key,
+        progress_detail=_progress_detail(row),
         token_aware=bool(space_row is not None and space_row.tokenizer_kind is not None),
         tokenizer=tokenizer,
         chunk=chunk,

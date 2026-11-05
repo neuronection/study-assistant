@@ -59,6 +59,7 @@ def tokenizer_dict(row: Any) -> dict[str, Any] | None:
         "artifact_sha256": tokenizer.artifact_sha256,
         "exact": tokenizer.exact,
         "max_input_tokens": tokenizer.max_input_tokens,
+        "source": tokenizer.source.value,
     }
 
 

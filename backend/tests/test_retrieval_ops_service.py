@@ -117,7 +117,9 @@ def make_job(session: Session, job_type: JobType, payload: dict[str, Any]) -> Jo
     return job
 
 
-def no_report(_progress: int, _stage: str) -> None:
+def no_report(
+    _progress: int, _stage: str, _detail: dict[str, Any] | None = None
+) -> None:
     return None
 
 
@@ -204,7 +206,9 @@ def test_reindex_honours_cancel_without_publishing_coverage(
     seed_chunks(db_session, profile_id, ["alpha", "beta"])
     job = make_job(db_session, JobType.VECTOR_REINDEX, {"limit": 10, "batch_size": 1})
 
-    def cancel_report(_progress: int, _stage: str) -> None:
+    def cancel_report(
+        _progress: int, _stage: str, _detail: dict[str, Any] | None = None
+    ) -> None:
         raise JobCancelled("cancelled by test")
 
     with pytest.raises(JobCancelled):
@@ -408,3 +412,77 @@ def test_read_helpers_treat_partial_scan_as_no_snapshot(
 def test_read_surface_requires_admin(raw_client: TestClient) -> None:
     response = raw_client.get("/api/v1/admin/retrieval/overview")
     assert response.status_code in (401, 403)
+
+
+def test_run_read_exposes_the_bounded_progress_detail(
+    client: TestClient, db_session: Session
+) -> None:
+    job = make_job(
+        db_session,
+        JobType.VECTOR_REINDEX,
+        {"space_id": LEGACY_SPACE_ID, "limit": 10},
+    )
+    job.status = "running"
+    job.progress = 42
+    job.progress_detail = {
+        "phase": "embedding",
+        "processed_documents": 3,
+        "total_documents": 9,
+        "processed_chunks": 7,
+        "pending_chunks": 14,
+        "total_chunks": 21,
+        "chunks_estimated": True,
+        "embedded_chunks": 5,
+        "skipped_chunks": 2,
+        "failed_chunks": 0,
+        "embedded_documents": 2,
+        "skipped_documents": 1,
+        "failed_documents": 0,
+        "tokens": 512,
+        "tokens_estimated": True,
+        "embed_calls": 2,
+        "exact_tokenizer": False,
+        "done": False,
+    }
+    db_session.commit()
+
+    runs = client.get("/api/v1/admin/retrieval/runs").json()["runs"]
+    detail = runs[0]["run"]["progress_detail"]
+    assert detail["phase"] == "embedding"
+    assert detail["processed_documents"] == 3
+    assert detail["total_documents"] == 9
+    assert detail["pending_chunks"] == 14
+    assert detail["chunks_estimated"] is True
+    assert detail["tokens_estimated"] is True
+    assert "failed_ids" not in detail
+    assert_no_raw_text(runs[0])
+
+    payload = reads.list_runs(db_session, limit=5)
+    assert payload[0]["run"]["progress_detail"]["tokens"] == 512
+
+    job.progress_detail = {"phase": "not-a-phase"}
+    db_session.commit()
+    malformed = client.get("/api/v1/admin/retrieval/runs").json()["runs"]
+    assert malformed[0]["run"]["progress_detail"] is None, "a malformed row reads as absent"
+
+
+def test_openapi_carries_the_progress_detail_schema(client: TestClient) -> None:
+    schemas = cast(Any, client.app).openapi()["components"]["schemas"]
+    assert "RetrievalRunProgressOut" in schemas
+    progress = schemas["RetrievalRunProgressOut"]["properties"]
+    assert {
+        "phase",
+        "processed_documents",
+        "total_documents",
+        "pending_chunks",
+        "embedded_documents",
+        "failed_chunks",
+        "tokens",
+        "tokens_estimated",
+        "embed_calls",
+        "exact_tokenizer",
+        "done",
+    } <= set(progress)
+    run = schemas["RetrievalRunOut"]["properties"]
+    refs = [entry.get("$ref", "") for entry in run["progress_detail"].get("anyOf", [])]
+    assert any(ref.endswith("/RetrievalRunProgressOut") for ref in refs)

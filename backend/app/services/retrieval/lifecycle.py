@@ -481,6 +481,7 @@ def _tokenizer_dict(row: VectorSpace) -> dict[str, Any] | None:
         "artifact_sha256": row.tokenizer_artifact_sha256,
         "exact": bool(row.tokenizer_exact),
         "max_input_tokens": int(row.max_input_tokens or 0),
+        "source": "fallback" if row.tokenizer_kind == "heuristic" else "curated",
     }
 
 
