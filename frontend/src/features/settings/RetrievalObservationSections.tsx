@@ -28,6 +28,7 @@ import {
   stateKey,
 } from './retrievalObservation'
 import type { FailureGroup } from './retrievalObservation'
+import { RetrievalProgress, RetrievalTokenizerLabel } from './RetrievalProgress'
 
 const TH_CLASS =
   'px-2 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground'
@@ -231,6 +232,12 @@ export function ObservationSpaces({
                         dim: space.dim,
                       })}
                     </span>
+                    <RetrievalTokenizerLabel
+                      tokenAware={space.token_aware}
+                      tokenizer={space.tokenizer}
+                      chunk={space.chunk}
+                      compact
+                    />
                   </td>
                   <td className={TD_CLASS}>
                     {space.coverage === null || space.coverage === undefined
@@ -307,6 +314,13 @@ export function ObservationRuns({
                   <td className={TD_CLASS}>
                     {t(`settings.${runStatusKey(entry.run.status)}`)}
                     {entry.run.status === 'running' ? ` · ${entry.run.progress}%` : ''}
+                    {entry.run.progress_detail ? (
+                      <RetrievalProgress
+                        detail={entry.run.progress_detail}
+                        compact
+                        testId={`retrieval-observation-progress-${entry.run.run_id}`}
+                      />
+                    ) : null}
                   </td>
                   <td className={TD_CLASS}>
                     {result

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { RetrievalStatusCard } from './RetrievalStatusCard'
@@ -123,7 +123,8 @@ function overview(overrides: Record<string, unknown> = {}) {
 function run(
   status: string,
   runId: string,
-  result: Record<string, unknown> | null = null
+  result: Record<string, unknown> | null = null,
+  progressDetail: Record<string, unknown> | null = null
 ) {
   return {
     run: {
@@ -143,9 +144,37 @@ function run(
       cancel_requested: false,
       idempotency_key: 'key-0000001',
       lock_key: 'vector_space:legacy-chunk-vecs',
+      progress_detail: progressDetail,
+      token_aware: false,
+      tokenizer: null,
+      chunk: null,
     },
     result,
     duration_seconds: null,
+  }
+}
+
+function progressDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    phase: 'embedding',
+    processed_documents: 3,
+    total_documents: 9,
+    processed_chunks: 7,
+    pending_chunks: 14,
+    total_chunks: 21,
+    chunks_estimated: true,
+    embedded_chunks: 5,
+    skipped_chunks: 2,
+    failed_chunks: 1,
+    embedded_documents: 2,
+    skipped_documents: 1,
+    failed_documents: 0,
+    tokens: 512,
+    tokens_estimated: true,
+    embed_calls: 2,
+    exact_tokenizer: false,
+    done: false,
+    ...overrides,
   }
 }
 
@@ -562,5 +591,99 @@ describe('RetrievalStatusCard', () => {
     expect(
       await screen.findByText('quality_below_floor')
     ).toBeInTheDocument()
+  })
+
+  test('renders a real bounded progress bar and counters for a running run', async () => {
+    getRetrievalOverview.mockResolvedValue(overview())
+    getRetrievalRuns.mockResolvedValue({
+      runs: [run('running', 'run-progress', null, progressDetail())],
+    })
+    renderCard()
+
+    const bar = await screen.findByTestId('retrieval-run-progress-run-progress-bar')
+    expect(bar).toHaveAttribute('role', 'progressbar')
+    expect(bar).toHaveAttribute('aria-valuenow', '33')
+    expect(
+      screen.getByTestId('retrieval-run-progress-run-progress-documents').textContent
+    ).toContain('3 / 9 documents')
+    expect(
+      screen.getByTestId('retrieval-run-progress-run-progress-pending').textContent
+    ).toContain('14')
+  })
+
+  test('shows no progress bar when a run carries no detail', async () => {
+    getRetrievalOverview.mockResolvedValue(overview())
+    getRetrievalRuns.mockResolvedValue({ runs: [run('queued', 'run-nodetail')] })
+    renderCard()
+
+    await screen.findByText('VECTOR_REINDEX'.replace('VECTOR_REINDEX', 'Reindex'))
+    expect(
+      screen.queryByTestId('retrieval-run-progress-run-nodetail-bar')
+    ).not.toBeInTheDocument()
+  })
+
+  test('labels a token-aware space and its exactness without re-resolving it', async () => {
+    getRetrievalOverview.mockResolvedValue(
+      overview({
+        space: {
+          space_id: 'space-v2',
+          name: 'content-v2',
+          status: 'active',
+          provider: 'openai',
+          model: 'text-embedding-3-small',
+          dim: 1536,
+          backend: 'sqlite_vec',
+          metric: 'cosine',
+          index_table: 'vec_12345678',
+          documents: 3,
+          records: 12,
+          coverage: 1,
+          token_aware: true,
+          tokenizer: {
+            kind: 'tiktoken',
+            identifier: 'cl100k_base',
+            exact: true,
+            source: 'curated',
+            max_input_tokens: 8191,
+          },
+          chunk: { max_chunk_tokens: 512, overlap_tokens: 64, max_chars: 2400 },
+        },
+      })
+    )
+    getRetrievalSpaces.mockResolvedValue({
+      spaces: [],
+      cold: false,
+      active_space_id: 'space-v2',
+      notes: [],
+    })
+    renderCard()
+
+    const label = await screen.findByTestId('retrieval-tokenizer-label')
+    expect(within(label).getByTestId('retrieval-tokenizer-aware').textContent).toContain(
+      'Token-aware'
+    )
+    expect(
+      within(label).getByTestId('retrieval-tokenizer-identifier').textContent
+    ).toContain('cl100k_base')
+    expect(within(label).getByTestId('retrieval-tokenizer-source').textContent).toContain(
+      'curated'
+    )
+    expect(within(label).getByTestId('retrieval-tokenizer-status').textContent).toContain(
+      'exact'
+    )
+  })
+
+  test('says legacy when the space has no tokenizer identity', async () => {
+    getRetrievalOverview.mockResolvedValue(overview())
+    getRetrievalSpaces.mockResolvedValue({
+      spaces: [],
+      cold: false,
+      active_space_id: 'legacy-chunk-vecs',
+      notes: [],
+    })
+    renderCard()
+
+    const label = await screen.findByTestId('retrieval-tokenizer-label')
+    expect(label.textContent).toContain('Legacy v1 · character chunks')
   })
 })

@@ -34,6 +34,7 @@ import type {
 } from '@/lib/api'
 import { getCurrentUser } from '@/lib/auth-session'
 
+import { RetrievalProgress, RetrievalTokenizerLabel } from './RetrievalProgress'
 import { RetrievalQualityPanel } from './RetrievalQualityPanel'
 
 type MaintenanceAction = NonNullable<RetrievalMaintenanceRequest['action']>
@@ -273,6 +274,13 @@ export function RetrievalStatusCard() {
                 })}
               </p>
             ) : null}
+            {data.space ? (
+              <RetrievalTokenizerLabel
+                tokenAware={data.space.token_aware}
+                tokenizer={data.space.tokenizer}
+                chunk={data.space.chunk}
+              />
+            ) : null}
             {coverage !== null && coverage !== undefined ? (
               <p className="text-muted-foreground text-xs">
                 {t('settings.retrievalCoverage', {
@@ -382,6 +390,13 @@ export function RetrievalStatusCard() {
                     {run.stage ? (
                       <p className="text-muted-foreground truncate">{run.stage}</p>
                     ) : null}
+                    {run.progress_detail ? (
+                      <RetrievalProgress
+                        detail={run.progress_detail}
+                        compact
+                        testId={`retrieval-run-progress-${run.run_id}`}
+                      />
+                    ) : null}
                     {result ? (
                       <p className="text-muted-foreground">
                         {t('settings.retrievalRunCounts', {
@@ -454,6 +469,12 @@ export function RetrievalStatusCard() {
                       table: space.index_table ?? '',
                     })}
                   </p>
+                  <RetrievalTokenizerLabel
+                    tokenAware={space.token_aware}
+                    tokenizer={space.tokenizer}
+                    chunk={space.chunk}
+                    compact
+                  />
                   <p className="text-muted-foreground">
                     {t('settings.retrievalSpaceQuality', {
                       state: space.quality_state ?? 'not_sampled',

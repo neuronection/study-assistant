@@ -16,6 +16,7 @@ import {
   runTypeKey,
   spaceStatusKey,
 } from './retrievalObservation'
+import { RetrievalProgress, RetrievalTokenizerLabel } from './RetrievalProgress'
 
 type RunEntry = NonNullable<RetrievalRuns['runs']>[number]
 type SpaceEntry = NonNullable<RetrievalSpaces['spaces']>[number]
@@ -128,6 +129,27 @@ export function RunDetailDrawer({
               {formatWhen(run.finished_at)}
             </MetaRow>
           </dl>
+
+          <div className="border-border rounded-md border px-3 py-2">
+            <h3 className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wide">
+              {t('settings.retrievalObsRunLiveProgress')}
+            </h3>
+            <RetrievalProgress
+              detail={run.progress_detail}
+              testId="retrieval-observation-run-progress"
+            />
+          </div>
+
+          <div className="border-border rounded-md border px-3 py-2">
+            <h3 className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wide">
+              {t('settings.retrievalObsRunTokenizer')}
+            </h3>
+            <RetrievalTokenizerLabel
+              tokenAware={run.token_aware}
+              tokenizer={run.tokenizer}
+              chunk={run.chunk}
+            />
+          </div>
 
           <div className="border-border rounded-md border px-3 py-2">
             <h3 className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wide">
@@ -262,6 +284,16 @@ export function SpaceDetailDrawer({
               {space.as_of ? formatWhen(space.as_of) : t('settings.retrievalObsNever')}
             </MetaRow>
           </dl>
+          <div className="border-border rounded-md border px-3 py-2">
+            <h3 className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wide">
+              {t('settings.retrievalObsRunTokenizer')}
+            </h3>
+            <RetrievalTokenizerLabel
+              tokenAware={space.token_aware}
+              tokenizer={space.tokenizer}
+              chunk={space.chunk}
+            />
+          </div>
           <p className="text-muted-foreground text-[11px]">
             {t('settings.retrievalObsSpaceReadOnly')}
           </p>

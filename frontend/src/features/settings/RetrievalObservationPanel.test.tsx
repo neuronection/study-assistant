@@ -408,6 +408,68 @@ describe('RetrievalObservationPanel', () => {
     expect(screen.queryByText(/RAW DOCUMENT TEXT/i)).not.toBeInTheDocument()
   })
 
+  test('renders live progress and the tokenizer identity in the run drawer', async () => {
+    getRetrievalRuns.mockResolvedValue({
+      runs: [
+        run('running', 'run-p', {
+          run: {
+            progress_detail: {
+              phase: 'embedding',
+              processed_documents: 3,
+              total_documents: 9,
+              processed_chunks: 7,
+              pending_chunks: 14,
+              total_chunks: 21,
+              chunks_estimated: true,
+              embedded_chunks: 5,
+              skipped_chunks: 2,
+              failed_chunks: 0,
+              embedded_documents: 2,
+              skipped_documents: 1,
+              failed_documents: 0,
+              tokens: 512,
+              tokens_estimated: true,
+              embed_calls: 2,
+              exact_tokenizer: false,
+              done: false,
+            },
+            token_aware: true,
+            tokenizer: {
+              kind: 'tiktoken',
+              identifier: 'cl100k_base',
+              exact: true,
+              source: 'curated',
+              max_input_tokens: 8191,
+            },
+            chunk: { max_chunk_tokens: 512, overlap_tokens: 64, max_chars: 2400 },
+          },
+        }),
+      ],
+    })
+
+    await renderPanel('/settings?tab=tools&section=indexing&obs=runs&detail=run-p')
+
+    const drawer = await screen.findByTestId('retrieval-observation-run-drawer')
+    const bar = await within(drawer).findByTestId('retrieval-observation-run-progress-bar')
+    expect(bar).toHaveAttribute('role', 'progressbar')
+    expect(bar).toHaveAttribute('aria-valuenow', '33')
+    expect(
+      within(drawer).getByTestId('retrieval-observation-run-progress-documents').textContent
+    ).toContain('3 / 9 documents')
+    expect(
+      within(drawer).getByTestId('retrieval-observation-run-progress-pending').textContent
+    ).toContain('14')
+    expect(
+      within(drawer).getByTestId('retrieval-observation-run-progress-estimated')
+    ).toBeInTheDocument()
+    expect(
+      within(drawer).getByTestId('retrieval-observation-run-progress-tokens').textContent
+    ).toContain('~512')
+    const label = within(drawer).getByTestId('retrieval-tokenizer-label')
+    expect(label.textContent).toContain('cl100k_base')
+    expect(label.textContent).toContain('curated')
+  })
+
   test('opens a space drawer with model, dimension, coverage and health', async () => {
     await renderPanel(
       '/settings?tab=tools&section=indexing&obs=spaces&detail=space:space-a'
