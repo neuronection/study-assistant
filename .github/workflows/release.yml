@@ -175,7 +175,7 @@ jobs:
             exit 1
           fi
           echo "desktop launch survived 30s"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-packages
           path: |
@@ -243,7 +243,7 @@ jobs:
         run: |
           $version = (uv run --directory backend python -c 'import app; print(app.__version__)').Trim()
           Copy-Item "backend/dist/StudyAssistant.exe" "packaging/StudyAssistant-$version-windows-x64.exe"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-executable
           path: packaging/StudyAssistant-*-windows-x64.exe
