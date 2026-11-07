@@ -298,7 +298,16 @@ jobs:
           cp StudyAssistant-*-windows-x64.exe StudyAssistant-windows-x64.exe
           cp StudyAssistant-*-x86_64.AppImage StudyAssistant-x86_64.AppImage
           cp studyassistant_*_amd64.deb studyassistant_amd64.deb
+      - name: Prepare release notes
+        run: |
+          notes="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" release-notes.md
+          else
+            printf 'See CHANGELOG.md for the full change list.\n' > release-notes.md
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
-          generate_release_notes: true
+          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}

@@ -11,6 +11,29 @@ Release history from before the public launch lives in the
 
 ## [Unreleased]
 
+## [v0.13.0-rc.1] - 2026-11-07
+
+### 0.13 highlights
+- **Token-aware retrieval** — offline tokenizer with real token accounting; a v2 token-window
+  chunker that builds beside the v1 space, backfills, passes coverage/quality and cuts over;
+  bounded live indexing progress, retrieval operations/alerts and a read-only observation surface.
+- **Cloud calendars** — Google, Microsoft 365, Nextcloud, iCloud, Fastmail, CalDAV and ICS; exam,
+  deadline and milestone dates project as all-day events; two-way sync is opt-in; credentials stay
+  in the OS keyring.
+- **Connected sources & academic ingest** — arXiv/OpenAlex/Crossref discovery, `.bib`/`.ris`,
+  `.ics`, markdown vaults, WebDAV/Drive/Dropbox/OneDrive/Zotero/Anki; imports land as suggestions.
+- **Extension host** — validated manifests, bundled connectors and MCP instances; family contracts
+  and extension data now ship in the frozen bundle and the Docker image.
+- **PostgreSQL 16 web mode**, profiles/identity, and the 0.13 hardening round (restore safety, typed
+  schema-break refusal, packaging completeness, CSP/OAuth callback, calendar sync safety).
+
+### Known limitations (rc)
+- CalDAV recurring events can appear as a single item at the series start; in-window expansion is a
+  follow-up in the 0.13 line.
+- Google/Microsoft calendar OAuth needs `SA_*_CLIENT_ID`; CalDAV/ICS work out of the box.
+- The update badge activates once the website version API is deployed.
+- Windows is built and smoke-tested by this tag's CI (first verification of this bundle).
+
 ### Breaking changes — 0.13 schema baseline (clean install required)
 - **The datastore schema was rebuilt.** The Alembic chain was squashed into
   `0001_baseline` (ADR-196) and the content identity moved to UUIDs; there is
